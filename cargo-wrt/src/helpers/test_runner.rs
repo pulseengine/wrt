@@ -271,7 +271,7 @@ impl TestRunner {
 
     /// Output human-readable results
     fn output_human_results(&self, summary: &TestSummary) {
-        println!("\n{}", "Test Results".bold);
+        println!("\n{}", "Test Results".bold());
         println!("{}", "=".repeat(50));
 
         // Summary stats

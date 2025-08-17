@@ -85,6 +85,7 @@ pub use std::{
 
 #[cfg(feature = "std")]
 pub use wrt_decoder::decode_no_alloc;
+#[cfg(feature = "std")]
 pub use wrt_decoder::decoder_no_alloc;
 // Re-export from wrt-decoder
 #[cfg(feature = "std")]
@@ -129,6 +130,8 @@ pub use wrt_foundation::component_value::{
     ComponentValue,
     ValType,
 };
+#[cfg(feature = "std")]
+pub use wrt_foundation::MemoryProvider;
 // Binary std/no_std choice - remove conflicting type aliases
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
@@ -138,6 +141,7 @@ pub use wrt_foundation::{
     },
     BoundedMap,
     BoundedSet,
+    MemoryProvider,
 };
 
 // Unified type aliases for std/no_std compatibility

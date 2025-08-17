@@ -4,6 +4,16 @@
 //! future, error-context) that are different from Rust's async/await. This
 //! module provides optional bridges between them.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
+
 use core::{
     pin::Pin,
     task::{
@@ -29,15 +39,25 @@ use super::async_types::{
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::{
-    threading::task_manager::{
-        TaskId,
-        TaskManager,
-        TaskState,
-    },
-    ComponentInstanceId,
-    ValType,
+use crate::ComponentInstanceId;
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    TaskId,
+    TaskManager,
+    TaskState,
 };
+
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskState = ();
+
+// ValType import placeholder - need to check where this should come from
+pub type ValType = u32;
 
 /// The Component Model async primitives DO NOT require Rust's Future trait.
 /// They work through their own polling/waiting mechanisms via the task manager.

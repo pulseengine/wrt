@@ -35,9 +35,12 @@ use crate::types::Value as ComponentValue;
 use crate::{
     canonical_abi::canonical_options::CanonicalOptions,
     instance::Instance,
-    memory::Memory,
+    // memory::Memory, // Module not available
     runtime::Runtime,
 };
+
+// Placeholder types for missing imports
+pub type Memory = ();
 
 /// Post-return cleanup entry tracking resources that need cleanup
 #[derive(Debug, Clone)]

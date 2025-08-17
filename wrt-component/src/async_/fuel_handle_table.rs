@@ -10,10 +10,8 @@ use core::sync::atomic::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     operations::{
         record_global_operation,
         Type as OperationType,

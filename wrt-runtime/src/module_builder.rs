@@ -328,6 +328,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
 
 impl ModuleBuilder {
     /// Create a new module builder with an existing binary
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn with_binary(_binary: Vec<u8>) -> Result<Self> {
         Ok(Self {
             module:              Module::new()?,
@@ -336,6 +337,7 @@ impl ModuleBuilder {
     }
 
     /// Set the binary representation of the module
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary(&mut self, _binary: Vec<u8>) -> Result<()> {
         Ok(())
     }

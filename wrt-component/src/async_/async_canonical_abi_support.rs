@@ -17,16 +17,22 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     component_value::ComponentValue,
-    resource::ResourceHandle,
+    // resource::ResourceHandle, // Not available - using local placeholder
     safe_managed_alloc,
     CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
+
+// Placeholder ResourceHandle type until proper resource system is implemented
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ResourceHandle(u32);
+
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type FuelTrackedThreadManager = ();
 
 use crate::{
     async_::{
@@ -96,7 +102,10 @@ struct AsyncAbiOperation {
     resource_handle:  Option<ResourceHandle>,
     lifting_context:  Option<LiftingContext>,
     lowering_context: Option<LoweringContext>,
+    #[cfg(feature = "component-model-threading")]
     task_id:          Option<crate::threading::task_manager::TaskId>,
+    #[cfg(not(feature = "component-model-threading"))]
+    task_id:          Option<u32>,
     created_at:       u64,
     fuel_consumed:    AtomicU64,
 }
@@ -755,10 +764,10 @@ pub struct AbiStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        task_manager::TaskManager,
-        threading::thread_spawn_fuel::FuelTrackedThreadManager,
-    };
+    use crate::task_manager::TaskManager;
+    
+    #[cfg(feature = "component-model-threading")]
+    use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
         let task_manager =

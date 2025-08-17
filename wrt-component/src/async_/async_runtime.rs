@@ -39,6 +39,20 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
 };
 
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
+#[cfg(not(feature = "component-model-threading"))]
+pub type Task = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskContext = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskState = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskType = ();
+
 use super::async_types::{
     AsyncReadResult,
     Future,
@@ -51,19 +65,21 @@ use super::async_types::{
     WaitableSet,
 };
 use crate::{
-    threading::task_manager::{
-        Task,
-        TaskContext,
-        TaskId,
-        TaskManager,
-        TaskState,
-        TaskType,
-    },
     types::{
         ValType,
         Value,
     },
     WrtResult,
+};
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    Task,
+    TaskContext,
+    TaskId,
+    TaskManager,
+    TaskState,
+    TaskType,
 };
 
 /// Maximum number of concurrent tasks in no_std environments

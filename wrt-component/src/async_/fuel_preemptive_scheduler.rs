@@ -45,9 +45,15 @@ use crate::{
         },
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum number of tasks in preemptive scheduler
 const MAX_PREEMPTIVE_TASKS: usize = 128;

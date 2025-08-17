@@ -190,7 +190,7 @@ impl CodeValidator {
 
     /// Comprehensive documentation audit for all crates
     pub fn audit_crate_documentation(&self) -> BuildResult<ValidationResults> {
-        println!("{} Auditing crate documentation...", "📚".bright_blue);
+        println!("{} Auditing crate documentation...", "📚".bright_blue());
 
         let mut results = ValidationResults::new();
         let start = std::time::Instant::now();
@@ -317,7 +317,7 @@ impl CodeValidator {
         results.success = results.errors.is_empty();
 
         // Print summary
-        println!("\n  {} Summary:", "📊".bright_cyan);
+        println!("\n  {} Summary:", "📊".bright_cyan());
         println!("    Total crates: {}", crates.len());
         println!("    Crates missing README: {}", missing_readme.len());
         println!(
@@ -330,7 +330,7 @@ impl CodeValidator {
         );
 
         if !missing_readme.is_empty() {
-            println!("\n    {} Crates missing README:", "❌".bright_red);
+            println!("\n    {} Crates missing README:", "❌".bright_red());
             for crate_name in &missing_readme {
                 println!("      - {}", crate_name);
             }
@@ -362,7 +362,7 @@ impl CodeValidator {
                 "✅".bright_green()
             );
         } else {
-            println!("\n  {} Documentation audit found issues", "❌".bright_red);
+            println!("\n  {} Documentation audit found issues", "❌".bright_red());
         }
 
         Ok(results)
@@ -537,7 +537,7 @@ impl CodeValidator {
 pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<bool> {
     let validator = CodeValidator::new(workspace_root.to_path_buf(), verbose);
 
-    println!("{} Running code validation checks...", "🔍".bright_blue);
+    println!("{} Running code validation checks...", "🔍".bright_blue());
     println!();
 
     let mut all_passed = true;
@@ -567,9 +567,9 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
     println!();
 
     if all_passed {
-        println!("{} All validation checks passed!", "✅".bright_green);
+        println!("{} All validation checks passed!", "✅".bright_green());
     } else {
-        println!("{} Some validation checks failed", "❌".bright_red);
+        println!("{} Some validation checks failed", "❌".bright_red());
     }
 
     Ok(all_passed)

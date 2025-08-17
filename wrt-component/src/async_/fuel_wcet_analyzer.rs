@@ -28,9 +28,15 @@ use wrt_foundation::{
 
 use crate::{
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum number of WCET analysis entries
 const MAX_WCET_ENTRIES: usize = 512;

@@ -18,8 +18,14 @@ use wrt_foundation::{
 
 use crate::{
     prelude::*,
-    task_manager::TaskId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum debt that a task can accumulate
 const MAX_TASK_DEBT: u64 = 10000;
@@ -74,7 +80,7 @@ impl FuelDebtCreditSystem {
         debt_policy: DebtPolicy,
         credit_restriction: CreditRestriction,
     ) -> Result<Self, Error> {
-        let _provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
             task_debts: Arc::new(Mutex::new(BoundedMap::new(provider.clone())?)),

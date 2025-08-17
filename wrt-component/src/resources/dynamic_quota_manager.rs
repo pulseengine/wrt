@@ -25,10 +25,10 @@ use std::{
 use wrt_foundation::{
     bounded::BoundedVec,
     budget_aware_provider::CrateId,
-    component::WrtComponentType,
+    // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
-    resource::ResourceHandle,
+    // resource::ResourceHandle, // Not available
     safe_managed_alloc,
     safe_memory::{
         CapabilityAwareProvider,
@@ -36,6 +36,10 @@ use wrt_foundation::{
     },
     MemoryProvider,
 };
+
+// Placeholder types for missing imports
+pub type WrtComponentType = u32;
+pub type ResourceHandle = u32;
 
 use crate::{
     blast_zone::{

@@ -9,7 +9,7 @@ use core::fmt::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
+    bounded::{
         BoundedString,
         BoundedVec,
     },

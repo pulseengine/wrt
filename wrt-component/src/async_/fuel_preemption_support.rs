@@ -14,14 +14,14 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedBinaryHeap,
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     safe_managed_alloc,
-    sync::Mutex,
     verification::VerificationLevel,
+    Mutex,
+
+// Note: Using BoundedVec instead of BoundedBinaryHeap
+// Priority ordering will need to be handled manually
     Arc,
     CrateId,
 };
@@ -36,9 +36,15 @@ use crate::{
         fuel_dynamic_manager::FuelDynamicManager,
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum preemption points per task
 const MAX_PREEMPTION_POINTS: usize = 64;
@@ -53,7 +59,7 @@ pub struct FuelPreemptionManager {
     /// Task preemption state
     task_states:        BoundedMap<TaskId, PreemptionState, 1024>,
     /// Preemption queue ordered by priority
-    preemption_queue:   BoundedBinaryHeap<PreemptionRequest, 256>,
+    // preemption_queue: BoundedVec will be created dynamically with safe_managed_alloc
     /// Active preemption points
     preemption_points:  BoundedMap<TaskId, BoundedVec<PreemptionPoint, MAX_PREEMPTION_POINTS>, 512>,
     /// Global preemption enabled flag
@@ -176,7 +182,7 @@ impl FuelPreemptionManager {
         Ok(Self {
             preemption_policy:  policy,
             task_states:        BoundedMap::new(provider.clone())?,
-            preemption_queue:   BoundedBinaryHeap::new(provider.clone())?,
+            // preemption_queue: will be implemented later,
             preemption_points:  BoundedMap::new(provider.clone())?,
             preemption_enabled: AtomicBool::new(policy != PreemptionPolicy::Disabled),
             stats:              PreemptionStatistics::default(),

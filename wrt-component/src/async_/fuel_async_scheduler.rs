@@ -14,10 +14,8 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     operations::{
         record_global_operation,
         Type as OperationType,
@@ -35,12 +33,20 @@ use crate::{
         FuelAsyncExecutor,
     },
     prelude::*,
-    threading::task_manager::{
-        TaskId,
-        TaskState,
-    },
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    TaskId,
+    TaskState,
+};
+
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskState = ();
 
 /// Maximum number of scheduling events to track
 const MAX_SCHEDULING_EVENTS: usize = 256;

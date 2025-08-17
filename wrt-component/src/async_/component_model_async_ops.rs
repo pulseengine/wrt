@@ -14,10 +14,8 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     safe_managed_alloc,
     sync::Mutex,
     Arc,
@@ -43,12 +41,14 @@ use crate::{
         },
     },
     prelude::*,
-    task_manager::{
-        TaskId,
-        TaskManager,
-    },
     types::ComponentInstance,
     ComponentInstanceId,
+};
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    TaskId,
+    TaskManager,
 };
 
 /// Maximum number of waitables per task.wait call

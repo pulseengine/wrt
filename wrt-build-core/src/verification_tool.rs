@@ -135,7 +135,7 @@ impl BuildSystem {
         &self,
         options: &VerificationToolOptions,
     ) -> BuildResult<VerificationToolResults> {
-        println!("{} Running verification tool checks...", "🔍".bright_blue);
+        println!("{} Running verification tool checks...", "🔍".bright_blue());
 
         let start_time = std::time::Instant::now();
         let mut overall_success = true;
@@ -237,9 +237,9 @@ impl BuildSystem {
         let duration = start_time.elapsed();
 
         if overall_success {
-            println!("{} Verification tool checks passed!", "✅".bright_green);
+            println!("{} Verification tool checks passed!", "✅".bright_green());
         } else {
-            println!("{} Some verification tool checks failed", "❌".bright_red);
+            println!("{} Some verification tool checks failed", "❌".bright_red());
         }
 
         Ok(VerificationToolResults {
@@ -370,7 +370,7 @@ impl BuildSystem {
         verbose: bool,
     ) -> BuildResult<PlatformCheckResult> {
         if verbose {
-            println!("  {} Running platform verification...", "🖥️".bright_cyan);
+            println!("  {} Running platform verification...", "🖥️".bright_cyan());
         }
 
         // Simplified platform verification - integrates with requirements platform

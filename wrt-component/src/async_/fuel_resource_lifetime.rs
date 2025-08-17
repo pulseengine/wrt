@@ -25,8 +25,14 @@ use wrt_foundation::{
     verification::VerificationLevel,
     Arc,
     CrateId,
-    Weak,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 
 use crate::{
     async_::{

@@ -19,9 +19,9 @@ use std::sync::Arc;
 
 use crate::{
     memory::Memory,
-    memory_helpers::*,
     prelude::*,
 };
+
 
 /// Invalid offset error code
 const INVALID_OFFSET: u16 = 4006;
@@ -329,7 +329,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         self.check_range(offset, len)?;
 
         // Get a safe slice instead of buffer
-        let safe_slice = self.memory.as_ref().get_safe_slice(offset, len as usize)?;
+        let safe_slice = self.memory.get_safe_slice(offset, len as usize)?;
         let data = safe_slice.data()?;
 
         // Create a new BoundedVec with the data
@@ -354,9 +354,8 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
         // We can't modify buffer directly through Arc, so use a special method to write
         // to memory without dereferencing Arc<Memory> as mutable
-        ArcMemoryExt::write_via_callback(&self.memory, offset, bytes)?;
-
-        Ok(())
+        // TODO: Implement safe write functionality for Arc<Memory>
+        Err(Error::runtime_execution_error("Write operation not yet implemented for Arc<Memory>"))
     }
 
     fn size(&self) -> Result<u32> {
@@ -369,10 +368,8 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let result = self.memory.size();
 
         // Grow the memory - this should handle interior mutability internally
-        ArcMemoryExt::grow_via_callback(&self.memory, pages)?;
-
-        // Return the previous size
-        Ok(result)
+        // TODO: Implement safe grow functionality for Arc<Memory>
+        Err(Error::runtime_execution_error("Grow operation not yet implemented for Arc<Memory>"))
     }
 
     fn byte_size(&self) -> Result<usize> {
@@ -404,7 +401,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         self.check_range(offset, len)?;
 
         // Get a safe slice instead of buffer
-        let safe_slice = self.memory.as_ref().get_safe_slice(offset, len as usize)?;
+        let safe_slice = self.memory.get_safe_slice(offset, len as usize)?;
         let data = safe_slice.data()?;
 
         // Create a new BoundedVec with the copied data

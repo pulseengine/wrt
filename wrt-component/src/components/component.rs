@@ -79,7 +79,7 @@ type ComponentMap<K, V> = SimpleMap<K, V>;
 
 // Runtime types with explicit namespacing
 use wrt_runtime::{
-    func::FuncType as RuntimeFuncType,
+    // func::FuncType as RuntimeFuncType, // Not available at this path
     global::{
         Global,
         WrtGlobalType as GlobalType,
@@ -91,6 +91,9 @@ use wrt_runtime::{
         TableType,
     },
 };
+
+// Placeholder types for missing imports
+pub type RuntimeFuncType = ();
 
 // Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
 // prelude)

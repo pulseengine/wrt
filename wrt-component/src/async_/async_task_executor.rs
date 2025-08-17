@@ -14,9 +14,9 @@ use core::{
 };
 
 use wrt_foundation::{
-    sync::Mutex,
     verification::VerificationLevel,
     Arc,
+    Mutex,
 };
 
 use crate::{
@@ -32,10 +32,12 @@ use crate::{
         fuel_aware_waker::WakerData,
     },
     prelude::*,
-    task_manager::TaskId,
     types::ComponentInstance,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 
 /// Trait for executing async tasks with ASIL compliance
 pub trait AsyncTaskExecutor: Send + Sync {

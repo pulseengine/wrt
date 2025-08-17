@@ -4,10 +4,17 @@
 //! WebAssembly binaries' custom sections and convert them to execution
 //! configurations.
 
+#[cfg(feature = "decoder")]
 use wrt_decoder::resource_limits_section::{
     ResourceLimitsSection,
     RESOURCE_LIMITS_SECTION_NAME,
 };
+
+// Placeholder types when decoder is not available
+#[cfg(not(feature = "decoder"))]
+pub struct ResourceLimitsSection;
+#[cfg(not(feature = "decoder"))]
+pub const RESOURCE_LIMITS_SECTION_NAME: &str = "resource_limits";
 use wrt_error::{
     codes,
     Error,

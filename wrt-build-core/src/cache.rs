@@ -368,7 +368,7 @@ impl CacheManager {
         diagnostics: Vec<Diagnostic>,
     ) -> BuildResult<()> {
         if !self.enabled {
-            return Ok();
+            return Ok(());
         }
 
         self.cache.cache_file(file_path, diagnostics)
@@ -377,7 +377,7 @@ impl CacheManager {
     /// Save cache to disk
     pub fn save(&self) -> BuildResult<()> {
         if !self.enabled {
-            return Ok();
+            return Ok(());
         }
 
         self.cache.save(&self.cache_path)

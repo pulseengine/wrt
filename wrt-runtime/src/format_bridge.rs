@@ -12,6 +12,8 @@ use alloc::vec::Vec;
 use std::vec::Vec;
 
 use crate::prelude::*;
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream};
+use wrt_foundation::MemoryProvider;
 // For no_std without alloc, use type aliases with concrete providers
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type Vec<T> = wrt_foundation::BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
@@ -38,7 +40,7 @@ pub struct RuntimeContext {
 }
 
 /// Memory provider for runtime operations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeMemoryProvider {
     /// Memory index
     pub index:        u32,
@@ -50,8 +52,49 @@ pub struct RuntimeMemoryProvider {
     pub is_shared:    bool,
 }
 
+impl Checksummable for RuntimeMemoryProvider {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.index.update_checksum(checksum);
+        self.current_size.update_checksum(checksum);
+        self.max_size.update_checksum(checksum);
+        self.is_shared.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeMemoryProvider {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.current_size.to_bytes_with_provider(writer, provider)?;
+        self.max_size.to_bytes_with_provider(writer, provider)?;
+        self.is_shared.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeMemoryProvider {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let current_size = u32::from_bytes_with_provider(reader, provider)?;
+        let max_size = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let is_shared = bool::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            index,
+            current_size,
+            max_size,
+            is_shared,
+        })
+    }
+}
+
 /// Table provider for runtime operations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeTableProvider {
     /// Table index
     pub index:        u32,
@@ -63,6 +106,47 @@ pub struct RuntimeTableProvider {
     pub element_type: RuntimeRefType,
 }
 
+impl Checksummable for RuntimeTableProvider {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.index.update_checksum(checksum);
+        self.current_size.update_checksum(checksum);
+        self.max_size.update_checksum(checksum);
+        self.element_type.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeTableProvider {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.current_size.to_bytes_with_provider(writer, provider)?;
+        self.max_size.to_bytes_with_provider(writer, provider)?;
+        self.element_type.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeTableProvider {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let current_size = u32::from_bytes_with_provider(reader, provider)?;
+        let max_size = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let element_type = RuntimeRefType::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            index,
+            current_size,
+            max_size,
+            element_type,
+        })
+    }
+}
+
 /// Runtime reference type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeRefType {
@@ -70,6 +154,51 @@ pub enum RuntimeRefType {
     FuncRef,
     /// External reference
     ExternRef,
+}
+
+impl Default for RuntimeRefType {
+    fn default() -> Self {
+        RuntimeRefType::FuncRef
+    }
+}
+
+impl Checksummable for RuntimeRefType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            RuntimeRefType::FuncRef => 0u8,
+            RuntimeRefType::ExternRef => 1u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeRefType {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &P,
+    ) -> Result<()> {
+        let discriminant = match self {
+            RuntimeRefType::FuncRef => 0u8,
+            RuntimeRefType::ExternRef => 1u8,
+        };
+        writer.write_u8(discriminant)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeRefType {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(RuntimeRefType::FuncRef),
+            1 => Ok(RuntimeRefType::ExternRef),
+            _ => Err(Error::parse_error("Invalid RuntimeRefType discriminant")),
+        }
+    }
 }
 
 /// ASIL safety constraints
@@ -99,7 +228,7 @@ pub enum ASILLevel {
 }
 
 /// Runtime data segment initialized from format bridge
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeDataSegment {
     /// Segment index
     pub index:                u32,
@@ -115,8 +244,114 @@ pub struct RuntimeDataSegment {
     pub runtime_handle:       u32,
 }
 
+impl Default for RuntimeDataSegment {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            memory_index: None,
+            evaluated_offset: None,
+            data: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
+            initialization_state: InitializationState::Pending,
+            runtime_handle: 0,
+        }
+    }
+}
+
+impl Checksummable for RuntimeDataSegment {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.index.update_checksum(checksum);
+        self.memory_index.update_checksum(checksum);
+        self.evaluated_offset.update_checksum(checksum);
+        // Checksum data length and first few bytes for efficiency
+        (self.data.len() as u32).update_checksum(checksum);
+        if !self.data.is_empty() {
+            let sample_len = core::cmp::min(self.data.len(), 32);
+            for (i, byte) in self.data.iter().enumerate() {
+                if i >= sample_len {
+                    break;
+                }
+                byte.update_checksum(checksum);
+            }
+        }
+        self.initialization_state.update_checksum(checksum);
+        self.runtime_handle.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeDataSegment {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.memory_index.to_bytes_with_provider(writer, provider)?;
+        self.evaluated_offset.to_bytes_with_provider(writer, provider)?;
+        (self.data.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for byte in &self.data {
+            writer.write_u8(*byte)?;
+        }
+        self.initialization_state.to_bytes_with_provider(writer, provider)?;
+        self.runtime_handle.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeDataSegment {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let memory_index = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let evaluated_offset = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let data_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        
+        let data = {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                let mut vec = Vec::with_capacity(data_len);
+                for _ in 0..data_len {
+                    vec.push(reader.read_u8()?);
+                }
+                vec
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                let data_provider = wrt_foundation::NoStdProvider::<1024>::default();
+                let mut vec = wrt_foundation::BoundedVec::new(data_provider).map_err(|_| {
+                    Error::parse_error("Failed to create data vector")
+                })?;
+                for _ in 0..data_len {
+                    vec.push(reader.read_u8()?).map_err(|_| {
+                        Error::parse_error("Data segment too large for bounded vector")
+                    })?;
+                }
+                vec
+            }
+        };
+        
+        let initialization_state = InitializationState::from_bytes_with_provider(reader, provider)?;
+        let runtime_handle = u32::from_bytes_with_provider(reader, provider)?;
+        
+        Ok(Self {
+            index,
+            memory_index,
+            evaluated_offset,
+            data,
+            initialization_state,
+            runtime_handle,
+        })
+    }
+}
+
 /// Runtime element segment initialized from format bridge
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeElementSegment {
     /// Segment index
     pub index:                u32,
@@ -132,8 +367,107 @@ pub struct RuntimeElementSegment {
     pub runtime_handle:       u32,
 }
 
+impl Default for RuntimeElementSegment {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            table_index: None,
+            evaluated_offset: None,
+            elements: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
+            initialization_state: InitializationState::Pending,
+            runtime_handle: 0,
+        }
+    }
+}
+
+impl Checksummable for RuntimeElementSegment {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.index.update_checksum(checksum);
+        self.table_index.update_checksum(checksum);
+        self.evaluated_offset.update_checksum(checksum);
+        (self.elements.len() as u32).update_checksum(checksum);
+        for element in &self.elements {
+            element.update_checksum(checksum);
+        }
+        self.initialization_state.update_checksum(checksum);
+        self.runtime_handle.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeElementSegment {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.table_index.to_bytes_with_provider(writer, provider)?;
+        self.evaluated_offset.to_bytes_with_provider(writer, provider)?;
+        (self.elements.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for element in &self.elements {
+            element.to_bytes_with_provider(writer, provider)?;
+        }
+        self.initialization_state.to_bytes_with_provider(writer, provider)?;
+        self.runtime_handle.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeElementSegment {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let table_index = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let evaluated_offset = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let elements_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        
+        let elements = {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                let mut vec = Vec::with_capacity(elements_len);
+                for _ in 0..elements_len {
+                    vec.push(RuntimeElement::from_bytes_with_provider(reader, provider)?);
+                }
+                vec
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                let elements_provider = wrt_foundation::NoStdProvider::<1024>::default();
+                let mut vec = wrt_foundation::BoundedVec::new(elements_provider).map_err(|_| {
+                    Error::parse_error("Failed to create elements vector")
+                })?;
+                for _ in 0..elements_len {
+                    vec.push(RuntimeElement::from_bytes_with_provider(reader, provider)?).map_err(|_| {
+                        Error::parse_error("Element segment too large for bounded vector")
+                    })?;
+                }
+                vec
+            }
+        };
+        
+        let initialization_state = InitializationState::from_bytes_with_provider(reader, provider)?;
+        let runtime_handle = u32::from_bytes_with_provider(reader, provider)?;
+        
+        Ok(Self {
+            index,
+            table_index,
+            evaluated_offset,
+            elements,
+            initialization_state,
+            runtime_handle,
+        })
+    }
+}
+
 /// Runtime element data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeElement {
     /// Function index
     FunctionIndex(u32),
@@ -141,13 +475,107 @@ pub enum RuntimeElement {
     EvaluatedRef(RuntimeReference),
 }
 
+impl Default for RuntimeElement {
+    fn default() -> Self {
+        RuntimeElement::FunctionIndex(0)
+    }
+}
+
+impl Checksummable for RuntimeElement {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            RuntimeElement::FunctionIndex(_) => 0u8,
+            RuntimeElement::EvaluatedRef(_) => 1u8,
+        };
+        discriminant.update_checksum(checksum);
+        
+        match self {
+            RuntimeElement::FunctionIndex(index) => index.update_checksum(checksum),
+            RuntimeElement::EvaluatedRef(ref_) => ref_.update_checksum(checksum),
+        }
+    }
+}
+
+impl ToBytes for RuntimeElement {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        match self {
+            RuntimeElement::FunctionIndex(index) => {
+                writer.write_u8(0)?;
+                index.to_bytes_with_provider(writer, provider)?;
+            },
+            RuntimeElement::EvaluatedRef(ref_) => {
+                writer.write_u8(1)?;
+                ref_.to_bytes_with_provider(writer, provider)?;
+            },
+        }
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeElement {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => {
+                let index = u32::from_bytes_with_provider(reader, provider)?;
+                Ok(RuntimeElement::FunctionIndex(index))
+            },
+            1 => {
+                let ref_ = RuntimeReference::from_bytes_with_provider(reader, provider)?;
+                Ok(RuntimeElement::EvaluatedRef(ref_))
+            },
+            _ => Err(Error::parse_error("Invalid RuntimeElement discriminant")),
+        }
+    }
+}
+
 /// Runtime reference
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeReference {
     /// Reference type
     pub ref_type: RuntimeRefType,
     /// Runtime handle to the referenced object
     pub handle:   u32,
+}
+
+impl Checksummable for RuntimeReference {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.ref_type.update_checksum(checksum);
+        self.handle.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for RuntimeReference {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.ref_type.to_bytes_with_provider(writer, provider)?;
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for RuntimeReference {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let ref_type = RuntimeRefType::from_bytes_with_provider(reader, provider)?;
+        let handle = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            ref_type,
+            handle,
+        })
+    }
 }
 
 /// Initialization state for runtime segments
@@ -161,6 +589,51 @@ pub enum InitializationState {
     Completed,
     /// Initialization failed
     Failed,
+}
+
+impl Checksummable for InitializationState {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            InitializationState::Pending => 0u8,
+            InitializationState::InProgress => 1u8,
+            InitializationState::Completed => 2u8,
+            InitializationState::Failed => 3u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for InitializationState {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &P,
+    ) -> Result<()> {
+        let discriminant = match self {
+            InitializationState::Pending => 0u8,
+            InitializationState::InProgress => 1u8,
+            InitializationState::Completed => 2u8,
+            InitializationState::Failed => 3u8,
+        };
+        writer.write_u8(discriminant)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for InitializationState {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(InitializationState::Pending),
+            1 => Ok(InitializationState::InProgress),
+            2 => Ok(InitializationState::Completed),
+            3 => Ok(InitializationState::Failed),
+            _ => Err(Error::parse_error("Invalid InitializationState discriminant")),
+        }
+    }
 }
 
 /// Runtime module initialization manager
@@ -183,13 +656,28 @@ pub struct RuntimeModuleInitializer {
 impl RuntimeModuleInitializer {
     /// Create new initializer with runtime context
     pub fn new(context: RuntimeContext) -> Self {
-        Self {
-            context,
-            data_segments: Vec::new(),
-            element_segments: Vec::new(),
-            start_function: None,
-            current_step: 0,
-            total_steps: 0,
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Self {
+                context,
+                data_segments: Vec::new(),
+                element_segments: Vec::new(),
+                start_function: None,
+                current_step: 0,
+                total_steps: 0,
+            }
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            let provider = wrt_foundation::NoStdProvider::<1024>::default();
+            Self {
+                context,
+                data_segments: wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(),
+                element_segments: wrt_foundation::BoundedVec::new(provider).unwrap_or_default(),
+                start_function: None,
+                current_step: 0,
+                total_steps: 0,
+            }
         }
     }
 
@@ -224,32 +712,50 @@ impl RuntimeModuleInitializer {
 
     /// Execute initialization process
     pub fn execute_initialization(&mut self) -> Result<()> {
-        // Initialize active data segments - collect indices first to avoid borrowing
-        // conflicts
-        let data_indices: Vec<usize> = self
-            .data_segments
-            .iter()
-            .enumerate()
-            .filter_map(|(i, segment)| if segment.memory_index.is_some() { Some(i) } else { None })
-            .collect();
-
-        for idx in data_indices {
+        // Initialize active data segments - use indices to avoid borrowing conflicts
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut active_indices = Vec::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut active_indices = {
+            let provider = wrt_foundation::NoStdProvider::<1024>::default();
+            Vec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create active indices vector"))?
+        };
+        
+        for (idx, segment) in self.data_segments.iter().enumerate() {
+            if segment.memory_index.is_some() {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                active_indices.push(idx);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                active_indices.push(idx).map_err(|_| Error::runtime_execution_error("Failed to add index to active indices"))?;
+            }
+        }
+        
+        for idx in active_indices {
             if let Some(segment) = self.data_segments.get_mut(idx) {
                 Self::initialize_data_segment_static(segment)?;
                 self.current_step += 1;
             }
         }
 
-        // Initialize active element segments - collect indices first to avoid borrowing
-        // conflicts
-        let element_indices: Vec<usize> = self
-            .element_segments
-            .iter()
-            .enumerate()
-            .filter_map(|(i, segment)| if segment.table_index.is_some() { Some(i) } else { None })
-            .collect();
-
-        for idx in element_indices {
+        // Initialize active element segments - use indices to avoid borrowing conflicts
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut active_element_indices = Vec::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut active_element_indices = {
+            let provider = wrt_foundation::NoStdProvider::<1024>::default();
+            Vec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create active element indices vector"))?
+        };
+        
+        for (idx, segment) in self.element_segments.iter().enumerate() {
+            if segment.table_index.is_some() {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                active_element_indices.push(idx);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                active_element_indices.push(idx).map_err(|_| Error::runtime_execution_error("Failed to add index to active element indices"))?;
+            }
+        }
+        
+        for idx in active_element_indices {
             if let Some(segment) = self.element_segments.get_mut(idx) {
                 Self::initialize_element_segment_static(segment)?;
                 self.current_step += 1;
@@ -299,7 +805,12 @@ impl RuntimeModuleInitializer {
             index,
             memory_index: extraction.memory_index,
             evaluated_offset: None, // Will be computed during initialization
-            data: Vec::new(),       // Will be populated during initialization
+            data: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
             initialization_state: InitializationState::Pending,
             runtime_handle: self.generate_runtime_handle(),
         })
@@ -315,7 +826,12 @@ impl RuntimeModuleInitializer {
             index,
             table_index: extraction.table_index,
             evaluated_offset: None, // Will be computed during initialization
-            elements: Vec::new(),   // Will be populated during initialization
+            elements: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
             initialization_state: InitializationState::Pending,
             runtime_handle: self.generate_runtime_handle(),
         })
@@ -381,7 +897,7 @@ pub struct FormatModuleRuntimeData {
 }
 
 /// Format data extraction (received from wrt-format bridge)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatDataExtraction {
     /// Memory index for active segments
     pub memory_index:            Option<u32>,
@@ -393,8 +909,97 @@ pub struct FormatDataExtraction {
     pub requires_initialization: bool,
 }
 
+impl Default for FormatDataExtraction {
+    fn default() -> Self {
+        Self {
+            memory_index: None,
+            offset_expr_bytes: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
+            data_size: 0,
+            requires_initialization: false,
+        }
+    }
+}
+
+impl Checksummable for FormatDataExtraction {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.memory_index.update_checksum(checksum);
+        (self.offset_expr_bytes.len() as u32).update_checksum(checksum);
+        for byte in &self.offset_expr_bytes {
+            byte.update_checksum(checksum);
+        }
+        (self.data_size as u32).update_checksum(checksum);
+        self.requires_initialization.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for FormatDataExtraction {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.memory_index.to_bytes_with_provider(writer, provider)?;
+        (self.offset_expr_bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for byte in &self.offset_expr_bytes {
+            writer.write_u8(*byte)?
+        }
+        (self.data_size as u32).to_bytes_with_provider(writer, provider)?;
+        self.requires_initialization.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for FormatDataExtraction {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let memory_index = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let bytes_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        
+        let offset_expr_bytes = {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                let mut vec = Vec::with_capacity(bytes_len);
+                for _ in 0..bytes_len {
+                    vec.push(reader.read_u8()?);
+                }
+                vec
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                let bytes_provider = wrt_foundation::NoStdProvider::<1024>::default();
+                let mut vec = wrt_foundation::BoundedVec::new(bytes_provider).map_err(|_| {
+                    Error::parse_error("Failed to create offset bytes vector")
+                })?;
+                for _ in 0..bytes_len {
+                    vec.push(reader.read_u8()?).map_err(|_| {
+                        Error::parse_error("Offset expression too large for bounded vector")
+                    })?;
+                }
+                vec
+            }
+        };
+        
+        let data_size = u32::from_bytes_with_provider(reader, provider)? as usize;
+        let requires_initialization = bool::from_bytes_with_provider(reader, provider)?;
+        
+        Ok(Self {
+            memory_index,
+            offset_expr_bytes,
+            data_size,
+            requires_initialization,
+        })
+    }
+}
+
 /// Format element extraction (received from wrt-format bridge)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatElementExtraction {
     /// Table index for active segments
     pub table_index:             Option<u32>,
@@ -406,6 +1011,95 @@ pub struct FormatElementExtraction {
     pub requires_initialization: bool,
 }
 
+impl Default for FormatElementExtraction {
+    fn default() -> Self {
+        Self {
+            table_index: None,
+            offset_expr_bytes: {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                { Vec::new() }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default() }
+            },
+            init_data_type: FormatElementInitType::FunctionIndices,
+            requires_initialization: false,
+        }
+    }
+}
+
+impl Checksummable for FormatElementExtraction {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.table_index.update_checksum(checksum);
+        (self.offset_expr_bytes.len() as u32).update_checksum(checksum);
+        for byte in &self.offset_expr_bytes {
+            byte.update_checksum(checksum);
+        }
+        self.init_data_type.update_checksum(checksum);
+        self.requires_initialization.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for FormatElementExtraction {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.table_index.to_bytes_with_provider(writer, provider)?;
+        (self.offset_expr_bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for byte in &self.offset_expr_bytes {
+            writer.write_u8(*byte)?
+        }
+        self.init_data_type.to_bytes_with_provider(writer, provider)?;
+        self.requires_initialization.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for FormatElementExtraction {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let table_index = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let bytes_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        
+        let offset_expr_bytes = {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                let mut vec = Vec::with_capacity(bytes_len);
+                for _ in 0..bytes_len {
+                    vec.push(reader.read_u8()?);
+                }
+                vec
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                let bytes_provider = wrt_foundation::NoStdProvider::<1024>::default();
+                let mut vec = wrt_foundation::BoundedVec::new(bytes_provider).map_err(|_| {
+                    Error::parse_error("Failed to create offset bytes vector")
+                })?;
+                for _ in 0..bytes_len {
+                    vec.push(reader.read_u8()?).map_err(|_| {
+                        Error::parse_error("Offset expression too large for bounded vector")
+                    })?;
+                }
+                vec
+            }
+        };
+        
+        let init_data_type = FormatElementInitType::from_bytes_with_provider(reader, provider)?;
+        let requires_initialization = bool::from_bytes_with_provider(reader, provider)?;
+        
+        Ok(Self {
+            table_index,
+            offset_expr_bytes,
+            init_data_type,
+            requires_initialization,
+        })
+    }
+}
+
 /// Format element initialization type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatElementInitType {
@@ -415,13 +1109,65 @@ pub enum FormatElementInitType {
     ExpressionBytes,
 }
 
+impl Checksummable for FormatElementInitType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            FormatElementInitType::FunctionIndices => 0u8,
+            FormatElementInitType::ExpressionBytes => 1u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for FormatElementInitType {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &P,
+    ) -> Result<()> {
+        let discriminant = match self {
+            FormatElementInitType::FunctionIndices => 0u8,
+            FormatElementInitType::ExpressionBytes => 1u8,
+        };
+        writer.write_u8(discriminant)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for FormatElementInitType {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(FormatElementInitType::FunctionIndices),
+            1 => Ok(FormatElementInitType::ExpressionBytes),
+            _ => Err(Error::parse_error("Invalid FormatElementInitType discriminant")),
+        }
+    }
+}
+
 impl Default for RuntimeContext {
     fn default() -> Self {
-        Self {
-            memory_providers:         Vec::new(),
-            table_providers:          Vec::new(),
-            max_initialization_steps: 1000,
-            asil_constraints:         ASILConstraints::default(),
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Self {
+                memory_providers:         Vec::new(),
+                table_providers:          Vec::new(),
+                max_initialization_steps: 1000,
+                asil_constraints:         ASILConstraints::default(),
+            }
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            let provider = wrt_foundation::NoStdProvider::<1024>::default();
+            Self {
+                memory_providers:         wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(),
+                table_providers:          wrt_foundation::BoundedVec::new(provider).unwrap_or_default(),
+                max_initialization_steps: 1000,
+                asil_constraints:         ASILConstraints::default(),
+            }
         }
     }
 }

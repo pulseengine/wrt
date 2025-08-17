@@ -196,7 +196,7 @@ impl WasmVerifier {
         if result.valid {
             println!("{} WebAssembly module is valid", "✅".bright_green());
         } else {
-            println!("{} WebAssembly module validation failed", "❌".bright_red);
+            println!("{} WebAssembly module validation failed", "❌".bright_red());
         }
 
         println!("\n📊 Module Information:");
@@ -234,7 +234,7 @@ impl WasmVerifier {
         if !result.errors.is_empty() {
             println!("\n❌ Errors:");
             for error in &result.errors {
-                println!("  - {}", error.bright_red);
+                println!("  - {}", error.bright_red());
             }
         }
     }

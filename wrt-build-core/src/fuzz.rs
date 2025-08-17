@@ -85,7 +85,7 @@ pub fn run_fuzz_with_options_impl(
     build_system: &BuildSystem,
     options: &FuzzOptions,
 ) -> BuildResult<FuzzResults> {
-    println!("{} Starting fuzzing campaign...", "🐛".bright_blue);
+    println!("{} Starting fuzzing campaign...", "🐛".bright_blue());
 
     // Check if cargo-fuzz is available with helpful error message
     use crate::tools::ensure_tool_available;

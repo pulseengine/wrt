@@ -124,7 +124,7 @@ impl KaniVerifier {
 
     /// Run KANI verification
     pub fn run_verification(&self) -> BuildResult<KaniVerificationResults> {
-        println!("{} WRT KANI Formal Verification", "🔍".bright_blue);
+        println!("{} WRT KANI Formal Verification", "🔍".bright_blue());
         println!("Profile: {:?}", self.config.profile);
         println!("Timestamp: {}", self.timestamp);
         println!();
@@ -182,7 +182,7 @@ impl KaniVerifier {
         println!("Report saved to: {}", report_file.display());
 
         if passed_packages == total_packages {
-            println!("{} All packages passed verification!", "🎉".bright_green);
+            println!("{} All packages passed verification!", "🎉".bright_green());
         } else {
             println!(
                 "{} {}/{} packages failed verification",
@@ -452,7 +452,7 @@ impl KaniVerifier {
         &self,
         package_results: &[PackageVerificationResult],
     ) -> BuildResult<String> {
-        println!("{} Generating coverage report...", "📊".bright_blue);
+        println!("{} Generating coverage report...", "📊".bright_blue());
 
         let coverage_file = self.report_dir.join(format!("coverage_{}.txt", self.timestamp));
 
@@ -511,7 +511,7 @@ impl KaniVerifier {
     /// Print verification summary
     pub fn print_summary(&self, results: &KaniVerificationResults) {
         println!();
-        println!("{}", "=== Verification Summary ===".bright_blue);
+        println!("{}", "=== Verification Summary ===".bright_blue());
         println!("Profile: {:?}", results.profile);
         println!("Total packages: {}", results.total_packages);
         println!("Passed: {}", results.passed_packages);
@@ -522,9 +522,9 @@ impl KaniVerifier {
         println!("Success rate: {:.1}%", results.success_rate);
 
         if results.passed_packages == results.total_packages {
-            println!("{} All verifications passed!", "🎉".bright_green);
+            println!("{} All verifications passed!", "🎉".bright_green());
         } else {
-            println!("{} Some verifications failed", "⚠️".bright_yellow);
+            println!("{} Some verifications failed", "⚠️".bright_yellow());
         }
 
         println!();

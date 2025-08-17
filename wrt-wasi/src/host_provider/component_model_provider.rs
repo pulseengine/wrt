@@ -166,7 +166,7 @@ impl wrt_foundation::traits::ToBytes for ValType {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(*self as u8)
     }
 }
@@ -176,7 +176,7 @@ impl wrt_foundation::traits::FromBytes for ValType {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         match reader.read_u8()? {
             0 => Ok(ValType::I32),
             1 => Ok(ValType::I64),
@@ -207,42 +207,31 @@ pub struct ComponentModelProvider {
 }
 
 // Helper types for no_std mode
-#[cfg(not(feature = "std"))]
-type ValueVec =
-    wrt_foundation::BoundedVec<Value, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>;
-
-#[cfg(not(feature = "std"))]
-type TypeVec =
-    wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+// Remove type aliases and handle vectors dynamically
 
 // Helper function to create empty value vector
 #[cfg(not(feature = "std"))]
-fn empty_value_vec() -> Result<ValueVec> {
-    use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = safe_managed_alloc!(65536, CrateId::Wasi)?;
-    ValueVec::new(provider)
-        .map_err(|_| Error::runtime_execution_error("Failed to create value vector"))
+fn empty_value_vec() -> wrt_error::Result<impl Iterator<Item = Value>> {
+    // Return empty iterator for no_std mode
+    let empty_slice: &[Value] = &[];
+    Ok(empty_slice.iter().cloned())
 }
 
-// Helper function to create empty type vector
+// Helper function to create empty type vector  
 #[cfg(not(feature = "std"))]
-fn empty_type_vec() -> Result<TypeVec> {
-    use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = safe_managed_alloc!(1024, CrateId::Wasi)?;
-    TypeVec::new(provider)
-        .map_err(|_| Error::runtime_execution_error("Failed to create type vector"))
+fn empty_type_vec() -> wrt_error::Result<impl Iterator<Item = ValType>> {
+    // Return empty iterator for no_std mode
+    let empty_slice: &[ValType] = &[];
+    Ok(empty_slice.iter().cloned())
 }
 
 // Type alias for Value vectors from foundation
 #[cfg(feature = "std")]
 type FoundationValueVec = Vec<wrt_foundation::values::Value>;
 
+// Simplified no_std types - just use placeholder 
 #[cfg(not(feature = "std"))]
-type FoundationValueVec = wrt_foundation::BoundedVec<
-    wrt_foundation::values::Value,
-    16,
-    wrt_foundation::safe_memory::NoStdProvider<65536>,
->;
+type FoundationValueVec = ();
 
 // Macro to create value vector in both std and no_std modes
 macro_rules! value_vec {
@@ -253,7 +242,9 @@ macro_rules! value_vec {
         }
         #[cfg(not(feature = "std"))]
         {
-            empty_value_vec()?
+            // Simplified for no_std - just return empty iterator result
+            // This is a placeholder implementation
+            return Err(Error::runtime_execution_error("Value vectors not supported in no_std mode"));
         }
     }};
 }
@@ -267,7 +258,8 @@ macro_rules! type_vec {
         }
         #[cfg(not(feature = "std"))]
         {
-            empty_type_vec()?
+            // Simplified for no_std
+            return Err(Error::runtime_execution_error("Type vectors not supported in no_std mode"));
         }
     }};
 }

@@ -65,7 +65,7 @@ use crate::canonical_abi::ComponentValue;
 use crate::types::Value as ComponentValue;
 // No_std provider for bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-use crate::MemoryProvider;
+use crate::prelude::MemoryProvider;
 use crate::{
     canonical_abi::{
         CanonicalABI,

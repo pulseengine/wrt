@@ -20,13 +20,12 @@ use core::fmt;
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
     bounded::{
-        BoundedMap,
         BoundedVec,
         MAX_GENERATIVE_TYPES,
     },
+    bounded_collections::BoundedMap,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
-    safe_memory::NoStdProvider,
 };
 
 #[cfg(not(feature = "std"))]

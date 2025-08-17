@@ -25,6 +25,8 @@ use std::{
     vec::Vec,
 };
 
+// Note: Vec-based functions only available with std or alloc features
+
 // Import memory provider
 use wrt_foundation::traits::DefaultMemoryProvider;
 use wrt_foundation::Value; // Add Value import
@@ -161,6 +163,7 @@ pub struct StacklessCallbackRegistry {
 }
 
 /// Add type definitions for callbacks and host function handlers
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub type CloneableFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync + 'static>;
 
 /// Log operation types for component model
@@ -563,7 +566,7 @@ impl StacklessEngine {
             .ok_or_else(|| Error::memory_out_of_bounds("Memory address overflow"))?;
 
         // Execute the load operation using MemoryOperations trait
-        let result = mem_op.execute(memory.as_ref(), &Value::I32(effective_addr as i32))?;
+        let result = mem_op.execute(&**memory, &Value::I32(effective_addr as i32))?;
 
         // Update statistics
         self.stats.increment_memory_reads(1);
@@ -650,6 +653,7 @@ impl StacklessEngine {
     }
 
     /// Execute a function with the given arguments
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn execute(
         &mut self,
         _instance_idx: usize,
@@ -776,6 +780,7 @@ impl StacklessEngine {
     }
 
     /// Collect results from the operand stack
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn collect_results(&mut self) -> Result<Vec<Value>> {
         let mut results = Vec::new();
 
@@ -2934,6 +2939,7 @@ impl StacklessEngine {
     }
 
     /// Read branch table from bytecode
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn read_br_table(&mut self, code: &[u8]) -> Result<(Vec<u32>, u32)> {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
@@ -2942,6 +2948,24 @@ impl StacklessEngine {
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
             targets.push(target);
+        }
+
+        // Read default target
+        let default_target = self.read_leb128_u32(code)?;
+
+        Ok((targets, default_target))
+    }
+
+    /// Read branch table from bytecode (no_std version)
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn read_br_table(&mut self, code: &[u8]) -> Result<(wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>, u32)> {
+        // Read vector length
+        let len = self.read_leb128_u32(code)?;
+
+        let mut targets = wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default())?;
+        for _ in 0..len {
+            let target = self.read_leb128_u32(code)?;
+            targets.push(target).map_err(|_| Error::runtime_execution_error("Branch table too large for bounded vector"))?;
         }
 
         // Read default target
@@ -2993,6 +3017,7 @@ impl StacklessEngine {
     }
 
     /// Branch table (switch-like)
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn branch_table(&mut self, table: (Vec<u32>, u32)) -> Result<()> {
         let (targets, default_target) = table;
 
@@ -3011,6 +3036,33 @@ impl StacklessEngine {
         // Select target based on index
         let target = if (index_u32 as usize) < targets.len() {
             targets[index_u32 as usize]
+        } else {
+            default_target
+        };
+
+        self.branch_to_label(target)
+    }
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn branch_table(&mut self, table: (wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>, u32)) -> Result<()> {
+        let (targets, default_target) = table;
+
+        // Pop index from stack
+        let index = self
+            .exec_stack
+            .values
+            .pop()?
+            .ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
+
+        let index_u32 = match index {
+            Value::I32(i) => i as u32,
+            _ => return Err(Error::type_error("Expected i32 index")),
+        };
+
+        // Select target based on index
+        let target = if (index_u32 as usize) < targets.len() {
+            // Use len() check instead of get() to avoid Result handling
+            targets.as_slice()?.get(index_u32 as usize).copied().unwrap_or(default_target)
         } else {
             default_target
         };

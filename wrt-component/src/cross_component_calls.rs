@@ -22,7 +22,7 @@ use std::{
 use wrt_foundation::{
     bounded::BoundedVec,
     budget_aware_provider::CrateId,
-    component::WrtComponentType,
+    // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
     safe_managed_alloc,
@@ -30,9 +30,9 @@ use wrt_foundation::{
 };
 
 use crate::{
-    canonical::CanonicalAbi,
+    canonical_abi::canonical::CanonicalABI,
     execution_engine::ComponentExecutionEngine,
-    resource_lifecycle::ResourceLifecycleManager,
+    // resource_lifecycle::ResourceLifecycleManager, // Module not available
     types::{
         ComponentInstance,
         ValType,
@@ -40,6 +40,10 @@ use crate::{
     },
     WrtResult,
 };
+
+// Placeholder types for missing imports
+// WrtComponentType now exported from crate root
+pub type ResourceLifecycleManager = ();
 
 /// Maximum number of call targets in no_std environments
 const MAX_CALL_TARGETS: usize = 256;

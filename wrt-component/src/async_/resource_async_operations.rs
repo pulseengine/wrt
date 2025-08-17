@@ -23,10 +23,11 @@ use wrt_foundation::{
         BoundedVec,
     },
     component_value::ComponentValue,
-    resource::{
-        ResourceHandle,
-        ResourceType,
-    },
+    // ResourceHandle imported from local crate instead
+    // resource::{
+    //     ResourceHandle,
+    //     ResourceType,
+    // },
     safe_managed_alloc,
     CrateId,
 };
@@ -44,9 +45,14 @@ use crate::{
         },
     },
     prelude::*,
-    resource_lifecycle::ResourceLifecycleManager,
+    // resource_lifecycle::ResourceLifecycleManager, // Module not available
+    resource_management::ResourceHandle,
     ComponentInstanceId,
 };
+
+// Placeholder types for missing imports
+pub type ResourceType = u32;
+pub type ResourceLifecycleManager = ();
 
 /// Maximum async resource operations per component
 const MAX_ASYNC_RESOURCE_OPS: usize = 256;

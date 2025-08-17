@@ -28,18 +28,25 @@ use crate::{
 ///
 /// A Result containing a vector of built-in names found in the import section
 pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
-    use wrt_decoder::load_wasm_unified;
-
-    // Try to use unified API with caching first
-    match load_wasm_unified(binary) {
-        Ok(wasm_info) => {
-            // Use the cached builtin imports from unified API
-            Ok(wasm_info.builtin_imports)
-        },
-        Err(_) => {
-            // Fall back to manual parsing if unified API fails
-            scan_for_builtins_fallback(binary)
-        },
+    #[cfg(feature = "decoder")]
+    {
+        use wrt_decoder::load_wasm_unified;
+        // Try to use unified API with caching first
+        match load_wasm_unified(binary) {
+            Ok(wasm_info) => {
+                // Use the cached builtin imports from unified API
+                Ok(wasm_info.builtin_imports)
+            },
+            Err(_) => {
+                // Fall back to manual parsing if unified API fails
+                scan_for_builtins_fallback(binary)
+            },
+        }
+    }
+    #[cfg(not(feature = "decoder"))]
+    {
+        // Use fallback when decoder is not available
+        scan_for_builtins_fallback(binary)
     }
 }
 

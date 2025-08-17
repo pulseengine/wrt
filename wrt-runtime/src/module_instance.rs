@@ -629,11 +629,23 @@ impl FromBytes for ModuleInstance {
 
         // Skip reading the name for now (simplified implementation)
         if name_len > 0 {
-            #[cfg(feature = "std")]
-            let mut name_bytes = std::vec![0u8; name_len];
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
-            let mut name_bytes = alloc::vec![0u8; name_len];
-            reader.read_exact(&mut name_bytes)?;
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                #[cfg(feature = "std")]
+                let mut name_bytes = std::vec![0u8; name_len];
+                #[cfg(all(feature = "alloc", not(feature = "std")))]
+                let mut name_bytes = alloc::vec![0u8; name_len];
+                reader.read_exact(&mut name_bytes)?;
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                // In no_std without alloc, we can't allocate the buffer
+                // Just skip the bytes by reading them one by one
+                for _ in 0..name_len {
+                    let mut byte = [0u8; 1];
+                    reader.read_exact(&mut byte)?;
+                }
+            }
         }
 
         // Create a default module instance with empty collections

@@ -4,8 +4,11 @@
 // used by the runtime execution engine.
 
 // Use alloc when available through lib.rs
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::format;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{format, vec::Vec};
+
+#[cfg(feature = "std")]
+use std::{format, vec::Vec};
 
 use wrt_format::{
     module::{
@@ -175,10 +178,9 @@ pub struct Export {
 
 impl Export {
     /// Creates a new export
-    pub fn new(name: String, kind: ExportKind, index: u32) -> Result<Self> {
+    pub fn new(name: &str, kind: ExportKind, index: u32) -> Result<Self> {
         let provider = create_runtime_provider()?;
-        let bounded_name =
-            wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider)?;
         Ok(Self {
             name: bounded_name,
             kind,
@@ -254,17 +256,15 @@ pub struct Import {
 impl Import {
     /// Creates a new import
     pub fn new(
-        module: String,
-        name: String,
+        module: &str,
+        name: &str,
         ty: ExternType<RuntimeProvider>,
         desc: RuntimeImportDesc,
     ) -> Result<Self> {
         let provider1 = create_runtime_provider()?;
         let provider2 = create_runtime_provider()?;
-        let bounded_module =
-            wrt_foundation::bounded::BoundedString::from_str_truncate(&module, provider1)?;
-        let bounded_name =
-            wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider2)?;
+        let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(module, provider1)?;
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider2)?;
         Ok(Self {
             module: bounded_module,
             name: bounded_name,
@@ -1167,7 +1167,7 @@ impl Module {
                 export_def.name.as_str()?,
                 provider,
             )?;
-            let export = crate::module::Export::new(String::from(name_key.as_str()?), kind, index)?;
+            let export = crate::module::Export::new(name_key.as_str()?, kind, index)?;
             runtime_module.exports.insert(name_key, export)?;
         }
 
@@ -1243,12 +1243,12 @@ impl Module {
     }
 
     /// Adds a function export
-    pub fn add_function_export(&mut self, name: String, index: u32) -> Result<()> {
-        let export = Export::new(name.clone(), ExportKind::Function, index)?;
+    pub fn add_function_export(&mut self, name: &str, index: u32) -> Result<()> {
+        let export = Export::new(name, ExportKind::Function, index)?;
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1256,7 +1256,7 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1265,12 +1265,12 @@ impl Module {
     }
 
     /// Adds a table export
-    pub fn add_table_export(&mut self, name: String, index: u32) -> Result<()> {
-        let export = Export::new(name.clone(), ExportKind::Table, index)?;
+    pub fn add_table_export(&mut self, name: &str, index: u32) -> Result<()> {
+        let export = Export::new(name, ExportKind::Table, index)?;
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1278,7 +1278,7 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1287,12 +1287,12 @@ impl Module {
     }
 
     /// Adds a memory export
-    pub fn add_memory_export(&mut self, name: String, index: u32) -> Result<()> {
-        let export = Export::new(name.clone(), ExportKind::Memory, index)?;
+    pub fn add_memory_export(&mut self, name: &str, index: u32) -> Result<()> {
+        let export = Export::new(name, ExportKind::Memory, index)?;
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1300,7 +1300,7 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1309,12 +1309,12 @@ impl Module {
     }
 
     /// Adds a global export
-    pub fn add_global_export(&mut self, name: String, index: u32) -> Result<()> {
-        let export = Export::new(name.clone(), ExportKind::Global, index)?;
+    pub fn add_global_export(&mut self, name: &str, index: u32) -> Result<()> {
+        let export = Export::new(name, ExportKind::Global, index)?;
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1322,7 +1322,7 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name.as_str(),
+                &name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1345,7 +1345,7 @@ impl Module {
         };
         // Convert BoundedString to String - use default empty string if conversion
         // fails
-        let export_name_string = String::from("export"); // Use a placeholder name
+        let export_name_string = "export"; // Use a placeholder name
         let runtime_export =
             Export::new(export_name_string, runtime_export_kind, format_export.index)?;
         let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
@@ -1360,9 +1360,9 @@ impl Module {
     }
 
     /// Set the name of the module
-    pub fn set_name(&mut self, name: String) -> Result<()> {
+    pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            &name,
+            name,
             create_runtime_provider()?,
         )?;
         self.name = Some(bounded_name);
@@ -1397,8 +1397,8 @@ impl Module {
             .clone();
 
         let import_struct = crate::module::Import::new(
-            String::from(module_name),
-            String::from(item_name),
+            module_name,
+            item_name,
             ExternType::Func(func_type),
             RuntimeImportDesc::Function(0), // Function index would need to be determined properly
         )?;
@@ -1454,8 +1454,8 @@ impl Module {
         table_type: WrtTableType,
     ) -> Result<()> {
         let import_struct = crate::module::Import::new(
-            String::from(module_name),
-            String::from(item_name),
+            module_name,
+            item_name,
             ExternType::Table(table_type.clone()),
             RuntimeImportDesc::Table(table_type),
         )?;
@@ -1511,8 +1511,8 @@ impl Module {
         memory_type: WrtMemoryType,
     ) -> Result<()> {
         let import_struct = crate::module::Import::new(
-            String::from(module_name),
-            String::from(item_name),
+            module_name,
+            item_name,
             ExternType::Memory(memory_type.clone()),
             RuntimeImportDesc::Memory(memory_type),
         )?;
@@ -1573,8 +1573,8 @@ impl Module {
         };
 
         let import = Import::new(
-            String::from(module_name),
-            String::from(item_name),
+            module_name,
+            item_name,
             ExternType::Global(component_global_type),
             RuntimeImportDesc::Global(component_global_type),
         )?;
@@ -1646,7 +1646,7 @@ impl Module {
             name,
             create_runtime_provider()?,
         )?;
-        let export = Export::new(String::from(name), ExportKind::Function, index)?;
+        let export = Export::new(name, ExportKind::Function, index)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
@@ -1662,7 +1662,7 @@ impl Module {
             create_runtime_provider()?,
         )?;
         let export = Export::new(
-            String::from(bounded_name.as_str()?),
+            bounded_name.as_str()?,
             ExportKind::Table,
             index,
         )?;
@@ -1676,7 +1676,7 @@ impl Module {
             return Err(Error::validation_error("Export memory index out of bounds"));
         }
 
-        let export = Export::new(String::from(name), ExportKind::Memory, index)?;
+        let export = Export::new(name, ExportKind::Memory, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
@@ -1692,7 +1692,7 @@ impl Module {
             return Err(Error::validation_error("Export global index out of bounds"));
         }
 
-        let export = Export::new(String::from(name), ExportKind::Global, index)?;
+        let export = Export::new(name, ExportKind::Global, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
@@ -1744,6 +1744,7 @@ impl Module {
     }
 
     /// Set a function body
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_function_body(
         &mut self,
         func_idx: u32,
@@ -1809,6 +1810,7 @@ impl Module {
     }
 
     /// Add a custom section to the module
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn add_custom_section(&mut self, name: &str, data: Vec<u8>) -> Result<()> {
         let provider_key = create_runtime_provider()?;
         let name_key =
@@ -1824,6 +1826,7 @@ impl Module {
     }
 
     /// Set the binary representation of the module
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary(&mut self, binary: Vec<u8>) -> Result<()> {
         let provider = create_runtime_provider()?;
         let mut bounded_binary =
@@ -1858,8 +1861,8 @@ impl Module {
             mutable:    global_type.mutable,
         };
         let import_struct = crate::module::Import::new(
-            String::from(module_name),
-            String::from(item_name),
+            module_name,
+            item_name,
             ExternType::Global(component_global_type),
             RuntimeImportDesc::Global(component_global_type),
         )?;
@@ -1908,7 +1911,7 @@ impl Module {
     }
 
     /// Add a runtime export to the module
-    pub fn add_runtime_export(&mut self, name: String, export_desc: WrtExportDesc) -> Result<()> {
+    pub fn add_runtime_export(&mut self, name: &str, export_desc: WrtExportDesc) -> Result<()> {
         let (kind, index) = match export_desc {
             WrtExportDesc::Func(idx) => (ExportKind::Function, idx),
             WrtExportDesc::Table(idx) => (ExportKind::Table, idx),
@@ -1920,7 +1923,7 @@ impl Module {
                 ))
             },
         };
-        let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
+        let runtime_export = crate::module::Export::new(name, kind, index)?;
         let provider = create_runtime_provider()?;
         let provider = create_runtime_provider()?;
         let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
@@ -2014,6 +2017,7 @@ impl Module {
     }
 
     /// Set the binary representation of the module (alternative method)
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary_runtime(&mut self, binary: Vec<u8>) -> Result<()> {
         let provider = create_runtime_provider()?;
         let mut bounded_binary =
@@ -2117,8 +2121,8 @@ impl Module {
 
             // Create the import
             let import_struct = crate::module::Import::new(
-                String::from(import.module.as_str()),
-                String::from(import.name.as_str()),
+                import.module.as_str(),
+                import.name.as_str(),
                 extern_type.clone(),
                 match &extern_type {
                     ExternType::Func(_func_type) => RuntimeImportDesc::Function(0), /* TODO: proper type index lookup */
@@ -2168,7 +2172,7 @@ impl Module {
                 wrt_decoder::ExportType::Global => ExportKind::Global,
             };
 
-            let runtime_export = Export::new(export.name.clone(), export_kind, export.index)?;
+            let runtime_export = Export::new(&export.name, export_kind, export.index)?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name,
                 create_runtime_provider()?,
@@ -2520,12 +2524,9 @@ impl MemoryGuard {
 
     /// Write to memory (atomic operations may need this)
     pub fn write(&self, offset: usize, buffer: &[u8]) -> Result<()> {
-        // For atomic operations, we need to allow writes even through Arc
-        // This is safe because atomic operations are inherently thread-safe
-        unsafe {
-            let memory_ptr = Arc::as_ptr(&self.memory) as *mut Memory;
-            (*memory_ptr).write(offset as u32, buffer)
-        }
+        // TODO: Implement safe atomic memory write operations for Arc<Memory>
+        // For now, return an error as Arc<Memory> doesn't allow mutable access
+        Err(Error::runtime_execution_error("Atomic memory write operations not yet implemented for Arc<Memory>"))
     }
 }
 
@@ -2623,31 +2624,55 @@ impl MemoryWrapper {
     }
 
     /// Write i32 to memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_i32(&self, offset: u32, value: i32) -> Result<()> {
-        use crate::memory_helpers::ArcMemoryExt;
-        self.0.write_i32(offset, value)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            use crate::memory_helpers::ArcMemoryExt;
+            self.0.write_i32(offset, value)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            self.write(offset, &value.to_le_bytes())
+        }
     }
 
     /// Write i64 to memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_i64(&self, offset: u32, value: i64) -> Result<()> {
-        use crate::memory_helpers::ArcMemoryExt;
-        self.0.write_i64(offset, value)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            use crate::memory_helpers::ArcMemoryExt;
+            self.0.write_i64(offset, value)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            self.write(offset, &value.to_le_bytes())
+        }
     }
 
     /// Write f32 to memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_f32(&self, offset: u32, value: f32) -> Result<()> {
-        use crate::memory_helpers::ArcMemoryExt;
-        self.0.write_f32(offset, value)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            use crate::memory_helpers::ArcMemoryExt;
+            self.0.write_f32(offset, value)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            self.write(offset, &value.to_bits().to_le_bytes())
+        }
     }
 
     /// Write f64 to memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_f64(&self, offset: u32, value: f64) -> Result<()> {
-        use crate::memory_helpers::ArcMemoryExt;
-        self.0.write_f64(offset, value)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            use crate::memory_helpers::ArcMemoryExt;
+            self.0.write_f64(offset, value)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            self.write(offset, &value.to_bits().to_le_bytes())
+        }
     }
 
     /// Fill memory (requires mutable access)

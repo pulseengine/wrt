@@ -19,12 +19,18 @@ use core::{
 use wrt_foundation::{
     bounded_collections::BoundedMap,
     safe_managed_alloc,
-    sync::Mutex,
     verification::VerificationLevel,
     Arc,
     CrateId,
-    Weak,
+    Mutex,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
 
 use crate::{
@@ -36,17 +42,21 @@ use crate::{
         fuel_async_scheduler::SchedulingPolicy,
     },
     prelude::*,
+    ComponentInstanceId,
+};
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::{
     task_manager::{
         TaskId as ComponentTaskId,
         TaskManager,
         TaskState,
         TaskType,
     },
-    threading::thread_spawn_fuel::{
+    thread_spawn_fuel::{
         FuelTrackedThreadManager,
         ThreadFuelStatus,
     },
-    ComponentInstanceId,
 };
 
 /// Maximum concurrent async operations per component

@@ -14,9 +14,9 @@ use wrt_foundation::{
         BoundedVec,
     },
     budget_aware_provider::CrateId,
-    component_value::WrtComponentValue,
+    component_value::ComponentValue,
     safe_managed_alloc,
-    safe_memory::SafeMemory,
+    // safe_memory::SafeMemory, // Not available
 };
 
 use crate::{
@@ -24,16 +24,16 @@ use crate::{
         GenerativeResourceType,
         GenerativeTypeRegistry,
     },
-    handle_representation::{
-        AccessRights,
-        HandleOperation,
-        HandleRepresentationManager,
-    },
-    post_return::{
-        CleanupTask,
-        CleanupTaskType,
-        PostReturnRegistry,
-    },
+    // handle_representation::{ // Module not available
+    //     AccessRights,
+    //     HandleOperation,
+    //     HandleRepresentationManager,
+    // },
+    // post_return::{ // Module not available
+    //     CleanupTask,
+    //     CleanupTaskType,
+    //     PostReturnRegistry,
+    // },
     type_bounds::{
         TypeBoundsChecker,
         TypeRelation,

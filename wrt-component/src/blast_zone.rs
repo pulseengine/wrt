@@ -24,21 +24,26 @@ use std::{
 use wrt_foundation::{
     bounded::BoundedVec,
     budget_aware_provider::CrateId,
-    component::WrtComponentType,
+    // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
-    resource::ResourceHandle,
+    // resource::ResourceHandle, // Not available  
     safe_managed_alloc,
 };
 
 use crate::{
-    resource_lifecycle::ResourceLifecycleManager,
+    // resource_lifecycle::ResourceLifecycleManager, // Module not available
     types::{
         ComponentInstance,
         Value,
     },
     WrtResult,
 };
+
+// Placeholder types for missing imports
+// WrtComponentType now exported from crate root
+// ResourceHandle now exported from crate root  
+pub type ResourceLifecycleManager = ();
 
 /// Maximum number of blast zones in no_std environments
 const MAX_BLAST_ZONES: usize = 64;

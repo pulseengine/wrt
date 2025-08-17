@@ -25,11 +25,17 @@ use wrt_foundation::{
     },
     component_value::ComponentValue,
     safe_managed_alloc,
-    sync::Mutex,
     Arc,
     CrateId,
-    Weak,
+    Mutex,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
 
 use crate::{
@@ -64,9 +70,15 @@ use crate::{
         TaskState,
         TaskType,
     },
-    threading::thread_spawn_fuel::FuelTrackedThreadManager,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
+
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type FuelTrackedThreadManager = ();
 
 /// Maximum async contexts per component
 const MAX_ASYNC_CONTEXTS: usize = 256;
@@ -77,7 +89,10 @@ pub struct ComponentAsyncTask {
     /// Component Model task ID
     pub component_task_id: TaskId,
     /// Executor task ID
+    #[cfg(feature = "component-model-threading")]
     pub executor_task_id:  crate::threading::task_manager::TaskId,
+    #[cfg(not(feature = "component-model-threading"))]
+    pub executor_task_id:  u32,
     /// Component instance
     pub component_id:      ComponentInstanceId,
     /// Task type
@@ -120,7 +135,10 @@ pub struct TaskManagerAsyncBridge {
     /// Active async tasks
     async_tasks:    BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
     /// Task mapping (component task -> executor task)
+    #[cfg(feature = "component-model-threading")]
     task_mapping:   BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
+    #[cfg(not(feature = "component-model-threading"))]
+    task_mapping:   BoundedMap<TaskId, u32, MAX_ASYNC_CONTEXTS>,
     /// Component async contexts
     async_contexts: BoundedMap<ComponentInstanceId, ComponentAsyncContext, 128>,
     /// Bridge statistics

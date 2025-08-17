@@ -68,7 +68,6 @@ use crate::{
 use crate::{
     global::Global,
     memory::Memory,
-    memory_helpers::ArcMemoryExt, // Add ArcMemoryExt trait import
     module::{
         Data,
         Element,
@@ -100,6 +99,7 @@ pub trait FrameBehavior {
     fn set_local(&mut self, index: usize, value: Value) -> Result<()>;
 
     /// Get multiple locals for batch operations (performance optimization).
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn get_locals_range(&self, start: usize, len: usize) -> Result<Vec<Value>>;
 
     /// Returns a reference to the module instance this frame belongs to.
@@ -407,6 +407,7 @@ impl FrameBehavior for StacklessFrame {
         }
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn get_locals_range(&self, start: usize, len: usize) -> Result<Vec<Value>> {
         let mut result = Vec::with_capacity(len);
         for i in start..start + len {
@@ -6961,7 +6962,10 @@ impl StacklessFrame {
         // segments store their items. If Element.items are already `Value` or
         // `Option<Value>`, this is simpler. Let's assume Element stores func
         // indices as u32.
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut items_to_init: Vec<Option<Value>> = Vec::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut items_to_init = wrt_foundation::BoundedVec::<Option<Value>, 16, wrt_foundation::NoStdProvider<1024>>::new(wrt_foundation::NoStdProvider::<1024>::default())?;
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {
@@ -6970,7 +6974,11 @@ impl StacklessFrame {
             items_to_init.push(Some(Value::FuncRef(Some(FuncRef { index: item }))));
         }
 
-        table.init(dst_offset, &items_to_init)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        table.init(dst_offset, &items_to_init)?;
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        table.init(dst_offset, items_to_init.as_slice()?)?;
+        Ok(())
     }
 
     fn table_copy(

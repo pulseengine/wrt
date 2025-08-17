@@ -1324,7 +1324,7 @@ async fn main() -> Result<()> {
                 *fmt_check,
                 &mut global,
             )
-            .await?
+            .await
         },
         Commands::Test {
             package,
@@ -1347,7 +1347,7 @@ async fn main() -> Result<()> {
                 &cli,
                 &mut global,
             )
-            .await?
+            .await
         },
         Commands::TestAsil {
             asil,
@@ -1362,14 +1362,14 @@ async fn main() -> Result<()> {
                 *no_std_only,
                 &mut global,
             )
-            .await?
+            .await
         },
         Commands::TestNoStd {
             filter,
             test_threads,
-        } => cmd_test_no_std(filter.clone(), *test_threads, &mut global).await?,
+        } => cmd_test_no_std(filter.clone(), *test_threads, &mut global).await,
         Commands::TestConfig { output, example } => {
-            cmd_test_config(output.clone(), *example, &mut global).await?
+            cmd_test_config(output.clone(), *example, &mut global).await
         },
         Commands::Verify {
             asil,
@@ -1391,7 +1391,7 @@ async fn main() -> Result<()> {
                 &cli,
                 &mut global,
             )
-            .await?
+            .await
         },
         Commands::Docs {
             open,
@@ -1406,37 +1406,37 @@ async fn main() -> Result<()> {
                 output_dir.clone(),
                 multi_version.clone(),
             )
-            .await?
+            .await
         },
         Commands::Coverage {
             html,
             open,
             format,
             best_effort,
-        } => cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await?,
+        } => cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await,
         Commands::Check { strict, fix } => {
-            cmd_check(&build_system, *strict, *fix, &mut global).await?
+            cmd_check(&build_system, *strict, *fix, &mut global).await
         },
         Commands::NoStd {
             continue_on_error,
             detailed,
-        } => cmd_no_std(&build_system, *continue_on_error, *detailed, &global.output).await?,
+        } => cmd_no_std(&build_system, *continue_on_error, *detailed, &global.output).await,
         Commands::Wrtd {
             variant,
             test,
             cross,
-        } => cmd_wrtd(&build_system, *variant, *test, *cross).await?,
-        Commands::Ci { fail_fast, json } => cmd_ci(&build_system, *fail_fast, *json).await?,
-        Commands::Clean { all } => cmd_clean(&build_system, *all, &mut global).await?,
+        } => cmd_wrtd(&build_system, *variant, *test, *cross).await,
+        Commands::Ci { fail_fast, json } => cmd_ci(&build_system, *fail_fast, *json).await,
+        Commands::Clean { all } => cmd_clean(&build_system, *all, &mut global).await,
         Commands::VerifyMatrix {
             report,
             output_dir,
             verbose,
-        } => cmd_verify_matrix(&build_system, *report, output_dir.clone(), *verbose).await?,
+        } => cmd_verify_matrix(&build_system, *report, output_dir.clone(), *verbose).await,
         Commands::SimulateCi {
             verbose,
             output_dir,
-        } => cmd_simulate_ci(&build_system, *verbose, output_dir.clone()).await?,
+        } => cmd_simulate_ci(&build_system, *verbose, output_dir.clone()).await,
         Commands::KaniVerify {
             asil_profile,
             package,
@@ -1452,7 +1452,7 @@ async fn main() -> Result<()> {
                 *verbose,
                 extra_args.clone(),
             )
-            .await?
+            .await
         },
         Commands::Validate {
             check_test_files,
@@ -1469,16 +1469,16 @@ async fn main() -> Result<()> {
                 *all,
                 *verbose,
             )
-            .await?
+            .await
         },
         Commands::Setup {
             hooks,
             all,
             check,
             install,
-        } => cmd_setup(&build_system, *hooks, *all, *check, *install).await?,
+        } => cmd_setup(&build_system, *hooks, *all, *check, *install).await,
         Commands::ToolVersions { command } => {
-            cmd_tool_versions(&build_system, command.clone()).await?
+            cmd_tool_versions(&build_system, command.clone()).await
         },
         Commands::Fuzz {
             target,
@@ -1497,7 +1497,7 @@ async fn main() -> Result<()> {
                 *list,
                 package.clone(),
             )
-            .await?
+            .await
         },
         Commands::TestFeatures {
             package,
@@ -1512,7 +1512,7 @@ async fn main() -> Result<()> {
                 *groups,
                 *verbose,
             )
-            .await?
+            .await
         },
         Commands::Testsuite {
             extract,
@@ -1540,7 +1540,7 @@ async fn main() -> Result<()> {
                 *test_timeout_ms,
                 &mut global,
             )
-            .await?
+            .await
         },
         Commands::Requirements { command } => {
             cmd_requirements(
@@ -1550,7 +1550,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await?
+            .await
         },
         Commands::Wasm { command } => {
             cmd_wasm(
@@ -1560,7 +1560,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await?
+            .await
         },
         Commands::Safety { command } => {
             cmd_safety(
@@ -1570,7 +1570,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await?
+            .await
         },
         Commands::EmbedLimits {
             wasm_file,
@@ -2823,7 +2823,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
 
     match command {
         ToolVersionCommand::Generate { force, all } => {
-            let workspace_root = build_system.workspace_root;
+            let workspace_root = build_system.workspace_root();
             let config_path = workspace_root.join("tool-versions.toml");
 
             if config_path.exists() && !force {
@@ -2908,7 +2908,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
         ToolVersionCommand::Update { tool, all } => {
             println!("{} Updating tool-versions.toml...", "🔄".bright_blue());
 
-            let workspace_root = build_system.workspace_root;
+            let workspace_root = build_system.workspace_root();
             let config_path = workspace_root.join("tool-versions.toml");
 
             if !config_path.exists() {
@@ -3098,7 +3098,7 @@ async fn cmd_testsuite(
 
         println!("{} Running WAST test suite...", "🧪".bright_blue());
 
-        let workspace_root = build_system.workspace_root;
+        let workspace_root = build_system.workspace_root();
         eprintln!("DEBUG: workspace_root = {:?}", workspace_root);
         eprintln!("DEBUG: wast_dir = {:?}", wast_dir);
         let test_directory = workspace_root.join(&wast_dir);
@@ -3286,7 +3286,7 @@ async fn cmd_requirements(
         Requirements,
     };
 
-    let workspace_root = build_system.workspace_root;
+    let workspace_root = build_system.workspace_root();
 
     match command {
         RequirementsCommand::Init { path, force } => {
@@ -3668,7 +3668,7 @@ async fn cmd_wasm(
         WasmVerifier,
     };
 
-    let workspace_root = build_system.workspace_root;
+    let workspace_root = build_system.workspace_root();
 
     match command {
         WasmCommand::Verify {
@@ -3709,7 +3709,7 @@ async fn cmd_wasm(
                     println!("\n📋 Diagnostic Output:");
                     println!("───────────────────");
                     let formatter =
-                        wrt_build_core::formatters::FormatterFactory::create(*output_format)?;
+                        wrt_build_core::formatters::FormatterFactory::create(*output_format);
                     println!("{}", formatter.format_collection(&diagnostics));
                 }
             }
@@ -4093,7 +4093,7 @@ async fn cmd_safety(
             }
 
             // Check certification readiness
-            let (readiness, diagnostics) = framework.check_certification_readiness(asil_level)?;
+            let (readiness, diagnostics) = framework.check_certification_readiness(asil_level);
 
             // Format and display results
             let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
@@ -4397,7 +4397,7 @@ async fn cmd_safety(
                 asil_level,
             };
 
-            let diagnostics = framework.record_test_result(test_result)?;
+            let diagnostics = framework.record_test_result(test_result);
 
             let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
                 *output_format,

@@ -186,7 +186,7 @@ impl BuildSystem {
 
     /// Run tests with specific options
     pub fn run_tests_with_options(&self, options: &TestOptions) -> BuildResult<TestResults> {
-        println!("{} Running WRT test suite...", "🧪".bright_blue);
+        println!("{} Running WRT test suite...", "🧪".bright_blue());
 
         let start_time = std::time::Instant::now();
 
@@ -257,7 +257,7 @@ impl BuildSystem {
     /// Run unit tests
     fn run_unit_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running unit tests...", "🔬".bright_cyan);
+            println!("  {} Running unit tests...", "🔬".bright_cyan());
         }
 
         self.execute_cargo_test("test", options)
@@ -266,7 +266,7 @@ impl BuildSystem {
     /// Run integration tests
     fn run_integration_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running integration tests...", "🔗".bright_cyan);
+            println!("  {} Running integration tests...", "🔗".bright_cyan());
         }
 
         // Check if integration tests exist
@@ -289,7 +289,7 @@ impl BuildSystem {
     /// Run documentation tests
     fn run_doc_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running documentation tests...", "📚".bright_cyan);
+            println!("  {} Running documentation tests...", "📚".bright_cyan());
         }
 
         self.execute_cargo_test("test --doc", options)

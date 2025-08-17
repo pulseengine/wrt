@@ -393,13 +393,13 @@ impl ToolManager {
 
     /// Print a tool status report
     pub fn print_tool_status(&self) {
-        println!("{} Tool Status Report", "🔧".bright_blue);
+        println!("{} Tool Status Report", "🔧".bright_blue());
         println!();
 
         let results = self.check_all_tools();
 
         // Required tools
-        println!("{}", "Required Tools:".bright_yellow);
+        println!("{}", "Required Tools:".bright_yellow());
         for (tool_name, tool_info) in &self.tools {
             if tool_info.required {
                 if let Some(status) = results.get(tool_name) {
@@ -419,7 +419,7 @@ impl ToolManager {
         }
 
         println!();
-        println!("{}", "Optional Tools:".bright_yellow);
+        println!("{}", "Optional Tools:".bright_yellow());
         for (tool_name, tool_info) in &self.tools {
             if !tool_info.required {
                 if let Some(status) = results.get(tool_name) {
@@ -600,7 +600,7 @@ impl ToolManager {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo install: {}", e)))?;
 
         if output.status.success() {
-            println!("    ✅ {} installed successfully", tool_name.bright_green);
+            println!("    ✅ {} installed successfully", tool_name.bright_green());
 
             // Run additional setup if needed (e.g., kani setup)
             if tool_name == "kani" && install_cmd.contains("kani setup") {

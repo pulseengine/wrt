@@ -43,16 +43,22 @@ use crate::{
             SchedulingPolicy,
         },
     },
-    execution::{
+    execution_engine::{
         run_with_time_bounds,
         TimeBoundedConfig,
         TimeBoundedContext,
         TimeBoundedOutcome,
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum number of concurrent async bridges
 const MAX_ASYNC_BRIDGES: usize = 64;

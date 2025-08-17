@@ -4,9 +4,12 @@
 
 use wrt_format::component::ExternType;
 use wrt_foundation::{
-    component::WrtComponentType,
+    // component::WrtComponentType, // Not available
     ExternType as RuntimeExternType,
 };
+
+// Placeholder type for missing import
+// WrtComponentType now exported from crate root
 
 use crate::{
     components::component::ExternValue,

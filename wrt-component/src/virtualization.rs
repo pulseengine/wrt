@@ -297,11 +297,11 @@ impl VirtualizationManager {
     }
 
     pub fn enable_virtualization(&self) {
-        self.virtualization_enabled.store(true, Ordering::SeqCst;
+        self.virtualization_enabled.store(true, Ordering::SeqCst);
     }
 
     pub fn disable_virtualization(&self) {
-        self.virtualization_enabled.store(false, Ordering::SeqCst;
+        self.virtualization_enabled.store(false, Ordering::SeqCst);
     }
 
     pub fn is_virtualization_enabled(&self) -> bool {
@@ -318,7 +318,7 @@ impl VirtualizationManager {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::VirtualizationNotSupported,
                 message: "Virtualization is disabled".to_string(),
-            };
+            });
         }
 
         let instance_id =
@@ -402,7 +402,7 @@ impl VirtualizationManager {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: "Component not found".to_string(),
-            };
+            });
         }
 
         let grant = CapabilityGrant {
@@ -496,24 +496,24 @@ impl VirtualizationManager {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::MemoryViolation,
                 message: "Virtual memory not available for non-isolated components".to_string(),
-            };
+            });
         }
 
         if !self.check_capability(instance_id, &Capability::Memory { max_size: size }) {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::CapabilityDenied,
                 message: "Insufficient memory capability".to_string(),
-            };
+            });
         }
 
         let current_usage =
-            component.memory_regions.iter().map(|region| region.size).sum::<usize>);
+            component.memory_regions.iter().map(|region| region.size).sum::<usize>();
 
         if current_usage + size > component.resource_limits.max_memory {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: "Memory limit exceeded".to_string(),
-            };
+            });
         }
 
         let start_addr = self.find_virtual_address_space(size)?;
@@ -550,8 +550,8 @@ impl VirtualizationManager {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
                     kind: VirtualizationErrorKind::CapabilityDenied,
-                    message: "Component not found",
-                };
+                    message: "Component not found".to_string(),
+                });
             }
         }
 
@@ -697,28 +697,28 @@ impl VirtualizationManager {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: "Memory limit exceeded".to_string(),
-            };
+            });
         }
 
         if usage.cpu_time_used_ms > limits.max_cpu_time_ms {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: "CPU time limit exceeded".to_string(),
-            };
+            });
         }
 
         if usage.threads_used > limits.max_threads {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: "Thread limit exceeded".to_string(),
-            };
+            });
         }
 
         if usage.recursive_calls_depth > limits.max_recursive_calls {
             return Err(VirtualizationError {
                 kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: "Recursion limit exceeded".to_string(),
-            };
+            });
         }
 
         Ok(())
@@ -762,14 +762,14 @@ mod tests {
     #[test]
     fn test_virtualization_manager_creation() {
         let manager = VirtualizationManager::new().unwrap();
-        assert!(manager.is_virtualization_enabled();
+        assert!(manager.is_virtualization_enabled());
     }
 
     #[test]
     fn test_virtual_component_creation() {
         let mut manager = VirtualizationManager::new().unwrap();
         let result =
-            manager.create_virtual_component("test-component", None, IsolationLevel::Basic;
+            manager.create_virtual_component("test-component", None, IsolationLevel::Basic);
         assert!(result.is_ok());
     }
 
@@ -780,10 +780,10 @@ mod tests {
             .create_virtual_component("test-component", None, IsolationLevel::Basic)
             .unwrap();
 
-        let capability = create_memory_capability(1024;
-        let result = manager.grant_capability(instance_id, capability.clone(), None, true;
+        let capability = create_memory_capability(1024);
+        let result = manager.grant_capability(instance_id, capability.clone(), None, true);
         assert!(result.is_ok());
-        assert!(manager.check_capability(instance_id, &capability);
+        assert!(manager.check_capability(instance_id, &capability));
     }
 
     #[test]
@@ -793,12 +793,12 @@ mod tests {
             .create_virtual_component("test-component", None, IsolationLevel::Strong)
             .unwrap();
 
-        let capability = create_memory_capability(2048;
+        let capability = create_memory_capability(2048);
         manager.grant_capability(instance_id, capability, None, true).unwrap();
 
         let permissions = MemoryPermissions { read: true, write: true, execute: false };
 
-        let result = manager.allocate_virtual_memory(instance_id, 1024, permissions;
+        let result = manager.allocate_virtual_memory(instance_id, 1024, permissions);
         assert!(result.is_ok());
     }
 }

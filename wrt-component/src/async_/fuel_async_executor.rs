@@ -9,7 +9,7 @@ use crate::{
         CanonicalOptions,
         ComponentValue,
     },
-    execution::{
+    execution_engine::{
         TimeBoundedConfig,
         TimeBoundedContext,
     },
@@ -57,6 +57,29 @@ pub enum ThreadFuelStatus {
     Ok,
     Exhausted,
 }
+
+#[cfg(not(feature = "component-model-threading"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DebtCreditBalance {
+    pub task_id: TaskId,
+    pub component_id: u64,
+    pub current_debt: u64,
+    pub available_credit: u64,
+    pub net_balance: i64,
+}
+
+#[cfg(not(feature = "component-model-threading"))]
+impl DebtCreditBalance {
+    pub fn default_for_task(task_id: TaskId) -> Self {
+        Self {
+            task_id,
+            component_id: 0,
+            current_debt: 0,
+            available_credit: 0,
+            net_balance: 0,
+        }
+    }
+}
 use core::{
     future::Future,
     pin::Pin,
@@ -75,22 +98,26 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     operations::{
         global_fuel_consumed,
         record_global_operation,
         Type as OperationType,
     },
     safe_managed_alloc,
-    sync::Mutex,
+    Mutex,
     verification::VerificationLevel,
     Arc,
     CrateId,
-    Weak,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::{
     advanced_sync::{
         Priority,
@@ -110,6 +137,7 @@ use crate::async_::{
     fuel_aware_waker::{
         create_fuel_aware_waker,
         create_fuel_aware_waker_with_asil,
+        create_noop_waker,
         WakeCoalescer,
     },
     fuel_debt_credit::{

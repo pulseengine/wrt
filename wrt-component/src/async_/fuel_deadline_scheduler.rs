@@ -16,10 +16,8 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     operations::{
         record_global_operation,
         Type as OperationType,
@@ -42,9 +40,15 @@ use crate::{
         },
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum number of deadline-constrained tasks
 const MAX_DEADLINE_TASKS: usize = 256;

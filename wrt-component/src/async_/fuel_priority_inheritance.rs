@@ -33,9 +33,15 @@ use crate::{
         FuelAsyncTask,
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum number of tasks in priority inheritance chains
 const MAX_INHERITANCE_CHAIN_LENGTH: usize = 32;

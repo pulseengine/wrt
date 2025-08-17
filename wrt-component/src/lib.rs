@@ -84,10 +84,12 @@ pub mod types;
 pub mod unified_execution_agent;
 pub mod unified_execution_agent_stubs;
 pub mod values;
+pub mod virtualization;
 
-// Async support
-#[cfg(feature = "component-model-async")]
-pub mod async_;
+// Module aliases for commonly expected imports
+pub use memory_layout as memory;
+
+// Async support features enabled via feature flags
 
 // Threading support
 #[cfg(feature = "component-model-threading")]
@@ -111,6 +113,12 @@ pub use builtins::{
 };
 pub use canonical_abi::canonical::CanonicalABI;
 pub use components::component::ComponentType;
+// Re-export MemoryProvider from foundation for type parameters
+pub use wrt_foundation::MemoryProvider;
+// Add placeholder types for commonly missing imports
+pub type WrtComponentType = u32;
+pub type ResourceHandle = u32;
+pub type TypeId = u32;
 // Component types based on feature flags
 #[cfg(feature = "std")]
 pub use components::component::{

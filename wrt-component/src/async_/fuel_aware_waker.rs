@@ -18,13 +18,19 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::BoundedVec,
+    bounded::BoundedVec,
     safe_managed_alloc,
-    sync::Mutex,
     Arc,
     CrateId,
-    Weak,
+    Mutex,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 
 use crate::{
     async_::fuel_async_executor::{
@@ -33,8 +39,14 @@ use crate::{
         FuelAsyncExecutor,
     },
     prelude::*,
-    threading::task_manager::TaskId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Safe abstraction trait for waker operations
 pub trait SafeWaker: Send + Sync {
@@ -483,6 +495,24 @@ impl WakeCoalescer {
             0
         }
     }
+}
+
+/// Create a no-op waker that does nothing when awakened
+///
+/// This is used as a fallback when no proper waker context is available.
+/// The waker will not actually wake any tasks.
+pub fn create_noop_waker() -> Waker {
+    /// No-op waker vtable
+    static NOOP_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
+        |_| RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE), // clone
+        |_| {},                                                     // wake
+        |_| {},                                                     // wake_by_ref
+        |_| {},                                                     // drop
+    );
+    
+    let raw_waker = RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE);
+    // SAFETY: The vtable is statically allocated and valid
+    unsafe { Waker::from_raw(raw_waker) }
 }
 
 #[cfg(test)]

@@ -131,7 +131,7 @@ pub mod xtask_port {
             return Err(BuildError::Test("Coverage tests failed".to_string()));
         }
 
-        println!("{} Coverage analysis completed", "✅".bright_green);
+        println!("{} Coverage analysis completed", "✅".bright_green());
         Ok(())
     }
 
@@ -152,7 +152,7 @@ pub mod xtask_port {
         open_docs: bool,
         output_dir: Option<String>,
     ) -> BuildResult<()> {
-        println!("{} Generating documentation...", "📚".bright_blue);
+        println!("{} Generating documentation...", "📚".bright_blue());
 
         // 1. Generate Rust API documentation
         println!("  📖 Building Rust API documentation...");
@@ -422,7 +422,7 @@ pub mod xtask_port {
 
     /// Validate no_std compatibility (ported from xtask no_std_verification)
     pub fn verify_no_std_compatibility() -> BuildResult<()> {
-        println!("{} Verifying no_std compatibility...", "🔧".bright_blue);
+        println!("{} Verifying no_std compatibility...", "🔧".bright_blue());
 
         // Build each crate with no_std features
         let no_std_crates = [
@@ -462,13 +462,13 @@ pub mod xtask_port {
             );
         }
 
-        println!("{} All crates are no_std compatible", "✅".bright_green);
+        println!("{} All crates are no_std compatible", "✅".bright_green());
         Ok(())
     }
 
     /// Run static analysis checks (ported from xtask ci_static_analysis)
     pub fn run_static_analysis() -> BuildResult<()> {
-        println!("{} Running static analysis...", "🔍".bright_blue);
+        println!("{} Running static analysis...", "🔍".bright_blue());
 
         // Run clippy with basic settings (avoid strict settings that might fail)
         let mut clippy_cmd = Command::new("cargo");
@@ -514,13 +514,13 @@ pub mod xtask_port {
             println!("  ✅ Format check passed");
         }
 
-        println!("{} Static analysis completed", "✅".bright_green);
+        println!("{} Static analysis completed", "✅".bright_green());
         Ok(())
     }
 
     /// Run advanced test suite (ported from xtask ci_advanced_tests)
     pub fn run_advanced_tests() -> BuildResult<()> {
-        println!("{} Running advanced test suite...", "🧪".bright_blue);
+        println!("{} Running advanced test suite...", "🧪".bright_blue());
 
         // Run all tests with verbose output
         let mut cmd = Command::new("cargo");
@@ -556,13 +556,13 @@ pub mod xtask_port {
             }
         }
 
-        println!("{} Advanced tests passed", "✅".bright_green);
+        println!("{} Advanced tests passed", "✅".bright_green());
         Ok(())
     }
 
     /// Run integrity checks (ported from xtask ci_integrity_checks)
     pub fn run_integrity_checks() -> BuildResult<()> {
-        println!("{} Running integrity checks...", "🔒".bright_blue);
+        println!("{} Running integrity checks...", "🔒".bright_blue());
 
         // Check for unsafe code
         let unsafe_check =
@@ -598,7 +598,7 @@ pub mod xtask_port {
             }
         }
 
-        println!("{} Integrity checks completed", "✅".bright_green);
+        println!("{} Integrity checks completed", "✅".bright_green());
         Ok(())
     }
 
@@ -766,7 +766,7 @@ pub mod xtask_port {
     /// Build WRTD (WebAssembly Runtime Daemon) binaries (ported from xtask
     /// wrtd_build)
     pub fn build_wrtd_binaries() -> BuildResult<()> {
-        println!("{} Building WRTD binaries...", "🏗️".bright_blue);
+        println!("{} Building WRTD binaries...", "🏗️".bright_blue());
 
         let wrtd_targets = [
             (
@@ -870,7 +870,7 @@ impl BuildSystem {
 
     /// Build all components in the workspace
     pub fn build_all(&self) -> BuildResult<BuildResults> {
-        println!("{} Building all WRT components...", "🔨".bright_blue);
+        println!("{} Building all WRT components...", "🔨".bright_blue());
 
         let start_time = std::time::Instant::now();
         let mut artifacts = Vec::new();
@@ -1115,7 +1115,7 @@ impl BuildSystem {
                 req_path.display()
             );
             println!("  Use 'cargo-wrt init-requirements' to create a sample file");
-            return Ok();
+            return Ok(());
         }
 
         println!(
@@ -1153,7 +1153,7 @@ impl BuildSystem {
 
         if results.certification_readiness >= 80.0 {
             println!();
-            println!("{} Requirements verification passed!", "✅".bright_green);
+            println!("{} Requirements verification passed!", "✅".bright_green());
         } else {
             println!();
             println!(
@@ -1534,7 +1534,7 @@ impl BuildSystem {
     /// Check code formatting
     pub fn check_formatting(&self) -> BuildResult<()> {
         if self.config.verbose {
-            println!("  {} Checking code formatting...", "🎨".bright_magenta);
+            println!("  {} Checking code formatting...", "🎨".bright_magenta());
         }
 
         let mut cmd = Command::new("cargo");
@@ -1548,7 +1548,7 @@ impl BuildSystem {
             let stderr = String::from_utf8_lossy(&output.stderr);
             if stderr.contains("not installed") || stderr.contains("not found") {
                 println!("  ⚠️ cargo fmt not available, skipping format check");
-                return Ok();
+                return Ok(());
             }
             return Err(BuildError::Tool(format!(
                 "Code formatting check failed: {}",

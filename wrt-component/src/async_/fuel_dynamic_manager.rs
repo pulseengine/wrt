@@ -13,10 +13,8 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     safe_managed_alloc,
     verification::VerificationLevel,
     CrateId,
@@ -29,9 +27,15 @@ use crate::{
         AsyncTaskStatus,
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder TaskId when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 
 /// Maximum history entries for task behavior analysis
 const MAX_HISTORY_ENTRIES: usize = 1024;

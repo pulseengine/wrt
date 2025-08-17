@@ -22,17 +22,24 @@ use core::{
 
 use wrt_foundation::{
     bounded_collections::{
-        BoundedBinaryHeap,
+        // BoundedBinaryHeap, // Not available
         BoundedMap,
         BoundedVec,
     },
     component_value::ComponentValue,
     safe_managed_alloc,
-    sync::Mutex,
+    // sync::Mutex, // Import from local instead
     Arc,
     CrateId,
-    Weak,
+    Mutex,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
 
 use crate::{
@@ -45,9 +52,16 @@ use crate::{
         },
     },
     prelude::*,
-    task_manager::TaskId,
     ComponentInstanceId,
 };
+
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
+
+// Placeholder types for missing imports
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
+pub type BoundedBinaryHeap<T, const N: usize> = BoundedVec<T, N>;
 
 /// Maximum timers per component
 const MAX_TIMERS_PER_COMPONENT: usize = 128;

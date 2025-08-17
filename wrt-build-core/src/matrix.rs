@@ -305,7 +305,7 @@ impl MatrixVerifier {
 
     /// Run the full verification matrix
     pub fn run_verification(&self) -> BuildResult<VerificationResults> {
-        println!("{} Starting Build Matrix Verification", "🔍".bright_blue);
+        println!("{} Starting Build Matrix Verification", "🔍".bright_blue());
         println!();
 
         let start_time = Instant::now();
@@ -556,7 +556,7 @@ impl MatrixVerifier {
         }
 
         println!();
-        println!("{} Running Kani Verification", "🔬".bright_blue);
+        println!("{} Running Kani Verification", "🔬".bright_blue());
 
         let output = Command::new("cargo")
             .arg("kani")
@@ -825,17 +825,17 @@ impl MatrixVerifier {
     /// Print summary to console
     pub fn print_summary(&self, results: &VerificationResults) {
         println!();
-        println!("{}", "=== Verification Summary ===".bright_blue);
+        println!("{}", "=== Verification Summary ===".bright_blue());
 
         if results.all_passed {
-            println!("{} All configurations passed!", "✅".bright_green);
+            println!("{} All configurations passed!", "✅".bright_green());
         } else {
-            println!("{} Some configurations failed!", "❌".bright_red);
+            println!("{} Some configurations failed!", "❌".bright_red());
         }
 
         if !results.architectural_issues.is_empty() {
             println!();
-            println!("{}", "=== Architectural Issues Detected ===".bright_red);
+            println!("{}", "=== Architectural Issues Detected ===".bright_red());
             for issue in &results.architectural_issues {
                 println!("- {}", issue.description());
             }
