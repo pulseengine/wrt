@@ -4,6 +4,7 @@
 //! the runtime. These types are designed to work in both std and `no_std`
 //! environments.
 
+use wrt_error::Result;
 use wrt_foundation::{
     bounded::BoundedVec,
     prelude::{
@@ -24,7 +25,6 @@ use wrt_foundation::{
         ToBytes,
     },
 };
-use wrt_error::Result;
 use wrt_instructions::Value;
 
 use crate::{

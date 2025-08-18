@@ -627,13 +627,19 @@ pub mod parsers {
     }
 
     /// Parse an element section with bounded memory
-    pub fn parse_element_section(bytes: &[u8]) -> Result<BoundedElementVec<wrt_format::pure_format_types::PureElementSegment>> {
+    pub fn parse_element_section(
+        bytes: &[u8],
+    ) -> Result<BoundedElementVec<wrt_format::pure_format_types::PureElementSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_ELEMENTS as u32, "element count")?;
 
         let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-        let mut elements = BoundedVec::<wrt_format::pure_format_types::PureElementSegment, MAX_ELEMENTS, DecoderProvider>::new(provider)?;
+        let mut elements = BoundedVec::<
+            wrt_format::pure_format_types::PureElementSegment,
+            MAX_ELEMENTS,
+            DecoderProvider,
+        >::new(provider)?;
 
         for _ in 0..count {
             let (pure_element, new_offset) = parse_element_segment(bytes, offset)?;
@@ -694,13 +700,19 @@ pub mod parsers {
     }
 
     /// Parse a data section with bounded memory
-    pub fn parse_data_section(bytes: &[u8]) -> Result<BoundedDataVec<wrt_format::pure_format_types::PureDataSegment>> {
+    pub fn parse_data_section(
+        bytes: &[u8],
+    ) -> Result<BoundedDataVec<wrt_format::pure_format_types::PureDataSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_DATA_SEGMENTS as u32, "data count")?;
 
         let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-        let mut data_segments = BoundedVec::<wrt_format::pure_format_types::PureDataSegment, MAX_DATA_SEGMENTS, DecoderProvider>::new(provider)?;
+        let mut data_segments = BoundedVec::<
+            wrt_format::pure_format_types::PureDataSegment,
+            MAX_DATA_SEGMENTS,
+            DecoderProvider,
+        >::new(provider)?;
 
         for _ in 0..count {
             let (pure_data, new_offset) = parse_data(bytes, offset)?;

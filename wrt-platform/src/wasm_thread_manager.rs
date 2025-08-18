@@ -5,17 +5,19 @@
 
 extern crate alloc;
 
-use core::sync::atomic::{
-    AtomicU64,
-    Ordering,
-};
-use core::time::Duration;
 use alloc::{
     boxed::Box,
     collections::BTreeMap,
     string::String,
     sync::Arc,
     vec::Vec,
+};
+use core::{
+    sync::atomic::{
+        AtomicU64,
+        Ordering,
+    },
+    time::Duration,
 };
 
 use wrt_error::{
@@ -538,7 +540,6 @@ mod tests {
         let executor = create_test_executor();
 
         let manager = WasmThreadManager::new(config, limits, executor).unwrap();
-
 
         let data = vec![1, 2, 3, 4];
         let serialized = manager.serialize_component_values(&data).unwrap();

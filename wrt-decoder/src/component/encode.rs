@@ -825,15 +825,15 @@ mod no_std_encoding {
 
         // Write magic and version - these are fixed size and safe
         for &byte in &component.magic {
-            binary.push(byte).map_err(|_| {
-                Error::memory_error("Component encoding buffer overflow")
-            })?;
+            binary
+                .push(byte)
+                .map_err(|_| Error::memory_error("Component encoding buffer overflow"))?;
         }
 
         for &byte in &component.version {
-            binary.push(byte).map_err(|_| {
-                Error::memory_error("Component encoding buffer overflow")
-            })?;
+            binary
+                .push(byte)
+                .map_err(|_| Error::memory_error("Component encoding buffer overflow"))?;
         }
 
         Ok(binary)

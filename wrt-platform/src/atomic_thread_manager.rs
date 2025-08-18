@@ -6,11 +6,11 @@
 
 extern crate alloc;
 
-use core::time::Duration;
 use alloc::{
     collections::BTreeMap,
     sync::Arc,
 };
+use core::time::Duration;
 
 use wrt_error::{
     ErrorCategory,

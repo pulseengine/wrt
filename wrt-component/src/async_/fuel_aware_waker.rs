@@ -3,6 +3,10 @@
 //! This module provides ASIL-D compliant waker implementations that integrate
 //! with the fuel-based async executor while maintaining safety requirements.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     mem,
     sync::atomic::{
@@ -16,6 +20,8 @@ use core::{
         Waker,
     },
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded::BoundedVec,
@@ -25,13 +31,8 @@ use wrt_foundation::{
     Mutex,
 };
 
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
-
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 use crate::{
     async_::fuel_async_executor::{
         ASILExecutionMode,
@@ -40,9 +41,6 @@ use crate::{
     },
     prelude::*,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]
@@ -505,11 +503,11 @@ pub fn create_noop_waker() -> Waker {
     /// No-op waker vtable
     static NOOP_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
         |_| RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE), // clone
-        |_| {},                                                     // wake
-        |_| {},                                                     // wake_by_ref
-        |_| {},                                                     // drop
+        |_| {},                                                   // wake
+        |_| {},                                                   // wake_by_ref
+        |_| {},                                                   // drop
     );
-    
+
     let raw_waker = RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE);
     // SAFETY: The vtable is statically allocated and valid
     unsafe { Waker::from_raw(raw_waker) }

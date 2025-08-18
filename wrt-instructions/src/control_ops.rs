@@ -56,20 +56,23 @@
 
 // Remove unused imports
 
-use crate::prelude::{
-    str,
-    BlockType,
-    Debug,
-    Error,
-    PartialEq,
-};
-use crate::PureInstruction;
+use wrt_error::Result;
 use wrt_foundation::{
-    BoundedVec,
     BoundedCapacity,
+    BoundedVec,
     Value,
 };
-use wrt_error::Result;
+
+use crate::{
+    prelude::{
+        str,
+        BlockType,
+        Debug,
+        Error,
+        PartialEq,
+    },
+    PureInstruction,
+};
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 /// Branch target information

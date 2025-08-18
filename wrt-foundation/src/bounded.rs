@@ -588,7 +588,8 @@ where
 //     }
 // }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -894,8 +895,8 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedCapacity
-    for BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedCapacity for BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -916,7 +917,8 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Checksummed for BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Checksummed
+    for BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -1012,7 +1014,8 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -2885,7 +2888,8 @@ where
 
 // Implement IntoIterator for &BoundedVec to satisfy
 // clippy::iter_without_into_iter
-impl<'a, T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> IntoIterator for &'a BoundedVec<T, N_ELEMENTS, P>
+impl<'a, T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    IntoIterator for &'a BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -2898,8 +2902,11 @@ where
 }
 
 // Owned iterator that consumes the BoundedVec
-pub struct BoundedVecIntoIterator<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
-where
+pub struct BoundedVecIntoIterator<
+    T,
+    const N_ELEMENTS: usize,
+    P: MemoryProvider + Clone + Default + PartialEq + Eq,
+> where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     vec:           BoundedVec<T, N_ELEMENTS, P>,
@@ -2928,7 +2935,8 @@ where
 }
 
 // Implement IntoIterator for BoundedVec (owned version)
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> IntoIterator for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> IntoIterator
+    for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -2943,7 +2951,8 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedCapacity for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedCapacity for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -3003,7 +3012,8 @@ where
 }
 
 // Implement Extend trait for BoundedVec
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Extend<T> for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Extend<T>
+    for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -3399,7 +3409,8 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -3994,7 +4005,8 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 //     "Provider error during item checksum verification",
 // )),
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
+    BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {

@@ -4,6 +4,7 @@
 //! This module provides a fluent builder interface for creating WebAssembly
 //! engines with proper ASIL-level configuration and resource limits.
 
+use wrt_error::Result;
 use wrt_foundation::{
     capabilities::MemoryCapabilityContext,
     execution::{
@@ -12,7 +13,6 @@ use wrt_foundation::{
         ASILExecutionMode,
     },
 };
-use wrt_error::Result;
 
 use crate::engine::{
     CapabilityAwareEngine,

@@ -5,10 +5,15 @@
 
 // Use alloc when available through lib.rs
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{format, vec::Vec};
-
+use alloc::{
+    format,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{format, vec::Vec};
+use std::{
+    format,
+    vec::Vec,
+};
 
 use wrt_format::{
     module::{
@@ -50,8 +55,6 @@ use crate::prelude::CoreMemoryType;
 // Type alias for the runtime ImportDesc
 type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
 
-use crate::prelude::*;
-
 // HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::bounded_collections::BoundedMap;
 use wrt_foundation::traits::{
@@ -75,6 +78,7 @@ use crate::{
     prelude::{
         RuntimeString,
         ToString,
+        *,
     },
     table::Table,
 };
@@ -180,7 +184,8 @@ impl Export {
     /// Creates a new export
     pub fn new(name: &str, kind: ExportKind, index: u32) -> Result<Self> {
         let provider = create_runtime_provider()?;
-        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider)?;
+        let bounded_name =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider)?;
         Ok(Self {
             name: bounded_name,
             kind,
@@ -263,8 +268,10 @@ impl Import {
     ) -> Result<Self> {
         let provider1 = create_runtime_provider()?;
         let provider2 = create_runtime_provider()?;
-        let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(module, provider1)?;
-        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider2)?;
+        let bounded_module =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(module, provider1)?;
+        let bounded_name =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider2)?;
         Ok(Self {
             module: bounded_module,
             name: bounded_name,
@@ -1661,11 +1668,7 @@ impl Module {
             name,
             create_runtime_provider()?,
         )?;
-        let export = Export::new(
-            bounded_name.as_str()?,
-            ExportKind::Table,
-            index,
-        )?;
+        let export = Export::new(bounded_name.as_str()?, ExportKind::Table, index)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
@@ -2526,7 +2529,9 @@ impl MemoryGuard {
     pub fn write(&self, offset: usize, buffer: &[u8]) -> Result<()> {
         // TODO: Implement safe atomic memory write operations for Arc<Memory>
         // For now, return an error as Arc<Memory> doesn't allow mutable access
-        Err(Error::runtime_execution_error("Atomic memory write operations not yet implemented for Arc<Memory>"))
+        Err(Error::runtime_execution_error(
+            "Atomic memory write operations not yet implemented for Arc<Memory>",
+        ))
     }
 }
 

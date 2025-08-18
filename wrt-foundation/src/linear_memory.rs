@@ -220,14 +220,15 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Clone for PalMemoryProvid
 impl<A: PageAllocator + Send + Sync + Clone + 'static + Default> Default for PalMemoryProvider<A> {
     fn default() -> Self {
         // Create with default allocator and reasonable defaults
-        Self::new(A::default(), 16, Some(256), VerificationLevel::default()).expect("Failed to create default PalMemoryProvider")
+        Self::new(A::default(), 16, Some(256), VerificationLevel::default())
+            .expect("Failed to create default PalMemoryProvider")
     }
 }
 
 impl<A: PageAllocator + Send + Sync + Clone + 'static> PartialEq for PalMemoryProvider<A> {
     fn eq(&self, other: &Self) -> bool {
         // Compare allocators and key properties
-        self.current_pages == other.current_pages 
+        self.current_pages == other.current_pages
             && self.maximum_pages == other.maximum_pages
             && self.initial_allocation_size == other.initial_allocation_size
     }

@@ -765,7 +765,6 @@ pub struct AbiStats {
 mod tests {
     use super::*;
     use crate::task_manager::TaskManager;
-    
     #[cfg(feature = "component-model-threading")]
     use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 

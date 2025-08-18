@@ -4,6 +4,7 @@
 //! ASIL-B safety levels. Each preset configures memory capabilities
 //! appropriately.
 
+use wrt_error::Result;
 use wrt_foundation::{
     budget_aware_provider::CrateId,
     capabilities::{
@@ -12,7 +13,6 @@ use wrt_foundation::{
     },
     verification::VerificationLevel,
 };
-use wrt_error::Result;
 
 /// Budget allocations for QM mode (bytes)
 const QM_BUDGETS: &[(CrateId, usize)] = &[

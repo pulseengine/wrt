@@ -212,7 +212,9 @@ mod no_std_types {
     impl wrt_foundation::traits::ToBytes for Import {
         fn serialized_size(&self) -> usize {
             // Two ComponentString sizes + enum
-            wrt_foundation::traits::ToBytes::serialized_size(&self.module) + wrt_foundation::traits::ToBytes::serialized_size(&self.name) + 1
+            wrt_foundation::traits::ToBytes::serialized_size(&self.module)
+                + wrt_foundation::traits::ToBytes::serialized_size(&self.name)
+                + 1
         }
 
         fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
@@ -220,7 +222,11 @@ mod no_std_types {
             writer: &mut wrt_foundation::traits::WriteStream,
             provider: &PStream,
         ) -> wrt_error::Result<()> {
-            wrt_foundation::traits::ToBytes::to_bytes_with_provider(&self.module, writer, provider)?;
+            wrt_foundation::traits::ToBytes::to_bytes_with_provider(
+                &self.module,
+                writer,
+                provider,
+            )?;
             wrt_foundation::traits::ToBytes::to_bytes_with_provider(&self.name, writer, provider)?;
             writer.write_u8(self.kind as u8)?;
             Ok(())

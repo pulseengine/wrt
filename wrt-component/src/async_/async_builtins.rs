@@ -7,15 +7,14 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
 #[cfg(not(feature = "std"))]
 use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
-
 #[cfg(feature = "std")]
 use std::string::String;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
 
@@ -199,8 +198,9 @@ impl TaskRegistry {
             #[cfg(not(feature = "std"))]
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
-                    .map_err(|_| Error::runtime_execution_error("Failed to create subtasks vector"))?
+                BoundedVec::new(provider).map_err(|_| {
+                    Error::runtime_execution_error("Failed to create subtasks vector")
+                })?
             },
             #[cfg(feature = "std")]
             context: std::collections::HashMap::new(),
@@ -533,15 +533,15 @@ pub mod builtins {
     /// Cancels a running task and all its subtasks
     pub fn task_cancel(task_handle: u32) -> Result<ComponentValue> {
         let handle = TaskHandle(task_handle);
-        
+
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
+            let mut registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
             let result = registry.cancel_task(handle);
-            
+
             match result {
                 CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
                 CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
@@ -554,7 +554,7 @@ pub mod builtins {
         {
             let mut registry = get_task_registry()?;
             let result = registry.cancel_task(handle);
-            
+
             match result {
                 CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
                 CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
@@ -569,7 +569,7 @@ pub mod builtins {
     /// Cancels a specific subtask
     pub fn subtask_cancel(subtask_handle: u32) -> Result<ComponentValue> {
         let handle = SubtaskHandle(subtask_handle);
-        
+
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
@@ -581,7 +581,7 @@ pub mod builtins {
                 )
             })?;
             let result = registry.cancel_subtask(handle);
-            
+
             match result {
                 CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
                 CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
@@ -594,7 +594,7 @@ pub mod builtins {
         {
             let mut registry = get_task_registry()?;
             let result = registry.cancel_subtask(handle);
-            
+
             match result {
                 CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
                 CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
@@ -617,10 +617,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let mut registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             match registry.register_task(future_h, stream_h) {
                 Ok(handle) => Ok(ComponentValue::U32(handle.0)),
                 Err(_) => Err(Error::new(
@@ -633,7 +633,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let mut registry = get_task_registry()?;
-            
+
             match registry.register_task(future_h, stream_h) {
                 Ok(handle) => Ok(ComponentValue::U32(handle.0)),
                 Err(_) => Err(Error::new(
@@ -659,10 +659,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let mut registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             match registry.register_subtask(parent_h, future_h, stream_h) {
                 Ok(handle) => Ok(ComponentValue::U32(handle.0)),
                 Err(_) => Err(Error::new(
@@ -675,7 +675,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let mut registry = get_task_registry()?;
-            
+
             match registry.register_subtask(parent_h, future_h, stream_h) {
                 Ok(handle) => Ok(ComponentValue::U32(handle.0)),
                 Err(_) => Err(Error::new(
@@ -695,10 +695,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(task_info) = registry.tasks.get(&handle) {
                 let status = match task_info.state {
                     TaskState::Running => 0u32,
@@ -714,7 +714,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let registry = get_task_registry()?;
-            
+
             for (task_handle_ref, task_info) in &registry.tasks {
                 if *task_handle_ref == handle {
                     let status = match task_info.state {
@@ -738,10 +738,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(subtask_info) = registry.subtasks.get(&handle) {
                 let status = match subtask_info.state {
                     TaskState::Running => 0u32,
@@ -757,7 +757,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let registry = get_task_registry()?;
-            
+
             for (subtask_handle_ref, subtask_info) in &registry.subtasks {
                 if *subtask_handle_ref == handle {
                     let status = match subtask_info.state {
@@ -779,10 +779,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(current_task) = registry.get_current_task() {
                 if let Some(value) = registry.get_task_context(current_task, key) {
                     Ok(value)
@@ -796,7 +796,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let registry = get_task_registry()?;
-            
+
             if let Some(current_task) = registry.get_current_task() {
                 if let Some(value) = registry.get_task_context(current_task, key) {
                     Ok(value)
@@ -815,10 +815,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let mut registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(current_task) = registry.get_current_task() {
                 registry.set_task_context(current_task, key, value)?;
                 Ok(ComponentValue::U32(0)) // Success
@@ -833,7 +833,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let mut registry = get_task_registry()?;
-            
+
             if let Some(current_task) = registry.get_current_task() {
                 registry.set_task_context(current_task, key, value)?;
                 Ok(ComponentValue::U32(0)) // Success
@@ -853,10 +853,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(current_task) = registry.get_current_task() {
                 let has_key = registry.get_task_context(current_task, key).is_some();
                 Ok(ComponentValue::Bool(has_key))
@@ -867,7 +867,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let registry = get_task_registry()?;
-            
+
             if let Some(current_task) = registry.get_current_task() {
                 let has_key = registry.get_task_context(current_task, key).is_some();
                 Ok(ComponentValue::Bool(has_key))
@@ -883,10 +883,10 @@ pub mod builtins {
         #[cfg(feature = "std")]
         {
             let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex
-                .lock()
-                .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
-            
+            let mut registry = registry_mutex.lock().map_err(|_| {
+                Error::runtime_execution_error("Failed to acquire task registry lock")
+            })?;
+
             if let Some(current_task) = registry.get_current_task() {
                 if let Some(task_info) = registry.tasks.get_mut(&current_task) {
                     task_info.context.clear();
@@ -899,7 +899,7 @@ pub mod builtins {
         #[cfg(not(feature = "std"))]
         {
             let mut registry = get_task_registry()?;
-            
+
             if let Some(current_task) = registry.get_current_task() {
                 for (task_handle, task_info) in &mut registry.tasks {
                     if *task_handle == current_task {

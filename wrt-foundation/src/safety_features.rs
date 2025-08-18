@@ -374,7 +374,10 @@ mod tests {
     #[test]
     fn test_capability_consistency() {
         // Verify that enabled features are consistent
-        use standards::{AsilLevel, SafetyStandardMapping};
+        use standards::{
+            AsilLevel,
+            SafetyStandardMapping,
+        };
 
         assert!(
             AsilLevel::validates_current_config(),

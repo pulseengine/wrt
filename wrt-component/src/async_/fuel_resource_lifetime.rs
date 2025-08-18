@@ -3,6 +3,10 @@
 //! This module provides deterministic resource lifetime management for async
 //! operations, ensuring resources are properly tracked and cleaned up.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     marker::PhantomData,
     sync::atomic::{
@@ -11,6 +15,8 @@ use core::{
         Ordering,
     },
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded_collections::{
@@ -26,13 +32,6 @@ use wrt_foundation::{
     Arc,
     CrateId,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 
 use crate::{
     async_::{

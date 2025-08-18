@@ -131,8 +131,8 @@ where
 }
 
 /// Create a new bounded type vector using capability-based allocation
-pub fn new_type_vec() -> wrt_error::Result<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>>
-{
+pub fn new_type_vec(
+) -> wrt_error::Result<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
@@ -252,16 +252,17 @@ where
 // Additional concrete vector factory functions
 
 /// Create a new bounded params vector (for function parameters)
-pub fn new_params_vec(
-) -> wrt_error::Result<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>> {
+pub fn new_params_vec() -> wrt_error::Result<
+    BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>,
+> {
     let provider = safe_managed_alloc!(2048, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector (for function results)
-pub fn new_results_vec(
-) -> wrt_error::Result<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>>
-{
+pub fn new_results_vec() -> wrt_error::Result<
+    BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>,
+> {
     let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }

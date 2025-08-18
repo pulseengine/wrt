@@ -10,7 +10,6 @@ use alloc::{
     vec,
     vec::Vec,
 };
-
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,

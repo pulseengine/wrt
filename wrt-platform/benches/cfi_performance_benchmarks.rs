@@ -3,12 +3,13 @@
 //! Benchmarks to measure the performance impact of CFI features
 //! and validate that overhead is within acceptable limits.
 
+use std::hint::black_box;
+
 use criterion::{
     criterion_group,
     criterion_main,
     Criterion,
 };
-use std::hint::black_box;
 use wrt_platform::{
     BranchTargetIdentification,
     BtiExceptionLevel,

@@ -4,6 +4,10 @@
 //! mutexes, semaphores, barriers, and condition variables integrated with
 //! the fuel-based async executor.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
@@ -21,6 +25,8 @@ use core::{
     },
     time::Duration,
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded::BoundedVec,
@@ -31,15 +37,10 @@ use wrt_foundation::{
     CrateId,
     Mutex,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 use crate::{
     async_::{
         fuel_async_executor::AsyncTaskState,
@@ -52,9 +53,6 @@ use crate::{
     prelude::*,
     ComponentInstanceId,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

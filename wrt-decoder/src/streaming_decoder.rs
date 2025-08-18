@@ -262,12 +262,20 @@ impl<'a> StreamingDecoder<'a> {
             // Add export to module
             // Convert the smaller BoundedString to the larger one expected by Export
             let name_str = export_name.as_str();
-            let provider = wrt_foundation::safe_managed_alloc!(8192, wrt_foundation::budget_aware_provider::CrateId::Decoder)?;
-            let export_name_large: wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<8192>> = 
-                wrt_foundation::BoundedString::from_str(name_str, provider)?;
-            
+            let provider = wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            let export_name_large: wrt_foundation::BoundedString<
+                256,
+                wrt_foundation::NoStdProvider<8192>,
+            > = wrt_foundation::BoundedString::from_str(name_str, provider)?;
+
             self.module.exports.push(wrt_format::module::Export {
-                name: export_name_large.as_str().map_err(|_| Error::parse_error("Invalid export name"))?.to_string(),
+                name: export_name_large
+                    .as_str()
+                    .map_err(|_| Error::parse_error("Invalid export name"))?
+                    .to_string(),
                 kind,
                 index,
             });

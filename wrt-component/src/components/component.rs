@@ -95,10 +95,10 @@ use wrt_runtime::{
 // Placeholder types for missing imports
 pub type RuntimeFuncType = ();
 
-// Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
-// prelude)
-// use wrt_runtime::execution::{run_with_time_bounds, TimeBoundedConfig, TimeBoundedOutcome};
-// Binary std/no_std choice
+// Import RwLock from prelude (it will be std::sync::RwLock or a no_std
+// equivalent from the prelude)
+// use wrt_runtime::execution::{run_with_time_bounds, TimeBoundedConfig,
+// TimeBoundedOutcome}; Binary std/no_std choice
 
 // core::str is already imported via prelude
 

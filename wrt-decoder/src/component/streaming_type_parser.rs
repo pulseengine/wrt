@@ -449,13 +449,15 @@ mod placeholder_types {
             1 + match self {
                 // 1 byte for tag
                 ExternType::Function { params, results } => {
-                    crate::prelude::decoder_len(params) * 4 + crate::prelude::decoder_len(results) * 4 // Approximate size
+                    crate::prelude::decoder_len(params) * 4
+                        + crate::prelude::decoder_len(results) * 4 // Approximate size
                 },
                 ExternType::Value(val_type) => val_type.serialized_size(),
                 ExternType::Type(_) => 4, // u32
-                ExternType::Instance { exports } => crate::prelude::decoder_len(exports) * 8, // Approximate size
+                ExternType::Instance { exports } => crate::prelude::decoder_len(exports) * 8, /* Approximate size */
                 ExternType::Component { imports, exports } => {
-                    crate::prelude::decoder_len(imports) * 8 + crate::prelude::decoder_len(exports) * 8 // Approximate size
+                    crate::prelude::decoder_len(imports) * 8
+                        + crate::prelude::decoder_len(exports) * 8 // Approximate size
                 },
             }
         }
@@ -609,8 +611,8 @@ use crate::bounded_decoder_infra::{
 const MAX_TYPES_PER_COMPONENT: usize = 1024;
 
 #[cfg(feature = "std")]
-fn create_decoder_provider<const N: usize>(
-) -> wrt_error::Result<wrt_foundation::NoStdProvider<N>> {
+fn create_decoder_provider<const N: usize>() -> wrt_error::Result<wrt_foundation::NoStdProvider<N>>
+{
     Ok(wrt_foundation::NoStdProvider::default())
 }
 

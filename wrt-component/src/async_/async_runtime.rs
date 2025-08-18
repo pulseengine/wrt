@@ -64,14 +64,6 @@ use super::async_types::{
     Waitable,
     WaitableSet,
 };
-use crate::{
-    types::{
-        ValType,
-        Value,
-    },
-    WrtResult,
-};
-
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::{
     Task,
@@ -80,6 +72,13 @@ use crate::threading::task_manager::{
     TaskManager,
     TaskState,
     TaskType,
+};
+use crate::{
+    types::{
+        ValType,
+        Value,
+    },
+    WrtResult,
 };
 
 /// Maximum number of concurrent tasks in no_std environments

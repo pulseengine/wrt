@@ -6,8 +6,6 @@
 // Import Arc from appropriate source based on feature flags
 // alloc is imported in lib.rs with proper feature gates
 
-use crate::prelude::*;
-
 use wrt_error::{
     Error,
     Result,

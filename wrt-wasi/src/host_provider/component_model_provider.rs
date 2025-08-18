@@ -217,7 +217,7 @@ fn empty_value_vec() -> wrt_error::Result<impl Iterator<Item = Value>> {
     Ok(empty_slice.iter().cloned())
 }
 
-// Helper function to create empty type vector  
+// Helper function to create empty type vector
 #[cfg(not(feature = "std"))]
 fn empty_type_vec() -> wrt_error::Result<impl Iterator<Item = ValType>> {
     // Return empty iterator for no_std mode
@@ -229,7 +229,7 @@ fn empty_type_vec() -> wrt_error::Result<impl Iterator<Item = ValType>> {
 #[cfg(feature = "std")]
 type FoundationValueVec = Vec<wrt_foundation::values::Value>;
 
-// Simplified no_std types - just use placeholder 
+// Simplified no_std types - just use placeholder
 #[cfg(not(feature = "std"))]
 type FoundationValueVec = ();
 
@@ -244,7 +244,9 @@ macro_rules! value_vec {
         {
             // Simplified for no_std - just return empty iterator result
             // This is a placeholder implementation
-            return Err(Error::runtime_execution_error("Value vectors not supported in no_std mode"));
+            return Err(Error::runtime_execution_error(
+                "Value vectors not supported in no_std mode",
+            ));
         }
     }};
 }
@@ -259,7 +261,9 @@ macro_rules! type_vec {
         #[cfg(not(feature = "std"))]
         {
             // Simplified for no_std
-            return Err(Error::runtime_execution_error("Type vectors not supported in no_std mode"));
+            return Err(Error::runtime_execution_error(
+                "Type vectors not supported in no_std mode",
+            ));
         }
     }};
 }

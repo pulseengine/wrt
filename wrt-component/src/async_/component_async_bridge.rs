@@ -3,6 +3,10 @@
 //! This module provides integration between the Component Model's async
 //! requirements and our fuel-based executor implementation.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future,
     pin::Pin,
@@ -15,6 +19,8 @@ use core::{
         Poll,
     },
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded_collections::BoundedMap,
@@ -24,26 +30,7 @@ use wrt_foundation::{
     CrateId,
     Mutex,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
-
-use crate::{
-    async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
-        fuel_async_scheduler::SchedulingPolicy,
-    },
-    prelude::*,
-    ComponentInstanceId,
-};
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::{
@@ -57,6 +44,17 @@ use crate::threading::{
         FuelTrackedThreadManager,
         ThreadFuelStatus,
     },
+};
+use crate::{
+    async_::{
+        fuel_async_executor::{
+            AsyncTaskState,
+            FuelAsyncExecutor,
+        },
+        fuel_async_scheduler::SchedulingPolicy,
+    },
+    prelude::*,
+    ComponentInstanceId,
 };
 
 /// Maximum concurrent async operations per component

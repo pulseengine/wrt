@@ -7,10 +7,10 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::string::String;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::String;
+#[cfg(feature = "std")]
+use std::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
 
@@ -36,17 +36,16 @@ use super::async_types::{
     Stream as WasmStream,
     StreamHandle,
 };
-#[cfg(not(feature = "std"))]
-// For no_std, use a simpler ComponentValue representation
-use crate::types::Value as ComponentValue;
-use crate::ComponentInstanceId;
-
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::{
     TaskId,
     TaskManager,
     TaskState,
 };
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
+use crate::ComponentInstanceId;
 
 // Placeholder types when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

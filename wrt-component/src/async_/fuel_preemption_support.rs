@@ -18,15 +18,16 @@ use wrt_foundation::{
     bounded_collections::BoundedMap,
     safe_managed_alloc,
     verification::VerificationLevel,
-    Mutex,
-
-// Note: Using BoundedVec instead of BoundedBinaryHeap
-// Priority ordering will need to be handled manually
+    // Note: Using BoundedVec instead of BoundedBinaryHeap
+    // Priority ordering will need to be handled manually
     Arc,
     CrateId,
+    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 use crate::{
     async_::{
         fuel_async_executor::{
@@ -38,9 +39,6 @@ use crate::{
     prelude::*,
     ComponentInstanceId,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

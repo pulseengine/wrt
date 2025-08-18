@@ -16,10 +16,7 @@ use wrt_foundation::{
     CrateId,
 };
 
-use crate::{
-    prelude::*,
-};
-
+use crate::prelude::*;
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 

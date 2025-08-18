@@ -36,13 +36,15 @@ use wrt_foundation::{
     verification::VerificationLevel,
     CrateId,
 };
-use wrt_platform::advanced_sync::Priority;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     Arc,
     Mutex,
 };
+use wrt_platform::advanced_sync::Priority;
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 use crate::{
     async_::fuel_priority_inheritance::{
         FuelPriorityInheritanceProtocol,
@@ -51,9 +53,6 @@ use crate::{
     prelude::*,
     ComponentInstanceId,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

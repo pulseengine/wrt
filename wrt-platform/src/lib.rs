@@ -487,7 +487,7 @@ mod tests {
         //     CrateId,
         //     NoStdProvider,
         // };
-        
+
         // Test disabled - requires wrt-foundation dependency
     }
 

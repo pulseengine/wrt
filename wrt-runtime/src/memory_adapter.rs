@@ -22,7 +22,6 @@ use crate::{
     prelude::*,
 };
 
-
 /// Invalid offset error code
 const INVALID_OFFSET: u16 = 4006;
 /// Size too large error code  
@@ -174,12 +173,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         ))
     }
 
-    fn copy_within(
-        &mut self,
-        _src: usize,
-        _dst: usize,
-        _len: usize,
-    ) -> Result<()> {
+    fn copy_within(&mut self, _src: usize, _dst: usize, _len: usize) -> Result<()> {
         Ok(())
     }
 
@@ -193,11 +187,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         ))
     }
 
-    fn release_memory(
-        &self,
-        _ptr: *mut u8,
-        _layout: core::alloc::Layout,
-    ) -> Result<()> {
+    fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> Result<()> {
         Ok(())
     }
 
@@ -205,9 +195,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         self
     }
 
-    fn new_handler(
-        &self,
-    ) -> Result<wrt_foundation::safe_memory::SafeMemoryHandler<Self>>
+    fn new_handler(&self) -> Result<wrt_foundation::safe_memory::SafeMemoryHandler<Self>>
     where
         Self: Clone,
     {
@@ -226,11 +214,7 @@ impl wrt_foundation::safe_memory::Allocator for StdMemoryProvider {
         ))
     }
 
-    fn deallocate(
-        &self,
-        _ptr: *mut u8,
-        _layout: core::alloc::Layout,
-    ) -> Result<()> {
+    fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> Result<()> {
         Ok(())
     }
 }
@@ -355,7 +339,9 @@ impl MemoryAdapter for SafeMemoryAdapter {
         // We can't modify buffer directly through Arc, so use a special method to write
         // to memory without dereferencing Arc<Memory> as mutable
         // TODO: Implement safe write functionality for Arc<Memory>
-        Err(Error::runtime_execution_error("Write operation not yet implemented for Arc<Memory>"))
+        Err(Error::runtime_execution_error(
+            "Write operation not yet implemented for Arc<Memory>",
+        ))
     }
 
     fn size(&self) -> Result<u32> {
@@ -369,7 +355,9 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
         // Grow the memory - this should handle interior mutability internally
         // TODO: Implement safe grow functionality for Arc<Memory>
-        Err(Error::runtime_execution_error("Grow operation not yet implemented for Arc<Memory>"))
+        Err(Error::runtime_execution_error(
+            "Grow operation not yet implemented for Arc<Memory>",
+        ))
     }
 
     fn byte_size(&self) -> Result<usize> {

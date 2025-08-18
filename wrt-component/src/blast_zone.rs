@@ -27,7 +27,7 @@ use wrt_foundation::{
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
-    // resource::ResourceHandle, // Not available  
+    // resource::ResourceHandle, // Not available
     safe_managed_alloc,
 };
 
@@ -42,7 +42,7 @@ use crate::{
 
 // Placeholder types for missing imports
 // WrtComponentType now exported from crate root
-// ResourceHandle now exported from crate root  
+// ResourceHandle now exported from crate root
 pub type ResourceLifecycleManager = ();
 
 /// Maximum number of blast zones in no_std environments

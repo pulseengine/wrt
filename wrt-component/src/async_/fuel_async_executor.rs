@@ -61,11 +61,11 @@ pub enum ThreadFuelStatus {
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DebtCreditBalance {
-    pub task_id: TaskId,
-    pub component_id: u64,
-    pub current_debt: u64,
+    pub task_id:          TaskId,
+    pub component_id:     u64,
+    pub current_debt:     u64,
     pub available_credit: u64,
-    pub net_balance: i64,
+    pub net_balance:      i64,
 }
 
 #[cfg(not(feature = "component-model-threading"))]
@@ -80,6 +80,10 @@ impl DebtCreditBalance {
         }
     }
 }
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future,
     pin::Pin,
@@ -96,6 +100,8 @@ use core::{
     },
     time::Duration,
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded::BoundedVec,
@@ -106,18 +112,11 @@ use wrt_foundation::{
         Type as OperationType,
     },
     safe_managed_alloc,
-    Mutex,
     verification::VerificationLevel,
     Arc,
     CrateId,
+    Mutex,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::{
     advanced_sync::{
         Priority,

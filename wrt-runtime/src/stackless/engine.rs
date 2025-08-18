@@ -2958,14 +2958,23 @@ impl StacklessEngine {
 
     /// Read branch table from bytecode (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn read_br_table(&mut self, code: &[u8]) -> Result<(wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>, u32)> {
+    fn read_br_table(
+        &mut self,
+        code: &[u8],
+    ) -> Result<(
+        wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>,
+        u32,
+    )> {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
 
-        let mut targets = wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default())?;
+        let mut targets =
+            wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default())?;
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
-            targets.push(target).map_err(|_| Error::runtime_execution_error("Branch table too large for bounded vector"))?;
+            targets.push(target).map_err(|_| {
+                Error::runtime_execution_error("Branch table too large for bounded vector")
+            })?;
         }
 
         // Read default target
@@ -3044,7 +3053,13 @@ impl StacklessEngine {
     }
 
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn branch_table(&mut self, table: (wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>, u32)) -> Result<()> {
+    fn branch_table(
+        &mut self,
+        table: (
+            wrt_foundation::BoundedVec<u32, 16, wrt_foundation::NoStdProvider<1024>>,
+            u32,
+        ),
+    ) -> Result<()> {
         let (targets, default_target) = table;
 
         // Pop index from stack

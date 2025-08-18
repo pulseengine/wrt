@@ -6965,7 +6965,11 @@ impl StacklessFrame {
         #[cfg(any(feature = "std", feature = "alloc"))]
         let mut items_to_init: Vec<Option<Value>> = Vec::new();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let mut items_to_init = wrt_foundation::BoundedVec::<Option<Value>, 16, wrt_foundation::NoStdProvider<1024>>::new(wrt_foundation::NoStdProvider::<1024>::default())?;
+        let mut items_to_init = wrt_foundation::BoundedVec::<
+            Option<Value>,
+            16,
+            wrt_foundation::NoStdProvider<1024>,
+        >::new(wrt_foundation::NoStdProvider::<1024>::default())?;
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {

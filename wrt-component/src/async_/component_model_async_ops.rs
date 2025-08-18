@@ -23,6 +23,11 @@ use wrt_foundation::{
     Weak,
 };
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    TaskId,
+    TaskManager,
+};
 use crate::{
     async_::{
         async_types::{
@@ -43,12 +48,6 @@ use crate::{
     prelude::*,
     types::ComponentInstance,
     ComponentInstanceId,
-};
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    TaskId,
-    TaskManager,
 };
 
 /// Maximum number of waitables per task.wait call

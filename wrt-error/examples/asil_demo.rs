@@ -7,9 +7,9 @@
 //! - `cargo run --example asil_demo --features asil-c`
 //! - `cargo run --example asil_demo --features asil-d`
 
+use wrt_error::Error;
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 use wrt_error::SafetyMonitor;
-use wrt_error::Error;
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
 use wrt_error::{
     AsilErrorContext,

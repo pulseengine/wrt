@@ -10,7 +10,6 @@ use wrt_foundation::{
 
 // Placeholder type for missing import
 // WrtComponentType now exported from crate root
-
 use crate::{
     components::component::ExternValue,
     // namespace::Namespace,

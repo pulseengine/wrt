@@ -14,13 +14,13 @@ use wrt_error::{
     Error,
     Result,
 };
-use wrt_foundation::BoundedVec;
 use wrt_foundation::{
     types::{
         RefType,
         ValueType,
     },
     values::Value,
+    BoundedVec,
 };
 use wrt_math;
 

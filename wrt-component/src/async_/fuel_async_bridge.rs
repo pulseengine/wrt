@@ -31,6 +31,8 @@ use wrt_foundation::{
 };
 use wrt_platform::advanced_sync::Priority;
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 use crate::{
     async_::{
         fuel_async_executor::{
@@ -52,9 +54,6 @@ use crate::{
     prelude::*,
     ComponentInstanceId,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

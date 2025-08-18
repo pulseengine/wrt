@@ -47,9 +47,7 @@ use wrt_foundation::traits::{
     WriteStream,
 };
 // NoStdProvider import removed - not used
-use wrt_foundation::{
-    verification::Checksum,
-};
+use wrt_foundation::verification::Checksum;
 
 // Internal modules
 use crate::prelude::*;

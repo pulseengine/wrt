@@ -61,7 +61,11 @@ fn test_safe_state_requirements() {
     assert!(trap_error.requires_safe_state());
 
     // Component errors do not require immediate safe state
-    let comp_error = Error::new(ErrorCategory::Component, codes::COMPONENT_INSTANTIATION_ERROR, "Component runtime error");
+    let comp_error = Error::new(
+        ErrorCategory::Component,
+        codes::COMPONENT_INSTANTIATION_ERROR,
+        "Component runtime error",
+    );
     assert!(!comp_error.requires_safe_state());
 }
 
@@ -89,9 +93,7 @@ fn test_error_integrity_validation() {
 #[test]
 fn test_asil_error_context() {
     let error = Error::safety_violation("Test error");
-    let context = AsilErrorContext::new(error)
-        .with_timestamp(123_456_789)
-        .with_module_id(42);
+    let context = AsilErrorContext::new(error).with_timestamp(123_456_789).with_module_id(42);
 
     assert_eq!(context.error.code, error.code);
     assert_eq!(context.timestamp, Some(123_456_789));

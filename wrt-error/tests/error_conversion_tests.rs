@@ -113,21 +113,24 @@ fn test_error_code_ranges() {
     let error: Error = Error::from(validation_error);
     assert!(
         error.code >= 5000 && error.code < 6000,
-        "Validation error code {} not in expected range 5000-5999", error.code
+        "Validation error code {} not in expected range 5000-5999",
+        error.code
     );
 
     let runtime_error = RuntimeError("test");
     let error: Error = Error::from(runtime_error);
     assert!(
         error.code >= 7000 && error.code < 8000,
-        "Runtime error code {} not in expected range 7000-7999", error.code
+        "Runtime error code {} not in expected range 7000-7999",
+        error.code
     );
 
     let component_error = ComponentError("test");
     let error: Error = Error::from(component_error);
     assert!(
         error.code >= 2000 && error.code < 3000,
-        "Component error code {} not in expected range 2000-2999", error.code
+        "Component error code {} not in expected range 2000-2999",
+        error.code
     );
 }
 

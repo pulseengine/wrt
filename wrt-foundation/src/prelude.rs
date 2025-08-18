@@ -17,16 +17,29 @@
 // Layer 1: Memory Management Strategy (static/bounded/managed/std-allocation)
 // Layer 4: Safety Integrity Levels (ASIL-D → static, ASIL-C → bounded, etc.)
 
-// Compile-time safety validation removed - conflicts resolved by strategy-specific capabilities
+// Compile-time safety validation removed - conflicts resolved by
+// strategy-specific capabilities
 
 // Core traits and types available in all safety levels
 
-// Managed allocation requires alloc crate for dynamic collections (only when std is not available)
-#[cfg(all(feature = "managed-dynamic-alloc", not(feature = "std-allocation"), not(feature = "bounded-allocation"), not(feature = "static-allocation")))]
+// Managed allocation requires alloc crate for dynamic collections (only when
+// std is not available)
+#[cfg(all(
+    feature = "managed-dynamic-alloc",
+    not(feature = "std-allocation"),
+    not(feature = "bounded-allocation"),
+    not(feature = "static-allocation")
+))]
 extern crate alloc;
 
-// managed-allocation imports (ASIL-A/B, DAL-D, SIL-1/2, Class A) - only when std is not available
-#[cfg(all(feature = "managed-dynamic-alloc", not(feature = "std-allocation"), not(feature = "bounded-allocation"), not(feature = "static-allocation")))]
+// managed-allocation imports (ASIL-A/B, DAL-D, SIL-1/2, Class A) - only when
+// std is not available
+#[cfg(all(
+    feature = "managed-dynamic-alloc",
+    not(feature = "std-allocation"),
+    not(feature = "bounded-allocation"),
+    not(feature = "static-allocation")
+))]
 pub use alloc::{
     boxed::Box,
     collections::{
@@ -105,8 +118,8 @@ pub use std::{
 #[cfg(feature = "use-hashbrown")]
 pub use hashbrown::HashMap as BHashMap;
 // Safety-level-aware choice
-// Dynamic collections (HashSet, Arc) are only available for managed-allocation and std-allocation
-// Higher safety levels use bounded or static alternatives
+// Dynamic collections (HashSet, Arc) are only available for managed-allocation and
+// std-allocation Higher safety levels use bounded or static alternatives
 
 // Re-export from wrt_error - this is the standard Result type for WRT
 pub use wrt_error::prelude::*;
@@ -129,7 +142,10 @@ pub use crate::component_builder::{
 // Modern memory system convenience functions already imported above
 
 // Safety-level-aware conversion functions (only available with std feature)
-#[cfg(all(feature = "std", any(feature = "managed-dynamic-alloc", feature = "std-allocation")))]
+#[cfg(all(
+    feature = "std",
+    any(feature = "managed-dynamic-alloc", feature = "std-allocation")
+))]
 pub use crate::conversion::{
     ref_type_to_val_type,
     val_type_to_ref_type,
@@ -156,21 +172,6 @@ pub use crate::{
         AsilTestMetadata,
         TestCategory,
         TestStatistics,
-    },
-    // Safety-level-aware features
-    safety_features::{
-        allocation::MEMORY_STRATEGY,
-        runtime::{
-            current_safety_level,
-            has_capability,
-            max_allocation_size,
-        },
-        standards::{
-            AsilLevel,
-            DalLevel,
-            SafetyStandardMapping,
-            SilLevel,
-        },
     },
     // Atomic memory operations
     atomic_memory::{
@@ -216,6 +217,21 @@ pub use crate::{
     },
     // Resource types
     resource::ResourceOperation,
+    // Safety-level-aware features
+    safety_features::{
+        allocation::MEMORY_STRATEGY,
+        runtime::{
+            current_safety_level,
+            has_capability,
+            max_allocation_size,
+        },
+        standards::{
+            AsilLevel,
+            DalLevel,
+            SafetyStandardMapping,
+            SilLevel,
+        },
+    },
     // Safe memory types (SafeMemoryHandler, SafeSlice, SafeStack are already here from direct
     // re-exports) Sections (SectionId, SectionType, Section are usually handled by decoder)
     // Binary std/no_std choice
@@ -278,7 +294,10 @@ pub use crate::{
 };
 // Safety-level-aware component system
 // Component builders only available with std feature and allocation levels
-#[cfg(all(feature = "std", any(feature = "managed-dynamic-alloc", feature = "std-allocation")))]
+#[cfg(all(
+    feature = "std",
+    any(feature = "managed-dynamic-alloc", feature = "std-allocation")
+))]
 pub use crate::{
     // Component builders
     component_value::{
@@ -312,31 +331,48 @@ pub const MAX_WASM_FUNCTION_PARAMS: usize = 128;
 // Type selection based on safety integrity levels
 
 /// Safety capacity limits based on enabled safety features
-pub const MAX_STATIC_CAPACITY: usize = 16;  // ASIL-D: 16KB / sizeof(T)
+pub const MAX_STATIC_CAPACITY: usize = 16; // ASIL-D: 16KB / sizeof(T)
 pub const MAX_BOUNDED_CAPACITY: usize = 64; // ASIL-C: 64KB / sizeof(T)
 
 /// Safety-level-aware function argument vector with proper precedence
-/// Precedence: std-allocation > managed-dynamic-alloc > bounded-allocation > static-allocation
+/// Precedence: std-allocation > managed-dynamic-alloc > bounded-allocation >
+/// static-allocation
 
 /// Standard allocation (QM, DAL-E) - highest precedence
 #[cfg(feature = "std-allocation")]
 pub type ArgVec<T> = Vec<T>;
 
-/// Managed allocation (ASIL-A/B, DAL-D, SIL-1/2, Class A) - second precedence 
+/// Managed allocation (ASIL-A/B, DAL-D, SIL-1/2, Class A) - second precedence
 #[cfg(all(feature = "managed-dynamic-alloc", not(feature = "std-allocation")))]
 pub type ArgVec<T> = Vec<T>;
 
 /// Bounded allocation (ASIL-C, DAL-B, SIL-3, Class B) - third precedence
-#[cfg(all(feature = "bounded-allocation", not(feature = "std-allocation"), not(feature = "managed-dynamic-alloc")))]
-pub type ArgVec<T> = BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
+#[cfg(all(
+    feature = "bounded-allocation",
+    not(feature = "std-allocation"),
+    not(feature = "managed-dynamic-alloc")
+))]
+pub type ArgVec<T> =
+    BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
 
 /// Static allocation (ASIL-D, DAL-A, SIL-4, Class C) - lowest precedence
-#[cfg(all(feature = "static-allocation", not(feature = "std-allocation"), not(feature = "managed-dynamic-alloc"), not(feature = "bounded-allocation")))]
+#[cfg(all(
+    feature = "static-allocation",
+    not(feature = "std-allocation"),
+    not(feature = "managed-dynamic-alloc"),
+    not(feature = "bounded-allocation")
+))]
 pub type ArgVec<T> = [T; MAX_WASM_FUNCTION_PARAMS];
 
 /// Fallback when no allocation strategy is specified
-#[cfg(not(any(feature = "static-allocation", feature = "bounded-allocation", feature = "managed-dynamic-alloc", feature = "std-allocation")))]
-pub type ArgVec<T> = BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
+#[cfg(not(any(
+    feature = "static-allocation",
+    feature = "bounded-allocation",
+    feature = "managed-dynamic-alloc",
+    feature = "std-allocation"
+)))]
+pub type ArgVec<T> =
+    BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
 
 // ============================================================================
 // SAFETY-LEVEL-AWARE CAPABILITY SYSTEM
@@ -344,15 +380,19 @@ pub type ArgVec<T> = BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX
 // Capability system selection based on safety requirements
 
 // Static allocation environments - minimal capability context
-#[cfg(all(feature = "static-allocation", not(any(feature = "std", feature = "alloc"))))]
-pub use crate::capabilities::NoStdCapabilityContext as CapabilityContext;
-
-// Bounded allocation environments - bounded capability system  
+// Bounded allocation environments - bounded capability system
 #[cfg(all(feature = "bounded-allocation", not(feature = "static-allocation")))]
 pub use crate::capabilities::CapabilityAwareProvider;
-
+#[cfg(all(
+    feature = "static-allocation",
+    not(any(feature = "std", feature = "alloc"))
+))]
+pub use crate::capabilities::NoStdCapabilityContext as CapabilityContext;
 // Managed and standard allocation - full capability system (requires alloc)
-#[cfg(all(any(feature = "std", feature = "alloc"), any(feature = "managed-dynamic-alloc", feature = "std-allocation")))]
+#[cfg(all(
+    any(feature = "std", feature = "alloc"),
+    any(feature = "managed-dynamic-alloc", feature = "std-allocation")
+))]
 pub use crate::capabilities::{
     CapabilityAwareProvider,
     CapabilityProviderFactory,

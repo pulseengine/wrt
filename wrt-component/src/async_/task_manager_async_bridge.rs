@@ -4,6 +4,10 @@
 //! and the fuel-based async executor, enabling seamless async task lifecycle
 //! management.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::sync::Weak;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
@@ -17,6 +21,8 @@ use core::{
         Poll,
     },
 };
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use wrt_foundation::{
     bounded_collections::{
@@ -29,15 +35,10 @@ use wrt_foundation::{
     CrateId,
     Mutex,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Weak;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use wrt_platform::advanced_sync::Priority;
 
+#[cfg(feature = "component-model-threading")]
+use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 use crate::{
     async_::{
         component_async_bridge::{
@@ -72,9 +73,6 @@ use crate::{
     },
     ComponentInstanceId,
 };
-
-#[cfg(feature = "component-model-threading")]
-use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 
 // Placeholder types when threading is not available
 #[cfg(not(feature = "component-model-threading"))]

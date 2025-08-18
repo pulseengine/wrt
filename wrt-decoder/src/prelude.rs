@@ -202,9 +202,15 @@ pub fn decoder_len<T>(vec: &DecoderVec<T>) -> usize {
 }
 
 #[cfg(not(feature = "std"))]
-pub fn decoder_len<T>(vec: &DecoderVec<T>) -> usize 
+pub fn decoder_len<T>(vec: &DecoderVec<T>) -> usize
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     wrt_foundation::traits::BoundedCapacity::len(vec)
 }
@@ -454,7 +460,10 @@ where
 // Extension trait to add missing methods to Vec in std mode
 pub trait DecoderVecExt<T> {
     /// Create from bytes with provider (compatible with both std and no_std)
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
     ) -> wrt_error::Result<Self>
@@ -468,7 +477,10 @@ pub trait DecoderVecExt<T> {
     fn serialized_size(&self) -> usize;
 
     /// To bytes with provider (compatible with both std and no_std)
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
@@ -483,7 +495,10 @@ where
         + wrt_foundation::traits::FromBytes
         + Clone,
 {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &P,
     ) -> wrt_error::Result<Self> {
@@ -512,7 +527,10 @@ where
         4 + self.iter().map(|item| item.serialized_size()).sum::<usize>() // 4 bytes for count + items
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
@@ -541,7 +559,10 @@ where
         + Eq,
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
 {
-    fn from_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P2,
     ) -> wrt_error::Result<Self> {
@@ -560,7 +581,10 @@ where
         ToBytes::serialized_size(self)
     }
 
-    fn to_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P2,
@@ -573,7 +597,10 @@ where
 // Extension trait to add missing methods to String in std mode
 pub trait DecoderStringExt {
     /// Create from bytes with provider (compatible with both std and no_std)
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
     ) -> wrt_error::Result<Self>
@@ -587,7 +614,10 @@ pub trait DecoderStringExt {
     fn serialized_size(&self) -> usize;
 
     /// To bytes with provider (compatible with both std and no_std)
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
@@ -596,18 +626,23 @@ pub trait DecoderStringExt {
 
 #[cfg(feature = "std")]
 impl DecoderStringExt for String {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &P,
     ) -> wrt_error::Result<Self> {
         // For std mode, read string manually using available ReadStream methods
         // Read length as LEB128 (simplified - assume single byte for now)
-        let len_byte = reader.read_u8()
+        let len_byte = reader
+            .read_u8()
             .map_err(|_| wrt_error::Error::parse_error("Failed to read string length"))?;
         let len = len_byte as usize; // Simplified LEB128 - single byte only
-        
+
         let mut string_bytes = vec![0u8; len];
-        reader.read_exact(&mut string_bytes)
+        reader
+            .read_exact(&mut string_bytes)
             .map_err(|_| wrt_error::Error::parse_error("Failed to read string bytes"))?;
         std::string::String::from_utf8(string_bytes)
             .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8 string"))
@@ -621,7 +656,10 @@ impl DecoderStringExt for String {
         self.len()
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
@@ -636,7 +674,10 @@ impl<const N: usize, P> DecoderStringExt for BoundedString<N, P>
 where
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
 {
-    fn from_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn from_bytes_with_provider<
+        'a,
+        P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P2,
     ) -> wrt_error::Result<Self> {
@@ -649,10 +690,15 @@ where
         for _ in 0..len {
             let mut byte = [0u8; 1];
             reader.read_exact(&mut byte)?;
-            buffer.push(byte[0]).map_err(|_| wrt_error::Error::parse_error("String too long for buffer"))?;
+            buffer
+                .push(byte[0])
+                .map_err(|_| wrt_error::Error::parse_error("String too long for buffer"))?;
         }
-        let slice = buffer.as_slice().map_err(|_| wrt_error::Error::parse_error("Failed to get buffer slice"))?;
-        let s = core::str::from_utf8(slice).map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8"))?;
+        let slice = buffer
+            .as_slice()
+            .map_err(|_| wrt_error::Error::parse_error("Failed to get buffer slice"))?;
+        let s = core::str::from_utf8(slice)
+            .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8"))?;
         // Convert from P2 provider to P provider type
         let p_provider = P::default();
         Ok(Self::from_str(s, p_provider)?)
@@ -668,7 +714,10 @@ where
         ToBytes::serialized_size(self)
     }
 
-    fn to_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>(
+    fn to_bytes_with_provider<
+        'a,
+        P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+    >(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P2,

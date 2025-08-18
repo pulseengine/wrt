@@ -7,6 +7,12 @@
 
 extern crate alloc;
 
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap,
+    sync::Arc,
+    vec::Vec,
+};
 use core::{
     sync::atomic::{
         AtomicBool,
@@ -14,12 +20,6 @@ use core::{
         Ordering,
     },
     time::Duration,
-};
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap,
-    sync::Arc,
-    vec::Vec,
 };
 
 use wrt_error::{
