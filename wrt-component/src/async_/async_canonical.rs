@@ -35,6 +35,8 @@ use wrt_error::{
     ErrorCategory,
     Result,
 };
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
     bounded::BoundedVec,
     prelude::*,
@@ -46,11 +48,6 @@ use wrt_foundation::{
     safe_managed_alloc,
     BoundedMap as BTreeMap,
     BoundedVec as Vec,
-};
-#[cfg(feature = "std")]
-use wrt_foundation::{
-    component_value::ComponentValue,
-    resource::ResourceHandle,
 };
 
 use crate::{
@@ -67,6 +64,7 @@ use crate::{
         Waitable,
         WaitableSet,
     },
+    prelude::ResourceHandle,
     types::{
         ValType,
         Value,

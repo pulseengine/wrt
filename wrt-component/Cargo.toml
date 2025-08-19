@@ -19,6 +19,7 @@ wrt-host = { workspace = true, default-features = false }
 wrt-foundation = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
 wrt-decoder = { workspace = true, default-features = false, optional = true }
+wrt-platform = { workspace = true, default-features = false }
 wrt-runtime = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
 
@@ -41,6 +42,7 @@ std = [
     "wrt-host/std",
     "wrt-intercept/std",
     "wrt-decoder/std",
+    "wrt-platform/std",
     "wrt-runtime/std",
     "wrt-sync/std",
     "wrt-error/std",
@@ -77,11 +79,11 @@ iso-25119 = ["wrt-foundation/iso-25119"]
 
 # Layer 4: Safety Integrity Levels (dependent on standard)
 # ISO 26262 - Automotive
-qm = ["wrt-foundation/qm", "wrt-format/qm", "wrt-host/qm", "wrt-decoder/qm", "wrt-runtime/qm", "wrt-intercept/qm"]
-asil-a = ["wrt-foundation/asil-a", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-decoder/asil-a", "wrt-runtime/asil-a", "wrt-intercept/asil-a"]
-asil-b = ["wrt-foundation/asil-b", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-decoder/asil-b", "wrt-runtime/asil-b", "wrt-intercept/asil-b"]
-asil-c = ["wrt-foundation/asil-c", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-decoder/asil-c", "wrt-runtime/asil-c", "wrt-intercept/asil-c"]
-asil-d = ["wrt-foundation/asil-d", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-decoder/asil-d", "wrt-runtime/asil-d", "wrt-intercept/asil-d"]
+qm = ["wrt-foundation/qm", "wrt-format/qm", "wrt-host/qm", "wrt-decoder/qm", "wrt-platform/qm", "wrt-runtime/qm", "wrt-intercept/qm"]
+asil-a = ["wrt-foundation/asil-a", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-decoder/asil-a", "wrt-platform/asil-a", "wrt-runtime/asil-a", "wrt-intercept/asil-a"]
+asil-b = ["wrt-foundation/asil-b", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-decoder/asil-b", "wrt-platform/asil-b", "wrt-runtime/asil-b", "wrt-intercept/asil-b"]
+asil-c = ["wrt-foundation/asil-c", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-decoder/asil-c", "wrt-platform/asil-c", "wrt-runtime/asil-c", "wrt-intercept/asil-c"]
+asil-d = ["wrt-foundation/asil-d", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-decoder/asil-d", "wrt-platform/asil-d", "wrt-runtime/asil-d", "wrt-intercept/asil-d"]
 
 # DO-178C - Aerospace
 dal-e = ["wrt-foundation/dal-e"]

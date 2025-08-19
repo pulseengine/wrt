@@ -42,6 +42,28 @@ use crate::{
 // Placeholder types for missing imports
 pub type Memory = ();
 
+/// Registry for managing post-return cleanup operations
+#[derive(Debug, Default)]
+pub struct PostReturnRegistry {
+    entries: Vec<PostReturnEntry>,
+}
+
+impl PostReturnRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn register(&mut self, entry: PostReturnEntry) {
+        self.entries.push(entry);
+    }
+
+    pub fn execute_cleanup(&mut self) -> Result<()> {
+        // Placeholder implementation
+        self.entries.clear();
+        Ok(())
+    }
+}
+
 /// Post-return cleanup entry tracking resources that need cleanup
 #[derive(Debug, Clone)]
 pub struct PostReturnEntry {

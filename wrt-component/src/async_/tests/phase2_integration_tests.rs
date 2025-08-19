@@ -23,7 +23,8 @@ mod tests {
         task::{Context, Poll},
         time::Duration,
     };
-    use wrt_foundation::{Arc, sync::Mutex};
+    use wrt_foundation::Arc;
+    use wrt_sync::Mutex;
     use wrt_platform::advanced_sync::Priority;
 
     /// Future that consumes variable fuel

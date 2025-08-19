@@ -46,8 +46,8 @@ use crate::{
         BlastZoneManager,
         IsolationLevel,
     },
-    resource_lifecycle::ResourceLifecycleManager,
     resources::{
+        resource_lifecycle::ResourceLifecycleManager,
         MemoryStrategy,
         ResourceManager,
         VerificationLevel,

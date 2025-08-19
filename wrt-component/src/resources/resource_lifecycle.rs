@@ -7,6 +7,10 @@
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+use wrt_error::{
+    Error,
+    Result,
+};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::{
     BoundedString,

@@ -11,10 +11,10 @@ use core::sync::atomic::{
 use wrt_foundation::{
     bounded_collections::BoundedMap,
     safe_managed_alloc,
-    sync::Mutex,
     Arc,
     CrateId,
 };
+use wrt_sync::Mutex;
 
 use crate::prelude::*;
 #[cfg(feature = "component-model-threading")]

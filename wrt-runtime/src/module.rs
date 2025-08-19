@@ -56,12 +56,14 @@ use crate::prelude::CoreMemoryType;
 type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
 
 // HashMap is not needed with clean architecture using BoundedMap
-use wrt_foundation::bounded_collections::BoundedMap;
-use wrt_foundation::traits::{
-    BoundedCapacity,
-    Checksummable,
-    FromBytes,
-    ToBytes,
+use wrt_foundation::{
+    bounded_collections::BoundedMap,
+    traits::{
+        BoundedCapacity,
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
 };
 
 // Unified memory allocation using safe_managed_alloc! - NO hardcoded providers

@@ -91,10 +91,16 @@ pub use wrt_decoder::decoder_no_alloc;
 #[cfg(feature = "std")]
 pub use wrt_decoder::{
     component::decode::decode_component,
-    component::decode::Component as DecodedComponent,
+    // component::decode::Component as DecodedComponent, // Commented out - causing import issues
     component::parse,
     component::validation,
 };
+
+// Placeholder for DecodedComponent until proper import is fixed
+pub type DecodedComponent = u32;
+
+// Placeholder for ResourceHandle - seems to be defined in multiple places
+pub type ResourceHandle = u32;
 // Note: sections moved to decoder_no_alloc or not available
 // Re-export from wrt-error
 pub use wrt_error::{

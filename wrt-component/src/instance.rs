@@ -17,6 +17,9 @@ use wrt_format::component::ComponentTypeDefinition;
 
 use crate::export::Export;
 
+// Type alias for compatibility
+pub type Instance = InstanceValue;
+
 /// Represents an instance value in a component
 #[derive(Debug)]
 pub struct InstanceValue {

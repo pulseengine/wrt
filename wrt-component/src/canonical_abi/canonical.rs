@@ -63,6 +63,7 @@ use crate::{
     prelude::*,
     resource_management::ResourceTable,
     resources::{
+        bounded_buffer_pool::BoundedBufferPool,
         MemoryStrategy,
         VerificationLevel,
     },

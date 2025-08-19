@@ -1,9 +1,11 @@
 // Placeholder types
 pub use crate::types::ComponentInstanceId;
 use crate::{
-    canonical_abi::canonical_options::CanonicalOptions,
+    canonical_abi::{
+        canonical_options::CanonicalOptions,
+        post_return::PostReturnRegistry,
+    },
     components::component_instantiation::ComponentInstance,
-    post_return::PostReturnRegistry,
 };
 pub type ResourceHandle = u32;
 pub type ValType = u32;
@@ -25,10 +27,7 @@ use wrt_foundation::{
     },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
-    safe_memory::{
-        NoStdProvider,
-        SafeMemory,
-    },
+    safe_memory::NoStdProvider,
 };
 
 #[cfg(not(feature = "std"))]

@@ -17,11 +17,10 @@ use wrt_foundation::{
     bounded::BoundedVec,
     bounded_collections::BoundedMap,
     safe_managed_alloc,
-    sync::Mutex,
     Arc,
     CrateId,
-    Weak,
 };
+use wrt_sync::Mutex;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::{
@@ -127,7 +126,7 @@ impl ComponentModelAsyncOps {
     pub fn new(
         executor: Arc<Mutex<FuelAsyncExecutor>>,
         task_manager: Arc<Mutex<TaskManager>>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
@@ -145,7 +144,7 @@ impl ComponentModelAsyncOps {
         current_task: TaskId,
         waitables: WaitableSet,
         timeout_ms: Option<u64>,
-    ) -> Result<TaskWaitResult, Error> {
+    ) -> Result<TaskWaitResult> {
         self.stats.total_waits.fetch_add(1, Ordering::Relaxed);
 
         // Validate waitables
@@ -191,7 +190,7 @@ impl ComponentModelAsyncOps {
     }
 
     /// Implement task.yield - yield execution to other tasks
-    pub fn task_yield(&mut self, current_task: TaskId) -> Result<(), Error> {
+    pub fn task_yield(&mut self, current_task: TaskId) -> Result<()> {
         self.stats.total_yields.fetch_add(1, Ordering::Relaxed);
 
         // Consume fuel for yielding
@@ -235,7 +234,7 @@ impl ComponentModelAsyncOps {
         &mut self,
         current_task: TaskId,
         waitables: &WaitableSet,
-    ) -> Result<TaskPollResult, Error> {
+    ) -> Result<TaskPollResult> {
         self.stats.total_polls.fetch_add(1, Ordering::Relaxed);
 
         // Consume fuel for polling
@@ -250,7 +249,7 @@ impl ComponentModelAsyncOps {
     }
 
     /// Process wait operations and wake tasks when waitables are ready
-    pub fn process_wait_operations(&mut self) -> Result<usize, Error> {
+    pub fn process_wait_operations(&mut self) -> Result<usize> {
         let mut woken_count = 0;
         let current_time = self.get_current_time();
 
@@ -298,28 +297,28 @@ impl ComponentModelAsyncOps {
     }
 
     /// Register a future as ready
-    pub fn mark_future_ready(&mut self, handle: FutureHandle) -> Result<(), Error> {
+    pub fn mark_future_ready(&mut self, handle: FutureHandle) -> Result<()> {
         self.waitable_registry.mark_future_ready(handle)
     }
 
     /// Register a stream as having data
-    pub fn mark_stream_ready(&mut self, handle: StreamHandle) -> Result<(), Error> {
+    pub fn mark_stream_ready(&mut self, handle: StreamHandle) -> Result<()> {
         self.waitable_registry.mark_stream_ready(handle)
     }
 
     /// Register a stream as writable
-    pub fn mark_stream_writable(&mut self, handle: StreamHandle) -> Result<(), Error> {
+    pub fn mark_stream_writable(&mut self, handle: StreamHandle) -> Result<()> {
         self.waitable_registry.mark_stream_writable(handle)
     }
 
     /// Register a future as writable
-    pub fn mark_future_writable(&mut self, handle: FutureHandle) -> Result<(), Error> {
+    pub fn mark_future_writable(&mut self, handle: FutureHandle) -> Result<()> {
         self.waitable_registry.mark_future_writable(handle)
     }
 
     // Private helper methods
 
-    fn check_waitables_ready(&self, waitables: &WaitableSet) -> Result<Option<u32>, Error> {
+    fn check_waitables_ready(&self, waitables: &WaitableSet) -> Result<Option<u32>> {
         for (index, waitable) in waitables.waitables.iter().enumerate() {
             match waitable {
                 Waitable::FutureReadable(handle) => {
@@ -349,7 +348,7 @@ impl ComponentModelAsyncOps {
         Ok(None)
     }
 
-    fn consume_fuel_for_task(&self, task_id: TaskId, fuel: u64) -> Result<(), Error> {
+    fn consume_fuel_for_task(&self, task_id: TaskId, fuel: u64) -> Result<()> {
         let executor = self.executor.lock()?;
         if let Some(task) = executor.tasks.get(&task_id) {
             executor.consume_task_fuel(task, fuel)?;
@@ -357,7 +356,7 @@ impl ComponentModelAsyncOps {
         Ok(())
     }
 
-    fn mark_task_waiting(&self, task_id: TaskId) -> Result<(), Error> {
+    fn mark_task_waiting(&self, task_id: TaskId) -> Result<()> {
         let mut executor = self.executor.lock()?;
         if let Some(task) = executor.tasks.get_mut(&task_id) {
             task.state = AsyncTaskState::Waiting;
@@ -365,17 +364,17 @@ impl ComponentModelAsyncOps {
         Ok(())
     }
 
-    fn wake_task(&self, task_id: TaskId) -> Result<(), Error> {
+    fn wake_task(&self, task_id: TaskId) -> Result<()> {
         let mut executor = self.executor.lock()?;
         executor.wake_task(task_id)
     }
 
-    fn set_task_wait_result(&self, task_id: TaskId, ready_index: u32) -> Result<(), Error> {
+    fn set_task_wait_result(&self, task_id: TaskId, ready_index: u32) -> Result<()> {
         // In real implementation, would store result in task context
         Ok(())
     }
 
-    fn set_task_timeout_result(&self, task_id: TaskId) -> Result<(), Error> {
+    fn set_task_timeout_result(&self, task_id: TaskId) -> Result<()> {
         // In real implementation, would store timeout result in task context
         Ok(())
     }
@@ -387,7 +386,7 @@ impl ComponentModelAsyncOps {
 }
 
 impl WaitableRegistry {
-    fn new() -> Result<Self, Error> {
+    fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         Ok(Self {
             futures_readable: BoundedMap::new(provider.clone())?,
@@ -397,50 +396,50 @@ impl WaitableRegistry {
         })
     }
 
-    fn is_future_ready(&self, handle: FutureHandle) -> Result<bool, Error> {
+    fn is_future_ready(&self, handle: FutureHandle) -> Result<bool> {
         Ok(matches!(
             self.futures_readable.get(&handle),
             Some(WaitableState::Ready)
         ))
     }
 
-    fn is_future_writable(&self, handle: FutureHandle) -> Result<bool, Error> {
+    fn is_future_writable(&self, handle: FutureHandle) -> Result<bool> {
         Ok(matches!(
             self.futures_writable.get(&handle),
             Some(WaitableState::Ready)
         ))
     }
 
-    fn is_stream_ready(&self, handle: StreamHandle) -> Result<bool, Error> {
+    fn is_stream_ready(&self, handle: StreamHandle) -> Result<bool> {
         Ok(matches!(
             self.streams_readable.get(&handle),
             Some(WaitableState::Ready)
         ))
     }
 
-    fn is_stream_writable(&self, handle: StreamHandle) -> Result<bool, Error> {
+    fn is_stream_writable(&self, handle: StreamHandle) -> Result<bool> {
         Ok(matches!(
             self.streams_writable.get(&handle),
             Some(WaitableState::Ready)
         ))
     }
 
-    fn mark_future_ready(&mut self, handle: FutureHandle) -> Result<(), Error> {
+    fn mark_future_ready(&mut self, handle: FutureHandle) -> Result<()> {
         self.futures_readable.insert(handle, WaitableState::Ready).ok();
         Ok(())
     }
 
-    fn mark_future_writable(&mut self, handle: FutureHandle) -> Result<(), Error> {
+    fn mark_future_writable(&mut self, handle: FutureHandle) -> Result<()> {
         self.futures_writable.insert(handle, WaitableState::Ready).ok();
         Ok(())
     }
 
-    fn mark_stream_ready(&mut self, handle: StreamHandle) -> Result<(), Error> {
+    fn mark_stream_ready(&mut self, handle: StreamHandle) -> Result<()> {
         self.streams_readable.insert(handle, WaitableState::Ready).ok();
         Ok(())
     }
 
-    fn mark_stream_writable(&mut self, handle: StreamHandle) -> Result<(), Error> {
+    fn mark_stream_writable(&mut self, handle: StreamHandle) -> Result<()> {
         self.streams_writable.insert(handle, WaitableState::Ready).ok();
         Ok(())
     }

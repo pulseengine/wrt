@@ -12,6 +12,33 @@ use wrt_foundation::component::{
 
 use crate::prelude::*;
 
+/// Placeholder runtime type for component execution
+#[derive(Debug)]
+pub struct Runtime {
+    /// Runtime configuration
+    pub config: RuntimeConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeConfig {
+    /// Maximum memory pages
+    pub max_memory_pages: u32,
+}
+
+impl Runtime {
+    pub fn new(config: RuntimeConfig) -> Self {
+        Self { config }
+    }
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            max_memory_pages: 1024,
+        }
+    }
+}
+
 /// WebAssembly function type
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncType {

@@ -16,6 +16,29 @@ pub use canonical_options::*;
 pub use canonical_realloc::*;
 pub use post_return::*;
 
+// Placeholder types for async canonical ABI support
+#[derive(Debug, Clone)]
+pub struct LiftingContext {
+    pub options: canonical_options::CanonicalOptions,
+}
+
+impl LiftingContext {
+    pub fn new(options: canonical_options::CanonicalOptions) -> Self {
+        Self { options }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LoweringContext {
+    pub options: canonical_options::CanonicalOptions,
+}
+
+impl LoweringContext {
+    pub fn new(options: canonical_options::CanonicalOptions) -> Self {
+        Self { options }
+    }
+}
+
 // Tests moved from canonical_abi_tests.rs
 #[cfg(test)]
 mod tests {

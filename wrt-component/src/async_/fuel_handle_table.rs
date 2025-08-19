@@ -162,8 +162,7 @@ impl<T> FuelHandleTable<T> {
         fuel_budget: u64,
         verification_level: VerificationLevel,
     ) -> Result<Self> {
-        let buffer_size = core::mem::size_of::<HandleEntry<T>>() * initial_capacity + 4096;
-        let provider = safe_managed_alloc!(buffer_size, CrateId::Component)?;
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
         let mut entries = BoundedVec::new(provider.clone())?;
         let mut free_list = BoundedVec::new(provider)?;

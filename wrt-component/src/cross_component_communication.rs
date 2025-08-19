@@ -84,6 +84,7 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
+    safe_memory::NoStdProvider,
     ComponentValue,
     ValType,
 };
@@ -93,7 +94,7 @@ use wrt_intercept::{
 };
 
 // Import our communication system components
-use crate::component_communication::{
+use crate::components::component_communication::{
     CallContext,
     CallRouter,
     CallRouterConfig,

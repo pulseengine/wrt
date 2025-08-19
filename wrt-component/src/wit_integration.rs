@@ -127,7 +127,7 @@ impl WitComponentBuilder {
         let val_type = self.parser.convert_to_valtype(wit_type)?;
 
         let base_resource_type = wrt_foundation::resource::ResourceType::Handle(
-            wrt_foundation::resource::ResourceHandle::new(0),
+            ResourceHandle(0),
         ;
 
         self.type_registry.create_generative_type(base_resource_type, instance_id)

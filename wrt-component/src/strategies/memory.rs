@@ -11,7 +11,7 @@ use wrt_error::kinds::{
 use crate::{
     prelude::*,
     resources::{
-        BoundedBufferPool,
+        bounded_buffer_pool::BoundedBufferPool,
         MemoryStrategy,
     },
 };

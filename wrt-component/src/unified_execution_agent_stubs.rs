@@ -104,7 +104,7 @@ impl ComponentRuntimeBridge {
     pub fn register_component_instance(
         &mut self,
         _component_id: u32,
-        _module_name: alloc::string::String,
+        _module_name: String,
         _function_count: u32,
         _memory_size: u32,
     ) -> core::result::Result<u32, wrt_error::Error> {
@@ -114,7 +114,7 @@ impl ComponentRuntimeBridge {
     #[cfg(feature = "std")]
     pub fn register_host_function<F>(
         &mut self,
-        _name: alloc::string::String,
+        _name: String,
         _signature: crate::component_instantiation::FunctionSignature,
         _func: F,
     ) -> core::result::Result<usize, wrt_error::Error>
@@ -192,7 +192,7 @@ pub mod async_stubs {
     pub enum AsyncReadResult {
         Ready(Vec<u8>),
         Pending,
-        Error(alloc::string::String),
+        Error(String),
     }
 
     /// Future handle stub

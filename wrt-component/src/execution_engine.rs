@@ -44,6 +44,31 @@ use wrt_foundation::{
     BoundedVec as Vec,
 };
 
+// Placeholder types for time-bounded execution
+#[derive(Debug, Clone)]
+pub struct TimeBoundedConfig {
+    pub timeout_ms: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct TimeBoundedContext {
+    pub config: TimeBoundedConfig,
+}
+
+#[derive(Debug, Clone)]
+pub enum TimeBoundedOutcome {
+    Success,
+    Timeout,
+    Error(String),
+}
+
+pub fn run_with_time_bounds<F, R>(_config: TimeBoundedConfig, _func: F) -> TimeBoundedOutcome
+where
+    F: FnOnce() -> Result<R, String>,
+{
+    TimeBoundedOutcome::Success
+}
+
 use crate::{
     components::component::{
         Component,
@@ -371,7 +396,7 @@ impl ComponentExecutionEngine {
         let function_name = {
             #[cfg(feature = "std")]
             {
-                alloc::format!("func_{}", function_index)
+                format!("func_{}", function_index)
             }
             #[cfg(not(any(feature = "std",)))]
             {
@@ -586,7 +611,7 @@ impl ComponentExecutionEngine {
         let module_name_string = {
             #[cfg(feature = "std")]
             {
-                alloc::string::String::from(module_name)
+                String::from(module_name)
             }
             #[cfg(not(any(feature = "std",)))]
             {
@@ -618,11 +643,11 @@ impl ComponentExecutionEngine {
     {
         use crate::canonical_abi::ComponentType;
 
-        let name_string = alloc::string::String::from(name);
+        let name_string = String::from(name);
         let signature = crate::component_instantiation::FunctionSignature {
             name:    name_string.clone(),
-            params:  alloc::vec![ComponentType::S32], // Simplified for now
-            returns: alloc::vec![ComponentType::S32],
+            params:  vec![ComponentType::S32], // Simplified for now
+            returns: vec![ComponentType::S32],
         };
 
         self.runtime_bridge

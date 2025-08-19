@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #[cfg(feature = "std")]
-use wrt_format::component::ResourceOperation as FormatResourceOperation;
+use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 
 #[cfg(feature = "std")]
 use super::Resource;

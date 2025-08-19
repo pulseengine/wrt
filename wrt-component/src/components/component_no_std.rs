@@ -39,10 +39,13 @@ use wrt_runtime::types::{
     TableType,
 };
 
+#[cfg(feature = "std")]
+use crate::instance::InstanceValue;
+#[cfg(not(feature = "std"))]
+use crate::instance_no_std::InstanceValue;
 use crate::{
     export::Export,
     import::Import,
-    instance_no_std::InstanceValue,
     resources::{
         ResourceStrategyNoStd,
         ResourceTable,

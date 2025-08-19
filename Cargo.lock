@@ -4020,6 +4020,7 @@ dependencies = [
  "wrt-foundation",
  "wrt-host",
  "wrt-intercept",
+ "wrt-platform",
  "wrt-runtime",
  "wrt-sync",
 ]

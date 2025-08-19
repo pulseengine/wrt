@@ -178,7 +178,7 @@ pub struct FuelAsyncTask {
     pub verification_level:   VerificationLevel,
     pub state:                AsyncTaskState,
     pub waker:                Option<Waker>,
-    pub future:               Pin<Box<dyn Future<Output = Result<(), Error>> + Send + 'static>>,
+    pub future:               Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>>,
     pub execution_context:    ExecutionContext,
     pub waiting_on_waitables: Option<Vec<WaitableHandle>>,
 }
@@ -283,38 +283,38 @@ pub struct ExecutionContext {
 /// Trait for execution state that can be suspended and resumed
 pub trait ExecutionState: core::fmt::Debug + Send + Sync {
     /// Save the current execution state for later resumption
-    fn save_state(&self) -> Result<Vec<u8>, Error>;
+    fn save_state(&self) -> Result<Vec<u8>>;
     /// Restore execution state from saved data
-    fn restore_state(&mut self, data: &[u8]) -> Result<(), Error>;
+    fn restore_state(&mut self, data: &[u8]) -> Result<()>;
     /// Get the current function index being executed
     fn current_function_index(&self) -> Option<u32>;
     /// Get local variables state
     fn get_locals(&self) -> &[ComponentValue];
     /// Set local variables state
-    fn set_locals(&mut self, locals: Vec<ComponentValue>) -> Result<(), Error>;
+    fn set_locals(&mut self, locals: Vec<ComponentValue>) -> Result<()>;
 }
 
 /// Trait providing access to executor services for execution contexts
 pub trait ExecutorServices: Send + Sync {
     /// Check if a resource is available via waitable registry
-    fn check_resource_availability(&self, resource_id: u64) -> Result<bool, Error>;
+    fn check_resource_availability(&self, resource_id: u64) -> Result<bool>;
 
     /// Create a waitable for async operations
     fn create_waitable(
         &mut self,
         component_id: ComponentInstanceId,
         resource_id: Option<u64>,
-    ) -> Result<WaitableHandle, Error>;
+    ) -> Result<WaitableHandle>;
 
     /// Register task as waiting on waitables
     fn register_task_waitables(
         &mut self,
         task_id: TaskId,
         waitables: Vec<WaitableHandle>,
-    ) -> Result<(), Error>;
+    ) -> Result<()>;
 
     /// Check if an external event has occurred
-    fn check_external_event(&self, event_id: u64) -> Result<bool, Error>;
+    fn check_external_event(&self, event_id: u64) -> Result<bool>;
 
     /// Get component instance for execution
     fn get_component_instance(
@@ -618,7 +618,7 @@ impl ASILExecutionConfig {
         binary_hash: Option<[u8; 32]>,
         resource_limits_data: Option<&[u8]>,
         platform_constraints: Option<&str>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let limits = if let (Some(hash), Some(data)) = (binary_hash, resource_limits_data) {
             // Priority 1: Use binary metadata if available
             ExecutionLimitsConfig::from_binary_metadata(hash, data)?
@@ -636,7 +636,7 @@ impl ASILExecutionConfig {
 
     /// Validate that this configuration is appropriate for the target ASIL
     /// level
-    pub fn validate_for_asil(&self) -> Result<(), Error> {
+    pub fn validate_for_asil(&self) -> Result<()> {
         match self.mode {
             ASILExecutionMode::D { .. } => {
                 // ASIL-D requires all limits to be specified
@@ -670,10 +670,7 @@ impl ASILExecutionConfig {
 impl ExecutionLimitsConfig {
     /// Create limits config from WebAssembly binary metadata
     /// Parses the resource limits custom section for execution constraints
-    pub fn from_binary_metadata(
-        binary_hash: [u8; 32],
-        custom_section_data: &[u8],
-    ) -> Result<Self, Error> {
+    pub fn from_binary_metadata(binary_hash: [u8; 32], custom_section_data: &[u8]) -> Result<Self> {
         use wrt_decoder::resource_limits_section::ResourceLimitsSection;
 
         // Parse the resource limits custom section
@@ -802,7 +799,7 @@ impl ExecutionContext {
     }
 
     /// Create from configuration (alias for new for clarity)
-    pub fn from_config(asil_config: ASILExecutionConfig) -> Result<Self, Error> {
+    pub fn from_config(asil_config: ASILExecutionConfig) -> Result<Self> {
         Ok(Self::new(asil_config)?)
     }
 
@@ -812,7 +809,7 @@ impl ExecutionContext {
     }
 
     /// Check if execution can continue based on ASIL constraints
-    pub fn can_continue_execution(&self) -> Result<bool, Error> {
+    pub fn can_continue_execution(&self) -> Result<bool> {
         // Check stack depth limits
         if self.stack_depth >= self.max_stack_depth {
             return Err(Error::runtime_execution_error("Stack depth limit exceeded"));
@@ -857,7 +854,7 @@ impl ExecutionContext {
         instruction_pointer: u32,
         stack_frame: Vec<ComponentValue>,
         locals: Vec<ComponentValue>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         // Convert ComponentValue to wrt_foundation::Value for storage
         let stack = stack_frame
             .into_iter()
@@ -891,7 +888,7 @@ impl ExecutionContext {
         instruction_pointer: u32,
         yield_type: YieldType,
         resumption_condition: Option<ResumptionCondition>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
 
         // Capture current execution state
@@ -913,7 +910,7 @@ impl ExecutionContext {
     }
 
     /// Create comprehensive yield context for restoration
-    fn create_yield_context(&self) -> Result<YieldContext, Error> {
+    fn create_yield_context(&self) -> Result<YieldContext> {
         Ok(YieldContext {
             module_state:     Some(ModuleExecutionState {
                 current_function: self.current_function_index,
@@ -944,7 +941,7 @@ impl ExecutionContext {
     /// Capture current execution state for yielding
     fn capture_execution_state(
         &self,
-    ) -> Result<(Vec<wrt_foundation::Value>, Vec<wrt_foundation::Value>), Error> {
+    ) -> Result<(Vec<wrt_foundation::Value>, Vec<wrt_foundation::Value>)> {
         // Capture real execution state from the engine if available
         if let Some(component_instance) = &self.component_instance {
             // In a production implementation, we would get this from the active engine
@@ -967,7 +964,7 @@ impl ExecutionContext {
     fn convert_component_value_to_value(
         &self,
         cv: ComponentValue,
-    ) -> Result<wrt_foundation::Value, Error> {
+    ) -> Result<wrt_foundation::Value> {
         // Simple conversion - in real implementation would handle all ComponentValue
         // types
         match cv {
@@ -1011,7 +1008,7 @@ impl ExecutionContext {
     /// Execute a single instruction step with the engine
 
     /// Restore execution from advanced yield point
-    pub fn restore_from_yield_point(&mut self, yield_point: &YieldPoint) -> Result<(), Error> {
+    pub fn restore_from_yield_point(&mut self, yield_point: &YieldPoint) -> Result<()> {
         // Restore basic execution state
         self.current_function_index = yield_point.instruction_pointer;
         self.function_params = yield_point.locals.clone();
@@ -1043,7 +1040,7 @@ impl ExecutionContext {
         &self,
         yield_point: &YieldPoint,
         executor: &dyn ExecutorServices,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool> {
         if let Some(condition) = &yield_point.resumption_condition {
             match condition {
                 ResumptionCondition::ResourceAvailable { resource_id } => {
@@ -1081,7 +1078,7 @@ impl ExecutionContext {
         &mut self,
         instruction_pointer: u32,
         asil_reason: String,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let yield_type = YieldType::ASILCompliance {
             reason: asil_reason,
         };
@@ -1110,7 +1107,7 @@ impl ExecutionContext {
         &mut self,
         instruction_pointer: u32,
         resource_id: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let yield_type = YieldType::AsyncWait { resource_id };
         let resumption_condition = Some(ResumptionCondition::ResourceAvailable { resource_id });
 
@@ -1118,7 +1115,7 @@ impl ExecutionContext {
     }
 
     /// Save yield point state for ASIL-D deterministic execution
-    pub fn save_yield_point(&mut self, yield_info: YieldInfo) -> Result<(), Error> {
+    pub fn save_yield_point(&mut self, yield_info: YieldInfo) -> Result<()> {
         // Create memory snapshot for ASIL-D
         let memory_snapshot = if let ASILExecutionMode::D {
             deterministic_execution: true,
@@ -1155,7 +1152,7 @@ impl ExecutionContext {
     }
 
     /// Restore module execution state
-    fn restore_module_state(&mut self, module_state: &ModuleExecutionState) -> Result<(), Error> {
+    fn restore_module_state(&mut self, module_state: &ModuleExecutionState) -> Result<()> {
         self.current_function_index = module_state.current_function;
 
         // In real implementation, would restore frame stack, control stack, etc.
@@ -1168,21 +1165,21 @@ impl ExecutionContext {
     }
 
     /// Create memory snapshot for deterministic execution
-    fn create_memory_snapshot(&self) -> Result<Vec<u8>, Error> {
+    fn create_memory_snapshot(&self) -> Result<Vec<u8>> {
         // In real implementation, would capture actual memory state
         // For now, return empty snapshot
         Ok(vec![])
     }
 
     /// Restore memory snapshot for deterministic execution
-    fn restore_memory_snapshot(&mut self, _snapshot: &[u8]) -> Result<(), Error> {
+    fn restore_memory_snapshot(&mut self, _snapshot: &[u8]) -> Result<()> {
         // In real implementation, would restore memory state
         // For now, just return success
         Ok(())
     }
 
     /// Validate memory isolation for ASIL-C
-    pub fn validate_memory_isolation(&self) -> Result<(), Error> {
+    pub fn validate_memory_isolation(&self) -> Result<()> {
         // In real implementation, would check memory boundaries
         // For now, always succeed
         Ok(())
@@ -1239,7 +1236,7 @@ pub struct WaitableRegistry {
 
 impl WaitableRegistry {
     /// Create a new waitable registry
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             next_handle:     AtomicU64::new(1),
             waitables:       BoundedMap::new(provider.clone())?,
@@ -1252,7 +1249,7 @@ impl WaitableRegistry {
         &mut self,
         component_id: ComponentInstanceId,
         resource_id: Option<u64>,
-    ) -> Result<WaitableHandle, Error> {
+    ) -> Result<WaitableHandle> {
         let handle = self.next_handle.fetch_add(1, Ordering::SeqCst);
         let state = WaitableState {
             handle,
@@ -1266,7 +1263,7 @@ impl WaitableRegistry {
     }
 
     /// Mark a waitable as ready
-    pub fn notify_waitable(&mut self, handle: WaitableHandle) -> Result<Vec<TaskId>, Error> {
+    pub fn notify_waitable(&mut self, handle: WaitableHandle) -> Result<Vec<TaskId>> {
         if let Some(waitable) = self.waitables.get_mut(&handle) {
             waitable.is_ready = true;
             self.ready_waitables.push(handle)?;
@@ -1277,11 +1274,7 @@ impl WaitableRegistry {
     }
 
     /// Add a task to wait on a waitable
-    pub fn add_waiting_task(
-        &mut self,
-        handle: WaitableHandle,
-        task_id: TaskId,
-    ) -> Result<(), Error> {
+    pub fn add_waiting_task(&mut self, handle: WaitableHandle, task_id: TaskId) -> Result<()> {
         if let Some(waitable) = self.waitables.get_mut(&handle) {
             waitable.waiting_tasks.push(task_id);
         }
@@ -1304,7 +1297,7 @@ impl WaitableRegistry {
     }
 
     /// Clean up a waitable
-    pub fn remove_waitable(&mut self, handle: WaitableHandle) -> Result<(), Error> {
+    pub fn remove_waitable(&mut self, handle: WaitableHandle) -> Result<()> {
         self.waitables.remove(&handle);
         Ok(())
     }
@@ -1371,7 +1364,7 @@ pub enum ExecutorState {
 
 impl FuelAsyncExecutor {
     /// Create a new fuel-based async executor
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider)?));
         let wake_coalescer = crate::async_::fuel_aware_waker::WakeCoalescer::new().ok();
@@ -1444,7 +1437,7 @@ impl FuelAsyncExecutor {
         &mut self,
         component_id: ComponentInstanceId,
         component: Arc<ComponentInstance>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if self.component_registry.contains_key(&component_id) {
             return Err(Error::new(
                 ErrorCategory::Component,
@@ -1458,7 +1451,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Unregister a component instance
-    pub fn unregister_component(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
+    pub fn unregister_component(&mut self, component_id: ComponentInstanceId) -> Result<()> {
         if self.component_registry.remove(&component_id).is_none() {
             return Err(Error::runtime_execution_error("Component not found"));
         }
@@ -1470,12 +1463,12 @@ impl FuelAsyncExecutor {
         &mut self,
         component_id: ComponentInstanceId,
         resource_id: Option<u64>,
-    ) -> Result<WaitableHandle, Error> {
+    ) -> Result<WaitableHandle> {
         self.waitable_registry.register_waitable(component_id, resource_id)
     }
 
     /// Notify that a waitable is ready
-    pub fn notify_waitable(&mut self, handle: WaitableHandle) -> Result<(), Error> {
+    pub fn notify_waitable(&mut self, handle: WaitableHandle) -> Result<()> {
         // Get tasks waiting on this waitable
         let waiting_tasks = self.waitable_registry.notify_waitable(handle)?;
 
@@ -1509,10 +1502,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Enable dynamic fuel management
-    pub fn enable_dynamic_fuel_management(
-        &mut self,
-        policy: FuelAllocationPolicy,
-    ) -> Result<(), Error> {
+    pub fn enable_dynamic_fuel_management(&mut self, policy: FuelAllocationPolicy) -> Result<()> {
         let mut manager = FuelDynamicManager::new(policy, 1_000_000)?;
         // Register default component
         manager.register_component(ComponentInstanceId::new(0), 100_000, Priority::Normal)?;
@@ -1521,13 +1511,13 @@ impl FuelAsyncExecutor {
     }
 
     /// Enable preemption support
-    pub fn enable_preemption(&mut self, policy: PreemptionPolicy) -> Result<(), Error> {
+    pub fn enable_preemption(&mut self, policy: PreemptionPolicy) -> Result<()> {
         self.preemption_manager = Some(FuelPreemptionManager::new(policy)?);
         Ok(())
     }
 
     /// Enable active fuel monitoring
-    pub fn enable_fuel_monitoring(&mut self) -> Result<(), Error> {
+    pub fn enable_fuel_monitoring(&mut self) -> Result<()> {
         self.fuel_monitor = Some(FuelMonitor::new()?);
         Ok(())
     }
@@ -1564,7 +1554,7 @@ impl FuelAsyncExecutor {
         &self,
         task: &FuelAsyncTask,
         fuel_to_consume: u64,
-    ) -> Result<FuelEnforcementDecision, Error> {
+    ) -> Result<FuelEnforcementDecision> {
         let policy = match &self.fuel_enforcement_policy {
             Some(p) => p,
             None => return Ok(FuelEnforcementDecision::Allow), // No policy, allow
@@ -1609,7 +1599,7 @@ impl FuelAsyncExecutor {
         fuel_to_consume: u64,
         remaining_fuel: u64,
         policy: &ASILDPolicy,
-    ) -> Result<FuelEnforcementDecision, Error> {
+    ) -> Result<FuelEnforcementDecision> {
         // Check fuel quantum alignment
         if policy.enforce_deterministic_ordering && fuel_to_consume % policy.fuel_quantum != 0 {
             return Err(Error::new(
@@ -1641,7 +1631,7 @@ impl FuelAsyncExecutor {
         fuel_to_consume: u64,
         remaining_fuel: u64,
         policy: &ASILCPolicy,
-    ) -> Result<FuelEnforcementDecision, Error> {
+    ) -> Result<FuelEnforcementDecision> {
         // Check component isolation
         if policy.component_isolation {
             // In real implementation, would check component-specific fuel pool
@@ -1675,7 +1665,7 @@ impl FuelAsyncExecutor {
         fuel_to_consume: u64,
         remaining_fuel: u64,
         policy: &ASILBPolicy,
-    ) -> Result<FuelEnforcementDecision, Error> {
+    ) -> Result<FuelEnforcementDecision> {
         // Check slice budget
         let current_slice_consumed =
             task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
@@ -1710,7 +1700,7 @@ impl FuelAsyncExecutor {
         fuel_to_consume: u64,
         _remaining_fuel: u64,
         policy: &ASILAPolicy,
-    ) -> Result<FuelEnforcementDecision, Error> {
+    ) -> Result<FuelEnforcementDecision> {
         let total_consumed = task.fuel_consumed.load(Ordering::Acquire) + fuel_to_consume;
 
         // Check hard limit
@@ -1742,9 +1732,9 @@ impl FuelAsyncExecutor {
         priority: Priority,
         future: F,
         binary_data: Option<&[u8]>,
-    ) -> Result<TaskId, Error>
+    ) -> Result<TaskId>
     where
-        F: Future<Output = Result<(), Error>> + Send + 'static,
+        F: Future<Output = Result<()>> + Send + 'static,
     {
         // Extract resource limits from binary if available
         let asil_config = if let Some(wasm_bytes) = binary_data {
@@ -1769,9 +1759,9 @@ impl FuelAsyncExecutor {
         fuel_budget: u64,
         priority: Priority,
         future: F,
-    ) -> Result<TaskId, Error>
+    ) -> Result<TaskId>
     where
-        F: Future<Output = Result<(), Error>> + Send + 'static,
+        F: Future<Output = Result<()>> + Send + 'static,
     {
         self.spawn_task_with_binary(component_id, fuel_budget, priority, future, None)
     }
@@ -1784,9 +1774,9 @@ impl FuelAsyncExecutor {
         priority: Priority,
         future: F,
         asil_config: ASILExecutionConfig,
-    ) -> Result<TaskId, Error>
+    ) -> Result<TaskId>
     where
-        F: Future<Output = Result<(), Error>> + Send + 'static,
+        F: Future<Output = Result<()>> + Send + 'static,
     {
         // Calculate dynamic fuel allocation if enabled
         let allocated_fuel = if let Some(ref mut fuel_mgr) = self.fuel_manager {
@@ -1863,7 +1853,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Poll ready tasks and advance execution
-    pub fn poll_tasks(&mut self) -> Result<usize, Error> {
+    pub fn poll_tasks(&mut self) -> Result<usize> {
         if self.executor_state != ExecutorState::Running {
             return Ok(0);
         }
@@ -2016,7 +2006,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Wake a task and add it to the ready queue
-    pub fn wake_task(&mut self, task_id: TaskId) -> Result<(), Error> {
+    pub fn wake_task(&mut self, task_id: TaskId) -> Result<()> {
         if let Some(task) = self.tasks.get_mut(&task_id) {
             if task.state == AsyncTaskState::Waiting {
                 // Consume fuel for waking
@@ -2064,7 +2054,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Shutdown the executor gracefully
-    pub fn shutdown(&mut self) -> Result<(), Error> {
+    pub fn shutdown(&mut self) -> Result<()> {
         self.executor_state = ExecutorState::ShuttingDown;
 
         // Cancel all remaining tasks
@@ -2112,7 +2102,7 @@ impl FuelAsyncExecutor {
         self.fuel_enforcement.load(Ordering::Acquire) && task.fuel_budget > 0
     }
 
-    fn consume_task_fuel(&self, task: &FuelAsyncTask, amount: u64) -> Result<(), Error> {
+    fn consume_task_fuel(&self, task: &FuelAsyncTask, amount: u64) -> Result<()> {
         if !self.should_check_fuel(task) {
             return Ok();
         }
@@ -2219,7 +2209,7 @@ impl FuelAsyncExecutor {
         self.consume_global_fuel(amount)
     }
 
-    fn consume_global_fuel(&self, amount: u64) -> Result<(), Error> {
+    fn consume_global_fuel(&self, amount: u64) -> Result<()> {
         if self.fuel_enforcement.load(Ordering::Acquire) {
             let consumed = self.global_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
             let limit = self.global_fuel_limit.load(Ordering::Acquire);
@@ -2251,7 +2241,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task_id: TaskId,
         waker_context: &mut Context<'_>,
-    ) -> Result<Option<Vec<u8>>, Error> {
+    ) -> Result<Option<Vec<u8>>> {
         let task = self
             .tasks
             .get_mut(&task_id)
@@ -2336,7 +2326,7 @@ impl FuelAsyncExecutor {
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
         _waker_context: &mut Context<'_>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // Increment stack depth for this execution step
         task.execution_context.stack_depth += 1;
 
@@ -2386,7 +2376,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // For ASIL-D, execution must be deterministic and bounded
         let fuel_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
 
@@ -2423,7 +2413,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // For ASIL-C, ensure spatial, temporal, and resource isolation
 
         // Check temporal isolation - no interference from other tasks
@@ -2465,7 +2455,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // For ASIL-B, enforce strict resource limits
 
         if let ASILExecutionMode::B {
@@ -2498,7 +2488,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // For ASIL-A, basic execution with error detection
 
         // Basic error detection
@@ -2530,7 +2520,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task_id: TaskId,
         operation: ComponentAsyncOperation,
-    ) -> Result<ComponentAsyncOperationResult, Error> {
+    ) -> Result<ComponentAsyncOperationResult> {
         let task = self
             .tasks
             .get_mut(&task_id)
@@ -2619,7 +2609,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Resume a task from a yield point
-    pub fn resume_task_from_yield_point(&mut self, task_id: TaskId) -> Result<(), Error> {
+    pub fn resume_task_from_yield_point(&mut self, task_id: TaskId) -> Result<()> {
         let task = self
             .tasks
             .get_mut(&task_id)
@@ -2648,7 +2638,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task: &mut FuelAsyncTask,
         yield_point: &YieldPoint,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         // 1. Restore instruction pointer
         // In real WebAssembly execution, would set the program counter
         // For now, we store it in the execution context for tracking
@@ -2710,7 +2700,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task_id: TaskId,
         component_instance: Arc<ComponentInstance>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let task = self
             .tasks
             .get_mut(&task_id)
@@ -2726,7 +2716,7 @@ impl FuelAsyncExecutor {
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
         _waker_context: &mut Context<'_>,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // Create a StacklessEngine for WebAssembly execution
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
 
@@ -2793,7 +2783,7 @@ impl FuelAsyncExecutor {
         task: &mut FuelAsyncTask,
         component_instance: &Arc<ComponentInstance>,
         max_instructions: u32,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // Get the function to execute from the task's execution context
         let function_index = task.execution_context.current_function_index;
 
@@ -2869,7 +2859,7 @@ impl FuelAsyncExecutor {
         task: &mut FuelAsyncTask,
         yield_point: &YieldPoint,
         max_instructions: u32,
-    ) -> Result<ExecutionStepResult, Error> {
+    ) -> Result<ExecutionStepResult> {
         // Restore engine state from yield point
         engine.restore_state(wrt_runtime::stackless::engine::EngineState {
             instruction_pointer: yield_point.instruction_pointer,
@@ -2927,7 +2917,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Serialize WebAssembly values to bytes
-    fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>, Error> {
+    fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>> {
         let mut result = Vec::new();
 
         for value in values {
@@ -2973,7 +2963,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Get current execution state for debugging/monitoring
-    pub fn get_execution_state(&self, task_id: TaskId) -> Result<ExecutionStateInfo, Error> {
+    pub fn get_execution_state(&self, task_id: TaskId) -> Result<ExecutionStateInfo> {
         let task = self
             .tasks
             .get(&task_id)
@@ -2993,10 +2983,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Enable fuel debt/credit system with configuration
-    pub fn enable_debt_credit_system(
-        &mut self,
-        config: Option<DebtCreditConfig>,
-    ) -> Result<(), Error> {
+    pub fn enable_debt_credit_system(&mut self, config: Option<DebtCreditConfig>) -> Result<()> {
         let config = config.unwrap_or_default();
 
         let system = FuelDebtCreditSystem::new(
@@ -3039,7 +3026,7 @@ impl FuelAsyncExecutor {
     }
 
     /// Incur fuel debt for a task
-    pub fn incur_fuel_debt(&mut self, task_id: TaskId, amount: u64) -> Result<(), Error> {
+    pub fn incur_fuel_debt(&mut self, task_id: TaskId, amount: u64) -> Result<()> {
         let system = self
             .debt_credit_system
             .as_mut()
@@ -3074,7 +3061,7 @@ impl FuelAsyncExecutor {
         component_id: ComponentInstanceId,
         amount: u64,
         restrictions: Option<CreditRestriction>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let system = self
             .debt_credit_system
             .as_mut()
@@ -3110,7 +3097,7 @@ impl FuelAsyncExecutor {
         &mut self,
         task_id: TaskId,
         additional_fuel: u64,
-    ) -> Result<u64, Error> {
+    ) -> Result<u64> {
         let task = self
             .tasks
             .get_mut(&task_id)
@@ -3394,7 +3381,7 @@ mod tests {
     }
 
     impl Future for YieldOnceFuture {
-        type Output = Result<(), Error>;
+        type Output = Result<()>;
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if !self.yielded {

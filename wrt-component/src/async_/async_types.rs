@@ -22,8 +22,6 @@ use std::{
 
 use wrt_error::Result as WrtResult;
 #[cfg(feature = "std")]
-use wrt_foundation::component_value::ComponentValue;
-#[cfg(feature = "std")]
 use wrt_foundation::{
     bounded::BoundedVec,
     component_value::ComponentValue,

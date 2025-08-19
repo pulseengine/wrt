@@ -8,7 +8,6 @@ use std::{
     sync::Weak,
 };
 
-use wrt_format::component::ResourceOperation as FormatResourceOperation;
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{
     WrtHashMap,
@@ -18,7 +17,10 @@ use wrt_foundation::{
     bounded::BoundedVec,
     bounded_collections::BoundedMap,
     budget_aware_provider::CrateId,
-    resource::ResourceOperation,
+    resource::{
+        ResourceOperation as FormatResourceOperation,
+        ResourceOperation,
+    },
     safe_managed_alloc,
     WrtResult,
 };

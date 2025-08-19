@@ -562,10 +562,7 @@ impl CrossComponentCallManager {
             )),
             ResourceTransferPolicy::Transfer => {
                 // Transfer ownership
-                self.resource_manager.transfer_ownership(
-                    wrt_foundation::resource::ResourceHandle(handle),
-                    to_instance,
-                )?;
+                self.resource_manager.transfer_ownership(ResourceHandle(handle), to_instance)?;
                 Ok(TransferredResource {
                     handle,
                     transfer_type,
@@ -621,7 +618,7 @@ impl CrossComponentCallManager {
                 ResourceTransferPolicy::Transfer => {
                     // Restore ownership to original owner
                     self.resource_manager.transfer_ownership(
-                        wrt_foundation::resource::ResourceHandle(transfer.handle),
+                        ResourceHandle(transfer.handle),
                         transfer.original_owner,
                     )?;
                 },
@@ -795,7 +792,7 @@ impl CrossComponentCallManager {
                     match transfer.transfer_type {
                         ResourceTransferType::Move => {
                             self.resource_manager.transfer_ownership(
-                                wrt_foundation::resource::ResourceHandle(transfer.resource_handle),
+                                ResourceHandle(transfer.resource_handle),
                                 target_component,
                             )?;
                         },
@@ -816,7 +813,7 @@ impl CrossComponentCallManager {
                 match transfer.transfer_type {
                     ResourceTransferType::Move => {
                         self.resource_manager.transfer_ownership(
-                            wrt_foundation::resource::ResourceHandle(transfer.resource_handle),
+                            ResourceHandle(transfer.resource_handle),
                             transfer.target_component,
                         )?;
                     },

@@ -38,9 +38,27 @@ use wrt_foundation::{
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::{
+    CallFrame,
+    Task,
+    TaskContext,
+    TaskId,
+    TaskManager,
+    TaskState,
+    TaskType,
+};
+#[cfg(feature = "component-model-threading")]
 use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 use crate::{
     async_::{
+        async_types::{
+            Future,
+            FutureHandle,
+            Stream,
+            StreamHandle,
+            Waitable,
+            WaitableSet,
+        },
         component_async_bridge::{
             ComponentAsyncBridge,
             PollResult,
@@ -53,24 +71,7 @@ use crate::{
         fuel_dynamic_manager::FuelAllocationPolicy,
         fuel_preemption_support::PreemptionPolicy,
     },
-    async_types::{
-        Future,
-        FutureHandle,
-        Stream,
-        StreamHandle,
-        Waitable,
-        WaitableSet,
-    },
     prelude::*,
-    task_manager::{
-        CallFrame,
-        Task,
-        TaskContext,
-        TaskId,
-        TaskManager,
-        TaskState,
-        TaskType,
-    },
     ComponentInstanceId,
 };
 
@@ -240,6 +241,7 @@ impl TaskManagerAsyncBridge {
         config: BridgeConfiguration,
     ) -> Result<Self, Error> {
         let async_bridge = ComponentAsyncBridge::new(task_manager.clone(), thread_manager)?;
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
         Ok(Self {
             task_manager,

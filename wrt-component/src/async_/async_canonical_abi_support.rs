@@ -36,19 +36,19 @@ pub type FuelTrackedThreadManager = ();
 
 use crate::{
     async_::{
+        async_types::{
+            Future,
+            FutureHandle,
+            Stream,
+            StreamHandle,
+            Waitable,
+            WaitableSet,
+        },
         fuel_async_executor::AsyncTaskState,
         task_manager_async_bridge::{
             ComponentAsyncTaskType,
             TaskManagerAsyncBridge,
         },
-    },
-    async_types::{
-        Future,
-        FutureHandle,
-        Stream,
-        StreamHandle,
-        Waitable,
-        WaitableSet,
     },
     canonical_abi::{
         CanonicalOptions,
@@ -769,11 +769,9 @@ mod tests {
     use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager =
-            wrt_foundation::Arc::new(wrt_foundation::sync::Mutex::new(TaskManager::new()));
-        let thread_manager = wrt_foundation::Arc::new(wrt_foundation::sync::Mutex::new(
-            FuelTrackedThreadManager::new(),
-        ));
+        let task_manager = wrt_foundation::Arc::new(wrt_sync::Mutex::new(TaskManager::new()));
+        let thread_manager =
+            wrt_foundation::Arc::new(wrt_sync::Mutex::new(FuelTrackedThreadManager::new()));
         let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
         TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
     }

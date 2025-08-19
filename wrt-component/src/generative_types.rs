@@ -300,9 +300,8 @@ impl Default for GenerativeTypeRegistry {
 
 #[cfg(test)]
 mod tests {
-    use wrt_foundation::resource::ResourceHandle;
-
     use super::*;
+    use crate::prelude::ResourceHandle;
 
     #[test]
     fn test_generative_type_registry_creation() {

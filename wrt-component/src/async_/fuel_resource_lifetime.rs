@@ -416,13 +416,13 @@ impl ResourceLifetimeManager {
 
 /// Resource scope for automatic cleanup
 pub struct ResourceScope {
-    manager:   Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>,
+    manager:   Arc<wrt_sync::Mutex<ResourceLifetimeManager>>,
     resources: Vec<ResourceHandle>,
 }
 
 impl ResourceScope {
     /// Create a new resource scope
-    pub fn new(manager: Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>) -> Self {
+    pub fn new(manager: Arc<wrt_sync::Mutex<ResourceLifetimeManager>>) -> Self {
         Self {
             manager,
             resources: Vec::new(),
@@ -463,7 +463,7 @@ impl Drop for ResourceScope {
 /// Component resource tracker
 pub struct ComponentResourceTracker {
     /// Resource managers by component ID
-    managers: BoundedMap<u64, Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>, 128>,
+    managers:           BoundedMap<u64, Arc<wrt_sync::Mutex<ResourceLifetimeManager>>, 128>,
     /// Global resource fuel budget
     global_fuel_budget: u64,
 }
@@ -484,7 +484,7 @@ impl ComponentResourceTracker {
     pub fn get_or_create_manager(
         &mut self,
         component_id: u64,
-    ) -> Result<Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>> {
+    ) -> Result<Arc<wrt_sync::Mutex<ResourceLifetimeManager>>> {
         if let Some(manager) = self.managers.get(&component_id) {
             Ok(manager.clone())
         } else {
@@ -492,7 +492,7 @@ impl ComponentResourceTracker {
                 component_id,
                 self.global_fuel_budget / 10, // Each component gets 10% of global budget
             )?;
-            let arc_manager = Arc::new(wrt_foundation::sync::Mutex::new(manager));
+            let arc_manager = Arc::new(wrt_sync::Mutex::new(manager));
             self.managers.insert(component_id, arc_manager.clone())?;
             Ok(arc_manager)
         }
@@ -553,7 +553,7 @@ mod tests {
 
     #[test]
     fn test_resource_scope() {
-        let manager = Arc::new(wrt_foundation::sync::Mutex::new(
+        let manager = Arc::new(wrt_sync::Mutex::new(
             ResourceLifetimeManager::new(1, 1000).unwrap(),
         ));
 
