@@ -7,12 +7,13 @@
 //! The stackless engine uses a state machine approach to track execution state
 //! and allows for pausing and resuming execution at any point.
 
-#[cfg(feature = "std")]
-use std::string::String;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::String;
+#[cfg(feature = "std")]
+use std::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>;
+type String =
+    wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>;
 
 pub mod engine;
 pub mod extensions;
@@ -37,13 +38,13 @@ pub use crate::cfi_engine::ExecutionResult;
 #[derive(Debug, Clone, PartialEq)]
 pub struct YieldInfo {
     pub instruction_pointer: u32,
-    pub yield_reason: String,
+    pub yield_reason:        String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EngineState {
     pub instruction_pointer: u32,
-    pub fuel: u64,
+    pub fuel:                u64,
     pub current_instance_id: Option<usize>,
 }
 

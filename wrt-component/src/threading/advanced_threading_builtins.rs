@@ -16,6 +16,7 @@
 
 extern crate alloc;
 
+use core::cell::RefCell as AtomicRefCell;
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -39,7 +40,6 @@ use wrt_foundation::{
     },
     types::ValueType,
 };
-use core::cell::RefCell as AtomicRefCell;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     budget_aware_provider::CrateId,

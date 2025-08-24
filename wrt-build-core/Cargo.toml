@@ -14,7 +14,7 @@ no_std = []
 [dependencies]
 # Core dependencies
 anyhow = { workspace = true }
-clap = { version = "4.5.4", features = ["derive", "env"] }
+clap = { version = "4.5.39", features = ["derive", "env"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 walkdir = "2.5.0"
@@ -33,7 +33,7 @@ md5 = "0.7"
 
 # WAST test suite support
 wast = "235.0"
-wat = "1.0.89"
+wat = "1.232.0"
 
 # Internal WRT crates
 wrt-error = { workspace = true }

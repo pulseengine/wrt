@@ -439,14 +439,15 @@ impl WrtdEngine {
         // Component model support disabled
         return Err(Error::runtime_error("Component model temporarily disabled"));
         // let mut registry = ComponentRegistry::new()
-        //     .map_err(|_| Error::runtime_error("Failed to create component registry"))?;
+        //     .map_err(|_| Error::runtime_error("Failed to create component
+        // registry"))?;
 
         // Register component interfaces
         // for interface in &self.config.component_interfaces {
         //     registry
         //         .register_interface(interface)
-        //         .map_err(|_| Error::runtime_error("Failed to register component interface"))?;
-        // }
+        //         .map_err(|_| Error::runtime_error("Failed to register component
+        // interface"))?; }
 
         // self.component_registry = Some(registry);
 
@@ -493,7 +494,7 @@ impl WrtdEngine {
 
             // Create component linker with host functions
             // let mut linker = ComponentLinker::new() // Disabled
-                // .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
+            // .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
 
             // Link WASI functions if available
             #[cfg(feature = "wasi")]
@@ -510,7 +511,8 @@ impl WrtdEngine {
             // Execute the component's main function
             // instance
             //     .call_main(&[])
-            //     .map_err(|_| Error::runtime_execution_error("Component execution failed"))?;
+            //     .map_err(|_| Error::runtime_execution_error("Component
+            // execution failed"))?;
 
             // self.stats.components_executed += 1;
         } else {
@@ -602,19 +604,15 @@ impl WrtdEngine {
 
             // Execute function
             let function_name = self.config.function_name.unwrap_or("start");
-            let _ = self.logger.handle_minimal_log(
-                LogLevel::Info,
-                "Executing function",
-            );
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
 
             // Check if function exists before execution
             if !engine.has_function(instance, function_name).map_err(|e| {
                 Error::runtime_function_not_found("Failed to check function existence")
             })? {
-                let _ = self.logger.handle_minimal_log(
-                    LogLevel::Error,
-                    "Function not found in module exports",
-                );
+                let _ = self
+                    .logger
+                    .handle_minimal_log(LogLevel::Error, "Function not found in module exports");
                 return Err(Error::runtime_function_not_found("Function not found"));
             }
 

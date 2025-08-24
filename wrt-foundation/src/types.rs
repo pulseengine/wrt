@@ -331,6 +331,7 @@ impl ToBytes for ValueType {
     fn serialized_size(&self) -> usize {
         1 // ValueType is serialized as a single byte (see to_binary())
     }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -361,7 +362,6 @@ impl FromBytes for ValueType {
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
-
 
 /// WebAssembly reference types (funcref, externref)
 ///
@@ -2258,6 +2258,7 @@ impl ToBytes for LocalEntry {
     fn serialized_size(&self) -> usize {
         5 // count (4 bytes) + value_type (1 byte)
     }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,

@@ -148,9 +148,9 @@ impl AsyncContext {
     pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            data: BTreeMap::new(),
+            data:                                    BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            data: {
+            data:                                    {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedMap::new(provider)?
             },

@@ -16,13 +16,6 @@
 
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    collections::HashSet,
-    vec::Vec,
-};
 use std::{
     boxed::Box,
     cell::RefCell as AtomicRefCell,
@@ -30,6 +23,13 @@ use std::{
         BTreeMap,
         BTreeSet,
     },
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    collections::HashSet,
     vec::Vec,
 };
 

@@ -80,8 +80,8 @@ extern crate wrt_panic;
 
 // Simple panic handler when no explicit handler is available
 // Panic handling is now fully delegated to wrt-panic crate
-// No local panic handler needed - wrt-panic provides all necessary panic handlers
-// Module declarations
+// No local panic handler needed - wrt-panic provides all necessary panic
+// handlers Module declarations
 // pub mod bounded_platform; // Disabled due to circular dependency with
 // wrt-foundation
 pub mod comprehensive_limits;

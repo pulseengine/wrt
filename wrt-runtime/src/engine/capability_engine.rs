@@ -484,7 +484,8 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.inner.set_current_module(Arc::new(instance.clone()))?;
 
         // Execute the function
-        let results = self.inner.execute(instance_handle.index(), func_idx as usize, args.to_vec())?;
+        let results =
+            self.inner.execute(instance_handle.index(), func_idx as usize, args.to_vec())?;
 
         Ok(results)
     }

@@ -4,31 +4,32 @@
 //! focused on functionality over advanced features. It provides the interface
 //! needed by CapabilityAwareEngine to execute WASM modules.
 
-use core::sync::atomic::{AtomicU64, Ordering};
-
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    collections::BTreeMap as HashMap,
+    string::String,
+    sync::Arc,
+    vec::Vec,
+};
+use core::sync::atomic::{
+    AtomicU64,
+    Ordering,
+};
 // Use std types when available, fall back to alloc, then wrt_foundation
 #[cfg(feature = "std")]
 use std::{
-    sync::Arc,
     collections::HashMap,
-    vec::Vec,
     string::String,
-};
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{
     sync::Arc,
-    collections::BTreeMap as HashMap,
     vec::Vec,
-    string::String,
 };
 
 // For pure no_std without alloc, use bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 use wrt_foundation::{
-    bounded_collections::BoundedMap,
-    bounded::BoundedVec,  
     bounded::BoundedString,
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     safe_memory::NoStdProvider,
 };
 
@@ -54,6 +55,7 @@ impl<T> Arc<T> {
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -68,8 +70,9 @@ impl<T: Clone> Clone for Arc<T> {
 
 // Implement required traits for Arc to work with bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-impl<T> wrt_foundation::traits::Checksummable for Arc<T> 
-where T: wrt_foundation::traits::Checksummable 
+impl<T> wrt_foundation::traits::Checksummable for Arc<T>
+where
+    T: wrt_foundation::traits::Checksummable,
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.0.update_checksum(checksum);
@@ -78,12 +81,13 @@ where T: wrt_foundation::traits::Checksummable
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 impl<T> wrt_foundation::traits::ToBytes for Arc<T>
-where T: wrt_foundation::traits::ToBytes
+where
+    T: wrt_foundation::traits::ToBytes,
 {
     fn serialized_size(&self) -> usize {
         self.0.serialized_size()
     }
-    
+
     fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
@@ -95,7 +99,8 @@ where T: wrt_foundation::traits::ToBytes
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 impl<T> wrt_foundation::traits::FromBytes for Arc<T>
-where T: wrt_foundation::traits::FromBytes
+where
+    T: wrt_foundation::traits::FromBytes,
 {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -123,11 +128,15 @@ impl<T: PartialEq> PartialEq for Arc<T> {
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 impl<T: Eq> Eq for Arc<T> {}
 
-use wrt_foundation::{
-    values::{Value, FloatBits32, FloatBits64},
-    traits::BoundedCapacity,
-};
 use wrt_error::Result;
+use wrt_foundation::{
+    traits::BoundedCapacity,
+    values::{
+        FloatBits32,
+        FloatBits64,
+        Value,
+    },
+};
 
 use crate::module_instance::ModuleInstance;
 
@@ -145,34 +154,34 @@ pub struct ExecutionStats {
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct StacklessEngine {
     /// Currently loaded instances indexed by numeric ID
-    instances: HashMap<usize, Arc<ModuleInstance>>,
+    instances:             HashMap<usize, Arc<ModuleInstance>>,
     /// Next instance ID
-    next_instance_id: AtomicU64,
+    next_instance_id:      AtomicU64,
     /// Current active instance for execution
-    current_instance_id: Option<usize>,
+    current_instance_id:   Option<usize>,
     /// Operand stack for execution (needed by tail_call module)
-    pub operand_stack: Vec<Value>,
+    pub operand_stack:     Vec<Value>,
     /// Call frames count (needed by tail_call module)
     pub call_frames_count: usize,
     /// Execution statistics (needed by tail_call module)
-    pub stats: ExecutionStats,
+    pub stats:             ExecutionStats,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub struct StacklessEngine {
     /// Currently loaded instances indexed by numeric ID
-    instances: HashMap<usize, Arc<ModuleInstance>>,
+    instances:             HashMap<usize, Arc<ModuleInstance>>,
     /// Next instance ID
-    next_instance_id: AtomicU64,
+    next_instance_id:      AtomicU64,
     /// Current active instance for execution
-    current_instance_id: Option<usize>,
+    current_instance_id:   Option<usize>,
     /// Operand stack for execution (needed by tail_call module)
-    pub operand_stack: Vec<Value>,
+    pub operand_stack:     Vec<Value>,
     /// Call frames count (needed by tail_call module)
     pub call_frames_count: usize,
     /// Execution statistics (needed by tail_call module)
-    pub stats: ExecutionStats,
+    pub stats:             ExecutionStats,
 }
 
 impl StacklessEngine {
@@ -180,85 +189,105 @@ impl StacklessEngine {
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn new() -> Self {
         Self {
-            instances: HashMap::new(),
-            next_instance_id: AtomicU64::new(1),
+            instances:           HashMap::new(),
+            next_instance_id:    AtomicU64::new(1),
             current_instance_id: None,
-            operand_stack: Vec::new(),
-            call_frames_count: 0,
-            stats: ExecutionStats::default(),
+            operand_stack:       Vec::new(),
+            call_frames_count:   0,
+            stats:               ExecutionStats::default(),
         }
     }
-    
+
     /// Create a new stackless engine (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub fn new() -> wrt_error::Result<Self> {
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        
+        use wrt_foundation::{
+            budget_aware_provider::CrateId,
+            safe_managed_alloc,
+        };
+
         let provider = safe_managed_alloc!(4096, CrateId::Runtime)?;
         let instances = BoundedMap::new(provider.clone())
             .map_err(|_| wrt_error::Error::runtime_error("Failed to create instances map"))?;
         let operand_stack = BoundedVec::new(provider)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to create operand stack"))?;
-        
+
         Ok(Self {
-            instances: instances as HashMap<usize, Arc<ModuleInstance>>,
-            next_instance_id: AtomicU64::new(1),
+            instances:           instances as HashMap<usize, Arc<ModuleInstance>>,
+            next_instance_id:    AtomicU64::new(1),
             current_instance_id: None,
-            operand_stack: operand_stack as Vec<Value>,
-            call_frames_count: 0,
-            stats: ExecutionStats::default(),
+            operand_stack:       operand_stack as Vec<Value>,
+            call_frames_count:   0,
+            stats:               ExecutionStats::default(),
         })
     }
 
     /// Set the current module for execution
-    /// 
+    ///
     /// Returns the instance ID that can be used for execution
     pub fn set_current_module(&mut self, instance: Arc<ModuleInstance>) -> Result<usize> {
         let instance_id = self.next_instance_id.fetch_add(1, Ordering::Relaxed) as usize;
-        
+
         // Check instance limit manually
         if self.instances.len() >= MAX_CONCURRENT_INSTANCES {
-            return Err(wrt_error::Error::resource_limit_exceeded("Too many concurrent instances"));
+            return Err(wrt_error::Error::resource_limit_exceeded(
+                "Too many concurrent instances",
+            ));
         }
-        
+
         self.instances.insert(instance_id, instance);
-        
+
         self.current_instance_id = Some(instance_id);
         Ok(instance_id)
     }
 
     /// Execute a function in the specified instance
-    /// 
+    ///
     /// # Arguments
     /// * `instance_id` - The instance ID returned from set_current_module
     /// * `func_idx` - The function index to execute
     /// * `args` - Function arguments
-    /// 
+    ///
     /// # Returns
     /// The function results
     #[cfg(any(feature = "std", feature = "alloc"))]
-    pub fn execute(&self, instance_id: usize, func_idx: usize, args: Vec<Value>) -> Result<Vec<Value>> {
+    pub fn execute(
+        &self,
+        instance_id: usize,
+        func_idx: usize,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
         #[cfg(any(feature = "std", feature = "alloc"))]
-        let instance = self.instances.get(&instance_id)
+        let instance = self
+            .instances
+            .get(&instance_id)
             .ok_or_else(|| wrt_error::Error::runtime_execution_error("Instance not found"))?;
-            
+
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let instance = self.instances.get(&instance_id)?
+        let instance = self
+            .instances
+            .get(&instance_id)?
             .ok_or_else(|| wrt_error::Error::runtime_execution_error("Instance not found"))?;
 
         // For now, implement a basic execution that validates the function exists
         // and returns appropriate results
         let module = instance.module();
-        
+
         // Validate function index
         if func_idx >= module.functions.len() {
-            return Err(wrt_error::Error::runtime_function_not_found("Function index out of bounds"));
+            return Err(wrt_error::Error::runtime_function_not_found(
+                "Function index out of bounds",
+            ));
         }
 
         // Get function type to determine return values
-        let func = module.functions.get(func_idx)
+        let func = module
+            .functions
+            .get(func_idx)
             .map_err(|_| wrt_error::Error::runtime_function_not_found("Failed to get function"))?;
-        let func_type = module.types.get(func.type_idx as usize)
+        let func_type = module
+            .types
+            .get(func.type_idx as usize)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;
 
         // For demonstration, we'll simulate successful execution
@@ -271,10 +300,13 @@ impl StacklessEngine {
         // Return appropriate default values based on function signature
         #[cfg(any(feature = "std", feature = "alloc"))]
         let mut results = Vec::new();
-        
+
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut results = {
-            use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+            use wrt_foundation::{
+                budget_aware_provider::CrateId,
+                safe_managed_alloc,
+            };
             let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
             BoundedVec::new(provider)?
         };
@@ -292,31 +324,48 @@ impl StacklessEngine {
 
         Ok(results)
     }
-    
+
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn execute(&self, instance_id: usize, func_idx: usize, args: Vec<Value>) -> Result<Vec<Value>> {
-        let instance = self.instances.get(&instance_id)?
+    pub fn execute(
+        &self,
+        instance_id: usize,
+        func_idx: usize,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        let instance = self
+            .instances
+            .get(&instance_id)?
             .ok_or_else(|| wrt_error::Error::runtime_execution_error("Instance not found"))?;
 
         // For now, implement a basic execution that validates the function exists
         // and returns appropriate results
         let module = instance.module();
-        
+
         // Validate function index
         if func_idx >= module.functions.len() {
-            return Err(wrt_error::Error::runtime_function_not_found("Function index out of bounds"));
+            return Err(wrt_error::Error::runtime_function_not_found(
+                "Function index out of bounds",
+            ));
         }
 
-        let func = module.functions.get(func_idx)
+        let func = module
+            .functions
+            .get(func_idx)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function"))?;
-        let func_type = module.types.get(func.type_idx as usize)
+        let func_type = module
+            .types
+            .get(func.type_idx as usize)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;
 
-        // Return appropriate default values based on function signature  
+        // Return appropriate default values based on function signature
         let mut results = {
-            use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+            use wrt_foundation::{
+                budget_aware_provider::CrateId,
+                safe_managed_alloc,
+            };
             let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
-            BoundedVec::new(provider).map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?
+            BoundedVec::new(provider)
+                .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?
         };
         for result_type in &func_type.results {
             let default_value = match result_type {
@@ -327,7 +376,9 @@ impl StacklessEngine {
                 // Add other types as needed
                 _ => Value::I32(0), // Default fallback
             };
-            results.push(default_value).map_err(|_| wrt_error::Error::runtime_error("Failed to push result value"))?;
+            results
+                .push(default_value)
+                .map_err(|_| wrt_error::Error::runtime_error("Failed to push result value"))?;
         }
 
         Ok(results)
@@ -339,13 +390,14 @@ impl Default for StacklessEngine {
     fn default() -> Self {
         Self::new()
     }
-    
+
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     fn default() -> Self {
         Self::new().expect("Failed to create default StacklessEngine in no_std mode")
     }
 }
 
-// Additional types that might be needed - using simple type aliases to avoid conflicts
+// Additional types that might be needed - using simple type aliases to avoid
+// conflicts
 pub type StacklessCallbackRegistry = ();
 pub type StacklessStack = ();

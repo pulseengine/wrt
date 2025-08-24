@@ -192,7 +192,8 @@ pub struct DebtCreditStats {
     pub debt_violations:     u64,
 }
 
-// FuelConsumptionRecord and FuelAlert are defined later in the file with complete implementations
+// FuelConsumptionRecord and FuelAlert are defined later in the file with
+// complete implementations
 
 /// Async task representation with fuel tracking
 #[derive(Debug)]
