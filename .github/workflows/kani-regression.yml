@@ -105,9 +105,10 @@ jobs:
 
     - name: Install KANI Verifier
       run: |
-        # Install KANI from source for latest features
+        # Install KANI verifier
         cargo install --locked kani-verifier
-        cargo install --locked kani-driver
+        # Setup KANI dependencies
+        cargo kani setup
         # Verify installation
         kani --version
 

@@ -212,14 +212,29 @@ impl StacklessEngine {
         let operand_stack = BoundedVec::new(provider)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to create operand stack"))?;
 
-        Ok(Self {
-            instances:           instances as HashMap<usize, Arc<ModuleInstance>>,
-            next_instance_id:    AtomicU64::new(1),
-            current_instance_id: None,
-            operand_stack:       operand_stack as Vec<Value>,
-            call_frames_count:   0,
-            stats:               ExecutionStats::default(),
-        })
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Ok(Self {
+                instances: HashMap::new(),
+                next_instance_id: AtomicU64::new(1),
+                current_instance_id: None,
+                operand_stack: Vec::new(),
+                call_frames_count: 0,
+                stats: ExecutionStats::default(),
+            })
+        }
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            Ok(Self {
+                instances,
+                next_instance_id: AtomicU64::new(1),
+                current_instance_id: None,
+                operand_stack,
+                call_frames_count: 0,
+                stats: ExecutionStats::default(),
+            })
+        }
     }
 
     /// Set the current module for execution
@@ -303,11 +318,12 @@ impl StacklessEngine {
 
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut results = {
+            use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
             use wrt_foundation::{
                 budget_aware_provider::CrateId,
                 safe_managed_alloc,
             };
-            let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
+            let provider = safe_managed_alloc!(RUNTIME_MEMORY_SIZE, CrateId::Runtime)?;
             BoundedVec::new(provider)?
         };
         for result_type in &func_type.results {

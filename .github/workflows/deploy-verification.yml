@@ -56,7 +56,7 @@ jobs:
     - name: Install KANI and cargo-wrt
       run: |
         cargo install --locked kani-verifier
-        cargo install --locked kani-driver
+        cargo kani setup
         cargo install --path cargo-wrt --locked
 
     - name: Run pre-deployment verification
