@@ -35,7 +35,7 @@ use wrt_foundation::{
 
 // Type aliases for pure no_std mode
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type HashMap<K, V> = BoundedMap<K, V, 16, NoStdProvider<1024>>; // 16 concurrent instances max
+type HashMap<K, V> = BoundedMap<K, V, 16, NoStdProvider<4096>>; // 16 concurrent instances max
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type Vec<T> = BoundedVec<T, 256, NoStdProvider<4096>>; // 256 operands max
 #[cfg(not(any(feature = "std", feature = "alloc")))]
