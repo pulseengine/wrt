@@ -501,9 +501,9 @@ impl SimdRuntime {
         #[cfg(target_arch = "x86_64")]
         {
             if _capabilities.has_avx2 {
-                return Box::new(x86_64::X86SimdProvider::new_avx2);
+                return Box::new(x86_64::X86SimdProvider::new_avx2());
             } else if _capabilities.has_sse2 {
-                return Box::new(x86_64::X86SimdProvider::new_sse2);
+                return Box::new(x86_64::X86SimdProvider::new_sse2());
             }
         }
 

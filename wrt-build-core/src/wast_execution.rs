@@ -69,11 +69,19 @@ impl WastEngine {
         let module =
             Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?;
 
-        // Instantiate the module in the engine
+        // Create a module instance from the module
+        use wrt_runtime::module_instance::ModuleInstance;
+        use std::sync::Arc;
+        let module_instance = Arc::new(
+            ModuleInstance::new(module.clone(), 0)
+                .context("Failed to create module instance")?
+        );
+        
+        // Set the current module in the engine
         let _instance_idx = self
             .engine
-            .instantiate(module.clone())
-            .context("Failed to instantiate module in engine")?;
+            .set_current_module(module_instance)
+            .context("Failed to set current module in engine")?;
 
         // Store the module for later reference
         let module_name = name.unwrap_or("current").to_string();
@@ -105,7 +113,7 @@ impl WastEngine {
         // Use instance index 0 since we only have one instance for now
         let results = self
             .engine
-            .execute(0, func_idx, args.to_vec())
+            .execute(0, func_idx as usize, args.to_vec())
             .context("Function execution failed")?;
 
         Ok(results)

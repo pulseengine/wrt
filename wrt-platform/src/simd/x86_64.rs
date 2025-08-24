@@ -1501,7 +1501,7 @@ impl SimdProvider for X86SimdProvider {
                 u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
             let f_val = f32::from_bits(f_bits);
             let i_val = if f_val.is_nan() { 0 } else { f_val as i32 };
-            result[offset..offset + 4].copy_from_slice(&i_val.to_le_bytes);
+            result[offset..offset + 4].copy_from_slice(&i_val.to_le_bytes());
         }
         result
     }
@@ -1514,7 +1514,7 @@ impl SimdProvider for X86SimdProvider {
                 u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
             let f_val = f32::from_bits(f_bits);
             let u_val = if f_val.is_nan() || f_val < 0.0 { 0u32 } else { f_val as u32 };
-            result[offset..offset + 4].copy_from_slice(&u_val.to_le_bytes);
+            result[offset..offset + 4].copy_from_slice(&u_val.to_le_bytes());
         }
         result
     }
@@ -1538,7 +1538,7 @@ impl SimdProvider for X86SimdProvider {
             let u_val =
                 u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
             let f_val = u_val as f32;
-            result[offset..offset + 4].copy_from_slice(&f_val.to_bits().to_le_bytes);
+            result[offset..offset + 4].copy_from_slice(&f_val.to_bits().to_le_bytes());
         }
         result
     }
