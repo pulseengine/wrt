@@ -376,11 +376,12 @@ impl StacklessEngine {
 
         // Return appropriate default values based on function signature
         let mut results = {
-            use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
             use wrt_foundation::{
                 budget_aware_provider::CrateId,
                 safe_managed_alloc,
             };
+
+            use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
             let provider = safe_managed_alloc!(RUNTIME_MEMORY_SIZE, CrateId::Runtime)?;
             BoundedVec::new(provider)
                 .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?
