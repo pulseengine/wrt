@@ -14,26 +14,26 @@ use wrt_foundation::{
         BoundedVec,
     },
     budget_aware_provider::CrateId,
-    component_value::ComponentValue,
     safe_managed_alloc,
     // safe_memory::SafeMemory, // Not available
 };
 
+use crate::prelude::WrtComponentValue;
 use crate::{
     generative_types::{
         GenerativeResourceType,
         GenerativeTypeRegistry,
     },
-    // handle_representation::{ // Module not available
-    //     AccessRights,
-    //     HandleOperation,
-    //     HandleRepresentationManager,
-    // },
-    // post_return::{ // Module not available
-    //     CleanupTask,
-    //     CleanupTaskType,
-    //     PostReturnRegistry,
-    // },
+    handle_representation::{
+        AccessRights,
+        HandleOperation,
+        HandleRepresentationManager,
+    },
+    post_return::{
+        CleanupTask,
+        CleanupTaskType,
+        PostReturnRegistry,
+    },
     type_bounds::{
         TypeBoundsChecker,
         TypeRelation,
@@ -295,6 +295,14 @@ impl CrossComponentResourceSharingManager {
                 target_component: None,
                 resource:         None,
             })?;
+
+        let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|e| ResourceSharingError {
+            kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+            message:          "Failed to allocate provider".to_string(),
+            source_component: None,
+            target_component: None,
+            resource:         None,
+        })?;
 
         Ok(Self {
             handle_manager:       HandleRepresentationManager::new(),

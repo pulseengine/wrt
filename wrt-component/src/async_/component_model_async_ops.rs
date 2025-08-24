@@ -27,6 +27,12 @@ use crate::threading::task_manager::{
     TaskId,
     TaskManager,
 };
+
+// Fallback types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
 use crate::{
     async_::{
         async_types::{
@@ -64,7 +70,8 @@ pub struct ComponentModelAsyncOps {
     /// Reference to the task manager
     task_manager:      Arc<Mutex<TaskManager>>,
     /// Active wait operations
-    active_waits:      BoundedMap<TaskId, WaitOperation, 128>,
+    active_waits:
+        BoundedMap<TaskId, WaitOperation, 128, crate::bounded_component_infra::ComponentProvider>,
     /// Waitable registry
     waitable_registry: WaitableRegistry,
     /// Operation statistics
@@ -89,13 +96,33 @@ struct WaitOperation {
 /// Registry for managing waitables
 struct WaitableRegistry {
     /// Future handles (readable state)
-    futures_readable: BoundedMap<FutureHandle, WaitableState, 256>,
+    futures_readable: BoundedMap<
+        FutureHandle,
+        WaitableState,
+        256,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Future handles (writable state)
-    futures_writable: BoundedMap<FutureHandle, WaitableState, 256>,
+    futures_writable: BoundedMap<
+        FutureHandle,
+        WaitableState,
+        256,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Stream handles (readable state)
-    streams_readable: BoundedMap<StreamHandle, WaitableState, 128>,
+    streams_readable: BoundedMap<
+        StreamHandle,
+        WaitableState,
+        128,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Stream handles (writable state)
-    streams_writable: BoundedMap<StreamHandle, WaitableState, 128>,
+    streams_writable: BoundedMap<
+        StreamHandle,
+        WaitableState,
+        128,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
 }
 
 /// State of a waitable

@@ -74,7 +74,12 @@ pub struct FuelAsyncBridge {
     /// Scheduler for task ordering
     scheduler:          FuelAsyncScheduler,
     /// Active bridges indexed by task ID
-    active_bridges:     BoundedMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
+    active_bridges: BoundedMap<
+        TaskId,
+        AsyncBridgeContext,
+        MAX_ASYNC_BRIDGES,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Global bridge configuration
     default_config:     AsyncBridgeConfig,
     /// Verification level for bridge operations

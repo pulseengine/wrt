@@ -459,7 +459,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
         // Run start function if present
         if let Some(start_idx) = module.start {
-            self.inner.execute(instance_idx as usize, start_idx, vec![])?;
+            self.inner.execute(instance_idx as usize, start_idx as usize, vec![])?;
         }
 
         Ok(handle)
@@ -484,7 +484,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.inner.set_current_module(Arc::new(instance.clone()))?;
 
         // Execute the function
-        let results = self.inner.execute(instance_handle.index(), func_idx, args.to_vec())?;
+        let results = self.inner.execute(instance_handle.index(), func_idx as usize, args.to_vec())?;
 
         Ok(results)
     }

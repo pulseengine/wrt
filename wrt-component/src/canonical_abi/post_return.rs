@@ -5,6 +5,11 @@
 //! and memory management after component function calls.
 
 #[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::format;
+#[cfg(not(feature = "std"))]
 use core::{
     fmt,
     mem,
@@ -30,6 +35,8 @@ use wrt_foundation::{
     values::Value,
 };
 
+// Import prelude for std/no_std compatibility
+use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 use crate::types::Value as ComponentValue;
 use crate::{

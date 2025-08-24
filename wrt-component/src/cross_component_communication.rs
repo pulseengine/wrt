@@ -58,10 +58,18 @@ use wrt_foundation::allocator::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     safe_memory::NoStdProvider,
-    BoundedString as String,
-    BoundedVec as Vec,
 };
+
+// Type aliases for no_std environment with proper generics
+#[cfg(not(feature = "std"))]
+type String = BoundedString<256, NoStdProvider<65536>>;
+#[cfg(not(feature = "std"))]
+type Vec<T> = BoundedVec<T, 256, NoStdProvider<65536>>;
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]
@@ -83,11 +91,7 @@ use wrt_error::{
     ErrorCategory,
     Result,
 };
-use wrt_foundation::{
-    safe_memory::NoStdProvider,
-    ComponentValue,
-    ValType,
-};
+use wrt_foundation::ValType;
 use wrt_intercept::{
     LinkInterceptorStrategy,
     ResourceCanonicalOperation,
@@ -105,6 +109,8 @@ use crate::components::component_communication::{
     ResourceBridge,
     ResourceTransferType,
 };
+// Import our prelude for type aliases like WrtComponentValue
+use crate::prelude::*;
 use crate::{
     call_context::{
         CallContextConfig,
@@ -414,7 +420,7 @@ impl ComponentCommunicationStrategy {
         // Convert to ComponentValue format
         #[cfg(feature = "safety-critical")]
         let component_values: Result<
-            WrtVec<ComponentValue, { CrateId::Component as u8 }, 256>,
+            WrtVec<WrtComponentValue, { CrateId::Component as u8 }, 256>,
         > = {
             let mut vec = WrtVec::new();
             for val in args.iter() {
@@ -428,7 +434,7 @@ impl ComponentCommunicationStrategy {
             Ok(vec)
         };
         #[cfg(not(feature = "safety-critical"))]
-        let component_values: Result<Vec<ComponentValue>> =
+        let component_values: Result<Vec<WrtComponentValue>> =
             args.iter().map(|val| self.convert_value_to_component_value(val)).collect();
 
         let component_values = component_values?;
@@ -496,12 +502,12 @@ impl ComponentCommunicationStrategy {
     fn convert_value_to_component_value(
         &self,
         value: &wrt_foundation::values::Value,
-    ) -> Result<ComponentValue> {
+    ) -> Result<WrtComponentValue> {
         match value {
-            wrt_foundation::values::Value::I32(v) => Ok(ComponentValue::S32(*v)),
-            wrt_foundation::values::Value::I64(v) => Ok(ComponentValue::S64(*v)),
-            wrt_foundation::values::Value::F32(v) => Ok(ComponentValue::F32(*v)),
-            wrt_foundation::values::Value::F64(v) => Ok(ComponentValue::F64(*v)),
+            wrt_foundation::values::Value::I32(v) => Ok(WrtComponentValue::S32(*v)),
+            wrt_foundation::values::Value::I64(v) => Ok(WrtComponentValue::S64(*v)),
+            wrt_foundation::values::Value::F32(v) => Ok(WrtComponentValue::F32(*v)),
+            wrt_foundation::values::Value::F64(v) => Ok(WrtComponentValue::F64(*v)),
             _ => Err(Error::runtime_type_mismatch(
                 "Unsupported value type for component call",
             )),
@@ -509,47 +515,51 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Calculate marshaled size for component values
-    fn calculate_marshaled_size(&self, values: &[ComponentValue]) -> Result<u32> {
+    fn calculate_marshaled_size(&self, values: &[WrtComponentValue]) -> Result<u32> {
         let mut total_size = 0u32;
 
         for value in values {
             let size = match value {
-                ComponentValue::Bool(_) => 1,
-                ComponentValue::S8(_) | ComponentValue::U8(_) => 1,
-                ComponentValue::S16(_) | ComponentValue::U16(_) => 2,
-                ComponentValue::S32(_) | ComponentValue::U32(_) | ComponentValue::F32(_) => 4,
-                ComponentValue::S64(_) | ComponentValue::U64(_) | ComponentValue::F64(_) => 8,
-                ComponentValue::Char(_) => 4,
-                ComponentValue::String(s) => s.len() as u32 + 4, // String + length prefix
-                ComponentValue::List(items) => {
+                WrtComponentValue::Bool(_) => 1,
+                WrtComponentValue::S8(_) | WrtComponentValue::U8(_) => 1,
+                WrtComponentValue::S16(_) | WrtComponentValue::U16(_) => 2,
+                WrtComponentValue::S32(_)
+                | WrtComponentValue::U32(_)
+                | WrtComponentValue::F32(_) => 4,
+                WrtComponentValue::S64(_)
+                | WrtComponentValue::U64(_)
+                | WrtComponentValue::F64(_) => 8,
+                WrtComponentValue::Char(_) => 4,
+                WrtComponentValue::String(s) => s.len() as u32 + 4, // String + length prefix
+                WrtComponentValue::List(items) => {
                     4 + self.calculate_marshaled_size(items)? // Length prefix +
                                                               // items
                 },
-                ComponentValue::Record(fields) => self.calculate_marshaled_size(fields)?,
-                ComponentValue::Tuple(elements) => self.calculate_marshaled_size(elements)?,
-                ComponentValue::Variant { case: _, value } => {
+                WrtComponentValue::Record(fields) => self.calculate_marshaled_size(fields)?,
+                WrtComponentValue::Tuple(elements) => self.calculate_marshaled_size(elements)?,
+                WrtComponentValue::Variant { case: _, value } => {
                     4 + if let Some(v) = value {
                         self.calculate_marshaled_size(&[v.as_ref().clone()])?
                     } else {
                         0
                     }
                 },
-                ComponentValue::Enum(_) => 4,
-                ComponentValue::Option(opt) => {
+                WrtComponentValue::Enum(_) => 4,
+                WrtComponentValue::Option(opt) => {
                     1 + if let Some(v) = opt {
                         self.calculate_marshaled_size(&[v.as_ref().clone()])?
                     } else {
                         0
                     }
                 },
-                ComponentValue::Result { ok, err: _ } => {
+                WrtComponentValue::Result { ok, err: _ } => {
                     1 + if let Some(v) = ok {
                         self.calculate_marshaled_size(&[v.as_ref().clone()])?
                     } else {
                         0
                     }
                 },
-                ComponentValue::Flags(_) => 4,
+                WrtComponentValue::Flags(_) => 4,
             };
             total_size += size;
         }
@@ -558,15 +568,15 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Serialize a component value to bytes
-    fn serialize_component_value(&self, value: &ComponentValue) -> Result<Vec<u8>> {
+    fn serialize_component_value(&self, value: &WrtComponentValue) -> Result<Vec<u8>> {
         // Simplified serialization - would use proper canonical ABI in full
         // implementation
         match value {
-            ComponentValue::S32(v) => Ok(v.to_le_bytes().to_vec()),
-            ComponentValue::S64(v) => Ok(v.to_le_bytes().to_vec()),
-            ComponentValue::F32(v) => Ok(v.to_le_bytes().to_vec()),
-            ComponentValue::F64(v) => Ok(v.to_le_bytes().to_vec()),
-            ComponentValue::String(s) => {
+            WrtComponentValue::S32(v) => Ok(v.to_le_bytes().to_vec()),
+            WrtComponentValue::S64(v) => Ok(v.to_le_bytes().to_vec()),
+            WrtComponentValue::F32(v) => Ok(v.to_le_bytes().to_vec()),
+            WrtComponentValue::F64(v) => Ok(v.to_le_bytes().to_vec()),
+            WrtComponentValue::String(s) => {
                 let mut bytes = Vec::new();
                 bytes.extend((s.len() as u32).to_le_bytes());
                 bytes.extend(s.as_bytes());
@@ -986,7 +996,7 @@ mod tests {
         assert!(result.is_ok());
 
         match result.unwrap() {
-            ComponentValue::S32(v) => assert_eq!(v, 123),
+            WrtComponentValue::S32(v) => assert_eq!(v, 123),
             _ => panic!("Expected S32 value"),
         }
     }
@@ -996,9 +1006,9 @@ mod tests {
         let strategy = ComponentCommunicationStrategy::new();
 
         let values = vec![
-            ComponentValue::S32(42),
-            ComponentValue::String("hello".to_string()),
-            ComponentValue::Bool(true),
+            WrtComponentValue::S32(42),
+            WrtComponentValue::String("hello".to_string()),
+            WrtComponentValue::Bool(true),
         ];
 
         let size = strategy.calculate_marshaled_size(&values);

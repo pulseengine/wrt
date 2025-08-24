@@ -12,9 +12,10 @@ use wrt_foundation::{
     WrtResult,
 };
 
-#[cfg(feature = "std")]
-use crate::prelude::WrtComponentValue;
-use crate::types::Value;
+use crate::{
+    prelude::WrtComponentValue,
+    types::Value,
+};
 
 /// Canonical ABI processor stub
 #[derive(Debug, Default)]

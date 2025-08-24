@@ -69,7 +69,7 @@ use crate::{
 type WrtTypesValType = TypesValType<ComponentProvider>;
 type TypesWrtExternType = TypesExternType;
 type WrtExternType = TypesExternType;
-type WrtComponentValue = crate::component_value::WrtComponentValue;
+// WrtComponentValue is already available from prelude
 
 // Helper functions to handle type conversions with correct parameters
 

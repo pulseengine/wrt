@@ -71,6 +71,9 @@ use wrt_error::{
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 
+// Import prelude for consistent type access
+use crate::prelude::*;
+
 /// Maximum string length for safety (4MB)
 const MAX_STRING_LENGTH: usize = 4 * 1024 * 1024;
 

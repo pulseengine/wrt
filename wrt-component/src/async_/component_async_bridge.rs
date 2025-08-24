@@ -45,6 +45,22 @@ use crate::threading::{
         ThreadFuelStatus,
     },
 };
+
+// Placeholder types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type ComponentTaskId = u32;
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type FuelTrackedThreadManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub enum TaskType {
+    AsyncOperation,
+}
+#[cfg(not(feature = "component-model-threading"))]
+pub enum TaskState {
+    Completed,
+}
 use crate::{
     async_::{
         fuel_async_executor::{
@@ -69,9 +85,15 @@ pub struct ComponentAsyncBridge {
     /// Thread manager for fuel tracking
     thread_manager:           Arc<Mutex<FuelTrackedThreadManager>>,
     /// Mapping from component tasks to executor tasks
-    task_mapping: BoundedMap<ComponentTaskId, crate::threading::task_manager::TaskId, 1024>,
+    task_mapping:
+        BoundedMap<ComponentTaskId, u32, 1024, crate::bounded_component_infra::ComponentProvider>, /* Simple TaskId fallback */
     /// Per-component async operation limits
-    component_limits:         BoundedMap<ComponentInstanceId, AsyncComponentLimits, 256>,
+    component_limits: BoundedMap<
+        ComponentInstanceId,
+        AsyncComponentLimits,
+        256,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Global async fuel budget
     global_async_fuel_budget: AtomicU64,
     /// Verification level for async operations

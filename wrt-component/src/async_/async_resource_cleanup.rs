@@ -183,7 +183,7 @@ pub enum AsyncCleanupData {
         #[cfg(feature = "std")]
         cleanup_id: String,
         #[cfg(not(any(feature = "std",)))]
-        cleanup_id: BoundedString<64>,
+        cleanup_id: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
         data:       u64, // Generic data field
     },
 }

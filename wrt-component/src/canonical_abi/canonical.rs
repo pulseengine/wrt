@@ -41,6 +41,7 @@ use wrt_foundation::{
     component_value::ValType as FoundationValType,
     resource::ResourceOperation as FormatResourceOperation,
 };
+use wrt_intercept::LinkInterceptor;
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 #[cfg(not(feature = "std"))]
@@ -63,7 +64,6 @@ use crate::{
     prelude::*,
     resource_management::ResourceTable,
     resources::{
-        bounded_buffer_pool::BoundedBufferPool,
         MemoryStrategy,
         VerificationLevel,
     },

@@ -39,7 +39,6 @@ use wrt_error::{
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
     bounded::BoundedVec,
-    prelude::*,
     WrtResult,
 };
 #[cfg(not(feature = "std"))]
@@ -64,7 +63,10 @@ use crate::{
         Waitable,
         WaitableSet,
     },
-    prelude::ResourceHandle,
+    prelude::{
+        ResourceHandle,
+        *,
+    },
     types::{
         ValType,
         Value,

@@ -39,6 +39,9 @@ use wrt_foundation::{
     NoStdProvider,
 };
 
+// Import prelude for no_std to get Vec, Box, etc.
+#[cfg(not(feature = "std"))]
+use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;

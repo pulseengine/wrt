@@ -8,6 +8,8 @@ extern crate alloc;
 
 use wrt_error::{Error, ErrorCategory};
 
+use crate::prelude::*;
+
 /// Error context for canonical ABI operations
 #[derive(Debug, Clone, Copy)]
 pub enum CanonicalErrorContext {

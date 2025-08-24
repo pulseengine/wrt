@@ -21,6 +21,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
     WrtResult,
 };
 
@@ -116,7 +117,7 @@ pub struct MigrationStatus {
 pub struct MigrationWarning {
     pub agent_id:     AgentId,
     pub warning_type: WarningType,
-    pub message:      BoundedString<256>,
+    pub message:      BoundedString<256, NoStdProvider<65536>>,
 }
 
 /// Types of migration warnings

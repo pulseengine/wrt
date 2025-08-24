@@ -167,6 +167,33 @@ const ASYNC_TASK_YIELD_FUEL: u64 = 5;
 const ASYNC_TASK_WAKE_FUEL: u64 = 10;
 const ASYNC_TASK_POLL_FUEL: u64 = 15;
 
+/// Placeholder for fuel monitoring statistics
+#[derive(Debug, Default, Clone)]
+pub struct FuelMonitoringStats {
+    pub total_fuel_consumed: u64,
+    pub current_rate:        u64,
+    pub peak_rate:           u64,
+    pub violations_count:    u64,
+}
+
+/// Placeholder for debt credit configuration
+#[derive(Debug, Default, Clone)]
+pub struct DebtCreditConfig {
+    pub max_debt:    u64,
+    pub credit_rate: u64,
+    pub enabled:     bool,
+}
+
+/// Placeholder for debt credit statistics
+#[derive(Debug, Default, Clone)]
+pub struct DebtCreditStats {
+    pub current_debt:        u64,
+    pub total_credit_earned: u64,
+    pub debt_violations:     u64,
+}
+
+// FuelConsumptionRecord and FuelAlert are defined later in the file with complete implementations
+
 /// Async task representation with fuel tracking
 #[derive(Debug)]
 pub struct FuelAsyncTask {
@@ -671,32 +698,48 @@ impl ExecutionLimitsConfig {
     /// Create limits config from WebAssembly binary metadata
     /// Parses the resource limits custom section for execution constraints
     pub fn from_binary_metadata(binary_hash: [u8; 32], custom_section_data: &[u8]) -> Result<Self> {
-        use wrt_decoder::resource_limits_section::ResourceLimitsSection;
+        #[cfg(feature = "decoder")]
+        {
+            use wrt_decoder::resource_limits_section::ResourceLimitsSection;
 
-        // Parse the resource limits custom section
-        let resource_limits = ResourceLimitsSection::decode(custom_section_data)
-            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+            // Parse the resource limits custom section
+            let resource_limits = ResourceLimitsSection::decode(custom_section_data)
+                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
 
-        // Validate the resource limits
-        resource_limits.validate().map_err(|e| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid resource limits configuration",
-            )
-        })?;
+            // Validate the resource limits
+            resource_limits.validate().map_err(|e| {
+                Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Invalid resource limits configuration",
+                )
+            })?;
 
-        Ok(Self {
-            max_fuel_per_step:         resource_limits.max_fuel_per_step,
-            max_memory_usage:          resource_limits.max_memory_usage,
-            max_call_depth:            resource_limits.max_call_depth,
-            max_instructions_per_step: resource_limits.max_instructions_per_step,
-            max_execution_slice_ms:    resource_limits.max_execution_slice_ms,
-            limit_source:              LimitSource::BinaryMetadata {
-                section_name:  "wrt.resource_limits".to_string(),
-                verified_hash: binary_hash,
-            },
-        })
+            Ok(Self {
+                max_fuel_per_step:         resource_limits.max_fuel_per_step,
+                max_memory_usage:          resource_limits.max_memory_usage,
+                max_call_depth:            resource_limits.max_call_depth,
+                max_instructions_per_step: resource_limits.max_instructions_per_step,
+                max_execution_slice_ms:    resource_limits.max_execution_slice_ms,
+                limit_source:              LimitSource::BinaryMetadata {
+                    section_name:  "wrt.resource_limits".to_string(),
+                    verified_hash: binary_hash,
+                },
+            })
+        }
+
+        #[cfg(not(feature = "decoder"))]
+        {
+            // Fallback when decoder is not available - use conservative defaults
+            Ok(Self {
+                max_fuel_per_step:         1000,
+                max_memory_usage:          1024 * 1024, // 1MB
+                max_call_depth:            256,
+                max_instructions_per_step: 1000,
+                max_execution_slice_ms:    100,
+                limit_source:              LimitSource::Conservative,
+            })
+        }
     }
 
     /// Create limits config from ASIL mode requirements
@@ -1225,7 +1268,12 @@ pub struct WaitableRegistry {
     /// Next handle to allocate
     next_handle:     AtomicU64,
     /// Registered waitables
-    waitables:       BoundedMap<WaitableHandle, WaitableState, MAX_ASYNC_TASKS>,
+    waitables: BoundedMap<
+        WaitableHandle,
+        WaitableState,
+        MAX_ASYNC_TASKS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Ready waitables queue
     ready_waitables: BoundedVec<
         WaitableHandle,
@@ -1237,10 +1285,11 @@ pub struct WaitableRegistry {
 impl WaitableRegistry {
     /// Create a new waitable registry
     pub fn new() -> Result<Self> {
+        let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         Ok(Self {
             next_handle:     AtomicU64::new(1),
             waitables:       BoundedMap::new(provider.clone())?,
-            ready_waitables: BoundedVec::new()?,
+            ready_waitables: BoundedVec::new(provider)?,
         })
     }
 
@@ -1306,7 +1355,12 @@ impl WaitableRegistry {
 /// Fuel-based async executor for Component Model
 pub struct FuelAsyncExecutor {
     /// Task storage with bounded capacity
-    tasks: BoundedMap<TaskId, FuelAsyncTask, MAX_ASYNC_TASKS>,
+    tasks: BoundedMap<
+        TaskId,
+        FuelAsyncTask,
+        MAX_ASYNC_TASKS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Ready queue for tasks that can be polled
     ready_queue: Arc<
         Mutex<
@@ -1360,6 +1414,32 @@ pub enum ExecutorState {
     ShuttingDown,
     /// Executor has stopped
     Stopped,
+}
+
+impl FuelMonitor {
+    /// Create a new fuel monitor
+    pub fn new() -> Result<Self> {
+        Err(Error::async_task_spawn_failed(
+            "FuelMonitor not yet implemented",
+        ))
+    }
+
+    /// Get monitoring statistics
+    pub fn get_statistics(&self) -> FuelMonitoringStats {
+        FuelMonitoringStats {
+            total_fuel_consumed: self.window_fuel_consumed.load(Ordering::Relaxed),
+            current_rate:        self.current_rate.load(Ordering::Relaxed),
+            peak_rate:           self.peak_rate.load(Ordering::Relaxed),
+            violations_count:    0, // Placeholder
+        }
+    }
+
+    /// Clear fuel alerts
+    pub fn clear_alerts(&self) {
+        if let Ok(mut alerts) = self.active_alerts.lock() {
+            alerts.clear();
+        }
+    }
 }
 
 impl FuelAsyncExecutor {

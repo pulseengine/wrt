@@ -18,8 +18,6 @@ use core::{
     },
 };
 
-#[cfg(feature = "std")]
-use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
     bounded_collections::{
         BoundedMap,
@@ -30,9 +28,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
 };
 
-#[cfg(not(feature = "std"))]
-// For no_std, use a simpler ComponentValue representation
-use crate::types::Value as ComponentValue;
+use crate::prelude::WrtComponentValue;
 
 const MAX_VIRTUAL_COMPONENTS: usize = 256;
 const MAX_VIRTUAL_IMPORTS: usize = 1024;
@@ -168,8 +164,18 @@ pub struct VirtualComponent {
     pub parent:          Option<ComponentInstanceId>,
     pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS, NoStdProvider<65536>>,
     pub capabilities:    BoundedVec<Capability, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
-    pub virtual_imports: BoundedMap<String, VirtualImport, MAX_VIRTUAL_IMPORTS>,
-    pub virtual_exports: BoundedMap<String, VirtualExport, MAX_VIRTUAL_EXPORTS>,
+    pub virtual_imports: BoundedMap<
+        String,
+        VirtualImport,
+        MAX_VIRTUAL_IMPORTS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
+    pub virtual_exports: BoundedMap<
+        String,
+        VirtualExport,
+        MAX_VIRTUAL_EXPORTS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     pub memory_regions:
         BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS, NoStdProvider<65536>>,
     pub isolation_level: IsolationLevel,
@@ -268,10 +274,25 @@ impl Default for ResourceLimits {
 }
 
 pub struct VirtualizationManager {
-    virtual_components: BoundedMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
+    virtual_components: BoundedMap<
+        ComponentInstanceId,
+        VirtualComponent,
+        MAX_VIRTUAL_COMPONENTS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
-    host_exports:           BoundedMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
-    sandbox_registry:       BoundedMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
+    host_exports: BoundedMap<
+        String,
+        HostExport,
+        MAX_VIRTUAL_EXPORTS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
+    sandbox_registry: BoundedMap<
+        ComponentInstanceId,
+        SandboxState,
+        MAX_VIRTUAL_COMPONENTS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     next_virtual_id:        AtomicU32,
     virtualization_enabled: AtomicBool,
 }
@@ -295,7 +316,7 @@ pub enum HostExportHandler {
     Custom { handler_id: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SandboxState {
     pub instance_id:     ComponentInstanceId,
     pub active:          bool,
@@ -589,7 +610,7 @@ impl VirtualizationManager {
         &self,
         instance_id: ComponentInstanceId,
         import_name: &str,
-    ) -> VirtualizationResult<Option<ComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue>> {
         let component =
             self.virtual_components.get(&instance_id).ok_or_else(|| VirtualizationError {
                 kind:    VirtualizationErrorKind::InvalidVirtualComponent,
@@ -690,12 +711,14 @@ impl VirtualizationManager {
         Ok(base_addr)
     }
 
-    fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<ComponentValue>> {
+    fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<WrtComponentValue>> {
         if let Some(export) = self.host_exports.get(name) {
             match &export.handler {
-                HostExportHandler::Memory { .. } => Ok(Some(ComponentValue::U32(0))),
-                HostExportHandler::Time => Ok(Some(ComponentValue::U64(self.get_current_time()))),
-                HostExportHandler::Random => Ok(Some(ComponentValue::U32(42))),
+                HostExportHandler::Memory { .. } => Ok(Some(WrtComponentValue::U32(0))),
+                HostExportHandler::Time => {
+                    Ok(Some(WrtComponentValue::U64(self.get_current_time())))
+                },
+                HostExportHandler::Random => Ok(Some(WrtComponentValue::U32(42))),
                 _ => Ok(None),
             }
         } else {
@@ -707,7 +730,7 @@ impl VirtualizationManager {
         &self,
         parent_id: ComponentInstanceId,
         export_name: &str,
-    ) -> VirtualizationResult<Option<ComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue>> {
         if let Some(parent) = self.virtual_components.get(&parent_id) {
             if let Some(export) = parent.virtual_exports.get(export_name) {
                 match export.visibility {
@@ -729,7 +752,7 @@ impl VirtualizationManager {
         &self,
         sibling_id: ComponentInstanceId,
         export_name: &str,
-    ) -> VirtualizationResult<Option<ComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue>> {
         if let Some(sibling) = self.virtual_components.get(&sibling_id) {
             if let Some(export) = sibling.virtual_exports.get(export_name) {
                 match export.visibility {
@@ -750,7 +773,7 @@ impl VirtualizationManager {
     fn resolve_virtual_provider(
         &self,
         provider_id: &str,
-    ) -> VirtualizationResult<Option<ComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue>> {
         Ok(None)
     }
 
@@ -875,5 +898,41 @@ mod tests {
 
         let result = manager.allocate_virtual_memory(instance_id, 1024, permissions);
         assert!(result.is_ok());
+    }
+}
+
+// Implement required traits for SandboxState to work with bounded collections
+use wrt_foundation::traits::Checksummable;
+
+impl Checksummable for SandboxState {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        // Simple checksum implementation by hashing the key fields
+        self.instance_id.0.update_checksum(checksum);
+        (self.active as u8).update_checksum(checksum);
+        self.violation_count.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for SandboxState {
+    fn serialized_size(&self) -> usize {
+        16 // Simple fixed size
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        _writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        // Stub implementation
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for SandboxState {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        Ok(SandboxState::default())
     }
 }

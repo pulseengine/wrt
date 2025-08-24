@@ -115,8 +115,8 @@ pub use canonical_abi::canonical::CanonicalABI;
 pub use components::component::ComponentType;
 // Re-export MemoryProvider from foundation for type parameters
 pub use wrt_foundation::MemoryProvider;
-// Add placeholder types for commonly missing imports
-pub type WrtComponentType = u32;
+// Add placeholder types for commonly missing imports (when not imported from
+// component modules)
 pub type ResourceHandle = u32;
 pub type TypeId = u32;
 // Component types based on feature flags

@@ -60,7 +60,7 @@ impl StacklessEngine {
                 return Err(Error::runtime_error("Stack underflow"));
             }
             let last_idx = self.operand_stack.len() - 1;
-            let value = self.operand_stack.remove(last_idx)?;
+            let value = self.operand_stack.remove(last_idx);
             args.push(value);
         }
         args.reverse(); // Arguments were popped in reverse order

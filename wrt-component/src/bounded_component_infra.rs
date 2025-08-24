@@ -18,6 +18,8 @@ use wrt_foundation::{
     WrtResult,
 };
 
+use crate::prelude::*;
+
 /// Budget-aware memory provider for component model (128KB)
 pub type ComponentProvider = NoStdProvider<131072>;
 

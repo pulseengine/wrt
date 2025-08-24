@@ -33,13 +33,13 @@ use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
     bounded::{
         BoundedMap,
         BoundedVec,
     },
     types::ValueType,
 };
+use core::cell::RefCell as AtomicRefCell;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     budget_aware_provider::CrateId,

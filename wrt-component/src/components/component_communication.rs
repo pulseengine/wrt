@@ -57,16 +57,6 @@ use std::{
     vec::Vec,
 };
 
-// Note: Using alloc for no_std instead of wrt_foundation bounded types for now
-// #[cfg(not(any(feature = "std", )))]
-// use wrt_foundation::{BoundedVec, BoundedString, BoundedMap as HashMap,
-// safe_memory::NoStdProvider};
-
-// Type aliases for no_std compatibility (commented out to avoid conflicts)
-// #[cfg(not(any(feature = "std", )))]
-// type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
-// #[cfg(not(any(feature = "std", )))]
-// type String = BoundedString<256, NoStdProvider<65536>>;
 use wrt_error::{
     codes,
     Error,
@@ -84,6 +74,18 @@ use wrt_foundation::{
 
 #[cfg(feature = "std")]
 use crate::canonical_abi::ComponentValue;
+// Note: Using alloc for no_std instead of wrt_foundation bounded types for now
+// #[cfg(not(any(feature = "std", )))]
+// use wrt_foundation::{BoundedVec, BoundedString, BoundedMap as HashMap,
+// safe_memory::NoStdProvider};
+
+// Type aliases for no_std compatibility (commented out to avoid conflicts)
+// #[cfg(not(any(feature = "std", )))]
+// type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
+// #[cfg(not(any(feature = "std", )))]
+// type String = BoundedString<256, NoStdProvider<65536>>;
+// Import prelude for consistent type access
+use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;

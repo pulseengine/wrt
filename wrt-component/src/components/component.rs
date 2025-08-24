@@ -31,10 +31,14 @@ use wrt_foundation::{
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
+use wrt_intercept::LinkInterceptor;
 
 use crate::{
     bounded_component_infra::ComponentProvider,
+    export::Export,
+    import::Import,
     prelude::*,
+    resources::ResourceTable,
 };
 
 // Simple HashMap substitute for no_std using BoundedVec
@@ -1068,7 +1072,7 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 
 /// Convert a component value to a runtime value
 pub fn component_value_to_value(
-    component_value: &wrt_foundation::WrtComponentValue,
+    component_value: &crate::prelude::WrtComponentValue,
 ) -> wrt_intercept::Value {
     use wrt_intercept::Value;
 
@@ -1080,7 +1084,7 @@ pub fn component_value_to_value(
 }
 
 /// Convert a runtime value to a component value
-pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation::WrtComponentValue {
+pub fn value_to_component_value(value: &wrt_intercept::Value) -> crate::prelude::WrtComponentValue {
     // WrtComponentValue is already imported from prelude
 
     use crate::type_conversion::core_value_to_types_componentvalue;

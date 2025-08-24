@@ -227,15 +227,16 @@ type ResourceCompletionCallback = Box<dyn FnOnce(Result<ComponentValue, Error>) 
 
 impl ResourceAsyncOperations {
     /// Create new resource async operations manager
-    pub fn new(abi_support: AsyncCanonicalAbiSupport) -> Self {
-        Self {
+    pub fn new(abi_support: AsyncCanonicalAbiSupport) -> Result<Self> {
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        Ok(Self {
             abi_support,
-            lifecycle_manager: ResourceLifecycleManager::new(),
+            lifecycle_manager: ResourceLifecycleManager::new()?,
             active_operations: BoundedMap::new(provider.clone())?,
             resource_contexts: BoundedMap::new(provider.clone())?,
             next_operation_id: AtomicU64::new(1),
             resource_stats: ResourceOperationStats::default(),
-        }
+        })
     }
 
     /// Initialize component for async resource operations

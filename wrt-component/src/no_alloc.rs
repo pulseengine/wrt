@@ -5,7 +5,16 @@
 //! introspection capabilities.
 
 // Re-export the component header verification from wrt-decoder
+#[cfg(feature = "decoder")]
 pub use wrt_decoder::component::decode_no_alloc::{verify_component_header, COMPONENT_MAGIC};
+
+// Placeholder when decoder is not available
+#[cfg(not(feature = "decoder"))]
+pub const COMPONENT_MAGIC: &[u8] = b"\x00asm";
+#[cfg(not(feature = "decoder"))]
+pub fn verify_component_header(_data: &[u8]) -> Result<bool> {
+    Ok(false) // Simplified verification
+}
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},

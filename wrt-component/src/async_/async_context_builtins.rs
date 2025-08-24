@@ -35,23 +35,20 @@ use wrt_error::{
     ErrorCategory,
     Result,
 };
-#[cfg(feature = "std")]
-use wrt_foundation::component_value::ComponentValue;
-#[cfg(not(any(feature = "std",)))]
 use wrt_foundation::{
     safe_memory::NoStdProvider,
-    BoundedString,
-    BoundedVec,
-};
-use wrt_foundation::{
     types::ValueType,
     // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
     BoundedMap,
+    BoundedString,
+    BoundedVec,
 };
 
+// Temporary AtomicRefCell substitute for no_std compilation
+// TODO: Replace with proper atomic implementation
 #[cfg(not(feature = "std"))]
-// For no_std, use a simpler ComponentValue representation
-use crate::types::Value as ComponentValue;
+use crate::prelude::Mutex as AtomicRefCell;
+use crate::prelude::WrtComponentValue;
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std",)))]
@@ -68,7 +65,7 @@ pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg(not(any(feature = "std",)))]
-pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
+pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE, NoStdProvider<65536>>);
 
 impl ContextKey {
     #[cfg(feature = "std")]
@@ -95,7 +92,7 @@ impl ContextKey {
 #[derive(Debug, Clone)]
 pub enum ContextValue {
     /// Simple value types
-    Simple(ComponentValue),
+    Simple(WrtComponentValue),
     /// Binary data (for serialized complex types)
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
@@ -104,7 +101,7 @@ pub enum ContextValue {
 }
 
 impl ContextValue {
-    pub fn from_component_value(value: ComponentValue) -> Self {
+    pub fn from_component_value(value: WrtComponentValue) -> Self {
         Self::Simple(value)
     }
 
@@ -120,7 +117,7 @@ impl ContextValue {
         Ok(Self::Binary(bounded_data))
     }
 
-    pub fn as_component_value(&self) -> Option<&ComponentValue> {
+    pub fn as_component_value(&self) -> Option<&WrtComponentValue> {
         match self {
             Self::Simple(value) => Some(value),
             _ => None,
@@ -144,17 +141,20 @@ pub struct AsyncContext {
     #[cfg(feature = "std")]
     data: BTreeMap<ContextKey, ContextValue>,
     #[cfg(not(any(feature = "std",)))]
-    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES>,
+    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES, NoStdProvider<65536>>,
 }
 
 impl AsyncContext {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
-            data:                                    BTreeMap::new(),
+            data: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            data:                                    BoundedMap::new(provider.clone())?,
-        }
+            data: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedMap::new(provider)?
+            },
+        })
     }
 
     pub fn get(&self, key: &ContextKey) -> Option<&ContextValue> {
@@ -330,28 +330,28 @@ pub mod canonical_builtins {
 
     /// `context.get` canonical built-in
     /// Returns the current async context as a component value
-    pub fn canon_context_get() -> Result<ComponentValue> {
+    pub fn canon_context_get() -> Result<WrtComponentValue> {
         let context = AsyncContextManager::context_get()?;
         match context {
             Some(ctx) => {
                 // Serialize context to component value
                 // For now, return a simple boolean indicating presence
-                Ok(ComponentValue::Bool(true))
+                Ok(WrtComponentValue::Bool(true))
             },
-            None => Ok(ComponentValue::Bool(false)),
+            None => Ok(WrtComponentValue::Bool(false)),
         }
     }
 
     /// `context.set` canonical built-in  
     /// Sets the current async context from a component value
-    pub fn canon_context_set(value: ComponentValue) -> Result<()> {
+    pub fn canon_context_set(value: WrtComponentValue) -> Result<()> {
         match value {
-            ComponentValue::Bool(true) => {
+            WrtComponentValue::Bool(true) => {
                 // Create a new empty context
                 let context = AsyncContext::new();
                 AsyncContextManager::context_set(context)
             },
-            ComponentValue::Bool(false) => {
+            WrtComponentValue::Bool(false) => {
                 // Clear the current context
                 AsyncContextManager::context_pop()?;
                 Ok(())
@@ -367,7 +367,7 @@ pub mod canonical_builtins {
     /// Helper function to get a typed value from context
     pub fn get_typed_context_value<T>(key: &str, value_type: ValueType) -> Result<Option<T>>
     where
-        T: TryFrom<ComponentValue>,
+        T: TryFrom<WrtComponentValue>,
         T::Error: Into<Error>,
     {
         #[cfg(feature = "std")]
@@ -390,7 +390,7 @@ pub mod canonical_builtins {
     /// Helper function to set a typed value in context
     pub fn set_typed_context_value<T>(key: &str, value: T) -> Result<()>
     where
-        T: Into<ComponentValue>,
+        T: Into<WrtComponentValue>,
     {
         #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
@@ -460,11 +460,11 @@ mod tests {
 
     #[test]
     fn test_context_value_creation() {
-        let value = ContextValue::from_component_value(ComponentValue::Bool(true));
+        let value = ContextValue::from_component_value(WrtComponentValue::Bool(true));
         assert!(value.as_component_value().is_some());
         assert_eq!(
             value.as_component_value().unwrap(),
-            &ComponentValue::Bool(true)
+            &WrtComponentValue::Bool(true)
         );
     }
 
@@ -478,7 +478,7 @@ mod tests {
         #[cfg(not(any(feature = "std",)))]
         let key = ContextKey::new("test").unwrap();
 
-        let value = ContextValue::from_component_value(ComponentValue::I32(42));
+        let value = ContextValue::from_component_value(WrtComponentValue::I32(42));
         context.set(key.clone(), value).unwrap();
 
         assert!(!context.is_empty());
@@ -488,7 +488,7 @@ mod tests {
         let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
-            &ComponentValue::I32(42)
+            &WrtComponentValue::I32(42)
         );
     }
 
@@ -517,14 +517,14 @@ mod tests {
 
         // Test context.get when no context
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(false));
+        assert_eq!(result, WrtComponentValue::Bool(false));
 
         // Test context.set with true
-        canonical_builtins::canon_context_set(ComponentValue::Bool(true)).unwrap();
+        canonical_builtins::canon_context_set(WrtComponentValue::Bool(true)).unwrap();
 
         // Test context.get when context exists
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(true));
+        assert_eq!(result, WrtComponentValue::Bool(true));
     }
 
     #[test]

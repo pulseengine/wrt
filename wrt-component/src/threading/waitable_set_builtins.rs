@@ -25,6 +25,7 @@ use std::{
 };
 use std::{
     boxed::Box,
+    cell::RefCell as AtomicRefCell,
     collections::{
         BTreeMap,
         BTreeSet,
@@ -38,7 +39,6 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
     bounded::{
         BoundedMap,
         BoundedSet,

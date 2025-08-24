@@ -77,15 +77,15 @@ pub mod memory_limits;
 // Module type is available through wrt prelude
 
 // WASI host function support
-// Component model support
-#[cfg(feature = "component-model")]
-use wrt_component::{
-    cross_component_communication::CrossComponentBridge,
-    Component,
-    ComponentInstance,
-    ComponentLinker,
-    ComponentRegistry,
-};
+// Component model support - temporarily disabled
+// #[cfg(feature = "component-model")]
+// use wrt_component::{
+//     cross_component_communication::CrossComponentBridge,
+//     Component,
+//     ComponentInstance,
+//     ComponentLinker,
+//     ComponentRegistry,
+// };
 #[cfg(all(feature = "wasi", feature = "wrt-execution"))]
 use wrt_host::CallbackRegistry;
 // Enhanced host function registry
@@ -94,13 +94,13 @@ use wrt_host::{
     builder::HostBuilder,
     BuiltinHost,
     CallbackRegistry,
-    HostFunction,
+    // HostFunction, // Use wrt_runtime::HostFunction instead
 };
 // Platform abstraction layer
 #[cfg(feature = "wrt-execution")]
 use wrt_platform::{
-    memory::PlatformMemory,
-    threading::PlatformThreading,
+    // memory::PlatformMemory, // Not available
+    threading::PlatformThreadPool,
     time::PlatformTime,
 };
 #[cfg(feature = "wasi")]
@@ -296,7 +296,7 @@ pub struct WrtdEngine {
     wasi_provider:          Option<Box<dyn WasiHostProvider>>,
     /// Component registry for component model
     #[cfg(feature = "component-model")]
-    component_registry:     Option<ComponentRegistry>,
+    // component_registry:     Option<ComponentRegistry>, // Disabled
     /// Memory profiler
     memory_profiler:        Option<MemoryProfiler>,
     /// Platform optimizations enabled
@@ -315,7 +315,7 @@ impl WrtdEngine {
             #[cfg(feature = "wasi")]
             wasi_provider: None,
             #[cfg(feature = "component-model")]
-            component_registry: None,
+            // component_registry: None, // Disabled
             memory_profiler: None,
             platform_optimizations: false,
         };
@@ -352,7 +352,8 @@ impl WrtdEngine {
 
             // Initialize platform-specific features
             #[cfg(feature = "wrt-execution")]
-            PlatformMemory::init_optimizations().map_err(|_| {
+            // PlatformMemory::init_optimizations().map_err(|_| { // Disabled
+            Ok(()).map_err(|_: ()| {
                 Error::runtime_error("Failed to initialize platform memory optimizations")
             })?;
 
@@ -435,17 +436,19 @@ impl WrtdEngine {
     fn init_component_model(&mut self) -> Result<()> {
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model");
 
-        let mut registry = ComponentRegistry::new()
-            .map_err(|_| Error::runtime_error("Failed to create component registry"))?;
+        // Component model support disabled
+        return Err(Error::runtime_error("Component model temporarily disabled"));
+        // let mut registry = ComponentRegistry::new()
+        //     .map_err(|_| Error::runtime_error("Failed to create component registry"))?;
 
         // Register component interfaces
-        for interface in &self.config.component_interfaces {
-            registry
-                .register_interface(interface)
-                .map_err(|_| Error::runtime_error("Failed to register component interface"))?;
-        }
+        // for interface in &self.config.component_interfaces {
+        //     registry
+        //         .register_interface(interface)
+        //         .map_err(|_| Error::runtime_error("Failed to register component interface"))?;
+        // }
 
-        self.component_registry = Some(registry);
+        // self.component_registry = Some(registry);
 
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Component model initialized");
         Ok(())
@@ -478,14 +481,19 @@ impl WrtdEngine {
             .logger
             .handle_minimal_log(LogLevel::Info, "Executing WebAssembly component");
 
-        if let Some(ref registry) = self.component_registry {
+        // if let Some(ref registry) = self.component_registry { // Disabled
+        // Component model support disabled
+        return Err(Error::runtime_error("Component model temporarily disabled"));
+        #[allow(unreachable_code)]
+        if false {
             // Create component from binary data
-            let component = Component::from_binary(data)
-                .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
+            // let component = Component::from_binary(data) // Disabled
+            //     .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
+            return Err(Error::runtime_error("Component model disabled"));
 
             // Create component linker with host functions
-            let mut linker = ComponentLinker::new()
-                .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
+            // let mut linker = ComponentLinker::new() // Disabled
+                // .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
 
             // Link WASI functions if available
             #[cfg(feature = "wasi")]
@@ -496,15 +504,15 @@ impl WrtdEngine {
             }
 
             // Create component instance
-            let instance = ComponentInstance::new(&component, &linker)
+            // let instance = ComponentInstance::new(&component, &linker) // Disabled
                 .map_err(|_| Error::runtime_execution_error("Failed to instantiate component"))?;
 
             // Execute the component's main function
-            instance
-                .call_main(&[])
-                .map_err(|_| Error::runtime_execution_error("Component execution failed"))?;
+            // instance
+            //     .call_main(&[])
+            //     .map_err(|_| Error::runtime_execution_error("Component execution failed"))?;
 
-            self.stats.components_executed += 1;
+            // self.stats.components_executed += 1;
         } else {
             return Err(Error::runtime_error("Component model not initialized"));
         }
@@ -522,8 +530,14 @@ impl WrtdEngine {
             let _ = self
                 .logger
                 .handle_minimal_log(LogLevel::Info, "Using real WRT execution engine");
-            use wrt::engine::{
+
+            // Initialize the memory system before creating engine
+            use wrt_foundation::memory_init::MemoryInitializer;
+            MemoryInitializer::initialize()
+                .map_err(|_| Error::runtime_error("Failed to initialize memory system"))?;
+            use wrt_runtime::engine::{
                 CapabilityAwareEngine,
+                CapabilityEngine,
                 EnginePreset,
             };
 
@@ -569,7 +583,7 @@ impl WrtdEngine {
                         // For now, just return success
                     }
                     Ok(vec![])
-                }).unwrap_or();
+                }).unwrap_or(());
 
                 let _ = self
                     .logger
@@ -590,7 +604,7 @@ impl WrtdEngine {
             let function_name = self.config.function_name.unwrap_or("start");
             let _ = self.logger.handle_minimal_log(
                 LogLevel::Info,
-                &format!("Executing function: {}", function_name),
+                "Executing function",
             );
 
             // Check if function exists before execution
@@ -599,7 +613,7 @@ impl WrtdEngine {
             })? {
                 let _ = self.logger.handle_minimal_log(
                     LogLevel::Error,
-                    &format!("Function '{}' not found in module exports", function_name),
+                    "Function not found in module exports",
                 );
                 return Err(Error::runtime_function_not_found("Function not found"));
             }
@@ -1045,7 +1059,7 @@ fn main() -> Result<()> {
         if config.enable_component_model {
             println!(
                 "✓ Component model enabled with {} interfaces",
-                args.component_interfaces.len
+                args.component_interfaces.len()
             );
         }
     }

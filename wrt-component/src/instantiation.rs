@@ -46,7 +46,10 @@ use crate::{
     execution_engine::ComponentExecutionEngine,
     export::Export,
     import::Import,
-    prelude::WrtComponentType,
+    prelude::{
+        WrtComponentType,
+        WrtComponentValue,
+    },
     resources::resource_lifecycle::ResourceLifecycleManager,
     types::{
         ValType,

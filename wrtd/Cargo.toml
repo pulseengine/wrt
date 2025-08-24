@@ -48,8 +48,8 @@ std = [
     "dep:wrt-foundation"
 ]
 
-# Enable actual WRT execution (vs demo mode)
-wrt-execution = ["std", "dep:wrt", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host", "dep:wrt-component"]
+# Enable actual WRT execution (vs demo mode) - without wrt-component for now
+wrt-execution = ["std", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host"]
 
 # WASI support features
 wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2"]
@@ -60,8 +60,8 @@ wasi-io = ["wasi", "wrt-wasi/wasi-io"]
 wasi-random = ["wasi", "wrt-wasi/wasi-random"]
 wasi-nn = ["wasi", "wrt-wasi/wasi-nn"]
 
-# Component model support
-component-model = ["wrt-execution", "wrt-component/component-model-core", "wrt-component/component-model-values", "wrt-wasi/component-model"]
+# Component model support (disabled - wrt-component has compilation issues)
+component-model = ["wrt-execution"]
 
 # Safety level presets using capability-based features
 # wrtd with wrt-wasi supports QM to ASIL-B (daemon/service use cases)

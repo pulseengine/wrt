@@ -7,6 +7,8 @@ use crate::runtime_stubs::{ComponentId, InstanceId, ExecutionContext, WasmConfig
 use alloc::boxed::Box;
 use wrt_error::{Error, Result};
 
+use crate::prelude::*;
+
 /// Component instance representation
 #[derive(Debug, Clone)]
 pub struct ComponentInstance {

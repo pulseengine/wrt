@@ -12,7 +12,6 @@ use wrt_foundation::{
         BoundedString,
         BoundedVec,
     },
-    prelude::*,
     traits::{
         Checksummable,
         FromBytes,

@@ -12,11 +12,13 @@ use std::sync::{
     RwLock,
 };
 
-use wrt_foundation::prelude::*;
+use wrt_runtime::{
+    Instance,
+    Memory,
+};
 #[cfg(not(feature = "std"))]
 use wrt_sync::RwLock;
 
-// use wrt_runtime::{Instance, Memory};
 use crate::{
     canonical_abi::canonical_realloc::{
         ComponentInstanceId,
@@ -24,6 +26,7 @@ use crate::{
         StringEncoding,
     },
     memory_layout::MemoryLayout,
+    prelude::*,
 };
 
 // Type alias for compatibility

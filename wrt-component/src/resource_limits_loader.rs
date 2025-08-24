@@ -4,6 +4,12 @@
 //! WebAssembly binaries' custom sections and convert them to execution
 //! configurations.
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::format;
+
 #[cfg(feature = "decoder")]
 use wrt_decoder::resource_limits_section::{
     ResourceLimitsSection,
@@ -22,10 +28,13 @@ use wrt_error::{
 };
 use wrt_foundation::NoStdProvider;
 
-use crate::async_::fuel_async_executor::{
-    ASILExecutionConfig,
-    ASILExecutionMode,
-    ExecutionLimitsConfig,
+use crate::{
+    async_::fuel_async_executor::{
+        ASILExecutionConfig,
+        ASILExecutionMode,
+        ExecutionLimitsConfig,
+    },
+    prelude::*,
 };
 
 /// Extract resource limits from a WebAssembly binary

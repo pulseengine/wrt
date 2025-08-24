@@ -19,7 +19,11 @@ use core::{
 use wrt_foundation::{
     bounded::BoundedVec,
     bounded_collections::BoundedMap,
-    component_value::ComponentValue,
+    clean_types::{
+        ComponentType,
+        FuncType,
+        ValType,
+    },
     // resource::ResourceHandle, // Not available - using local placeholder
     safe_managed_alloc,
     CrateId,
@@ -56,12 +60,7 @@ use crate::{
         LoweringContext,
     },
     prelude::*,
-    types::{
-        ComponentType,
-        FuncType,
-        ValType,
-        Value,
-    },
+    types::Value,
     ComponentInstanceId,
 };
 
@@ -79,9 +78,10 @@ pub struct AsyncCanonicalAbiSupport {
     /// Task manager bridge
     bridge:            TaskManagerAsyncBridge,
     /// Active async ABI operations
-    async_operations:  BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
+    async_operations:
+        BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS, NoStdProvider<65536>>,
     /// Component ABI contexts
-    abi_contexts:      BoundedMap<ComponentInstanceId, ComponentAbiContext, 128>,
+    abi_contexts: BoundedMap<ComponentInstanceId, ComponentAbiContext, 128, NoStdProvider<65536>>,
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// ABI statistics
@@ -116,12 +116,12 @@ pub enum AsyncAbiOperationType {
     /// Async function call
     AsyncCall {
         function_name: String,
-        args:          Vec<ComponentValue>,
+        args:          Vec<WrtComponentValue>,
     },
     /// Async resource method call
     ResourceAsync {
         method_name: String,
-        args:        Vec<ComponentValue>,
+        args:        Vec<WrtComponentValue>,
     },
     /// Async value lifting
     AsyncLift {
@@ -130,7 +130,7 @@ pub enum AsyncAbiOperationType {
     },
     /// Async value lowering
     AsyncLower {
-        source_values: Vec<ComponentValue>,
+        source_values: Vec<WrtComponentValue>,
         target_type:   ValType,
     },
     /// Future handling
@@ -162,7 +162,7 @@ pub enum StreamOp {
     /// Read next value
     ReadNext,
     /// Write value
-    Write(ComponentValue),
+    Write(WrtComponentValue),
     /// Close stream
     Close,
     /// Check available
@@ -176,13 +176,14 @@ struct ComponentAbiContext {
     /// Default canonical options for async operations
     default_options:     CanonicalOptions,
     /// Active async calls
-    active_calls:        BoundedVec<AsyncAbiOperationId, 64>,
+    active_calls:        BoundedVec<AsyncAbiOperationId, 64, NoStdProvider<65536>>,
     /// Resource async operations
-    resource_operations: BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
+    resource_operations:
+        BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32, NoStdProvider<65536>>,
     /// Future callbacks
-    future_callbacks:    BoundedMap<FutureHandle, AsyncAbiOperationId, 64>,
+    future_callbacks:    BoundedMap<FutureHandle, AsyncAbiOperationId, 64, NoStdProvider<65536>>,
     /// Stream callbacks
-    stream_callbacks:    BoundedMap<StreamHandle, AsyncAbiOperationId, 32>,
+    stream_callbacks:    BoundedMap<StreamHandle, AsyncAbiOperationId, 32, NoStdProvider<65536>>,
 }
 
 /// ABI operation statistics
@@ -201,14 +202,16 @@ struct AbiStatistics {
 
 impl AsyncCanonicalAbiSupport {
     /// Create new async ABI support
-    pub fn new(bridge: TaskManagerAsyncBridge) -> Self {
-        Self {
+    pub fn new(bridge: TaskManagerAsyncBridge) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+
+        Ok(Self {
             bridge,
             async_operations: BoundedMap::new(provider.clone())?,
             abi_contexts: BoundedMap::new(provider.clone())?,
             next_operation_id: AtomicU64::new(1),
             abi_stats: AbiStatistics::default(),
-        }
+        })
     }
 
     /// Initialize component for async ABI operations
@@ -435,7 +438,7 @@ impl AsyncCanonicalAbiSupport {
     pub fn async_lower(
         &mut self,
         component_id: ComponentInstanceId,
-        source_values: Vec<ComponentValue>,
+        source_values: Vec<WrtComponentValue>,
         target_type: ValType,
         options: Option<CanonicalOptions>,
     ) -> Result<AsyncAbiOperationId, Error> {

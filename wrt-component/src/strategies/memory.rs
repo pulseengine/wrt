@@ -169,7 +169,7 @@ impl MemoryOptimizationStrategy for BoundedCopyStrategy {
         "BoundedCopy"
     }
 
-    fn memory_strategy(&self) -> MemoryStrategy {
+    fn memory_strategy_type(&self) -> MemoryStrategy {
         MemoryStrategy::BoundedCopy
     }
 

@@ -625,6 +625,18 @@ pub const WOULD_BLOCK: u16 = 2024;
 /// Platform error
 pub const PLATFORM_ERROR: u16 = 2025;
 
+/// Invalid configuration error
+pub const INVALID_CONFIG: u16 = 2026;
+
+/// Task not found error
+pub const TASK_NOT_FOUND: u16 = 2027;
+
+/// Component already exists error
+pub const COMPONENT_ALREADY_EXISTS: u16 = 2028;
+
+/// Insufficient data error
+pub const INSUFFICIENT_DATA: u16 = 2029;
+
 // INVALID_STATE already defined above as 5003
 
 // Additional missing error codes

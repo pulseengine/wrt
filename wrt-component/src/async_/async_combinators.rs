@@ -28,7 +28,6 @@ use std::sync::Weak;
 use wrt_foundation::{
     bounded::BoundedVec,
     bounded_collections::BoundedMap,
-    component_value::ComponentValue,
     safe_managed_alloc,
     Arc,
     CrateId,
@@ -71,7 +70,7 @@ pub struct AsyncCombinators {
     /// Bridge for task management
     bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active combinator operations
-    active_combinators: BoundedMap<CombinatorId, CombinatorOperation, 512>,
+    active_combinators: BoundedMap<CombinatorId, CombinatorOperation, 512, NoStdProvider<65536>>,
     /// Next combinator ID
     next_combinator_id: AtomicU64,
     /// Combinator statistics
@@ -105,14 +104,14 @@ pub enum CombinatorType {
     /// Join all futures
     Join {
         futures:         Vec<BoxedFuture>,
-        results:         Vec<Option<ComponentValue>>,
+        results:         Vec<Option<WrtComponentValue>>,
         completed_count: AtomicU32,
     },
     /// Race futures (first to complete)
     Race {
         futures:       Vec<BoxedFuture>,
         winner_index:  Option<usize>,
-        winner_result: Option<ComponentValue>,
+        winner_result: Option<WrtComponentValue>,
     },
     /// Timeout wrapper
     Timeout {
@@ -124,20 +123,21 @@ pub enum CombinatorType {
     /// Try join (all or error)
     TryJoin {
         futures: Vec<BoxedFuture>,
-        results: Vec<Option<Result<ComponentValue, Error>>>,
+        results: Vec<Option<core::result::Result<WrtComponentValue, Error>>>,
         failed:  AtomicBool,
     },
     /// Zip futures together
     Zip {
         future_a: BoxedFuture,
         future_b: BoxedFuture,
-        result_a: Option<ComponentValue>,
-        result_b: Option<ComponentValue>,
+        result_a: Option<WrtComponentValue>,
+        result_b: Option<WrtComponentValue>,
     },
 }
 
 /// Boxed future type for combinators
-type BoxedFuture = Pin<Box<dyn CoreFuture<Output = Result<ComponentValue, Error>> + Send>>;
+type BoxedFuture =
+    Pin<Box<dyn CoreFuture<Output = core::result::Result<WrtComponentValue, Error>> + Send>>;
 
 /// Combinator statistics
 #[derive(Debug, Default)]
@@ -219,7 +219,8 @@ impl AsyncCombinators {
                 async move {
                     // Simulate select operation
                     // In real implementation, would poll all futures and return first ready
-                    Ok(vec![ComponentValue::U32(0)]) // Index of selected future
+                    Ok(vec![WrtComponentValue::U32(0)]) // Index of selected
+                                                        // future
                 },
                 ComponentAsyncTaskType::AsyncOperation,
                 Priority::Normal,
@@ -349,7 +350,8 @@ impl AsyncCombinators {
                 async move {
                     // Simulate race operation
                     // In real implementation, would poll all futures and return first ready
-                    Ok(vec![ComponentValue::U32(0), ComponentValue::U32(42)]) // Index and result
+                    Ok(vec![WrtComponentValue::U32(0), WrtComponentValue::U32(42)])
+                    // Index and result
                 },
                 ComponentAsyncTaskType::AsyncOperation,
                 Priority::Normal,
@@ -407,7 +409,7 @@ impl AsyncCombinators {
                         // Simulate timeout
                         Err(Error::runtime_execution_error("Timeout occurred"))
                     } else {
-                        Ok(vec![ComponentValue::U32(42)])
+                        Ok(vec![WrtComponentValue::U32(42)])
                     }
                 },
                 ComponentAsyncTaskType::AsyncOperation,
@@ -517,7 +519,8 @@ impl AsyncCombinators {
                 async move {
                     // Simulate zip operation
                     // In real implementation, would poll both futures until both complete
-                    Ok(vec![ComponentValue::U32(1), ComponentValue::U32(2)]) // (a, b) tuple
+                    Ok(vec![WrtComponentValue::U32(1), WrtComponentValue::U32(2)])
+                    // (a, b) tuple
                 },
                 ComponentAsyncTaskType::AsyncOperation,
                 Priority::Normal,
@@ -699,7 +702,7 @@ pub fn create_timeout_future(duration_ms: u64) -> BoxedFuture {
     Box::pin(async move {
         // Simulate timeout
         if duration_ms > 0 {
-            Ok(ComponentValue::U32(1)) // Success
+            Ok(WrtComponentValue::U32(1)) // Success
         } else {
             Err(Error::runtime_execution_error("Timeout expired"))
         }
@@ -707,7 +710,7 @@ pub fn create_timeout_future(duration_ms: u64) -> BoxedFuture {
 }
 
 /// Create a simple delay future
-pub fn create_delay_future(delay_ms: u64, value: ComponentValue) -> BoxedFuture {
+pub fn create_delay_future(delay_ms: u64, value: WrtComponentValue) -> BoxedFuture {
     Box::pin(async move {
         // Simulate delay
         Ok(value)
@@ -757,7 +760,7 @@ mod tests {
     #[test]
     fn test_helper_functions() {
         let timeout_future = create_timeout_future(1000);
-        let delay_future = create_delay_future(500, ComponentValue::U32(42));
+        let delay_future = create_delay_future(500, WrtComponentValue::U32(42));
 
         // Futures created successfully
         assert!(!timeout_future.as_ref().as_ptr().is_null());

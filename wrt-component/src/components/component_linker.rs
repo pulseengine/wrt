@@ -20,12 +20,25 @@ use wrt_error::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedString as String,
-    bounded::BoundedVec as Vec,
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
+
+use crate::prelude::*;
+
+// Type aliases for no_std environment with proper generics
+#[cfg(not(feature = "std"))]
+type String = BoundedString<256, NoStdProvider<65536>>;
+#[cfg(not(feature = "std"))]
+type Vec<T> = BoundedVec<T, 256, NoStdProvider<65536>>;
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> =
+    wrt_foundation::bounded_collections::BoundedMap<K, V, 64, NoStdProvider<65536>>;
 
 use crate::components::component_instantiation::{
     create_component_export,

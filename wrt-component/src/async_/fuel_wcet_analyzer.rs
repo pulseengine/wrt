@@ -12,6 +12,14 @@ use core::{
     time::Duration,
 };
 
+#[cfg(feature = "std")]
+use log::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
 use wrt_foundation::{
     bounded_collections::{
         BoundedMap,
@@ -198,6 +206,7 @@ impl FuelWcetAnalyzer {
         config: WcetAnalyzerConfig,
         verification_level: VerificationLevel,
     ) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         Ok(Self {
             analysis_results: BoundedMap::new(provider.clone())?,
             task_paths: BoundedMap::new(provider.clone())?,
@@ -373,11 +382,10 @@ impl FuelWcetAnalyzer {
 
             if !within_estimate {
                 self.stats.underestimations.fetch_add(1, Ordering::AcqRel);
-                log::warn!(
+                #[cfg(feature = "std")]
+                warn!(
                     "WCET underestimation: Task {} consumed {} fuel, estimate was {}",
-                    task_id.0,
-                    actual_fuel,
-                    result.wcet_fuel
+                    task_id.0, actual_fuel, result.wcet_fuel
                 );
             } else if actual_fuel < result.wcet_fuel / 2 {
                 self.stats.overestimations.fetch_add(1, Ordering::AcqRel);

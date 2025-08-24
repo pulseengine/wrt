@@ -15,6 +15,14 @@ use core::{
     time::Duration,
 };
 
+#[cfg(feature = "std")]
+use log::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
 use wrt_foundation::{
     bounded::BoundedVec,
     bounded_collections::BoundedMap,
@@ -758,7 +766,8 @@ impl FuelDeadlineScheduler {
         self.consume_scheduler_fuel(DEADLINE_MISS_PENALTY)?;
 
         // In a real system, this might trigger a safety response
-        log::warn!("Task deadline violation detected");
+        #[cfg(feature = "std")]
+        warn!("Task deadline violation detected");
 
         Ok(())
     }
@@ -772,18 +781,18 @@ impl FuelDeadlineScheduler {
             let miss_count = task.deadline_misses.load(Ordering::Acquire);
             if miss_count >= self.config.deadline_miss_threshold {
                 // Consider criticality mode switch
-                log::error!(
+                #[cfg(feature = "std")]
+                error!(
                     "Task {} missed {} deadlines, considering mode switch",
-                    task_id.0,
-                    miss_count
+                    task_id.0, miss_count
                 );
             }
 
             let lateness = current_time.saturating_sub(task.absolute_deadline);
-            log::warn!(
+            #[cfg(feature = "std")]
+            warn!(
                 "Deadline miss: Task {} late by {} fuel units",
-                task_id.0,
-                lateness
+                task_id.0, lateness
             );
         }
         Ok(())

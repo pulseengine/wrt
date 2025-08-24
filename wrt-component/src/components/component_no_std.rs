@@ -46,6 +46,7 @@ use crate::instance_no_std::InstanceValue;
 use crate::{
     export::Export,
     import::Import,
+    prelude::*,
     resources::{
         ResourceStrategyNoStd,
         ResourceTable,
@@ -1420,15 +1421,9 @@ impl Default for GlobalValue {
 impl Default for GlobalType {
     fn default() -> Self {
         Self {
-            content: ValType::I32,
+            content: ValueType::I32,
             mutable: false,
         }
-    }
-}
-
-impl Default for ValType {
-    fn default() -> Self {
-        Self::I32
     }
 }
 
@@ -1443,6 +1438,7 @@ impl Default for ValType {
 
 // Try to implement traits for external types directly
 // This works only if the external types have the required traits
+#[cfg(feature = "decoder")]
 use wrt_decoder::component::ExternType as ExtExternType;
 use wrt_format::component::ComponentTypeDefinition as ExtComponentTypeDefinition;
 

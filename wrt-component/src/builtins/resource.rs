@@ -18,10 +18,10 @@ use std::{
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
+    bounded::BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    BoundedVec as Vec,
 };
 
 // Enable vec! macro for no_std
@@ -32,6 +32,7 @@ use alloc::{
     boxed::Box,
     sync::Arc,
     vec,
+    vec::Vec,
 };
 
 use wrt_error::{
@@ -116,11 +117,12 @@ impl BuiltinHandler for ResourceCreateHandler {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider)
-                .map_err(|_| Error::runtime_execution_error("Failed to create result vector"))?;
-            result
-                .push(ComponentValue::U32(id.0))
-                .map_err(|_| Error::runtime_execution_error("Failed to add result value"))?;
+            let mut result = BoundedVec::new(provider).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded("Failed to create result vector")
+            })?;
+            result.push(ComponentValue::U32(id.0)).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded("Failed to add result value")
+            })?;
             Ok(result)
         }
     }
@@ -309,11 +311,12 @@ impl BuiltinHandler for ResourceGetHandler {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider)
-                .map_err(|_| Error::runtime_execution_error("Failed to create result vector"))?;
-            result
-                .push(ComponentValue::U32(id.0))
-                .map_err(|_| Error::runtime_execution_error("Failed to add result value"))?;
+            let mut result = BoundedVec::new(provider).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded("Failed to create result vector")
+            })?;
+            result.push(ComponentValue::U32(id.0)).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded("Failed to add result value")
+            })?;
             Ok(result)
         }
     }

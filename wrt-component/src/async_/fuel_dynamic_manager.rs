@@ -133,6 +133,7 @@ pub enum FuelAllocationPolicy {
 impl FuelDynamicManager {
     /// Create a new dynamic fuel manager
     pub fn new(allocation_policy: FuelAllocationPolicy, fuel_reserve: u64) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         Ok(Self {
             task_history: BoundedMap::new(provider.clone())?,
             component_quotas: BoundedMap::new(provider.clone())?,

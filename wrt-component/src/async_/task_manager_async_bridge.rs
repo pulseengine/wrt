@@ -49,6 +49,20 @@ use crate::threading::task_manager::{
 };
 #[cfg(feature = "component-model-threading")]
 use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
+
+// Fallback types when threading is not available
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskManager = ();
+#[cfg(not(feature = "component-model-threading"))]
+pub type TaskId = u32;
+#[cfg(not(feature = "component-model-threading"))]
+pub enum TaskType {
+    AsyncOperation,
+}
+#[cfg(not(feature = "component-model-threading"))]
+pub enum TaskState {
+    Completed,
+}
 use crate::{
     async_::{
         async_types::{

@@ -47,12 +47,9 @@ use wrt_error::{
     Result as WrtResult,
     Result,
 };
-use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
-    prelude::*,
+use wrt_foundation::bounded::{
+    BoundedString,
+    BoundedVec,
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
@@ -79,6 +76,7 @@ use crate::{
         StreamHandle,
         StreamState,
     },
+    prelude::*,
     types::{
         ValType,
         Value,
@@ -156,7 +154,7 @@ pub struct ExecutionContext {
     pub component_instance: u32,
 
     /// Current function being executed
-    pub function_name: BoundedString<128>,
+    pub function_name: BoundedString<128, crate::bounded_component_infra::ComponentProvider>,
 
     /// Call stack
     #[cfg(feature = "std")]
@@ -182,7 +180,7 @@ pub struct ExecutionContext {
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Function name
-    pub function: BoundedString<128>,
+    pub function: BoundedString<128, crate::bounded_component_infra::ComponentProvider>,
 
     /// Return address (instruction pointer)
     pub return_ip: usize,
@@ -298,7 +296,7 @@ pub enum AsyncExecutionState {
 pub enum AsyncExecutionOperation {
     /// Calling an async function
     FunctionCall {
-        name: BoundedString<128>,
+        name: BoundedString<128, crate::bounded_component_infra::ComponentProvider>,
         args: ComponentVec<Value>,
     },
 
@@ -322,7 +320,7 @@ pub enum AsyncExecutionOperation {
 
     /// Creating a subtask
     SpawnSubtask {
-        function: BoundedString<128>,
+        function: BoundedString<128, crate::bounded_component_infra::ComponentProvider>,
         args:     ComponentVec<Value>,
     },
 }

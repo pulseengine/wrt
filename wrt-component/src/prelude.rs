@@ -83,12 +83,12 @@ pub use std::{
     vec::Vec,
 };
 
-#[cfg(feature = "std")]
+#[cfg(feature = "decoder")]
 pub use wrt_decoder::decode_no_alloc;
-#[cfg(feature = "std")]
+#[cfg(feature = "decoder")]
 pub use wrt_decoder::decoder_no_alloc;
 // Re-export from wrt-decoder
-#[cfg(feature = "std")]
+#[cfg(feature = "decoder")]
 pub use wrt_decoder::{
     component::decode::decode_component,
     // component::decode::Component as DecodedComponent, // Commented out - causing import issues
@@ -129,7 +129,10 @@ pub use wrt_foundation::component_builder::{
     NamespaceBuilder,
 };
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::component_value::ValType;
+pub use wrt_foundation::component_value::{
+    ComponentValue,
+    ValType,
+};
 // Re-export component_value for both std and no_std
 #[cfg(feature = "std")]
 pub use wrt_foundation::component_value::{
@@ -285,7 +288,10 @@ pub use crate::{
     //     IntoRuntimeType,
     // },
     // Types and values
-    types::ComponentInstance,
+    types::{
+        ComponentInstance,
+        TaskId,
+    },
     // values::{
     //     component_to_core_value, core_to_component_value, deserialize_component_value,
     //     serialize_component_value,
@@ -348,7 +354,10 @@ pub use crate::{
     //     IntoRuntimeType,
     // },
     // Types and values
-    types::ComponentInstance,
+    types::{
+        ComponentInstance,
+        TaskId,
+    },
 };
 // ComponentValue already imported above
 

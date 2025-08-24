@@ -61,8 +61,7 @@ use wrt_foundation::{
 #[cfg(feature = "std")]
 use crate::canonical_abi::ComponentValue;
 // No_std provider for bounded collections
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use crate::prelude::MemoryProvider;
+use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;

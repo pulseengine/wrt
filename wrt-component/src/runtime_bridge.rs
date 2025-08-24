@@ -34,6 +34,8 @@ use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{values::Value as CoreValue, types::ValueType};
 use wrt_runtime::{ExecutionStats, Module, ModuleInstance};
 
+use crate::prelude::*;
+
 // Import our component types
 use crate::canonical_abi::ComponentValue;
 use crate::component_instantiation::{InstanceId, ComponentInstance, FunctionSignature};

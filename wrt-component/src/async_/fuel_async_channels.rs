@@ -90,11 +90,19 @@ pub struct FuelAsyncChannel<T> {
     /// Channel capacity
     capacity:           usize,
     /// Message buffer
-    buffer:             BoundedVec<T, MAX_CHANNEL_CAPACITY>,
+    buffer: BoundedVec<T, MAX_CHANNEL_CAPACITY, crate::bounded_component_infra::ComponentProvider>,
     /// Senders waiting to send (when buffer is full)
-    waiting_senders:    BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
+    waiting_senders: BoundedVec<
+        ChannelWaiter,
+        MAX_WAITERS_PER_CHANNEL,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Receivers waiting to receive (when buffer is empty)
-    waiting_receivers:  BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
+    waiting_receivers: BoundedVec<
+        ChannelWaiter,
+        MAX_WAITERS_PER_CHANNEL,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Whether the channel is closed
     closed:             AtomicBool,
     /// Total messages sent through this channel
@@ -175,7 +183,12 @@ pub struct ReceiveFuture<T> {
 /// Channel manager for organizing multiple async channels
 pub struct FuelAsyncChannelManager<T> {
     /// Active channels indexed by ID
-    channels:           BoundedMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
+    channels: BoundedMap<
+        ChannelId,
+        FuelAsyncChannel<T>,
+        MAX_ASYNC_CHANNELS,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
     /// Global channel statistics
     global_stats:       ChannelManagerStats,
     /// Next channel ID counter

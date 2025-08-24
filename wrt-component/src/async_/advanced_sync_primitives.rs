@@ -33,6 +33,7 @@ use wrt_foundation::{
     bounded_collections::BoundedMap,
     component_value::ComponentValue,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
     Arc,
     CrateId,
     Mutex,
@@ -78,9 +79,10 @@ pub struct AdvancedSyncPrimitives {
     /// Bridge for task management
     bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active sync primitives
-    primitives:         BoundedMap<SyncPrimitiveId, SyncPrimitive, 512>,
+    primitives:         BoundedMap<SyncPrimitiveId, SyncPrimitive, 512, NoStdProvider<65536>>,
     /// Component sync contexts
-    component_contexts: BoundedMap<ComponentInstanceId, ComponentSyncContext, 128>,
+    component_contexts:
+        BoundedMap<ComponentInstanceId, ComponentSyncContext, 128, NoStdProvider<65536>>,
     /// Next primitive ID
     next_primitive_id:  AtomicU64,
     /// Sync statistics
@@ -99,7 +101,7 @@ struct SyncPrimitive {
     id:             SyncPrimitiveId,
     component_id:   ComponentInstanceId,
     primitive_type: SyncPrimitiveType,
-    waiters:        BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE>,
+    waiters:        BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE, NoStdProvider<65536>>,
     created_at:     u64,
     fuel_consumed:  AtomicU64,
 }
@@ -182,7 +184,8 @@ pub enum WaitType {
 struct ComponentSyncContext {
     component_id:     ComponentInstanceId,
     /// Sync primitives owned by this component
-    owned_primitives: BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT>,
+    owned_primitives:
+        BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT, NoStdProvider<65536>>,
     /// Sync limits
     sync_limits:      SyncLimits,
 }

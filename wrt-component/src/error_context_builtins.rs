@@ -17,13 +17,11 @@
 
 extern crate alloc;
 
-use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::HashMap, string::String, vec::Vec};
+use std::{boxed::Box, collections::HashMap, cell::RefCell as AtomicRefCell, string::String, vec::Vec};
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
     bounded::{BoundedMap, BoundedString, BoundedVec},
     component_value::ComponentValue,
     safe_memory::NoStdProvider,
@@ -48,13 +46,13 @@ const MAX_METADATA_KEY_SIZE: usize = 64;
 
 /// Error context identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ErrorContextId(pub u64;
+pub struct ErrorContextId(pub u64);
 
 impl ErrorContextId {
     pub fn new() -> Self {
         static COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1;
-        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
+            core::sync::atomic::AtomicU64::new(1);
+        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
     pub fn as_u64(&self) -> u64 {
@@ -138,8 +136,7 @@ impl StackFrame {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(function_name: &str) -> Result<Self> {
         let bounded_name = BoundedString::new_from_str(function_name)
-            .map_err(|_| Error::memory_allocation_failed("Function name too long for no_std environment")
-            ))?;
+            .map_err(|_| Error::memory_allocation_failed("Function name too long for no_std environment"))?;
         Ok(Self {
             function_name: bounded_name,
             file_name: None,
@@ -150,20 +147,19 @@ impl StackFrame {
 
     #[cfg(feature = "std")]
     pub fn with_location(mut self, file_name: String, line: u32, column: u32) -> Self {
-        self.file_name = Some(file_name;
-        self.line_number = Some(line;
-        self.column_number = Some(column;
+        self.file_name = Some(file_name);
+        self.line_number = Some(line);
+        self.column_number = Some(column);
         self
     }
 
     #[cfg(not(any(feature = "std", )))]
     pub fn with_location(mut self, file_name: &str, line: u32, column: u32) -> Result<Self> {
         let bounded_file = BoundedString::new_from_str(file_name)
-            .map_err(|_| Error::memory_allocation_failed("File name too long for no_std environment")
-            ))?;
-        self.file_name = Some(bounded_file;
-        self.line_number = Some(line;
-        self.column_number = Some(column;
+            .map_err(|_| Error::memory_allocation_failed("File name too long for no_std environment"))?;
+        self.file_name = Some(bounded_file);
+        self.line_number = Some(line);
+        self.column_number = Some(column);
         Ok(self)
     }
 
@@ -171,7 +167,7 @@ impl StackFrame {
         #[cfg(feature = "std")]
         return &self.function_name;
         #[cfg(not(any(feature = "std", )))]
-        return self.function_name.as_str);
+        return self.function_name.as_str();
     }
 
     pub fn file_name(&self) -> Option<&str> {
@@ -229,8 +225,7 @@ impl ErrorContextImpl {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(message: &str, severity: ErrorSeverity) -> Result<Self> {
         let bounded_message = BoundedString::new_from_str(message)
-            .map_err(|_| Error::memory_allocation_failed("Debug message too long for no_std environment")
-            ))?;
+            .map_err(|_| Error::memory_allocation_failed("Debug message too long for no_std environment"))?;
         Ok(Self {
             id: ErrorContextId::new(),
             handle: ErrorContextHandle::new(),
@@ -242,19 +237,19 @@ impl ErrorContextImpl {
                     Error::memory_allocation_failed("Failed to create stack trace vector")
                 })?
             },
-            metadata: BoundedMap::new(provider.clone())?,
+            metadata: BoundedMap::new(safe_managed_alloc!(4096, CrateId::Component)?)?,
             error_code: None,
             source_error: None,
         })
     }
 
     pub fn with_error_code(mut self, code: u32) -> Self {
-        self.error_code = Some(code;
+        self.error_code = Some(code);
         self
     }
 
     pub fn with_source_error(mut self, source: ErrorContextImpl) -> Self {
-        self.source_error = Some(Box::new(source;
+        self.source_error = Some(Box::new(source));
         self
     }
 
@@ -266,25 +261,22 @@ impl ErrorContextImpl {
     #[cfg(not(any(feature = "std", )))]
     pub fn add_stack_frame(&mut self, frame: StackFrame) -> Result<()> {
         self.stack_trace.push(frame)
-            .map_err(|_| Error::memory_allocation_failed("Stack trace full")
-            ))?;
-        Ok(()
+            .map_err(|_| Error::memory_allocation_failed("Stack trace full"))?;
+        Ok(())
     }
 
     #[cfg(feature = "std")]
     pub fn set_metadata(&mut self, key: String, value: ComponentValue) {
-        self.metadata.insert(key, value;
+        self.metadata.insert(key, value);
     }
 
     #[cfg(not(any(feature = "std", )))]
     pub fn set_metadata(&mut self, key: &str, value: ComponentValue) -> Result<()> {
         let bounded_key = BoundedString::new_from_str(key)
-            .map_err(|_| Error::memory_allocation_failed("Metadata key too long for no_std environment")
-            ))?;
+            .map_err(|_| Error::memory_allocation_failed("Metadata key too long for no_std environment"))?;
         self.metadata.insert(bounded_key, value)
-            .map_err(|_| Error::memory_allocation_failed("Metadata storage full")
-            ))?;
-        Ok(()
+            .map_err(|_| Error::memory_allocation_failed("Metadata storage full"))?;
+        Ok(())
     }
 
     #[cfg(feature = "std")]
@@ -305,7 +297,7 @@ impl ErrorContextImpl {
         #[cfg(feature = "std")]
         return &self.debug_message;
         #[cfg(not(any(feature = "std", )))]
-        return self.debug_message.as_str);
+        return self.debug_message.as_str();
     }
 
     pub fn stack_frame_count(&self) -> usize {
@@ -322,7 +314,7 @@ impl ErrorContextImpl {
         for (i, frame) in self.stack_trace.iter().enumerate() {
             output.push_str(&format!("  #{}: {}", i, frame.function_name);
             if let Some(file) = frame.file_name() {
-                output.push_str(&format!(" at {}:{}", file, frame.line_number.unwrap_or(0;
+                output.push_str(&format!(" at {}:{}", file, frame.line_number.unwrap_or(0)));
             }
             output.push('\n');
         }
@@ -334,14 +326,10 @@ impl ErrorContextImpl {
         let mut output = BoundedString::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
             // Binary std/no_std choice
-            output.push_str("  #").map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full")
-            ))?;
-            output.push_str(": ").map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full"))
-            ))?;
-            output.push_str(frame.function_name()).map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full")
-            ))?;
-            output.push('\n').map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full")
-            ))?;
+            output.push_str("  #").map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full"))?;
+            output.push_str(": ").map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full"))?;
+            output.push_str(frame.function_name()).map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full"))?;
+            output.push('\n').map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full"))?;
         }
         Ok(output)
     }
@@ -349,7 +337,7 @@ impl ErrorContextImpl {
 
 /// Global registry for error contexts
 static ERROR_CONTEXT_REGISTRY: AtomicRefCell<Option<ErrorContextRegistry>> = 
-    AtomicRefCell::new(None;
+    AtomicRefCell::new(None);
 
 /// Registry that manages all error contexts
 #[derive(Debug)]
@@ -366,7 +354,9 @@ impl ErrorContextRegistry {
             #[cfg(feature = "std")]
             contexts: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            contexts: BoundedMap::new(provider.clone())?,
+            contexts: BoundedMap::new(
+                safe_managed_alloc!(4096, CrateId::Component)?
+            ).map_err(|_| Error::memory_allocation_failed("Failed to create context map"))?,
         }
     }
 
@@ -374,14 +364,13 @@ impl ErrorContextRegistry {
         let id = context.id;
         #[cfg(feature = "std")]
         {
-            self.contexts.insert(id, context;
+            self.contexts.insert(id, context);
             Ok(id)
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.contexts.insert(id, context)
-                .map_err(|_| Error::memory_allocation_failed("Error context registry full")
-                ))?;
+                .map_err(|_| Error::memory_allocation_failed("Error context registry full"))?;
             Ok(id)
         }
     }

@@ -24,11 +24,11 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
-    prelude::*,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 
+use crate::prelude::*;
 use crate::{
     canonical_abi::canonical::CanonicalABI,
     execution_engine::ComponentExecutionEngine,

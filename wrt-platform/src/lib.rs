@@ -79,23 +79,8 @@ extern crate std;
 extern crate wrt_panic;
 
 // Simple panic handler when no explicit handler is available
-#[cfg(all(
-    not(feature = "std"),
-    not(test),
-    not(any(
-        feature = "enable-panic-handler",
-        feature = "dev-panic-handler",
-        feature = "asil-b-panic-handler",
-        feature = "asil-d-panic-handler"
-    ))
-))]
-#[panic_handler] // Simple fallback panic handler for no_std builds
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    // Simple infinite loop for minimal panic handling
-    loop {
-        core::hint::spin_loop();
-    }
-}
+// Panic handling is now fully delegated to wrt-panic crate
+// No local panic handler needed - wrt-panic provides all necessary panic handlers
 // Module declarations
 // pub mod bounded_platform; // Disabled due to circular dependency with
 // wrt-foundation

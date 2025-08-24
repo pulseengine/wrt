@@ -21,12 +21,9 @@ use std::{
     mem,
 };
 
+use wrt_foundation::bounded::BoundedVec;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
-use wrt_foundation::{
-    bounded::BoundedVec,
-    prelude::*,
-};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     budget_aware_provider::CrateId,
@@ -42,6 +39,7 @@ use crate::{
     canonical_abi::CanonicalABI,
     components::Component,
     execution_engine::ComponentExecutionEngine,
+    prelude::*,
     types::{
         ValType,
         Value,
