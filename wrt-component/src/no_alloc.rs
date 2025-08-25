@@ -5,7 +5,16 @@
 //! introspection capabilities.
 
 // Re-export the component header verification from wrt-decoder
+#[cfg(feature = "decoder")]
 pub use wrt_decoder::component::decode_no_alloc::{verify_component_header, COMPONENT_MAGIC};
+
+// Placeholder when decoder is not available
+#[cfg(not(feature = "decoder"))]
+pub const COMPONENT_MAGIC: &[u8] = b"\x00asm";
+#[cfg(not(feature = "decoder"))]
+pub fn verify_component_header(_data: &[u8]) -> Result<bool> {
+    Ok(false) // Simplified verification
+}
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},
@@ -162,20 +171,12 @@ pub fn validate_component_with_level(bytes: &[u8], level: ValidationLevel) -> Re
 fn validate_component_structure(bytes: &[u8]) -> Result<()> {
     // Verify header
     if bytes.len() < 8 {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Component binary too small",
-        ));
+        return Err(Error::parse_error("Component header too short";
     }
 
     // Verify magic number and version
     if &bytes[0..8] != &COMPONENT_MAGIC {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Invalid component magic number or version",
-        ));
+        return Err(Error::parse_error("Invalid component magic number";
     }
 
     // For now, we just do basic validation
@@ -228,7 +229,7 @@ impl MinimalComponent {
         validate_component_no_alloc(bytes)?;
 
         // Create a default header
-        let mut header = ComponentHeader::default();
+        let mut header = ComponentHeader::default());
         header.size = bytes.len();
 
         // Populate header with basic info
@@ -277,40 +278,40 @@ mod tests {
 
     #[test]
     fn test_verify_component_header() {
-        let result = verify_component_header(&MINIMAL_COMPONENT);
+        let result = verify_component_header(&MINIMAL_COMPONENT;
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_section_id_from_u8() {
-        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom);
-        assert_eq!(ComponentSectionId::from(1), ComponentSectionId::ComponentType);
-        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown);
+        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom;
+        assert_eq!(ComponentSectionId::from(1), ComponentSectionId::ComponentType;
+        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown;
     }
 
     #[test]
     fn test_validation_levels() {
         // Basic validation should pass for minimal component
         let basic_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic);
+            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic;
         assert!(basic_result.is_ok());
 
         // Standard validation should also pass for this test
         let std_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard);
+            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard;
         assert!(std_result.is_ok());
     }
 
     #[test]
     fn test_minimal_component() {
-        let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard);
+        let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard;
         assert!(component.is_ok());
 
         let component = component.unwrap();
-        assert_eq!(component.size(), 8);
+        assert_eq!(component.size(), 8;
         assert_eq!(component.export_count(), 0);
         assert_eq!(component.import_count(), 0);
         assert_eq!(component.module_count(), 0);
-        assert!(!component.has_start());
+        assert!(!component.has_start();
     }
 }

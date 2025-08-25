@@ -14,39 +14,48 @@
 //! built-in functions required by the WebAssembly Component Model for managing
 //! async execution contexts.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, collections::HashMap, vec::Vec};
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, collections::BTreeMap as HashMap, vec::Vec};
-
-use wrt_error::{Error, ErrorCategory, Result};
-use wrt_foundation::{
-    // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
-    BoundedMap,
-    types::ValueType,
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    vec::Vec,
 };
 
-#[cfg(feature = "std")]
-use wrt_foundation::component_value::ComponentValue;
+use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::{
+    safe_memory::NoStdProvider,
+    types::ValueType,
+    // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
+    BoundedMap,
+    BoundedString,
+    BoundedVec,
+};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec, safe_memory::NoStdProvider};
-
+// Temporary AtomicRefCell substitute for no_std compilation
+// TODO: Replace with proper atomic implementation
 #[cfg(not(feature = "std"))]
-// For no_std, use a simpler ComponentValue representation
-use crate::types::Value as ComponentValue;
+use crate::prelude::Mutex as AtomicRefCell;
+use crate::prelude::WrtComponentValue;
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_CONTEXT_ENTRIES: usize = 32;
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_CONTEXT_VALUE_SIZE: usize = 256;
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_CONTEXT_KEY_SIZE: usize = 64;
 
 /// Context key identifier for async contexts
@@ -55,8 +64,8 @@ const MAX_CONTEXT_KEY_SIZE: usize = 64;
 pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg(not(any(feature = "std", )))]
-pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
+#[cfg(not(any(feature = "std",)))]
+pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE, NoStdProvider<65536>>);
 
 impl ContextKey {
     #[cfg(feature = "std")]
@@ -64,21 +73,17 @@ impl ContextKey {
         Self(key)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn new(key: &str) -> Result<Self> {
         let bounded_key = BoundedString::new_from_str(key)
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                "Context key too long for no_std environment"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self(bounded_key))
     }
 
     pub fn as_str(&self) -> &str {
         #[cfg(feature = "std")]
         return &self.0;
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         return self.0.as_str();
     }
 }
@@ -87,16 +92,16 @@ impl ContextKey {
 #[derive(Debug, Clone)]
 pub enum ContextValue {
     /// Simple value types
-    Simple(ComponentValue),
+    Simple(WrtComponentValue),
     /// Binary data (for serialized complex types)
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE, NoStdProvider<65536>>),
 }
 
 impl ContextValue {
-    pub fn from_component_value(value: ComponentValue) -> Self {
+    pub fn from_component_value(value: WrtComponentValue) -> Self {
         Self::Simple(value)
     }
 
@@ -105,18 +110,14 @@ impl ContextValue {
         Self::Binary(data)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let bounded_data = BoundedVec::new_from_slice(data)
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                "Context binary data too large for no_std environment"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self::Binary(bounded_data))
     }
 
-    pub fn as_component_value(&self) -> Option<&ComponentValue> {
+    pub fn as_component_value(&self) -> Option<&WrtComponentValue> {
         match self {
             Self::Simple(value) => Some(value),
             _ => None,
@@ -127,7 +128,7 @@ impl ContextValue {
         match self {
             #[cfg(feature = "std")]
             Self::Binary(data) => Some(data),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             Self::Binary(data) => Some(data.as_slice()),
             _ => None,
         }
@@ -139,18 +140,21 @@ impl ContextValue {
 pub struct AsyncContext {
     #[cfg(feature = "std")]
     data: BTreeMap<ContextKey, ContextValue>,
-    #[cfg(not(any(feature = "std", )))]
-    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES>,
+    #[cfg(not(any(feature = "std",)))]
+    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES, NoStdProvider<65536>>,
 }
 
 impl AsyncContext {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
-            data: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", )))]
-            data: BoundedMap::new(),
-        }
+            data:                                    BTreeMap::new(),
+            #[cfg(not(any(feature = "std",)))]
+            data:                                    {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedMap::new(provider)?
+            },
+        })
     }
 
     pub fn get(&self, key: &ContextKey) -> Option<&ContextValue> {
@@ -163,14 +167,11 @@ impl AsyncContext {
             self.data.insert(key, value);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.data.insert(key, value)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Memory,
-                    wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                    "Context storage full in no_std environment"
-                ))?;
+            self.data
+                .insert(key, value)
+                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
             Ok(())
         }
     }
@@ -205,14 +206,13 @@ impl Default for AsyncContext {
 /// Thread-local storage for async contexts in each execution thread
 #[cfg(feature = "std")]
 thread_local! {
-    static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> = 
+    static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> =
         AtomicRefCell::new(Vec::new());
 }
 
 /// Global context storage for no_std environments
 #[cfg(not(feature = "std"))]
-static GLOBAL_ASYNC_CONTEXT: AtomicRefCell<Option<AsyncContext>> = 
-    AtomicRefCell::new(None);
+static GLOBAL_ASYNC_CONTEXT: AtomicRefCell<Option<AsyncContext>> = AtomicRefCell::new(None);
 
 /// Context manager that provides the canonical built-in functions
 pub struct AsyncContextManager;
@@ -223,24 +223,18 @@ impl AsyncContextManager {
     #[cfg(feature = "std")]
     pub fn context_get() -> Result<Option<AsyncContext>> {
         ASYNC_CONTEXT_STACK.with(|stack| {
-            let stack_ref = stack.try_borrow()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_STATE,
-                    "Context stack borrow failed"
-                ))?;
+            let stack_ref = stack
+                .try_borrow()
+                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
             Ok(stack_ref.last().cloned())
         })
     }
 
     #[cfg(not(feature = "std"))]
     pub fn context_get() -> Result<Option<AsyncContext>> {
-        let context_ref = GLOBAL_ASYNC_CONTEXT.try_borrow()
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::INVALID_STATE,
-                "Global context borrow failed"
-            ))?;
+        let context_ref = GLOBAL_ASYNC_CONTEXT
+            .try_borrow()
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(context_ref.clone())
     }
 
@@ -249,12 +243,9 @@ impl AsyncContextManager {
     #[cfg(feature = "std")]
     pub fn context_set(context: AsyncContext) -> Result<()> {
         ASYNC_CONTEXT_STACK.with(|stack| {
-            let mut stack_ref = stack.try_borrow_mut()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_STATE,
-                    "Context stack borrow failed"
-                ))?;
+            let mut stack_ref = stack
+                .try_borrow_mut()
+                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
             stack_ref.push(context);
             Ok(())
         })
@@ -262,12 +253,9 @@ impl AsyncContextManager {
 
     #[cfg(not(feature = "std"))]
     pub fn context_set(context: AsyncContext) -> Result<()> {
-        let mut context_ref = GLOBAL_ASYNC_CONTEXT.try_borrow_mut()
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::INVALID_STATE,
-                "Global context borrow failed"
-            ))?;
+        let mut context_ref = GLOBAL_ASYNC_CONTEXT
+            .try_borrow_mut()
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         *context_ref = Some(context);
         Ok(())
     }
@@ -287,24 +275,18 @@ impl AsyncContextManager {
     #[cfg(feature = "std")]
     pub fn context_pop() -> Result<Option<AsyncContext>> {
         ASYNC_CONTEXT_STACK.with(|stack| {
-            let mut stack_ref = stack.try_borrow_mut()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_STATE,
-                    "Context stack borrow failed"
-                ))?;
+            let mut stack_ref = stack
+                .try_borrow_mut()
+                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
             Ok(stack_ref.pop())
         })
     }
 
     #[cfg(not(feature = "std"))]
     pub fn context_pop() -> Result<Option<AsyncContext>> {
-        let mut context_ref = GLOBAL_ASYNC_CONTEXT.try_borrow_mut()
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::INVALID_STATE,
-                "Global context borrow failed"
-            ))?;
+        let mut context_ref = GLOBAL_ASYNC_CONTEXT
+            .try_borrow_mut()
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(context_ref.take())
     }
 
@@ -348,55 +330,54 @@ pub mod canonical_builtins {
 
     /// `context.get` canonical built-in
     /// Returns the current async context as a component value
-    pub fn canon_context_get() -> Result<ComponentValue> {
+    pub fn canon_context_get() -> Result<WrtComponentValue> {
         let context = AsyncContextManager::context_get()?;
         match context {
             Some(ctx) => {
                 // Serialize context to component value
                 // For now, return a simple boolean indicating presence
-                Ok(ComponentValue::Bool(true))
-            }
-            None => Ok(ComponentValue::Bool(false))
+                Ok(WrtComponentValue::Bool(true))
+            },
+            None => Ok(WrtComponentValue::Bool(false)),
         }
     }
 
     /// `context.set` canonical built-in  
     /// Sets the current async context from a component value
-    pub fn canon_context_set(value: ComponentValue) -> Result<()> {
+    pub fn canon_context_set(value: WrtComponentValue) -> Result<()> {
         match value {
-            ComponentValue::Bool(true) => {
+            WrtComponentValue::Bool(true) => {
                 // Create a new empty context
                 let context = AsyncContext::new();
                 AsyncContextManager::context_set(context)
-            }
-            ComponentValue::Bool(false) => {
+            },
+            WrtComponentValue::Bool(false) => {
                 // Clear the current context
                 AsyncContextManager::context_pop()?;
                 Ok(())
-            }
+            },
             _ => Err(Error::new(
                 ErrorCategory::Type,
                 wrt_error::codes::TYPE_MISMATCH,
-                "Invalid context value type"
-            ))
+                "Invalid context value type - expected boolean",
+            )),
         }
     }
 
     /// Helper function to get a typed value from context
     pub fn get_typed_context_value<T>(key: &str, value_type: ValueType) -> Result<Option<T>>
     where
-        T: TryFrom<ComponentValue>,
+        T: TryFrom<WrtComponentValue>,
         T::Error: Into<Error>,
     {
         #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let context_key = ContextKey::new(key)?;
 
         if let Some(context_value) = AsyncContextManager::get_context_value(&context_key)? {
             if let Some(component_value) = context_value.as_component_value() {
-                let typed_value = T::try_from(component_value.clone())
-                    .map_err(|e| e.into())?;
+                let typed_value = T::try_from(component_value.clone()).map_err(|e| e.into())?;
                 Ok(Some(typed_value))
             } else {
                 Ok(None)
@@ -409,11 +390,11 @@ pub mod canonical_builtins {
     /// Helper function to set a typed value in context
     pub fn set_typed_context_value<T>(key: &str, value: T) -> Result<()>
     where
-        T: Into<ComponentValue>,
+        T: Into<WrtComponentValue>,
     {
         #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let context_key = ContextKey::new(key)?;
 
         let component_value = value.into();
@@ -470,7 +451,7 @@ mod tests {
             assert_eq!(key.as_str(), "test-key");
         }
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             let key = ContextKey::new("test-key").unwrap();
             assert_eq!(key.as_str(), "test-key");
@@ -479,9 +460,12 @@ mod tests {
 
     #[test]
     fn test_context_value_creation() {
-        let value = ContextValue::from_component_value(ComponentValue::Bool(true));
+        let value = ContextValue::from_component_value(WrtComponentValue::Bool(true));
         assert!(value.as_component_value().is_some());
-        assert_eq!(value.as_component_value().unwrap(), &ComponentValue::Bool(true));
+        assert_eq!(
+            value.as_component_value().unwrap(),
+            &WrtComponentValue::Bool(true)
+        );
     }
 
     #[test]
@@ -491,10 +475,10 @@ mod tests {
 
         #[cfg(feature = "std")]
         let key = ContextKey::new("test".to_string());
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let key = ContextKey::new("test").unwrap();
 
-        let value = ContextValue::from_component_value(ComponentValue::I32(42));
+        let value = ContextValue::from_component_value(WrtComponentValue::I32(42));
         context.set(key.clone(), value).unwrap();
 
         assert!(!context.is_empty());
@@ -504,7 +488,7 @@ mod tests {
         let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
-            &ComponentValue::I32(42)
+            &WrtComponentValue::I32(42)
         );
     }
 
@@ -533,14 +517,14 @@ mod tests {
 
         // Test context.get when no context
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(false));
+        assert_eq!(result, WrtComponentValue::Bool(false));
 
         // Test context.set with true
-        canonical_builtins::canon_context_set(ComponentValue::Bool(true)).unwrap();
+        canonical_builtins::canon_context_set(WrtComponentValue::Bool(true)).unwrap();
 
         // Test context.get when context exists
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(true));
+        assert_eq!(result, WrtComponentValue::Bool(true));
     }
 
     #[test]
@@ -551,7 +535,7 @@ mod tests {
         {
             let context = AsyncContext::new();
             let _scope = AsyncContextScope::enter(context).unwrap();
-            
+
             // Context should be available in scope
             let retrieved = AsyncContextManager::context_get().unwrap();
             assert!(retrieved.is_some());

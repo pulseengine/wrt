@@ -4,15 +4,46 @@
 //! needed for the component model implementation.
 
 // Import from wrt-foundation instead of wrt-runtime
-use wrt_foundation::component::{GlobalType, MemoryType, TableType};
+use wrt_foundation::component::{
+    GlobalType,
+    MemoryType,
+    TableType,
+};
 
 use crate::prelude::*;
+
+/// Placeholder runtime type for component execution
+#[derive(Debug)]
+pub struct Runtime {
+    /// Runtime configuration
+    pub config: RuntimeConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeConfig {
+    /// Maximum memory pages
+    pub max_memory_pages: u32,
+}
+
+impl Runtime {
+    pub fn new(config: RuntimeConfig) -> Self {
+        Self { config }
+    }
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            max_memory_pages: 1024,
+        }
+    }
+}
 
 /// WebAssembly function type
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncType {
     /// Parameter types
-    pub params: Vec<ValueType>,
+    pub params:  Vec<ValueType>,
     /// Result types
     pub results: Vec<ValueType>,
 }
@@ -23,7 +54,7 @@ pub struct Memory {
     /// Memory type
     pub ty: MemoryType,
     /// Memory data
-    data: Vec<u8>,
+    data:   Vec<u8>,
 }
 
 impl Memory {
@@ -48,7 +79,7 @@ impl Memory {
 #[derive(Debug)]
 pub struct Table {
     /// Table type
-    pub ty: TableType,
+    pub ty:   TableType,
     /// Table elements
     elements: Vec<Option<usize>>,
 }
@@ -77,7 +108,7 @@ pub struct Global {
     /// Global type
     pub ty: GlobalType,
     /// Global value (simplified as u64)
-    value: u64,
+    value:  u64,
 }
 
 impl Global {
@@ -94,10 +125,8 @@ impl Global {
     /// Sets the global value
     pub fn set(&mut self, value: u64) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                kinds::ValidationError("Cannot modify immutable global".to_string()),
+            return Err(Error::runtime_execution_error(
+                "Cannot set value on immutable global",
             ));
         }
 
