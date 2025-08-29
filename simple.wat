@@ -3,4 +3,3 @@
     i32.const 42
   )
 )
-EOF < /dev/null

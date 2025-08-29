@@ -33,7 +33,7 @@ wrt-debug = { workspace = true, default-features = false, optional = true }
 default = ["std"] # Enable std by default for platform compatibility
 # Binary choice: std OR no_std (no alloc middle ground)
 std = [
-    # "wrt-decoder/std",
+    "wrt-decoder/std",
     "wrt-format/std",
     "dep:wrt-host",
     "wrt-host?/std",

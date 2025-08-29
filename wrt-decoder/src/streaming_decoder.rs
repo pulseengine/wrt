@@ -230,13 +230,19 @@ impl<'a> StreamingDecoder<'a> {
     fn process_export_section(&mut self, data: &[u8]) -> Result<()> {
         use wrt_format::binary::read_leb128_u32;
 
-        use crate::optimized_string::parse_utf8_string_inplace;
+        use crate::optimized_string::validate_utf8_name;
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
         for _ in 0..count {
-            // Parse export name
-            let (export_name, new_offset) = parse_utf8_string_inplace(data, offset)?;
+            // Parse export name - use validate_utf8_name for std builds to avoid
+            // BoundedString issues
+            eprintln!("DEBUG export: before validate_utf8_name, offset={}", offset);
+            let (export_name_str, new_offset) = validate_utf8_name(data, offset)?;
+            eprintln!(
+                "DEBUG export: after validate_utf8_name, new_offset={}",
+                new_offset
+            );
             offset = new_offset;
 
             if offset >= data.len() {
@@ -247,35 +253,25 @@ impl<'a> StreamingDecoder<'a> {
             let kind_byte = data[offset];
             offset += 1;
 
+            eprintln!("DEBUG: export kind_byte = 0x{:02x}", kind_byte);
             let kind = match kind_byte {
                 0x00 => wrt_format::module::ExportKind::Function,
                 0x01 => wrt_format::module::ExportKind::Table,
                 0x02 => wrt_format::module::ExportKind::Memory,
                 0x03 => wrt_format::module::ExportKind::Global,
-                _ => return Err(Error::parse_error("Invalid export kind")),
+                _ => {
+                    eprintln!("DEBUG: Invalid export kind byte: 0x{:02x}", kind_byte);
+                    return Err(Error::parse_error("Invalid export kind"));
+                },
             };
 
             // Parse export index
             let (index, new_offset) = read_leb128_u32(data, offset)?;
             offset = new_offset;
 
-            // Add export to module
-            // Convert the smaller BoundedString to the larger one expected by Export
-            let name_str = export_name.as_str();
-            let provider = wrt_foundation::safe_managed_alloc!(
-                8192,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
-            let export_name_large: wrt_foundation::BoundedString<
-                256,
-                wrt_foundation::NoStdProvider<8192>,
-            > = wrt_foundation::BoundedString::from_str(name_str, provider)?;
-
+            // Add export to module - simple string conversion for std builds
             self.module.exports.push(wrt_format::module::Export {
-                name: export_name_large
-                    .as_str()
-                    .map_err(|_| Error::parse_error("Invalid export name"))?
-                    .to_string(),
+                name: export_name_str.to_string(),
                 kind,
                 index,
             });

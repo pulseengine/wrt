@@ -593,14 +593,16 @@ impl WrtdEngine {
             }
 
             // Load module
-            let module_handle = engine
-                .load_module(data)
-                .map_err(|e| Error::runtime_execution_error("Failed to load module"))?;
+            let module_handle = engine.load_module(data).map_err(|e| {
+                eprintln!("DEBUG: load_module error: {:?}", e);
+                Error::runtime_execution_error("Failed to load module - see debug output")
+            })?;
 
             // Instantiate
-            let instance = engine
-                .instantiate(module_handle)
-                .map_err(|e| Error::runtime_execution_error("Failed to instantiate module"))?;
+            let instance = engine.instantiate(module_handle).map_err(|e| {
+                eprintln!("DEBUG: instantiate error: {:?}", e);
+                Error::runtime_execution_error("Failed to instantiate module - see debug output")
+            })?;
 
             // Execute function
             let function_name = self.config.function_name.unwrap_or("start");
@@ -724,6 +726,7 @@ impl WrtdEngine {
 
         // Check if this is a component or module
         let is_component = self.detect_component_format(&module_data)?;
+        eprintln!("DEBUG: is_component = {}", is_component);
 
         // Get module size for resource estimation
         #[cfg(feature = "std")]
@@ -751,6 +754,10 @@ impl WrtdEngine {
         }
 
         // Route execution based on binary type
+        eprintln!(
+            "DEBUG: routing to {} execution",
+            if is_component { "component" } else { "traditional" }
+        );
         if is_component {
             // Execute as WebAssembly component
             #[cfg(feature = "component-model")]

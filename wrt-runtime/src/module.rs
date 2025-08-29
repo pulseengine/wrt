@@ -118,7 +118,7 @@ type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 1024, Runtim
 type BoundedDataInit = wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>;
 type BoundedModuleTypes =
     wrt_foundation::bounded::BoundedVec<WrtFuncType<RuntimeProvider>, 256, RuntimeProvider>;
-type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 1024, RuntimeProvider>;
+type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 4096, RuntimeProvider>;
 type BoundedTableVec = wrt_foundation::bounded::BoundedVec<TableWrapper, 64, RuntimeProvider>;
 type BoundedMemoryVec = wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, RuntimeProvider>;
 type BoundedGlobalVec = wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, RuntimeProvider>;
@@ -628,11 +628,44 @@ pub struct Module {
 }
 
 impl Module {
-    /// Creates a truly empty module without any allocations
+    /// Creates a truly empty module with properly initialized providers
     /// This is used to avoid circular dependencies during engine initialization
     pub fn empty() -> Self {
-        // Use the derived Default implementation which creates empty collections
-        Self::default()
+        // Try to create the module properly with providers, but if that fails,
+        // use the actual Module::new() approach but with proper error handling
+        match Self::try_empty() {
+            Ok(module) => module,
+            Err(_) => {
+                // Last resort: use default but this should not happen in normal operation
+                eprintln!("WARNING: Module::empty() provider creation failed, using default");
+                Self::default()
+            },
+        }
+    }
+
+    /// Internal helper to create empty module with proper error handling
+    fn try_empty() -> Result<Self> {
+        // Now that the macro fix is in place, this should work without circular
+        // dependency The capability_context! creates a local context that
+        // safe_capability_alloc! actually uses
+        let provider = create_runtime_provider()?;
+
+        Ok(Self {
+            types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            imports:         BoundedMap::new(provider.clone())?,
+            functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start:           None,
+            custom_sections: BoundedMap::new(provider.clone())?,
+            exports:         BoundedMap::new(provider)?,
+            name:            None,
+            binary:          None,
+            validated:       false,
+        })
     }
 
     /// Creates a new empty module
@@ -2542,18 +2575,38 @@ pub struct MemoryWrapper(pub Arc<Memory>);
 
 impl Default for MemoryWrapper {
     fn default() -> Self {
+        // EMERGENCY FIX: Create minimal memory to avoid stack overflow recursion
+        // This implementation avoids the large memory allocation that was causing
+        // stack overflow during BoundedVec::default() serialization size calculations.
+
         use wrt_foundation::types::{
             Limits,
             MemoryType,
         };
+
+        // Create the smallest possible memory (0 pages)
         let memory_type = MemoryType {
             limits: Limits {
-                min: 1,
-                max: Some(1),
+                min: 0, // 0 pages to minimize allocation
+                max: Some(0),
             },
             shared: false,
         };
-        Self::new(Memory::new(to_core_memory_type(memory_type)).unwrap())
+
+        // Convert to CoreMemoryType and create Memory
+        let core_type = to_core_memory_type(memory_type);
+
+        match Memory::new(core_type) {
+            Ok(memory) => Self::new(memory),
+            Err(_) => {
+                // If even 0-page memory fails, there's a deeper issue
+                // This should not happen, but prevents stack overflow
+                panic!(
+                    "CRITICAL: Cannot create minimal MemoryWrapper - check Memory::new \
+                     implementation"
+                );
+            },
+        }
     }
 }
 
@@ -2845,6 +2898,13 @@ impl FromBytes for TableWrapper {
 }
 
 // MemoryWrapper trait implementations
+// EMERGENCY FIX: Implement StaticSerializedSize to avoid recursion
+impl wrt_foundation::traits::StaticSerializedSize for MemoryWrapper {
+    const SERIALIZED_SIZE: usize = 12; // size (4) + limits min (4) + limits max (4)
+}
+
+// Note: BoundedVec specialization is handled through StaticSerializedSize trait
+
 impl Checksummable for MemoryWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use memory size for checksum
@@ -2855,7 +2915,9 @@ impl Checksummable for MemoryWrapper {
 
 impl ToBytes for MemoryWrapper {
     fn serialized_size(&self) -> usize {
-        12 // size (4) + limits min (4) + limits max (4)
+        // Use static size to avoid recursion in Default::default().serialized_size()
+        // calls
+        <Self as wrt_foundation::traits::StaticSerializedSize>::SERIALIZED_SIZE
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(

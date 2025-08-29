@@ -1737,7 +1737,7 @@ pub mod with_alloc {
 
         // Return the slice containing the name and the total bytes read
         let name_slice = &bytes[name_start..name_start + name_len as usize];
-        Ok((name_slice, len_size + name_len as usize))
+        Ok((name_slice, pos + len_size + name_len as usize))
     }
 
     // STUB for parsing limits - to be fully implemented in wrt-format

@@ -42,8 +42,9 @@ macro_rules! safe_capability_alloc {
             MemoryOperation,
         };
 
-        // Use MemoryFactory instead of the old factory pattern
-        MemoryFactory::create_wrapped::<$size>($crate_id)
+        // CRITICAL FIX: Use the passed context instead of ignoring it
+        // This eliminates circular dependency in provider creation
+        MemoryFactory::create_wrapped_with_context::<$size>(&$capability_context, $crate_id)
     }};
 }
 

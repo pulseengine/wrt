@@ -152,6 +152,18 @@ impl Checksummable for alloc::string::String {
     }
 }
 
+/// Trait for types that have a constant serialized size known at compile time
+/// This is used to avoid Default::default() calls that can cause recursion
+pub trait StaticSerializedSize {
+    /// The constant size in bytes required to serialize this type
+    const SERIALIZED_SIZE: usize;
+
+    /// Get the static serialized size
+    fn static_size() -> usize {
+        Self::SERIALIZED_SIZE
+    }
+}
+
 /// Trait for types that can be serialized to bytes.
 pub trait ToBytes: Sized {
     /// Returns the size in bytes required to serialize this type.

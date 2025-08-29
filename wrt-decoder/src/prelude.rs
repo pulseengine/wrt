@@ -382,21 +382,33 @@ pub mod binary {
 
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
+        eprintln!(
+            "DEBUG read_name: offset={}, data[offset]=0x{:02x}",
+            offset,
+            if offset < data.len() { data[offset] } else { 0 }
+        );
         if offset >= data.len() {
             return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
 
         // Read length as LEB128
-        let (length, new_offset) = read_leb_u32(data, offset)?;
-        let name_start = offset + new_offset;
+        let (length, bytes_consumed) = read_leb_u32(data, offset)?;
+        eprintln!(
+            "DEBUG read_name: length={}, bytes_consumed={}",
+            length, bytes_consumed
+        );
+        let name_start = offset + bytes_consumed;
+        eprintln!("DEBUG read_name: name_start={}", name_start);
 
         if name_start + length as usize > data.len() {
             return Err(wrt_error::Error::parse_error("Name extends beyond data"));
         }
 
+        let final_offset = name_start + length as usize;
+        eprintln!("DEBUG read_name: returning final_offset={}", final_offset);
         Ok((
             &data[name_start..name_start + length as usize],
-            name_start + length as usize,
+            final_offset,
         ))
     }
 }
