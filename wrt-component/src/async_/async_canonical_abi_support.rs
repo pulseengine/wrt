@@ -17,8 +17,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     clean_types::{
         ComponentType,
         FuncType,
@@ -31,8 +30,49 @@ use wrt_foundation::{
 use wrt_platform::advanced_sync::Priority;
 
 // Placeholder ResourceHandle type until proper resource system is implemented
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ResourceHandle(u32);
+
+impl ResourceHandle {
+    /// Create a new ResourceHandle with the given ID
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Get the raw ID
+    pub fn id(&self) -> u32 {
+        self.0
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for ResourceHandle {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ResourceHandle {
+    fn serialized_size(&self) -> usize {
+        core::mem::size_of::<u32>()
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ResourceHandle {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 // Placeholder types when threading is not available
 #[cfg(not(feature = "component-model-threading"))]
@@ -54,6 +94,7 @@ use crate::{
             TaskManagerAsyncBridge,
         },
     },
+    bounded_component_infra::ComponentProvider,
     canonical_abi::{
         CanonicalOptions,
         LiftingContext,
@@ -79,9 +120,9 @@ pub struct AsyncCanonicalAbiSupport {
     bridge:            TaskManagerAsyncBridge,
     /// Active async ABI operations
     async_operations:
-        BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS, NoStdProvider<65536>>,
+        BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
     /// Component ABI contexts
-    abi_contexts: BoundedMap<ComponentInstanceId, ComponentAbiContext, 128, NoStdProvider<65536>>,
+    abi_contexts: BoundedMap<ComponentInstanceId, ComponentAbiContext, 128>,
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// ABI statistics
@@ -89,8 +130,39 @@ pub struct AsyncCanonicalAbiSupport {
 }
 
 /// Async ABI operation identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AsyncAbiOperationId(u64);
+
+impl Default for AsyncAbiOperationId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for AsyncAbiOperationId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for AsyncAbiOperationId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for AsyncAbiOperationId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Async ABI operation
 #[derive(Debug)]
@@ -111,17 +183,17 @@ struct AsyncAbiOperation {
 }
 
 /// Type of async ABI operation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AsyncAbiOperationType {
     /// Async function call
     AsyncCall {
         function_name: String,
-        args:          Vec<WrtComponentValue>,
+        args:          Vec<WrtComponentValue<ComponentProvider>>,
     },
     /// Async resource method call
     ResourceAsync {
         method_name: String,
-        args:        Vec<WrtComponentValue>,
+        args:        Vec<WrtComponentValue<ComponentProvider>>,
     },
     /// Async value lifting
     AsyncLift {
@@ -130,7 +202,7 @@ pub enum AsyncAbiOperationType {
     },
     /// Async value lowering
     AsyncLower {
-        source_values: Vec<WrtComponentValue>,
+        source_values: Vec<WrtComponentValue<ComponentProvider>>,
         target_type:   ValType,
     },
     /// Future handling
@@ -162,7 +234,7 @@ pub enum StreamOp {
     /// Read next value
     ReadNext,
     /// Write value
-    Write(WrtComponentValue),
+    Write(WrtComponentValue<ComponentProvider>),
     /// Close stream
     Close,
     /// Check available
@@ -176,14 +248,14 @@ struct ComponentAbiContext {
     /// Default canonical options for async operations
     default_options:     CanonicalOptions,
     /// Active async calls
-    active_calls:        BoundedVec<AsyncAbiOperationId, 64, NoStdProvider<65536>>,
+    active_calls:        BoundedVec<AsyncAbiOperationId, 64>,
     /// Resource async operations
     resource_operations:
-        BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32, NoStdProvider<65536>>,
+        BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
     /// Future callbacks
-    future_callbacks:    BoundedMap<FutureHandle, AsyncAbiOperationId, 64, NoStdProvider<65536>>,
+    future_callbacks:    BoundedMap<FutureHandle, AsyncAbiOperationId, 64>,
     /// Stream callbacks
-    stream_callbacks:    BoundedMap<StreamHandle, AsyncAbiOperationId, 32, NoStdProvider<65536>>,
+    stream_callbacks:    BoundedMap<StreamHandle, AsyncAbiOperationId, 32>,
 }
 
 /// ABI operation statistics
@@ -202,13 +274,13 @@ struct AbiStatistics {
 
 impl AsyncCanonicalAbiSupport {
     /// Create new async ABI support
-    pub fn new(bridge: TaskManagerAsyncBridge) -> Result<Self, Error> {
+    pub fn new(bridge: TaskManagerAsyncBridge) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
             bridge,
-            async_operations: BoundedMap::new(provider.clone())?,
-            abi_contexts: BoundedMap::new(provider.clone())?,
+            async_operations: BoundedMap::new(),
+            abi_contexts: BoundedMap::new(),
             next_operation_id: AtomicU64::new(1),
             abi_stats: AbiStatistics::default(),
         })
@@ -219,16 +291,16 @@ impl AsyncCanonicalAbiSupport {
         &mut self,
         component_id: ComponentInstanceId,
         default_options: CanonicalOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
 
         let context = ComponentAbiContext {
             component_id,
             default_options,
-            active_calls: BoundedVec::new(provider.clone())?,
-            resource_operations: BoundedMap::new(provider.clone())?,
-            future_callbacks: BoundedMap::new(provider.clone())?,
-            stream_callbacks: BoundedMap::new(provider.clone())?,
+            active_calls: BoundedVec::new().unwrap(),
+            resource_operations: BoundedMap::new(),
+            future_callbacks: BoundedMap::new(),
+            stream_callbacks: BoundedMap::new(),
         };
 
         self.abi_contexts
@@ -244,16 +316,22 @@ impl AsyncCanonicalAbiSupport {
         component_id: ComponentInstanceId,
         function_name: String,
         func_type: FuncType,
-        args: Vec<ComponentValue>,
+        args: Vec<ComponentValue<ComponentProvider>>,
         options: Option<CanonicalOptions>,
-    ) -> Result<AsyncAbiOperationId, Error> {
-        let context = self.abi_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not initialized for async ABI")
-        })?;
+    ) -> Result<AsyncAbiOperationId> {
+        // Extract default options before mutable borrow
+        let default_options = self
+            .abi_contexts
+            .get(&component_id)
+            .ok_or_else(|| {
+                Error::validation_invalid_input("Component not initialized for async ABI")
+            })?
+            .default_options
+            .clone();
 
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
-        let options = options.unwrap_or_else(|| context.default_options.clone());
+        let options = options.unwrap_or(default_options);
 
         // Create async operation
         let operation = AsyncAbiOperation {
@@ -292,7 +370,7 @@ impl AsyncCanonicalAbiSupport {
                 Ok(vec![]) // Return lifted values
             },
             ComponentAsyncTaskType::AsyncFunction,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         // Store operation
@@ -303,11 +381,13 @@ impl AsyncCanonicalAbiSupport {
             .insert(operation_id, stored_operation)
             .map_err(|_| Error::resource_limit_exceeded("Too many async ABI operations"))?;
 
-        // Add to component context
-        context
-            .active_calls
-            .push(operation_id)
-            .map_err(|_| Error::resource_limit_exceeded("Component active calls full"))?;
+        // Add to component context - get mutable reference after all other operations
+        if let Some(context) = self.abi_contexts.get_mut(&component_id) {
+            context
+                .active_calls
+                .push(operation_id)
+                .map_err(|_| Error::resource_limit_exceeded("Component active calls full"))?;
+        }
 
         // Update statistics
         self.abi_stats.total_async_calls.fetch_add(1, Ordering::Relaxed);
@@ -321,8 +401,8 @@ impl AsyncCanonicalAbiSupport {
         component_id: ComponentInstanceId,
         resource_handle: ResourceHandle,
         method_name: String,
-        args: Vec<ComponentValue>,
-    ) -> Result<AsyncAbiOperationId, Error> {
+        args: Vec<ComponentValue<ComponentProvider>>,
+    ) -> Result<AsyncAbiOperationId> {
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
 
@@ -352,7 +432,7 @@ impl AsyncCanonicalAbiSupport {
                 Ok(vec![])
             },
             ComponentAsyncTaskType::ResourceAsync,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         let mut stored_operation = operation;
@@ -367,7 +447,7 @@ impl AsyncCanonicalAbiSupport {
             context
                 .resource_operations
                 .entry(resource_handle)
-                .or_insert_with(Vec::new)
+                .or_insert_with(Vec::new)?
                 .push(operation_id);
         }
 
@@ -383,7 +463,7 @@ impl AsyncCanonicalAbiSupport {
         source_values: Vec<Value>,
         target_type: ComponentType,
         options: Option<CanonicalOptions>,
-    ) -> Result<AsyncAbiOperationId, Error> {
+    ) -> Result<AsyncAbiOperationId> {
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
         let context = self
@@ -419,7 +499,7 @@ impl AsyncCanonicalAbiSupport {
                 Ok(vec![])
             },
             ComponentAsyncTaskType::AsyncFunction,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         let mut stored_operation = operation;
@@ -438,10 +518,10 @@ impl AsyncCanonicalAbiSupport {
     pub fn async_lower(
         &mut self,
         component_id: ComponentInstanceId,
-        source_values: Vec<WrtComponentValue>,
+        source_values: Vec<WrtComponentValue<ComponentProvider>>,
         target_type: ValType,
         options: Option<CanonicalOptions>,
-    ) -> Result<AsyncAbiOperationId, Error> {
+    ) -> Result<AsyncAbiOperationId> {
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
         let context = self
@@ -476,7 +556,7 @@ impl AsyncCanonicalAbiSupport {
                 Ok(vec![])
             },
             ComponentAsyncTaskType::AsyncFunction,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         let mut stored_operation = operation;
@@ -497,7 +577,7 @@ impl AsyncCanonicalAbiSupport {
         component_id: ComponentInstanceId,
         future_handle: FutureHandle,
         operation: FutureOp,
-    ) -> Result<AsyncAbiOperationId, Error> {
+    ) -> Result<AsyncAbiOperationId> {
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
 
@@ -538,7 +618,7 @@ impl AsyncCanonicalAbiSupport {
                 }
             },
             ComponentAsyncTaskType::FutureWait,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         let mut stored_operation = abi_operation;
@@ -564,7 +644,7 @@ impl AsyncCanonicalAbiSupport {
         component_id: ComponentInstanceId,
         stream_handle: StreamHandle,
         operation: StreamOp,
-    ) -> Result<AsyncAbiOperationId, Error> {
+    ) -> Result<AsyncAbiOperationId> {
         let operation_id =
             AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
 
@@ -609,7 +689,7 @@ impl AsyncCanonicalAbiSupport {
                 }
             },
             ComponentAsyncTaskType::StreamConsume,
-            Priority::Normal,
+            128, // Normal priority
         )?;
 
         let mut stored_operation = abi_operation;
@@ -633,14 +713,14 @@ impl AsyncCanonicalAbiSupport {
     pub fn check_operation_status(
         &self,
         operation_id: AsyncAbiOperationId,
-    ) -> Result<AsyncAbiOperationStatus, Error> {
+    ) -> Result<AsyncAbiOperationStatus> {
         let operation = self
             .async_operations
             .get(&operation_id)
             .ok_or_else(|| Error::validation_invalid_input("Operation not found"))?;
 
         let task_status = if let Some(task_id) = operation.task_id {
-            self.bridge.async_bridge.is_task_ready(task_id)?
+            self.bridge.async_bridge().is_task_ready(task_id)?
         } else {
             false
         };
@@ -656,7 +736,7 @@ impl AsyncCanonicalAbiSupport {
     }
 
     /// Poll all async ABI operations
-    pub fn poll_async_operations(&mut self) -> Result<AbiPollResult, Error> {
+    pub fn poll_async_operations(&mut self) -> Result<AbiPollResult> {
         // Poll underlying bridge
         let bridge_result = self.bridge.poll_async_tasks()?;
 
@@ -666,7 +746,7 @@ impl AsyncCanonicalAbiSupport {
         // Check operation statuses
         for (op_id, operation) in self.async_operations.iter() {
             if let Some(task_id) = operation.task_id {
-                if self.bridge.async_bridge.is_task_ready(task_id)? {
+                if self.bridge.async_bridge().is_task_ready(task_id)? {
                     ready_operations += 1;
                     // In real implementation, would check if completed
                 }
@@ -708,7 +788,7 @@ impl AsyncCanonicalAbiSupport {
         0
     }
 
-    fn cleanup_operation(&mut self, operation_id: AsyncAbiOperationId) -> Result<(), Error> {
+    fn cleanup_operation(&mut self, operation_id: AsyncAbiOperationId) -> Result<()> {
         if let Some(operation) = self.async_operations.remove(&operation_id) {
             // Remove from component context
             if let Some(context) = self.abi_contexts.get_mut(&operation.component_id) {

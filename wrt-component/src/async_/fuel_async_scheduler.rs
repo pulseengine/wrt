@@ -14,8 +14,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     operations::{
         record_global_operation,
         Type as OperationType,
@@ -69,7 +68,7 @@ pub enum SchedulingPolicy {
 }
 
 /// Task scheduling entry with fuel tracking
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ScheduledTask {
     pub task_id:        TaskId,
     pub component_id:   ComponentInstanceId,
@@ -107,14 +106,14 @@ impl FuelAsyncScheduler {
     pub fn new(
         policy: SchedulingPolicy,
         verification_level: VerificationLevel,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
             policy,
-            scheduled_tasks: BoundedMap::new(provider.clone())?,
-            priority_queue: BoundedVec::new(provider.clone())?,
-            round_robin_queue: BoundedVec::new(provider)?,
+            scheduled_tasks: BoundedMap::new(),
+            priority_queue: BoundedVec::new().unwrap(),
+            round_robin_queue: BoundedVec::new().unwrap(),
             round_robin_position: AtomicUsize::new(0),
             global_schedule_time: AtomicU64::new(0),
             verification_level,
@@ -144,7 +143,7 @@ impl FuelAsyncScheduler {
         priority: Priority,
         fuel_quota: u64,
         deadline: Option<Duration>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::CollectionInsert, self.verification_level);
 
         let scheduled_task = ScheduledTask {
@@ -185,7 +184,7 @@ impl FuelAsyncScheduler {
     }
 
     /// Remove a task from the scheduler
-    pub fn remove_task(&mut self, task_id: TaskId) -> Result<(), Error> {
+    pub fn remove_task(&mut self, task_id: TaskId) -> Result<()> {
         record_global_operation(OperationType::CollectionRemove, self.verification_level);
 
         self.scheduled_tasks.remove(&task_id);
@@ -218,7 +217,7 @@ impl FuelAsyncScheduler {
         task_id: TaskId,
         fuel_consumed: u64,
         new_state: AsyncTaskState,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if let Some(task) = self.scheduled_tasks.get_mut(&task_id) {
             task.fuel_consumed += fuel_consumed;
             task.state = new_state;
@@ -371,12 +370,12 @@ impl FuelAsyncScheduler {
         None
     }
 
-    fn insert_priority_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn insert_priority_queue(&mut self, task_id: TaskId) -> Result<()> {
         let task_priority = self
             .scheduled_tasks
             .get(&task_id)
             .map(|t| t.priority)
-            .unwrap_or(Priority::Normal);
+            .unwrap_or(128); // Normal priority
 
         // Insert in priority order (higher priority first)
         let mut insert_pos = self.priority_queue.len();
@@ -389,12 +388,27 @@ impl FuelAsyncScheduler {
             }
         }
 
-        self.priority_queue
-            .insert(insert_pos, task_id)
-            .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))
+        // StaticVec doesn't have insert method, so we manually shift elements
+        if insert_pos >= self.priority_queue.len() {
+            // Insert at end
+            self.priority_queue
+                .push(task_id)
+                .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))
+        } else {
+            // Insert in middle - need to shift elements
+            let mut temp_vec = BoundedVec::new().unwrap();
+            for (i, &id) in self.priority_queue.iter().enumerate() {
+                if i == insert_pos {
+                    temp_vec.push(task_id).map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
+                }
+                temp_vec.push(id).map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
+            }
+            self.priority_queue = temp_vec;
+            Ok(())
+        }
     }
 
-    fn insert_deadline_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn insert_deadline_queue(&mut self, task_id: TaskId) -> Result<()> {
         // For deadline scheduling, we use the priority queue but order by deadline
         self.priority_queue
             .push(task_id)
@@ -441,7 +455,7 @@ impl FuelAsyncScheduler {
         }
     }
 
-    fn reprioritize_task(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn reprioritize_task(&mut self, task_id: TaskId) -> Result<()> {
         record_global_operation(OperationType::CollectionMutate, self.verification_level);
 
         // Remove task from current position
@@ -451,7 +465,7 @@ impl FuelAsyncScheduler {
         self.insert_priority_queue(task_id)
     }
 
-    fn reorder_deadline_queue(&mut self, _task_id: TaskId) -> Result<(), Error> {
+    fn reorder_deadline_queue(&mut self, _task_id: TaskId) -> Result<()> {
         record_global_operation(OperationType::CollectionMutate, self.verification_level);
 
         // Re-sort the entire deadline queue
@@ -517,7 +531,7 @@ mod tests {
             .add_task(
                 task_id,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )
@@ -542,7 +556,7 @@ mod tests {
             .add_task(
                 task1,
                 ComponentInstanceId::new(1),
-                Priority::Low,
+                64, // Low priority
                 1000,
                 None,
             )
@@ -552,7 +566,7 @@ mod tests {
             .add_task(
                 task2,
                 ComponentInstanceId::new(1),
-                Priority::High,
+                192, // High priority
                 1000,
                 None,
             )
@@ -576,7 +590,7 @@ mod tests {
             .add_task(
                 task1,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )
@@ -585,7 +599,7 @@ mod tests {
             .add_task(
                 task2,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )

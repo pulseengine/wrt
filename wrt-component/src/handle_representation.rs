@@ -1,4 +1,5 @@
 use crate::{
+    bounded_component_infra::ComponentProvider,
     generative_types::{GenerativeResourceType, GenerativeTypeRegistry},
     type_bounds::{TypeBoundsChecker, TypeRelation},
     virtualization::{Capability, VirtualizationManager},
@@ -10,11 +11,13 @@ use core::{
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedMap, BoundedVec},
+    collections::StaticVec as BoundedVec,
+    collections::StaticMap as BoundedMap,
     component_value::ComponentValue,
-    safe_memory::SafeMemory,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 
 // Enable vec! and format! macros for no_std
@@ -27,7 +30,21 @@ use alloc::{vec, format};
 use std::{string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedString as String, BoundedVec as Vec};
+type String = wrt_foundation::BoundedString<256, NoStdProvider<1024>>;
+#[cfg(not(feature = "std"))]
+type Vec<T> = BoundedVec<T, 64>;
+
+// Helper function to create error message strings
+#[cfg(not(feature = "std"))]
+fn error_msg(s: &str) -> String {
+    let provider = NoStdProvider::<1024>::default();
+    wrt_foundation::BoundedString::from_str_truncate(s, provider).unwrap_or_default()
+}
+
+#[cfg(feature = "std")]
+fn error_msg(s: &str) -> String {
+    String::from(s)
+}
 
 const MAX_HANDLE_REPRESENTATIONS: usize = 1024;
 const MAX_HANDLE_OPERATIONS: usize = 512;
@@ -55,7 +72,18 @@ pub enum HandleRepresentationErrorKind {
 
 impl fmt::Display for HandleRepresentationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}: {}", self.kind, self.message)
+        #[cfg(feature = "std")]
+        {
+            write!(f, "{:?}: {}", self.kind, self.message)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std, BoundedString doesn't implement Display, so convert to str
+            match self.message.as_str() {
+                Ok(s) => write!(f, "{:?}: {}", self.kind, s),
+                Err(_) => write!(f, "{:?}: [invalid utf8]", self.kind),
+            }
+        }
     }
 }
 
@@ -123,7 +151,7 @@ pub struct HandleRepresentation {
     pub reference_count: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct AccessRights {
     pub can_read: bool,
     pub can_write: bool,
@@ -165,14 +193,14 @@ pub struct HandleMetadata {
     pub access_count: u32,
     pub creator_component: ComponentInstanceId,
     pub tags: BoundedVec<String, 16>,
-    pub custom_data: BoundedMap<String, ComponentValue, 32>,
+    pub custom_data: BoundedMap<String, ComponentValue<ComponentProvider>, 32>,
 }
 
 #[derive(Debug, Clone)]
 pub enum HandleOperation {
     Read { fields: BoundedVec<String, 16> },
-    Write { fields: BoundedVec<(String, ComponentValue), 16> },
-    Call { method: String, args: BoundedVec<ComponentValue, 16> },
+    Write { fields: BoundedVec<(String, ComponentValue<ComponentProvider>), 16> },
+    Call { method: String, args: BoundedVec<ComponentValue<ComponentProvider>, 16> },
     Drop,
     Share { target_component: ComponentInstanceId },
     Borrow { mutable: bool },
@@ -188,6 +216,7 @@ pub struct HandleAccessPolicy {
     pub expiry: Option<u64>,
 }
 
+#[derive(Debug)]
 pub struct HandleRepresentationManager {
     representations:
         BoundedMap<ResourceHandle, HandleRepresentation, MAX_HANDLE_REPRESENTATIONS>,
@@ -202,15 +231,15 @@ pub struct HandleRepresentationManager {
 
 impl HandleRepresentationManager {
     pub fn new() -> HandleRepresentationResult<Self> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         Ok(Self {
-            representations: BoundedMap::new(provider.clone())?,
-            metadata: BoundedMap::new(provider.clone())?,
+            representations: BoundedMap::new(),
+            metadata: BoundedMap::new(),
             access_policies: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             type_registry: GenerativeTypeRegistry::new(),
-            bounds_checker: TypeBoundsChecker::new(),
+            bounds_checker: TypeBoundsChecker::new()?,
             virt_manager: None,
             next_handle_id: AtomicU32::new(1),
             strict_type_checking: AtomicBool::new(true),
@@ -218,12 +247,12 @@ impl HandleRepresentationManager {
     }
 
     pub fn with_virtualization(mut self, virt_manager: VirtualizationManager) -> Self {
-        self.virt_manager = Some(virt_manager;
+        self.virt_manager = Some(virt_manager);
         self
     }
 
     pub fn set_strict_type_checking(&self, strict: bool) {
-        self.strict_type_checking.store(strict, Ordering::SeqCst;
+        self.strict_type_checking.store(strict, Ordering::SeqCst);
     }
 
     pub fn create_handle(
@@ -232,12 +261,12 @@ impl HandleRepresentationManager {
         resource_type: GenerativeResourceType,
         access_rights: AccessRights,
     ) -> HandleRepresentationResult<ResourceHandle> {
-        let handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
-        let handle = ResourceHandle::new(handle_id);
+        let handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst);
+        let handle = handle_id; // ResourceHandle type alias for u32
 
         let representation = HandleRepresentation {
             handle,
-            type_id: resource_type.type_id,
+            type_id: resource_type.unique_type_id.into_inner(),
             component_id,
             access_rights,
             is_owned: true,
@@ -247,7 +276,7 @@ impl HandleRepresentationManager {
         self.representations.insert(handle, representation).map_err(|_| {
             HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::ResourceExhausted,
-                message: "Too many handle representations".to_string(),
+                message: error_msg("Too many handle representations"),
                 handle: Some(handle),
             }
         })?;
@@ -260,22 +289,34 @@ impl HandleRepresentationManager {
             creator_component: component_id,
             tags: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
-            custom_data: BoundedMap::new(provider.clone())?,
+            custom_data: BoundedMap::new(),
         };
 
         self.metadata.insert(handle, metadata).map_err(|_| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::ResourceExhausted,
-            message: "Too many handle metadata entries".to_string(),
+            message: {
+                #[cfg(feature = "std")]
+                { String::from("Too many handle metadata entries") }
+                #[cfg(not(feature = "std"))]
+                { error_msg("Too many handle metadata entries") }
+            },
             handle: Some(handle),
         })?;
 
         // Map handle to resource type
-        self.type_registry.map_resource_handle(handle, resource_type).map_err(|e| {
+        // Convert the type alias ResourceHandle (u32) to the newtype ResourceHandle struct
+        let resource_handle = crate::resource_management::ResourceHandle::new(handle);
+        self.type_registry.register_resource_handle(resource_handle, resource_type).map_err(|_e| {
             HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::ValidationFailed,
-                message: "Handle operation failed".to_string(),
+                message: {
+                    #[cfg(feature = "std")]
+                    { String::from("Handle operation failed") }
+                    #[cfg(not(feature = "std"))]
+                    { error_msg("Handle operation failed") }
+                },
                 handle: Some(handle),
             }
         })?;
@@ -289,9 +330,14 @@ impl HandleRepresentationManager {
     ) -> HandleRepresentationResult<&HandleRepresentation> {
         self.representations.get(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: "Component operation error".to_string(),
+            message: {
+                #[cfg(feature = "std")]
+                { String::from("Component operation error") }
+                #[cfg(not(feature = "std"))]
+                { error_msg("Component operation error") }
+            },
             handle: Some(handle),
-        })
+        }.into())
     }
 
     pub fn perform_operation(
@@ -299,25 +345,30 @@ impl HandleRepresentationManager {
         component_id: ComponentInstanceId,
         handle: ResourceHandle,
         operation: HandleOperation,
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // Check if handle exists and get representation
         let representation = self.get_representation(handle)?;
 
         // Verify component has access
         self.verify_access(component_id, handle, &operation)?;
 
-        // Update metadata
+        // Update metadata (extract time first to avoid borrow conflict)
+        let current_time = self.get_current_time();
         if let Some(metadata) = self.metadata.get_mut(&handle) {
-            metadata.last_accessed = self.get_current_time);
-            metadata.access_count = metadata.access_count.saturating_add(1;
+            metadata.last_accessed = current_time;
+            metadata.access_count = metadata.access_count.saturating_add(1);
         }
 
         // Perform the operation
         match operation {
-            HandleOperation::Read { fields } => self.handle_read_operation(handle, &fields),
-            HandleOperation::Write { fields } => self.handle_write_operation(handle, &fields),
+            HandleOperation::Read { fields } => self.handle_read_operation(handle, fields.as_slice()),
+            HandleOperation::Write { fields } => self.handle_write_operation(handle, fields.as_slice()),
             HandleOperation::Call { method, args } => {
-                self.handle_call_operation(handle, &method, &args)
+                #[cfg(feature = "std")]
+                let method_str = method.as_str();
+                #[cfg(not(feature = "std"))]
+                let method_str = method.as_str()?;
+                self.handle_call_operation(handle, method_str, args.as_slice())
             }
             HandleOperation::Drop => self.handle_drop_operation(component_id, handle),
             HandleOperation::Share { target_component } => {
@@ -338,9 +389,15 @@ impl HandleRepresentationManager {
     ) -> HandleRepresentationResult<()> {
         self.access_policies.push(policy).map_err(|_| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::ResourceExhausted,
-            message: "Too many access policies".to_string(),
+            message: {
+                #[cfg(feature = "std")]
+                { String::from("Too many access policies") }
+                #[cfg(not(feature = "std"))]
+                { error_msg("Too many access policies") }
+            },
             handle: None,
-        })
+        })?;
+        Ok(())
     }
 
     pub fn share_handle(
@@ -358,8 +415,8 @@ impl HandleRepresentationManager {
         let original = self.get_representation(handle)?.clone();
 
         // Create new handle for target component
-        let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
-        let new_handle = ResourceHandle::new(new_handle_id);
+        let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst);
+        let new_handle = new_handle_id; // ResourceHandle is u32
 
         // Create shared representation
         let shared_representation = HandleRepresentation {
@@ -374,7 +431,12 @@ impl HandleRepresentationManager {
         self.representations.insert(new_handle, shared_representation).map_err(|_| {
             HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::ResourceExhausted,
-                message: "Too many handle representations".to_string(),
+                message: {
+                    #[cfg(feature = "std")]
+                    { String::from("Too many handle representations") }
+                    #[cfg(not(feature = "std"))]
+                    { error_msg("Too many handle representations") }
+                },
                 handle: Some(new_handle),
             }
         })?;
@@ -382,12 +444,23 @@ impl HandleRepresentationManager {
         // Copy metadata with updated info
         if let Some(original_metadata) = self.metadata.get(&handle) {
             let mut shared_metadata = original_metadata.clone();
-            shared_metadata.tags.push("Component operation error".to_string()).ok();
+            let tag = {
+                #[cfg(feature = "std")]
+                { String::from("shared") }
+                #[cfg(not(feature = "std"))]
+                { error_msg("shared") }
+            };
+            shared_metadata.tags.push(tag).ok();
 
             self.metadata.insert(new_handle, shared_metadata).map_err(|_| {
                 HandleRepresentationError {
                     kind: HandleRepresentationErrorKind::ResourceExhausted,
-                    message: "Too many metadata entries".to_string(),
+                    message: {
+                        #[cfg(feature = "std")]
+                        { String::from("Too many metadata entries") }
+                        #[cfg(not(feature = "std"))]
+                        { error_msg("Too many metadata entries") }
+                    },
                     handle: Some(new_handle),
                 }
             })?;
@@ -395,7 +468,7 @@ impl HandleRepresentationManager {
 
         // Increment reference count on original
         if let Some(original_repr) = self.representations.get_mut(&handle) {
-            original_repr.reference_count = original_repr.reference_count.saturating_add(1;
+            original_repr.reference_count = original_repr.reference_count.saturating_add(1);
         }
 
         Ok(new_handle)
@@ -414,32 +487,29 @@ impl HandleRepresentationManager {
         let representation =
             self.representations.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::HandleNotFound,
-                message: "Component operation error".to_string(),
+                message: {
+                    #[cfg(feature = "std")]
+                    { String::from("Component operation error") }
+                    #[cfg(not(feature = "std"))]
+                    { error_msg("Component operation error") }
+                },
                 handle: Some(handle),
             })?;
 
         // Decrement reference count
-        representation.reference_count = representation.reference_count.saturating_sub(1;
+        representation.reference_count = representation.reference_count.saturating_sub(1);
 
         // If reference count reaches zero, actually drop
         if representation.reference_count == 0 {
-            self.representations.remove(&handle;
-            self.metadata.remove(&handle;
+            self.representations.remove(&handle);
+            self.metadata.remove(&handle);
 
-            // Unmap from type registry
-            if let Err(e) = self.type_registry.unmap_resource_handle(handle) {
-                // Log error but don't fail the drop
-                #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to unmap handle from type registry: {}", e);
-                #[cfg(not(feature = "std"))]
-                {
-                    // In no_std, we can't print to stderr, so we silently ignore the error
-                    let _ = e;
-                }
-            }
+            // Unmap from type registry - note: there is no unmap method,
+            // the registry handles cleanup via other means
+            // Resource mappings persist until cleanup_instance is called
         }
 
-        Ok(()
+        Ok(())
     }
 
     pub fn get_handle_metadata(&self, handle: ResourceHandle) -> Option<&HandleMetadata> {
@@ -456,12 +526,17 @@ impl HandleRepresentationManager {
     {
         let metadata = self.metadata.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: "Component operation error".to_string(),
+            message: {
+                #[cfg(feature = "std")]
+                { String::from("Component operation error") }
+                #[cfg(not(feature = "std"))]
+                { error_msg("Component operation error") }
+            },
             handle: Some(handle),
         })?;
 
-        updater(metadata;
-        Ok(()
+        updater(metadata);
+        Ok(())
     }
 
     pub fn validate_handle_type(
@@ -475,20 +550,29 @@ impl HandleRepresentationManager {
             // Strict checking - must be exact match or subtype
             if representation.type_id != expected_type {
                 // Check if it's a valid subtype
-                if !self.bounds_checker.is_subtype(representation.type_id, expected_type) {
+                // Convert u32 type aliases to TypeId newtype structs for type_bounds checker
+                let type_id = crate::types::TypeId(representation.type_id);
+                let expected_type_id = crate::types::TypeId(expected_type);
+                let is_subtype = self.bounds_checker.check_subtype(type_id, expected_type_id);
+                if is_subtype != crate::type_bounds::RelationResult::Satisfied {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::TypeMismatch,
-                        message: format!(
-                            "Handle type {} does not match expected type {}",
-                            representation.type_id.0, expected_type.0
-                        ),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { format!(
+                                "Handle type {} does not match expected type {}",
+                                representation.type_id, expected_type
+                            ) }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Handle type mismatch") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
         }
 
-        Ok(()
+        Ok(())
     }
 
     fn verify_access(
@@ -505,9 +589,14 @@ impl HandleRepresentationManager {
         {
             return Err(HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::AccessDenied,
-                message: "Component operation error".to_string(),
+                message: {
+                    #[cfg(feature = "std")]
+                    { String::from("Component operation error") }
+                    #[cfg(not(feature = "std"))]
+                    { error_msg("Component operation error") }
+                },
                 handle: Some(handle),
-            };
+            })?;
         }
 
         // Check specific operation permissions
@@ -516,45 +605,70 @@ impl HandleRepresentationManager {
                 if !representation.access_rights.can_read {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::AccessDenied,
-                        message: "Read access denied".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Read access denied") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Read access denied") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
             HandleOperation::Write { .. } => {
                 if !representation.access_rights.can_write {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::AccessDenied,
-                        message: "Write access denied".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Write access denied") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Write access denied") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
             HandleOperation::Drop => {
                 if !representation.access_rights.can_drop {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::AccessDenied,
-                        message: "Drop access denied".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Drop access denied") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Drop access denied") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
             HandleOperation::Share { .. } => {
                 if !representation.access_rights.can_share {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::AccessDenied,
-                        message: "Share access denied".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Share access denied") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Share access denied") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
             HandleOperation::Borrow { .. } => {
                 if !representation.access_rights.can_borrow {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::AccessDenied,
-                        message: "Borrow access denied".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Borrow access denied") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Borrow access denied") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
             _ => {}
@@ -568,7 +682,7 @@ impl HandleRepresentationManager {
             self.check_virtualization_capabilities(component_id, operation, virt_manager)?;
         }
 
-        Ok(()
+        Ok(())
     }
 
     fn has_shared_access(&self, component_id: ComponentInstanceId, handle: ResourceHandle) -> bool {
@@ -587,7 +701,7 @@ impl HandleRepresentationManager {
         operation: &HandleOperation,
     ) -> HandleRepresentationResult<()> {
         let representation = self.get_representation(handle)?;
-        let current_time = self.get_current_time);
+        let current_time = self.get_current_time();
 
         for policy in self.access_policies.iter() {
             if policy.component_id == component_id && policy.resource_type == representation.type_id
@@ -608,20 +722,25 @@ impl HandleRepresentationManager {
                             | (HandleOperation::Drop, HandleOperation::Drop)
                             | (HandleOperation::Share { .. }, HandleOperation::Share { .. })
                             | (HandleOperation::Borrow { .. }, HandleOperation::Borrow { .. })
-                })?;
-                };
+                    )
+                });
 
                 if !operation_allowed {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::OperationNotSupported,
-                        message: "Operation not allowed by policy".to_string(),
+                        message: {
+                            #[cfg(feature = "std")]
+                            { String::from("Operation not allowed by policy") }
+                            #[cfg(not(feature = "std"))]
+                            { error_msg("Operation not allowed by policy") }
+                        },
                         handle: Some(handle),
-                    };
+                    })?;
                 }
             }
         }
 
-        Ok(()
+        Ok(())
     }
 
     fn check_virtualization_capabilities(
@@ -635,7 +754,7 @@ impl HandleRepresentationManager {
             HandleOperation::Call { .. } => {
                 // May require specific capability for external calls
                 // This is a simplified check - real implementation would be more sophisticated
-                Ok(()
+                Ok(())
             }
             _ => Ok(()),
         }
@@ -645,16 +764,16 @@ impl HandleRepresentationManager {
         &self,
         handle: ResourceHandle,
         fields: &[String],
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // This is a placeholder - actual implementation would read from the resource
-        Ok(Some(ComponentValue::I32(42))
+        Ok(Some(ComponentValue::S32(42)))
     }
 
     fn handle_write_operation(
         &mut self,
         handle: ResourceHandle,
-        fields: &[(String, ComponentValue)],
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+        fields: &[(String, ComponentValue<ComponentProvider>)],
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // This is a placeholder - actual implementation would write to the resource
         Ok(None)
     }
@@ -663,17 +782,29 @@ impl HandleRepresentationManager {
         &mut self,
         handle: ResourceHandle,
         method: &str,
-        args: &[ComponentValue],
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // This is a placeholder - actual implementation would call the method
-        Ok(Some(ComponentValue::String("Component operation error".to_string()))
+        #[cfg(feature = "std")]
+        {
+            Ok(Some(ComponentValue::String(String::from("success"))))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // Create a BoundedString with the correct provider type (ComponentProvider)
+            // In no_std, convert directly to String (from alloc)
+            #[cfg(not(feature = "std"))]
+            use alloc::string::ToString;
+
+            Ok(Some(ComponentValue::String("success".to_string())))
+        }
     }
 
     fn handle_drop_operation(
         &mut self,
         component_id: ComponentInstanceId,
         handle: ResourceHandle,
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         self.drop_handle(component_id, handle)?;
         Ok(None)
     }
@@ -683,11 +814,12 @@ impl HandleRepresentationManager {
         component_id: ComponentInstanceId,
         handle: ResourceHandle,
         target_component: ComponentInstanceId,
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         let new_handle =
             self.share_handle(component_id, target_component, handle, AccessRights::read_only())?;
 
-        Ok(Some(ComponentValue::U32(new_handle.id()))
+        // ResourceHandle is u32, so we can use it directly
+        Ok(Some(ComponentValue::U32(new_handle)))
     }
 
     fn handle_borrow_operation(
@@ -695,9 +827,9 @@ impl HandleRepresentationManager {
         component_id: ComponentInstanceId,
         handle: ResourceHandle,
         mutable: bool,
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // This is a placeholder - actual implementation would create a borrowed reference
-        Ok(Some(ComponentValue::Bool(true))
+        Ok(Some(ComponentValue::Bool(true)))
     }
 
     fn handle_return_operation(
@@ -705,7 +837,7 @@ impl HandleRepresentationManager {
         component_id: ComponentInstanceId,
         handle: ResourceHandle,
         from_borrow: bool,
-    ) -> HandleRepresentationResult<Option<ComponentValue>> {
+    ) -> HandleRepresentationResult<Option<ComponentValue<ComponentProvider>>> {
         // This is a placeholder - actual implementation would return a borrowed reference
         Ok(None)
     }
@@ -780,23 +912,23 @@ mod tests {
     #[test]
     fn test_handle_representation_manager_creation() {
         let manager = HandleRepresentationManager::new().unwrap();
-        assert!(manager.strict_type_checking.load(Ordering::Acquire);
+        assert!(manager.strict_type_checking.load(Ordering::Acquire));
     }
 
     #[test]
     fn test_access_rights_presets() {
-        let read_only = AccessRights::read_only);
+        let read_only = AccessRights::read_only();
         assert!(read_only.can_read);
         assert!(!read_only.can_write);
         assert!(!read_only.can_drop);
 
-        let full_access = AccessRights::full_access);
+        let full_access = AccessRights::full_access();
         assert!(full_access.can_read);
         assert!(full_access.can_write);
         assert!(full_access.can_drop);
         assert!(full_access.can_share);
 
-        let no_access = AccessRights::no_access);
+        let no_access = AccessRights::no_access();
         assert!(!no_access.can_read);
         assert!(!no_access.can_write);
         assert!(!no_access.can_drop);
@@ -804,22 +936,28 @@ mod tests {
 
     #[test]
     fn test_handle_creation() {
+        use wrt_foundation::resource::ResourceType;
+        use crate::bounded_component_infra::ComponentProvider;
+
         let mut manager = HandleRepresentationManager::new().unwrap();
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId(1);
 
-        let resource_type =
-            manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
-
-        let handle = manager
-            .create_handle(component_id, resource_type, AccessRights::full_access()
+        // Create a resource type using the type registry
+        let base_type = ResourceType::<ComponentProvider>::Handle(42);
+        let resource_type = manager.type_registry
+            .create_generative_type(base_type, component_id)
             .unwrap();
 
-        assert!(handle.id() > 0);
+        let handle = manager
+            .create_handle(component_id, resource_type.clone(), AccessRights::full_access())
+            .unwrap();
+
+        assert!(handle > 0);
 
         // Verify representation was created
         let repr = manager.get_representation(handle).unwrap();
-        assert_eq!(repr.component_id, component_id;
-        assert_eq!(repr.type_id, resource_type.type_id;
+        assert_eq!(repr.component_id, component_id);
+        assert_eq!(repr.type_id, resource_type.unique_type_id);
         assert!(repr.is_owned);
         assert_eq!(repr.reference_count, 1);
     }
@@ -828,11 +966,11 @@ mod tests {
     fn test_typed_handle() {
         struct MyResource;
 
-        let handle = ResourceHandle::new(42);
-        let type_id = TypeId(100;
+        let handle = 42u32; // ResourceHandle is u32
+        let type_id = 100u32; // TypeId is u32
 
-        let typed_handle = TypedHandle::<MyResource>::new(handle, type_id;
-        assert_eq!(typed_handle.handle().id(), 42;
-        assert_eq!(typed_handle.type_id().0, 100;
+        let typed_handle = TypedHandle::<MyResource>::new(handle, type_id);
+        assert_eq!(typed_handle.handle(), 42);
+        assert_eq!(typed_handle.type_id(), 100);
     }
 }

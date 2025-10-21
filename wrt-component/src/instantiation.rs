@@ -30,28 +30,33 @@ use wrt_foundation::allocator::{
 use wrt_foundation::{
     bounded::{
         BoundedString,
-        BoundedVec,
     },
     budget_aware_provider::CrateId,
+    collections::StaticVec,
+    collections::StaticVec as BoundedVec,
     prelude::*,
     safe_managed_alloc,
+    traits::{Checksummable, ToBytes, FromBytes},
 };
 
 use crate::{
+    bounded_component_infra::{ComponentProvider, InstantiationProvider},
     canonical_abi::canonical::CanonicalABI,
     components::component::{
         Component,
-        ComponentInstance,
     },
     execution_engine::ComponentExecutionEngine,
     export::Export,
     import::Import,
     prelude::{
+        ExportKind,
         WrtComponentType,
         WrtComponentValue,
     },
     resources::resource_lifecycle::ResourceLifecycleManager,
+    resources::ResourceTable as ComponentResourceTable,
     types::{
+        ComponentInstance,
         ValType,
         Value,
     },
@@ -65,9 +70,8 @@ const MAX_EXPORTS: usize = 256;
 /// Maximum number of instances in no_std environments
 const MAX_INSTANCES: usize = 64;
 
-// Type alias for instantiation provider - using capability-based allocation
-// Provider instances are created using safe_managed_alloc! macro
-type InstantiationProvider = wrt_foundation::safe_memory::NoStdProvider<65536>;
+// Type alias for instantiation provider - REMOVED
+// Provider instances are now created using safe_managed_alloc! macro instead of type aliases
 
 /// Import value provided during instantiation
 #[derive(Debug, Clone)]
@@ -75,18 +79,73 @@ pub enum ImportValue {
     /// A function import
     Function(FunctionImport),
     /// A value import (global, memory, table)
-    Value(WrtComponentValue),
+    Value(WrtComponentValue<ComponentProvider>),
     /// An instance import
     Instance(InstanceImport),
     /// A type import
-    Type(WrtComponentType),
+    Type(WrtComponentType<ComponentProvider>),
+}
+
+impl Default for ImportValue {
+    fn default() -> Self {
+        Self::Value(WrtComponentValue::Unit)
+    }
+}
+
+impl PartialEq for ImportValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Function(_), Self::Function(_)) => true,
+            (Self::Value(a), Self::Value(b)) => a == b,
+            (Self::Instance(_), Self::Instance(_)) => true,
+            (Self::Type(a), Self::Type(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ImportValue {}
+
+impl Checksummable for ImportValue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Function(_) => 0u8.update_checksum(checksum),
+            Self::Value(v) => { 1u8.update_checksum(checksum); v.update_checksum(checksum); },
+            Self::Instance(_) => 2u8.update_checksum(checksum),
+            Self::Type(t) => { 3u8.update_checksum(checksum); t.update_checksum(checksum); },
+        }
+    }
+}
+
+impl ToBytes for ImportValue {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        match self {
+            Self::Function(_) => 0u8.to_bytes_with_provider(writer, provider),
+            Self::Value(v) => { 1u8.to_bytes_with_provider(writer, provider)?; v.to_bytes_with_provider(writer, provider) },
+            Self::Instance(_) => 2u8.to_bytes_with_provider(writer, provider),
+            Self::Type(t) => { 3u8.to_bytes_with_provider(writer, provider)?; t.to_bytes_with_provider(writer, provider) },
+        }
+    }
+}
+
+impl FromBytes for ImportValue {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Function import descriptor
 #[derive(Debug, Clone)]
 pub struct FunctionImport {
     /// Function signature
-    pub signature:      WrtComponentType,
+    pub signature:      WrtComponentType<ComponentProvider>,
     /// Function implementation
     #[cfg(feature = "std")]
     pub implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
@@ -95,19 +154,78 @@ pub struct FunctionImport {
 }
 
 /// Instance import descriptor
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct InstanceImport {
     /// Instance exports
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub exports: WrtHashMap<String, ExportValue, { CrateId::Component as u8 }, 256>,
+    pub exports: WrtHashMap<String, Box<ExportValue>, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub exports: BTreeMap<String, ExportValue>,
+    pub exports: BTreeMap<String, Box<ExportValue>>,
     #[cfg(not(feature = "std"))]
     pub exports: BoundedVec<
-        (BoundedString<64, InstantiationProvider>, ExportValue),
-        MAX_EXPORTS,
-        InstantiationProvider,
+        (BoundedString<64, InstantiationProvider>, Box<ExportValue>),
+        MAX_EXPORTS
     >,
+}
+
+impl Checksummable for InstanceImport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        #[cfg(feature = "std")]
+        {
+            self.exports.len().update_checksum(checksum);
+            for (k, v) in &self.exports {
+                k.as_bytes().update_checksum(checksum);
+                v.update_checksum(checksum);
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.exports.len().update_checksum(checksum);
+            for (k, v) in &self.exports {
+                if let Ok(bytes) = k.as_bytes() {
+                    bytes.as_ref().update_checksum(checksum);
+                }
+                v.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+impl ToBytes for InstanceImport {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        #[cfg(feature = "std")]
+        {
+            (self.exports.len() as u32).to_bytes_with_provider(writer, provider)?;
+            for (k, v) in &self.exports {
+                (k.len() as u32).to_bytes_with_provider(writer, provider)?;
+                k.as_bytes().to_bytes_with_provider(writer, provider)?;
+                v.to_bytes_with_provider(writer, provider)?;
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            (self.exports.len() as u32).to_bytes_with_provider(writer, provider)?;
+            for (k, v) in &self.exports {
+                (k.len() as u32).to_bytes_with_provider(writer, provider)?;
+                k.as_bytes()?.as_ref().to_bytes_with_provider(writer, provider)?;
+                v.to_bytes_with_provider(writer, provider)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl FromBytes for InstanceImport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Export value from an instance
@@ -116,18 +234,73 @@ pub enum ExportValue {
     /// A function export
     Function(FunctionExport),
     /// A value export
-    Value(WrtComponentValue),
+    Value(WrtComponentValue<ComponentProvider>),
     /// An instance export
-    Instance(Box<ComponentInstance>),
+    Instance(InstanceImport),
     /// A type export
-    Type(WrtComponentType),
+    Type(WrtComponentType<ComponentProvider>),
+}
+
+impl Default for ExportValue {
+    fn default() -> Self {
+        Self::Value(WrtComponentValue::Unit)
+    }
+}
+
+impl PartialEq for ExportValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Function(a), Self::Function(b)) => a.index == b.index,
+            (Self::Value(a), Self::Value(b)) => a == b,
+            (Self::Instance(_), Self::Instance(_)) => true,
+            (Self::Type(a), Self::Type(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ExportValue {}
+
+impl Checksummable for ExportValue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Function(f) => { 0u8.update_checksum(checksum); f.index.update_checksum(checksum); },
+            Self::Value(v) => { 1u8.update_checksum(checksum); v.update_checksum(checksum); },
+            Self::Instance(_) => 2u8.update_checksum(checksum),
+            Self::Type(t) => { 3u8.update_checksum(checksum); t.update_checksum(checksum); },
+        }
+    }
+}
+
+impl ToBytes for ExportValue {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        match self {
+            Self::Function(f) => { 0u8.to_bytes_with_provider(writer, provider)?; f.index.to_bytes_with_provider(writer, provider) },
+            Self::Value(v) => { 1u8.to_bytes_with_provider(writer, provider)?; v.to_bytes_with_provider(writer, provider) },
+            Self::Instance(_) => 2u8.to_bytes_with_provider(writer, provider),
+            Self::Type(t) => { 3u8.to_bytes_with_provider(writer, provider)?; t.to_bytes_with_provider(writer, provider) },
+        }
+    }
+}
+
+impl FromBytes for ExportValue {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Function export descriptor
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FunctionExport {
     /// Function signature
-    pub signature: WrtComponentType,
+    pub signature: WrtComponentType<ComponentProvider>,
     /// Function index in the instance
     pub index:     u32,
 }
@@ -142,8 +315,7 @@ pub struct ImportValues {
     #[cfg(not(feature = "std"))]
     imports: BoundedVec<
         (BoundedString<64, InstantiationProvider>, ImportValue),
-        MAX_IMPORTS,
-        InstantiationProvider,
+        MAX_IMPORTS
     >,
 }
 
@@ -158,7 +330,7 @@ impl ImportValues {
             #[cfg(not(feature = "std"))]
             imports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
         })
     }
@@ -206,7 +378,7 @@ impl ImportValues {
     /// Get an import value by name (no_std version)
     #[cfg(not(any(feature = "std",)))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
-        self.imports.iter().find(|(n, _)| n.as_str() == name).map(|(_, v)| v)
+        self.imports.iter().find(|(n, _)| n.as_str().ok() == Some(name)).map(|(_, v)| v)
     }
 }
 
@@ -223,7 +395,7 @@ impl Default for ImportValues {
                 imports: {
                     // Use fallback provider only in default construction
                     let provider = InstantiationProvider::default();
-                    BoundedVec::new(provider).unwrap()
+                    BoundedVec::new().unwrap()
                 },
             }
         })
@@ -233,7 +405,7 @@ impl Default for ImportValues {
 /// Component instantiation context
 pub struct InstantiationContext {
     /// Canonical ABI processor
-    pub canonical_abi:    CanonicalAbi,
+    pub canonical_abi:    CanonicalABI,
     /// Resource lifecycle manager
     pub resource_manager: ResourceLifecycleManager,
     /// Execution engine
@@ -244,13 +416,13 @@ pub struct InstantiationContext {
 
 impl InstantiationContext {
     /// Create a new instantiation context
-    pub fn new() -> Self {
-        Self {
-            canonical_abi:    CanonicalAbi::new(),
+    pub fn new() -> WrtResult<Self> {
+        Ok(Self {
+            canonical_abi:    CanonicalABI::new(64),
             resource_manager: ResourceLifecycleManager::new(),
-            execution_engine: ComponentExecutionEngine::new(),
+            execution_engine: ComponentExecutionEngine::new()?,
             next_instance_id: 0,
-        }
+        })
     }
 
     /// Get the next instance ID
@@ -263,7 +435,14 @@ impl InstantiationContext {
 
 impl Default for InstantiationContext {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            Self {
+                canonical_abi:    CanonicalABI::new(64),
+                resource_manager: ResourceLifecycleManager::new(),
+                execution_engine: ComponentExecutionEngine::default(),
+                next_instance_id: 0,
+            }
+        })
     }
 }
 
@@ -293,46 +472,53 @@ impl Component {
         // Step 5: Extract and validate exports
         let exports = self.extract_exports(&module_instances, context)?;
 
-        // Step 6: Create the component instance
+        // Step 6: Create the component instance with all required fields
+        // Note: Component field should ideally be Arc<Component> to avoid cloning,
+        // but for now we create a minimal component reference
+        let component_ref = Component {
+            id: self.id.clone(),
+            component_type: self.component_type.clone(),
+            types: self.types.clone(),
+            modules: self.modules.clone(),
+            exports: self.exports.clone(),
+            imports: self.imports.clone(),
+            instances: self.instances.clone(),
+            linked_components: Default::default(),
+            callback_registry: None,
+            runtime: None,
+            interceptor: None,
+            resource_table: ComponentResourceTable::new().unwrap_or_else(|_| ComponentResourceTable::default()),
+            built_in_requirements: None,
+            original_binary: None,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
+        };
+
         let instance = ComponentInstance {
             id: instance_id,
-            component: self.clone(),
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            component: component_ref,
+            state: crate::types::ComponentInstanceState::Initialized,
+            resource_manager: None,
+            memory: None,
+            metadata: crate::types::ComponentMetadata::default(),
+            functions: {
+                #[cfg(all(feature = "std", feature = "safety-critical"))]
+                {
+                    use wrt_foundation::allocator::WrtVec;
+                    WrtVec::new()
+                }
+                #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+                {
+                    Vec::new()
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    BoundedVec::new()
+                }
+            },
             imports: resolved_imports,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
-            exports,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
-            resource_tables,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
-            module_instances,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            imports: resolved_imports,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            exports,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            resource_tables,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            module_instances,
-            #[cfg(not(feature = "std"))]
-            imports: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
-            #[cfg(not(feature = "std"))]
-            exports: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
-            #[cfg(not(feature = "std"))]
-            resource_tables: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
-            #[cfg(not(feature = "std"))]
-            module_instances: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            exports: exports,
+            resource_tables: resource_tables,
+            module_instances: module_instances,
         };
 
         Ok(instance)
@@ -376,7 +562,7 @@ impl Component {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                    return Err(wrt_error::Error::type_mismatch_error(
                         "Function import type mismatch",
                     ));
                 }
@@ -384,7 +570,7 @@ impl Component {
             (crate::import::ImportType::Value(expected), ImportValue::Value(actual)) => {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                    return Err(wrt_error::Error::type_mismatch_error(
                         "Value import type mismatch",
                     ));
                 }
@@ -398,7 +584,7 @@ impl Component {
                 // TODO: Implement type equality checking
             },
             _ => {
-                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                return Err(wrt_error::Error::type_mismatch_error(
                     "Import kind mismatch",
                 ));
             },
@@ -409,26 +595,30 @@ impl Component {
     /// Check if function types are compatible
     fn is_function_compatible(
         &self,
-        expected: &WrtComponentType,
-        actual: &WrtComponentType,
+        expected: &WrtComponentType<ComponentProvider>,
+        actual: &WrtComponentType<ComponentProvider>,
     ) -> bool {
         // Check basic type equality for now
         // In a full implementation, this would check subtyping rules
-        match (expected, actual) {
-            (WrtComponentType::Unit, WrtComponentType::Unit) => true,
-            // For other types, check structural equality
-            _ => expected == actual,
+        // Check if both are unit types (empty imports/exports/etc)
+        if expected.imports.len() == 0 && expected.exports.len() == 0 &&
+           actual.imports.len() == 0 && actual.exports.len() == 0 {
+            return true;
         }
+        // For other types, check structural equality
+        expected == actual
     }
 
     /// Check if value types are compatible
-    fn is_value_compatible(&self, expected: &WrtComponentType, actual: &WrtComponentValue) -> bool {
+    fn is_value_compatible(&self, expected: &WrtComponentType<ComponentProvider>, actual: &WrtComponentValue<ComponentProvider>) -> bool {
         // Basic type compatibility check
-        match (expected, actual) {
-            (WrtComponentType::Unit, WrtComponentValue::Unit) => true,
-            // For other types, this would need more complex checking
-            _ => true, // Allow for now
+        // Check if expected is unit type and actual is Unit value
+        if expected.imports.len() == 0 && expected.exports.len() == 0 &&
+           matches!(actual, WrtComponentValue::Unit) {
+            return true;
         }
+        // For other types, this would need more complex checking
+        true // Allow for now
     }
 
     /// Create resource tables for the instance with budget enforcement
@@ -470,18 +660,15 @@ impl Component {
     #[cfg(not(any(feature = "std",)))]
     fn create_resource_tables(
         &self,
-    ) -> WrtResult<BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>>
+    ) -> WrtResult<StaticVec<ResourceTable, 16>>
     {
-        use wrt_foundation::safe_managed_alloc;
+        use wrt_foundation::collections::StaticVec;
 
-        use crate::bounded_component_infra::ComponentProvider;
-
-        let provider = safe_managed_alloc!(131072, CrateId::Component)?;
-        let mut tables = BoundedVec::new(provider)?;
+        let mut tables = StaticVec::new();
 
         // Create resource tables based on component types
         for _type_id in 0..self.types.len().min(16) {
-            let table = ResourceTable::new()?;
+            let table = ResourceTable { type_id: _type_id as u32 };
             tables
                 .push(table)
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many resource tables"))?;
@@ -535,19 +722,21 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS, InstantiationProvider>> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut resolved = BoundedVec::new(provider)?;
+    ) -> WrtResult<BoundedVec<ResolvedImport, 256>> {
+        let mut resolved = BoundedVec::new();
 
         for import in &self.imports {
             // Find matching import by name
             for (name, value) in imports.imports.iter() {
-                if name.as_str() == import.name.as_str() {
-                    let resolved_import = self.resolve_import(import, value, context)?;
-                    resolved.push(resolved_import).map_err(|_| {
-                        wrt_error::Error::resource_exhausted("Too many resolved imports")
-                    })?;
-                    break;
+                if let Ok(name_str) = name.as_str() {
+                    // import.name is already a String, no need for as_str()
+                    if name_str == import.name.as_str() {
+                        let resolved_import = self.resolve_import(import, value, context)?;
+                        resolved.push(resolved_import).map_err(|_| {
+                            wrt_error::Error::resource_exhausted("Too many resolved imports")
+                        })?;
+                        break;
+                    }
                 }
             }
         }
@@ -635,11 +824,10 @@ impl Component {
     #[cfg(not(any(feature = "std",)))]
     fn initialize_modules(
         &self,
-        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, InstantiationProvider>,
+        resolved_imports: &BoundedVec<ResolvedImport, 256>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES, InstantiationProvider>> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut instances = BoundedVec::new(provider)?;
+    ) -> WrtResult<BoundedVec<ModuleInstance, 64>> {
+        let mut instances = BoundedVec::new();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -666,36 +854,44 @@ impl Component {
         for export in &self.exports {
             // Resolve export to actual value based on export kind
             let resolved = match &export.kind {
-                crate::export::ExportKind::Func(func_idx) => {
+                ExportKind::Function { function_index } => {
                     // Create function export
                     let func_export = FunctionExport {
                         signature: WrtComponentType::Unit, // TODO: Get actual signature
-                        index:     *func_idx,
+                        index:     *function_index,
                     };
+                    let export_val = ExportValue::Function(func_export);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Function(func_export),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Value(val_idx) => {
+                ExportKind::Value { value_index } => {
                     // Create value export
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Value(WrtComponentValue::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Type(type_idx) => {
+                ExportKind::Type { type_index } => {
                     // Create type export
+                    let export_val = ExportValue::Type(WrtComponentType::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Type(WrtComponentType::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Instance(inst_idx) => {
+                ExportKind::Instance { instance_index } => {
                     // Create instance export - simplified
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Value(WrtComponentValue::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
             };
@@ -719,36 +915,44 @@ impl Component {
         for export in &self.exports {
             // Resolve export to actual value based on export kind
             let resolved = match &export.kind {
-                crate::export::ExportKind::Func(func_idx) => {
+                ExportKind::Function { function_index } => {
                     // Create function export
                     let func_export = FunctionExport {
                         signature: WrtComponentType::Unit, // TODO: Get actual signature
-                        index:     *func_idx,
+                        index:     *function_index,
                     };
+                    let export_val = ExportValue::Function(func_export);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Function(func_export),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Value(val_idx) => {
+                ExportKind::Value { value_index } => {
                     // Create value export
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Value(WrtComponentValue::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Type(type_idx) => {
+                ExportKind::Type { type_index } => {
                     // Create type export
+                    let export_val = ExportValue::Type(WrtComponentType::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Type(WrtComponentType::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Instance(inst_idx) => {
+                ExportKind::Instance { instance_index } => {
                     // Create instance export - simplified
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Value(WrtComponentValue::Unit),
+                        name:        export.name.clone(),
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
             };
@@ -761,35 +965,76 @@ impl Component {
     #[cfg(not(any(feature = "std",)))]
     fn extract_exports(
         &self,
-        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, InstantiationProvider>,
+        module_instances: &BoundedVec<ModuleInstance, 64>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS, InstantiationProvider>> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut exports = BoundedVec::new(provider)?;
+    ) -> WrtResult<BoundedVec<ResolvedExport, 256>> {
+        let mut exports = BoundedVec::new();
 
         for export in &self.exports {
+            // Create provider for ComponentType if needed
+            let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+            let unit_type = WrtComponentType::unit(provider)?;
+
             let resolved = match &export.kind {
-                crate::export::ExportKind::Func(func_idx) => {
+                ExportKind::Function { function_index } => {
                     let func_export = FunctionExport {
-                        signature: WrtComponentType::Unit,
-                        index:     *func_idx,
+                        signature: unit_type.clone(),
+                        index:     *function_index,
                     };
+                    let export_val = ExportValue::Function(func_export);
                     ResolvedExport {
-                        name:  export.name.clone(),
-                        value: ExportValue::Function(func_export),
+                        #[cfg(feature = "std")]
+                        name:        export.name.clone(),
+                        #[cfg(not(feature = "std"))]
+                        name:        {
+                            let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                            BoundedString::from_str(&export.name, name_provider)?
+                        },
+                        value:       export_val.clone(),
+                        export_type: export_val,
                     }
                 },
-                crate::export::ExportKind::Value(_) => ResolvedExport {
-                    name:  export.name.clone(),
-                    value: ExportValue::Value(WrtComponentValue::Unit),
+                ExportKind::Value { value_index } => {
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
+                    ResolvedExport {
+                        #[cfg(feature = "std")]
+                        name:        export.name.clone(),
+                        #[cfg(not(feature = "std"))]
+                        name:        {
+                            let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                            BoundedString::from_str(&export.name, name_provider)?
+                        },
+                        value:       export_val.clone(),
+                        export_type: export_val,
+                    }
                 },
-                crate::export::ExportKind::Type(_) => ResolvedExport {
-                    name:  export.name.clone(),
-                    value: ExportValue::Type(WrtComponentType::Unit),
+                ExportKind::Type { type_index } => {
+                    let export_val = ExportValue::Type(unit_type.clone());
+                    ResolvedExport {
+                        #[cfg(feature = "std")]
+                        name:        export.name.clone(),
+                        #[cfg(not(feature = "std"))]
+                        name:        {
+                            let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                            BoundedString::from_str(&export.name, name_provider)?
+                        },
+                        value:       export_val.clone(),
+                        export_type: export_val,
+                    }
                 },
-                crate::export::ExportKind::Instance(_) => ResolvedExport {
-                    name:  export.name.clone(),
-                    value: ExportValue::Value(WrtComponentValue::Unit),
+                ExportKind::Instance { instance_index } => {
+                    let export_val = ExportValue::Value(WrtComponentValue::Unit);
+                    ResolvedExport {
+                        #[cfg(feature = "std")]
+                        name:        export.name.clone(),
+                        #[cfg(not(feature = "std"))]
+                        name:        {
+                            let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                            BoundedString::from_str(&export.name, name_provider)?
+                        },
+                        value:       export_val.clone(),
+                        export_type: export_val,
+                    }
                 },
             };
             exports
@@ -802,36 +1047,152 @@ impl Component {
 }
 
 /// Resolved import after validation and registration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedImport {
     Function(u32), // Function index in execution engine
-    Value(WrtComponentValue),
+    Value(WrtComponentValue<ComponentProvider>),
     Instance(InstanceImport),
-    Type(WrtComponentType),
+    Type(WrtComponentType<ComponentProvider>),
+}
+
+impl Default for ResolvedImport {
+    fn default() -> Self {
+        Self::Value(WrtComponentValue::Unit)
+    }
+}
+
+impl Checksummable for ResolvedImport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Function(idx) => { 0u8.update_checksum(checksum); idx.update_checksum(checksum); },
+            Self::Value(v) => { 1u8.update_checksum(checksum); v.update_checksum(checksum); },
+            Self::Instance(i) => { 2u8.update_checksum(checksum); i.update_checksum(checksum); },
+            Self::Type(t) => { 3u8.update_checksum(checksum); t.update_checksum(checksum); },
+        }
+    }
+}
+
+impl ToBytes for ResolvedImport {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        match self {
+            Self::Function(idx) => { 0u8.to_bytes_with_provider(writer, provider)?; idx.to_bytes_with_provider(writer, provider) },
+            Self::Value(v) => { 1u8.to_bytes_with_provider(writer, provider)?; v.to_bytes_with_provider(writer, provider) },
+            Self::Instance(i) => { 2u8.to_bytes_with_provider(writer, provider)?; i.to_bytes_with_provider(writer, provider) },
+            Self::Type(t) => { 3u8.to_bytes_with_provider(writer, provider)?; t.to_bytes_with_provider(writer, provider) },
+        }
+    }
+}
+
+impl FromBytes for ResolvedImport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Resolved export with actual values
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedExport {
     #[cfg(feature = "std")]
-    pub name:  String,
+    pub name:        String,
     #[cfg(not(any(feature = "std",)))]
-    pub name:  BoundedString<64, InstantiationProvider>,
-    pub value: ExportValue,
+    pub name:        BoundedString<64, InstantiationProvider>,
+    pub value:       ExportValue,
+    pub export_type: ExportValue,
+}
+
+impl Checksummable for ResolvedExport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        #[cfg(feature = "std")]
+        {
+            self.name.as_bytes().update_checksum(checksum);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            if let Ok(bytes) = self.name.as_bytes() {
+                bytes.as_ref().update_checksum(checksum);
+            }
+        }
+        self.value.update_checksum(checksum);
+        self.export_type.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResolvedExport {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        #[cfg(feature = "std")]
+        {
+            (self.name.len() as u32).to_bytes_with_provider(writer, provider)?;
+            self.name.as_bytes().to_bytes_with_provider(writer, provider)?;
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            (self.name.len() as u32).to_bytes_with_provider(writer, provider)?;
+            self.name.as_bytes()?.as_ref().to_bytes_with_provider(writer, provider)?;
+        }
+        self.value.to_bytes_with_provider(writer, provider)?;
+        self.export_type.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResolvedExport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Resource table for a specific resource type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ResourceTable {
     pub type_id: u32,
     // Simplified for now, would contain actual resource entries
 }
 
 /// Module instance within a component
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ModuleInstance {
     pub module_index: u32,
     // Simplified for now, would contain actual runtime instance
+}
+
+impl Checksummable for ModuleInstance {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.module_index.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ModuleInstance {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.module_index.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ModuleInstance {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self {
+            module_index: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
 }
 
 /// Host function wrapper for the execution engine
@@ -866,7 +1227,7 @@ mod tests {
                 signature:      WrtComponentType::Unit,
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
-            imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
+            imports.add("test_func".to_owned(), ImportValue::Function(func)).unwrap();
             assert!(imports.get("test_func").is_some());
             assert!(imports.get("unknown").is_none());
         }
@@ -877,7 +1238,8 @@ mod tests {
                 signature:      WrtComponentType::Unit,
                 implementation: |_args| Ok(Value::U32(42)),
             };
-            let name = BoundedString::from_str("test_func").unwrap();
+            let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
+            let name = BoundedString::from_str("test_func", provider).unwrap();
             imports.add(name, ImportValue::Function(func)).unwrap();
             assert!(imports.get("test_func").is_some());
             assert!(imports.get("unknown").is_none());
@@ -902,7 +1264,7 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            let result = imports.add("test_value".to_string(), value_import);
+            let result = imports.add("test_value".to_owned(), value_import);
             assert!(result.is_ok());
 
             let retrieved = imports.get("test_value");
@@ -918,7 +1280,8 @@ mod tests {
 
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_value").unwrap();
+            let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
+            let name = BoundedString::from_str("test_value", provider).unwrap();
             let result = imports.add(name, value_import);
             assert!(result.is_ok());
 

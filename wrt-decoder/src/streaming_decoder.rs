@@ -237,12 +237,18 @@ impl<'a> StreamingDecoder<'a> {
         for _ in 0..count {
             // Parse export name - use validate_utf8_name for std builds to avoid
             // BoundedString issues
-            eprintln!("DEBUG export: before validate_utf8_name, offset={}", offset);
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG export: before validate_utf8_name, offset={}", offset);
+            }
             let (export_name_str, new_offset) = validate_utf8_name(data, offset)?;
-            eprintln!(
-                "DEBUG export: after validate_utf8_name, new_offset={}",
-                new_offset
-            );
+            #[cfg(feature = "std")]
+            {
+                eprintln!(
+                    "DEBUG export: after validate_utf8_name, new_offset={}",
+                    new_offset
+                );
+            }
             offset = new_offset;
 
             if offset >= data.len() {
@@ -253,14 +259,20 @@ impl<'a> StreamingDecoder<'a> {
             let kind_byte = data[offset];
             offset += 1;
 
-            eprintln!("DEBUG: export kind_byte = 0x{:02x}", kind_byte);
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG: export kind_byte = 0x{:02x}", kind_byte);
+            }
             let kind = match kind_byte {
                 0x00 => wrt_format::module::ExportKind::Function,
                 0x01 => wrt_format::module::ExportKind::Table,
                 0x02 => wrt_format::module::ExportKind::Memory,
                 0x03 => wrt_format::module::ExportKind::Global,
                 _ => {
-                    eprintln!("DEBUG: Invalid export kind byte: 0x{:02x}", kind_byte);
+                    #[cfg(feature = "std")]
+                    {
+                        eprintln!("DEBUG: Invalid export kind byte: 0x{:02x}", kind_byte);
+                    }
                     return Err(Error::parse_error("Invalid export kind"));
                 },
             };
@@ -269,12 +281,28 @@ impl<'a> StreamingDecoder<'a> {
             let (index, new_offset) = read_leb128_u32(data, offset)?;
             offset = new_offset;
 
-            // Add export to module - simple string conversion for std builds
-            self.module.exports.push(wrt_format::module::Export {
-                name: export_name_str.to_string(),
-                kind,
-                index,
-            });
+            // Add export to module
+            #[cfg(feature = "std")]
+            {
+                self.module.exports.push(wrt_format::module::Export {
+                    name: String::from(export_name_str),
+                    kind,
+                    index,
+                });
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId, BoundedString};
+
+                let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+                let name = BoundedString::<1024, _>::from_str(export_name_str, provider)?;
+
+                self.module.exports.push(wrt_format::module::Export {
+                    name,
+                    kind,
+                    index,
+                });
+            }
         }
 
         Ok(())
@@ -358,6 +386,11 @@ impl<'a> StreamingDecoder<'a> {
 /// Decode a WebAssembly module using streaming processing (std version)
 #[cfg(feature = "std")]
 pub fn decode_module_streaming(binary: &[u8]) -> Result<WrtModule> {
+    // Enter module scope for bump allocator - all Vec allocations will be tracked
+    let _scope = wrt_foundation::capabilities::MemoryFactory::enter_module_scope(
+        wrt_foundation::budget_aware_provider::CrateId::Decoder,
+    )?;
+
     let mut decoder = StreamingDecoder::new(binary)?;
     decoder.decode_header()?;
 
@@ -367,6 +400,7 @@ pub fn decode_module_streaming(binary: &[u8]) -> Result<WrtModule> {
     }
 
     decoder.finish()
+    // Scope drops here, memory available for reuse
 }
 
 /// Decode a WebAssembly module using streaming processing (no_std version)

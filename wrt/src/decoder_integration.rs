@@ -32,19 +32,26 @@ use crate::prelude::*;
 ///
 /// A Result containing the runtime module or an error
 pub fn load_module(binary: &[u8]) -> Result<Module> {
+    // Enter scope for module loading - covers all Vec allocations during decode+parse
+    #[cfg(feature = "std")]
+    let _scope = wrt_foundation::capabilities::MemoryFactory::enter_module_scope(
+        wrt_foundation::budget_aware_provider::CrateId::Runtime,
+    )?;
+
     use wrt_decoder::{load_wasm_unified, WasmFormat};
-    
+
     // Use unified API to load and detect format
     let wasm_info = load_wasm_unified(binary)?;
-    
+
     // Ensure this is a core module
     if !wasm_info.is_core_module() {
-        return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module";
+        return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module"));
     }
-    
+
     // Create module using runtime's load_from_binary which now uses unified API
     let mut dummy_module = Module::new()?;
     dummy_module.load_from_binary(binary)?
+    // Scope drops here, memory available for reuse
 }
 
 /// Decode and validate a WebAssembly binary module

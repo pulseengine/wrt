@@ -15,10 +15,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     operations::{
         record_global_operation,
         Type as OperationType,
@@ -106,6 +103,71 @@ pub struct TaskPriorityQueue {
     pub context_switches:     AtomicUsize,
 }
 
+impl Default for TaskPriorityQueue {
+    fn default() -> Self {
+        Self {
+            priority: 128, // Normal priority
+            tasks: BoundedVec::new(),
+            round_robin_position: AtomicUsize::new(0),
+            fuel_consumed: AtomicU64::new(0),
+            context_switches: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl Clone for TaskPriorityQueue {
+    fn clone(&self) -> Self {
+        Self {
+            priority: self.priority,
+            tasks: self.tasks.clone(),
+            round_robin_position: AtomicUsize::new(self.round_robin_position.load(Ordering::Relaxed)),
+            fuel_consumed: AtomicU64::new(self.fuel_consumed.load(Ordering::Relaxed)),
+            context_switches: AtomicUsize::new(self.context_switches.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl PartialEq for TaskPriorityQueue {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
+}
+
+impl Eq for TaskPriorityQueue {}
+
+impl wrt_foundation::traits::Checksummable for TaskPriorityQueue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.priority.update_checksum(checksum);
+        self.tasks.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for TaskPriorityQueue {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        self.tasks.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for TaskPriorityQueue {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            priority: Priority::from_bytes_with_provider(reader, provider)?,
+            tasks: BoundedVec::from_bytes_with_provider(reader, provider)?,
+            round_robin_position: AtomicUsize::new(0),
+            fuel_consumed: AtomicU64::new(0),
+            context_switches: AtomicUsize::new(0),
+        })
+    }
+}
+
 /// Information about a task in the preemptive scheduler
 #[derive(Debug, Clone)]
 pub struct PreemptiveTaskInfo {
@@ -137,6 +199,85 @@ pub struct PreemptiveTaskInfo {
     pub deadline:           Option<Duration>,
     /// Whether the task can be preempted
     pub preemptible:        bool,
+}
+
+impl Default for PreemptiveTaskInfo {
+    fn default() -> Self {
+        Self {
+            task_id: TaskId::default(),
+            component_id: ComponentInstanceId::default(),
+            base_priority: Priority::default(),
+            effective_priority: Priority::default(),
+            fuel_budget: 0,
+            fuel_consumed: 0,
+            fuel_quantum: DEFAULT_FUEL_QUANTUM,
+            state: AsyncTaskState::Waiting,
+            last_run_time: 0,
+            total_run_time: 0,
+            preemption_count: 0,
+            priority_boost: 0,
+            deadline: None,
+            preemptible: true,
+        }
+    }
+}
+
+impl PartialEq for PreemptiveTaskInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.task_id == other.task_id
+    }
+}
+
+impl Eq for PreemptiveTaskInfo {}
+
+impl wrt_foundation::traits::Checksummable for PreemptiveTaskInfo {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.task_id.update_checksum(checksum);
+        self.component_id.update_checksum(checksum);
+        self.base_priority.update_checksum(checksum);
+        self.effective_priority.update_checksum(checksum);
+        self.fuel_budget.update_checksum(checksum);
+        self.fuel_consumed.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for PreemptiveTaskInfo {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.task_id.to_bytes_with_provider(writer, provider)?;
+        self.component_id.to_bytes_with_provider(writer, provider)?;
+        self.base_priority.to_bytes_with_provider(writer, provider)?;
+        self.effective_priority.to_bytes_with_provider(writer, provider)?;
+        self.fuel_budget.to_bytes_with_provider(writer, provider)?;
+        self.fuel_consumed.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for PreemptiveTaskInfo {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            task_id: TaskId::from_bytes_with_provider(reader, provider)?,
+            component_id: ComponentInstanceId::from_bytes_with_provider(reader, provider)?,
+            base_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            effective_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            fuel_budget: u64::from_bytes_with_provider(reader, provider)?,
+            fuel_consumed: u64::from_bytes_with_provider(reader, provider)?,
+            fuel_quantum: DEFAULT_FUEL_QUANTUM,
+            state: AsyncTaskState::Waiting,
+            last_run_time: 0,
+            total_run_time: 0,
+            preemption_count: 0,
+            priority_boost: 0,
+            deadline: None,
+            preemptible: true,
+        })
+    }
 }
 
 /// Currently running task context
@@ -178,7 +319,7 @@ pub struct PreemptiveSchedulerConfig {
 }
 
 /// Scheduler performance statistics
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PreemptiveSchedulerStats {
     /// Total number of preemptions
     pub total_preemptions:       AtomicUsize,
@@ -218,22 +359,22 @@ impl FuelPreemptiveScheduler {
     pub fn new(
         config: PreemptiveSchedulerConfig,
         verification_level: VerificationLevel,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
 
         // Initialize priority queues for each priority level
-        let mut priority_queues = BoundedVec::new(provider.clone())?;
+        let mut priority_queues = BoundedVec::new().unwrap();
         let priorities = [
-            Priority::Low,
-            Priority::Normal,
-            Priority::High,
-            Priority::Critical,
+            64,  // Low priority
+            128, // Normal priority
+            192, // High priority
+            255, // Critical priority
         ];
 
         for &priority in &priorities {
             let queue = TaskPriorityQueue {
                 priority,
-                tasks: BoundedVec::new(provider.clone())?,
+                tasks: BoundedVec::new().unwrap(),
                 round_robin_position: AtomicUsize::new(0),
                 fuel_consumed: AtomicU64::new(0),
                 context_switches: AtomicUsize::new(0),
@@ -248,7 +389,7 @@ impl FuelPreemptiveScheduler {
         Ok(Self {
             priority_queues,
             current_task: None,
-            task_info: BoundedMap::new(provider.clone())?,
+            task_info: BoundedMap::new(),
             config,
             priority_protocol,
             stats: PreemptiveSchedulerStats {
@@ -276,7 +417,7 @@ impl FuelPreemptiveScheduler {
         fuel_budget: u64,
         deadline: Option<Duration>,
         preemptible: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::CollectionInsert, self.verification_level);
         self.consume_scheduler_fuel(10)?;
 
@@ -313,7 +454,7 @@ impl FuelPreemptiveScheduler {
     }
 
     /// Select the next task to run (with preemption logic)
-    pub fn schedule_next_task(&mut self) -> Result<Option<TaskId>, Error> {
+    pub fn schedule_next_task(&mut self) -> Result<Option<TaskId>> {
         record_global_operation(OperationType::FunctionCall, self.verification_level);
         self.consume_scheduler_fuel(15)?;
 
@@ -345,7 +486,7 @@ impl FuelPreemptiveScheduler {
         task_id: TaskId,
         new_state: AsyncTaskState,
         fuel_consumed: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::CollectionMutate, self.verification_level);
         self.consume_scheduler_fuel(8)?;
 
@@ -398,7 +539,7 @@ impl FuelPreemptiveScheduler {
         &self,
         current: &RunningTaskContext,
         current_time: u64,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool> {
         // Don't preempt non-preemptible tasks
         if !current.preemptible {
             return Ok(false);
@@ -446,20 +587,25 @@ impl FuelPreemptiveScheduler {
     }
 
     /// Preempt the currently running task
-    pub fn preempt_current_task(&mut self, current_time: u64) -> Result<(), Error> {
+    pub fn preempt_current_task(&mut self, current_time: u64) -> Result<()> {
         if let Some(current) = self.current_task.take() {
             record_global_operation(OperationType::ControlFlow, self.verification_level);
             self.consume_scheduler_fuel(PREEMPTION_FUEL)?;
 
-            // Update task info
-            if let Some(task_info) = self.task_info.get_mut(&current.task_id) {
-                task_info.preemption_count += 1;
-                task_info.total_run_time += current_time.saturating_sub(current.start_time);
-
-                // Add back to appropriate priority queue if still ready
-                if task_info.state == AsyncTaskState::Ready {
-                    self.add_task_to_priority_queue(current.task_id, task_info.effective_priority)?;
+            // Extract task state and priority before second mutable borrow
+            let (should_readd, effective_priority) = {
+                if let Some(task_info) = self.task_info.get_mut(&current.task_id) {
+                    task_info.preemption_count += 1;
+                    task_info.total_run_time += current_time.saturating_sub(current.start_time);
+                    (task_info.state == AsyncTaskState::Ready, task_info.effective_priority)
+                } else {
+                    (false, 0)
                 }
+            };
+
+            // Add back to appropriate priority queue if still ready
+            if should_readd {
+                self.add_task_to_priority_queue(current.task_id, effective_priority)?;
             }
 
             self.stats.total_preemptions.fetch_add(1, Ordering::AcqRel);
@@ -473,7 +619,7 @@ impl FuelPreemptiveScheduler {
         &mut self,
         task_id: TaskId,
         current_time: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::ControlFlow, self.verification_level);
         self.consume_scheduler_fuel(CONTEXT_SWITCH_FUEL)?;
 
@@ -504,32 +650,43 @@ impl FuelPreemptiveScheduler {
     }
 
     /// Check for priority aging and boost old tasks
-    pub fn check_priority_aging(&mut self, current_time: u64) -> Result<(), Error> {
+    pub fn check_priority_aging(&mut self, current_time: u64) -> Result<()> {
         record_global_operation(OperationType::CollectionIterate, self.verification_level);
         self.consume_scheduler_fuel(AGING_CHECK_FUEL)?;
 
-        for (task_id, task_info) in self.task_info.iter_mut() {
+        // Collect tasks that need priority boosts to avoid double borrow
+        let mut tasks_to_boost = BoundedVec::<(TaskId, Priority, Priority), MAX_PREEMPTIVE_TASKS>::new();
+
+        for (task_id, task_info) in self.task_info.iter() {
             if task_info.state == AsyncTaskState::Ready {
                 let wait_time = current_time.saturating_sub(task_info.last_run_time);
 
                 if wait_time > self.config.aging_fuel_threshold
                     && task_info.priority_boost < self.config.max_priority_boost
                 {
-                    // Boost priority
                     let old_priority = task_info.effective_priority;
-                    task_info.priority_boost += 1;
-                    task_info.effective_priority =
-                        self.boost_priority(task_info.base_priority, task_info.priority_boost);
+                    let new_boost = task_info.priority_boost + 1;
+                    let new_priority = self.boost_priority(task_info.base_priority, new_boost);
 
-                    if task_info.effective_priority != old_priority {
-                        // Move task to new priority queue
-                        self.remove_task_from_priority_queues(*task_id)?;
-                        self.add_task_to_priority_queue(*task_id, task_info.effective_priority)?;
-
-                        self.stats.total_priority_boosts.fetch_add(1, Ordering::AcqRel);
-                        self.consume_scheduler_fuel(PRIORITY_BOOST_FUEL)?;
+                    if new_priority != old_priority {
+                        tasks_to_boost.push((*task_id, old_priority, new_priority)).ok();
                     }
                 }
+            }
+        }
+
+        // Now apply the boosts
+        for (task_id, old_priority, new_priority) in tasks_to_boost.iter() {
+            if let Some(task_info) = self.task_info.get_mut(task_id) {
+                task_info.priority_boost += 1;
+                task_info.effective_priority = *new_priority;
+
+                // Move task to new priority queue
+                self.remove_task_from_priority_queues(*task_id)?;
+                self.add_task_to_priority_queue(*task_id, *new_priority)?;
+
+                self.stats.total_priority_boosts.fetch_add(1, Ordering::AcqRel);
+                self.consume_scheduler_fuel(PRIORITY_BOOST_FUEL)?;
             }
         }
 
@@ -538,7 +695,16 @@ impl FuelPreemptiveScheduler {
 
     /// Get scheduler statistics
     pub fn get_statistics(&self) -> PreemptiveSchedulerStats {
-        self.stats.clone()
+        PreemptiveSchedulerStats {
+            total_preemptions: AtomicUsize::new(self.stats.total_preemptions.load(Ordering::Acquire)),
+            total_context_switches: AtomicUsize::new(self.stats.total_context_switches.load(Ordering::Acquire)),
+            total_priority_boosts: AtomicUsize::new(self.stats.total_priority_boosts.load(Ordering::Acquire)),
+            scheduler_fuel_consumed: AtomicU64::new(self.stats.scheduler_fuel_consumed.load(Ordering::Acquire)),
+            average_task_run_time: AtomicU64::new(self.stats.average_task_run_time.load(Ordering::Acquire)),
+            deadline_misses: AtomicUsize::new(self.stats.deadline_misses.load(Ordering::Acquire)),
+            total_tasks_scheduled: AtomicUsize::new(self.stats.total_tasks_scheduled.load(Ordering::Acquire)),
+            active_tasks: AtomicUsize::new(self.stats.active_tasks.load(Ordering::Acquire)),
+        }
     }
 
     /// Get information about a specific task
@@ -555,10 +721,10 @@ impl FuelPreemptiveScheduler {
 
     fn calculate_fuel_quantum(&self, priority: Priority, fuel_budget: u64) -> u64 {
         let base_quantum = match priority {
-            Priority::Critical => self.config.max_fuel_quantum,
-            Priority::High => self.config.default_fuel_quantum * 2,
-            Priority::Normal => self.config.default_fuel_quantum,
-            Priority::Low => self.config.default_fuel_quantum / 2,
+            225..=255 => self.config.max_fuel_quantum,            // Critical priority
+            161..=224 => self.config.default_fuel_quantum * 2,    // High priority
+            97..=160 => self.config.default_fuel_quantum,         // Normal priority
+            0..=96 => self.config.default_fuel_quantum / 2,       // Low priority
         };
 
         // Ensure quantum is within bounds and doesn't exceed budget
@@ -570,11 +736,11 @@ impl FuelPreemptiveScheduler {
 
     fn boost_priority(&self, base_priority: Priority, boost_level: u32) -> Priority {
         match (base_priority, boost_level) {
-            (Priority::Low, 1..=2) => Priority::Normal,
-            (Priority::Low, 3..) => Priority::High,
-            (Priority::Normal, 1..=2) => Priority::High,
-            (Priority::Normal, 3..) => Priority::Critical,
-            (Priority::High, 1..) => Priority::Critical,
+            (0..=96, 1..=2) => 128,   // Low -> Normal
+            (0..=96, 3..) => 192,     // Low -> High
+            (97..=160, 1..=2) => 192, // Normal -> High
+            (97..=160, 3..) => 255,   // Normal -> Critical
+            (161..=224, 1..) => 255,  // High -> Critical
             _ => base_priority,
         }
     }
@@ -583,27 +749,27 @@ impl FuelPreemptiveScheduler {
         &mut self,
         task_id: TaskId,
         priority: Priority,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         for queue in self.priority_queues.iter_mut() {
             if queue.priority == priority {
                 queue
                     .tasks
                     .push(task_id)
                     .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
-                return Ok();
+                return Ok(());
             }
         }
         Err(Error::resource_not_found("Priority queue not found"))
     }
 
-    fn remove_task_from_priority_queues(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn remove_task_from_priority_queues(&mut self, task_id: TaskId) -> Result<()> {
         for queue in self.priority_queues.iter_mut() {
             queue.tasks.retain(|&id| id != task_id);
         }
         Ok(())
     }
 
-    fn update_task_priority_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn update_task_priority_queue(&mut self, task_id: TaskId) -> Result<()> {
         if let Some(task_info) = self.task_info.get(&task_id) {
             let priority = task_info.effective_priority;
             self.remove_task_from_priority_queues(task_id)?;
@@ -612,7 +778,7 @@ impl FuelPreemptiveScheduler {
         Ok(())
     }
 
-    fn select_highest_priority_task(&mut self) -> Result<Option<TaskId>, Error> {
+    fn select_highest_priority_task(&mut self) -> Result<Option<TaskId>> {
         // Start from highest priority and work down
         for queue in self.priority_queues.iter_mut().rev() {
             if !queue.tasks.is_empty() {
@@ -639,7 +805,7 @@ impl FuelPreemptiveScheduler {
         Ok(None)
     }
 
-    fn remove_task_from_scheduler(&mut self, task_id: TaskId) -> Result<(), Error> {
+    fn remove_task_from_scheduler(&mut self, task_id: TaskId) -> Result<()> {
         self.task_info.remove(&task_id);
         self.remove_task_from_priority_queues(task_id)?;
 
@@ -653,7 +819,7 @@ impl FuelPreemptiveScheduler {
         Ok(())
     }
 
-    fn consume_scheduler_fuel(&self, amount: u64) -> Result<(), Error> {
+    fn consume_scheduler_fuel(&self, amount: u64) -> Result<()> {
         self.stats.scheduler_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         Ok(())
     }

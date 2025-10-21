@@ -13,10 +13,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     operations::{
         record_global_operation,
         Type as OperationType,
@@ -71,7 +68,7 @@ pub struct FuelPriorityInheritanceProtocol {
 }
 
 /// Resource identifier for blocking relationships
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceId(pub u64);
 
 impl ResourceId {
@@ -80,12 +77,43 @@ impl ResourceId {
     }
 
     pub fn from_task(task_id: TaskId) -> Self {
-        Self(task_id.0 as u64)
+        Self(task_id as u64)
+    }
+}
+
+impl Default for ResourceId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for ResourceId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ResourceId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ResourceId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
     }
 }
 
 /// Priority inheritance chain tracking blocked tasks
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InheritanceChain {
     /// Resource being contended for
     pub resource_id:              ResourceId,
@@ -103,8 +131,86 @@ pub struct InheritanceChain {
     pub fuel_consumed:            AtomicU64,
 }
 
+impl Default for InheritanceChain {
+    fn default() -> Self {
+        Self {
+            resource_id: ResourceId::default(),
+            holder: TaskId::default(),
+            waiters: BoundedVec::new(),
+            inherited_priority: Priority::default(),
+            holder_original_priority: Priority::default(),
+            inheritance_start_time: AtomicU64::new(0),
+            fuel_consumed: AtomicU64::new(0),
+        }
+    }
+}
+
+impl PartialEq for InheritanceChain {
+    fn eq(&self, other: &Self) -> bool {
+        self.resource_id == other.resource_id
+            && self.holder == other.holder
+            && self.inherited_priority == other.inherited_priority
+            && self.holder_original_priority == other.holder_original_priority
+    }
+}
+
+impl Eq for InheritanceChain {}
+
+impl Clone for InheritanceChain {
+    fn clone(&self) -> Self {
+        Self {
+            resource_id: self.resource_id,
+            holder: self.holder,
+            waiters: self.waiters.clone(),
+            inherited_priority: self.inherited_priority,
+            holder_original_priority: self.holder_original_priority,
+            inheritance_start_time: AtomicU64::new(self.inheritance_start_time.load(Ordering::Relaxed)),
+            fuel_consumed: AtomicU64::new(self.fuel_consumed.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for InheritanceChain {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.resource_id.update_checksum(checksum);
+        self.holder.update_checksum(checksum);
+        self.inherited_priority.update_checksum(checksum);
+        self.holder_original_priority.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for InheritanceChain {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.resource_id.to_bytes_with_provider(writer, provider)?;
+        self.holder.to_bytes_with_provider(writer, provider)?;
+        self.inherited_priority.to_bytes_with_provider(writer, provider)?;
+        self.holder_original_priority.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for InheritanceChain {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            resource_id: ResourceId::from_bytes_with_provider(reader, provider)?,
+            holder: TaskId::from_bytes_with_provider(reader, provider)?,
+            waiters: BoundedVec::new(),
+            inherited_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            holder_original_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            inheritance_start_time: AtomicU64::new(0),
+            fuel_consumed: AtomicU64::new(0),
+        })
+    }
+}
+
 /// Priority donation tracking
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PriorityDonation {
     /// Task receiving the priority donation
     pub recipient:        TaskId,
@@ -120,8 +226,86 @@ pub struct PriorityDonation {
     pub active:           bool,
 }
 
+impl Default for PriorityDonation {
+    fn default() -> Self {
+        Self {
+            recipient: TaskId::default(),
+            donor: TaskId::default(),
+            donated_priority: Priority::default(),
+            resource_id: ResourceId::default(),
+            donation_time: AtomicU64::new(0),
+            active: false,
+        }
+    }
+}
+
+impl PartialEq for PriorityDonation {
+    fn eq(&self, other: &Self) -> bool {
+        self.recipient == other.recipient
+            && self.donor == other.donor
+            && self.donated_priority == other.donated_priority
+            && self.resource_id == other.resource_id
+            && self.active == other.active
+    }
+}
+
+impl Eq for PriorityDonation {}
+
+impl Clone for PriorityDonation {
+    fn clone(&self) -> Self {
+        Self {
+            recipient: self.recipient,
+            donor: self.donor,
+            donated_priority: self.donated_priority,
+            resource_id: self.resource_id,
+            donation_time: AtomicU64::new(self.donation_time.load(Ordering::Relaxed)),
+            active: self.active,
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for PriorityDonation {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.recipient.update_checksum(checksum);
+        self.donor.update_checksum(checksum);
+        self.donated_priority.update_checksum(checksum);
+        self.resource_id.update_checksum(checksum);
+        self.active.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for PriorityDonation {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.recipient.to_bytes_with_provider(writer, provider)?;
+        self.donor.to_bytes_with_provider(writer, provider)?;
+        self.donated_priority.to_bytes_with_provider(writer, provider)?;
+        self.resource_id.to_bytes_with_provider(writer, provider)?;
+        self.active.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for PriorityDonation {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            recipient: TaskId::from_bytes_with_provider(reader, provider)?,
+            donor: TaskId::from_bytes_with_provider(reader, provider)?,
+            donated_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            resource_id: ResourceId::from_bytes_with_provider(reader, provider)?,
+            donation_time: AtomicU64::new(0),
+            active: bool::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Information about task blocking relationships
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BlockingInfo {
     /// Task that is blocked
     pub blocked_task:          TaskId,
@@ -137,8 +321,86 @@ pub struct BlockingInfo {
     pub max_blocking_time:     Option<Duration>,
 }
 
+impl Default for BlockingInfo {
+    fn default() -> Self {
+        Self {
+            blocked_task: TaskId::default(),
+            blocked_on_resource: ResourceId::default(),
+            blocked_by_task: None,
+            blocked_task_priority: Priority::default(),
+            blocking_start_time: AtomicU64::new(0),
+            max_blocking_time: None,
+        }
+    }
+}
+
+impl PartialEq for BlockingInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.blocked_task == other.blocked_task
+            && self.blocked_on_resource == other.blocked_on_resource
+            && self.blocked_by_task == other.blocked_by_task
+            && self.blocked_task_priority == other.blocked_task_priority
+            && self.max_blocking_time == other.max_blocking_time
+    }
+}
+
+impl Eq for BlockingInfo {}
+
+impl Clone for BlockingInfo {
+    fn clone(&self) -> Self {
+        Self {
+            blocked_task: self.blocked_task,
+            blocked_on_resource: self.blocked_on_resource,
+            blocked_by_task: self.blocked_by_task,
+            blocked_task_priority: self.blocked_task_priority,
+            blocking_start_time: AtomicU64::new(self.blocking_start_time.load(Ordering::Relaxed)),
+            max_blocking_time: self.max_blocking_time,
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for BlockingInfo {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.blocked_task.update_checksum(checksum);
+        self.blocked_on_resource.update_checksum(checksum);
+        if let Some(task) = self.blocked_by_task {
+            task.update_checksum(checksum);
+        }
+        self.blocked_task_priority.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for BlockingInfo {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.blocked_task.to_bytes_with_provider(writer, provider)?;
+        self.blocked_on_resource.to_bytes_with_provider(writer, provider)?;
+        self.blocked_by_task.to_bytes_with_provider(writer, provider)?;
+        self.blocked_task_priority.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for BlockingInfo {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            blocked_task: TaskId::from_bytes_with_provider(reader, provider)?,
+            blocked_on_resource: ResourceId::from_bytes_with_provider(reader, provider)?,
+            blocked_by_task: Option::<TaskId>::from_bytes_with_provider(reader, provider)?,
+            blocked_task_priority: Priority::from_bytes_with_provider(reader, provider)?,
+            blocking_start_time: AtomicU64::new(0),
+            max_blocking_time: None,
+        })
+    }
+}
+
 /// Protocol performance statistics
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ProtocolStatistics {
     /// Total number of priority inheritances performed
     pub total_inheritances:      AtomicUsize,
@@ -158,13 +420,13 @@ pub struct ProtocolStatistics {
 
 impl FuelPriorityInheritanceProtocol {
     /// Create a new priority inheritance protocol manager
-    pub fn new(verification_level: VerificationLevel) -> Result<Self, Error> {
+    pub fn new(verification_level: VerificationLevel) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
         Ok(Self {
-            inheritance_chains: BoundedMap::new(provider.clone())?,
-            priority_donations: BoundedMap::new(provider.clone())?,
-            original_priorities: BoundedMap::new(provider.clone())?,
-            blocking_relationships: BoundedMap::new(provider.clone())?,
+            inheritance_chains: BoundedMap::new(),
+            priority_donations: BoundedMap::new(),
+            original_priorities: BoundedMap::new(),
+            blocking_relationships: BoundedMap::new(),
             protocol_stats: ProtocolStatistics {
                 total_inheritances:      AtomicUsize::new(0),
                 total_donations:         AtomicUsize::new(0),
@@ -186,7 +448,7 @@ impl FuelPriorityInheritanceProtocol {
         resource_id: ResourceId,
         holder_task: Option<TaskId>,
         max_blocking_time: Option<Duration>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::CollectionInsert, self.verification_level);
         self.consume_protocol_fuel(PRIORITY_INHERITANCE_SETUP_FUEL)?;
 
@@ -224,62 +486,72 @@ impl FuelPriorityInheritanceProtocol {
         blocked_priority: Priority,
         resource_id: ResourceId,
         holder_task: TaskId,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         record_global_operation(OperationType::FunctionCall, self.verification_level);
         self.consume_protocol_fuel(PRIORITY_INHERITANCE_SETUP_FUEL)?;
 
         // Get or create inheritance chain for this resource
-        let chain = match self.inheritance_chains.get_mut(&resource_id) {
-            Some(existing_chain) => {
-                // Add to existing chain
+        let chain_exists = self.inheritance_chains.contains_key(&resource_id);
+
+        if chain_exists {
+            // Add to existing chain
+            if let Some(existing_chain) = self.inheritance_chains.get_mut(&resource_id) {
                 existing_chain
                     .waiters
                     .push(blocked_task)
                     .map_err(|_| Error::resource_limit_exceeded("Inheritance chain too long"))?;
 
-                // Sort waiters by priority (highest first)
-                self.sort_waiters_by_priority(&mut existing_chain.waiters)?;
-
                 // Update inherited priority if this waiter has higher priority
                 if blocked_priority > existing_chain.inherited_priority {
                     existing_chain.inherited_priority = blocked_priority;
                 }
+            }
 
-                existing_chain
-            },
-            None => {
-                // Create new inheritance chain
-                let provider = safe_managed_alloc!(1024, CrateId::Component)?;
-                let mut waiters = BoundedVec::new(provider)?;
-                waiters.push(blocked_task).map_err(|_| {
-                    Error::resource_limit_exceeded("Failed to add waiter to new chain")
-                })?;
+            // Now sort waiters - extract and reinsert to avoid borrow conflict
+            let mut waiters_to_sort = if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
+                chain.waiters.clone()
+            } else {
+                return Ok(());
+            };
 
-                let new_chain = InheritanceChain {
-                    resource_id,
-                    holder: holder_task,
-                    waiters,
-                    inherited_priority: blocked_priority,
-                    holder_original_priority: Priority::Normal, // Will be updated below
-                    inheritance_start_time: AtomicU64::new(self.get_current_fuel_time()),
-                    fuel_consumed: AtomicU64::new(PRIORITY_INHERITANCE_SETUP_FUEL),
-                };
+            self.sort_waiters_by_priority(&mut waiters_to_sort)?;
 
-                self.inheritance_chains
-                    .insert(resource_id, new_chain)
-                    .map_err(|_| Error::resource_limit_exceeded("Too many inheritance chains"))?;
+            if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
+                chain.waiters = waiters_to_sort;
+            }
+        } else {
+            // Create new inheritance chain
+            let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+            let mut waiters = BoundedVec::new().unwrap();
+            waiters.push(blocked_task).map_err(|_| {
+                Error::resource_limit_exceeded("Failed to add waiter to new chain")
+            })?;
 
-                self.protocol_stats.active_chains.fetch_add(1, Ordering::AcqRel);
-                self.inheritance_chains.get_mut(&resource_id).unwrap()
-            },
-        };
+            let new_chain = InheritanceChain {
+                resource_id,
+                holder: holder_task,
+                waiters,
+                inherited_priority: blocked_priority,
+                holder_original_priority: 128, // Normal priority // Will be updated below
+                inheritance_start_time: AtomicU64::new(self.get_current_fuel_time()),
+                fuel_consumed: AtomicU64::new(PRIORITY_INHERITANCE_SETUP_FUEL),
+            };
+
+            self.inheritance_chains
+                .insert(resource_id, new_chain)
+                .map_err(|_| Error::resource_limit_exceeded("Too many inheritance chains"))?;
+
+            self.protocol_stats.active_chains.fetch_add(1, Ordering::AcqRel);
+        }
 
         // Store original priority if not already stored
         if !self.original_priorities.contains_key(&holder_task) {
             // For this example, we'll assume Normal priority as default
             // In real implementation, this would query the actual task priority
-            chain.holder_original_priority = Priority::Normal;
-            self.original_priorities.insert(holder_task, Priority::Normal).map_err(|_| {
+            if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
+                chain.holder_original_priority = 128; // Normal priority
+            }
+            self.original_priorities.insert(holder_task, 128 /* Normal priority */).map_err(|_| {
                 Error::resource_limit_exceeded("Too many original priorities tracked")
             })?;
         }
@@ -304,10 +576,12 @@ impl FuelPriorityInheritanceProtocol {
         self.protocol_stats.inversions_prevented.fetch_add(1, Ordering::AcqRel);
 
         // Update max chain length
-        let chain_length = chain.waiters.len();
-        let current_max = self.protocol_stats.max_chain_length.load(Ordering::Acquire);
-        if chain_length > current_max {
-            self.protocol_stats.max_chain_length.store(chain_length, Ordering::Release);
+        if let Some(chain) = self.inheritance_chains.get(&resource_id) {
+            let chain_length = chain.waiters.len();
+            let current_max = self.protocol_stats.max_chain_length.load(Ordering::Acquire);
+            if chain_length > current_max {
+                self.protocol_stats.max_chain_length.store(chain_length, Ordering::Release);
+            }
         }
 
         Ok(())
@@ -318,7 +592,7 @@ impl FuelPriorityInheritanceProtocol {
         &mut self,
         resource_id: ResourceId,
         releasing_task: TaskId,
-    ) -> Result<Option<TaskId>, Error> {
+    ) -> Result<Option<TaskId>> {
         record_global_operation(OperationType::CollectionRemove, self.verification_level);
         self.consume_protocol_fuel(PRIORITY_RESTORATION_FUEL)?;
 
@@ -370,7 +644,7 @@ impl FuelPriorityInheritanceProtocol {
         &mut self,
         task_id: TaskId,
         task_priority: Priority,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool> {
         record_global_operation(OperationType::FunctionCall, self.verification_level);
         self.consume_protocol_fuel(PRIORITY_INHERITANCE_RESOLVE_FUEL)?;
 
@@ -396,7 +670,15 @@ impl FuelPriorityInheritanceProtocol {
 
     /// Get priority inheritance statistics
     pub fn get_statistics(&self) -> ProtocolStatistics {
-        self.protocol_stats.clone()
+        ProtocolStatistics {
+            total_inheritances: AtomicUsize::new(self.protocol_stats.total_inheritances.load(Ordering::Acquire)),
+            total_donations: AtomicUsize::new(self.protocol_stats.total_donations.load(Ordering::Acquire)),
+            inversions_prevented: AtomicUsize::new(self.protocol_stats.inversions_prevented.load(Ordering::Acquire)),
+            total_fuel_consumed: AtomicU64::new(self.protocol_stats.total_fuel_consumed.load(Ordering::Acquire)),
+            max_chain_length: AtomicUsize::new(self.protocol_stats.max_chain_length.load(Ordering::Acquire)),
+            active_chains: AtomicUsize::new(self.protocol_stats.active_chains.load(Ordering::Acquire)),
+            average_resolution_fuel: AtomicU64::new(self.protocol_stats.average_resolution_fuel.load(Ordering::Acquire)),
+        }
     }
 
     /// Get the effective priority for a task (considering donations)
@@ -414,7 +696,7 @@ impl FuelPriorityInheritanceProtocol {
     }
 
     /// Clean up expired or resolved inheritance relationships
-    pub fn cleanup_expired_inheritances(&mut self, current_fuel_time: u64) -> Result<usize, Error> {
+    pub fn cleanup_expired_inheritances(&mut self, current_fuel_time: u64) -> Result<usize> {
         record_global_operation(OperationType::CollectionMutate, self.verification_level);
 
         let mut cleaned_count = 0;
@@ -477,7 +759,7 @@ impl FuelPriorityInheritanceProtocol {
         self.protocol_stats.total_fuel_consumed.load(Ordering::Acquire)
     }
 
-    fn consume_protocol_fuel(&self, amount: u64) -> Result<(), Error> {
+    fn consume_protocol_fuel(&self, amount: u64) -> Result<()> {
         self.protocol_stats.total_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         Ok(())
     }
@@ -485,7 +767,7 @@ impl FuelPriorityInheritanceProtocol {
     fn sort_waiters_by_priority(
         &self,
         waiters: &mut BoundedVec<TaskId, MAX_INHERITANCE_CHAIN_LENGTH>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         // Simple bubble sort for small collections
         let len = waiters.len();
         for i in 0..len {
@@ -501,19 +783,19 @@ impl FuelPriorityInheritanceProtocol {
         Ok(())
     }
 
-    fn should_swap_by_priority(&self, task_a: TaskId, task_b: TaskId) -> Result<bool, Error> {
+    fn should_swap_by_priority(&self, task_a: TaskId, task_b: TaskId) -> Result<bool> {
         // Get priority for each task from blocking relationships
         let priority_a = self
             .blocking_relationships
             .get(&task_a)
             .map(|info| info.blocked_task_priority)
-            .unwrap_or(Priority::Normal);
+            .unwrap_or(128); // Normal priority
 
         let priority_b = self
             .blocking_relationships
             .get(&task_b)
             .map(|info| info.blocked_task_priority)
-            .unwrap_or(Priority::Normal);
+            .unwrap_or(128); // Normal priority
 
         // Higher priority tasks should come first (task_a > task_b means swap)
         Ok(priority_a < priority_b)
@@ -551,7 +833,7 @@ mod tests {
 
         let result = protocol.register_blocking(
             blocked_task,
-            Priority::High,
+            192, // High priority
             resource_id,
             Some(holder_task),
             Some(Duration::from_millis(1000)),
@@ -575,7 +857,7 @@ mod tests {
 
         let result = protocol.initiate_priority_inheritance(
             high_priority_task,
-            Priority::High,
+            192, // High priority
             resource_id,
             low_priority_holder,
         );
@@ -584,8 +866,8 @@ mod tests {
 
         // Check that effective priority is elevated
         let effective_priority =
-            protocol.get_effective_priority(low_priority_holder, Priority::Low);
-        assert_eq!(effective_priority, Priority::High);
+            protocol.get_effective_priority(low_priority_holder, 64 /* Low priority */);
+        assert_eq!(effective_priority, 192); // High priority
     }
 
     #[test]
@@ -601,7 +883,7 @@ mod tests {
         protocol
             .register_blocking(
                 blocked_task,
-                Priority::High,
+                192, // High priority
                 resource_id,
                 Some(holder_task),
                 None,
@@ -630,7 +912,7 @@ mod tests {
         protocol
             .register_blocking(
                 high_priority_task,
-                Priority::High,
+                192, // High priority
                 resource_id,
                 Some(low_priority_blocker),
                 None,
@@ -641,7 +923,7 @@ mod tests {
         let inversion_detected = protocol
             .check_priority_inversion(
                 high_priority_task,
-                Priority::Low, // Simulate lower current priority
+                64, // Low priority // Simulate lower current priority
             )
             .unwrap();
 

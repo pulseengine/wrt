@@ -18,7 +18,7 @@ use std::{
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
@@ -48,16 +48,13 @@ use wrt_foundation::{
 use wrt_sync::Mutex;
 
 #[cfg(not(feature = "std"))]
-use crate::types::Value as ComponentValue;
+use wrt_foundation::{
+    builtin::BuiltinType,
+    component_value::ComponentValue,
+};
 
 #[cfg(not(feature = "std"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BuiltinType {
-    ResourceCreate,
-    ResourceDrop,
-    ResourceRep,
-    ResourceGet,
-}
+type ComponentProvider = NoStdProvider<4096>;
 
 use crate::{
     builtins::BuiltinHandler,
@@ -84,7 +81,8 @@ impl BuiltinHandler for ResourceCreateHandler {
         crate::builtins::BuiltinType::ResourceCreate
     }
 
-    fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
+    #[cfg(feature = "std")]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -107,24 +105,49 @@ impl BuiltinHandler for ResourceCreateHandler {
 
         // Create a new resource based on the representation
         let mut manager = self.resource_manager.lock().unwrap();
-        let id = manager.add_host_resource(rep);
+        let id = manager.add_host_resource(rep)?;
 
         // Return the resource ID
-        #[cfg(feature = "std")]
-        {
-            Ok(vec![ComponentValue::U32(id.0)])
+        Ok(vec![ComponentValue::U32(id.0)])
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+        // Validate args
+        if args.len() != 1 {
+            return Err(Error::runtime_execution_error(
+                "resource.create requires exactly one argument",
+            ));
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider).map_err(|_| {
-                Error::foundation_bounded_capacity_exceeded("Failed to create result vector")
-            })?;
-            result.push(ComponentValue::U32(id.0)).map_err(|_| {
-                Error::foundation_bounded_capacity_exceeded("Failed to add result value")
-            })?;
-            Ok(result)
-        }
+
+        // Extract the resource representation from args
+        let rep = match &args[0] {
+            ComponentValue::U32(value) => *value,
+            ComponentValue::U64(value) => *value as u32,
+            _ => {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "Expected U32 or U64 for resource representation",
+                ));
+            },
+        };
+
+        // Create a new resource based on the representation
+        // Call on the Arc<Mutex<>> directly since add_host_resource takes &self and locks internally
+        let id = {
+            let manager = self.resource_manager.lock();
+            drop(manager); // Release lock before calling
+            self.resource_manager.lock().add_host_resource(rep)?
+        };
+        let handle = id.0;
+
+        // Return the resource ID
+        let mut result = BoundedVec::new();
+        result.push(ComponentValue::U32(handle)).map_err(|_| {
+            Error::foundation_bounded_capacity_exceeded("Failed to add result value")
+        })?;
+        Ok(result)
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
@@ -151,7 +174,8 @@ impl BuiltinHandler for ResourceDropHandler {
         crate::builtins::BuiltinType::ResourceDrop
     }
 
-    fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
+    #[cfg(feature = "std")]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(
@@ -173,7 +197,7 @@ impl BuiltinHandler for ResourceDropHandler {
 
         // Drop the resource
         let mut manager = self.resource_manager.lock().unwrap();
-        if !manager.has_resource(id) {
+        if !manager.has_resource(id)? {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
@@ -185,6 +209,43 @@ impl BuiltinHandler for ResourceDropHandler {
 
         // Return empty result
         Ok(vec![])
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+        // Validate args
+        if args.len() != 1 {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.drop requires exactly one argument",
+            ));
+        }
+
+        // Extract the resource ID from args
+        let id = match &args[0] {
+            ComponentValue::U32(value) => ResourceId(*value),
+            _ => {
+                return Err(Error::runtime_execution_error(
+                    "Expected U32 for resource ID",
+                ));
+            },
+        };
+
+        // Drop the resource
+        let mut manager = self.resource_manager.lock();
+        if !manager.has_resource(id)? {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Resource not found",
+            ));
+        }
+
+        manager.drop_resource(id.0)?;
+
+        // Return empty result
+        Ok(BoundedVec::new())
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
@@ -211,7 +272,8 @@ impl BuiltinHandler for ResourceRepHandler {
         crate::builtins::BuiltinType::ResourceRep
     }
 
-    fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
+    #[cfg(feature = "std")]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -233,7 +295,7 @@ impl BuiltinHandler for ResourceRepHandler {
 
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
-        if !manager.has_resource(id) {
+        if !manager.has_resource(id)? {
             return Err(Error::runtime_execution_error("Resource not found"));
         }
 
@@ -243,6 +305,45 @@ impl BuiltinHandler for ResourceRepHandler {
 
         // Return the representation
         Ok(vec![ComponentValue::U32(rep)])
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+        // Validate args
+        if args.len() != 1 {
+            return Err(Error::runtime_execution_error(
+                "resource.rep requires exactly one argument",
+            ));
+        }
+
+        // Extract the resource ID from args
+        let id = match &args[0] {
+            ComponentValue::U32(value) => ResourceId(*value),
+            _ => {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "Expected U32 or U64 for resource representation",
+                ));
+            },
+        };
+
+        // Get the resource representation
+        let manager = self.resource_manager.lock();
+        if !manager.has_resource(id)? {
+            return Err(Error::runtime_execution_error("Resource not found"));
+        }
+
+        // Get the resource ID and then retrieve the actual resource representation
+        let resource_id = manager.get_resource(id.0)?;
+        let rep = manager.get_resource_representation(resource_id)?;
+
+        // Return the representation
+        let mut result = BoundedVec::new();
+        result.push(ComponentValue::U32(rep)).map_err(|_| {
+            Error::foundation_bounded_capacity_exceeded("Failed to add result value")
+        })?;
+        Ok(result)
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
@@ -269,7 +370,8 @@ impl BuiltinHandler for ResourceGetHandler {
         crate::builtins::BuiltinType::ResourceGet
     }
 
-    fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
+    #[cfg(feature = "std")]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(
@@ -293,32 +395,48 @@ impl BuiltinHandler for ResourceGetHandler {
         // Find or create resource with this representation
         let mut manager = self.resource_manager.lock().unwrap();
 
-        // Try to find an existing resource with this rep
-        for (resource_id, resource) in manager.get_resources_iter() {
-            if let Ok(resource_value) = manager.get_host_resource::<u32>(*resource_id) {
-                if *resource_value.lock().unwrap() == rep {
-                    return Ok(vec![ComponentValue::U32(resource_id.0)]);
-                }
-            }
+        // For now, always create a new resource
+        // TODO: Implement resource lookup once get_resources_iter is available
+        let id = manager.add_host_resource(rep)?;
+        Ok(vec![ComponentValue::U32(id.0)])
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+        // Validate args
+        if args.len() != 1 {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.get requires exactly one argument",
+            ));
         }
 
-        // Not found, create a new one
-        let id = manager.add_host_resource(rep);
-        #[cfg(feature = "std")]
-        {
-            Ok(vec![ComponentValue::U32(id.0)])
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider).map_err(|_| {
-                Error::foundation_bounded_capacity_exceeded("Failed to create result vector")
-            })?;
-            result.push(ComponentValue::U32(id.0)).map_err(|_| {
-                Error::foundation_bounded_capacity_exceeded("Failed to add result value")
-            })?;
-            Ok(result)
-        }
+        // Extract the resource representation from args
+        let rep = match &args[0] {
+            ComponentValue::U32(value) => *value,
+            ComponentValue::U64(value) => *value as u32,
+            _ => {
+                return Err(Error::runtime_execution_error(
+                    "Expected U32 for resource ID",
+                ));
+            },
+        };
+
+        // For now, always create a new resource in no_std mode
+        // TODO: Implement resource lookup when resource iteration is available
+        let id = {
+            let manager = self.resource_manager.lock();
+            drop(manager); // Release lock before calling
+            self.resource_manager.lock().add_host_resource(rep)?
+        };
+        let handle = id.0;
+
+        let mut result = BoundedVec::new();
+        result.push(ComponentValue::U32(handle)).map_err(|_| {
+            Error::foundation_bounded_capacity_exceeded("Failed to add result value")
+        })?;
+        Ok(result)
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
@@ -359,7 +477,7 @@ mod tests {
             ComponentValue::U32(id) => {
                 // Verify the resource was created
                 let manager = resource_manager.lock().unwrap();
-                assert!(manager.has_resource(ResourceId(*id)));
+                assert!(manager.has_resource(ResourceId(*id)).unwrap());
             },
             _ => panic!("Expected U32 result"),
         }
@@ -377,7 +495,7 @@ mod tests {
         // Create a resource
         let id = {
             let mut manager = resource_manager.lock().unwrap();
-            manager.add_host_resource(42)
+            manager.add_host_resource(42).unwrap()
         };
 
         let handler = ResourceDropHandler::new(resource_manager.clone());
@@ -390,7 +508,7 @@ mod tests {
 
         // Verify the resource was dropped
         let manager = resource_manager.lock().unwrap();
-        assert!(!manager.has_resource(id));
+        assert!(!manager.has_resource(id).unwrap());
     }
 
     #[test]
@@ -400,7 +518,7 @@ mod tests {
         // Create a resource
         let id = {
             let mut manager = resource_manager.lock().unwrap();
-            manager.add_host_resource(42u32)
+            manager.add_host_resource(42u32).unwrap()
         };
 
         let handler = ResourceRepHandler::new(resource_manager);

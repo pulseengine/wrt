@@ -3,11 +3,22 @@
 //! This module provides async-aware synchronization primitives including
 //! mutexes, semaphores, barriers, and condition variables integrated with
 //! the fuel-based async executor.
+//!
+//! **REQUIRES**: `std`, `bounded-allocation`, or `managed-allocation` feature
+//! Async sync primitives need Arc/Weak support for reference counting
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+// Async sync primitives fundamentally require Arc/Weak from alloc
+#[cfg(not(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation")))]
+compile_error!("advanced_sync_primitives requires 'std', 'bounded-allocation', or 'managed-allocation' feature - async operations need Arc/Weak support");
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(not(feature = "std"))]
 use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
+
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
@@ -25,16 +36,12 @@ use core::{
     },
     time::Duration,
 };
-#[cfg(feature = "std")]
-use std::sync::Weak;
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     component_value::ComponentValue,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    Arc,
     CrateId,
     Mutex,
 };
@@ -79,10 +86,10 @@ pub struct AdvancedSyncPrimitives {
     /// Bridge for task management
     bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active sync primitives
-    primitives:         BoundedMap<SyncPrimitiveId, SyncPrimitive, 512, NoStdProvider<65536>>,
+    primitives:         BoundedMap<SyncPrimitiveId, SyncPrimitive, 512>,
     /// Component sync contexts
     component_contexts:
-        BoundedMap<ComponentInstanceId, ComponentSyncContext, 128, NoStdProvider<65536>>,
+        BoundedMap<ComponentInstanceId, ComponentSyncContext, 128>,
     /// Next primitive ID
     next_primitive_id:  AtomicU64,
     /// Sync statistics
@@ -92,7 +99,7 @@ pub struct AdvancedSyncPrimitives {
 }
 
 /// Synchronization primitive identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SyncPrimitiveId(u64);
 
 /// Synchronization primitive
@@ -101,13 +108,13 @@ struct SyncPrimitive {
     id:             SyncPrimitiveId,
     component_id:   ComponentInstanceId,
     primitive_type: SyncPrimitiveType,
-    waiters:        BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE, NoStdProvider<65536>>,
+    waiters:        BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE>,
     created_at:     u64,
     fuel_consumed:  AtomicU64,
 }
 
 /// Type of synchronization primitive
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SyncPrimitiveType {
     /// Async mutex
     AsyncMutex {
@@ -185,7 +192,7 @@ struct ComponentSyncContext {
     component_id:     ComponentInstanceId,
     /// Sync primitives owned by this component
     owned_primitives:
-        BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT, NoStdProvider<65536>>,
+        BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT>,
     /// Sync limits
     sync_limits:      SyncLimits,
 }
@@ -250,12 +257,12 @@ impl AdvancedSyncPrimitives {
     pub fn new(
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<SyncConfiguration>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
         Ok(Self {
             bridge,
-            primitives: BoundedMap::new(provider.clone())?,
-            component_contexts: BoundedMap::new(provider.clone())?,
+            primitives: BoundedMap::new(),
+            component_contexts: BoundedMap::new(),
             next_primitive_id: AtomicU64::new(1),
             sync_stats: SyncStatistics::default(),
             sync_config: config.unwrap_or_default(),
@@ -267,7 +274,7 @@ impl AdvancedSyncPrimitives {
         &mut self,
         component_id: ComponentInstanceId,
         limits: Option<SyncLimits>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let limits = limits.unwrap_or_else(|| SyncLimits {
             max_mutexes:    32,
             max_semaphores: 16,
@@ -281,7 +288,7 @@ impl AdvancedSyncPrimitives {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentSyncContext {
             component_id,
-            owned_primitives: BoundedVec::new(provider)?,
+            owned_primitives: BoundedVec::new(),
             sync_limits: limits,
         };
 
@@ -297,7 +304,7 @@ impl AdvancedSyncPrimitives {
         &mut self,
         component_id: ComponentInstanceId,
         is_reentrant: bool,
-    ) -> Result<SyncPrimitiveId, Error> {
+    ) -> Result<SyncPrimitiveId> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
             Error::validation_invalid_input("Component not initialized for sync operations")
         })?;
@@ -336,7 +343,7 @@ impl AdvancedSyncPrimitives {
                 lock_count: AtomicU32::new(0),
                 is_reentrant,
             },
-            waiters: BoundedVec::new(provider)?,
+            waiters: BoundedVec::new(),
             created_at: self.get_timestamp(),
             fuel_consumed: AtomicU64::new(0),
         };
@@ -361,7 +368,7 @@ impl AdvancedSyncPrimitives {
         component_id: ComponentInstanceId,
         permits: u32,
         fair_scheduling: bool,
-    ) -> Result<SyncPrimitiveId, Error> {
+    ) -> Result<SyncPrimitiveId> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
             Error::validation_invalid_input("Component not initialized for sync operations")
         })?;
@@ -383,7 +390,7 @@ impl AdvancedSyncPrimitives {
                 max_permits: permits,
                 fair_scheduling,
             },
-            waiters: BoundedVec::new(provider)?,
+            waiters: BoundedVec::new(),
             created_at: self.get_timestamp(),
             fuel_consumed: AtomicU64::new(0),
         };
@@ -404,7 +411,7 @@ impl AdvancedSyncPrimitives {
         &mut self,
         component_id: ComponentInstanceId,
         parties: u32,
-    ) -> Result<SyncPrimitiveId, Error> {
+    ) -> Result<SyncPrimitiveId> {
         if parties == 0 {
             return Err(Error::validation_invalid_input(
                 "Barrier must have at least 1 party",
@@ -423,7 +430,7 @@ impl AdvancedSyncPrimitives {
                 generation: AtomicU64::new(0),
                 broken: AtomicBool::new(false),
             },
-            waiters: BoundedVec::new(provider)?,
+            waiters: BoundedVec::new(),
             created_at: self.get_timestamp(),
             fuel_consumed: AtomicU64::new(0),
         };
@@ -444,7 +451,7 @@ impl AdvancedSyncPrimitives {
         &mut self,
         component_id: ComponentInstanceId,
         associated_mutex: Option<SyncPrimitiveId>,
-    ) -> Result<SyncPrimitiveId, Error> {
+    ) -> Result<SyncPrimitiveId> {
         // Validate associated mutex if provided
         if let Some(mutex_id) = associated_mutex {
             let mutex = self
@@ -469,7 +476,7 @@ impl AdvancedSyncPrimitives {
                 associated_mutex,
                 notification_count: AtomicU64::new(0),
             },
-            waiters: BoundedVec::new(provider)?,
+            waiters: BoundedVec::new(),
             created_at: self.get_timestamp(),
             fuel_consumed: AtomicU64::new(0),
         };
@@ -491,7 +498,7 @@ impl AdvancedSyncPrimitives {
         primitive_id: SyncPrimitiveId,
         task_id: TaskId,
         component_id: ComponentInstanceId,
-    ) -> Result<MutexLockResult, Error> {
+    ) -> Result<MutexLockResult> {
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -521,7 +528,7 @@ impl AdvancedSyncPrimitives {
                         waker: None,
                         wait_type: WaitType::MutexLock,
                         queued_at: self.get_timestamp(),
-                        priority: Priority::Normal, // Would get from task
+                        priority: 128, // Normal priority // Would get from task
                     };
 
                     primitive
@@ -551,7 +558,7 @@ impl AdvancedSyncPrimitives {
         &mut self,
         primitive_id: SyncPrimitiveId,
         task_id: TaskId,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -579,7 +586,7 @@ impl AdvancedSyncPrimitives {
                     lock_count.fetch_sub(1, Ordering::AcqRel);
                     primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
                     self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
-                    return Ok();
+                    return Ok(());
                 }
 
                 // Release the lock
@@ -605,7 +612,7 @@ impl AdvancedSyncPrimitives {
         primitive_id: SyncPrimitiveId,
         task_id: TaskId,
         component_id: ComponentInstanceId,
-    ) -> Result<SemaphoreAcquireResult, Error> {
+    ) -> Result<SemaphoreAcquireResult> {
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -627,7 +634,7 @@ impl AdvancedSyncPrimitives {
                         waker: None,
                         wait_type: WaitType::SemaphorePermit,
                         queued_at: self.get_timestamp(),
-                        priority: Priority::Normal,
+                        priority: 128, // Normal priority
                     };
 
                     primitive.waiters.push(waiter).map_err(|_| {
@@ -651,7 +658,7 @@ impl AdvancedSyncPrimitives {
     }
 
     /// Release semaphore permit
-    pub fn release_semaphore(&mut self, primitive_id: SyncPrimitiveId) -> Result<(), Error> {
+    pub fn release_semaphore(&mut self, primitive_id: SyncPrimitiveId) -> Result<()> {
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -693,7 +700,7 @@ impl AdvancedSyncPrimitives {
         primitive_id: SyncPrimitiveId,
         task_id: TaskId,
         component_id: ComponentInstanceId,
-    ) -> Result<BarrierWaitResult, Error> {
+    ) -> Result<BarrierWaitResult> {
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -732,7 +739,7 @@ impl AdvancedSyncPrimitives {
                         waker: None,
                         wait_type: WaitType::BarrierWait,
                         queued_at: self.get_timestamp(),
-                        priority: Priority::Normal,
+                        priority: 128, // Normal priority
                     };
 
                     primitive
@@ -795,7 +802,7 @@ impl AdvancedSyncPrimitives {
         0
     }
 
-    fn wake_next_mutex_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<(), Error> {
+    fn wake_next_mutex_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
         // Find next waiter for mutex
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
@@ -817,7 +824,7 @@ impl AdvancedSyncPrimitives {
         Ok(())
     }
 
-    fn wake_next_semaphore_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<(), Error> {
+    fn wake_next_semaphore_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
         // Find next waiter for semaphore
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
@@ -839,7 +846,7 @@ impl AdvancedSyncPrimitives {
         Ok(())
     }
 
-    fn wake_all_barrier_waiters(&mut self, primitive: &mut SyncPrimitive) -> Result<(), Error> {
+    fn wake_all_barrier_waiters(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
         // Wake all barrier waiters
         for waiter in primitive.waiters.iter() {
             if waiter.wait_type == WaitType::BarrierWait {
@@ -915,9 +922,8 @@ pub struct AsyncMutexGuard {
 impl Drop for AsyncMutexGuard {
     fn drop(&mut self) {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
-            if let Ok(mut primitives) = sync_primitives.lock() {
-                let _ = primitives.unlock_async_mutex(self.primitive_id, self.task_id);
-            }
+            let mut primitives = sync_primitives.lock();
+            let _ = primitives.unlock_async_mutex(self.primitive_id, self.task_id);
         }
     }
 }
@@ -931,9 +937,8 @@ pub struct AsyncSemaphorePermit {
 impl Drop for AsyncSemaphorePermit {
     fn drop(&mut self) {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
-            if let Ok(mut primitives) = sync_primitives.lock() {
-                let _ = primitives.release_semaphore(self.primitive_id);
-            }
+            let mut primitives = sync_primitives.lock();
+            let _ = primitives.release_semaphore(self.primitive_id);
         }
     }
 }
@@ -947,39 +952,34 @@ pub struct MutexLockFuture {
 }
 
 impl CoreFuture for MutexLockFuture {
-    type Output = Result<AsyncMutexGuard, Error>;
+    type Output = Result<AsyncMutexGuard>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
-            if let Ok(mut primitives) = sync_primitives.lock() {
-                match primitives.lock_async_mutex(
-                    self.primitive_id,
-                    self.task_id,
-                    self.component_id,
-                ) {
-                    Ok(MutexLockResult::Acquired) => Poll::Ready(Ok(AsyncMutexGuard {
-                        primitive_id:    self.primitive_id,
-                        task_id:         self.task_id,
-                        sync_primitives: self.sync_primitives.clone(),
-                    })),
-                    Ok(MutexLockResult::WouldBlock) => {
-                        // Register waker
-                        if let Some(primitive) = primitives.primitives.get_mut(&self.primitive_id) {
-                            for waiter in primitive.waiters.iter_mut() {
-                                if waiter.task_id == self.task_id {
-                                    waiter.waker = Some(cx.waker().clone());
-                                    break;
-                                }
+            let mut primitives = sync_primitives.lock();
+            match primitives.lock_async_mutex(
+                self.primitive_id,
+                self.task_id,
+                self.component_id,
+            ) {
+                Ok(MutexLockResult::Acquired) => Poll::Ready(Ok(AsyncMutexGuard {
+                    primitive_id:    self.primitive_id,
+                    task_id:         self.task_id,
+                    sync_primitives: self.sync_primitives.clone(),
+                })),
+                Ok(MutexLockResult::WouldBlock) => {
+                    // Register waker
+                    if let Some(primitive) = primitives.primitives.get_mut(&self.primitive_id) {
+                        for waiter in primitive.waiters.iter_mut() {
+                            if waiter.task_id == self.task_id {
+                                waiter.waker = Some(cx.waker().clone());
+                                break;
                             }
                         }
-                        Poll::Pending
-                    },
-                    Err(e) => Poll::Ready(Err(e)),
-                }
-            } else {
-                Poll::Ready(Err(Error::invalid_state_error(
-                    "Sync primitives manager unavailable",
-                )))
+                    }
+                    Poll::Pending
+                },
+                Err(e) => Poll::Ready(Err(e)),
             }
         } else {
             Poll::Ready(Err(Error::invalid_state_error(

@@ -127,7 +127,7 @@ mod tests {
             .add_task(
                 task_id,
                 component_id,
-                Priority::Normal,
+                128, // Normal priority
                 1000, // fuel quota
                 None, // no deadline
             )
@@ -162,7 +162,7 @@ mod tests {
             .add_task(
                 low_task,
                 ComponentInstanceId::new(1),
-                Priority::Low,
+                64, // Low priority
                 1000,
                 None,
             )
@@ -171,7 +171,7 @@ mod tests {
             .add_task(
                 normal_task,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )
@@ -180,7 +180,7 @@ mod tests {
             .add_task(
                 high_task,
                 ComponentInstanceId::new(1),
-                Priority::High,
+                192, // High priority
                 1000,
                 None,
             )
@@ -201,7 +201,7 @@ mod tests {
         let config = AsyncBridgeConfig {
             default_fuel_budget:   5000,
             default_time_limit_ms: Some(2000),
-            default_priority:      Priority::High,
+            default_priority:      192, // High priority
             scheduling_policy:     SchedulingPolicy::PriorityBased,
             allow_fuel_extension:  true,
             fuel_check_interval:   500,
@@ -218,7 +218,7 @@ mod tests {
         // Verify configuration was applied
         assert_eq!(config.default_fuel_budget, 5000);
         assert_eq!(config.default_time_limit_ms, Some(2000));
-        assert_eq!(config.default_priority, Priority::High);
+        assert_eq!(config.default_priority, 192); // High priority
     }
 
     #[test]
@@ -232,7 +232,7 @@ mod tests {
         let task1 = executor.spawn_task(
             component_id,
             500, // fuel budget
-            Priority::Normal,
+            128, // Normal priority
             TestFuture::new(3, 42),
         );
         assert!(task1.is_ok());
@@ -241,7 +241,7 @@ mod tests {
         let task2 = executor.spawn_task(
             component_id,
             400, // fuel budget
-            Priority::Normal,
+            128, // Normal priority
             TestFuture::new(2, 84),
         );
         assert!(task2.is_ok());
@@ -250,7 +250,7 @@ mod tests {
         let task3 = executor.spawn_task(
             component_id,
             200, // would exceed limit (500 + 400 + 200 > 1000)
-            Priority::Normal,
+            128, // Normal priority
             TestFuture::new(1, 126),
         );
         assert!(task3.is_err());
@@ -290,13 +290,13 @@ mod tests {
             .spawn_task(
                 component_id,
                 1000,
-                Priority::Normal,
+                128, // Normal priority
                 TestFuture::new(10, 42),
             )
             .unwrap();
 
         let _task2 = executor
-            .spawn_task(component_id, 1000, Priority::Normal, TestFuture::new(5, 84))
+            .spawn_task(component_id, 1000, 128 /* Normal priority */, TestFuture::new(5, 84))
             .unwrap();
 
         let status_before = executor.get_global_fuel_status();
@@ -366,7 +366,7 @@ mod tests {
             .add_task(
                 task1,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )
@@ -375,7 +375,7 @@ mod tests {
             .add_task(
                 task2,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )
@@ -384,7 +384,7 @@ mod tests {
             .add_task(
                 task3,
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 1000,
                 None,
             )

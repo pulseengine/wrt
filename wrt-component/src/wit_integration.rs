@@ -4,7 +4,8 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use std::collections::BTreeMap;
 
 use wrt_foundation::{
-    bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
+    BoundedVec,
+    bounded_collections::{BoundedString, MAX_GENERATIVE_TYPES},
     prelude::*,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
@@ -26,12 +27,12 @@ use wrt_format::wit_parser::{
 pub struct WitComponentBuilder {
     parser: WitParser,
     type_registry: GenerativeTypeRegistry,
-    wit_type_mappings: BTreeMap<BoundedString<64>, TypeId>,
+    wit_type_mappings: BTreeMap<BoundedString<64, NoStdProvider<512>>, TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInterface {
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     pub imports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
     pub exports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
     pub async_imports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES>,
@@ -40,7 +41,7 @@ pub struct ComponentInterface {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InterfaceFunction {
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     pub params: BoundedVec<TypedParam, 32>,
     pub results: BoundedVec<TypedResult, 16>,
     pub component_type_id: Option<TypeId>,
@@ -48,7 +49,7 @@ pub struct InterfaceFunction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncInterfaceFunction {
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     pub params: BoundedVec<TypedParam, 32>,
     pub results: BoundedVec<AsyncTypedResult, 16>,
     pub component_type_id: Option<TypeId>,
@@ -56,21 +57,21 @@ pub struct AsyncInterfaceFunction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedParam {
-    pub name: BoundedString<32>,
+    pub name: BoundedString<32, NoStdProvider<512>>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedResult {
-    pub name: Option<BoundedString<32>>,
+    pub name: Option<BoundedString<32, NoStdProvider<512>>>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncTypedResult {
-    pub name: Option<BoundedString<32>>,
+    pub name: Option<BoundedString<32, NoStdProvider<512>>>,
     pub val_type: ValType,
     pub wit_type: WitType,
     pub is_stream: bool,
@@ -112,8 +113,10 @@ impl WitComponentBuilder {
         wit_type_name: &str,
         component_type_id: TypeId,
     ) -> core::result::Result<(), ComponentError> {
+        let provider = safe_managed_alloc!(512, CrateId::Component)
+            .map_err(|_| ComponentError::TypeMismatch)?;
         let name =
-            BoundedString::from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
+            BoundedString::from_str(wit_type_name, provider).map_err(|_| ComponentError::TypeMismatch)?;
 
         self.wit_type_mappings.insert(name, component_type_id;
         Ok(())
@@ -373,9 +376,10 @@ mod tests {
         let type_id = TypeId(1;
 
         assert!(builder.register_wit_type("my-type", type_id).is_ok());
+        let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         assert!(builder
             .wit_type_mappings
-            .contains_key(&BoundedString::from_str("my-type").unwrap();
+            .contains_key(&BoundedString::from_str("my-type", provider).unwrap());
     }
 
     #[test]

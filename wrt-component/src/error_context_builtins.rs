@@ -22,11 +22,14 @@ use std::{boxed::Box, collections::HashMap, cell::RefCell as AtomicRefCell, stri
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::{BoundedMap, BoundedString, BoundedVec},
+    bounded::{BoundedMap, BoundedString},
     component_value::ComponentValue,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
+    MemoryProvider,
 };
 
 
@@ -181,6 +184,117 @@ impl StackFrame {
     }
 }
 
+impl PartialEq for StackFrame {
+    fn eq(&self, other: &Self) -> bool {
+        self.function_name() == other.function_name() &&
+        self.file_name() == other.file_name() &&
+        self.line_number == other.line_number &&
+        self.column_number == other.column_number
+    }
+}
+
+impl Eq for StackFrame {}
+
+impl Default for StackFrame {
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        {
+            Self {
+                function_name: String::new(),
+                file_name: None,
+                line_number: None,
+                column_number: None,
+            }
+        }
+        #[cfg(not(any(feature = "std", )))]
+        {
+            Self {
+                function_name: BoundedString::new(),
+                file_name: None,
+                line_number: None,
+                column_number: None,
+            }
+        }
+    }
+}
+
+impl Checksummable for StackFrame {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.function_name().update_checksum(checksum);
+        if let Some(file) = self.file_name() {
+            file.update_checksum(checksum);
+        }
+        self.line_number.update_checksum(checksum);
+        self.column_number.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for StackFrame {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.function_name().to_bytes_with_provider(writer, provider)?;
+        match self.file_name() {
+            Some(name) => {
+                true.to_bytes_with_provider(writer, provider)?;
+                name.to_bytes_with_provider(writer, provider)?;
+            }
+            None => {
+                false.to_bytes_with_provider(writer, provider)?;
+            }
+        }
+        self.line_number.to_bytes_with_provider(writer, provider)?;
+        self.column_number.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for StackFrame {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        #[cfg(feature = "std")]
+        {
+            let function_name = String::from_bytes_with_provider(reader, provider)?;
+            let has_file = bool::from_bytes_with_provider(reader, provider)?;
+            let file_name = if has_file {
+                Some(String::from_bytes_with_provider(reader, provider)?)
+            } else {
+                None
+            };
+            let line_number = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+            let column_number = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+            Ok(Self {
+                function_name,
+                file_name,
+                line_number,
+                column_number,
+            })
+        }
+        #[cfg(not(any(feature = "std", )))]
+        {
+            let function_name = BoundedString::<MAX_DEBUG_MESSAGE_SIZE>::from_bytes_with_provider(reader, provider)?;
+            let has_file = bool::from_bytes_with_provider(reader, provider)?;
+            let file_name = if has_file {
+                Some(BoundedString::<MAX_DEBUG_MESSAGE_SIZE>::from_bytes_with_provider(reader, provider)?)
+            } else {
+                None
+            };
+            let line_number = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+            let column_number = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+            Ok(Self {
+                function_name,
+                file_name,
+                line_number,
+                column_number,
+            })
+        }
+    }
+}
+
 /// Error context implementation with debugging information
 #[derive(Debug, Clone)]
 pub struct ErrorContextImpl {
@@ -196,7 +310,7 @@ pub struct ErrorContextImpl {
     #[cfg(feature = "std")]
     pub stack_trace: Vec<StackFrame>,
     #[cfg(not(any(feature = "std", )))]
-    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES, NoStdProvider<65536>>,
+    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES>,
     
     #[cfg(feature = "std")]
     pub metadata: HashMap<String, ComponentValue>,
@@ -231,12 +345,7 @@ impl ErrorContextImpl {
             handle: ErrorContextHandle::new(),
             severity,
             debug_message: bounded_message,
-            stack_trace: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::memory_allocation_failed("Failed to create stack trace vector")
-                })?
-            },
+            stack_trace: BoundedVec::new(),
             metadata: BoundedMap::new(safe_managed_alloc!(4096, CrateId::Component)?)?,
             error_code: None,
             source_error: None,
@@ -322,7 +431,7 @@ impl ErrorContextImpl {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn format_stack_trace(&self) -> core::result::Result<BoundedString<1024, NoStdProvider<65536>>> {
+    pub fn format_stack_trace(&self) -> core::result::Result<BoundedString<1024, NoStdProvider<2048>>> {
         let mut output = BoundedString::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
             // Binary std/no_std choice
@@ -525,7 +634,7 @@ impl ErrorContextBuiltins {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn error_context_stack_trace(context_id: ErrorContextId) -> core::result::Result<BoundedString<1024, NoStdProvider<65536>>> {
+    pub fn error_context_stack_trace(context_id: ErrorContextId) -> core::result::Result<BoundedString<1024, NoStdProvider<2048>>> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
                 context.format_stack_trace()
@@ -649,7 +758,7 @@ pub mod error_context_helpers {
         let context_id = ErrorContextBuiltins::error_context_new(message, severity)?;
         ErrorContextBuiltins::error_context_set_metadata(
             context_id,
-            "error_code".to_string(),
+            "error_code".to_owned(),
             ComponentValue::I32(error.code() as i32)
         )?;
         Ok(context_id)
@@ -755,8 +864,8 @@ mod tests {
     fn test_stack_frame_creation() {
         #[cfg(feature = "std")]
         {
-            let frame = StackFrame::new("test_function".to_string()
-                .with_location("test.rs".to_string(), 42, 10;
+            let frame = StackFrame::new("test_function".to_owned()
+                .with_location("test.rs".to_owned(), 42, 10;
             assert_eq!(frame.function_name(), "test_function";
             assert_eq!(frame.file_name(), Some("test.rs";
             assert_eq!(frame.line_number, Some(42;
@@ -778,7 +887,7 @@ mod tests {
     fn test_error_context_creation() {
         #[cfg(feature = "std")]
         {
-            let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
+            let context = ErrorContextImpl::new("Test error".to_owned(), ErrorSeverity::Error;
             assert_eq!(context.debug_message(), "Test error";
             assert_eq!(context.severity, ErrorSeverity::Error;
             assert_eq!(context.stack_frame_count(), 0);
@@ -797,9 +906,9 @@ mod tests {
     fn test_error_context_with_metadata() {
         #[cfg(feature = "std")]
         {
-            let mut context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
-            context.set_metadata("key1".to_string(), ComponentValue::I32(42;
-            context.set_metadata("key2".to_string(), ComponentValue::Bool(true;
+            let mut context = ErrorContextImpl::new("Test error".to_owned(), ErrorSeverity::Error;
+            context.set_metadata("key1".to_owned(), ComponentValue::I32(42;
+            context.set_metadata("key2".to_owned(), ComponentValue::Bool(true;
 
             assert_eq!(context.get_metadata("key1"), Some(&ComponentValue::I32(42);
             assert_eq!(context.get_metadata("key2"), Some(&ComponentValue::Bool(true);
@@ -822,11 +931,11 @@ mod tests {
     fn test_error_context_stack_trace() {
         #[cfg(feature = "std")]
         {
-            let mut context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
-            let frame1 = StackFrame::new("function1".to_string()
-                .with_location("file1.rs".to_string(), 10, 5;
-            let frame2 = StackFrame::new("function2".to_string()
-                .with_location("file2.rs".to_string(), 20, 15;
+            let mut context = ErrorContextImpl::new("Test error".to_owned(), ErrorSeverity::Error;
+            let frame1 = StackFrame::new("function1".to_owned()
+                .with_location("file1.rs".to_owned(), 10, 5;
+            let frame2 = StackFrame::new("function2".to_owned()
+                .with_location("file2.rs".to_owned(), 20, 15;
 
             context.add_stack_frame(frame1;
             context.add_stack_frame(frame2;
@@ -863,7 +972,7 @@ mod tests {
         assert_eq!(registry.context_count(), 0);
 
         #[cfg(feature = "std")]
-        let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
+        let context = ErrorContextImpl::new("Test error".to_owned(), ErrorSeverity::Error;
         #[cfg(not(any(feature = "std", )))]
         let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
 
@@ -888,7 +997,7 @@ mod tests {
         // Create a new error context
         #[cfg(feature = "std")]
         let context_id = ErrorContextBuiltins::error_context_new(
-            "Test error message".to_string(), 
+            "Test error message".to_owned(), 
             ErrorSeverity::Error
         ).unwrap();
         #[cfg(not(any(feature = "std", )))]
@@ -912,7 +1021,7 @@ mod tests {
         #[cfg(feature = "std")]
         ErrorContextBuiltins::error_context_set_metadata(
             context_id,
-            "test_key".to_string(),
+            "test_key".to_owned(),
             ComponentValue::I32(123)
         ).unwrap();
         #[cfg(not(any(feature = "std", )))]
@@ -930,8 +1039,8 @@ mod tests {
         #[cfg(feature = "std")]
         ErrorContextBuiltins::error_context_add_stack_frame(
             context_id,
-            "test_function".to_string(),
-            Some("test.rs".to_string()),
+            "test_function".to_owned(),
+            Some("test.rs".to_owned()),
             Some(42),
             Some(10)
         ).unwrap();
@@ -961,7 +1070,7 @@ mod tests {
 
         // Test creating simple error context
         #[cfg(feature = "std")]
-        let simple_id = error_context_helpers::create_simple("Simple error".to_string()).unwrap();
+        let simple_id = error_context_helpers::create_simple("Simple error".to_owned()).unwrap();
         #[cfg(not(any(feature = "std", )))]
         let simple_id = error_context_helpers::create_simple("Simple error").unwrap();
 
@@ -971,9 +1080,9 @@ mod tests {
         // Test creating error context with stack trace
         #[cfg(feature = "std")]
         let trace_id = error_context_helpers::create_with_stack_trace(
-            "Error with trace".to_string(),
-            "main".to_string(),
-            Some("main.rs".to_string()),
+            "Error with trace".to_owned(),
+            "main".to_owned(),
+            Some("main.rs".to_owned()),
             Some(10)
         ).unwrap();
         #[cfg(not(any(feature = "std", )))]

@@ -10,12 +10,9 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_BUFFER_SIZE,
-    },
+    collections::StaticVec as BoundedVec,
+    bounded::MAX_BUFFER_SIZE,
     resource::ResourceOperation,
-    safe_memory::NoStdProvider,
 };
 
 use super::{
@@ -48,15 +45,17 @@ impl ResourceStrategy for ResourceStrategyNoStd {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<65536>>,
-        NoStdProvider<65536>,
+        wrt_foundation::bounded::BoundedVec<u8, MAX_BUFFER_SIZE, wrt_foundation::safe_memory::NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        wrt_error::Error,
     > {
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let provider = safe_managed_alloc!(MAX_BUFFER_SIZE, CrateId::Component)?;
+
         match self.strategy {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => {
-                    let mut result = BoundedVec::with_capacity(data.len())
-                        .map_err(|e| Error::memory_error("Error occurred"))?;
+                    let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
@@ -64,8 +63,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
                     Ok(result)
                 },
                 ResourceOperation::Write => {
-                    let mut result = BoundedVec::with_capacity(data.len())
-                        .map_err(|e| Error::memory_error("Error occurred"))?;
+                    let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
@@ -77,8 +75,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
             // Bounded-copy strategy - always copies but reuses buffers
             MemoryStrategy::BoundedCopy => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::memory_error("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
@@ -88,8 +85,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
             // Isolated strategy - always copies and validates
             MemoryStrategy::Isolated => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::memory_error("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 // In a real implementation this would include validation
                 for &byte in data {
@@ -100,8 +96,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
             // Copy strategy - always copies the data
             MemoryStrategy::Copy => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::memory_error("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
@@ -111,8 +106,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
             // Reference strategy - returns a view without copying
             MemoryStrategy::Reference => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::memory_error("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 // In a real implementation, this would return a reference
                 // For now, we'll still return a BoundedVec
@@ -124,10 +118,29 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
             // Full isolation strategy - copies and performs full validation
             MemoryStrategy::FullIsolation => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::memory_error("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 // In a real implementation this would include more extensive validation
+                for &byte in data {
+                    result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
+                }
+                Ok(result)
+            },
+
+            // Fixed buffer strategy - uses a fixed-size buffer
+            MemoryStrategy::FixedBuffer => {
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
+
+                for &byte in data {
+                    result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
+                }
+                Ok(result)
+            },
+
+            // Bounded collections strategy - uses bounded collections
+            MemoryStrategy::BoundedCollections => {
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
+
                 for &byte in data {
                     result.push(byte).map_err(|e| Error::memory_error("Error occurred"))?;
                 }

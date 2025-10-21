@@ -3,9 +3,21 @@
 //! This module provides registry functionality for components.
 
 #[cfg(feature = "std")]
-use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    string::ToString,
+    sync::Arc,
+};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BTreeMap as HashMap,
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
 
 use wrt_error::Result;
 

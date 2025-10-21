@@ -59,7 +59,8 @@ mod tests {
         
         // Create executor with self-reference
         let executor_arc = Arc::new(Mutex::new(executor;
-        if let Ok(mut exec) = executor_arc.lock() {
+        {
+            let mut exec = executor_arc.lock();
             exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
@@ -69,7 +70,7 @@ mod tests {
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 500, // Initial small budget
-                Priority::Normal,
+                128, // Normal priority
                 VariableFuelFuture {
                     id: 1,
                     polls_remaining: 10,
@@ -106,7 +107,8 @@ mod tests {
         executor.enable_preemption(PreemptionPolicy::PriorityBased).unwrap();
         
         let executor_arc = Arc::new(Mutex::new(executor;
-        if let Ok(mut exec) = executor_arc.lock() {
+        {
+            let mut exec = executor_arc.lock();
             exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
@@ -120,7 +122,7 @@ mod tests {
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 5000,
-                Priority::Low,
+                64, // Low priority
                 async move {
                     order_clone1.lock().unwrap().push("low_start");
                     // Simulate long running task
@@ -146,7 +148,7 @@ mod tests {
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 5000,
-                Priority::High,
+                192, // High priority
                 async move {
                     order_clone2.lock().unwrap().push("high");
                     Ok(())
@@ -178,7 +180,7 @@ mod tests {
             fuel_manager.register_component(
                 ComponentInstanceId::new(i),
                 30_000, // Equal base quota
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap();
         }
 
@@ -187,14 +189,14 @@ mod tests {
             crate::threading::task_manager::TaskId::new(1),
             ComponentInstanceId::new(1),
             1000,
-            Priority::Normal,
+            128, // Normal priority
         ).unwrap();
 
         let alloc2 = fuel_manager.calculate_fuel_allocation(
             crate::threading::task_manager::TaskId::new(2),
             ComponentInstanceId::new(2),
             1000,
-            Priority::Normal,
+            128, // Normal priority
         ).unwrap();
 
         // Should get equal allocations in fair share mode
@@ -236,7 +238,7 @@ mod tests {
             component_id,
             10, // max tasks
             20_000, // limited fuel budget
-            Priority::Normal,
+            128, // Normal priority
         ).unwrap();
 
         // Spawn multiple tasks that compete for fuel
@@ -285,8 +287,8 @@ mod tests {
         let task1 = crate::threading::task_manager::TaskId::new(1;
         let task2 = crate::threading::task_manager::TaskId::new(2;
         
-        preemption_mgr.register_task(task1, Priority::Normal, true, 1000).unwrap();
-        preemption_mgr.register_task(task2, Priority::Normal, true, 500).unwrap();
+        preemption_mgr.register_task(task1, 128 /* Normal priority */, true, 1000).unwrap();
+        preemption_mgr.register_task(task2, 128 /* Normal priority */, true, 500).unwrap();
         
         // Update quantums
         preemption_mgr.update_quantum(task1, 100).unwrap();
@@ -319,13 +321,13 @@ mod tests {
         
         for policy in policies {
             let mut manager = FuelDynamicManager::new(policy, 100_000).unwrap();
-            manager.register_component(component_id, 50_000, Priority::Normal).unwrap();
+            manager.register_component(component_id, 50_000, 128 /* Normal priority */).unwrap();
             
             let allocation = manager.calculate_fuel_allocation(
                 task_id,
                 component_id,
                 base_fuel,
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap();
             
             match policy {

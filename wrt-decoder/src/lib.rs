@@ -68,8 +68,10 @@ pub mod streaming_validator;
 pub mod unified_loader;
 
 // Bounded infrastructure for static memory allocation
-#[cfg(not(feature = "std"))]
 pub mod bounded_decoder_infra;
+
+// Simple types using StaticVec (Provider-free migration)
+pub mod simple_types;
 
 // Section parsing - use bounded version in no_std
 #[cfg(feature = "std")]

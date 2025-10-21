@@ -18,10 +18,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     component_value::ComponentValue,
     // ResourceHandle imported from local crate instead
     // resource::{
@@ -29,6 +26,11 @@ use wrt_foundation::{
     //     ResourceType,
     // },
     safe_managed_alloc,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
     CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
@@ -38,6 +40,7 @@ use crate::{
         async_canonical_abi_support::{
             AsyncAbiOperationId,
             AsyncCanonicalAbiSupport,
+            ResourceHandle,
         },
         task_manager_async_bridge::{
             ComponentAsyncTaskType,
@@ -46,7 +49,6 @@ use crate::{
     },
     prelude::*,
     // resource_lifecycle::ResourceLifecycleManager, // Module not available
-    resource_management::ResourceHandle,
     ComponentInstanceId,
 };
 
@@ -81,11 +83,41 @@ pub struct ResourceAsyncOperations {
 }
 
 /// Resource operation identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceOperationId(u64);
 
+impl Default for ResourceOperationId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for ResourceOperationId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceOperationId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResourceOperationId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
 /// Async resource operation
-#[derive(Debug)]
 struct ResourceAsyncOperation {
     id:                  ResourceOperationId,
     component_id:        ComponentInstanceId,
@@ -98,17 +130,33 @@ struct ResourceAsyncOperation {
     completion_callback: Option<ResourceCompletionCallback>,
 }
 
+impl core::fmt::Debug for ResourceAsyncOperation {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ResourceAsyncOperation")
+            .field("id", &self.id)
+            .field("component_id", &self.component_id)
+            .field("operation_type", &self.operation_type)
+            .field("resource_handle", &self.resource_handle)
+            .field("resource_type", &self.resource_type)
+            .field("abi_operation_id", &self.abi_operation_id)
+            .field("created_at", &self.created_at)
+            .field("fuel_consumed", &self.fuel_consumed)
+            .field("completion_callback", &self.completion_callback.is_some())
+            .finish()
+    }
+}
+
 /// Type of async resource operation
 #[derive(Debug, Clone)]
 pub enum ResourceAsyncOperationType {
     /// Create new resource instance
     Create {
-        constructor_args: Vec<ComponentValue>,
+        constructor_args: Vec<ComponentValue<ComponentProvider>>,
     },
     /// Call async method on resource
     MethodCall {
         method_name: String,
-        args:        Vec<ComponentValue>,
+        args:        Vec<ComponentValue<ComponentProvider>>,
     },
     /// Borrow resource for async operation
     Borrow { borrow_type: ResourceBorrowType },
@@ -134,6 +182,55 @@ pub enum ResourceBorrowType {
     Async,
 }
 
+impl Default for ResourceBorrowType {
+    fn default() -> Self {
+        Self::Shared
+    }
+}
+
+impl Checksummable for ResourceBorrowType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            ResourceBorrowType::Shared => 0u8,
+            ResourceBorrowType::Exclusive => 1u8,
+            ResourceBorrowType::Async => 2u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceBorrowType {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        let discriminant = match self {
+            ResourceBorrowType::Shared => 0u8,
+            ResourceBorrowType::Exclusive => 1u8,
+            ResourceBorrowType::Async => 2u8,
+        };
+        discriminant.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResourceBorrowType {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        let discriminant = u8::from_bytes_with_provider(reader, provider)?;
+        match discriminant {
+            0 => Ok(ResourceBorrowType::Shared),
+            1 => Ok(ResourceBorrowType::Exclusive),
+            2 => Ok(ResourceBorrowType::Async),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid ResourceBorrowType discriminant",
+            )),
+        }
+    }
+}
+
 /// Resource state for lifecycle management
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceState {
@@ -151,8 +248,66 @@ pub enum ResourceState {
     Error,
 }
 
+impl Default for ResourceState {
+    fn default() -> Self {
+        Self::Creating
+    }
+}
+
+impl Checksummable for ResourceState {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            ResourceState::Creating => 0u8,
+            ResourceState::Active => 1u8,
+            ResourceState::Borrowed => 2u8,
+            ResourceState::Finalizing => 3u8,
+            ResourceState::Dropped => 4u8,
+            ResourceState::Error => 5u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceState {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        let discriminant = match self {
+            ResourceState::Creating => 0u8,
+            ResourceState::Active => 1u8,
+            ResourceState::Borrowed => 2u8,
+            ResourceState::Finalizing => 3u8,
+            ResourceState::Dropped => 4u8,
+            ResourceState::Error => 5u8,
+        };
+        discriminant.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResourceState {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        let discriminant = u8::from_bytes_with_provider(reader, provider)?;
+        match discriminant {
+            0 => Ok(ResourceState::Creating),
+            1 => Ok(ResourceState::Active),
+            2 => Ok(ResourceState::Borrowed),
+            3 => Ok(ResourceState::Finalizing),
+            4 => Ok(ResourceState::Dropped),
+            5 => Ok(ResourceState::Error),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid ResourceState discriminant",
+            )),
+        }
+    }
+}
+
 /// Component resource context
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ComponentResourceContext {
     component_id:       ComponentInstanceId,
     /// Active resource handles owned by component
@@ -167,8 +322,54 @@ struct ComponentResourceContext {
     async_config:       AsyncResourceConfig,
 }
 
+impl wrt_foundation::traits::Checksummable for ComponentResourceContext {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_runtime::Checksummable;
+        self.component_id.update_checksum(checksum);
+        self.owned_resources.update_checksum(checksum);
+        self.borrowed_resources.update_checksum(checksum);
+        self.active_operations.update_checksum(checksum);
+        self.resource_limits.update_checksum(checksum);
+        self.async_config.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ComponentResourceContext {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        use wrt_runtime::ToBytes;
+        self.component_id.to_bytes_with_provider(writer, provider)?;
+        self.owned_resources.to_bytes_with_provider(writer, provider)?;
+        self.borrowed_resources.to_bytes_with_provider(writer, provider)?;
+        self.active_operations.to_bytes_with_provider(writer, provider)?;
+        self.resource_limits.to_bytes_with_provider(writer, provider)?;
+        self.async_config.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ComponentResourceContext {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        use wrt_runtime::FromBytes;
+        Ok(Self {
+            component_id: ComponentInstanceId::from_bytes_with_provider(reader, provider)?,
+            owned_resources: BoundedMap::from_bytes_with_provider(reader, provider)?,
+            borrowed_resources: BoundedMap::from_bytes_with_provider(reader, provider)?,
+            active_operations: BoundedVec::from_bytes_with_provider(reader, provider)?,
+            resource_limits: ResourceLimits::from_bytes_with_provider(reader, provider)?,
+            async_config: AsyncResourceConfig::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Resource information
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct ResourceInfo {
     handle:           ResourceHandle,
     resource_type:    ResourceType,
@@ -177,6 +378,97 @@ struct ResourceInfo {
     last_accessed:    AtomicU64,
     reference_count:  AtomicU32,
     async_operations: AtomicU32,
+}
+
+impl Clone for ResourceInfo {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle,
+            resource_type: self.resource_type,
+            state: self.state,
+            created_at: self.created_at,
+            last_accessed: AtomicU64::new(self.last_accessed.load(Ordering::Relaxed)),
+            reference_count: AtomicU32::new(self.reference_count.load(Ordering::Relaxed)),
+            async_operations: AtomicU32::new(self.async_operations.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl PartialEq for ResourceInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+            && self.resource_type == other.resource_type
+            && self.state == other.state
+            && self.created_at == other.created_at
+            && self.last_accessed.load(Ordering::Relaxed) == other.last_accessed.load(Ordering::Relaxed)
+            && self.reference_count.load(Ordering::Relaxed) == other.reference_count.load(Ordering::Relaxed)
+            && self.async_operations.load(Ordering::Relaxed) == other.async_operations.load(Ordering::Relaxed)
+    }
+}
+
+impl Eq for ResourceInfo {}
+
+impl Default for ResourceInfo {
+    fn default() -> Self {
+        Self {
+            handle: ResourceHandle::new(0),
+            resource_type: ResourceType::default(),
+            state: ResourceState::default(),
+            created_at: 0,
+            last_accessed: AtomicU64::new(0),
+            reference_count: AtomicU32::new(0),
+            async_operations: AtomicU32::new(0),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for ResourceInfo {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_runtime::Checksummable;
+        self.handle.update_checksum(checksum);
+        self.resource_type.update_checksum(checksum);
+        self.state.update_checksum(checksum);
+        self.created_at.update_checksum(checksum);
+        self.last_accessed.load(Ordering::Relaxed).update_checksum(checksum);
+        self.reference_count.load(Ordering::Relaxed).update_checksum(checksum);
+        self.async_operations.load(Ordering::Relaxed).update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ResourceInfo {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        use wrt_runtime::ToBytes;
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        self.resource_type.to_bytes_with_provider(writer, provider)?;
+        self.state.to_bytes_with_provider(writer, provider)?;
+        self.created_at.to_bytes_with_provider(writer, provider)?;
+        self.last_accessed.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.reference_count.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.async_operations.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ResourceInfo {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        use wrt_runtime::FromBytes;
+        Ok(Self {
+            handle: ResourceHandle::from_bytes_with_provider(reader, provider)?,
+            resource_type: ResourceType::from_bytes_with_provider(reader, provider)?,
+            state: ResourceState::from_bytes_with_provider(reader, provider)?,
+            created_at: u64::from_bytes_with_provider(reader, provider)?,
+            last_accessed: AtomicU64::new(u64::from_bytes_with_provider(reader, provider)?),
+            reference_count: AtomicU32::new(u32::from_bytes_with_provider(reader, provider)?),
+            async_operations: AtomicU32::new(u32::from_bytes_with_provider(reader, provider)?),
+        })
+    }
 }
 
 /// Borrow information
@@ -188,8 +480,55 @@ struct BorrowInfo {
     borrowed_from: ComponentInstanceId,
 }
 
+impl Default for BorrowInfo {
+    fn default() -> Self {
+        Self {
+            handle: ResourceHandle::new(0),
+            borrow_type: ResourceBorrowType::Shared,
+            borrowed_at: 0,
+            borrowed_from: ComponentInstanceId::new(0),
+        }
+    }
+}
+
+impl PartialEq for BorrowInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+    }
+}
+
+impl Eq for BorrowInfo {}
+
+impl Checksummable for BorrowInfo {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.handle.update_checksum(checksum);
+        self.borrowed_at.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for BorrowInfo {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        self.borrowed_at.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for BorrowInfo {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self::default())
+    }
+}
+
 /// Resource limits per component
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ResourceLimits {
     max_owned_resources:       usize,
     max_borrowed_resources:    usize,
@@ -197,14 +536,103 @@ struct ResourceLimits {
     resource_memory_limit:     usize,
 }
 
+impl Checksummable for ResourceLimits {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.max_owned_resources.update_checksum(checksum);
+        self.max_borrowed_resources.update_checksum(checksum);
+        self.max_concurrent_operations.update_checksum(checksum);
+        self.resource_memory_limit.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceLimits {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.max_owned_resources.to_bytes_with_provider(writer, provider)?;
+        self.max_borrowed_resources.to_bytes_with_provider(writer, provider)?;
+        self.max_concurrent_operations.to_bytes_with_provider(writer, provider)?;
+        self.resource_memory_limit.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ResourceLimits {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self {
+            max_owned_resources: usize::from_bytes_with_provider(reader, provider)?,
+            max_borrowed_resources: usize::from_bytes_with_provider(reader, provider)?,
+            max_concurrent_operations: usize::from_bytes_with_provider(reader, provider)?,
+            resource_memory_limit: usize::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Async resource configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct AsyncResourceConfig {
     enable_async_creation: bool,
     enable_async_methods:  bool,
     enable_async_drop:     bool,
     default_timeout_ms:    u64,
     max_operation_fuel:    u64,
+}
+
+impl Checksummable for AsyncResourceConfig {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.enable_async_creation.update_checksum(checksum);
+        self.enable_async_methods.update_checksum(checksum);
+        self.enable_async_drop.update_checksum(checksum);
+        self.default_timeout_ms.update_checksum(checksum);
+        self.max_operation_fuel.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for AsyncResourceConfig {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.enable_async_creation.to_bytes_with_provider(writer, provider)?;
+        self.enable_async_methods.to_bytes_with_provider(writer, provider)?;
+        self.enable_async_drop.to_bytes_with_provider(writer, provider)?;
+        self.default_timeout_ms.to_bytes_with_provider(writer, provider)?;
+        self.max_operation_fuel.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for AsyncResourceConfig {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self {
+            enable_async_creation: bool::from_bytes_with_provider(reader, provider)?,
+            enable_async_methods: bool::from_bytes_with_provider(reader, provider)?,
+            enable_async_drop: bool::from_bytes_with_provider(reader, provider)?,
+            default_timeout_ms: u64::from_bytes_with_provider(reader, provider)?,
+            max_operation_fuel: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+impl Default for AsyncResourceConfig {
+    fn default() -> Self {
+        Self {
+            enable_async_creation: true,
+            enable_async_methods: true,
+            enable_async_drop: true,
+            default_timeout_ms: 5000,
+            max_operation_fuel: 10000,
+        }
+    }
 }
 
 /// Resource operation statistics
@@ -223,7 +651,7 @@ struct ResourceOperationStats {
 }
 
 /// Resource completion callback
-type ResourceCompletionCallback = Box<dyn FnOnce(Result<ComponentValue, Error>) + Send>;
+type ResourceCompletionCallback = Box<dyn FnOnce(Result<ComponentValue<ComponentProvider>>) + Send>;
 
 impl ResourceAsyncOperations {
     /// Create new resource async operations manager
@@ -231,9 +659,9 @@ impl ResourceAsyncOperations {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
         Ok(Self {
             abi_support,
-            lifecycle_manager: ResourceLifecycleManager::new()?,
-            active_operations: BoundedMap::new(provider.clone())?,
-            resource_contexts: BoundedMap::new(provider.clone())?,
+            lifecycle_manager: (),
+            active_operations: BoundedMap::new(),
+            resource_contexts: BoundedMap::new(),
             next_operation_id: AtomicU64::new(1),
             resource_stats: ResourceOperationStats::default(),
         })
@@ -245,7 +673,7 @@ impl ResourceAsyncOperations {
         component_id: ComponentInstanceId,
         limits: Option<ResourceLimits>,
         config: Option<AsyncResourceConfig>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let limits = limits.unwrap_or_else(|| ResourceLimits {
             max_owned_resources:       64,
             max_borrowed_resources:    32,
@@ -264,9 +692,9 @@ impl ResourceAsyncOperations {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentResourceContext {
             component_id,
-            owned_resources: BoundedMap::new(provider.clone())?,
-            borrowed_resources: BoundedMap::new(provider.clone())?,
-            active_operations: BoundedVec::new(provider)?,
+            owned_resources: BoundedMap::new(),
+            borrowed_resources: BoundedMap::new(),
+            active_operations: BoundedVec::new().unwrap(),
             resource_limits: limits,
             async_config: config,
         };
@@ -283,9 +711,14 @@ impl ResourceAsyncOperations {
         &mut self,
         component_id: ComponentInstanceId,
         resource_type: ResourceType,
-        constructor_args: Vec<ComponentValue>,
+        constructor_args: Vec<ComponentValue<ComponentProvider>>,
         callback: Option<ResourceCompletionCallback>,
-    ) -> Result<ResourceOperationId, Error> {
+    ) -> Result<ResourceOperationId> {
+        // Extract timestamp and operation_id before mutable borrows
+        let timestamp = self.get_timestamp();
+        let operation_id =
+            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+
         let context = self.resource_contexts.get_mut(&component_id).ok_or_else(|| {
             Error::validation_invalid_input("Component not initialized for async resources")
         })?;
@@ -301,9 +734,6 @@ impl ResourceAsyncOperations {
             return Err(Error::resource_limit_exceeded("Too many owned resources"));
         }
 
-        let operation_id =
-            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
-
         // Create async operation
         let operation = ResourceAsyncOperation {
             id: operation_id,
@@ -314,7 +744,7 @@ impl ResourceAsyncOperations {
             resource_handle: None,
             resource_type: resource_type.clone(),
             abi_operation_id: None,
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
             completion_callback: callback,
         };
@@ -323,7 +753,7 @@ impl ResourceAsyncOperations {
         let abi_op_id = self.abi_support.async_resource_call(
             component_id,
             ResourceHandle::new(0), // Temporary handle
-            "constructor".to_string(),
+            String::from("constructor"),
             constructor_args,
         )?;
 
@@ -353,9 +783,14 @@ impl ResourceAsyncOperations {
         component_id: ComponentInstanceId,
         resource_handle: ResourceHandle,
         method_name: String,
-        args: Vec<ComponentValue>,
+        args: Vec<ComponentValue<ComponentProvider>>,
         callback: Option<ResourceCompletionCallback>,
-    ) -> Result<ResourceOperationId, Error> {
+    ) -> Result<ResourceOperationId> {
+        // Extract timestamp and operation_id before mutable borrows
+        let timestamp = self.get_timestamp();
+        let operation_id =
+            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+
         let context = self
             .resource_contexts
             .get_mut(&component_id)
@@ -367,35 +802,21 @@ impl ResourceAsyncOperations {
             ));
         }
 
-        // Verify resource ownership or borrow
-        let resource_info = context
-            .owned_resources
-            .get(&resource_handle)
-            .or_else(|| {
-                context.borrowed_resources.get(&resource_handle).map(|borrow| &ResourceInfo {
-                    handle:           resource_handle,
-                    resource_type:    ResourceType::new("borrowed"),
-                    state:            ResourceState::Borrowed,
-                    created_at:       borrow.borrowed_at,
-                    last_accessed:    AtomicU64::new(self.get_timestamp()),
-                    reference_count:  AtomicU32::new(1),
-                    async_operations: AtomicU32::new(0),
-                })
-            })
-            .ok_or_else(|| {
-                Error::validation_invalid_input("Resource not owned or borrowed by component")
-            })?;
-
-        if resource_info.state != ResourceState::Active
-            && resource_info.state != ResourceState::Borrowed
-        {
-            return Err(Error::validation_invalid_state(
-                "Resource not in valid state for method calls",
-            ));
-        }
-
-        let operation_id =
-            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        // Verify resource ownership or borrow and extract resource_type
+        let resource_type = if let Some(resource_info) = context.owned_resources.get(&resource_handle) {
+            if resource_info.state != ResourceState::Active
+                && resource_info.state != ResourceState::Borrowed
+            {
+                return Err(Error::validation_invalid_state(
+                    "Resource not in valid state for method calls",
+                ));
+            }
+            resource_info.resource_type.clone()
+        } else if context.borrowed_resources.contains_key(&resource_handle) {
+            0 // Borrowed resource type - placeholder
+        } else {
+            return Err(Error::validation_invalid_input("Resource not owned or borrowed by component"));
+        };
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
@@ -405,9 +826,9 @@ impl ResourceAsyncOperations {
                 args:        args.clone(),
             },
             resource_handle: Some(resource_handle),
-            resource_type: resource_info.resource_type.clone(),
+            resource_type,
             abi_operation_id: None,
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
             completion_callback: callback,
         };
@@ -433,8 +854,10 @@ impl ResourceAsyncOperations {
             .map_err(|_| Error::resource_limit_exceeded("Component operation list full"))?;
 
         // Update resource activity
-        resource_info.last_accessed.store(self.get_timestamp(), Ordering::Release);
-        resource_info.async_operations.fetch_add(1, Ordering::AcqRel);
+        if let Some(resource_info) = context.owned_resources.get_mut(&resource_handle) {
+            resource_info.last_accessed.store(timestamp, Ordering::Release);
+            resource_info.async_operations.fetch_add(1, Ordering::AcqRel);
+        }
 
         self.resource_stats.total_method_calls.fetch_add(1, Ordering::Relaxed);
 
@@ -447,7 +870,12 @@ impl ResourceAsyncOperations {
         component_id: ComponentInstanceId,
         resource_handle: ResourceHandle,
         borrow_type: ResourceBorrowType,
-    ) -> Result<ResourceOperationId, Error> {
+    ) -> Result<ResourceOperationId> {
+        // Extract timestamp before mutable borrow to avoid borrow conflict
+        let timestamp = self.get_timestamp();
+        let operation_id =
+            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+
         let context = self
             .resource_contexts
             .get_mut(&component_id)
@@ -460,9 +888,6 @@ impl ResourceAsyncOperations {
             ));
         }
 
-        let operation_id =
-            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
-
         let operation = ResourceAsyncOperation {
             id: operation_id,
             component_id,
@@ -470,9 +895,9 @@ impl ResourceAsyncOperations {
                 borrow_type: borrow_type.clone(),
             },
             resource_handle: Some(resource_handle),
-            resource_type: ResourceType::new("unknown".to_string()), // Would be resolved
+            resource_type: 0, // Unknown resource type - would be resolved
             abi_operation_id: None,
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
             completion_callback: None,
         };
@@ -482,7 +907,7 @@ impl ResourceAsyncOperations {
         let borrow_info = BorrowInfo {
             handle: resource_handle,
             borrow_type,
-            borrowed_at: self.get_timestamp(),
+            borrowed_at: timestamp,
             borrowed_from: component_id, // Would be actual owner
         };
 
@@ -506,7 +931,12 @@ impl ResourceAsyncOperations {
         component_id: ComponentInstanceId,
         resource_handle: ResourceHandle,
         callback: Option<ResourceCompletionCallback>,
-    ) -> Result<ResourceOperationId, Error> {
+    ) -> Result<ResourceOperationId> {
+        // Extract timestamp first to avoid borrow conflict
+        let timestamp = self.get_timestamp();
+        let operation_id =
+            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+
         let context = self
             .resource_contexts
             .get_mut(&component_id)
@@ -528,17 +958,17 @@ impl ResourceAsyncOperations {
             return Err(Error::validation_invalid_state("Resource already dropped"));
         }
 
-        let operation_id =
-            ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        // Extract resource type before creating operation
+        let resource_type = resource_info.resource_type.clone();
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
             component_id,
             operation_type: ResourceAsyncOperationType::Drop,
             resource_handle: Some(resource_handle),
-            resource_type: resource_info.resource_type.clone(),
+            resource_type,
             abi_operation_id: None,
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
             completion_callback: callback,
         };
@@ -556,12 +986,12 @@ impl ResourceAsyncOperations {
     }
 
     /// Poll all async resource operations
-    pub fn poll_resource_operations(&mut self) -> Result<ResourcePollResult, Error> {
+    pub fn poll_resource_operations(&mut self) -> Result<ResourcePollResult> {
         // Poll underlying ABI operations
         let abi_result = self.abi_support.poll_async_operations()?;
 
-        let mut completed_operations = Vec::new();
-        let mut failed_operations = Vec::new();
+        let mut completed_operations: Vec<ResourceOperationId> = Vec::new();
+        let mut failed_operations: Vec<ResourceOperationId> = Vec::new();
 
         // Check operation statuses
         for (op_id, operation) in self.active_operations.iter() {
@@ -637,7 +1067,7 @@ impl ResourceAsyncOperations {
     fn cleanup_resource_operation(
         &mut self,
         operation_id: ResourceOperationId,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if let Some(operation) = self.active_operations.remove(&operation_id) {
             // Remove from component context
             if let Some(context) = self.resource_contexts.get_mut(&operation.component_id) {

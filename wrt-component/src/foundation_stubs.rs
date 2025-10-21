@@ -24,12 +24,13 @@ pub enum AsilLevel {
     ASIL_B = 2,
     ASIL_C = 3,
     ASIL_D = 4,
-    // Aliases for compatibility
-    AsilA = 1,
-    AsilB = 2,
-    AsilC = 3,
-    AsilD = 4,
 }
+
+// Aliases for compatibility
+pub const AsilA: AsilLevel = AsilLevel::ASIL_A;
+pub const AsilB: AsilLevel = AsilLevel::ASIL_B;
+pub const AsilC: AsilLevel = AsilLevel::ASIL_C;
+pub const AsilD: AsilLevel = AsilLevel::ASIL_D;
 
 #[derive(Debug, Clone)]
 pub struct SafetyContext {
@@ -81,7 +82,7 @@ impl<const SIZE: usize> Default for NoStdProvider<SIZE> {
 impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
     fn allocate(&mut self, size: usize) -> core::result::Result<&mut [u8], wrt_error::Error> {
         if self.allocated + size > SIZE {
-            return Err(wrt_error::Error::OUT_OF_MEMORY;
+            return Err(wrt_error::Error::resource_exhausted("Out of memory"));
         }
         let start = self.allocated;
         self.allocated += size;
@@ -90,7 +91,7 @@ impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
         // Simple implementation - could reset if ptr is at end
-        Ok(()
+        Ok(())
     }
     
     fn available_memory(&self) -> usize {
@@ -143,7 +144,7 @@ impl ThreadManager {
 
     pub fn spawn_thread(&mut self) -> core::result::Result<ThreadId, Error> {
         if self.thread_count >= self.max_threads {
-            return Err(Error::OUT_OF_MEMORY;
+            return Err(Error::resource_exhausted("Maximum threads reached"));
         }
         
         let thread_id = self.thread_count;
@@ -152,7 +153,7 @@ impl ThreadManager {
     }
 
     pub fn get_thread_stats(&self, _thread_id: ThreadId) -> core::result::Result<ThreadExecutionStats, Error> {
-        Ok(ThreadExecutionStats::default()
+        Ok(ThreadExecutionStats::default())
     }
 
     pub fn get_thread_state(&self, _thread_id: ThreadId) -> core::result::Result<ThreadState, Error> {
@@ -163,7 +164,7 @@ impl ThreadManager {
         if self.thread_count > 0 {
             self.thread_count -= 1;
         }
-        Ok(()
+        Ok(())
     }
 }
 

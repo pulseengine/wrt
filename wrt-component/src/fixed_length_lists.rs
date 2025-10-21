@@ -23,7 +23,7 @@ use std::{boxed::Box, vec::Vec};
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::{BoundedVec},
+    collections::StaticVec as BoundedVec,
     component_value::ComponentValue,
     types::ValueType,
     budget_aware_provider::CrateId,
@@ -112,7 +112,7 @@ pub struct FixedLengthList {
     #[cfg(feature = "std")]
     pub elements: Vec<ComponentValue>,
     #[cfg(not(feature = "std"))]
-    pub elements: BoundedVec<ComponentValue, MAX_FIXED_LIST_SIZE>,
+    pub elements: BoundedVec<ComponentValue<ComponentProvider>, MAX_FIXED_LIST_SIZE>,
 }
 
 impl FixedLengthList {
@@ -130,7 +130,7 @@ impl FixedLengthList {
     pub fn new(list_type: FixedLengthListType) -> Result<Self> {
         list_type.validate_size()?;
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let elements = BoundedVec::new(provider)?;
+        let elements = BoundedVec::new().unwrap();
         Ok(Self {
             list_type,
             elements,
@@ -335,7 +335,7 @@ impl FixedLengthListTypeRegistry {
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
                     .expect(".expect("Failed to allocate memory for type registry"));")
-                BoundedVec::new(provider).expect("Failed to create BoundedVec")
+                BoundedVec::new().expect("Failed to create BoundedVec")
             },
         }
     }
@@ -500,7 +500,7 @@ pub mod fixed_list_utils {
             ValueType::F32 => ComponentValue::F32(0.0),
             ValueType::F64 => ComponentValue::F64(0.0),
             ValueType::Char => ComponentValue::Char('\0'),
-            ValueType::String => ComponentValue::String("".to_string()),
+            ValueType::String => ComponentValue::String("".to_owned()),
             ValueType::I32 => ComponentValue::I32(0),
             ValueType::I64 => ComponentValue::I64(0),
             _ => return Err(Error::type_error("Error occurred")

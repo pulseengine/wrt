@@ -228,7 +228,7 @@ mod tests {
         let mut arena = ResourceArena::new(table.clone());
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap();
+        let handle1 = arena.create_resource(1, Arc::new("test1".to_owned())).unwrap();
         let handle2 = arena.create_resource(2, Arc::new(42)).unwrap();
 
         // Verify they exist
@@ -259,7 +259,7 @@ mod tests {
         let mut arena = ResourceArena::new(table.clone());
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap();
+        let handle1 = arena.create_resource(1, Arc::new("test1".to_owned())).unwrap();
         let handle2 = arena.create_resource(2, Arc::new(42)).unwrap();
 
         // Drop one resource
@@ -283,7 +283,7 @@ mod tests {
         // Create resources in a scope
         {
             let mut arena = ResourceArena::new(table.clone());
-            let handle = arena.create_resource(1, Arc::new("test".to_string())).unwrap();
+            let handle = arena.create_resource(1, Arc::new("test".to_owned())).unwrap();
 
             // Verify it exists
             assert!(arena.has_resource(ResourceId(handle)).unwrap());
@@ -311,7 +311,7 @@ mod tests {
         let resource = arena.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string()));
+        assert_eq!(guard.name, Some("answer".to_owned()));
 
         // Check arena name
         assert_eq!(arena.name(), Some("test-arena"));
@@ -327,8 +327,8 @@ mod tests {
         let mut arena2 = ResourceArena::new_with_name(table.clone(), "arena2");
 
         // Add resources to each
-        let handle1 = arena1.create_resource(1, Arc::new("test1".to_string())).unwrap();
-        let handle2 = arena2.create_resource(2, Arc::new("test2".to_string())).unwrap();
+        let handle1 = arena1.create_resource(1, Arc::new("test1".to_owned())).unwrap();
+        let handle2 = arena2.create_resource(2, Arc::new("test2".to_owned())).unwrap();
 
         // Resource should only exist in its arena
         assert!(arena1.has_resource(ResourceId(handle1)).unwrap());

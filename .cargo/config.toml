@@ -9,5 +9,4 @@ rustflags = ["--cfg=coverage"]
 [target.'cfg(llvm_coverage)']
 rustflags = ["--cfg=coverage"]
 
-[env]
-RUSTFMT = { value = "/Users/r/git/wrt2/rustfmt-local", force = true } 
+ 

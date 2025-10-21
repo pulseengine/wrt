@@ -10,8 +10,14 @@ pub mod canonical_options;
 pub mod canonical_realloc;
 pub mod post_return;
 
+// Re-export from canonical module (primary implementation)
 pub use canonical::*;
-pub use canonical_abi::*;
+// Re-export key types from canonical_abi module for consistent access
+pub use canonical_abi::{
+    CanonicalMemory,
+    ComponentType,
+    ComponentValue,
+};
 pub use canonical_options::*;
 pub use canonical_realloc::*;
 pub use post_return::*;
@@ -201,19 +207,19 @@ mod tests {
         // Test empty string
         abi.lower_string(&mut memory, "", 0).unwrap();
         let lifted = abi.lift_string(&memory, 0).unwrap();
-        assert_eq!(lifted, ComponentValue::String("".to_string()));
+        assert_eq!(lifted, ComponentValue::String("".to_owned()));
 
         // Test ASCII string
         abi.lower_string(&mut memory, "Hello, World!", 20).unwrap();
         let lifted = abi.lift_string(&memory, 20).unwrap();
-        assert_eq!(lifted, ComponentValue::String("Hello, World!".to_string()));
+        assert_eq!(lifted, ComponentValue::String("Hello, World!".to_owned()));
 
         // Test Unicode string
         abi.lower_string(&mut memory, "Hello, 世界! 🌍", 40).unwrap();
         let lifted = abi.lift_string(&memory, 40).unwrap();
         assert_eq!(
             lifted,
-            ComponentValue::String("Hello, 世界! 🌍".to_string())
+            ComponentValue::String("Hello, 世界! 🌍".to_owned())
         );
     }
 
@@ -299,12 +305,12 @@ mod tests {
         let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024);
 
-        let cases = vec!["red".to_string(), "green".to_string(), "blue".to_string()];
+        let cases = vec!["red".to_owned(), "green".to_owned(), "blue".to_owned()];
 
         // Test valid discriminant
         memory.write_u32_le(0, 1).unwrap(); // green
         let lifted = abi.lift_enum(&memory, &cases, 0).unwrap();
-        assert_eq!(lifted, ComponentValue::Enum("green".to_string()));
+        assert_eq!(lifted, ComponentValue::Enum("green".to_owned()));
 
         // Test invalid discriminant
         memory.write_u32_le(4, 5).unwrap(); // out of bounds
@@ -319,14 +325,14 @@ mod tests {
         let mut memory = SimpleMemory::new(1024);
 
         let cases = vec![
-            ("none".to_string(), None),
-            ("some".to_string(), Some(ComponentType::S32)),
+            ("none".to_owned(), None),
+            ("some".to_owned(), Some(ComponentType::S32)),
         ];
 
         // Test variant without payload
         memory.write_u32_le(0, 0).unwrap(); // none
         let lifted = abi.lift_variant(&memory, &cases, 0).unwrap();
-        assert_eq!(lifted, ComponentValue::Variant("none".to_string(), None));
+        assert_eq!(lifted, ComponentValue::Variant("none".to_owned(), None));
 
         // Test invalid discriminant
         memory.write_u32_le(4, 5).unwrap(); // out of bounds
@@ -375,10 +381,10 @@ mod tests {
         let mut memory = SimpleMemory::new(1024);
 
         let flags = vec![
-            "read".to_string(),
-            "write".to_string(),
-            "execute".to_string(),
-            "delete".to_string(),
+            "read".to_owned(),
+            "write".to_owned(),
+            "execute".to_owned(),
+            "delete".to_owned(),
         ];
 
         // Test with some flags set
@@ -386,10 +392,10 @@ mod tests {
         let lifted = abi.lift_flags(&memory, &flags, 0).unwrap();
         if let ComponentValue::Flags(active_flags) = lifted {
             assert_eq!(active_flags.len(), 3);
-            assert!(active_flags.contains(&"read".to_string()));
-            assert!(active_flags.contains(&"write".to_string()));
-            assert!(active_flags.contains(&"delete".to_string()));
-            assert!(!active_flags.contains(&"execute".to_string()));
+            assert!(active_flags.contains(&"read".to_owned()));
+            assert!(active_flags.contains(&"write".to_owned()));
+            assert!(active_flags.contains(&"delete".to_owned()));
+            assert!(!active_flags.contains(&"execute".to_owned()));
         } else {
             panic!("Expected Flags value");
         }
@@ -437,8 +443,8 @@ mod tests {
 
         // Record type
         let record = ComponentType::Record(vec![
-            ("x".to_string(), ComponentType::S32),
-            ("y".to_string(), ComponentType::F32),
+            ("x".to_owned(), ComponentType::S32),
+            ("y".to_owned(), ComponentType::F32),
         ]);
         assert_eq!(abi.size_of(&record).unwrap(), 8); // 4 + 4
 
@@ -447,14 +453,14 @@ mod tests {
         assert_eq!(abi.size_of(&tuple).unwrap(), 12); // 4 + 8
 
         // Enum type
-        let enum_type = ComponentType::Enum(vec!["A".to_string(), "B".to_string()]);
+        let enum_type = ComponentType::Enum(vec!["A".to_owned(), "B".to_owned()]);
         assert_eq!(abi.size_of(&enum_type).unwrap(), 4); // discriminant only
 
         // Flags type
         let flags_type = ComponentType::Flags(vec![
-            "flag1".to_string(),
-            "flag2".to_string(),
-            "flag3".to_string(),
+            "flag1".to_owned(),
+            "flag2".to_owned(),
+            "flag3".to_owned(),
         ]);
         assert_eq!(abi.size_of(&flags_type).unwrap(), 1); // 3 bits -> 1 byte
     }
@@ -486,8 +492,8 @@ mod tests {
 
         // Record with mixed alignment
         let record = ComponentType::Record(vec![
-            ("a".to_string(), ComponentType::S8),
-            ("b".to_string(), ComponentType::S64),
+            ("a".to_owned(), ComponentType::S8),
+            ("b".to_owned(), ComponentType::S64),
         ]);
         assert_eq!(abi.align_of(&record).unwrap(), 8); // max alignment
 
@@ -722,7 +728,7 @@ mod tests {
         // Test empty string
         abi.lower_string(&mut memory, "", 0).unwrap();
         let lifted = abi.lift_string(&memory, 0).unwrap();
-        assert_eq!(lifted, ComponentValue::String("".to_string()));
+        assert_eq!(lifted, ComponentValue::String("".to_owned()));
 
         // Test empty list
         let empty_list: Vec<ComponentValue> = vec![];

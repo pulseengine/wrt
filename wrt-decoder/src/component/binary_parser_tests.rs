@@ -6,6 +6,11 @@
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+    use alloc::vec::Vec;
+    use alloc::vec;
+    use alloc::format;
+
     use wrt_error::ErrorCategory;
 
     use super::super::binary_parser::*;

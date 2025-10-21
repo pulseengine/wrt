@@ -29,7 +29,7 @@ use wrt_error::{
 };
 #[cfg(all(feature = "component-model-async", not(feature = "std")))]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     safe_memory::NoStdProvider,
 };
 #[cfg(all(feature = "component-model-async", feature = "std"))]
@@ -161,7 +161,7 @@ impl AsyncValueStore {
                         &async_value
                             .error
                             .clone()
-                            .unwrap_or_else(|| "Async operation failed".to_string()),
+                            .unwrap_or_else(|| "Async operation failed".to_owned()),
                     ))
                 } else {
                     Err(Error::async_error("Error occurred"))
@@ -444,7 +444,7 @@ mod tests {
 
         // Test error handling
         let id2 = store.create_async(AsyncStatus::Pending);
-        store.set_error(id2, "Test error".to_string()).unwrap();
+        store.set_error(id2, "Test error".to_owned()).unwrap();
 
         assert_eq!(store.get_status(id2).unwrap(), AsyncStatus::Failed);
         assert!(store.get_result(id2).is_err());
@@ -521,7 +521,7 @@ mod tests {
             async_store.set_result(ready_id, vec![ComponentValue::U32(42)]).unwrap();
 
             let failed_id = async_store.create_async(AsyncStatus::Pending);
-            async_store.set_error(failed_id, "Test error".to_string()).unwrap();
+            async_store.set_error(failed_id, "Test error".to_owned()).unwrap();
 
             (pending_id, ready_id, failed_id)
         };

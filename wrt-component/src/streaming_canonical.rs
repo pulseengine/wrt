@@ -26,7 +26,7 @@ use wrt_foundation::{
 };
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{ BoundedString},
     prelude::*,
 };
 
@@ -52,13 +52,13 @@ pub struct StreamingCanonicalAbi {
     #[cfg(feature = "std")]
     streams: Vec<StreamingContext>,
     #[cfg(not(any(feature = "std", )))]
-    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS, NoStdProvider<65536>>,
+    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS>,
     
     /// Buffer pool for reusing memory
     #[cfg(feature = "std")]
     buffer_pool: Vec<Vec<u8>>,
     #[cfg(not(any(feature = "std", )))]
-    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>, 16>,
+    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>, 16>,
     
     /// Next stream ID
     next_stream_id: u32,
@@ -78,7 +78,7 @@ pub struct StreamingContext {
     #[cfg(feature = "std")]
     pub buffer: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>,
+    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>,
     /// Bytes read/written so far
     pub bytes_processed: u64,
     /// Stream direction
@@ -183,22 +183,12 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            streams: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create bounded vector for streaming contexts")
-                })?
-            },
+            streams: BoundedVec::new(),
             
             #[cfg(feature = "std")]
             buffer_pool: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer_pool: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create bounded vector for buffer pool")
-                })?
-            },
+            buffer_pool: BoundedVec::new(),
             
             next_stream_id: 1,
             backpressure_config: BackpressureConfig::default(),
@@ -221,12 +211,7 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             buffer: self.get_buffer_from_pool(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create bounded vector for stream buffer")
-                })?
-            },
+            buffer: BoundedVec::new(),
             bytes_processed: 0,
             direction,
             backpressure: BackpressureState::new(&self.backpressure_config),

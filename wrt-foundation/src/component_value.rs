@@ -467,6 +467,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
 pub enum ComponentValue<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Invalid/uninitialized value
     Void,
+    /// Unit value (no data, but meaningful presence - like `()` in Rust)
+    Unit,
     /// Boolean value (true/false)
     Bool(bool),
     /// Signed 8-bit integer
@@ -520,6 +522,8 @@ pub enum ComponentValue<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     Own(u32),
     /// Reference to a borrowed resource (`u32` representation)
     Borrow(u32),
+    /// Generic handle to a resource
+    Handle(u32),
     /// Error context information
     ErrorContext(BoundedVec<ValueRef, MAX_COMPONENT_ERROR_CONTEXT_ITEMS, P>),
 }
@@ -535,6 +539,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Com
         // Manually write a discriminant byte then checksum the inner value
         match self {
             ComponentValue::Void => checksum.update_slice(&[0]),
+            ComponentValue::Unit => checksum.update_slice(&[255]),
             ComponentValue::Bool(v) => {
                 checksum.update_slice(&[1]);
                 v.update_checksum(checksum);
@@ -648,6 +653,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Com
                 checksum.update_slice(&[24]);
                 handle.update_checksum(checksum);
             },
+            ComponentValue::Handle(handle) => {
+                checksum.update_slice(&[26]);
+                handle.update_checksum(checksum);
+            },
             ComponentValue::ErrorContext(v) => {
                 checksum.update_slice(&[25]);
                 v.update_checksum(checksum);
@@ -662,6 +671,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> PartialEq for Compone
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (ComponentValue::Void, ComponentValue::Void) => true,
+            (ComponentValue::Unit, ComponentValue::Unit) => true,
             (ComponentValue::Bool(a), ComponentValue::Bool(b)) => a == b,
             (ComponentValue::S8(a), ComponentValue::S8(b)) => a == b,
             (ComponentValue::U8(a), ComponentValue::U8(b)) => a == b,
@@ -697,6 +707,108 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> PartialEq for Compone
 }
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Eq for ComponentValue<P> {}
 
+// Manual implementation of Hash for ComponentValue
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Hash for ComponentValue<P> {
+    fn hash<H: CoreHasher>(&self, state: &mut H) {
+        // Hash discriminant first
+        core::mem::discriminant(self).hash(state);
+
+        // Then hash the data for each variant
+        match self {
+            ComponentValue::Void | ComponentValue::Unit => {},
+            ComponentValue::Bool(v) => v.hash(state),
+            ComponentValue::S8(v) => v.hash(state),
+            ComponentValue::U8(v) => v.hash(state),
+            ComponentValue::S16(v) => v.hash(state),
+            ComponentValue::U16(v) => v.hash(state),
+            ComponentValue::S32(v) => v.hash(state),
+            ComponentValue::U32(v) => v.hash(state),
+            ComponentValue::S64(v) => v.hash(state),
+            ComponentValue::U64(v) => v.hash(state),
+            ComponentValue::F32(v) => v.hash(state),
+            ComponentValue::F64(v) => v.hash(state),
+            ComponentValue::Char(v) => v.hash(state),
+            ComponentValue::String(v) => v.hash(state),
+            ComponentValue::List(v) => v.hash(state),
+            ComponentValue::FixedList(v, len) => {
+                v.hash(state);
+                len.hash(state);
+            },
+            ComponentValue::Record(v) => v.hash(state),
+            ComponentValue::Variant(name, val) => {
+                name.hash(state);
+                val.hash(state);
+            },
+            ComponentValue::Tuple(v) => v.hash(state),
+            ComponentValue::Flags(v) => v.hash(state),
+            ComponentValue::Enum(v) => v.hash(state),
+            ComponentValue::Option(v) => v.hash(state),
+            ComponentValue::Result(v) => v.hash(state),
+            ComponentValue::Own(v) => v.hash(state),
+            ComponentValue::Borrow(v) => v.hash(state),
+            ComponentValue::Handle(v) => v.hash(state),
+            ComponentValue::ErrorContext(v) => v.hash(state),
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValue<P> {
+    /// Get the type of this component value
+    ///
+    /// NOTE: This returns a ValType with type references (ValTypeRef) that may need
+    /// resolution via a type table. For complex types (Record, Variant, List, etc.),
+    /// the returned type will contain indices that require lookup in a ComponentValueStore.
+    pub fn get_type(&self) -> ValType<P> {
+        match self {
+            ComponentValue::Void => ValType::Void,
+            ComponentValue::Unit => ValType::Tuple(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty tuple type"))),
+            ComponentValue::Bool(_) => ValType::Bool,
+            ComponentValue::S8(_) => ValType::S8,
+            ComponentValue::U8(_) => ValType::U8,
+            ComponentValue::S16(_) => ValType::S16,
+            ComponentValue::U16(_) => ValType::U16,
+            ComponentValue::S32(_) => ValType::S32,
+            ComponentValue::U32(_) => ValType::U32,
+            ComponentValue::S64(_) => ValType::S64,
+            ComponentValue::U64(_) => ValType::U64,
+            ComponentValue::F32(_) => ValType::F32,
+            ComponentValue::F64(_) => ValType::F64,
+            ComponentValue::Char(_) => ValType::Char,
+            ComponentValue::String(_) => ValType::String,
+            // For complex types that use ValueRef, we return placeholder types
+            // TODO: These need a type table to properly resolve the ValTypeRef
+            ComponentValue::List(_) => ValType::List(ValTypeRef(0)), // Placeholder index
+            ComponentValue::FixedList(_, size) => ValType::FixedList(ValTypeRef(0), *size),
+            ComponentValue::Record(_) => {
+                // Return empty record - proper resolution requires type table
+                ValType::Record(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty record type")))
+            },
+            ComponentValue::Variant(_, _) => {
+                // Return empty variant - proper resolution requires type table
+                ValType::Variant(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty variant type")))
+            },
+            ComponentValue::Tuple(_) => {
+                // Return empty tuple - proper resolution requires type table
+                ValType::Tuple(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty tuple type")))
+            },
+            ComponentValue::Flags(_) => {
+                // Return empty flags - proper resolution requires type table
+                ValType::Flags(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty flags type")))
+            },
+            ComponentValue::Enum(_) => {
+                // Return empty enum - proper resolution requires type table
+                ValType::Enum(BoundedVec::new(P::default()).unwrap_or_else(|_| panic!("Failed to create empty enum type")))
+            },
+            ComponentValue::Option(_) => ValType::Option(ValTypeRef(0)), // Placeholder index
+            ComponentValue::Result(_) => ValType::Result { ok: None, err: None }, // Placeholder
+            ComponentValue::Own(idx) => ValType::Own(*idx),
+            ComponentValue::Borrow(idx) => ValType::Borrow(*idx),
+            ComponentValue::Handle(idx) => ValType::Own(*idx), // Handle maps to Own
+            ComponentValue::ErrorContext(_) => ValType::ErrorContext,
+        }
+    }
+}
+
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for ComponentValue<P> {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
@@ -705,6 +817,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Component
     ) -> Result<()> {
         match self {
             ComponentValue::Void => writer.write_u8(0)?,
+            ComponentValue::Unit => writer.write_u8(255)?,
             ComponentValue::Bool(b) => {
                 writer.write_u8(1)?;
                 writer.write_u8(if *b { 1 } else { 0 })?;
@@ -834,6 +947,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Component
             ComponentValue::ErrorContext(items) => {
                 writer.write_u8(25)?;
                 items.to_bytes_with_provider(writer, provider)?;
+            },
+            ComponentValue::Handle(handle) => {
+                writer.write_u8(26)?;
+                writer.write_u32_le(*handle)?;
             },
         }
         Ok(())
@@ -975,6 +1092,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                 let items = BoundedVec::<ValueRef, MAX_COMPONENT_ERROR_CONTEXT_ITEMS, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::ErrorContext(items))
             },
+            26 => Ok(ComponentValue::Handle(reader.read_u32_le()?)),
+            255 => Ok(ComponentValue::Unit),
             _ => Err(SerializationError::InvalidFormat.into()),
         }
     }

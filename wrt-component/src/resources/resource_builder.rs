@@ -3,6 +3,18 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    boxed::Box,
+    string::String,
+};
+#[cfg(feature = "std")]
+use std::boxed::Box;
+
+use wrt_foundation::prelude::{Arc, Mutex};
+
 use super::{
     MemoryStrategy,
     VerificationLevel,
@@ -43,7 +55,14 @@ where
 
     /// Set a debug name for the resource
     pub fn with_name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string());
+        #[cfg(feature = "std")]
+        {
+            self.name = Some(name.to_string());
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.name = Some(String::from(name));
+        }
         self
     }
 
@@ -75,11 +94,15 @@ where
     /// Build the resource (no_std version)
     #[cfg(not(feature = "std"))]
     pub fn build(self) -> (super::Resource, MemoryStrategy, VerificationLevel) {
+        // In no_std, Resource stores a data pointer (usize), not the actual data
+        // We box the data and convert to a raw pointer
+        let data_ptr = Box::into_raw(Box::new(self.data)) as *mut () as usize;
+
         // Create the resource
         let resource = if let Some(name) = self.name {
-            super::Resource::new_with_name(self.type_idx, Box::new(self.data), &name)
+            super::Resource::new_with_name(self.type_idx, data_ptr, &name)
         } else {
-            super::Resource::new(self.type_idx, Box::new(self.data))
+            super::Resource::new(self.type_idx, data_ptr)
         };
 
         (resource, self.memory_strategy, self.verification_level)
@@ -159,9 +182,10 @@ impl ResourceTableBuilder {
     }
 
     /// Build the ResourceTable (no_std version)
+    #[cfg(not(feature = "std"))]
     pub fn build(self) -> super::ResourceTable {
         // In no_std there's only one implementation
-        super::ResourceTable::new()
+        super::ResourceTable::new().expect("Failed to create ResourceTable")
     }
 }
 
@@ -240,12 +264,9 @@ impl<'a> ResourceManagerBuilder<'a> {
     }
 
     /// Build the ResourceManager (no_std version)
-    pub fn build<'b>(self, table: &'b Mutex<super::ResourceTable>) -> super::ResourceManager<'b>
-    where
-        'a: 'b,
+    pub fn build(self, table: Arc<Mutex<super::ResourceTable>>) -> super::ResourceManager
     {
         super::ResourceManager::new_with_config(
-            table,
             self.instance_id,
             self.default_memory_strategy,
             self.default_verification_level,
@@ -259,14 +280,14 @@ mod tests {
 
     #[test]
     fn test_resource_builder() {
-        let (resource, strategy, level) = ResourceBuilder::new(1, "test".to_string())
+        let (resource, strategy, level) = ResourceBuilder::new(1, "test".to_owned())
             .with_name("test-resource")
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_verification_level(VerificationLevel::Full)
             .build();
 
         assert_eq!(resource.type_idx, 1);
-        assert_eq!(resource.name, Some("test-resource".to_string()));
+        assert_eq!(resource.name, Some("test-resource".to_owned()));
         assert_eq!(strategy, MemoryStrategy::ZeroCopy);
         assert_eq!(level, VerificationLevel::Full);
     }
@@ -282,7 +303,7 @@ mod tests {
             .build();
 
         // Create a resource to test the table was built correctly
-        let data = Arc::new("test".to_string());
+        let data = Arc::new("test".to_owned());
         let handle = table.create_resource(1, data).unwrap();
         assert_eq!(handle, 1);
     }

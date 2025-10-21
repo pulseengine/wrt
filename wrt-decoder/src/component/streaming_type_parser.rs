@@ -734,11 +734,11 @@ impl<'a> StreamingTypeParser<'a> {
             Ok(Vec::new())
         }
 
-        // For no_std mode, use BoundedVec
+        // For no_std mode, use StaticVec
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_decoder_provider::<4096>()?;
-            Ok(BoundedVec::new(provider)?)
+            use wrt_foundation::collections::StaticVec;
+            Ok(StaticVec::new())
         }
     }
 

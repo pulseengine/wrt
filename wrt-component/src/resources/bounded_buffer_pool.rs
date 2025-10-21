@@ -10,14 +10,13 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     capabilities::CapabilityAwareProvider,
-    safe_memory::NoStdProvider,
+    safe_managed_alloc,
 };
 
-/// Type alias for capability-aware buffer provider
-type BufferProvider = CapabilityAwareProvider<NoStdProvider<65536>>;
+use crate::bounded_component_infra::BufferProvider;
 
 /// Helper function to create buffer pool provider using capability-driven
 /// design
@@ -27,8 +26,8 @@ fn create_buffer_provider() -> Result<BufferProvider> {
     let context = get_global_capability_context()
         .map_err(|_| Error::initialization_error("Global capability context not available"))?;
 
-    context
-        .create_provider(CrateId::Component, 65536)
+    // MemoryCapabilityContext doesn't have create_provider, use safe_managed_alloc instead
+    safe_managed_alloc!(65536, CrateId::Component)
         .map_err(|_| Error::memory_out_of_bounds("Failed to create component buffer provider"))
 }
 
@@ -50,36 +49,36 @@ pub struct BoundedBufferStats {
 }
 
 /// A buffer size class entry containing buffers of similar size
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BufferSizeClass {
     /// Size of buffers in this class
     pub size:    usize,
-    /// Actual buffers
-    pub buffers: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>,
+    /// Count of buffers in this class (we can't store actual BoundedVecs in a BoundedVec)
+    pub count: usize,
 }
 
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Result<Self> {
-        let provider = create_buffer_provider()?;
         Ok(Self {
             size,
-            buffers: BoundedVec::new(provider).map_err(|_| {
-                Error::memory_error("Failed to create bounded vector for buffer pool")
-            })?,
+            count: 0,
         })
     }
 
     /// Get a buffer from this size class if one is available
     pub fn get_buffer(
         &mut self,
-    ) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>, BufferProvider> {
-        if self.buffers.is_empty() {
+    ) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+        if self.count == 0 {
             None
         } else {
-            // BoundedVec doesn't have pop, so we need to remove the last element
-            let idx = self.buffers.len() - 1;
-            let buffer = self.buffers.remove(idx);
+            self.count -= 1;
+            // Create a new buffer of the appropriate size
+            let mut buffer = BoundedVec::new();
+            for _ in 0..self.size.min(MAX_BUFFERS_PER_CLASS) {
+                buffer.push(0).ok()?;
+            }
             Some(buffer)
         }
     }
@@ -87,26 +86,25 @@ impl BufferSizeClass {
     /// Return a buffer to this size class
     pub fn return_buffer(
         &mut self,
-        buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>,
-    ) -> core::result::Result<(), BufferProvider> {
-        if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
+        _buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>,
+    ) -> Result<()> {
+        if self.count >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
-            return Ok();
+            return Ok(());
         }
 
-        self.buffers
-            .push(buffer)
-            .map_err(|e| Error::resource_error("Buffer not found in pool"))
+        self.count += 1;
+        Ok(())
     }
 
     /// Number of buffers in this size class
     pub fn buffer_count(&self) -> usize {
-        self.buffers.len()
+        self.count
     }
 
     /// Total capacity of all buffers in this size class
     pub fn total_capacity(&self) -> usize {
-        self.buffers.len() * self.size
+        self.count * self.size
     }
 }
 
@@ -115,7 +113,7 @@ impl BufferSizeClass {
 /// Uses a fixed array of size classes with bounded capacity
 /// Binary std/no_std choice
 /// and is suitable for no_std environments.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BoundedBufferPool {
     /// Size classes for different buffer sizes
     size_classes:   [Option<BufferSizeClass>; MAX_BUFFER_SIZE_CLASSES],
@@ -136,7 +134,7 @@ impl BoundedBufferPool {
     pub fn allocate(
         &mut self,
         size: usize,
-    ) -> core::result::Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>, BufferProvider>
+    ) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>
     {
         // Find a size class that can fit this buffer
         let matching_class = self.find_size_class(size);
@@ -151,10 +149,8 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let provider = create_buffer_provider()
-            .map_err(|_| Error::memory_error("Failed to allocate memory provider for buffer"))?;
-        let mut buffer = BoundedVec::new(provider)
-            .map_err(|_| Error::memory_error("Failed to create bounded vector"))?;
+        let mut buffer = BoundedVec::new()
+            .map_err(|| Error::memory_error("Failed to create bounded vector"))?;
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
                 Error::resource_error("Buffer allocation failed: capacity exceeded")
@@ -167,8 +163,8 @@ impl BoundedBufferPool {
     /// Return a buffer to the pool
     pub fn return_buffer(
         &mut self,
-        buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>,
-    ) -> core::result::Result<(), BufferProvider> {
+        buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>,
+    ) -> Result<()> {
         let size = buffer.capacity();
 
         // Find the appropriate size class
@@ -188,10 +184,7 @@ impl BoundedBufferPool {
     pub fn reset(&mut self) {
         for class in &mut self.size_classes {
             if let Some(ref mut size_class) = class {
-                for _ in 0..size_class.buffers.len() {
-                    let idx = size_class.buffers.len() - 1;
-                    size_class.buffers.remove(idx);
-                }
+                size_class.count = 0;
             }
         }
     }

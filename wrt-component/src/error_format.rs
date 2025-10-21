@@ -32,7 +32,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
         CanonicalErrorContext::OutOfBounds { addr, size } => {
             format!("Memory access out of bounds at address {:#x}, size {}", addr, size)
         }
-        CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string".to_string(),
+        CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string",
         CanonicalErrorContext::InvalidCodePoint { code_point } => {
             format!("Invalid Unicode code point: {:#x}", code_point)
         }
@@ -42,7 +42,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
         CanonicalErrorContext::NotImplemented(feature) => {
             format!("Feature not implemented: {}", feature)
         }
-        CanonicalErrorContext::TypeMismatch => "Type mismatch".to_string(),
+        CanonicalErrorContext::TypeMismatch => "Type mismatch",
         CanonicalErrorContext::ResourceNotFound { handle } => {
             format!("Resource not found with handle: {}", handle)
         }
@@ -102,10 +102,10 @@ pub fn format_component_error(
         ComponentErrorContext::ExportNotFound(name) => {
             format!("Export not found: {}", name)
         }
-        ComponentErrorContext::InvalidComponentType => "Invalid component type".to_string(),
-        ComponentErrorContext::LinkingFailed => "Component linking failed".to_string(),
-        ComponentErrorContext::InstantiationFailed => "Component instantiation failed".to_string(),
-        ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded".to_string(),
+        ComponentErrorContext::InvalidComponentType => "Invalid component type",
+        ComponentErrorContext::LinkingFailed => "Component linking failed",
+        ComponentErrorContext::InstantiationFailed => "Component instantiation failed",
+        ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded",
     };
 
     Error::runtime_execution_error("Error occurred")

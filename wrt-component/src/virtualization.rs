@@ -1,3 +1,8 @@
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+
 // Placeholder types
 pub use crate::types::ComponentInstanceId;
 use crate::{
@@ -19,16 +24,20 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::StaticVec as BoundedVec,
+    collections::StaticMap as BoundedMap,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
 };
 
 use crate::prelude::WrtComponentValue;
+use crate::bounded_component_infra::ComponentProvider;
 
 const MAX_VIRTUAL_COMPONENTS: usize = 256;
 const MAX_VIRTUAL_IMPORTS: usize = 1024;
@@ -111,7 +120,7 @@ impl From<VirtualizationError> for wrt_error::Error {
 
 pub type VirtualizationResult<T> = wrt_error::Result<T>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Capability {
     Memory {
         max_size: usize,
@@ -121,7 +130,7 @@ pub enum Capability {
         path_prefix: Option<String>,
     },
     Network {
-        allowed_hosts: BoundedVec<String, 32, NoStdProvider<65536>>,
+        allowed_hosts: BoundedVec<String, 32>,
     },
     Time {
         precision_ms: u64,
@@ -135,11 +144,73 @@ pub enum Capability {
     },
     Custom {
         name: String,
-        data: BoundedVec<u8, 256, NoStdProvider<65536>>,
+        data: BoundedVec<u8, 256>,
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+impl Default for Capability {
+    fn default() -> Self {
+        Self::Random
+    }
+}
+
+impl Checksummable for Capability {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Memory { max_size } => {
+                0u8.update_checksum(checksum);
+                max_size.update_checksum(checksum);
+            }
+            Self::FileSystem { .. } => {
+                1u8.update_checksum(checksum);
+            }
+            Self::Network { .. } => {
+                2u8.update_checksum(checksum);
+            }
+            Self::Time { precision_ms } => {
+                3u8.update_checksum(checksum);
+                precision_ms.update_checksum(checksum);
+            }
+            Self::Random => {
+                4u8.update_checksum(checksum);
+            }
+            Self::Threading { max_threads } => {
+                5u8.update_checksum(checksum);
+                max_threads.update_checksum(checksum);
+            }
+            Self::Logging { .. } => {
+                6u8.update_checksum(checksum);
+            }
+            Self::Custom { .. } => {
+                7u8.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+impl ToBytes for Capability {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        match self {
+            Self::Random => 0u8.to_bytes_with_provider(writer, provider),
+            _ => 1u8.to_bytes_with_provider(writer, provider),
+        }
+    }
+}
+
+impl FromBytes for Capability {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self::default())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
     Error = 0,
     Warn  = 1,
@@ -148,7 +219,7 @@ pub enum LogLevel {
     Trace = 4,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CapabilityGrant {
     pub capability: Capability,
     pub granted_to: ComponentInstanceId,
@@ -157,27 +228,100 @@ pub struct CapabilityGrant {
     pub revocable:  bool,
 }
 
+impl Default for CapabilityGrant {
+    fn default() -> Self {
+        Self {
+            capability: Capability::default(),
+            granted_to: ComponentInstanceId::default(),
+            granted_at: 0,
+            expires_at: None,
+            revocable: false,
+        }
+    }
+}
+
+impl Checksummable for CapabilityGrant {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.capability.update_checksum(checksum);
+        self.granted_to.update_checksum(checksum);
+        self.granted_at.update_checksum(checksum);
+        if let Some(expires_at) = self.expires_at {
+            1u8.update_checksum(checksum);
+            expires_at.update_checksum(checksum);
+        } else {
+            0u8.update_checksum(checksum);
+        }
+        self.revocable.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for CapabilityGrant {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.capability.to_bytes_with_provider(writer, provider)?;
+        self.granted_to.to_bytes_with_provider(writer, provider)?;
+        self.granted_at.to_bytes_with_provider(writer, provider)?;
+        match self.expires_at {
+            Some(expires_at) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                expires_at.to_bytes_with_provider(writer, provider)?;
+            }
+            None => {
+                0u8.to_bytes_with_provider(writer, provider)?;
+            }
+        }
+        self.revocable.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for CapabilityGrant {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let capability = Capability::from_bytes_with_provider(reader, provider)?;
+        let granted_to = ComponentInstanceId::from_bytes_with_provider(reader, provider)?;
+        let granted_at = u64::from_bytes_with_provider(reader, provider)?;
+        let has_expiry = u8::from_bytes_with_provider(reader, provider)?;
+        let expires_at = if has_expiry == 1 {
+            Some(u64::from_bytes_with_provider(reader, provider)?)
+        } else {
+            None
+        };
+        let revocable = bool::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            capability,
+            granted_to,
+            granted_at,
+            expires_at,
+            revocable,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VirtualComponent {
     pub instance_id:     ComponentInstanceId,
     pub name:            String,
     pub parent:          Option<ComponentInstanceId>,
-    pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS, NoStdProvider<65536>>,
-    pub capabilities:    BoundedVec<Capability, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
+    pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS>,
+    pub capabilities:    BoundedVec<Capability, MAX_CAPABILITY_GRANTS>,
     pub virtual_imports: BoundedMap<
         String,
         VirtualImport,
         MAX_VIRTUAL_IMPORTS,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     pub virtual_exports: BoundedMap<
         String,
         VirtualExport,
         MAX_VIRTUAL_EXPORTS,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     pub memory_regions:
-        BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS, NoStdProvider<65536>>,
+        BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS>,
     pub isolation_level: IsolationLevel,
     pub resource_limits: ResourceLimits,
     pub is_sandboxed:    bool,
@@ -226,7 +370,7 @@ pub enum ExportVisibility {
     Private,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct VirtualMemoryRegion {
     pub start_addr:  usize,
     pub size:        usize,
@@ -235,22 +379,172 @@ pub struct VirtualMemoryRegion {
     pub mapped_to:   Option<ComponentInstanceId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+impl Checksummable for VirtualMemoryRegion {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.start_addr.update_checksum(checksum);
+        self.size.update_checksum(checksum);
+        self.permissions.update_checksum(checksum);
+        self.shared.update_checksum(checksum);
+        if let Some(id) = &self.mapped_to {
+            id.0.update_checksum(checksum);
+        }
+    }
+}
+
+impl ToBytes for VirtualMemoryRegion {
+    fn serialized_size(&self) -> usize {
+        let ptr_size = core::mem::size_of::<usize>();
+        let base_size = ptr_size * 2 + 4 + 2; // start_addr + size + permissions + shared + has_mapped
+        if self.mapped_to.is_some() {
+            base_size + 4 // Add space for ComponentInstanceId
+        } else {
+            base_size
+        }
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        writer.write_usize_le(self.start_addr)?;
+        writer.write_usize_le(self.size)?;
+        self.permissions.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.shared as u8)?;
+        writer.write_u8(self.mapped_to.is_some() as u8)?;
+        if let Some(id) = &self.mapped_to {
+            writer.write_u32_le(id.0)?;
+        }
+        Ok(())
+    }
+}
+
+impl FromBytes for VirtualMemoryRegion {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let start_addr = reader.read_usize_le()?;
+        let size = reader.read_usize_le()?;
+        let permissions = MemoryPermissions::from_bytes_with_provider(reader, provider)?;
+        let shared = reader.read_u8()? != 0;
+        let has_mapped = reader.read_u8()? != 0;
+
+        let mapped_to = if has_mapped {
+            let id = reader.read_u32_le()?;
+            Some(ComponentInstanceId(id))
+        } else {
+            None
+        };
+
+        Ok(Self {
+            start_addr,
+            size,
+            permissions,
+            shared,
+            mapped_to,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MemoryPermissions {
     pub read:    bool,
     pub write:   bool,
     pub execute: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+impl Checksummable for MemoryPermissions {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.read.update_checksum(checksum);
+        self.write.update_checksum(checksum);
+        self.execute.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for MemoryPermissions {
+    fn serialized_size(&self) -> usize {
+        4 // 4 bytes for flags
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        let flags = (self.read as u32) | ((self.write as u32) << 1) | ((self.execute as u32) << 2);
+        writer.write_u32_le(flags)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for MemoryPermissions {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let flags = reader.read_u32_le()?;
+        Ok(Self {
+            read: (flags & 1) != 0,
+            write: (flags & 2) != 0,
+            execute: (flags & 4) != 0,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum IsolationLevel {
+    #[default]
     None,
     Basic,
     Strong,
     Complete,
 }
 
-#[derive(Debug, Clone)]
+impl Checksummable for IsolationLevel {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::None => 0u8.update_checksum(checksum),
+            Self::Basic => 1u8.update_checksum(checksum),
+            Self::Strong => 2u8.update_checksum(checksum),
+            Self::Complete => 3u8.update_checksum(checksum),
+        }
+    }
+}
+
+impl ToBytes for IsolationLevel {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        let val = match self {
+            Self::None => 0u8,
+            Self::Basic => 1u8,
+            Self::Strong => 2u8,
+            Self::Complete => 3u8,
+        };
+        val.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for IsolationLevel {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let val = u8::from_bytes_with_provider(reader, provider)?;
+        Ok(match val {
+            0 => Self::None,
+            1 => Self::Basic,
+            2 => Self::Strong,
+            3 => Self::Complete,
+            _ => Self::default(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceLimits {
     pub max_memory:              usize,
     pub max_cpu_time_ms:         u64,
@@ -273,25 +567,66 @@ impl Default for ResourceLimits {
     }
 }
 
+impl Checksummable for ResourceLimits {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.max_memory.update_checksum(checksum);
+        self.max_cpu_time_ms.update_checksum(checksum);
+        self.max_file_handles.update_checksum(checksum);
+        self.max_network_connections.update_checksum(checksum);
+        self.max_threads.update_checksum(checksum);
+        self.max_recursive_calls.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceLimits {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.max_memory.to_bytes_with_provider(writer, provider)?;
+        self.max_cpu_time_ms.to_bytes_with_provider(writer, provider)?;
+        self.max_file_handles.to_bytes_with_provider(writer, provider)?;
+        self.max_network_connections.to_bytes_with_provider(writer, provider)?;
+        self.max_threads.to_bytes_with_provider(writer, provider)?;
+        self.max_recursive_calls.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ResourceLimits {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            max_memory: usize::from_bytes_with_provider(reader, provider)?,
+            max_cpu_time_ms: u64::from_bytes_with_provider(reader, provider)?,
+            max_file_handles: u32::from_bytes_with_provider(reader, provider)?,
+            max_network_connections: u32::from_bytes_with_provider(reader, provider)?,
+            max_threads: u32::from_bytes_with_provider(reader, provider)?,
+            max_recursive_calls: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+#[derive(Debug)]
 pub struct VirtualizationManager {
     virtual_components: BoundedMap<
         ComponentInstanceId,
         VirtualComponent,
         MAX_VIRTUAL_COMPONENTS,
-        crate::bounded_component_infra::ComponentProvider,
     >,
-    capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
+    capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS>,
     host_exports: BoundedMap<
         String,
         HostExport,
         MAX_VIRTUAL_EXPORTS,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     sandbox_registry: BoundedMap<
         ComponentInstanceId,
         SandboxState,
         MAX_VIRTUAL_COMPONENTS,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     next_virtual_id:        AtomicU32,
     virtualization_enabled: AtomicBool,
@@ -325,7 +660,7 @@ pub struct SandboxState {
     pub last_violation:  Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResourceUsage {
     pub memory_used:              usize,
     pub cpu_time_used_ms:         u64,
@@ -335,19 +670,59 @@ pub struct ResourceUsage {
     pub recursive_calls_depth:    u32,
 }
 
+impl Checksummable for ResourceUsage {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.memory_used.update_checksum(checksum);
+        self.cpu_time_used_ms.update_checksum(checksum);
+        self.file_handles_used.update_checksum(checksum);
+        self.network_connections_used.update_checksum(checksum);
+        self.threads_used.update_checksum(checksum);
+        self.recursive_calls_depth.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceUsage {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.memory_used.to_bytes_with_provider(writer, provider)?;
+        self.cpu_time_used_ms.to_bytes_with_provider(writer, provider)?;
+        self.file_handles_used.to_bytes_with_provider(writer, provider)?;
+        self.network_connections_used.to_bytes_with_provider(writer, provider)?;
+        self.threads_used.to_bytes_with_provider(writer, provider)?;
+        self.recursive_calls_depth.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ResourceUsage {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            memory_used: usize::from_bytes_with_provider(reader, provider)?,
+            cpu_time_used_ms: u64::from_bytes_with_provider(reader, provider)?,
+            file_handles_used: u32::from_bytes_with_provider(reader, provider)?,
+            network_connections_used: u32::from_bytes_with_provider(reader, provider)?,
+            threads_used: u32::from_bytes_with_provider(reader, provider)?,
+            recursive_calls_depth: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 impl VirtualizationManager {
     pub fn new() -> VirtualizationResult<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let capability_grants = BoundedVec::new(provider).map_err(|_| VirtualizationError {
-            kind:    VirtualizationErrorKind::ResourceExhaustion,
-            message: "Failed to create capability grants storage".to_string(),
-        })?;
+        let capability_grants = BoundedVec::new();
 
         Ok(Self {
-            virtual_components: BoundedMap::new(provider.clone())?,
+            virtual_components: BoundedMap::new(),
             capability_grants,
-            host_exports: BoundedMap::new(provider.clone())?,
-            sandbox_registry: BoundedMap::new(provider.clone())?,
+            host_exports: BoundedMap::new(),
+            sandbox_registry: BoundedMap::new(),
             next_virtual_id: AtomicU32::new(1000),
             virtualization_enabled: AtomicBool::new(true),
         })
@@ -374,8 +749,8 @@ impl VirtualizationManager {
         if !self.is_virtualization_enabled() {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::VirtualizationNotSupported,
-                message: "Virtualization is disabled".to_string(),
-            });
+                message: String::from("Virtualization is disabled"),
+            }.into());
         }
 
         let instance_id =
@@ -383,30 +758,21 @@ impl VirtualizationManager {
 
         let virtual_component = VirtualComponent {
             instance_id,
-            name: name.to_string(),
+            name: String::from(name),
             parent,
             children: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| VirtualizationError {
-                    kind:    VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Failed to create children storage".to_string(),
-                })?
+                BoundedVec::new()
             },
             capabilities: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| VirtualizationError {
-                    kind:    VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Failed to create capabilities storage".to_string(),
-                })?
+                BoundedVec::new()
             },
-            virtual_imports: BoundedMap::new(provider.clone())?,
-            virtual_exports: BoundedMap::new(provider.clone())?,
+            virtual_imports: BoundedMap::new(),
+            virtual_exports: BoundedMap::new(),
             memory_regions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| VirtualizationError {
-                    kind:    VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Failed to create memory regions storage".to_string(),
-                })?
+                BoundedVec::new()
             },
             isolation_level,
             resource_limits: ResourceLimits::default(),
@@ -417,7 +783,7 @@ impl VirtualizationManager {
             if let Some(parent_component) = self.virtual_components.get_mut(&parent_id) {
                 parent_component.children.push(instance_id).map_err(|_| VirtualizationError {
                     kind:    VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Parent component has too many children".to_string(),
+                    message: String::from("Parent component has too many children"),
                 })?;
             }
         }
@@ -425,7 +791,7 @@ impl VirtualizationManager {
         self.virtual_components.insert(instance_id, virtual_component).map_err(|_| {
             VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Too many virtual components".to_string(),
+                message: String::from("Too many virtual components"),
             }
         })?;
 
@@ -440,7 +806,7 @@ impl VirtualizationManager {
             self.sandbox_registry.insert(instance_id, sandbox_state).map_err(|_| {
                 VirtualizationError {
                     kind:    VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Too many sandboxed components".to_string(),
+                    message: String::from("Too many sandboxed components"),
                 }
             })?;
         }
@@ -458,8 +824,8 @@ impl VirtualizationManager {
         if !self.virtual_components.contains_key(&instance_id) {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                message: "Component not found".to_string(),
-            });
+                message: String::from("Component not found"),
+            }.into());
         }
 
         let grant = CapabilityGrant {
@@ -472,13 +838,13 @@ impl VirtualizationManager {
 
         self.capability_grants.push(grant).map_err(|_| VirtualizationError {
             kind:    VirtualizationErrorKind::ResourceExhaustion,
-            message: "Too many capability grants".to_string(),
+            message: String::from("Too many capability grants"),
         })?;
 
         if let Some(component) = self.virtual_components.get_mut(&instance_id) {
             component.capabilities.push(capability).map_err(|_| VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Component has too many capabilities".to_string(),
+                message: String::from("Component has too many capabilities"),
             })?;
         }
 
@@ -510,7 +876,7 @@ impl VirtualizationManager {
                 .get_mut(&instance_id)
                 .ok_or_else(|| VirtualizationError {
                     kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                    message: "Component not found".to_string(),
+                    message: String::from("Component not found"),
                 })?;
 
         let import_name = import.name.clone();
@@ -519,7 +885,7 @@ impl VirtualizationManager {
             .insert(import_name, import)
             .map_err(|_| VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Too many virtual imports".to_string(),
+                message: String::from("Too many virtual imports"),
             })?;
 
         Ok(())
@@ -535,7 +901,7 @@ impl VirtualizationManager {
                 .get_mut(&instance_id)
                 .ok_or_else(|| VirtualizationError {
                     kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                    message: "Component not found".to_string(),
+                    message: String::from("Component not found"),
                 })?;
 
         let export_name = export.name.clone();
@@ -544,7 +910,7 @@ impl VirtualizationManager {
             .insert(export_name, export)
             .map_err(|_| VirtualizationError {
                 kind:    VirtualizationErrorKind::ExportConflict,
-                message: "Export already exists or too many exports".to_string(),
+                message: String::from("Export already exists or too many exports"),
             })?;
 
         Ok(())
@@ -556,36 +922,39 @@ impl VirtualizationManager {
         size: usize,
         permissions: MemoryPermissions,
     ) -> VirtualizationResult<usize> {
-        let component =
-            self.virtual_components
-                .get_mut(&instance_id)
-                .ok_or_else(|| VirtualizationError {
-                    kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                    message: "Component not found".to_string(),
-                })?;
+        // Extract isolation level and limits before mutable borrow
+        let (isolation_level, max_memory, current_usage) = {
+            let component =
+                self.virtual_components
+                    .get(&instance_id)
+                    .ok_or_else(|| VirtualizationError {
+                        kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                        message: String::from("Component not found"),
+                    })?;
 
-        if component.isolation_level == IsolationLevel::None {
+            let current_usage = component.memory_regions.iter().map(|region| region.size).sum::<usize>();
+            (component.isolation_level, component.resource_limits.max_memory, current_usage)
+        };
+
+        if isolation_level == IsolationLevel::None {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::MemoryViolation,
-                message: "Virtual memory not available for non-isolated components".to_string(),
-            });
+                message: String::from("Virtual memory not available for non-isolated components"),
+            }.into());
         }
 
         if !self.check_capability(instance_id, &Capability::Memory { max_size: size }) {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::CapabilityDenied,
-                message: "Insufficient memory capability".to_string(),
-            });
+                message: String::from("Insufficient memory capability"),
+            }.into());
         }
 
-        let current_usage =
-            component.memory_regions.iter().map(|region| region.size).sum::<usize>();
-
-        if current_usage + size > component.resource_limits.max_memory {
+        if current_usage + size > max_memory {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Memory limit exceeded".to_string(),
-            });
+                message: String::from("Memory limit exceeded"),
+            }.into());
         }
 
         let start_addr = self.find_virtual_address_space(size)?;
@@ -598,9 +967,18 @@ impl VirtualizationManager {
             mapped_to: None,
         };
 
+        // Now safely get mutable borrow
+        let component =
+            self.virtual_components
+                .get_mut(&instance_id)
+                .ok_or_else(|| VirtualizationError {
+                    kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                    message: String::from("Component not found"),
+                })?;
+
         component.memory_regions.push(memory_region).map_err(|_| VirtualizationError {
             kind:    VirtualizationErrorKind::ResourceExhaustion,
-            message: "Too many memory regions".to_string(),
+            message: String::from("Too many memory regions"),
         })?;
 
         Ok(start_addr)
@@ -610,25 +988,26 @@ impl VirtualizationManager {
         &self,
         instance_id: ComponentInstanceId,
         import_name: &str,
-    ) -> VirtualizationResult<Option<WrtComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         let component =
             self.virtual_components.get(&instance_id).ok_or_else(|| VirtualizationError {
                 kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                message: "Component not found".to_string(),
+                message: String::from("Component not found"),
             })?;
 
+        let import_name_string = String::from(import_name);
         let import =
-            component.virtual_imports.get(import_name).ok_or_else(|| VirtualizationError {
+            component.virtual_imports.get(&import_name_string).ok_or_else(|| wrt_error::Error::from(VirtualizationError {
                 kind:    VirtualizationErrorKind::ImportNotFound,
-                message: "Component not found",
-            })?;
+                message: String::from("Component not found"),
+            }))?;
 
         if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
                     kind:    VirtualizationErrorKind::CapabilityDenied,
-                    message: "Component not found".to_string(),
-                });
+                    message: String::from("Component not found"),
+                }.into());
             }
         }
 
@@ -657,13 +1036,16 @@ impl VirtualizationManager {
         instance_id: ComponentInstanceId,
         usage_update: ResourceUsage,
     ) -> VirtualizationResult<()> {
+        // Update sandbox state first
         if let Some(sandbox_state) = self.sandbox_registry.get_mut(&instance_id) {
-            sandbox_state.resource_usage = usage_update;
-
-            if let Some(component) = self.virtual_components.get(&instance_id) {
-                self.check_resource_limits(component, &sandbox_state.resource_usage)?;
-            }
+            sandbox_state.resource_usage = usage_update.clone();
         }
+
+        // Check limits separately to avoid borrow conflict
+        if let Some(component) = self.virtual_components.get(&instance_id) {
+            self.check_resource_limits(component, &usage_update)?;
+        }
+
         Ok(())
     }
 
@@ -711,14 +1093,15 @@ impl VirtualizationManager {
         Ok(base_addr)
     }
 
-    fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<WrtComponentValue>> {
-        if let Some(export) = self.host_exports.get(name) {
+    fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
+        let name_string = String::from(name);
+        if let Some(export) = self.host_exports.get(&name_string) {
             match &export.handler {
-                HostExportHandler::Memory { .. } => Ok(Some(WrtComponentValue::U32(0))),
+                HostExportHandler::Memory { .. } => Ok(Some(WrtComponentValue::<ComponentProvider>::U32(0))),
                 HostExportHandler::Time => {
-                    Ok(Some(WrtComponentValue::U64(self.get_current_time())))
+                    Ok(Some(WrtComponentValue::<ComponentProvider>::U64(self.get_current_time())))
                 },
-                HostExportHandler::Random => Ok(Some(WrtComponentValue::U32(42))),
+                HostExportHandler::Random => Ok(Some(WrtComponentValue::<ComponentProvider>::U32(42))),
                 _ => Ok(None),
             }
         } else {
@@ -730,15 +1113,16 @@ impl VirtualizationManager {
         &self,
         parent_id: ComponentInstanceId,
         export_name: &str,
-    ) -> VirtualizationResult<Option<WrtComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         if let Some(parent) = self.virtual_components.get(&parent_id) {
-            if let Some(export) = parent.virtual_exports.get(export_name) {
+            let export_name_string = String::from(export_name);
+            if let Some(export) = parent.virtual_exports.get(&export_name_string) {
                 match export.visibility {
                     ExportVisibility::Public | ExportVisibility::Children => Ok(None),
                     _ => Err(VirtualizationError {
                         kind:    VirtualizationErrorKind::CapabilityDenied,
-                        message: "Export not visible to children".to_string(),
-                    }),
+                        message: String::from("Export not visible to children"),
+                    }.into()),
                 }
             } else {
                 Ok(None)
@@ -752,15 +1136,16 @@ impl VirtualizationManager {
         &self,
         sibling_id: ComponentInstanceId,
         export_name: &str,
-    ) -> VirtualizationResult<Option<WrtComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         if let Some(sibling) = self.virtual_components.get(&sibling_id) {
-            if let Some(export) = sibling.virtual_exports.get(export_name) {
+            let export_name_string = String::from(export_name);
+            if let Some(export) = sibling.virtual_exports.get(&export_name_string) {
                 match export.visibility {
                     ExportVisibility::Public | ExportVisibility::Siblings => Ok(None),
                     _ => Err(VirtualizationError {
                         kind:    VirtualizationErrorKind::CapabilityDenied,
-                        message: "Export not visible to siblings".to_string(),
-                    }),
+                        message: String::from("Export not visible to siblings"),
+                    }.into()),
                 }
             } else {
                 Ok(None)
@@ -773,7 +1158,7 @@ impl VirtualizationManager {
     fn resolve_virtual_provider(
         &self,
         provider_id: &str,
-    ) -> VirtualizationResult<Option<WrtComponentValue>> {
+    ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         Ok(None)
     }
 
@@ -787,29 +1172,29 @@ impl VirtualizationManager {
         if usage.memory_used > limits.max_memory {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Memory limit exceeded".to_string(),
-            });
+                message: String::from("Memory limit exceeded"),
+            }.into());
         }
 
         if usage.cpu_time_used_ms > limits.max_cpu_time_ms {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "CPU time limit exceeded".to_string(),
-            });
+                message: String::from("CPU time limit exceeded"),
+            }.into());
         }
 
         if usage.threads_used > limits.max_threads {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Thread limit exceeded".to_string(),
-            });
+                message: String::from("Thread limit exceeded"),
+            }.into());
         }
 
         if usage.recursive_calls_depth > limits.max_recursive_calls {
             return Err(VirtualizationError {
                 kind:    VirtualizationErrorKind::ResourceExhaustion,
-                message: "Recursion limit exceeded".to_string(),
-            });
+                message: String::from("Recursion limit exceeded"),
+            }.into());
         }
 
         Ok(())
@@ -830,14 +1215,11 @@ pub fn create_memory_capability(max_size: usize) -> Capability {
 
 pub fn create_network_capability(allowed_hosts: &[&str]) -> VirtualizationResult<Capability> {
     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-    let mut hosts = BoundedVec::new(provider).map_err(|_| VirtualizationError {
-        kind:    VirtualizationErrorKind::ResourceExhaustion,
-        message: "Failed to create network hosts storage".to_string(),
-    })?;
+    let mut hosts = BoundedVec::new();
     for host in allowed_hosts {
-        hosts.push(host.to_string()).map_err(|_| VirtualizationError {
+        hosts.push(String::from(*host)).map_err(|_| VirtualizationError {
             kind:    VirtualizationErrorKind::ResourceExhaustion,
-            message: "Too many allowed hosts".to_string(),
+            message: String::from("Too many allowed hosts"),
         })?;
     }
     Ok(Capability::Network {
@@ -902,8 +1284,6 @@ mod tests {
 }
 
 // Implement required traits for SandboxState to work with bounded collections
-use wrt_foundation::traits::Checksummable;
-
 impl Checksummable for SandboxState {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Simple checksum implementation by hashing the key fields

@@ -27,10 +27,10 @@ use crate::bounded_runtime_infra::{
 /// Convert a flat Vec<ValueType> to a BoundedVec<LocalEntry> by grouping
 /// consecutive types of the same kind into LocalEntry structs with count and
 /// type.
-pub fn convert_locals_to_bounded(
+pub fn convert_locals_to_bounded_with_provider(
     locals: &[ValueType],
+    provider: RuntimeProvider,
 ) -> Result<BoundedVec<LocalEntry, 64, RuntimeProvider>> {
-    let provider = create_runtime_provider()?;
 
     let mut bounded_locals = BoundedVec::new(provider)?;
 
@@ -65,6 +65,18 @@ pub fn convert_locals_to_bounded(
     })?;
 
     Ok(bounded_locals)
+}
+
+/// Convert a flat Vec<ValueType> to a BoundedVec<LocalEntry> by grouping
+/// consecutive types of the same kind into LocalEntry structs with count and
+/// type.
+/// 
+/// This is a backward-compatible wrapper that creates its own provider.
+pub fn convert_locals_to_bounded(
+    locals: &[ValueType],
+) -> Result<BoundedVec<LocalEntry, 64, RuntimeProvider>> {
+    let provider = create_runtime_provider()?;
+    convert_locals_to_bounded_with_provider(locals, provider)
 }
 
 /// Convert a BoundedVec<LocalEntry> back to a flat Vec<ValueType>

@@ -104,7 +104,7 @@ pub const MAX_NAME_LEN: usize = MAX_WASM_NAME_LENGTH;
 use core::marker::PhantomData;
 
 /// Represents the type of a WebAssembly component.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct ComponentType<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -116,6 +116,29 @@ where
     pub core_instances:  BoundedVec<CoreInstance<P>, MAX_CORE_INSTANCES, P>,
     pub component_types: BoundedVec<TypeRef, MAX_COMPONENT_TYPES, P>,
     pub core_types:      BoundedVec<CoreType<P>, MAX_CORE_TYPES, P>,
+}
+
+impl<P> ComponentType<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + Debug,
+{
+    /// Creates a unit component type (empty component with no imports/exports)
+    pub fn unit(provider: P) -> wrt_error::Result<Self> {
+        Ok(Self {
+            imports:         BoundedVec::new(provider.clone())?,
+            exports:         BoundedVec::new(provider.clone())?,
+            aliases:         BoundedVec::new(provider.clone())?,
+            instances:       BoundedVec::new(provider.clone())?,
+            core_instances:  BoundedVec::new(provider.clone())?,
+            component_types: BoundedVec::new(provider.clone())?,
+            core_types:      BoundedVec::new(provider)?,
+        })
+    }
+
+    /// Constant-like accessor for Unit type (requires provider)
+    /// This is used in pattern matching contexts like `ComponentType::Unit`
+    #[allow(non_upper_case_globals)]
+    pub const Unit: fn(P) -> wrt_error::Result<Self> = Self::unit;
 }
 
 /// Represents an import for a component or core module.
@@ -194,8 +217,8 @@ where
     Memory(MemoryType),
     Global(GlobalType),
     Tag(FuncType<P>),
-    Component(TypeRef),
-    Instance(TypeRef),
+    Component(ComponentType<P>),
+    Instance(InstanceType<P>),
     CoreModule(TypeRef),
     TypeDef(TypeRef),
     Resource(ResourceType<P>),
@@ -213,7 +236,7 @@ where
 }
 
 /// Represents an instance type for a component.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct InstanceType<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug, /* For BoundedVec default on
@@ -316,7 +339,7 @@ impl FromBytes for ComponentAliasOuterKind {
 }
 
 /// Represents a component instance declaration within a component.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct ComponentInstance<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -324,7 +347,7 @@ where
     pub kind: ComponentInstanceKind<P>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub enum ComponentInstanceKind<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -340,7 +363,7 @@ where
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct ComponentInstantiationArg<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -351,7 +374,7 @@ where
 }
 
 /// Represents a core WebAssembly module instance declaration.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct CoreInstance<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -359,7 +382,7 @@ where
     pub kind: CoreInstanceKind<P>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub enum CoreInstanceKind<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -375,7 +398,7 @@ where
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct CoreInstantiationArg<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -386,7 +409,7 @@ where
 }
 
 /// Represents a core type definition (func, table, memory, global, tag).
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub enum CoreType<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
@@ -863,10 +886,9 @@ where
             ExternType::Memory(t) => t.update_checksum(checksum),
             ExternType::Global(t) => t.update_checksum(checksum),
             ExternType::Tag(t) => t.update_checksum(checksum),
-            ExternType::Component(t)
-            | ExternType::Instance(t)
-            | ExternType::CoreModule(t)
-            | ExternType::TypeDef(t) => t.update_checksum(checksum),
+            ExternType::Component(t) => t.update_checksum(checksum),
+            ExternType::Instance(t) => t.update_checksum(checksum),
+            ExternType::CoreModule(t) | ExternType::TypeDef(t) => t.update_checksum(checksum),
             ExternType::Resource(t) => t.update_checksum(checksum),
         }
     }
@@ -955,10 +977,10 @@ where
             4 => Ok(Self::Tag(FuncType::<P>::from_bytes_with_provider(
                 reader, provider,
             )?)), // Was FuncType<P>
-            5 => Ok(Self::Component(TypeRef::from_bytes_with_provider(
+            5 => Ok(Self::Component(ComponentType::<P>::from_bytes_with_provider(
                 reader, provider,
             )?)),
-            6 => Ok(Self::Instance(TypeRef::from_bytes_with_provider(
+            6 => Ok(Self::Instance(InstanceType::<P>::from_bytes_with_provider(
                 reader, provider,
             )?)),
             7 => Ok(Self::CoreModule(TypeRef::from_bytes_with_provider(

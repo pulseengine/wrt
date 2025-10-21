@@ -5,7 +5,7 @@
 //! resource tables.
 
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
@@ -15,7 +15,7 @@ use wrt_foundation::{
 pub const INVALID_HANDLE: u32 = u32::MAX;
 
 /// Resource handle for Component Model resources
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceHandle(pub u32);
 
 impl ResourceHandle {
@@ -57,7 +57,7 @@ pub struct ResourceTypeMetadata {
     /// Resource type ID
     pub type_id: ResourceTypeId,
     /// Resource type name
-    pub name:    BoundedVec<u8, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub name:    BoundedVec<u8, 256>,
     /// Size of the resource data
     pub size:    usize,
 }
@@ -101,7 +101,7 @@ pub enum ResourceValidationLevel {
 #[derive(Debug, Clone)]
 pub enum ResourceData {
     /// Raw bytes
-    Bytes(BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<65536>>),
+    Bytes(BoundedVec<u8, 4096>),
     /// Custom data pointer (for std only)
     #[cfg(feature = "std")]
     Custom(Box<dyn std::any::Any + Send + Sync>),
@@ -235,7 +235,7 @@ pub struct ResourceManagerStats {
 }
 
 /// Resource manager (stub implementation)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceManager {
     /// Manager configuration
     config:         ResourceManagerConfig,
@@ -387,7 +387,7 @@ pub fn create_resource_data_bytes(
 ) -> core::result::Result<ResourceData, ResourceError> {
     let provider =
         safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
-    let mut vec = BoundedVec::new(provider).unwrap();
+    let mut vec = BoundedVec::new().unwrap();
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -411,7 +411,7 @@ pub fn create_resource_type(
 ) -> core::result::Result<ResourceTypeMetadata, ResourceError> {
     let provider =
         safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
-    let mut name_vec = BoundedVec::new(provider).unwrap();
+    let mut name_vec = BoundedVec::new().unwrap();
     for &byte in name.as_bytes() {
         name_vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -432,12 +432,43 @@ use wrt_foundation::traits::{
     WriteStream,
 };
 
-// Macro to implement basic traits for simple types
-macro_rules! impl_basic_traits {
+// Macro to implement basic traits for tuple structs
+macro_rules! impl_basic_traits_tuple {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 self.0.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                writer: &mut WriteStream<'a>,
+                provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                self.0.to_bytes_with_provider(writer, provider)
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                reader: &mut ReadStream<'a>,
+                provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+            }
+        }
+    };
+}
+
+// Macro to implement basic traits for enums
+macro_rules! impl_basic_traits_enum {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+                // Simple stub - just update with 0
+                0u8.update_checksum(checksum);
             }
         }
 
@@ -478,15 +509,15 @@ impl Default for ResourceData {
     fn default() -> Self {
         Self::Bytes({
             let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-            BoundedVec::new(provider).unwrap()
+            BoundedVec::new().unwrap()
         })
     }
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ResourceHandle, ResourceHandle::default());
-impl_basic_traits!(ResourceTypeId, ResourceTypeId::default());
-impl_basic_traits!(ResourceData, ResourceData::default());
+impl_basic_traits_tuple!(ResourceHandle, ResourceHandle::default());
+impl_basic_traits_tuple!(ResourceTypeId, ResourceTypeId::default());
+impl_basic_traits_enum!(ResourceData, ResourceData::default());
 
 // Tests moved from resource_management_tests.rs
 #[cfg(test)]

@@ -22,6 +22,18 @@ use crate::prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ResourceId(pub u32);
 
+impl ResourceId {
+    /// Create a new resource identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
 /// Trait representing a host resource
 pub trait HostResource {}
 
@@ -246,7 +258,7 @@ impl ResourceManager {
         &self,
         handle: u32,
         operation: FormatResourceOperation,
-    ) -> Result<ComponentValue> {
+    ) -> Result<ComponentValue<ComponentProvider>> {
         let mut table = self
             .table
             .lock()
@@ -417,7 +429,7 @@ mod tests {
         let resource = manager.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string()));
+        assert_eq!(guard.name, Some("answer".to_owned()));
     }
 
     #[test]

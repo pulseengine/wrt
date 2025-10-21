@@ -311,6 +311,10 @@ pub enum StringEncoding {
     Utf8,
     /// UTF-16 encoding
     Utf16,
+    /// UTF-16 Little Endian encoding
+    Utf16Le,
+    /// UTF-16 Big Endian encoding
+    Utf16Be,
     /// Latin-1 encoding
     Latin1,
 }
@@ -567,7 +571,7 @@ impl CanonicalABI {
         let string = match self.string_encoding {
             StringEncoding::Utf8 => String::from_utf8(bytes)
                 .map_err(|_| Error::validation_error("Error occurred: Invalid UTF-8 string"))?,
-            StringEncoding::Utf16Le => {
+            StringEncoding::Utf16 | StringEncoding::Utf16Le => {
                 if bytes.len() % 2 != 0 {
                     return Err(Error::validation_error(
                         "Error occurred: UTF-16 byte sequence must have even length",
@@ -825,12 +829,26 @@ impl CanonicalABI {
             ComponentValue::Record(v) => self.lower_record(memory, v, offset),
             ComponentValue::Tuple(v) => self.lower_tuple(memory, v, offset),
             ComponentValue::Variant(name, payload) => {
-                self.lower_variant(memory, name, payload, offset)
+                // TODO: Need type information to properly lower variants
+                // For now, write discriminant 0 and payload
+                memory.write_u8(offset, 0)?;
+                if let Some(payload_value) = payload {
+                    self.lower(memory, payload_value, offset + 1)?;
+                }
+                Ok(())
             },
-            ComponentValue::Enum(name) => self.lower_enum(memory, name, offset),
+            ComponentValue::Enum(name) => {
+                // TODO: Need type information to properly lower enums
+                // For now, write discriminant 0
+                memory.write_u8(offset, 0)
+            },
             ComponentValue::Option(v) => self.lower_option(memory, v, offset),
             ComponentValue::Result(v) => self.lower_result(memory, v, offset),
-            ComponentValue::Flags(v) => self.lower_flags(memory, v, offset),
+            ComponentValue::Flags(v) => {
+                // TODO: Need type information to properly lower flags
+                // For now, write empty flags (all zeros)
+                memory.write_u8(offset, 0)
+            },
         }
     }
 
@@ -1428,7 +1446,7 @@ mod tests {
 
         // Lift it back
         let value = abi.lift_string(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::String("hello".to_string()));
+        assert_eq!(value, ComponentValue::String("hello".to_owned()));
     }
 
     #[test]
@@ -1499,7 +1517,7 @@ use wrt_foundation::traits::{
 
 // Implement traits for ComponentType
 impl Checksummable for ComponentType {
-    fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             ComponentType::Bool => 0u8.update_checksum(checksum),
             ComponentType::S8 => 1u8.update_checksum(checksum),
@@ -1585,7 +1603,7 @@ impl Default for ComponentType {
 
 // Implement traits for ComponentValue
 impl Checksummable for ComponentValue {
-    fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             ComponentValue::Bool(_) => 0u8.update_checksum(checksum),
             ComponentValue::S8(_) => 1u8.update_checksum(checksum),

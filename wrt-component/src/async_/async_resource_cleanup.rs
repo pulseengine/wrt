@@ -19,10 +19,8 @@ use std::{
 };
 
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
@@ -64,12 +62,10 @@ pub struct AsyncResourceCleanupManager {
             ComponentInstanceId,
             BoundedVec<
                 AsyncCleanupEntry,
-                MAX_ASYNC_RESOURCES_PER_INSTANCE,
-                crate::bounded_component_infra::ComponentProvider,
+                MAX_ASYNC_RESOURCES_PER_INSTANCE
             >,
         ),
-        MAX_CLEANUP_ENTRIES,
-        crate::bounded_component_infra::ComponentProvider,
+        MAX_CLEANUP_ENTRIES
     >,
 
     /// Global cleanup statistics
@@ -101,6 +97,65 @@ pub struct AsyncCleanupEntry {
     pub created_at: u64,
 }
 
+impl Default for AsyncCleanupEntry {
+    fn default() -> Self {
+        Self {
+            cleanup_id: 0,
+            resource_type: AsyncResourceType::Custom,
+            priority: 0,
+            cleanup_data: AsyncCleanupData::None,
+            critical: false,
+            created_at: 0,
+        }
+    }
+}
+
+impl PartialEq for AsyncCleanupEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.cleanup_id == other.cleanup_id
+    }
+}
+
+impl Eq for AsyncCleanupEntry {}
+
+impl wrt_foundation::traits::Checksummable for AsyncCleanupEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.cleanup_id.update_checksum(checksum);
+        self.priority.update_checksum(checksum);
+        self.critical.update_checksum(checksum);
+        self.created_at.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for AsyncCleanupEntry {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.cleanup_id.to_bytes_with_provider(writer, provider)?;
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        self.critical.to_bytes_with_provider(writer, provider)?;
+        self.created_at.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for AsyncCleanupEntry {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self {
+            cleanup_id: u32::from_bytes_with_provider(reader, provider)?,
+            resource_type: AsyncResourceType::Custom,
+            priority: u8::from_bytes_with_provider(reader, provider)?,
+            cleanup_data: AsyncCleanupData::None,
+            critical: bool::from_bytes_with_provider(reader, provider)?,
+            created_at: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Types of async resources that can be cleaned up
 #[derive(Debug, Clone, PartialEq)]
 pub enum AsyncResourceType {
@@ -127,6 +182,9 @@ pub enum AsyncResourceType {
 /// Cleanup data specific to each resource type
 #[derive(Debug, Clone)]
 pub enum AsyncCleanupData {
+    /// No cleanup data
+    None,
+
     /// Stream cleanup data
     Stream {
         handle:         StreamHandle,
@@ -183,7 +241,7 @@ pub enum AsyncCleanupData {
         #[cfg(feature = "std")]
         cleanup_id: String,
         #[cfg(not(any(feature = "std",)))]
-        cleanup_id: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+        cleanup_id: BoundedString<64, NoStdProvider<512>>,
         data:       u64, // Generic data field
     },
 }
@@ -233,14 +291,14 @@ pub enum CleanupResult {
 
 impl AsyncResourceCleanupManager {
     /// Create a new async resource cleanup manager
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             cleanup_entries: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
             cleanup_entries: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             stats: AsyncCleanupStats::default(),
             next_cleanup_id: 1,
@@ -287,7 +345,7 @@ impl AsyncResourceCleanupManager {
         #[cfg(not(any(feature = "std",)))]
         let entries = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut found_entries = BoundedVec::new(provider)?;
+            let mut found_entries = BoundedVec::new().unwrap();
             let mut index_to_remove = None;
 
             for (i, (id, entries)) in self.cleanup_entries.iter().enumerate() {
@@ -356,6 +414,7 @@ impl AsyncResourceCleanupManager {
     /// Execute a single cleanup entry
     fn execute_single_cleanup(&mut self, entry: &AsyncCleanupEntry) -> CleanupResult {
         match &entry.cleanup_data {
+            AsyncCleanupData::None => CleanupResult::Skipped,
             AsyncCleanupData::Stream {
                 handle,
                 close_readable,
@@ -391,7 +450,16 @@ impl AsyncResourceCleanupManager {
                 task_id,
                 force_cleanup,
             } => self.cleanup_subtask(*execution_id, *task_id, *force_cleanup),
-            AsyncCleanupData::Custom { cleanup_id, data } => self.cleanup_custom(cleanup_id, *data),
+            AsyncCleanupData::Custom { cleanup_id, data } => {
+                #[cfg(feature = "std")]
+                let id_str = cleanup_id.as_str();
+                #[cfg(not(feature = "std"))]
+                let id_str = match cleanup_id.as_str() {
+                    Ok(s) => s,
+                    Err(_) => return CleanupResult::Failed(Error::runtime_error("Invalid cleanup ID string")),
+                };
+                self.cleanup_custom(id_str, *data)
+            },
         }
     }
 
@@ -442,9 +510,10 @@ impl AsyncResourceCleanupManager {
         {
             // Find existing entry or create new one
             let mut found = false;
+            let entry_clone = entry.clone(); // Clone to avoid move issues
             for (id, entries) in &mut self.cleanup_entries {
                 if *id == instance_id {
-                    entries.push(entry).map_err(|_| {
+                    entries.push(entry_clone).map_err(|_| {
                         Error::runtime_execution_error("Failed to add cleanup entry to instance")
                     })?;
                     found = true;
@@ -454,7 +523,7 @@ impl AsyncResourceCleanupManager {
 
             if !found {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                let mut new_entries = BoundedVec::new(provider)?;
+                let mut new_entries = BoundedVec::new().unwrap();
                 new_entries.push(entry).map_err(|_| {
                     Error::new(
                         ErrorCategory::Resource,

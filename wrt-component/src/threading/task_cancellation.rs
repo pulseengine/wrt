@@ -92,7 +92,7 @@ struct CancellationTokenInner {
     #[cfg(feature = "std")]
     handlers: Arc<std::sync::RwLock<Vec<CancellationHandler>>>,
     #[cfg(not(any(feature = "std",)))]
-    handlers: BoundedVec<CancellationHandler, MAX_CANCELLATION_HANDLERS, 65536>,
+    handlers: BoundedVec<CancellationHandler, MAX_CANCELLATION_HANDLERS>,
 }
 
 /// Handler called when cancellation occurs
@@ -119,7 +119,7 @@ pub enum CancellationHandlerFn {
 
     /// Cleanup function
     Cleanup {
-        name:        BoundedString<64, 65536>,
+        name:        BoundedString<64, NoStdProvider<512>>,
         // In real implementation, this would be a function pointer
         placeholder: u32,
     },
@@ -145,13 +145,13 @@ pub struct SubtaskManager {
     #[cfg(feature = "std")]
     subtasks: Vec<SubtaskEntry>,
     #[cfg(not(any(feature = "std",)))]
-    subtasks: BoundedVec<SubtaskEntry, MAX_SUBTASK_DEPTH, 65536>,
+    subtasks: BoundedVec<SubtaskEntry, MAX_SUBTASK_DEPTH>,
 
     /// Subtask completion callbacks
     #[cfg(feature = "std")]
     completion_handlers: Vec<CompletionHandler>,
     #[cfg(not(any(feature = "std",)))]
-    completion_handlers: BoundedVec<CompletionHandler, MAX_CANCELLATION_HANDLERS, 65536>,
+    completion_handlers: BoundedVec<CompletionHandler, MAX_CANCELLATION_HANDLERS>,
 
     /// Next handler ID
     next_handler_id: u32,
@@ -244,7 +244,7 @@ pub enum CompletionHandlerFn {
 
     /// Custom handler
     Custom {
-        name:        BoundedString<64, 65536>,
+        name:        BoundedString<64, NoStdProvider<512>>,
         placeholder: u32,
     },
 }
@@ -287,7 +287,7 @@ pub struct CancellationScope {
     #[cfg(feature = "std")]
     pub children: Vec<ScopeId>,
     #[cfg(not(any(feature = "std",)))]
-    pub children: BoundedVec<ScopeId, 16, 65536>,
+    pub children: BoundedVec<ScopeId, 16>,
 
     /// Whether this scope auto-cancels children
     pub auto_cancel_children: bool,
@@ -310,7 +310,7 @@ impl CancellationToken {
                 #[cfg(not(any(feature = "std",)))]
                 handlers: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
             }),
         })
@@ -328,7 +328,7 @@ impl CancellationToken {
                 #[cfg(not(any(feature = "std",)))]
                 handlers: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
             }),
         })
@@ -471,14 +471,14 @@ impl SubtaskManager {
             #[cfg(not(any(feature = "std",)))]
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             completion_handlers: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
             completion_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             next_handler_id: 1,
             stats: SubtaskStats::new(),

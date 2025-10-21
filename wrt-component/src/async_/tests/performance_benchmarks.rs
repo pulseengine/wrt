@@ -192,7 +192,7 @@ mod tests {
                     measurement: measurement.clone(),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap();
             
             task_ids.push(task_id);
@@ -442,7 +442,7 @@ mod tests {
                         measurement: measurement.clone(),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::Normal,
+                    128, // Normal priority
                 ).unwrap();
                 
                 total_tasks += 1;
@@ -594,7 +594,7 @@ mod tests {
                     measurement: measurement.clone(),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ;
             
             measurement.record_operation(op_start;

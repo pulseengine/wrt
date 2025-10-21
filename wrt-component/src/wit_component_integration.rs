@@ -9,14 +9,14 @@ use std::{collections::BTreeMap, vec::Vec};
 use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{BoundedString},
     prelude::*,
 };
 use wrt_error::{Error, Result};
 
 // Platform-aware type aliases for WIT component integration
 type ComponentProvider = wrt_foundation::budget_provider::BudgetProvider<4096>;  // 4KB for component data
-type WitBoundedString<const N: usize> = BoundedString<N, ComponentProvider>;
+type WitBoundedString<const N: usize> = BoundedString<N>;
 
 // Re-export WIT AST types for convenience
 pub use wrt_format::ast::{

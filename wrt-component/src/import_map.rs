@@ -28,8 +28,8 @@ impl ImportMap {
 
     /// Add an import to the map
     pub fn add(&mut self, name: &str, import: Arc<Import>) -> Result<()> {
-        self.imports.insert(name.to_string(), import;
-        Ok(()
+        self.imports.insert(name.to_owned(), import);
+        Ok(())
     }
 
     /// Get an import by name
@@ -82,14 +82,14 @@ impl SafeImportMap {
             let (existing_name, _) = self.imports.get(i)?;
             if existing_name == name {
                 // Replace the existing import
-                self.imports.set(i, (name.to_string(), import))?;
+                self.imports.set(i, (name.to_owned(), import))?;
                 return Ok();
             }
         }
 
         // Name doesn't exist, add a new entry
-        self.imports.push((name.to_string(), import))?;
-        Ok(()
+        self.imports.push((name.to_owned(), import))?;
+        Ok(())
     }
 
     /// Get an import by name

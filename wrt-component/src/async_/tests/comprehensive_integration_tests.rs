@@ -106,7 +106,7 @@ mod tests {
         fn initialize_component(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
             // Initialize all subsystems for this component
             {
-                let mut bridge = self.bridge.lock()?;
+                let mut bridge = self.bridge.lock();
                 bridge.initialize_component_async(component_id, None)?;
             }
             
@@ -175,7 +175,7 @@ mod tests {
                     result_value: ComponentValue::U32(100),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap();
 
             let task2 = bridge.spawn_async_task(
@@ -190,7 +190,7 @@ mod tests {
                     result_value: ComponentValue::U32(200),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::High,
+                192, // High priority
             ).unwrap();
 
             // Poll until completion
@@ -412,7 +412,7 @@ mod tests {
                     result_value: ComponentValue::U32((i + 1) as u32 * 100),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ;
         }
 
@@ -496,7 +496,7 @@ mod tests {
         assert!(timer_ids.len() < 200);
 
         // 3. Invalid combinator operations
-        let empty_futures: Vec<Box<dyn Future<Output = Result<ComponentValue, Error>> + Send>> = vec![];
+        let empty_futures: Vec<Box<dyn Future<Output = Result<ComponentValue<ComponentProvider>, Error>> + Send>> = vec![];
         let result = harness.combinators.select(component_id, empty_futures;
         assert!(result.is_err();
 

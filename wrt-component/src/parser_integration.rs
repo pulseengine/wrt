@@ -12,7 +12,7 @@ use std::{fmt, mem};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    collections::StaticVec as BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 #[cfg(not(feature = "std"))]
@@ -25,8 +25,8 @@ use wrt_foundation::{
 
 use crate::{
     adapter::CoreModuleAdapter,
-    canonical::CanonicalAbi,
-    component::Component,
+    canonical_abi::canonical::CanonicalABI,
+    components::component::{Component, WrtComponentType},
     execution_engine::ComponentExecutionEngine,
     instantiation::{ImportValues, InstantiationContext},
     types::{ComponentInstance, ValType, Value},
@@ -39,7 +39,7 @@ const MAX_PARSED_SECTIONS: usize = 64;
 /// Component binary loader and parser integration
 pub struct ComponentLoader {
     /// Canonical ABI processor
-    canonical_abi: CanonicalAbi,
+    canonical_abi: CanonicalABI,
     /// Maximum component size to load
     max_component_size: usize,
     /// Validation level
@@ -62,39 +62,39 @@ pub enum ValidationLevel {
 pub struct ParsedComponent {
     /// Component type definitions
     #[cfg(feature = "std")]
-    pub types: Vec<ComponentType,
+    pub types: Vec<wrt_foundation::ComponentType<NoStdProvider<1024>>>,
     #[cfg(not(any(feature = "std", )))]
-    pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
+    pub types: BoundedVec<wrt_foundation::ComponentType<NoStdProvider<1024>>, MAX_PARSED_SECTIONS>,
 
     /// Component imports
     #[cfg(feature = "std")]
     pub imports: Vec<ParsedImport>,
     #[cfg(not(any(feature = "std", )))]
-    pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
+    pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS>,
 
     /// Component exports
     #[cfg(feature = "std")]
     pub exports: Vec<ParsedExport>,
     #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
+    pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS>,
 
     /// Embedded core modules
     #[cfg(feature = "std")]
     pub modules: Vec<ParsedModule>,
     #[cfg(not(any(feature = "std", )))]
-    pub modules: BoundedVec<ParsedModule, 16, NoStdProvider<65536>>,
+    pub modules: BoundedVec<ParsedModule, 16>,
 
     /// Component instances
     #[cfg(feature = "std")]
     pub instances: Vec<ParsedInstance>,
     #[cfg(not(any(feature = "std", )))]
-    pub instances: BoundedVec<ParsedInstance, 16, NoStdProvider<65536>>,
+    pub instances: BoundedVec<ParsedInstance, 16>,
 
     /// Canonical function adapters
     #[cfg(feature = "std")]
     pub canonicals: Vec<ParsedCanonical>,
     #[cfg(not(any(feature = "std", )))]
-    pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
+    pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS>,
 }
 
 /// Parsed import declaration
@@ -104,7 +104,7 @@ pub struct ParsedImport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     /// Import type
     pub import_type: ImportKind,
 }
@@ -138,13 +138,13 @@ pub struct ParsedExport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     /// Export kind
     pub export_kind: ExportKind,
 }
 
 /// Export kind enumeration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportKind {
     /// Function export
     Function { function_index: u32 },
@@ -165,7 +165,7 @@ pub struct ParsedModule {
     #[cfg(feature = "std")]
     pub data: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub data: BoundedVec<u8, 65536, NoStdProvider<65536>>, // 64KB max for no_std
+    pub data: BoundedVec<u8, 65536>, // 64KB max for no_std
 }
 
 /// Parsed component instance
@@ -177,7 +177,7 @@ pub struct ParsedInstance {
     #[cfg(feature = "std")]
     pub args: Vec<InstantiationArg>,
     #[cfg(not(any(feature = "std", )))]
-    pub args: BoundedVec<InstantiationArg, 32, NoStdProvider<65536>>,
+    pub args: BoundedVec<InstantiationArg, 32>,
 }
 
 /// Instantiation argument
@@ -187,7 +187,7 @@ pub struct InstantiationArg {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     /// Argument index/value
     pub index: u32,
 }
@@ -246,7 +246,7 @@ impl ComponentLoader {
     /// Create a new component loader
     pub fn new() -> Self {
         Self {
-            canonical_abi: CanonicalAbi::new(),
+            canonical_abi: CanonicalABI::new(4096), // Default 4KB buffer pool
             max_component_size: 16 * 1024 * 1024, // 16MB default
             validation_level: ValidationLevel::Full,
         }
@@ -268,24 +268,21 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size")
-            ;
+            return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size"));
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_error::Error::validation_invalid_input("Component binary data too small, minimum 8 bytes required")
-            ;
+            return Err(wrt_error::Error::validation_invalid_input("Component binary data too small, minimum 8 bytes required"));
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_error::Error::validation_invalid_input("Invalid WebAssembly magic bytes, expected '\\x00asm'")
-            ;
+            return Err(wrt_error::Error::validation_invalid_input("Invalid WebAssembly magic bytes, expected '\\x00asm'"));
         }
 
         // Parse sections (simplified implementation)
-        let mut parsed = ParsedComponent::new()?
+        let mut parsed = ParsedComponent::new()?;
 
         // In a real implementation, this would parse the actual binary format
         // For now, create a minimal valid component
@@ -303,16 +300,21 @@ impl ComponentLoader {
     fn parse_sections(&self, _binary_data: &[u8], parsed: &mut ParsedComponent) -> WrtResult<()> {
         // Simplified section parsing - in reality would parse actual WASM component format
 
-        // Add a default type
-        parsed.add_type(ComponentType::Unit)?;
+        // Add a default type - need to provide a memory provider for ComponentType::Unit
+        let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+        let unit_type = ComponentType::unit(provider)?;
+        parsed.add_type(unit_type)?;
 
         // Add a default import
         #[cfg(feature = "std")]
-        let import_name = "default".to_string());
+        let import_name = "default".to_owned();
         #[cfg(not(any(feature = "std", )))]
-        let import_name = BoundedString::from_str("default")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string")
-            ))?;
+        let import_name = {
+            let provider = safe_managed_alloc!(512, CrateId::Component)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
+            BoundedString::from_str("default", provider)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string"))?
+        };
 
         parsed.add_import(ParsedImport {
             name: import_name,
@@ -321,18 +323,21 @@ impl ComponentLoader {
 
         // Add a default export
         #[cfg(feature = "std")]
-        let export_name = "main".to_string());
+        let export_name = "main".to_owned();
         #[cfg(not(any(feature = "std", )))]
-        let export_name = BoundedString::from_str("main")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string")
-            ))?;
+        let export_name = {
+            let provider = safe_managed_alloc!(512, CrateId::Component)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
+            BoundedString::from_str("main", provider)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string"))?
+        };
 
         parsed.add_export(ParsedExport {
             name: export_name,
             export_kind: ExportKind::Function { function_index: 0 },
         })?;
 
-        Ok(()
+        Ok(())
     }
 
     /// Validate parsed component
@@ -340,8 +345,7 @@ impl ComponentLoader {
         if self.validation_level == ValidationLevel::Basic {
             // Basic validation - check we have at least some content
             if parsed.types.len() == 0 {
-                return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"
-                ;
+                return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"));
             }
         } else if self.validation_level == ValidationLevel::Full {
             // Full validation - check type consistency
@@ -349,7 +353,7 @@ impl ComponentLoader {
             self.validate_import_export_consistency(parsed)?;
         }
 
-        Ok(()
+        Ok(())
     }
 
     /// Validate type consistency
@@ -358,7 +362,7 @@ impl ComponentLoader {
         // - All type references are valid
         // - Function signatures are consistent
         // - Resource types are properly defined
-        Ok(()
+        Ok(())
     }
 
     /// Validate import/export consistency
@@ -367,73 +371,80 @@ impl ComponentLoader {
         // - All import types are resolvable
         // - Export types match internal definitions
         // - No circular dependencies
-        Ok(()
+        Ok(())
     }
 
     /// Convert parsed component to runtime component
-    pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> WrtResult<Component> {
-        let mut component = Component::new(WrtComponentType::default());
+    pub fn to_runtime_component(&self, _parsed: &ParsedComponent) -> WrtResult<Component> {
+        // TODO: This method is incomplete - Component struct doesn't have these helper methods
+        // Component construction needs to be refactored to use direct field access
+        // or builder pattern
+        let component = Component::new(WrtComponentType::new()?);
 
-        // Convert types
-        for component_type in &parsed.types {
-            component.add_type(component_type.clone())?;
-        }
+        // // Convert types
+        // for component_type in &parsed.types {
+        //     component.add_type(component_type.clone())?;
+        // }
 
-        // Convert imports
-        for import in &parsed.imports {
-            self.convert_import(&mut component, import)?;
-        }
+        // // Convert imports
+        // for import in &parsed.imports {
+        //     self.convert_import(&mut component, import)?;
+        // }
 
-        // Convert exports
-        for export in &parsed.exports {
-            self.convert_export(&mut component, export)?;
-        }
+        // // Convert exports
+        // for export in &parsed.exports {
+        //     self.convert_export(&mut component, export)?;
+        // }
 
-        // Convert modules to adapters
-        for module in &parsed.modules {
-            let adapter = self.create_module_adapter(module)?;
-            component.add_module_adapter(adapter)?;
-        }
+        // // Convert modules to adapters
+        // for module in &parsed.modules {
+        //     let adapter = self.create_module_adapter(module)?;
+        //     component.add_module_adapter(adapter)?;
+        // }
 
         Ok(component)
     }
 
     /// Convert parsed import to runtime import
-    fn convert_import(&self, component: &mut Component, import: &ParsedImport) -> WrtResult<()> {
+    #[allow(dead_code)]
+    fn convert_import(&self, _component: &mut Component, import: &ParsedImport) -> WrtResult<()> {
+        // TODO: Component doesn't have these helper methods - needs refactoring
         match &import.import_type {
-            ImportKind::Function { type_index } => {
-                component.add_function_import(&import.name, *type_index)?;
+            ImportKind::Function { type_index: _ } => {
+                // component.add_function_import(&import.name, *type_index)?;
             }
-            ImportKind::Value { type_index } => {
-                component.add_value_import(&import.name, *type_index)?;
+            ImportKind::Value { type_index: _ } => {
+                // component.add_value_import(&import.name, *type_index)?;
             }
-            ImportKind::Instance { type_index } => {
-                component.add_instance_import(&import.name, *type_index)?;
+            ImportKind::Instance { type_index: _ } => {
+                // component.add_instance_import(&import.name, *type_index)?;
             }
             ImportKind::Type { bounds: _ } => {
-                component.add_type_import(&import.name)?;
+                // component.add_type_import(&import.name)?;
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Convert parsed export to runtime export
-    fn convert_export(&self, component: &mut Component, export: &ParsedExport) -> WrtResult<()> {
+    #[allow(dead_code)]
+    fn convert_export(&self, _component: &mut Component, export: &ParsedExport) -> WrtResult<()> {
+        // TODO: Component doesn't have these helper methods - needs refactoring
         match &export.export_kind {
-            ExportKind::Function { function_index } => {
-                component.add_function_export(&export.name, *function_index)?;
+            ExportKind::Function { function_index: _ } => {
+                // component.add_function_export(&export.name, *function_index)?;
             }
-            ExportKind::Value { value_index } => {
-                component.add_value_export(&export.name, *value_index)?;
+            ExportKind::Value { value_index: _ } => {
+                // component.add_value_export(&export.name, *value_index)?;
             }
-            ExportKind::Instance { instance_index } => {
-                component.add_instance_export(&export.name, *instance_index)?;
+            ExportKind::Instance { instance_index: _ } => {
+                // component.add_instance_export(&export.name, *instance_index)?;
             }
-            ExportKind::Type { type_index } => {
-                component.add_type_export(&export.name, *type_index)?;
+            ExportKind::Type { type_index: _ } => {
+                // component.add_type_export(&export.name, *type_index)?;
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Create module adapter from parsed module
@@ -441,11 +452,14 @@ impl ComponentLoader {
         #[cfg(feature = "std")]
         let name = "Component not found";
         #[cfg(not(any(feature = "std", )))]
-        let name = BoundedString::from_str("module")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string")
-            ))?;
+        let name = {
+            let provider = safe_managed_alloc!(512, CrateId::Component)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
+            BoundedString::from_str("module", provider)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?
+        };
 
-        let adapter = CoreModuleAdapter::new(name;
+        let adapter = CoreModuleAdapter::new(name)?;
 
         // In a real implementation, would parse the module binary
         // and create appropriate function/memory/table/global adapters
@@ -460,6 +474,12 @@ impl ComponentLoader {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<ComponentInstance> {
+        // Enter component scope for Vec allocations during parsing
+        #[cfg(feature = "std")]
+        let _scope = wrt_foundation::capabilities::MemoryFactory::enter_module_scope(
+            wrt_foundation::budget_aware_provider::CrateId::Component,
+        )?;
+
         // Parse the component
         let parsed = self.parse_component(binary_data)?;
 
@@ -468,6 +488,7 @@ impl ComponentLoader {
 
         // Instantiate the component
         component.instantiate(imports, context)
+        // Scope drops here in std mode, memory available for reuse
     }
 }
 
@@ -480,59 +501,58 @@ impl ParsedComponent {
             #[cfg(not(any(feature = "std", )))]
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component types"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component types"))?
             },
             #[cfg(feature = "std")]
             imports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             imports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component imports"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component imports"))?
             },
             #[cfg(feature = "std")]
             exports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             exports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component exports"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component exports"))?
             },
             #[cfg(feature = "std")]
             modules: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             modules: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component modules"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component modules"))?
             },
             #[cfg(feature = "std")]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             instances: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component instances"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component instances"))?
             },
             #[cfg(feature = "std")]
             canonicals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             canonicals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component canonicals"))?
+                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component canonicals"))?
             },
         })
     }
 
     /// Add a type to the component
-    pub fn add_type(&mut self, component_type: ComponentType) -> WrtResult<()> {
+    pub fn add_type(&mut self, component_type: wrt_foundation::ComponentType<NoStdProvider<1024>>) -> WrtResult<()> {
         #[cfg(feature = "std")]
         {
             self.types.push(component_type);
-            Ok(()
+            Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.types
                 .push(component_type)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add type to component, capacity exceeded")
-            })?;
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add type to component, capacity exceeded"))
         }
     }
 
@@ -541,14 +561,13 @@ impl ParsedComponent {
         #[cfg(feature = "std")]
         {
             self.imports.push(import);
-            Ok(()
+            Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.imports
                 .push(import)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add import to component, capacity exceeded")
-            })?;
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add import to component, capacity exceeded"))
         }
     }
 
@@ -557,14 +576,13 @@ impl ParsedComponent {
         #[cfg(feature = "std")]
         {
             self.exports.push(export);
-            Ok(()
+            Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.exports
                 .push(export)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add export to component, capacity exceeded")
-            })?;
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add export to component, capacity exceeded"))
         }
     }
 }
@@ -617,53 +635,55 @@ mod tests {
     #[test]
     fn test_component_loader_creation() {
         let loader = ComponentLoader::new();
-        assert_eq!(loader.validation_level, ValidationLevel::Full;
-        assert_eq!(loader.max_component_size, 16 * 1024 * 1024;
+        assert_eq!(loader.validation_level, ValidationLevel::Full);
+        assert_eq!(loader.max_component_size, 16 * 1024 * 1024);
     }
 
     #[test]
     fn test_component_loader_configuration() {
         let loader = ComponentLoader::new()
             .with_max_size(1024)
-            .with_validation_level(ValidationLevel::Basic;
+            .with_validation_level(ValidationLevel::Basic);
 
-        assert_eq!(loader.max_component_size, 1024;
-        assert_eq!(loader.validation_level, ValidationLevel::Basic;
+        assert_eq!(loader.max_component_size, 1024);
+        assert_eq!(loader.validation_level, ValidationLevel::Basic);
     }
 
     #[test]
     fn test_parsed_component_creation() {
-        let mut component = ParsedComponent::new().expect(".expect("Failed to create ParsedComponent"));")
+        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent");
         assert_eq!(component.types.len(), 0);
         assert_eq!(component.imports.len(), 0);
         assert_eq!(component.exports.len(), 0);
 
-        // Test adding components
-        assert!(component.add_type(ComponentType::Unit).is_ok());
+        // Test adding components - need to provide a memory provider
+        let provider = safe_managed_alloc!(1024, CrateId::Component).expect("Failed to allocate provider");
+        let unit_type = ComponentType::unit(provider).expect("Failed to create unit type");
+        assert!(component.add_type(unit_type).is_ok());
         assert_eq!(component.types.len(), 1);
     }
 
     #[test]
     fn test_validation_level_display() {
-        assert_eq!(ValidationLevel::None.to_string(), "none";
-        assert_eq!(ValidationLevel::Basic.to_string(), "basic";
-        assert_eq!(ValidationLevel::Full.to_string(), "full";
+        assert_eq!(ValidationLevel::None.to_string(), "none");
+        assert_eq!(ValidationLevel::Basic.to_string(), "basic");
+        assert_eq!(ValidationLevel::Full.to_string(), "full");
     }
 
     #[test]
     fn test_string_encoding_display() {
-        assert_eq!(StringEncoding::Utf8.to_string(), "utf8";
-        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16le";
-        assert_eq!(StringEncoding::Latin1.to_string(), "latin1";
+        assert_eq!(StringEncoding::Utf8.to_string(), "utf8");
+        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16le");
+        assert_eq!(StringEncoding::Latin1.to_string(), "latin1");
     }
 
     #[test]
     fn test_canonical_options_default() {
-        let options = CanonicalOptions::default());
-        assert_eq!(options.string_encoding, Some(StringEncoding::Utf8;
-        assert_eq!(options.memory, None;
-        assert_eq!(options.realloc, None;
-        assert_eq!(options.post_return, None;
+        let options = CanonicalOptions::default();
+        assert_eq!(options.string_encoding, Some(StringEncoding::Utf8));
+        assert_eq!(options.memory, None);
+        assert_eq!(options.realloc, None);
+        assert_eq!(options.post_return, None);
     }
 
     #[test]
@@ -671,12 +691,12 @@ mod tests {
         let loader = ComponentLoader::new();
 
         // Test empty binary
-        let result = loader.parse_component(&[];
-        assert!(result.is_err();
+        let result = loader.parse_component(&[]);
+        assert!(result.is_err());
 
         // Test invalid magic
-        let result = loader.parse_component(b"invalid_magic_bytes";
-        assert!(result.is_err();
+        let result = loader.parse_component(b"invalid_magic_bytes");
+        assert!(result.is_err());
     }
 
     #[test]
@@ -685,7 +705,7 @@ mod tests {
 
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version
-        let result = loader.parse_component(binary;
+        let result = loader.parse_component(binary);
         assert!(result.is_ok());
 
         let parsed = result.unwrap();

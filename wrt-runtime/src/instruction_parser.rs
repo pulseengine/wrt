@@ -30,15 +30,18 @@ type InstructionProvider = RuntimeProvider;
 type InstructionVec = BoundedVec<Instruction<InstructionProvider>, 1024, InstructionProvider>;
 type TargetVec = BoundedVec<u32, 256, InstructionProvider>;
 
-/// Parse WebAssembly bytecode into runtime instructions
-pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
-    let provider = create_runtime_provider()?;
+/// Parse WebAssembly bytecode into runtime instructions with a provided memory provider
+pub fn parse_instructions_with_provider(
+    bytecode: &[u8], 
+    provider: InstructionProvider
+) -> Result<InstructionVec> {
+    let provider_clone = provider.clone();
     let mut instructions = BoundedVec::new(provider)
         .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
 
     let mut offset = 0;
     while offset < bytecode.len() {
-        let (instruction, consumed) = parse_instruction(bytecode, offset)?;
+        let (instruction, consumed) = parse_instruction_with_provider(bytecode, offset, &provider_clone)?;
         let is_end = matches!(instruction, Instruction::End);
         instructions
             .push(instruction)
@@ -54,10 +57,28 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
     Ok(instructions)
 }
 
-/// Parse a single instruction from bytecode
+/// Parse a single instruction from bytecode (backward-compatible wrapper)
 fn parse_instruction(
     bytecode: &[u8],
     offset: usize,
+) -> Result<(Instruction<InstructionProvider>, usize)> {
+    let provider = create_runtime_provider()?;
+    parse_instruction_with_provider(bytecode, offset, &provider)
+}
+
+/// Parse WebAssembly bytecode into runtime instructions
+/// 
+/// This is a backward-compatible wrapper that creates its own provider.
+pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
+    let provider = create_runtime_provider()?;
+    parse_instructions_with_provider(bytecode, provider)
+}
+
+/// Parse a single instruction from bytecode with a provided memory provider
+fn parse_instruction_with_provider(
+    bytecode: &[u8],
+    offset: usize,
+    provider: &InstructionProvider,
 ) -> Result<(Instruction<InstructionProvider>, usize)> {
     if offset >= bytecode.len() {
         return Err(Error::parse_error("Unexpected end of bytecode"));
@@ -65,6 +86,8 @@ fn parse_instruction(
 
     let opcode = bytecode[offset];
     let mut consumed = 1;
+    #[cfg(feature = "std")]
+    eprintln!("DEBUG: Parsing instruction opcode: 0x{:02X}", opcode);
 
     let instruction = match opcode {
         // Control instructions
@@ -107,8 +130,9 @@ fn parse_instruction(
         },
         0x0E => {
             // BrTable
-            let provider = create_runtime_provider()?; // Provider for BoundedVec
-            let mut targets = BoundedVec::new(provider)
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Parsing BrTable instruction - using shared provider");
+            let mut targets = BoundedVec::new(provider.clone())
                 .map_err(|_| Error::parse_error("Failed to create BrTable targets vector"))?;
 
             let (count, mut bytes_consumed) = read_leb128_u32(bytecode, offset + 1)?;

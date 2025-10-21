@@ -71,7 +71,17 @@ impl TaskId {
         Self(TASK_COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
+    /// Create a task identifier from a specific value
+    pub const fn from_u64(id: u64) -> Self {
+        Self(id)
+    }
+
     pub fn as_u64(&self) -> u64 {
+        self.0
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u64 {
         self.0
     }
 }
@@ -116,7 +126,7 @@ pub enum TaskReturn {
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
     #[cfg(not(any(feature = "std",)))]
-    Binary(BoundedVec<u8, MAX_TASK_RESULT_SIZE, NoStdProvider<65536>>),
+    Binary(BoundedVec<u8, MAX_TASK_RESULT_SIZE>),
     /// Task returned nothing (void)
     Void,
 }
@@ -175,10 +185,9 @@ pub struct Task {
     pub metadata:           HashMap<String, ComponentValue>,
     #[cfg(not(any(feature = "std",)))]
     pub metadata: BoundedMap<
-        BoundedString<32, NoStdProvider<65536>>,
+        BoundedString<32, NoStdProvider<512>>,
         ComponentValue,
         8,
-        NoStdProvider<65536>,
     >,
 }
 
@@ -192,7 +201,7 @@ impl Task {
             #[cfg(feature = "std")]
             metadata: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            metadata: BoundedMap::new(provider.clone())?,
+            metadata: BoundedMap::new(),
         }
     }
 
@@ -205,7 +214,7 @@ impl Task {
             #[cfg(feature = "std")]
             metadata: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            metadata: BoundedMap::new(provider.clone())?,
+            metadata: BoundedMap::new(),
         }
     }
 
@@ -297,7 +306,7 @@ impl TaskRegistry {
             #[cfg(feature = "std")]
             tasks:                                    HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            tasks:                                    BoundedMap::new(provider.clone())?,
+            tasks:                                    BoundedMap::new(),
         }
     }
 
@@ -591,13 +600,12 @@ pub mod task_helpers {
         task_ids: &[TaskId],
     ) -> Result<
         BoundedVec<
-            Option<TaskReturn, 256, crate::bounded_component_infra::ComponentProvider>,
+            Option<TaskReturn, 256>,
             MAX_TASKS,
-            NoStdProvider<65536>,
         >,
     > {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut results = BoundedVec::new(provider)
+        let mut results = BoundedVec::new()
             .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         for &task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;

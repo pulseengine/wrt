@@ -84,6 +84,10 @@ pub enum ErrorCategory {
     InvalidState      = 29,
     /// Not implemented errors
     NotImplemented    = 30,
+    /// Invalid input errors
+    InvalidInput      = 31,
+    /// Async operation errors
+    Async             = 32,
 }
 
 /// Base trait for all error types - `no_std` version
@@ -102,7 +106,7 @@ pub trait ErrorSource: fmt::Debug + Send + Sync {
 ///
 /// This is the main error type for the WebAssembly Runtime.
 /// It provides categorized errors with error codes and optional messages.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Error {
     /// `Error` category
     pub category: ErrorCategory,
@@ -186,6 +190,24 @@ impl Error {
             code,
             message,
         }
+    }
+
+    /// Get the error message
+    #[must_use]
+    pub const fn message(&self) -> &'static str {
+        self.message
+    }
+
+    /// Get the error code
+    #[must_use]
+    pub const fn code(&self) -> u16 {
+        self.code
+    }
+
+    /// Get the error category
+    #[must_use]
+    pub const fn category(&self) -> ErrorCategory {
+        self.category
     }
 
     /// Create a component error with dynamic context (using static fallback)
@@ -320,8 +342,10 @@ impl Error {
             ErrorCategory::Validation
             | ErrorCategory::Type
             | ErrorCategory::PlatformRuntime
-            | ErrorCategory::AsyncRuntime => "ASIL-B", // Type safety, platform runtime, and
+            | ErrorCategory::AsyncRuntime
+            | ErrorCategory::Async => "ASIL-B", // Type safety, platform runtime, and
             // async runtime are ASIL-B
+            ErrorCategory::InvalidInput => "ASIL-B", // Input validation is ASIL-B
             _ => "QM", // Other errors are Quality Management level
         }
     }
@@ -359,6 +383,8 @@ impl Error {
             ErrorCategory::PlatformRuntime => self.code >= 25000 && self.code < 26000,
             ErrorCategory::FoundationRuntime => self.code >= 26000 && self.code < 27000,
             ErrorCategory::AsyncRuntime => self.code >= 27000 && self.code < 28000,
+            ErrorCategory::InvalidInput => self.code >= 31000 && self.code < 32000,
+            ErrorCategory::Async => self.code >= 32000 && self.code < 33000,
             _ => self.code >= 9000 && self.code <= 9999,
         };
 
@@ -471,6 +497,12 @@ impl Error {
     /// Create a poisoned lock error
     #[must_use]
     pub const fn poisoned_lock(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, message)
+    }
+
+    /// Create a runtime poisoned lock error (alias for poisoned_lock)
+    #[must_use]
+    pub const fn runtime_poisoned_lock(message: &'static str) -> Self {
         Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, message)
     }
 
@@ -1528,6 +1560,26 @@ impl Error {
         Self::new(
             ErrorCategory::AsyncRuntime,
             codes::ASYNC_CHANNEL_CLOSED,
+            message,
+        )
+    }
+
+    /// Create an async executor state violation error
+    #[must_use]
+    pub const fn async_executor_state_violation(message: &'static str) -> Self {
+        Self::new(
+            ErrorCategory::AsyncRuntime,
+            codes::ASYNC_ERROR,
+            message,
+        )
+    }
+
+    /// Create a capacity exceeded error
+    #[must_use]
+    pub const fn capacity_exceeded(message: &'static str) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::CAPACITY_EXCEEDED,
             message,
         )
     }

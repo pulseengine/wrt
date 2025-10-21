@@ -27,14 +27,17 @@ use core::{
 use std::sync::Weak;
 
 use wrt_foundation::{
-    bounded_collections::{
-        // BoundedBinaryHeap, // Not available
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    // BoundedBinaryHeap, // Not available
     component_value::ComponentValue,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
     // sync::Mutex, // Import from local instead
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
     Arc,
     CrateId,
     Mutex,
@@ -94,8 +97,39 @@ pub struct TimerIntegration {
 }
 
 /// Timer identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimerId(u64);
+
+impl Default for TimerId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for TimerId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for TimerId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for TimerId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Timer implementation
 #[derive(Debug)]
@@ -133,6 +167,119 @@ pub enum TimerType {
     },
 }
 
+impl Default for TimerType {
+    fn default() -> Self {
+        Self::Oneshot
+    }
+}
+
+impl Checksummable for TimerType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            TimerType::Oneshot => 0u8.update_checksum(checksum),
+            TimerType::Interval(dur) => {
+                1u8.update_checksum(checksum);
+                dur.update_checksum(checksum);
+            }
+            TimerType::Deadline(time) => {
+                2u8.update_checksum(checksum);
+                time.update_checksum(checksum);
+            }
+            TimerType::Timeout {
+                operation_id,
+                timeout_duration,
+            } => {
+                3u8.update_checksum(checksum);
+                operation_id.update_checksum(checksum);
+                timeout_duration.update_checksum(checksum);
+            }
+            TimerType::RateLimit {
+                max_fires_per_period,
+                period_ms,
+            } => {
+                4u8.update_checksum(checksum);
+                max_fires_per_period.update_checksum(checksum);
+                period_ms.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+impl ToBytes for TimerType {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        match self {
+            TimerType::Oneshot => 0u8.to_bytes_with_provider(writer, provider),
+            TimerType::Interval(dur) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                dur.to_bytes_with_provider(writer, provider)
+            }
+            TimerType::Deadline(time) => {
+                2u8.to_bytes_with_provider(writer, provider)?;
+                time.to_bytes_with_provider(writer, provider)
+            }
+            TimerType::Timeout {
+                operation_id,
+                timeout_duration,
+            } => {
+                3u8.to_bytes_with_provider(writer, provider)?;
+                operation_id.to_bytes_with_provider(writer, provider)?;
+                timeout_duration.to_bytes_with_provider(writer, provider)
+            }
+            TimerType::RateLimit {
+                max_fires_per_period,
+                period_ms,
+            } => {
+                4u8.to_bytes_with_provider(writer, provider)?;
+                max_fires_per_period.to_bytes_with_provider(writer, provider)?;
+                period_ms.to_bytes_with_provider(writer, provider)
+            }
+        }
+    }
+}
+
+impl FromBytes for TimerType {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let discriminant = u8::from_bytes_with_provider(reader, provider)?;
+        match discriminant {
+            0 => Ok(TimerType::Oneshot),
+            1 => {
+                let dur = u64::from_bytes_with_provider(reader, provider)?;
+                Ok(TimerType::Interval(dur))
+            }
+            2 => {
+                let time = u64::from_bytes_with_provider(reader, provider)?;
+                Ok(TimerType::Deadline(time))
+            }
+            3 => {
+                let operation_id = u64::from_bytes_with_provider(reader, provider)?;
+                let timeout_duration = u64::from_bytes_with_provider(reader, provider)?;
+                Ok(TimerType::Timeout {
+                    operation_id,
+                    timeout_duration,
+                })
+            }
+            4 => {
+                let max_fires_per_period = u32::from_bytes_with_provider(reader, provider)?;
+                let period_ms = u64::from_bytes_with_provider(reader, provider)?;
+                Ok(TimerType::RateLimit {
+                    max_fires_per_period,
+                    period_ms,
+                })
+            }
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid TimerType discriminant",
+            )),
+        }
+    }
+}
+
 /// Timer queue entry
 #[derive(Debug, Clone)]
 struct TimerEntry {
@@ -165,8 +312,52 @@ impl PartialEq for TimerEntry {
 
 impl Eq for TimerEntry {}
 
+impl Default for TimerEntry {
+    fn default() -> Self {
+        Self {
+            timer_id: TimerId::default(),
+            expiration_time: 0,
+            sequence: 0,
+        }
+    }
+}
+
+impl Checksummable for TimerEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.timer_id.update_checksum(checksum);
+        self.expiration_time.update_checksum(checksum);
+        self.sequence.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for TimerEntry {
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        provider: &P,
+    ) -> core::result::Result<(), wrt_error::Error> {
+        self.timer_id.to_bytes_with_provider(writer, provider)?;
+        self.expiration_time.to_bytes_with_provider(writer, provider)?;
+        self.sequence.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for TimerEntry {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &P,
+    ) -> core::result::Result<Self, wrt_error::Error> {
+        Ok(Self {
+            timer_id: TimerId::from_bytes_with_provider(reader, provider)?,
+            expiration_time: u64::from_bytes_with_provider(reader, provider)?,
+            sequence: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Component timer context
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ComponentTimerContext {
     component_id:     ComponentInstanceId,
     /// Timers owned by this component
@@ -179,13 +370,96 @@ struct ComponentTimerContext {
     rate_limit_state: RateLimitState,
 }
 
+impl wrt_foundation::traits::Checksummable for ComponentTimerContext {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_runtime::Checksummable;
+        self.component_id.update_checksum(checksum);
+        self.owned_timers.update_checksum(checksum);
+        self.active_timeouts.update_checksum(checksum);
+        self.timer_limits.update_checksum(checksum);
+        self.rate_limit_state.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ComponentTimerContext {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        use wrt_runtime::ToBytes;
+        self.component_id.to_bytes_with_provider(writer, provider)?;
+        self.owned_timers.to_bytes_with_provider(writer, provider)?;
+        self.active_timeouts.to_bytes_with_provider(writer, provider)?;
+        self.timer_limits.to_bytes_with_provider(writer, provider)?;
+        self.rate_limit_state.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        use wrt_runtime::FromBytes;
+        Ok(Self {
+            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
+            owned_timers: BoundedVec::from_bytes_with_provider(reader, provider)?,
+            active_timeouts: BoundedMap::from_bytes_with_provider(reader, provider)?,
+            timer_limits: TimerLimits::from_bytes_with_provider(reader, provider)?,
+            rate_limit_state: RateLimitState::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Timer limits per component
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct TimerLimits {
     max_timers:               usize,
     max_timeout_duration_ms:  u64,
     max_interval_duration_ms: u64,
     fuel_budget:              u64,
+}
+
+impl wrt_foundation::traits::Checksummable for TimerLimits {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_runtime::Checksummable;
+        self.max_timers.update_checksum(checksum);
+        self.max_timeout_duration_ms.update_checksum(checksum);
+        self.max_interval_duration_ms.update_checksum(checksum);
+        self.fuel_budget.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for TimerLimits {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        use wrt_runtime::ToBytes;
+        self.max_timers.to_bytes_with_provider(writer, provider)?;
+        self.max_timeout_duration_ms.to_bytes_with_provider(writer, provider)?;
+        self.max_interval_duration_ms.to_bytes_with_provider(writer, provider)?;
+        self.fuel_budget.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for TimerLimits {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        use wrt_runtime::FromBytes;
+        Ok(Self {
+            max_timers: usize::from_bytes_with_provider(reader, provider)?,
+            max_timeout_duration_ms: u64::from_bytes_with_provider(reader, provider)?,
+            max_interval_duration_ms: u64::from_bytes_with_provider(reader, provider)?,
+            fuel_budget: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
 }
 
 /// Rate limiting state
@@ -199,6 +473,79 @@ struct RateLimitState {
     max_fires_per_period: u32,
     /// Period duration in ms
     period_duration_ms:   u64,
+}
+
+impl Clone for RateLimitState {
+    fn clone(&self) -> Self {
+        Self {
+            fires_this_period: AtomicU32::new(self.fires_this_period.load(Ordering::Relaxed)),
+            period_start: AtomicU64::new(self.period_start.load(Ordering::Relaxed)),
+            max_fires_per_period: self.max_fires_per_period,
+            period_duration_ms: self.period_duration_ms,
+        }
+    }
+}
+
+impl PartialEq for RateLimitState {
+    fn eq(&self, other: &Self) -> bool {
+        self.fires_this_period.load(Ordering::Relaxed) == other.fires_this_period.load(Ordering::Relaxed)
+            && self.period_start.load(Ordering::Relaxed) == other.period_start.load(Ordering::Relaxed)
+            && self.max_fires_per_period == other.max_fires_per_period
+            && self.period_duration_ms == other.period_duration_ms
+    }
+}
+
+impl Eq for RateLimitState {}
+
+impl Default for RateLimitState {
+    fn default() -> Self {
+        Self {
+            fires_this_period: AtomicU32::new(0),
+            period_start: AtomicU64::new(0),
+            max_fires_per_period: 0,
+            period_duration_ms: 0,
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for RateLimitState {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_runtime::Checksummable;
+        self.fires_this_period.load(Ordering::Relaxed).update_checksum(checksum);
+        self.period_start.load(Ordering::Relaxed).update_checksum(checksum);
+        self.max_fires_per_period.update_checksum(checksum);
+        self.period_duration_ms.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for RateLimitState {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        use wrt_runtime::ToBytes;
+        self.fires_this_period.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.period_start.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.max_fires_per_period.to_bytes_with_provider(writer, provider)?;
+        self.period_duration_ms.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for RateLimitState {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        use wrt_runtime::FromBytes;
+        Ok(Self {
+            fires_this_period: AtomicU32::new(u32::from_bytes_with_provider(reader, provider)?),
+            period_start: AtomicU64::new(u64::from_bytes_with_provider(reader, provider)?),
+            max_fires_per_period: u32::from_bytes_with_provider(reader, provider)?,
+            period_duration_ms: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
 }
 
 /// Timer configuration
@@ -243,13 +590,11 @@ impl TimerIntegration {
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<TimerConfiguration>,
     ) -> Self {
-        let provider = safe_managed_alloc!(8192, CrateId::Component).unwrap();
-
         Self {
             bridge,
-            timers: BoundedMap::new(provider.clone()).unwrap(),
-            timer_queue: BoundedBinaryHeap::new(provider.clone()).unwrap(),
-            component_contexts: BoundedMap::new(provider).unwrap(),
+            timers: BoundedMap::new(),
+            timer_queue: BoundedBinaryHeap::new().unwrap(),
+            component_contexts: BoundedMap::new(),
             next_timer_id: AtomicU64::new(1),
             current_time: AtomicU64::new(0),
             timer_stats: TimerStatistics::default(),
@@ -262,7 +607,7 @@ impl TimerIntegration {
         &mut self,
         component_id: ComponentInstanceId,
         limits: Option<TimerLimits>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let limits = limits.unwrap_or_else(|| TimerLimits {
             max_timers:               MAX_TIMERS_PER_COMPONENT,
             max_timeout_duration_ms:  self.timer_config.max_timer_duration_ms,
@@ -273,8 +618,8 @@ impl TimerIntegration {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentTimerContext {
             component_id,
-            owned_timers: BoundedVec::new(provider.clone())?,
-            active_timeouts: BoundedMap::new(provider)?,
+            owned_timers: BoundedVec::new().unwrap(),
+            active_timeouts: BoundedMap::new(),
             timer_limits: limits,
             rate_limit_state: RateLimitState {
                 fires_this_period:    AtomicU32::new(0),
@@ -297,7 +642,13 @@ impl TimerIntegration {
         component_id: ComponentInstanceId,
         timer_type: TimerType,
         duration_ms: u64,
-    ) -> Result<TimerId, Error> {
+    ) -> Result<TimerId> {
+        // Extract values before mutable borrows to avoid borrow conflicts
+        let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel));
+        let current_time = self.get_current_time();
+        let expiration_time = current_time + duration_ms;
+        let timer_sequence = self.timer_stats.total_timers_created.load(Ordering::Relaxed);
+
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
             Error::validation_invalid_input("Component not initialized for timers")
         })?;
@@ -322,10 +673,6 @@ impl TimerIntegration {
             ));
         }
 
-        let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel));
-        let current_time = self.get_current_time();
-        let expiration_time = current_time + duration_ms;
-
         let timer = Timer {
             id: timer_id,
             component_id,
@@ -346,7 +693,7 @@ impl TimerIntegration {
         let timer_entry = TimerEntry {
             timer_id,
             expiration_time,
-            sequence: self.timer_stats.total_timers_created.load(Ordering::Relaxed),
+            sequence: timer_sequence,
         };
 
         self.timer_queue
@@ -381,7 +728,7 @@ impl TimerIntegration {
         component_id: ComponentInstanceId,
         operation_id: u64,
         timeout_duration_ms: u64,
-    ) -> Result<TimerId, Error> {
+    ) -> Result<TimerId> {
         let timer_type = TimerType::Timeout {
             operation_id,
             timeout_duration: timeout_duration_ms,
@@ -400,7 +747,7 @@ impl TimerIntegration {
     }
 
     /// Cancel a timer
-    pub fn cancel_timer(&mut self, timer_id: TimerId) -> Result<bool, Error> {
+    pub fn cancel_timer(&mut self, timer_id: TimerId) -> Result<bool> {
         let timer = self
             .timers
             .get_mut(&timer_id)
@@ -427,7 +774,7 @@ impl TimerIntegration {
     }
 
     /// Process expired timers
-    pub fn process_timers(&mut self) -> Result<TimerProcessResult, Error> {
+    pub fn process_timers(&mut self) -> Result<TimerProcessResult> {
         let current_time = self.get_current_time();
         let mut fired_timers = Vec::new();
         let mut timers_to_reschedule = Vec::new();
@@ -441,26 +788,35 @@ impl TimerIntegration {
             let timer_entry = self.timer_queue.pop().unwrap();
             let timer_id = timer_entry.timer_id;
 
-            if let Some(timer) = self.timers.get_mut(&timer_id) {
-                if timer.cancelled.load(Ordering::Acquire) {
-                    // Timer was cancelled, remove it
-                    self.cleanup_timer(timer_id)?;
+            // Extract timer data first to avoid borrow conflicts
+            let (cancelled, component_id) = if let Some(timer) = self.timers.get(&timer_id) {
+                (timer.cancelled.load(Ordering::Acquire), timer.component_id)
+            } else {
+                continue;
+            };
+
+            if cancelled {
+                // Timer was cancelled, remove it
+                self.cleanup_timer(timer_id)?;
+                continue;
+            }
+
+            // Check rate limiting before getting mutable borrow
+            if self.timer_config.enable_rate_limiting {
+                if !self.check_rate_limit(component_id)? {
+                    // Rate limit exceeded, reschedule for later
+                    let new_entry = TimerEntry {
+                        timer_id,
+                        expiration_time: current_time + 100, // Delay 100ms
+                        sequence: timer_entry.sequence,
+                    };
+                    timers_to_reschedule.push(new_entry);
                     continue;
                 }
+            }
 
-                // Check rate limiting
-                if self.timer_config.enable_rate_limiting {
-                    if !self.check_rate_limit(timer.component_id)? {
-                        // Rate limit exceeded, reschedule for later
-                        let new_entry = TimerEntry {
-                            timer_id,
-                            expiration_time: current_time + 100, // Delay 100ms
-                            sequence: timer_entry.sequence,
-                        };
-                        timers_to_reschedule.push(new_entry);
-                        continue;
-                    }
-                }
+            // Now safely get mutable borrow
+            if let Some(timer) = self.timers.get_mut(&timer_id) {
 
                 // Fire the timer
                 timer.fired_count.fetch_add(1, Ordering::AcqRel);
@@ -511,14 +867,15 @@ impl TimerIntegration {
         }
 
         // Update statistics
+        let fired_count = fired_timers.len();
         self.timer_stats
             .total_timers_fired
-            .fetch_add(fired_timers.len() as u64, Ordering::Relaxed);
+            .fetch_add(fired_count as u64, Ordering::Relaxed);
 
         Ok(TimerProcessResult {
             fired_timers,
             expired_timeouts: 0, // Would count timeout expirations
-            processed_count: fired_timers.len(),
+            processed_count: fired_count,
         })
     }
 
@@ -528,7 +885,7 @@ impl TimerIntegration {
     }
 
     /// Get timer status
-    pub fn get_timer_status(&self, timer_id: TimerId) -> Result<TimerStatus, Error> {
+    pub fn get_timer_status(&self, timer_id: TimerId) -> Result<TimerStatus> {
         let timer = self
             .timers
             .get(&timer_id)
@@ -574,13 +931,15 @@ impl TimerIntegration {
         self.current_time.load(Ordering::Acquire)
     }
 
-    fn check_rate_limit(&mut self, component_id: ComponentInstanceId) -> Result<bool, Error> {
+    fn check_rate_limit(&mut self, component_id: ComponentInstanceId) -> Result<bool> {
+        // Get current time first to avoid borrow conflicts
+        let current_time = self.get_current_time();
+
         let context = self
             .component_contexts
             .get_mut(&component_id)
             .ok_or_else(|| Error::validation_invalid_input("Component not found"))?;
 
-        let current_time = self.get_current_time();
         let period_start = context.rate_limit_state.period_start.load(Ordering::Acquire);
 
         // Check if we need to reset the period
@@ -598,7 +957,7 @@ impl TimerIntegration {
         Ok(true)
     }
 
-    fn cleanup_timer(&mut self, timer_id: TimerId) -> Result<(), Error> {
+    fn cleanup_timer(&mut self, timer_id: TimerId) -> Result<()> {
         if let Some(timer) = self.timers.remove(&timer_id) {
             // Remove from component context
             if let Some(context) = self.component_contexts.get_mut(&timer.component_id) {
@@ -654,31 +1013,40 @@ pub struct TimerFuture {
 }
 
 impl CoreFuture for TimerFuture {
-    type Output = Result<(), Error>;
+    type Output = Result<()>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Some(timer_integration) = self.timer_integration.upgrade() {
-            if let Ok(mut timers) = timer_integration.lock() {
-                if let Some(timer) = timers.timers.get_mut(&self.timer_id) {
-                    if timer.cancelled.load(Ordering::Acquire) {
-                        return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled")));
-                    }
+        // ManuallyDrop doesn't have upgrade - timer_integration is not a Weak reference in no_std
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let timer_opt = self.timer_integration.upgrade();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let timer_opt = None::<Arc<Mutex<TimerIntegration>>>;
 
-                    let current_time = timers.get_current_time();
-                    if current_time >= timer.expiration_time {
-                        Poll::Ready(Ok(()))
-                    } else {
-                        // Store waker for when timer fires
-                        timer.waker = Some(cx.waker().clone());
-                        Poll::Pending
-                    }
-                } else {
-                    Poll::Ready(Err(Error::validation_invalid_input(
-                        "Timer operation failed",
-                    )))
-                }
+        if let Some(timer_integration) = timer_opt {
+            let mut timers = timer_integration.lock();
+
+            // Extract data before mutable borrow
+            let (cancelled, expiration_time) = if let Some(timer) = timers.timers.get(&self.timer_id) {
+                (timer.cancelled.load(Ordering::Acquire), timer.expiration_time)
             } else {
-                Poll::Ready(Err(Error::invalid_state_error("Timer manager unavailable")))
+                return Poll::Ready(Err(Error::validation_invalid_input(
+                    "Timer operation failed",
+                )));
+            };
+
+            if cancelled {
+                return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled")));
+            }
+
+            let current_time = timers.get_current_time();
+            if current_time >= expiration_time {
+                Poll::Ready(Ok(()))
+            } else {
+                // Store waker for when timer fires
+                if let Some(timer) = timers.timers.get_mut(&self.timer_id) {
+                    timer.waker = Some(cx.waker().clone());
+                }
+                Poll::Pending
             }
         } else {
             Poll::Ready(Err(Error::invalid_state_error("Timer manager dropped")))
@@ -700,7 +1068,7 @@ pub fn timeout<F>(
     future: F,
     duration_ms: u64,
     timer_integration: Weak<Mutex<TimerIntegration>>,
-) -> impl CoreFuture<Output = Result<F::Output, Error>>
+) -> impl CoreFuture<Output = Result<F::Output>>
 where
     F: CoreFuture,
 {

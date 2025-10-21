@@ -26,19 +26,18 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
-    safe_memory::NoStdProvider,
 };
 
 use crate::{
     canonical_abi::canonical_options::CanonicalOptions,
     types::{
+        FutureHandle,
+        StreamHandle,
         ValType,
         Value,
     },
@@ -95,7 +94,7 @@ pub struct AsyncCanonicalEncoder {
     #[cfg(feature = "std")]
     buffer: Vec<u8>,
     #[cfg(not(any(feature = "std",)))]
-    buffer: BoundedVec<u8, MAX_IMMEDIATE_SIZE, NoStdProvider<65536>>,
+    buffer: BoundedVec<u8, MAX_IMMEDIATE_SIZE>,
 
     /// Current write position
     position: usize,
@@ -109,12 +108,8 @@ impl AsyncCanonicalEncoder {
             buffer: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
             buffer: {
-                // Use proper error propagation for encoder construction
-                // This should only fail in extreme memory exhaustion scenarios
-                let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("AsyncCanonicalEncoder allocation should not fail");
-                BoundedVec::new(provider)
-                    .expect("AsyncCanonicalEncoder buffer initialization should not fail")
+                // StaticVec is stack-allocated with fixed capacity
+                BoundedVec::new()
             },
             position: 0,
         }
@@ -135,31 +130,32 @@ impl AsyncCanonicalEncoder {
             Value::F32(n) => self.encode_f32(*n),
             Value::F64(n) => self.encode_f64(*n),
             Value::Char(c) => self.encode_char(*c),
-            Value::String(s) => self.encode_string(s, options),
-            Value::List(list) => self.encode_list(list, options),
-            Value::Record(fields) => self.encode_record(fields, options),
-            Value::Variant { tag, value } => self.encode_variant(*tag, value.as_deref(), options),
-            Value::Tuple(values) => self.encode_tuple(values, options),
+            Value::String(s) => self.encode_string(s.as_str()?, options),
+            Value::List(list) => self.encode_list(list.as_slice(), options),
+            // Record stores just values, not (name, value) pairs - treat like tuple
+            Value::Record(fields) => self.encode_tuple(fields.as_slice(), options),
+            Value::Variant { discriminant, value } => self.encode_variant(*discriminant, value.as_deref(), options),
+            Value::Tuple(values) => self.encode_tuple(values.as_slice(), options),
             Value::Option(opt) => self.encode_option(opt.as_deref(), options),
             Value::Result(res) => self.encode_result(res, options),
-            Value::Flags(flags) => self.encode_flags(flags),
+            Value::Flags(flags) => self.encode_flags(*flags),
             Value::Enum(n) => self.encode_enum(*n),
-            Value::Stream(handle) => self.encode_stream(*handle),
-            Value::Future(handle) => self.encode_future(*handle),
+            Value::Stream(handle) => self.encode_stream(handle.0),
+            Value::Future(handle) => self.encode_future(handle.0),
             Value::Own(handle) => self.encode_own(*handle),
             Value::Borrow(handle) => self.encode_borrow(*handle),
         }
     }
 
     /// Get the encoded buffer
-    pub fn finish(self) -> Vec<u8> {
+    pub fn finish(self) -> Result<Vec<u8>> {
         #[cfg(feature = "std")]
         {
-            self.buffer
+            Ok(self.buffer)
         }
         #[cfg(not(any(feature = "std",)))]
         {
-            self.buffer.into_vec()
+            Ok(self.buffer.iter().copied().collect())
         }
     }
 
@@ -284,13 +280,17 @@ impl AsyncCanonicalEncoder {
 
     fn encode_result(
         &mut self,
-        result: &core::result::Result<Box<Value>, Box<Value>>,
+        result: &core::result::Result<Option<Box<Value>>, Box<Value>>,
         options: &CanonicalOptions,
     ) -> Result<()> {
         match result {
-            Ok(val) => {
+            Ok(val_opt) => {
                 self.encode_u32(0)?; // Ok discriminant
-                self.encode_value(val, options)
+                if let Some(val) = val_opt {
+                    self.encode_value(val, options)
+                } else {
+                    Ok(())
+                }
             },
             Err(val) => {
                 self.encode_u32(1)?; // Err discriminant
@@ -299,15 +299,9 @@ impl AsyncCanonicalEncoder {
         }
     }
 
-    fn encode_flags(&mut self, flags: &[bool]) -> Result<()> {
-        // Pack flags into u32 values
-        let mut packed = 0u32;
-        for (i, &flag) in flags.iter().enumerate().take(32) {
-            if flag {
-                packed |= 1 << i;
-            }
-        }
-        self.encode_u32(packed)
+    fn encode_flags(&mut self, flags: u32) -> Result<()> {
+        // Flags are already packed as u32
+        self.encode_u32(flags)
     }
 
     fn encode_enum(&mut self, value: u32) -> Result<()> {
@@ -396,16 +390,38 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             ValType::F64 => Ok(Value::F64(self.decode_f64()?)),
             ValType::Char => Ok(Value::Char(self.decode_char()?)),
             ValType::String => Ok(Value::String(self.decode_string(options)?)),
-            ValType::List(elem_type) => Ok(Value::List(self.decode_list(elem_type, options)?)),
-            ValType::Record(fields) => Ok(Value::Record(self.decode_record(fields, options)?)),
-            ValType::Variant(cases) => self.decode_variant(cases, options),
-            ValType::Tuple(types) => Ok(Value::Tuple(self.decode_tuple(types, options)?)),
+            ValType::List(elem_type) => {
+                let vec = self.decode_list(elem_type, options)?;
+                #[cfg(feature = "std")]
+                { Ok(Value::List(Box::new(vec))) }
+                #[cfg(not(any(feature = "std",)))]
+                { Ok(Value::List(Box::new(BoundedVec::from_slice(&vec)?))) }
+            },
+            ValType::Record(fields) => {
+                let vec = self.decode_record(fields.fields.as_slice(), options)?;
+                #[cfg(feature = "std")]
+                { Ok(Value::Record(Box::new(vec))) }
+                #[cfg(not(any(feature = "std",)))]
+                { Ok(Value::Record(Box::new(BoundedVec::from_slice(&vec)?))) }
+            },
+            ValType::Variant(variant) => self.decode_variant(variant.cases.as_slice(), options),
+            ValType::Tuple(types) => {
+                let vec = self.decode_tuple(types.types.as_slice(), options)?;
+                #[cfg(feature = "std")]
+                { Ok(Value::Tuple(Box::new(vec))) }
+                #[cfg(not(any(feature = "std",)))]
+                { Ok(Value::Tuple(Box::new(BoundedVec::from_slice(&vec)?))) }
+            },
             ValType::Option(inner) => Ok(Value::Option(self.decode_option(inner, options)?)),
-            ValType::Result { ok, err } => Ok(Value::Result(self.decode_result(ok, err, options)?)),
-            ValType::Flags(names) => Ok(Value::Flags(self.decode_flags(names.len())?)),
+            ValType::Result(result_type) => {
+                let ok_type = result_type.ok.as_ref().ok_or_else(|| Error::runtime_type_mismatch("Result type missing ok type"))?;
+                let err_type = result_type.err.as_ref().ok_or_else(|| Error::runtime_type_mismatch("Result type missing err type"))?;
+                Ok(Value::Result(self.decode_result(ok_type, err_type, options)?))
+            },
+            ValType::Flags(names) => Ok(Value::Flags(self.decode_flags(names.labels.len())?)),
             ValType::Enum(_) => Ok(Value::Enum(self.decode_enum()?)),
-            ValType::Stream(elem_type) => Ok(Value::Stream(self.decode_stream()?)),
-            ValType::Future(elem_type) => Ok(Value::Future(self.decode_future()?)),
+            ValType::Stream(elem_type) => Ok(Value::Stream(StreamHandle(self.decode_stream()?))),
+            ValType::Future(elem_type) => Ok(Value::Future(FutureHandle(self.decode_future()?))),
             ValType::Own(_) => Ok(Value::Own(self.decode_own()?)),
             ValType::Borrow(_) => Ok(Value::Borrow(self.decode_borrow()?)),
         }
@@ -484,11 +500,12 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         })
     }
 
-    fn decode_string(&mut self, options: &CanonicalOptions) -> Result<String> {
+    fn decode_string(&mut self, options: &CanonicalOptions) -> Result<BoundedString<1024, NoStdProvider<2048>>> {
         let _len = self.decode_u32()?;
         let _ptr = self.decode_u32()?;
         // In real implementation, would read from linear memory
-        Ok(String::from("decoded_string"))
+        let provider = safe_managed_alloc!(2048, CrateId::Component)?;
+        BoundedString::from_str("decoded_string", provider).map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
     }
 
     fn decode_list(
@@ -504,31 +521,31 @@ impl<'a> AsyncCanonicalDecoder<'a> {
 
     fn decode_record(
         &mut self,
-        fields: &[(String, ValType)],
+        fields: &[crate::types::Field],
         options: &CanonicalOptions,
-    ) -> Result<Vec<(String, Value)>> {
+    ) -> Result<Vec<Value>> {
         let mut result = Vec::new();
-        for (name, field_type) in fields {
-            let value = self.decode_value(field_type, options)?;
-            result.push((name.clone(), value));
+        for field in fields {
+            let value = self.decode_value(&field.ty, options)?;
+            result.push(value);
         }
         Ok(result)
     }
 
     fn decode_variant(
         &mut self,
-        cases: &[(String, Option<ValType>)],
+        cases: &[crate::types::Case],
         options: &CanonicalOptions,
     ) -> Result<Value> {
-        let tag = self.decode_u32()?;
+        let discriminant = self.decode_u32()?;
 
-        if let Some((_, case_type)) = cases.get(tag as usize) {
-            let value = if let Some(val_type) = case_type {
+        if let Some(case) = cases.get(discriminant as usize) {
+            let value = if let Some(ref val_type) = case.ty {
                 Some(Box::new(self.decode_value(val_type, options)?))
             } else {
                 None
             };
-            Ok(Value::Variant { tag, value })
+            Ok(Value::Variant { discriminant, value })
         } else {
             Err(Error::runtime_execution_error(
                 "Invalid variant discriminant",
@@ -570,10 +587,10 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         ok_type: &ValType,
         err_type: &ValType,
         options: &CanonicalOptions,
-    ) -> Result<core::result::Result<Box<Value>, Box<Value>>> {
+    ) -> Result<core::result::Result<Option<Box<Value>>, Box<Value>>> {
         let discriminant = self.decode_u32()?;
         match discriminant {
-            0 => Ok(Ok(Box::new(self.decode_value(ok_type, options)?))),
+            0 => Ok(Ok(Some(Box::new(self.decode_value(ok_type, options)?)))),
             1 => Ok(Err(Box::new(self.decode_value(err_type, options)?))),
             _ => Err(Error::runtime_execution_error(
                 "Invalid result discriminant",
@@ -581,15 +598,10 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         }
     }
 
-    fn decode_flags(&mut self, count: usize) -> Result<Vec<bool>> {
+    fn decode_flags(&mut self, count: usize) -> Result<u32> {
         let packed = self.decode_u32()?;
-        let mut flags = Vec::new();
-
-        for i in 0..count.min(32) {
-            flags.push((packed & (1 << i)) != 0);
-        }
-
-        Ok(flags)
+        // Return the packed u32 representation
+        Ok(packed)
     }
 
     fn decode_enum(&mut self) -> Result<u32> {
@@ -675,7 +687,7 @@ pub fn async_canonical_lower(values: &[Value], options: &CanonicalOptions) -> Re
         encoder.encode_value(value, options)?;
     }
 
-    Ok(encoder.finish())
+    encoder.finish()
 }
 
 #[cfg(test)]

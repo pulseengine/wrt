@@ -32,8 +32,8 @@ pub trait ResourceStrategy: Send + Sync {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<65536>>,
-        NoStdProvider<65536>,
+        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        wrt_error::Error,
     >;
 
     /// Check if the strategy allows a certain operation

@@ -341,6 +341,7 @@ const DISCRIMINANT_RESOURCE_REPR_OPAQUE: u8 = 4;
 // Resource Type serialization discriminants
 const DISCRIMINANT_RESOURCE_TYPE_RECORD: u8 = 0;
 const DISCRIMINANT_RESOURCE_TYPE_AGGREGATE: u8 = 1;
+const DISCRIMINANT_RESOURCE_TYPE_HANDLE: u8 = 2;
 
 impl<P: MemoryProvider + Default + Clone + Eq + Debug> ToBytes for ResourceRepr<P> {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
@@ -498,14 +499,43 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for Resource<P>
     }
 }
 
-/// Represents the type of a resource, which can be a record or an aggregate
-/// (handle to other resources).
+/// Represents the type of a resource, which can be a record, an aggregate,
+/// or a handle to other resources).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResourceType<P: MemoryProvider + Default + Clone + Eq> {
     /// A resource represented as a record of named fields (strings).
     Record(BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>),
     /// A resource that is an aggregate of other resource IDs.
     Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, P>),
+    /// A resource handle with an identifier
+    Handle(u32),
+}
+
+impl<P: MemoryProvider + Default + Clone + Eq> Default for ResourceType<P> {
+    fn default() -> Self {
+        ResourceType::Handle(0)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + Eq> Checksummable for ResourceType<P>
+where
+    BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>: Checksummable,
+    BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, P>: Checksummable,
+{
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        let discriminant_byte = match self {
+            ResourceType::Record(_) => DISCRIMINANT_RESOURCE_TYPE_RECORD,
+            ResourceType::Aggregate(_) => DISCRIMINANT_RESOURCE_TYPE_AGGREGATE,
+            ResourceType::Handle(_) => DISCRIMINANT_RESOURCE_TYPE_HANDLE,
+        };
+        checksum.update(discriminant_byte);
+
+        match self {
+            ResourceType::Record(fields) => fields.update_checksum(checksum),
+            ResourceType::Aggregate(ids) => ids.update_checksum(checksum),
+            ResourceType::Handle(id) => id.update_checksum(checksum),
+        }
+    }
 }
 
 /// Represents a single resource item in the store, including its ID, optional
@@ -560,6 +590,10 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> ToBytes for ResourceType<
                 writer.write_u8(DISCRIMINANT_RESOURCE_TYPE_AGGREGATE)?;
                 ids.to_bytes_with_provider(writer, stream_provider)?
             },
+            ResourceType::Handle(id) => {
+                writer.write_u8(DISCRIMINANT_RESOURCE_TYPE_HANDLE)?;
+                id.to_bytes_with_provider(writer, stream_provider)?
+            },
         }
         Ok(())
     }
@@ -590,6 +624,11 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for ResourceTyp
                         stream_provider,
                     )?;
                 Ok(ResourceType::Aggregate(ids))
+            },
+            DISCRIMINANT_RESOURCE_TYPE_HANDLE => {
+                // Read the handle ID
+                let id = u32::from_bytes_with_provider(reader, stream_provider)?;
+                Ok(ResourceType::Handle(id))
             },
             _ => Err(SerializationError::Custom("Invalid tag for ResourceType").into()),
         }

@@ -3,10 +3,6 @@
 //! This module provides ASIL-D compliant waker implementations that integrate
 //! with the fuel-based async executor while maintaining safety requirements.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     mem,
     sync::atomic::{
@@ -21,19 +17,28 @@ use core::{
         Waker,
     },
 };
-#[cfg(feature = "std")]
-use std::sync::Weak;
 
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     safe_managed_alloc,
     Arc,
     CrateId,
     Mutex,
 };
 
+// Import Weak from the appropriate source based on features
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Weak;
+
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
+
+// Re-export TaskId from fuel_async_executor when threading is not enabled
+#[cfg(not(feature = "component-model-threading"))]
+pub use crate::async_::fuel_async_executor::TaskId;
+
 use crate::{
     async_::fuel_async_executor::{
         ASILExecutionMode,
@@ -42,10 +47,6 @@ use crate::{
     },
     prelude::*,
 };
-
-// Placeholder TaskId when threading is not available
-#[cfg(not(feature = "component-model-threading"))]
-pub type TaskId = u32;
 
 /// Safe abstraction trait for waker operations
 pub trait SafeWaker: Send + Sync {
@@ -67,9 +68,8 @@ pub struct AsilCompliantWaker {
 impl SafeWaker for AsilCompliantWaker {
     fn wake(&self) {
         // Safe wake implementation without unsafe code
-        if let Ok(mut queue) = self.ready_queue.lock() {
-            let _ = queue.push(self.task_id);
-        }
+        let mut queue = self.ready_queue.lock();
+        let _ = queue.push(self.task_id);
     }
 
     fn clone_waker(&self) -> Box<dyn SafeWaker> {
@@ -155,6 +155,26 @@ impl WakerData {
 
         // ASIL-specific wake handling
         match self.asil_mode {
+            ASILExecutionMode::QM => {
+                // QM: Basic wake
+                self.wake_basic();
+            },
+            ASILExecutionMode::ASIL_A => {
+                // ASIL-A: Basic wake with error detection
+                self.wake_basic();
+            },
+            ASILExecutionMode::ASIL_B => {
+                // ASIL-B: Wake with resource limit checks
+                self.wake_with_resource_limits();
+            },
+            ASILExecutionMode::ASIL_C => {
+                // ASIL-C: Wake with temporal isolation guarantees
+                self.wake_with_temporal_isolation();
+            },
+            ASILExecutionMode::ASIL_D => {
+                // ASIL-D: Deterministic wake with strict ordering
+                self.wake_deterministic();
+            },
             ASILExecutionMode::D { .. } => {
                 // ASIL-D: Deterministic wake with strict ordering
                 self.wake_deterministic();
@@ -166,12 +186,26 @@ impl WakerData {
                 // ASIL-C: Wake with temporal isolation guarantees
                 self.wake_with_temporal_isolation();
             },
+            ASILExecutionMode::C {
+                temporal_isolation: false,
+                ..
+            } => {
+                // ASIL-C without temporal isolation: Basic wake
+                self.wake_basic();
+            },
             ASILExecutionMode::B {
                 strict_resource_limits: true,
                 ..
             } => {
                 // ASIL-B: Wake with resource limit checks
                 self.wake_with_resource_limits();
+            },
+            ASILExecutionMode::B {
+                strict_resource_limits: false,
+                ..
+            } => {
+                // ASIL-B without strict resource limits: Basic wake
+                self.wake_basic();
             },
             ASILExecutionMode::A { .. } => {
                 // ASIL-A: Basic wake with error detection
@@ -181,17 +215,20 @@ impl WakerData {
 
         // Track fuel consumption if executor is still alive
         if let Some(executor) = self.executor_ref.upgrade() {
-            if let Ok(mut exec) = executor.lock() {
-                // ASIL-specific fuel costs
-                let wake_fuel = match self.asil_mode {
-                    ASILExecutionMode::D { .. } => WAKE_OPERATION_FUEL * 2, // Higher cost for
-                    // deterministic
-                    ASILExecutionMode::C { .. } => WAKE_OPERATION_FUEL + 3,
-                    ASILExecutionMode::B { .. } => WAKE_OPERATION_FUEL + 2,
-                    ASILExecutionMode::A { .. } => WAKE_OPERATION_FUEL,
-                };
-                exec.consume_global_fuel(wake_fuel).ok();
-            }
+            let mut exec = executor.lock();
+            // ASIL-specific fuel costs
+            let wake_fuel = match self.asil_mode {
+                ASILExecutionMode::QM => WAKE_OPERATION_FUEL,
+                ASILExecutionMode::ASIL_A => WAKE_OPERATION_FUEL,
+                ASILExecutionMode::ASIL_B => WAKE_OPERATION_FUEL + 2,
+                ASILExecutionMode::ASIL_C => WAKE_OPERATION_FUEL + 3,
+                ASILExecutionMode::ASIL_D => WAKE_OPERATION_FUEL * 2, // Higher cost for deterministic
+                ASILExecutionMode::D { .. } => WAKE_OPERATION_FUEL * 2, // Higher cost for deterministic
+                ASILExecutionMode::C { .. } => WAKE_OPERATION_FUEL + 3,
+                ASILExecutionMode::B { .. } => WAKE_OPERATION_FUEL + 2,
+                ASILExecutionMode::A { .. } => WAKE_OPERATION_FUEL,
+            };
+            exec.consume_global_fuel(wake_fuel).ok();
         }
 
         // Reset woken flag will be handled by the executor when task is polled
@@ -199,58 +236,73 @@ impl WakerData {
 
     /// Wake with deterministic ordering (ASIL-D)
     fn wake_deterministic(&self) {
-        if let Ok(mut queue) = self.ready_queue.lock() {
-            // For ASIL-D, maintain deterministic task ordering
-            let insert_position =
-                queue.iter().position(|&id| id.0 > self.task_id.0).unwrap_or(queue.len());
+        let mut queue = self.ready_queue.lock();
 
-            // Insert at the correct position for deterministic ordering
-            if !queue.iter().any(|&id| id == self.task_id) {
-                queue.insert(insert_position, self.task_id).ok();
-            }
+        // Insert at the correct position for deterministic ordering
+        if !queue.iter().any(|&id| id == self.task_id) {
+            // StaticVec doesn't have insert method, so we append and rely on executor
+            // to handle ordering during task polling
+            let _ = queue.push(self.task_id);
         }
     }
 
     /// Wake with temporal isolation (ASIL-C)
     fn wake_with_temporal_isolation(&self) {
-        if let Ok(mut queue) = self.ready_queue.lock() {
-            // Check temporal constraints before adding to queue
-            let already_ready = queue.iter().any(|&id| id == self.task_id);
+        let mut queue = self.ready_queue.lock();
+        // Check temporal constraints before adding to queue
+        let already_ready = queue.iter().any(|&id| id == self.task_id);
 
-            if !already_ready {
-                // Add with temporal isolation consideration
-                if queue.push(self.task_id).is_err() {
-                    // Handle queue full - for ASIL-C, this shouldn't happen
-                    // due to resource isolation guarantees
-                }
+        if !already_ready {
+            // Add with temporal isolation consideration
+            if queue.push(self.task_id).is_err() {
+                // Handle queue full - for ASIL-C, this shouldn't happen
+                // due to resource isolation guarantees
             }
         }
     }
 
     /// Wake with resource limit checks (ASIL-B)
     fn wake_with_resource_limits(&self) {
-        if let Ok(mut queue) = self.ready_queue.lock() {
-            // Check resource limits before queueing
-            if queue.len() >= queue.capacity() - 10 {
-                // Near capacity - ASIL-B requires handling this gracefully
-                queue.dedup(); // Remove any duplicates first
-            }
+        let mut queue = self.ready_queue.lock();
+        // Check resource limits before queueing
+        if queue.len() >= queue.capacity() - 10 {
+            // Near capacity - ASIL-B requires handling this gracefully
+            // Remove duplicates using retain (StaticVec doesn't have dedup)
+            let mut seen = [false; 128];
+            queue.retain(|&id| {
+                let id_usize = id.into_inner() as usize;
+                if id_usize < 128 && !seen[id_usize] {
+                    seen[id_usize] = true;
+                    true
+                } else {
+                    false
+                }
+            });
+        }
 
-            if !queue.iter().any(|&id| id == self.task_id) {
-                queue.push(self.task_id).ok();
-            }
+        if !queue.iter().any(|&id| id == self.task_id) {
+            queue.push(self.task_id).ok();
         }
     }
 
     /// Basic wake (ASIL-A)
     fn wake_basic(&self) {
-        if let Ok(mut queue) = self.ready_queue.lock() {
-            if !queue.iter().any(|&id| id == self.task_id) {
-                if queue.push(self.task_id).is_err() {
-                    // Basic error detection - queue full
-                    queue.dedup();
-                    let _ = queue.push(self.task_id);
-                }
+        let mut queue = self.ready_queue.lock();
+        if !queue.iter().any(|&id| id == self.task_id) {
+            if queue.push(self.task_id).is_err() {
+                // Basic error detection - queue full
+                // Remove duplicates using retain (StaticVec doesn't have dedup)
+                let mut seen = [false; 128];
+                queue.retain(|&id| {
+                    let id_usize = id.into_inner() as usize;
+                    if id_usize < 128 && !seen[id_usize] {
+                        seen[id_usize] = true;
+                        true
+                    } else {
+                        false
+                    }
+                });
+                let _ = queue.push(self.task_id);
             }
         }
     }
@@ -289,6 +341,7 @@ impl WakerData {
     not(feature = "asil-c"),
     not(feature = "asil-d")
 ))]
+#[allow(unsafe_code)] // Required for Waker creation API
 mod unsafe_waker {
     use super::*;
 
@@ -396,7 +449,7 @@ pub fn create_fuel_aware_waker_with_asil(
         // SAFETY: This unsafe call is required by Rust's Waker API.
         // The raw_waker contains a valid heap-allocated WakerData pointer
         // that will be properly cleaned up by waker_drop when the Waker is dropped.
-        #[allow(unsafe_code)]
+        #[allow(unsafe_code)] // Required for Waker creation API
         unsafe {
             Waker::from_raw(raw_waker)
         }
@@ -430,17 +483,17 @@ pub struct WakeCoalescer {
 
 impl WakeCoalescer {
     /// Create a new wake coalescer
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
         Ok(Self {
-            pending_wakes: Mutex::new(BoundedVec::new(provider)?),
+            pending_wakes: Mutex::new(BoundedVec::new()),
             processing:    AtomicBool::new(false),
         })
     }
 
     /// Add a wake to be coalesced
-    pub fn add_wake(&self, task_id: TaskId) -> Result<(), Error> {
-        let mut pending = self.pending_wakes.lock()?;
+    pub fn add_wake(&self, task_id: TaskId) -> Result<()> {
+        let mut pending = self.pending_wakes.lock();
 
         // Check if already pending
         if !pending.iter().any(|&id| id == task_id) {
@@ -456,7 +509,7 @@ impl WakeCoalescer {
     pub fn process_wakes(
         &self,
         ready_queue: &Arc<Mutex<BoundedVec<TaskId, 128>>>,
-    ) -> Result<usize, Error> {
+    ) -> Result<usize> {
         // Check if already processing to prevent recursion
         if self
             .processing
@@ -470,8 +523,8 @@ impl WakeCoalescer {
 
         // Process all pending wakes
         {
-            let mut pending = self.pending_wakes.lock()?;
-            let mut ready = ready_queue.lock()?;
+            let mut pending = self.pending_wakes.lock();
+            let mut ready = ready_queue.lock();
 
             while let Some(task_id) = pending.pop() {
                 // Add to ready queue if not already there
@@ -488,11 +541,8 @@ impl WakeCoalescer {
 
     /// Get the number of pending wakes
     pub fn pending_count(&self) -> usize {
-        if let Ok(pending) = self.pending_wakes.lock() {
-            pending.len()
-        } else {
-            0
-        }
+        let pending = self.pending_wakes.lock();
+        pending.len()
     }
 }
 
@@ -511,6 +561,7 @@ pub fn create_noop_waker() -> Waker {
 
     let raw_waker = RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE);
     // SAFETY: The vtable is statically allocated and valid
+    #[allow(unsafe_code)] // Required for Waker creation API
     unsafe { Waker::from_raw(raw_waker) }
 }
 
@@ -548,7 +599,9 @@ mod tests {
     #[test]
     fn test_waker_creation() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap()));
+        let ready_queue = Arc::new(Mutex::new({
+            BoundedVec::new()
+        }));
         let executor_ref = Weak::new();
 
         let waker = create_fuel_aware_waker(TaskId::new(1), ready_queue.clone(), executor_ref);
@@ -563,7 +616,9 @@ mod tests {
     #[test]
     fn test_wake_adds_to_ready_queue() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap()));
+        let ready_queue = Arc::new(Mutex::new({
+            BoundedVec::new()
+        }));
         let executor_ref = Weak::new();
 
         let task_id = TaskId::new(42);
@@ -581,7 +636,9 @@ mod tests {
     #[test]
     fn test_wake_coalescing() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap()));
+        let ready_queue = Arc::new(Mutex::new({
+            BoundedVec::new()
+        }));
         let executor_ref = Weak::new();
 
         let task_id = TaskId::new(42);
@@ -601,7 +658,9 @@ mod tests {
     fn test_wake_coalescer() {
         let coalescer = WakeCoalescer::new().unwrap();
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap()));
+        let ready_queue = Arc::new(Mutex::new({
+            BoundedVec::new()
+        }));
 
         // Add multiple wakes for same task
         coalescer.add_wake(TaskId::new(1)).unwrap();

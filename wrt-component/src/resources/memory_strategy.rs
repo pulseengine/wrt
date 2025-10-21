@@ -7,18 +7,23 @@ use wrt_error::{
     Error,
     Result,
 };
-use wrt_foundation::bounded::{
-    BoundedVec,
-    MAX_BUFFER_SIZE,
+use wrt_foundation::{
+    collections::StaticVec as BoundedVec,
+    bounded::MAX_BUFFER_SIZE,
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 
 #[cfg(feature = "std")]
 use super::resource_table::MemoryStrategy;
-// use super::resource_table_no_std::MemoryStrategy; // Module not available
-// use crate::resources::{ResourceOperation, ResourceStrategy}; // Types not
-// available
+#[cfg(not(feature = "std"))]
+use super::resource_table_no_std::MemoryStrategy;
+
+use super::resource_strategy::ResourceStrategy;
+use wrt_foundation::resource::ResourceOperation;
+
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 #[cfg(feature = "std")]
 impl ResourceStrategy for MemoryStrategy {
@@ -63,6 +68,7 @@ impl ResourceStrategy for MemoryStrategy {
     }
 }
 
+#[cfg(not(feature = "std"))]
 impl ResourceStrategy for MemoryStrategy {
     fn memory_strategy_type(&self) -> MemoryStrategy {
         *self
@@ -73,15 +79,17 @@ impl ResourceStrategy for MemoryStrategy {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<65536>>,
-        NoStdProvider<65536>,
+        wrt_foundation::bounded::BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        wrt_error::Error,
     > {
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let provider = safe_managed_alloc!(MAX_BUFFER_SIZE, CrateId::Component)?;
+
         match self {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => {
-                    let mut result = BoundedVec::with_capacity(data.len())
-                        .map_err(|e| Error::component_not_found("Error occurred"))?;
+                    let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                     for &byte in data {
                         result
@@ -91,8 +99,7 @@ impl ResourceStrategy for MemoryStrategy {
                     Ok(result)
                 },
                 ResourceOperation::Write => {
-                    let mut result = BoundedVec::with_capacity(data.len())
-                        .map_err(|e| Error::component_not_found("Error occurred"))?;
+                    let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                     for &byte in data {
                         result
@@ -106,8 +113,7 @@ impl ResourceStrategy for MemoryStrategy {
 
             // Bounded-copy strategy - always copies but reuses buffers
             MemoryStrategy::BoundedCopy => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::component_not_found("Error occurred"))?;
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| Error::component_not_found("Error occurred"))?;
@@ -119,9 +125,10 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::Isolated
             | MemoryStrategy::Copy
             | MemoryStrategy::Reference
-            | MemoryStrategy::FullIsolation => {
-                let mut result = BoundedVec::with_capacity(data.len())
-                    .map_err(|e| Error::component_not_found("Error occurred"))?;
+            | MemoryStrategy::FullIsolation
+            | MemoryStrategy::FixedBuffer
+            | MemoryStrategy::BoundedCollections => {
+                let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| Error::component_not_found("Error occurred"))?;

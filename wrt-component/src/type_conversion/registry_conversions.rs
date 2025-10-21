@@ -6,18 +6,31 @@
 use wrt_format::component::{
     ComponentTypeDefinition,
     ExternType as FormatExternType,
-    ValType as FormatValType,
 };
+// Note: wrt_format::component::ValType is actually wrt_foundation::component_value::ValType in std mode
+// So we can't use it as an alias - we need to use the foundation type directly
+type FormatValType<P> = wrt_foundation::component_value::ValType<P>;
 use wrt_foundation::{
     component::{
         ComponentType,
-        FuncType,
         InstanceType,
     },
-    component_value::ValType,
-    types::ValueType,
+    component_value::ValType as TypesValType,
+    types::{
+        FuncType,
+        ValueType,
+    },
     ExternType as TypesExternType,
 };
+
+#[cfg(not(feature = "std"))]
+use alloc::string::{String, ToString};
+#[cfg(feature = "std")]
+use std::string::String;
+
+// For no_std, override prelude's bounded::BoundedVec with StaticVec
+#[cfg(not(feature = "std"))]
+use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use super::{
     registry::{
@@ -32,98 +45,69 @@ use super::{
         RuntimeInstanceType,
     },
 };
-use crate::prelude::*;
+// Import only what we need from prelude to avoid ValType name collision
+use crate::prelude::{ComponentProvider, CrateId};
 
 /// Register ValType conversions in the TypeConversionRegistry
 pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
-    // Format ValType to Types ValType - primitive types
+    // Format ValType to Types ValType - primitive types (they're the same type in std mode)
     registry.register(
-        |format_val_type: &FormatValType| -> core::result::Result<ValType, ConversionError> {
-            match format_val_type {
-                FormatValType::Bool => Ok(ValType::Bool),
-                FormatValType::S8 => Ok(ValType::S8),
-                FormatValType::U8 => Ok(ValType::U8),
-                FormatValType::S16 => Ok(ValType::S16),
-                FormatValType::U16 => Ok(ValType::U16),
-                FormatValType::S32 => Ok(ValType::S32),
-                FormatValType::U32 => Ok(ValType::U32),
-                FormatValType::S64 => Ok(ValType::S64),
-                FormatValType::U64 => Ok(ValType::U64),
-                FormatValType::F32 => Ok(ValType::F32),
-                FormatValType::F64 => Ok(ValType::F64),
-                FormatValType::Char => Ok(ValType::Char),
-                FormatValType::String => Ok(ValType::String),
-                FormatValType::Ref(idx) => Ok(ValType::Ref(*idx)),
-                FormatValType::Flags(names) => Ok(ValType::Flags(names.clone())),
-                FormatValType::Enum(cases) => Ok(ValType::Enum(cases.clone())),
-                FormatValType::Own(idx) => Ok(ValType::Own(*idx)),
-                FormatValType::Borrow(idx) => Ok(ValType::Borrow(*idx)),
-                // Complex types handled elsewhere or not supported
-                _ => Err(ConversionError {
-                    kind:        ConversionErrorKind::NotImplemented,
-                    source_type: "FormatValType",
-                    target_type: "ValType",
-                    context:     Some(
-                        "Complex type conversion requires registry capabilities".to_string(),
-                    ),
-                    source:      None,
-                }),
-            }
+        |format_val_type: &FormatValType<ComponentProvider>| -> core::result::Result<TypesValType<ComponentProvider>, ConversionError> {
+            // Since FormatValType and TypesValType are the same type in std mode, just clone
+            Ok(format_val_type.clone())
         },
     );
 
-    // Types ValType to Format ValType - primitive types
+    // Types ValType to Format ValType - primitive types (same type in std mode)
     registry.register(
-        |types_val_type: &ValType| -> core::result::Result<FormatValType, ConversionError> {
-            match types_val_type {
-                ValType::Bool => Ok(FormatValType::Bool),
-                ValType::S8 => Ok(FormatValType::S8),
-                ValType::U8 => Ok(FormatValType::U8),
-                ValType::S16 => Ok(FormatValType::S16),
-                ValType::U16 => Ok(FormatValType::U16),
-                ValType::S32 => Ok(FormatValType::S32),
-                ValType::U32 => Ok(FormatValType::U32),
-                ValType::S64 => Ok(FormatValType::S64),
-                ValType::U64 => Ok(FormatValType::U64),
-                ValType::F32 => Ok(FormatValType::F32),
-                ValType::F64 => Ok(FormatValType::F64),
-                ValType::Char => Ok(FormatValType::Char),
-                ValType::String => Ok(FormatValType::String),
-                ValType::Ref(idx) => Ok(FormatValType::Ref(*idx)),
-                ValType::Flags(names) => Ok(FormatValType::Flags(names.clone())),
-                ValType::Enum(cases) => Ok(FormatValType::Enum(cases.clone())),
-                ValType::Own(idx) => Ok(FormatValType::Own(*idx)),
-                ValType::Borrow(idx) => Ok(FormatValType::Borrow(*idx)),
-                // Complex types handled elsewhere or not supported
-                _ => Err(ConversionError {
-                    kind:        ConversionErrorKind::NotImplemented,
-                    source_type: "ValType",
-                    target_type: "FormatValType",
-                    context:     Some(
-                        "Complex type conversion requires registry capabilities".to_string(),
-                    ),
-                    source:      None,
-                }),
-            }
+        |types_val_type: &TypesValType<ComponentProvider>| -> core::result::Result<FormatValType<ComponentProvider>, ConversionError> {
+            // Since FormatValType and TypesValType are the same type in std mode, just clone
+            Ok(types_val_type.clone())
         },
     );
 
     // ValueType to FormatValType conversion
     registry.register(
-        |value_type: &ValueType| -> core::result::Result<FormatValType, ConversionError> {
+        |value_type: &ValueType| -> core::result::Result<FormatValType<ComponentProvider>, ConversionError> {
             match value_type {
-                ValueType::I32 => Ok(FormatValType::S32),
-                ValueType::I64 => Ok(FormatValType::S64),
-                ValueType::F32 => Ok(FormatValType::F32),
-                ValueType::F64 => Ok(FormatValType::F64),
+                ValueType::I32 => Ok(FormatValType::<ComponentProvider>::S32),
+                ValueType::I64 => Ok(FormatValType::<ComponentProvider>::S64),
+                ValueType::F32 => Ok(FormatValType::<ComponentProvider>::F32),
+                ValueType::F64 => Ok(FormatValType::<ComponentProvider>::F64),
+                ValueType::V128 => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::V128",
+                    target_type: "FormatValType",
+                    context:     Some(String::from(
+                        "V128 SIMD type not supported in component model"
+                    )),
+                    source:      None,
+                }),
+                ValueType::I16x8 => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::I16x8",
+                    target_type: "FormatValType",
+                    context:     Some(String::from(
+                        "I16x8 SIMD type not supported in component model"
+                    )),
+                    source:      None,
+                }),
                 ValueType::FuncRef | ValueType::ExternRef => Err(ConversionError {
                     kind:        ConversionErrorKind::InvalidVariant,
                     source_type: "ValueType::FuncRef/ExternRef",
                     target_type: "FormatValType",
-                    context:     Some(
+                    context:     Some(String::from(
                         "Reference types cannot be directly converted to component format types"
-                            .to_string(),
-                    ),
+                    )),
+                    source:      None,
+                }),
+                ValueType::StructRef(_) | ValueType::ArrayRef(_) => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::StructRef/ArrayRef",
+                    target_type: "FormatValType",
+                    context:     Some(String::from(
+                        "GC types not supported in component model"
+                    )),
                     source:      None,
                 }),
             }
@@ -132,7 +116,7 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
 
     // FormatValType to ValueType conversion
     registry.register(
-        |format_val_type: &FormatValType| -> core::result::Result<ValueType, ConversionError> {
+        |format_val_type: &FormatValType<ComponentProvider>| -> core::result::Result<ValueType, ConversionError> {
             match format_val_type {
                 FormatValType::S32 => Ok(ValueType::I32),
                 FormatValType::S64 => Ok(ValueType::I64),
@@ -142,7 +126,7 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                     kind:        ConversionErrorKind::InvalidVariant,
                     source_type: "FormatValType",
                     target_type: "ValueType",
-                    context:     Some("Component not found"),
+                    context:     Some("Component not found".to_string()),
                     source:      None,
                 }),
             }
@@ -151,14 +135,41 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
 
     // ValueType to ValType conversion
     registry.register(
-        |value_type: &ValueType| -> core::result::Result<ValType, ConversionError> {
+        |value_type: &ValueType| -> core::result::Result<TypesValType<ComponentProvider>, ConversionError> {
             match value_type {
-                ValueType::I32 => Ok(ValType::S32),
-                ValueType::I64 => Ok(ValType::S64),
-                ValueType::F32 => Ok(ValType::F32),
-                ValueType::F64 => Ok(ValType::F64),
-                ValueType::FuncRef => Ok(ValType::Own(0)), // Default to resource type 0
-                ValueType::ExternRef => Ok(ValType::Ref(0)), // Default to type index 0
+                ValueType::I32 => Ok(TypesValType::<ComponentProvider>::S32),
+                ValueType::I64 => Ok(TypesValType::<ComponentProvider>::S64),
+                ValueType::F32 => Ok(TypesValType::<ComponentProvider>::F32),
+                ValueType::F64 => Ok(TypesValType::<ComponentProvider>::F64),
+                ValueType::V128 => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::V128",
+                    target_type: "TypesValType",
+                    context:     Some(String::from(
+                        "V128 SIMD type not supported in component model"
+                    )),
+                    source:      None,
+                }),
+                ValueType::I16x8 => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::I16x8",
+                    target_type: "TypesValType",
+                    context:     Some(String::from(
+                        "I16x8 SIMD type not supported in component model"
+                    )),
+                    source:      None,
+                }),
+                ValueType::FuncRef => Ok(TypesValType::<ComponentProvider>::Own(0)), // Default to resource type 0
+                ValueType::ExternRef => Ok(TypesValType::<ComponentProvider>::Ref(0)), // Default to type index 0
+                ValueType::StructRef(_) | ValueType::ArrayRef(_) => Err(ConversionError {
+                    kind:        ConversionErrorKind::InvalidVariant,
+                    source_type: "ValueType::StructRef/ArrayRef",
+                    target_type: "TypesValType",
+                    context:     Some(String::from(
+                        "GC types not supported in component model"
+                    )),
+                    source:      None,
+                }),
             }
         },
     );

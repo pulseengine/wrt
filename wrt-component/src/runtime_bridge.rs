@@ -192,10 +192,10 @@ pub struct HostFunctionEntry {
     pub signature: FunctionSignature,
     /// Function implementation
     #[cfg(feature = "std")]
-    pub implementation: Box<dyn Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync>,
+    pub implementation: Box<dyn Fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> + Send + Sync>,
     
     #[cfg(not(any(feature = "std", )))]
-    pub implementation: fn(&[ComponentValue]) -> Result<ComponentValue>,
+    pub implementation: fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>>,
     
     /// Function metadata
     pub metadata: HostFunctionMetadata,
@@ -245,7 +245,7 @@ pub struct ComponentRuntimeBridge {
 }
 
 /// Runtime bridge configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeBridgeConfig {
     /// Enable execution tracing
     pub enable_tracing: bool,
@@ -340,7 +340,7 @@ impl ValueConverter {
     }
 
     /// Convert a core value to a component value
-    pub fn core_to_component(&self, value: &CoreValue, target_type: &crate::canonical_abi::ComponentType) -> Result<ComponentValue> {
+    pub fn core_to_component(&self, value: &CoreValue, target_type: &crate::canonical_abi::ComponentType) -> Result<ComponentValue<ComponentProvider>> {
         match (value, target_type) {
             (CoreValue::I32(v), crate::canonical_abi::ComponentType::Bool) => Ok(ComponentValue::Bool(*v != 0)),
             (CoreValue::I32(v), crate::canonical_abi::ComponentType::S8) => Ok(ComponentValue::S8(*v as i8)),
@@ -540,7 +540,7 @@ impl HostFunctionRegistry {
     #[cfg(feature = "std")]
     pub fn register_function<F>(&mut self, name: String, signature: FunctionSignature, func: F) -> Result<usize>
     where
-        F: Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync + 'static,
+        F: Fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> + Send + Sync + 'static,
     {
         let index = self.functions.len();
         let entry = HostFunctionEntry {
@@ -567,7 +567,7 @@ impl HostFunctionRegistry {
         &mut self,
         name: String,
         signature: FunctionSignature,
-        func: fn(&[ComponentValue]) -> Result<ComponentValue>,
+        func: fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>>,
     ) -> Result<usize> {
         if self.functions.len() >= MAX_HOST_FUNCTIONS_NO_STD {
             return Err(Error::resource_exhausted("Error occurred";
@@ -592,7 +592,7 @@ impl HostFunctionRegistry {
     }
 
     /// Call a host function by index
-    pub fn call_function(&self, index: usize, args: &[ComponentValue]) -> Result<ComponentValue> {
+    pub fn call_function(&self, index: usize, args: &[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> {
         if let Some(entry) = self.functions.get(index) {
             #[cfg(feature = "std")]
             {
@@ -649,7 +649,7 @@ impl ComponentRuntimeBridge {
         instance_id: InstanceId,
         function_name: &str,
         args: &[ComponentValue],
-    ) -> Result<ComponentValue> {
+    ) -> Result<ComponentValue<ComponentProvider>> {
         // Get instance information
         let instance_info = self.instance_resolver.get_instance(instance_id)
             .ok_or_else(|| Error::instance_not_found("Error occurred"))?;
@@ -704,7 +704,7 @@ impl ComponentRuntimeBridge {
         func: F,
     ) -> Result<usize>
     where
-        F: Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync + 'static,
+        F: Fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> + Send + Sync + 'static,
     {
         self.host_registry.register_function(name, signature, func)
     }
@@ -715,7 +715,7 @@ impl ComponentRuntimeBridge {
         &mut self,
         name: String,
         signature: FunctionSignature,
-        func: fn(&[ComponentValue]) -> Result<ComponentValue>,
+        func: fn(&[ComponentValue]) -> Result<ComponentValue<ComponentProvider>>,
     ) -> Result<usize> {
         self.host_registry.register_function(name, signature, func)
     }
@@ -842,7 +842,7 @@ mod tests {
         
         let instance_id = resolver.register_instance(
             1,
-            "test_module".to_string(),
+            "test_module".to_owned(),
             10,
             65536,
         ).unwrap();
@@ -862,7 +862,7 @@ mod tests {
     fn test_host_function_registry() {
         let mut registry = HostFunctionRegistry::new();
         
-        fn test_host_function(args: &[ComponentValue]) -> Result<ComponentValue> {
+        fn test_host_function(args: &[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> {
             if let Some(ComponentValue::S32(val)) = args.first() {
                 Ok(ComponentValue::S32(val * 2)
             } else {
@@ -871,13 +871,13 @@ mod tests {
         }
         
         let signature = FunctionSignature {
-            name: "double".to_string(),
+            name: "double".to_owned(),
             params: vec![ComponentType::S32],
             returns: vec![ComponentType::S32],
         };
         
         let index = registry.register_function(
-            "double".to_string(),
+            "double".to_owned(),
             signature,
             test_host_function,
         ).unwrap();
@@ -902,7 +902,7 @@ mod tests {
     fn test_runtime_bridge_host_function() {
         let mut bridge = ComponentRuntimeBridge::new();
         
-        fn add_function(args: &[ComponentValue]) -> Result<ComponentValue> {
+        fn add_function(args: &[ComponentValue]) -> Result<ComponentValue<ComponentProvider>> {
             if args.len() == 2 {
                 if let (ComponentValue::S32(a), ComponentValue::S32(b)) = (&args[0], &args[1]) {
                     Ok(ComponentValue::S32(a + b)
@@ -915,13 +915,13 @@ mod tests {
         }
         
         let signature = FunctionSignature {
-            name: "add".to_string(),
+            name: "add".to_owned(),
             params: vec![ComponentType::S32, ComponentType::S32],
             returns: vec![ComponentType::S32],
         };
         
         bridge.register_host_function(
-            "add".to_string(),
+            "add".to_owned(),
             signature,
             add_function,
         ).unwrap();
@@ -929,7 +929,7 @@ mod tests {
         // Register an instance
         let instance_id = bridge.register_component_instance(
             1,
-            "test".to_string(),
+            "test".to_owned(),
             5,
             4096,
         ).unwrap();

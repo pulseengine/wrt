@@ -6,18 +6,29 @@
 
 #[cfg(feature = "std")]
 use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BTreeMap as HashMap,
+    vec::Vec,
+};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::collections::StaticVec;
 
 use wrt_error::{
     Error,
     Result,
 };
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{
-    BoundedString,
-    BoundedVec,
+use wrt_foundation::{
+    bounded::BoundedString,
+    collections::{StaticVec as BoundedVec, StaticMap as SimpleHashMap},
+    safe_memory::NoStdProvider,
 };
-#[cfg(not(feature = "std"))]
-// HashMap disabled for no_std
 
 /// Maximum number of active resources in pure no_std environments
 #[cfg(not(feature = "std"))]
@@ -57,7 +68,7 @@ pub struct ResourceType {
     #[cfg(feature = "std")]
     pub name:       String,
     #[cfg(not(feature = "std"))]
-    pub name:       BoundedString<64, NoStdProvider<65536>>,
+    pub name:       BoundedString<64, NoStdProvider<512>>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
 }
@@ -90,10 +101,11 @@ pub struct ResourceMetadata {
     #[cfg(feature = "std")]
     pub user_data:     Option<Vec<u8>>,
     #[cfg(not(feature = "std"))]
-    pub user_data:     Option<BoundedVec<u8, 256, NoStdProvider<65536>>, NoStdProvider<65536>>,
+    pub user_data:     Option<BoundedVec<u8, 256>>,
 }
 
 /// Resource lifecycle manager
+#[derive(Debug)]
 pub struct ResourceLifecycleManager {
     /// Next available handle
     next_handle: ResourceHandle,
@@ -101,27 +113,25 @@ pub struct ResourceLifecycleManager {
     #[cfg(feature = "std")]
     resources:   HashMap<ResourceHandle, Resource>,
     #[cfg(not(feature = "std"))]
-    resources: wrt_foundation::SimpleHashMap<
+    resources: SimpleHashMap<
         ResourceHandle,
         Resource,
         MAX_RESOURCES,
-        NoStdProvider<65536>,
     >,
     /// Borrow tracking
     #[cfg(feature = "std")]
     borrows:     HashMap<ResourceHandle, Vec<BorrowInfo>>,
     #[cfg(not(feature = "std"))]
-    borrows: wrt_foundation::SimpleHashMap<
+    borrows: SimpleHashMap<
         ResourceHandle,
-        BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE, NoStdProvider<65536>>,
+        BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE>,
         MAX_RESOURCES,
-        NoStdProvider<65536>,
     >,
     /// Resource type registry
     #[cfg(feature = "std")]
     types:       HashMap<u32, ResourceType>,
     #[cfg(not(feature = "std"))]
-    types:       wrt_foundation::SimpleHashMap<u32, ResourceType, 256, NoStdProvider<65536>>,
+    types:       SimpleHashMap<u32, ResourceType, 256>,
     /// Lifecycle hooks
     hooks:       LifecycleHooks,
     /// Metrics
@@ -149,18 +159,18 @@ pub struct BorrowFlags {
 }
 
 /// Lifecycle hooks for custom behavior
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct LifecycleHooks {
     /// Called when a resource is created
-    pub on_create:   Option<fn(&Resource) -> Result<(), Error>>,
+    pub on_create:   Option<fn(&Resource) -> Result<()>>,
     /// Called when a resource is destroyed
-    pub on_destroy:  Option<fn(&Resource) -> Result<(), Error>>,
+    pub on_destroy:  Option<fn(&Resource) -> Result<()>>,
     /// Called when a resource is borrowed
-    pub on_borrow:   Option<fn(&Resource, &BorrowInfo) -> Result<(), Error>>,
+    pub on_borrow:   Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
     /// Called when a borrow is released
-    pub on_release:  Option<fn(&Resource, &BorrowInfo) -> Result<(), Error>>,
+    pub on_release:  Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
     /// Called when ownership is transferred
-    pub on_transfer: Option<fn(&Resource, u32, u32) -> Result<(), Error>>,
+    pub on_transfer: Option<fn(&Resource, u32, u32) -> Result<()>>,
 }
 
 /// Resource lifecycle metrics
@@ -184,12 +194,26 @@ pub struct ResourceMetrics {
 
 impl ResourceLifecycleManager {
     /// Create a new resource lifecycle manager
+    #[cfg(feature = "std")]
     pub fn new() -> Self {
         Self {
             next_handle: 1, // 0 is reserved for invalid handle
             resources:   HashMap::new(),
             borrows:     HashMap::new(),
             types:       HashMap::new(),
+            hooks:       LifecycleHooks::default(),
+            metrics:     ResourceMetrics::default(),
+        }
+    }
+
+    /// Create a new resource lifecycle manager (no_std version)
+    #[cfg(not(feature = "std"))]
+    pub fn new() -> Self {
+        Self {
+            next_handle: 1, // 0 is reserved for invalid handle
+            resources:   SimpleHashMap::new(),
+            borrows:     SimpleHashMap::new(),
+            types:       SimpleHashMap::new(),
             hooks:       LifecycleHooks::default(),
             metrics:     ResourceMetrics::default(),
         }
@@ -207,8 +231,13 @@ impl ResourceLifecycleManager {
             #[cfg(feature = "std")]
             name: name.to_string(),
             #[cfg(not(feature = "std"))]
-            name: BoundedString::try_from(name)
-                .map_err(|_| Error::resource_error("Resource type name too long"))?,
+            name: {
+                use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+                let provider = safe_managed_alloc!(512, CrateId::Component)
+                    .map_err(|_| Error::resource_error("Failed to allocate memory for resource name"))?;
+                BoundedString::from_str(name, provider)
+                    .map_err(|_| Error::resource_error("Resource type name too long"))?
+            },
             destructor,
         };
 
@@ -238,7 +267,6 @@ impl ResourceLifecycleManager {
         let resource_type = self
             .types
             .get(&type_idx)
-            .map_err(|_| Error::resource_error("Failed to get resource type"))?
             .ok_or_else(|| Error::resource_error("Unknown resource type"))?
             .clone();
 
@@ -263,7 +291,13 @@ impl ResourceLifecycleManager {
                 #[cfg(feature = "std")]
                 user_data: user_data.map(|d| d.to_vec()),
                 #[cfg(not(feature = "std"))]
-                user_data: user_data.and_then(|d| BoundedVec::try_from(d).ok()),
+                user_data: user_data.and_then(|d| {
+                    let mut vec = BoundedVec::new();
+                    for &byte in d {
+                        vec.push(byte).ok()?;
+                    }
+                    Some(vec)
+                }),
             },
         };
 
@@ -300,7 +334,6 @@ impl ResourceLifecycleManager {
         let mut resource = self
             .resources
             .remove(&handle)
-            .map_err(|_| Error::resource_error("Failed to remove resource"))?
             .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))?;
 
         // Check state
@@ -344,6 +377,9 @@ impl ResourceLifecycleManager {
         borrower: u32,
         is_mutable: bool,
     ) -> Result<()> {
+        // Get timestamp before mutable borrow to avoid borrow checker conflict
+        let timestamp = self.get_timestamp();
+
         // Get resource
         #[cfg(feature = "std")]
         let resource = self
@@ -355,7 +391,6 @@ impl ResourceLifecycleManager {
         let resource = self
             .resources
             .get_mut(&handle)
-            .map_err(|_| Error::resource_error("Failed to get resource"))?
             .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))?;
 
         // Check state
@@ -375,7 +410,7 @@ impl ResourceLifecycleManager {
         // Create borrow info
         let borrow_info = BorrowInfo {
             borrower,
-            borrowed_at: Some(self.get_timestamp()),
+            borrowed_at: Some(timestamp),
             flags: BorrowFlags {
                 is_mutable,
                 is_transient: false,
@@ -390,7 +425,7 @@ impl ResourceLifecycleManager {
         // Update resource state
         resource.state = ResourceState::Borrowed;
         resource.borrow_count += 1;
-        resource.metadata.last_accessed = Some(self.get_timestamp());
+        resource.metadata.last_accessed = Some(timestamp);
 
         // Store borrow info
         #[cfg(feature = "std")]
@@ -402,7 +437,7 @@ impl ResourceLifecycleManager {
         {
             let borrows = self
                 .borrows
-                .get_mut_or_insert(handle, BoundedVec::new)
+                .get_mut_or_insert(handle, StaticVec::new())
                 .map_err(|_| Error::resource_error("Failed to store borrow info"))?;
             borrows
                 .push(borrow_info)
@@ -429,7 +464,6 @@ impl ResourceLifecycleManager {
         let resource = self
             .resources
             .get_mut(&handle)
-            .map_err(|_| Error::resource_error("Failed to get resource"))?
             .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))?;
 
         // Find and remove borrow
@@ -453,7 +487,6 @@ impl ResourceLifecycleManager {
             let borrows = self
                 .borrows
                 .get_mut(&handle)
-                .map_err(|_| Error::resource_error("Failed to get borrows"))?
                 .ok_or_else(|| Error::resource_error("No borrows for resource"))?;
 
             let pos = borrows
@@ -483,6 +516,9 @@ impl ResourceLifecycleManager {
 
     /// Transfer ownership of a resource
     pub fn transfer_ownership(&mut self, handle: ResourceHandle, from: u32, to: u32) -> Result<()> {
+        // Get timestamp before mutable borrow to avoid borrow checker conflict
+        let timestamp = self.get_timestamp();
+
         // Get resource
         #[cfg(feature = "std")]
         let resource = self
@@ -494,7 +530,6 @@ impl ResourceLifecycleManager {
         let resource = self
             .resources
             .get_mut(&handle)
-            .map_err(|_| Error::resource_error("Failed to get resource"))?
             .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))?;
 
         // Check ownership
@@ -522,7 +557,7 @@ impl ResourceLifecycleManager {
         // Update ownership
         resource.state = ResourceState::Transferring;
         resource.metadata.owner = to;
-        resource.metadata.last_accessed = Some(self.get_timestamp());
+        resource.metadata.last_accessed = Some(timestamp);
         resource.state = ResourceState::Active;
 
         Ok(())
@@ -541,7 +576,6 @@ impl ResourceLifecycleManager {
         {
             self.resources
                 .get(&handle)
-                .map_err(|_| Error::resource_error("Failed to get resource"))?
                 .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))
         }
     }

@@ -30,13 +30,17 @@ use wrt_error::{
 };
 use wrt_foundation::{
     bounded::{
+        BoundedError,
         BoundedString,
-        BoundedVec,
     },
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     prelude::*,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
+    MemoryProvider,
 };
 
 // Placeholder types when threading is not available
@@ -103,13 +107,13 @@ pub struct AsyncRuntime {
     #[cfg(feature = "std")]
     streams: Vec<StreamEntry>,
     #[cfg(not(any(feature = "std",)))]
-    streams: BoundedVec<StreamEntry, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
+    streams: BoundedVec<StreamEntry, MAX_CONCURRENT_TASKS>,
 
     /// Future registry
     #[cfg(feature = "std")]
     futures: Vec<FutureEntry>,
     #[cfg(not(any(feature = "std",)))]
-    futures: BoundedVec<FutureEntry, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
+    futures: BoundedVec<FutureEntry, MAX_CONCURRENT_TASKS>,
 
     /// Runtime configuration
     config: RuntimeConfig,
@@ -128,19 +132,23 @@ pub struct TaskScheduler {
     #[cfg(feature = "std")]
     ready_queue: VecDeque<ScheduledTask>,
     #[cfg(not(any(feature = "std",)))]
-    ready_queue: BoundedVec<ScheduledTask, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
+    ready_queue: BoundedVec<ScheduledTask, MAX_CONCURRENT_TASKS>,
 
     /// Waiting tasks (blocked on I/O or timers)
     #[cfg(feature = "std")]
     waiting_tasks: Vec<WaitingTask>,
     #[cfg(not(any(feature = "std",)))]
-    waiting_tasks: BoundedVec<WaitingTask, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
+    waiting_tasks: BoundedVec<WaitingTask, MAX_CONCURRENT_TASKS>,
 
     /// Current time for scheduling
     current_time: u64,
 
     /// Task manager for low-level task operations
     task_manager: TaskManager,
+
+    /// Next task ID counter (used when TaskManager is ())
+    #[cfg(not(feature = "component-model-threading"))]
+    next_task_id: u32,
 }
 
 /// Reactor for handling async I/O events
@@ -150,13 +158,13 @@ pub struct Reactor {
     #[cfg(feature = "std")]
     pending_events: VecDeque<ReactorEvent>,
     #[cfg(not(any(feature = "std",)))]
-    pending_events: BoundedVec<ReactorEvent, MAX_REACTOR_EVENTS, NoStdProvider<65536>>,
+    pending_events: BoundedVec<ReactorEvent, MAX_REACTOR_EVENTS>,
 
     /// Event handlers
     #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
     #[cfg(not(any(feature = "std",)))]
-    event_handlers: BoundedVec<EventHandler, MAX_REACTOR_EVENTS, NoStdProvider<65536>>,
+    event_handlers: BoundedVec<EventHandler, MAX_REACTOR_EVENTS>,
 }
 
 /// Runtime configuration
@@ -202,7 +210,70 @@ pub struct StreamEntry {
     #[cfg(feature = "std")]
     pub tasks:  Vec<TaskId>,
     #[cfg(not(any(feature = "std",)))]
-    pub tasks:  BoundedVec<TaskId, 16, NoStdProvider<65536>>,
+    pub tasks:  BoundedVec<TaskId, 16>,
+}
+
+impl Clone for StreamEntry {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle,
+            stream: self.stream.clone(),
+            tasks: self.tasks.clone(),
+        }
+    }
+}
+
+impl Default for StreamEntry {
+    fn default() -> Self {
+        Self {
+            handle: StreamHandle::default(),
+            stream: Stream::default(),
+            #[cfg(feature = "std")]
+            tasks: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            tasks: BoundedVec::new(),
+        }
+    }
+}
+
+impl PartialEq for StreamEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+    }
+}
+
+impl Eq for StreamEntry {}
+
+impl wrt_foundation::traits::Checksummable for StreamEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.handle.update_checksum(checksum);
+    }
+}
+
+impl wrt_runtime::ToBytes for StreamEntry {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.handle.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for StreamEntry {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            handle: StreamHandle::from_bytes_with_provider(reader, provider)?,
+            stream: Stream::default(),
+            #[cfg(feature = "std")]
+            tasks: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            tasks: BoundedVec::new(),
+        })
+    }
 }
 
 /// Entry for a registered future
@@ -216,7 +287,70 @@ pub struct FutureEntry {
     #[cfg(feature = "std")]
     pub tasks:  Vec<TaskId>,
     #[cfg(not(any(feature = "std",)))]
-    pub tasks:  BoundedVec<TaskId, 16, NoStdProvider<65536>>,
+    pub tasks:  BoundedVec<TaskId, 16>,
+}
+
+impl Clone for FutureEntry {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle,
+            future: self.future.clone(),
+            tasks: self.tasks.clone(),
+        }
+    }
+}
+
+impl Default for FutureEntry {
+    fn default() -> Self {
+        Self {
+            handle: FutureHandle::default(),
+            future: Future::default(),
+            #[cfg(feature = "std")]
+            tasks: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            tasks: BoundedVec::new(),
+        }
+    }
+}
+
+impl PartialEq for FutureEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+    }
+}
+
+impl Eq for FutureEntry {}
+
+impl wrt_foundation::traits::Checksummable for FutureEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.handle.update_checksum(checksum);
+    }
+}
+
+impl wrt_runtime::ToBytes for FutureEntry {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.handle.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for FutureEntry {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            handle: FutureHandle::from_bytes_with_provider(reader, provider)?,
+            future: Future::default(),
+            #[cfg(feature = "std")]
+            tasks: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            tasks: BoundedVec::new(),
+        })
+    }
 }
 
 /// Scheduled task in the ready queue
@@ -232,6 +366,67 @@ pub struct ScheduledTask {
     pub task_fn:           TaskFunction,
 }
 
+impl Default for ScheduledTask {
+    fn default() -> Self {
+        Self {
+            task_id: TaskId::default(),
+            priority: 0,
+            estimated_time_us: 0,
+            task_fn: TaskFunction::Custom {
+                name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                    .unwrap_or_else(|_| panic!("Failed to create default task name")),
+                placeholder: 0,
+            },
+        }
+    }
+}
+
+impl PartialEq for ScheduledTask {
+    fn eq(&self, other: &Self) -> bool {
+        self.task_id == other.task_id
+    }
+}
+
+impl Eq for ScheduledTask {}
+
+impl wrt_foundation::traits::Checksummable for ScheduledTask {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.task_id.update_checksum(checksum);
+        self.priority.update_checksum(checksum);
+        self.estimated_time_us.update_checksum(checksum);
+    }
+}
+
+impl wrt_runtime::ToBytes for ScheduledTask {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.task_id.to_bytes_with_provider(writer, provider)?;
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        self.estimated_time_us.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for ScheduledTask {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            task_id: TaskId::from_bytes_with_provider(reader, provider)?,
+            priority: u8::from_bytes_with_provider(reader, provider)?,
+            estimated_time_us: u64::from_bytes_with_provider(reader, provider)?,
+            task_fn: TaskFunction::Custom {
+                name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                    .map_err(|_| Error::foundation_bounded_capacity_exceeded("Failed to create task name"))?,
+                placeholder: 0,
+            },
+        })
+    }
+}
+
 /// Waiting task (blocked on I/O or timers)
 #[derive(Debug, Clone)]
 pub struct WaitingTask {
@@ -241,6 +436,57 @@ pub struct WaitingTask {
     pub wait_condition: WaitCondition,
     /// Timeout (absolute time in microseconds)
     pub timeout_us:     Option<u64>,
+}
+
+impl Default for WaitingTask {
+    fn default() -> Self {
+        Self {
+            task_id: TaskId::default(),
+            wait_condition: WaitCondition::Timer(0),
+            timeout_us: None,
+        }
+    }
+}
+
+impl PartialEq for WaitingTask {
+    fn eq(&self, other: &Self) -> bool {
+        self.task_id == other.task_id
+    }
+}
+
+impl Eq for WaitingTask {}
+
+impl wrt_foundation::traits::Checksummable for WaitingTask {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.task_id.update_checksum(checksum);
+        if let Some(timeout) = self.timeout_us {
+            timeout.update_checksum(checksum);
+        }
+    }
+}
+
+impl wrt_runtime::ToBytes for WaitingTask {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.task_id.to_bytes_with_provider(writer, provider)?;
+        self.timeout_us.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for WaitingTask {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            task_id: TaskId::from_bytes_with_provider(reader, provider)?,
+            wait_condition: WaitCondition::Timer(0),
+            timeout_us: Option::<u64>::from_bytes_with_provider(reader, provider)?,
+        })
+    }
 }
 
 /// Task function type
@@ -258,7 +504,7 @@ pub enum TaskFunction {
     },
     /// Custom user function
     Custom {
-        name:        BoundedString<64, NoStdProvider<65536>>,
+        name:        BoundedString<64, NoStdProvider<512>>,
         // In a real implementation, this would be a function pointer
         // For now, we'll use a placeholder
         placeholder: u32,
@@ -313,6 +559,55 @@ pub struct ReactorEvent {
     pub data:       u64,
 }
 
+impl Default for ReactorEvent {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            event_type: ReactorEventType::StreamReady(StreamHandle::default()),
+            data: 0,
+        }
+    }
+}
+
+impl PartialEq for ReactorEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for ReactorEvent {}
+
+impl wrt_foundation::traits::Checksummable for ReactorEvent {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.id.update_checksum(checksum);
+        self.data.update_checksum(checksum);
+    }
+}
+
+impl wrt_runtime::ToBytes for ReactorEvent {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.id.to_bytes_with_provider(writer, provider)?;
+        self.data.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for ReactorEvent {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            id: u32::from_bytes_with_provider(reader, provider)?,
+            event_type: ReactorEventType::StreamReady(StreamHandle::default()),
+            data: u64::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
 /// Reactor event types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReactorEventType {
@@ -320,14 +615,65 @@ pub enum ReactorEventType {
     StreamReadable,
     /// Stream became writable
     StreamWritable,
+    /// Stream became ready
+    StreamReady(StreamHandle),
     /// Future became ready
     FutureReady,
     /// Timer expired
     TimerExpired,
+    /// Task ready
+    TaskReady,
+}
+
+impl ReactorEventType {
+    /// Get discriminant as u8
+    fn discriminant(&self) -> u8 {
+        match self {
+            Self::StreamReadable => 0,
+            Self::StreamWritable => 1,
+            Self::StreamReady(_) => 2,
+            Self::FutureReady => 3,
+            Self::TimerExpired => 4,
+            Self::TaskReady => 5,
+        }
+    }
+}
+
+impl Checksummable for ReactorEventType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.discriminant().update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ReactorEventType {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.discriminant().to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ReactorEventType {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let tag = u8::from_bytes_with_provider(reader, provider)?;
+        match tag {
+            0 => Ok(Self::StreamReadable),
+            1 => Ok(Self::StreamWritable),
+            2 => Ok(Self::FutureReady),
+            3 => Ok(Self::TimerExpired),
+            4 => Ok(Self::TaskReady),
+            _ => Err(Error::validation_invalid_type("Invalid ReactorEventType tag")),
+        }
+    }
 }
 
 /// Event handler for reactor events
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventHandler {
     /// Handler ID
     pub id:         u32,
@@ -335,6 +681,52 @@ pub struct EventHandler {
     pub event_type: ReactorEventType,
     /// Associated task
     pub task_id:    TaskId,
+}
+
+impl Default for EventHandler {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            event_type: ReactorEventType::TaskReady,
+            task_id: 0,
+        }
+    }
+}
+
+impl Checksummable for EventHandler {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.id.update_checksum(checksum);
+        self.event_type.update_checksum(checksum);
+        self.task_id.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for EventHandler {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.id.to_bytes_with_provider(writer, provider)?;
+        self.event_type.to_bytes_with_provider(writer, provider)?;
+        self.task_id.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for EventHandler {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let id = u32::from_bytes_with_provider(reader, provider)?;
+        let event_type = ReactorEventType::from_bytes_with_provider(reader, provider)?;
+        let task_id = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            id,
+            event_type,
+            task_id,
+        })
+    }
 }
 
 /// Task execution result
@@ -359,17 +751,11 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            streams: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            streams: BoundedVec::new(),
             #[cfg(feature = "std")]
             futures: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            futures: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            futures: BoundedVec::new(),
             config: RuntimeConfig::default(),
             stats: RuntimeStats::new(),
             is_running: false,
@@ -447,7 +833,7 @@ impl AsyncRuntime {
 
             if let Some(timeout) = timeout_us {
                 if self.get_current_time() - start_time > timeout {
-                    return Err(Error::async_timeout_error("Runtime timeout"));
+                    return Err(Error::async_error("Runtime timeout"));
                 }
             }
         }
@@ -457,7 +843,15 @@ impl AsyncRuntime {
 
     /// Spawn a new task
     pub fn spawn_task(&mut self, task_fn: TaskFunction, priority: u8) -> Result<TaskId> {
+        #[cfg(feature = "component-model-threading")]
         let task_id = self.scheduler.task_manager.create_task()?;
+
+        #[cfg(not(feature = "component-model-threading"))]
+        let task_id = {
+            let id = self.scheduler.next_task_id;
+            self.scheduler.next_task_id = self.scheduler.next_task_id.wrapping_add(1);
+            id
+        };
 
         let scheduled_task = ScheduledTask {
             task_id,
@@ -483,10 +877,7 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             tasks: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            tasks: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
-            },
+            tasks: BoundedVec::new(),
         };
 
         self.streams
@@ -506,10 +897,7 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             tasks: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            tasks: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
-            },
+            tasks: BoundedVec::new(),
         };
 
         self.futures
@@ -555,19 +943,15 @@ impl TaskScheduler {
             #[cfg(feature = "std")]
             ready_queue: VecDeque::new(),
             #[cfg(not(any(feature = "std",)))]
-            ready_queue: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            ready_queue: BoundedVec::new(),
             #[cfg(feature = "std")]
             waiting_tasks: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            waiting_tasks: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            waiting_tasks: BoundedVec::new(),
             current_time: 0,
-            task_manager: TaskManager::new(),
+            task_manager: (), // TaskManager is () when component-model-threading is disabled
+            #[cfg(not(feature = "component-model-threading"))]
+            next_task_id: 1,
         })
     }
 
@@ -751,12 +1135,13 @@ impl TaskScheduler {
                 let waiting_task = self.waiting_tasks.remove(i);
 
                 // Create a new scheduled task
+                let provider = safe_managed_alloc!(512, CrateId::Component)?;
                 let scheduled_task = ScheduledTask {
                     task_id:           waiting_task.task_id,
                     priority:          0, // Default priority
                     estimated_time_us: 1000,
                     task_fn:           TaskFunction::Custom {
-                        name:        BoundedString::from_str("timeout").unwrap_or_default(),
+                        name:        BoundedString::from_str("timeout", provider).unwrap_or_default(),
                         placeholder: 0,
                     },
                 };
@@ -778,17 +1163,11 @@ impl Reactor {
             #[cfg(feature = "std")]
             pending_events:                                    VecDeque::new(),
             #[cfg(not(any(feature = "std",)))]
-            pending_events:                                    {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            pending_events: BoundedVec::new(),
             #[cfg(feature = "std")]
             event_handlers:                                    Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            event_handlers:                                    {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            event_handlers: BoundedVec::new(),
         })
     }
 
@@ -878,8 +1257,10 @@ impl fmt::Display for ReactorEventType {
         match self {
             ReactorEventType::StreamReadable => write!(f, "stream-readable"),
             ReactorEventType::StreamWritable => write!(f, "stream-writable"),
+            ReactorEventType::StreamReady(_) => write!(f, "stream-ready"),
             ReactorEventType::FutureReady => write!(f, "future-ready"),
             ReactorEventType::TimerExpired => write!(f, "timer-expired"),
+            ReactorEventType::TaskReady => write!(f, "task-ready"),
         }
     }
 }
@@ -912,8 +1293,9 @@ mod tests {
         let mut runtime = AsyncRuntime::new().unwrap();
         runtime.start().unwrap();
 
+        let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let task_fn = TaskFunction::Custom {
-            name:        BoundedString::from_str("test").unwrap(),
+            name:        BoundedString::from_str("test", provider).unwrap(),
             placeholder: 42,
         };
 
@@ -947,12 +1329,13 @@ mod tests {
         let mut scheduler = TaskScheduler::new().unwrap();
         assert!(scheduler.is_idle());
 
+        let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let task = ScheduledTask {
             task_id:           TaskId(1),
             priority:          0,
             estimated_time_us: 1000,
             task_fn:           TaskFunction::Custom {
-                name:        BoundedString::from_str("test").unwrap(),
+                name:        BoundedString::from_str("test", provider).unwrap(),
                 placeholder: 0,
             },
         };

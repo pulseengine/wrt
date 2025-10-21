@@ -90,17 +90,17 @@ mod tests {
         // Create a complex nested type
         let format_type = FormatValType::Record(vec![
             (
-                "person".to_string(),
+                "person".to_owned(),
                 FormatValType::Record(vec![
-                    ("name".to_string(), FormatValType::String),
-                    ("age".to_string(), FormatValType::U32),
+                    ("name".to_owned(), FormatValType::String),
+                    ("age".to_owned(), FormatValType::U32),
                     (
-                        "address".to_string(),
+                        "address".to_owned(),
                         FormatValType::Option(Box::new(FormatValType::String)),
                     ),
                 ]),
             ),
-            ("score".to_string(), FormatValType::F32),
+            ("score".to_owned(), FormatValType::F32),
         ]);
 
         // Convert to types representation

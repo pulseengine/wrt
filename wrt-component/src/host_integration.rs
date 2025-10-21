@@ -13,7 +13,13 @@ use std::{fmt, mem};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    collections::StaticVec as BoundedVec,
+    component::ComponentType,
+    component_value::ComponentValue,
+    prelude::*,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
+    MemoryProvider,
 };
 
 #[cfg(not(feature = "std"))]
@@ -44,13 +50,13 @@ pub struct HostIntegrationManager {
     #[cfg(feature = "std")]
     host_functions: Vec<HostFunctionRegistry>,
     #[cfg(not(any(feature = "std", )))]
-    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS, NoStdProvider<65536>>,
+    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS>,
 
     /// Event handlers
     #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
     #[cfg(not(any(feature = "std", )))]
-    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS, NoStdProvider<65536>>,
+    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS>,
 
     /// Host resource manager
     host_resources: HostResourceManager,
@@ -69,7 +75,7 @@ pub struct HostFunctionRegistry {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
     /// Function signature
     pub signature: ComponentType,
     /// Function implementation
@@ -106,6 +112,92 @@ pub struct EventHandler {
     pub handler: fn(&ComponentEvent) -> WrtResult<()>,
     /// Handler priority (higher values execute first)
     pub priority: u32,
+}
+
+// Note: EventHandler cannot implement Eq because it contains function pointers/closures
+impl PartialEq for EventHandler {
+    fn eq(&self, other: &Self) -> bool {
+        self.event_type == other.event_type &&
+        self.priority == other.priority
+        // Note: We cannot compare function pointers/closures
+    }
+}
+
+impl Eq for EventHandler {}
+
+impl Default for EventHandler {
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        {
+            Self {
+                event_type: EventType::InstantiationStarted,
+                handler: Box::new(|_| Ok(())),
+                priority: 0,
+            }
+        }
+        #[cfg(not(any(feature = "std", )))]
+        {
+            fn default_handler(_event: &ComponentEvent) -> WrtResult<()> {
+                Ok(())
+            }
+            Self {
+                event_type: EventType::InstantiationStarted,
+                handler: default_handler,
+                priority: 0,
+            }
+        }
+    }
+}
+
+impl Checksummable for EventHandler {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.event_type.update_checksum(checksum);
+        self.priority.update_checksum(checksum);
+        // Note: Handler function cannot be checksummed
+    }
+}
+
+impl ToBytes for EventHandler {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.event_type.to_bytes_with_provider(writer, provider)?;
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        // Note: Handler function cannot be serialized
+        Ok(())
+    }
+}
+
+impl FromBytes for EventHandler {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        let event_type = EventType::from_bytes_with_provider(reader, provider)?;
+        let priority = u32::from_bytes_with_provider(reader, provider)?;
+
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                event_type,
+                handler: Box::new(|_| Ok(())),
+                priority,
+            })
+        }
+        #[cfg(not(any(feature = "std", )))]
+        {
+            fn default_handler(_event: &ComponentEvent) -> WrtResult<()> {
+                Ok(())
+            }
+            Ok(Self {
+                event_type,
+                handler: default_handler,
+                priority,
+            })
+        }
+    }
 }
 
 /// Component event types
@@ -160,7 +252,7 @@ pub enum EventData {
         #[cfg(feature = "std")]
         message: String,
         #[cfg(not(any(feature = "std", )))]
-        message: BoundedString<256, NoStdProvider<65536>>,
+        message: BoundedString<256, NoStdProvider<1024>>,
         error_code: u32,
     },
 }
@@ -172,13 +264,13 @@ pub struct HostResourceManager {
     #[cfg(feature = "std")]
     resources: Vec<HostResource>,
     #[cfg(not(any(feature = "std", )))]
-    resources: BoundedVec<HostResource, 256, NoStdProvider<65536>>,
+    resources: BoundedVec<HostResource, 256>,
 
     /// Resource sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<HostResourceSharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64, NoStdProvider<65536>>,
+    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64>,
 }
 
 /// Host-owned resource
@@ -231,7 +323,7 @@ pub struct HostResourceSharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
+    pub allowed_instances: BoundedVec<u32, 32>,
     /// Sharing mode
     pub sharing_mode: ResourceSharingMode,
 }
@@ -262,7 +354,7 @@ pub struct SecurityPolicy {
     #[cfg(feature = "std")]
     pub allowed_resource_types: Vec<HostResourceType>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_resource_types: BoundedVec<HostResourceType, 16, NoStdProvider<65536>>,
+    pub allowed_resource_types: BoundedVec<HostResourceType, 16>,
 }
 
 impl HostIntegrationManager {
@@ -272,21 +364,11 @@ impl HostIntegrationManager {
             #[cfg(feature = "std")]
             host_functions: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            host_functions: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred")
-                })?
-            },
+            host_functions: BoundedVec::new(),
             #[cfg(feature = "std")]
             event_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            event_handlers: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred")
-                })?
-            },
+            event_handlers: BoundedVec::new(),
             host_resources: HostResourceManager::new()?,
             canonical_abi: CanonicalAbi::new(),
             security_policy: SecurityPolicy::default()?,
@@ -314,7 +396,7 @@ impl HostIntegrationManager {
     #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
-        name: BoundedString<64, NoStdProvider<65536>>,
+        name: BoundedString<64, NoStdProvider<512>>,
         signature: ComponentType,
         implementation: fn(&[Value]) -> WrtResult<Value>,
         permissions: HostFunctionPermissions,
@@ -495,12 +577,7 @@ impl HostIntegrationManager {
         #[cfg(feature = "std")]
         let mut allowed_instances = Vec::new();
         #[cfg(not(any(feature = "std", )))]
-        let mut allowed_instances = {
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred")
-            })?
-        };
+        let mut allowed_instances = BoundedVec::new();
 
         #[cfg(feature = "std")]
         {
@@ -575,21 +652,11 @@ impl HostResourceManager {
             #[cfg(feature = "std")]
             resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            resources: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred")
-                })?
-            },
+            resources: BoundedVec::new(),
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            sharing_policies: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred")
-                })?
-            },
+            sharing_policies: BoundedVec::new(),
         })
     }
 
@@ -655,9 +722,7 @@ impl SecurityPolicy {
             #[cfg(not(any(feature = "std", )))]
             allowed_resource_types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                let mut types = BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred")
-                })?;
+                let mut types = BoundedVec::new();
                 types.push(HostResourceType::Buffer).map_err(|_| {
                     wrt_error::Error::resource_exhausted("Error occurred")
                 })?;

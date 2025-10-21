@@ -29,8 +29,6 @@ use wrt_error::{
     Error,
     ErrorCategory,
 };
-#[cfg(test)]
-use wrt_foundation::safe_memory::NoStdProvider;
 use wrt_foundation::{
     safe_managed_alloc,
     traits::{
@@ -1200,6 +1198,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+    use alloc::format;
+
     use super::*;
 
     #[test]

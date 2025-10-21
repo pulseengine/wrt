@@ -9,13 +9,10 @@
 //! environment.
 
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_COMPONENT_TYPES,
-    },
+    collections::StaticVec as BoundedVec,
+    bounded::MAX_COMPONENT_TYPES,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
-    safe_memory::NoStdProvider,
 };
 
 use crate::{
@@ -33,29 +30,20 @@ pub const MAX_COMPONENTS: usize = 32;
 #[derive(Debug)]
 pub struct ComponentRegistry {
     /// Component names
-    names:           BoundedVec<String, MAX_COMPONENTS, NoStdProvider<65536>>,
+    names:           BoundedVec<String, MAX_COMPONENTS>,
     /// Component references - in no_std we use indices instead of references
-    components:      BoundedVec<usize, MAX_COMPONENTS, NoStdProvider<65536>>,
+    components:      BoundedVec<usize, MAX_COMPONENTS>,
     /// Actual components
-    component_store: BoundedVec<Component, MAX_COMPONENTS, NoStdProvider<65536>>,
+    component_store: BoundedVec<Component, MAX_COMPONENTS>,
 }
 
 impl ComponentRegistry {
     /// Create a new empty registry
     pub fn new() -> Result<Self> {
         Ok(Self {
-            names:           {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
-            components:      {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
-            component_store: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            names:           BoundedVec::new().unwrap(),
+            components:      BoundedVec::new().unwrap(),
+            component_store: BoundedVec::new().unwrap(),
         })
     }
 
@@ -148,9 +136,8 @@ impl ComponentRegistry {
     }
 
     /// Get all component names
-    pub fn names(&self) -> Result<BoundedVec<String, MAX_COMPONENTS, NoStdProvider<65536>>> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut result = BoundedVec::new(provider)?;
+    pub fn names(&self) -> Result<BoundedVec<String, MAX_COMPONENTS>> {
+        let mut result = BoundedVec::new().unwrap();
         for name in self.names.iter() {
             result.push(name.clone()).map_err(|_| {
                 Error::runtime_execution_error("Failed to add component name to result")
@@ -253,9 +240,9 @@ mod tests {
         // Get the names
         let names = registry.names().unwrap();
         assert_eq!(names.len(), 3);
-        assert!(names.contains(&"test1".to_string()));
-        assert!(names.contains(&"test2".to_string()));
-        assert!(names.contains(&"test3".to_string()));
+        assert!(names.contains(&"test1".to_owned()));
+        assert!(names.contains(&"test2".to_owned()));
+        assert!(names.contains(&"test3".to_owned()));
     }
 
     #[test]
@@ -288,7 +275,7 @@ use wrt_foundation::traits::{
 
 // Implement traits for Component type from components::component module
 impl Checksummable for super::component::Component {
-    fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Use a simple checksum based on component type
         0u32.update_checksum(checksum);
     }
@@ -310,6 +297,6 @@ impl FromBytes for super::component::Component {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         // Return a minimal default component
-        Ok(super::component::Component::new())
+        Ok(super::component::Component::new(super::component::WrtComponentType::default()))
     }
 }

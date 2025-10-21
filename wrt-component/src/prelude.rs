@@ -74,13 +74,16 @@ pub use std::{
         String,
         ToString,
     },
-    sync::{
-        Arc,
-        Mutex,
-        RwLock,
-    },
+    sync::Arc,
     vec,
     vec::Vec,
+};
+
+// Always use wrt_sync for consistent Mutex/RwLock behavior across std/no_std
+#[cfg(feature = "std")]
+pub use wrt_sync::{
+    Mutex,
+    RwLock,
 };
 
 #[cfg(feature = "decoder")]
@@ -110,14 +113,12 @@ pub use wrt_error::{
     ErrorCategory,
     Result,
 };
+
 // Re-export from wrt-format
 pub use wrt_format::component::ValType as FormatValType;
 // Re-export BoundedVec and BoundedString only when std is enabled to avoid conflicts
 #[cfg(feature = "std")]
-pub use wrt_foundation::bounded::{
-    BoundedString,
-    BoundedVec,
-};
+pub use wrt_foundation::bounded::BoundedString;
 // Import component builders and resource builders with proper feature gates
 #[cfg(feature = "std")]
 pub use wrt_foundation::builder::ResourceItemBuilder;
@@ -144,19 +145,16 @@ pub use wrt_foundation::MemoryProvider;
 // Binary std/no_std choice - remove conflicting type aliases
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
+    bounded_collections::{
+        BoundedMap,
+        BoundedSet,
     },
-    BoundedMap,
-    BoundedSet,
     MemoryProvider,
 };
 
 // Unified type aliases for std/no_std compatibility
 #[cfg(not(feature = "std"))]
-pub type ComponentVec<T> =
-    wrt_foundation::bounded::BoundedVec<T, 64, crate::bounded_component_infra::ComponentProvider>;
+pub type ComponentVec<T> = wrt_foundation::collections::StaticVec<T, 64>;
 
 #[cfg(feature = "std")]
 pub type ComponentVec<T> = Vec<T>;
@@ -165,8 +163,12 @@ pub type ComponentVec<T> = Vec<T>;
 pub use wrt_foundation::{
     bounded::{
         BoundedStack,
+        BoundedString,
+        BoundedVec,
         MAX_WASM_NAME_LENGTH,
     },
+    // Budget management
+    budget_aware_provider::CrateId,
     // Builtin types
     builtin::BuiltinType,
     component::ComponentType,
@@ -228,8 +230,6 @@ pub use wrt_sync::{
     RwLock,
 };
 
-// Global ComponentValue type alias with proper memory provider
-use crate::bounded_component_infra::ComponentProvider;
 // Include debug logging macro (crate-internal only)
 // pub use crate::debug_println;
 // Re-export Instant for no_std environments
@@ -255,6 +255,8 @@ pub use crate::{
         MemoryValue,
         TableValue,
     },
+    // String encoding
+    string_encoding::StringEncoding,
     // Execution context
     // execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
     // Export/Import
@@ -317,6 +319,8 @@ pub use crate::{
         MemoryValue,
         TableValue,
     },
+    // String encoding
+    string_encoding::StringEncoding,
     // component_value_no_std::{
     //     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
     // },
@@ -361,17 +365,27 @@ pub use crate::{
 };
 // ComponentValue already imported above
 
-/// Unified ComponentValue type with proper memory provider for the entire
-/// wrt-component crate
-pub type WrtComponentValue = ComponentValue<ComponentProvider>;
+// Re-export ComponentProvider for convenience
+pub use crate::bounded_component_infra::ComponentProvider;
 
-/// Unified ValType with proper memory provider
-pub type WrtValType = wrt_foundation::component_value::ValType<ComponentProvider>;
+/// Unified ComponentValue type - generic over provider
+pub type WrtComponentValue<P> = ComponentValue<P>;
 
-/// Unified ComponentType with proper memory provider for the entire
-/// wrt-component crate
-pub type WrtComponentType = wrt_foundation::component::ComponentType<ComponentProvider>;
+/// Unified ValType - generic over provider
+pub type WrtValType<P> = wrt_foundation::component_value::ValType<P>;
 
-/// Unified ExternType with proper memory provider for the entire wrt-component
-/// crate
-pub type WrtExternType = wrt_foundation::ExternType<ComponentProvider>;
+/// Unified ComponentType - generic over provider
+pub type WrtComponentType<P> = wrt_foundation::component::ComponentType<P>;
+
+/// Unified ExternType - generic over provider
+pub type WrtExternType<P> = wrt_foundation::ExternType<P>;
+
+// Re-export from wrt_runtime for types used in wrt-component
+pub use wrt_runtime::stackless::EngineState;
+
+// Type aliases for compatibility
+pub type Limits = wrt_foundation::types::Limits;
+
+// Re-export ExportKind from parser_integration (component-specific)
+// This is the component model ExportKind with index fields
+pub use crate::parser_integration::ExportKind;

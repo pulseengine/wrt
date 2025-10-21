@@ -1176,7 +1176,7 @@ pub enum CfiViolationType {
     ShadowStackUnderflow,
 }
 
-/// Placeholder execution result enum
+/// Placeholder execution result enum for CFI engine
 /// This would be replaced by the actual WRT execution result type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionResult {

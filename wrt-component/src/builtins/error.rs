@@ -33,7 +33,7 @@ use wrt_error::{
 use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     safe_memory::NoStdProvider,
 };
 
@@ -291,7 +291,7 @@ mod tests {
         let handler = ErrorNewHandler::new(store.clone());
 
         // Test with valid arguments
-        let args = vec![ComponentValue::String("Test error".to_string())];
+        let args = vec![ComponentValue::String("Test error".to_owned())];
         let result = handler.execute(&args).expect("Handler should succeed");
         assert_eq!(result.len(), 1);
         let id = match result[0] {
@@ -321,7 +321,7 @@ mod tests {
         // Test with valid arguments
         let args = vec![
             ComponentValue::U64(id),
-            ComponentValue::String("Trace entry".to_string()),
+            ComponentValue::String("Trace entry".to_owned()),
         ];
         let result = handler.execute(&args).expect("Handler should succeed");
         assert_eq!(result.len(), 0);
@@ -334,14 +334,14 @@ mod tests {
         // Test with invalid error ID
         let args = vec![
             ComponentValue::U64(9999),
-            ComponentValue::String("Trace entry".to_string()),
+            ComponentValue::String("Trace entry".to_owned()),
         ];
         assert!(handler.execute(&args).is_err());
 
         // Test with invalid arguments
         let args = vec![
             ComponentValue::I32(42),
-            ComponentValue::String("Trace entry".to_string()),
+            ComponentValue::String("Trace entry".to_owned()),
         ];
         assert!(handler.execute(&args).is_err());
 

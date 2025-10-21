@@ -34,10 +34,8 @@ use core::{
 use std::thread;
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    BoundedVec,
+    bounded_collections::BoundedMap,
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
     safe_managed_alloc,
@@ -139,7 +137,7 @@ pub struct ThreadConfiguration {
     pub name:         Option<String>,
     pub detached:     bool,
     pub cpu_affinity: Option<u32>,
-    pub capabilities: BoundedVec<Capability, 16, NoStdProvider<65536>>,
+    pub capabilities: BoundedVec<Capability, 16>,
 }
 
 impl ThreadConfiguration {
@@ -151,7 +149,7 @@ impl ThreadConfiguration {
             name:         None,
             detached:     false,
             cpu_affinity: None,
-            capabilities: BoundedVec::new(provider)
+            capabilities: BoundedVec::new()
                 .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?,
         })
     }
@@ -185,7 +183,7 @@ pub enum ThreadResult {
 pub struct ThreadSpawnRequest {
     pub component_id:  ComponentInstanceId,
     pub function_name: String,
-    pub arguments:     BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
+    pub arguments:     BoundedVec<ComponentValue<ComponentProvider>, 16>,
     pub configuration: ThreadConfiguration,
     pub return_type:   Option<ValType>,
 }
@@ -194,10 +192,10 @@ pub struct ComponentThreadManager {
     threads:                   BoundedMap<ThreadId, ThreadHandle, MAX_THREAD_JOIN_HANDLES>,
     component_threads: BoundedMap<
         ComponentInstanceId,
-        BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT, NoStdProvider<65536>>,
+        BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT>,
         64,
     >,
-    spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS, NoStdProvider<65536>>,
+    spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS>,
     next_thread_id:            AtomicU32,
     task_manager:              TaskManager,
     virt_manager:              Option<VirtualizationManager>,
@@ -211,9 +209,9 @@ impl ComponentThreadManager {
     pub fn new() -> wrt_error::Result<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         Ok(Self {
-            threads:                   BoundedMap::new(provider.clone())?,
-            component_threads:         BoundedMap::new(provider.clone())?,
-            spawn_requests:            BoundedVec::new(provider)
+            threads:                   BoundedMap::new(),
+            component_threads:         BoundedMap::new(),
+            spawn_requests:            BoundedVec::new()
                 .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?,
             next_thread_id:            AtomicU32::new(1),
             task_manager:              TaskManager::new(),
@@ -290,7 +288,7 @@ impl ComponentThreadManager {
             if handle.completed.load(Ordering::Acquire) {
                 return Err(ThreadSpawnError {
                     kind:    ThreadSpawnErrorKind::InvalidConfiguration,
-                    message: "Cannot detach completed thread".to_string(),
+                    message: "Cannot detach completed thread".to_owned(),
                 });
             }
 
@@ -352,14 +350,14 @@ impl ComponentThreadManager {
         if request.configuration.stack_size > 16 * 1024 * 1024 {
             return Err(ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::InvalidConfiguration,
-                message: "Stack size too large".to_string(),
+                message: "Stack size too large".to_owned(),
             });
         }
 
         if self.active_thread_count.load(Ordering::Acquire) >= self.global_thread_limit as u32 {
             return Err(ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Global thread limit exceeded".to_string(),
+                message: "Global thread limit exceeded".to_owned(),
             });
         }
 
@@ -367,7 +365,7 @@ impl ComponentThreadManager {
         if component_thread_count >= self.max_threads_per_component {
             return Err(ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Component thread limit exceeded".to_string(),
+                message: "Component thread limit exceeded".to_owned(),
             });
         }
 
@@ -389,7 +387,7 @@ impl ComponentThreadManager {
         if !virt_manager.check_capability(request.component_id, &threading_capability) {
             return Err(ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::CapabilityDenied,
-                message: "Insufficient threading capability".to_string(),
+                message: "Insufficient threading capability".to_owned(),
             });
         }
 
@@ -434,7 +432,7 @@ impl ComponentThreadManager {
 
         let handle = self.threads.get(&thread_id).cloned().ok_or_else(|| ThreadSpawnError {
             kind:    ThreadSpawnErrorKind::ThreadNotFound,
-            message: "Thread handle not found".to_string(),
+            message: "Thread handle not found".to_owned(),
         })?;
 
         builder
@@ -503,11 +501,11 @@ impl ComponentThreadManager {
         // Retrieve result
         let result = handle.result.lock().map_err(|_| ThreadSpawnError {
             kind:    ThreadSpawnErrorKind::JoinFailed,
-            message: "Failed to lock result mutex".to_string(),
+            message: "Failed to lock result mutex".to_owned(),
         })?;
 
         let thread_result = result.clone().unwrap_or(ThreadResult::Error(
-            "Thread completed without result".to_string(),
+            "Thread completed without result".to_owned(),
         ));
 
         self.cleanup_thread(thread_id);
@@ -528,7 +526,7 @@ impl ComponentThreadManager {
     ) -> ThreadSpawnResult<()> {
         self.threads.insert(thread_id, handle).map_err(|_| ThreadSpawnError {
             kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-            message: "Too many thread handles".to_string(),
+            message: "Too many thread handles".to_owned(),
         })?;
 
         let component_threads =
@@ -536,7 +534,7 @@ impl ComponentThreadManager {
 
         component_threads.push(thread_id).map_err(|_| ThreadSpawnError {
             kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-            message: "Component has too many threads".to_string(),
+            message: "Component has too many threads".to_owned(),
         })?;
 
         Ok(())
@@ -610,7 +608,7 @@ impl ThreadSpawnBuiltins {
         &mut self,
         component_id: ComponentInstanceId,
         function_name: String,
-        arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
+        arguments: BoundedVec<ComponentValue<ComponentProvider>, 16>,
         config: ThreadConfiguration,
     ) -> ThreadSpawnResult<ThreadId> {
         let request = ThreadSpawnRequest {
@@ -714,11 +712,11 @@ mod tests {
         let component_id = ComponentInstanceId::new(1);
 
         let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-        let arguments = BoundedVec::new(provider).unwrap();
+        let arguments = BoundedVec::new().unwrap();
 
         let request = ThreadSpawnRequest {
             component_id,
-            function_name: "test_function".to_string(),
+            function_name: "test_function".to_owned(),
             arguments,
             configuration: ThreadConfiguration::default(),
             return_type: Some(ValType::I32),

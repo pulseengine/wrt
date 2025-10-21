@@ -12,7 +12,10 @@ use super::{
 use crate::{
     budget_aware_provider::CrateId,
     memory_init::get_global_capability_context,
-    safe_memory::NoStdProvider,
+    safe_memory::{
+        NoStdProvider,
+        Provider,
+    },
     safety_monitor::with_safety_monitor,
     telemetry::{
         self,
@@ -177,7 +180,18 @@ impl MemoryFactory {
 
         // Create the underlying provider directly to avoid circular dependency
         // The capability verification above ensures this allocation is authorized
-        let provider = NoStdProvider::<N>::default();
+        // FIX: Use heap allocation for large providers to avoid stack overflow
+        let provider = if N > 8192 {
+            eprintln!("DEBUG: Using heap allocation for provider size N = {}", N);
+            let heap_provider = NoStdProvider::<N>::new_heap_allocated();
+            eprintln!("DEBUG: Heap provider created with size = {}", heap_provider.size());
+            heap_provider
+        } else {
+            eprintln!("DEBUG: Using default allocation for provider size N = {}", N);
+            let default_provider = NoStdProvider::<N>::default();
+            eprintln!("DEBUG: Default provider created with size = {}", default_provider.size());
+            default_provider
+        };
 
         // Wrap with capability verification
         Ok(CapabilityAwareProvider::new(
@@ -333,6 +347,71 @@ impl MemoryFactory {
                 0, // No specific crate context for manual deallocation
             );
         });
+    }
+
+    /// Enter a module-level memory scope with budget tracking
+    ///
+    /// This creates a scope using the VerifiedAllocator for the specified crate.
+    /// All Vec/Box allocations within this scope will be tracked and limited
+    /// by the budget. When the returned ScopeGuard drops, memory resets to
+    /// the checkpoint.
+    ///
+    /// # Arguments
+    /// * `crate_id` - The crate entering the scope
+    ///
+    /// # Returns
+    /// * `Ok(ScopeGuard)` - RAII guard that exits scope on drop
+    /// * `Err` - If scope creation fails
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use wrt_foundation::{
+    ///     capabilities::MemoryFactory,
+    ///     budget_aware_provider::CrateId,
+    /// };
+    ///
+    /// // Enter a module parsing scope
+    /// let _scope = MemoryFactory::enter_module_scope(CrateId::Decoder)?;
+    ///
+    /// // All Vec allocations now tracked against 64KB budget
+    /// let mut functions = Vec::new();  // Uses VerifiedAllocator
+    /// functions.push(parse_function()?);
+    ///
+    /// // When _scope drops, memory resets to checkpoint
+    /// # Ok::<(), wrt_foundation::Error>(())
+    /// ```
+    pub fn enter_module_scope(
+        crate_id: CrateId,
+    ) -> Result<crate::verified_allocator::ScopeGuard<'static>> {
+        use crate::verified_allocator;
+
+        // Get the allocator for this crate
+        let allocator = verified_allocator::global_allocators::get_crate_allocator(crate_id);
+
+        // Enter scope with MAX_MODULE_SIZE budget (64 KB)
+        allocator.enter_scope(crate_id, verified_allocator::MAX_MODULE_SIZE)
+    }
+
+    /// Enter a custom-sized memory scope
+    ///
+    /// Like `enter_module_scope` but with a custom budget size.
+    ///
+    /// # Arguments
+    /// * `crate_id` - The crate entering the scope
+    /// * `budget` - Maximum bytes this scope can allocate
+    ///
+    /// # Returns
+    /// * `Ok(ScopeGuard)` - RAII guard that exits scope on drop
+    /// * `Err` - If scope creation fails
+    pub fn enter_scope(
+        crate_id: CrateId,
+        budget: usize,
+    ) -> Result<crate::verified_allocator::ScopeGuard<'static>> {
+        use crate::verified_allocator;
+
+        let allocator = verified_allocator::global_allocators::get_crate_allocator(crate_id);
+        allocator.enter_scope(crate_id, budget)
     }
 
     /// Example demonstrating integrated safety monitoring and telemetry

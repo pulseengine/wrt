@@ -2,11 +2,13 @@
 use alloc::{
     boxed::Box,
     collections::BTreeMap as HashMap,
+    string::String,
     sync::Arc,
 };
 #[cfg(not(feature = "std"))]
 use core::{
     any::{
+        self,
         Any,
         TypeId,
     },
@@ -21,6 +23,7 @@ use core::{
 #[cfg(feature = "std")]
 use std::{
     any::{
+        self,
         Any,
         TypeId,
     },
@@ -99,7 +102,7 @@ pub trait Convertible: Any + Sized + Send + Sync {
 
 impl<T: Any + Sized + Send + Sync> Convertible for T {
     fn type_name(&self) -> &'static str {
-        std::any::type_name::<T>()
+        any::type_name::<T>()
     }
 }
 
@@ -159,7 +162,7 @@ where
             kind:        ConversionErrorKind::InvalidArgument,
             source_type: self.source_type_name,
             target_type: self.target_type_name,
-            context:     Some("Source value doesn't match expected type".to_string()),
+            context:     Some(String::from("Source value doesn't match expected type")),
             source:      None,
         })?;
 
@@ -228,13 +231,13 @@ impl TypeConversionRegistry {
     {
         let adapter = ConversionAdapter {
             converter,
-            source_type_name: std::any::type_name::<From>(),
-            target_type_name: std::any::type_name::<To>(),
+            source_type_name: any::type_name::<From>(),
+            target_type_name: any::type_name::<To>(),
             _phantom_from: PhantomData,
             _phantom_to: PhantomData,
         };
 
-        let key = (TypeId::of::<From>(), TypeId::of::<To>);
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
         self.conversions.insert(key, Box::new(adapter));
         self
     }
@@ -245,7 +248,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>);
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
         self.conversions.contains_key(&key)
     }
 
@@ -255,14 +258,14 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>);
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
 
         // Look up the converter in the registry
         let converter = self.conversions.get(&key).ok_or_else(|| ConversionError {
             kind:        ConversionErrorKind::NoConverterFound,
-            source_type: std::any::type_name::<From>(),
-            target_type: std::any::type_name::<To>(),
-            context:     Some("No converter registered for this type pair".to_string()),
+            source_type: any::type_name::<From>(),
+            target_type: any::type_name::<To>(),
+            context:     Some(String::from("No converter registered for this type pair")),
             source:      None,
         })?;
 
@@ -272,9 +275,9 @@ impl TypeConversionRegistry {
         // Downcast the result to the expected output type
         let result = result.downcast::<To>().map_err(|_| ConversionError {
             kind:        ConversionErrorKind::ConversionFailed,
-            source_type: std::any::type_name::<From>(),
-            target_type: std::any::type_name::<To>(),
-            context:     Some("Failed to downcast conversion result".to_string()),
+            source_type: any::type_name::<From>(),
+            target_type: any::type_name::<To>(),
+            context:     Some(String::from("Failed to downcast conversion result")),
             source:      None,
         })?;
 
@@ -398,7 +401,7 @@ mod tests {
                         kind:        ConversionErrorKind::OutOfRange,
                         source_type: std::any::type_name::<TestSourceType>(),
                         target_type: std::any::type_name::<TestTargetType>(),
-                        context:     Some("Value must be non-negative".to_string()),
+                        context:     Some("Value must be non-negative".to_owned()),
                         source:      None,
                     });
                 }

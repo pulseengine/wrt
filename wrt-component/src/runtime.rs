@@ -4,7 +4,7 @@
 //! needed for the component model implementation.
 
 // Import from wrt-foundation instead of wrt-runtime
-use wrt_foundation::component::{
+use wrt_foundation::types::{
     GlobalType,
     MemoryType,
     TableType,
@@ -60,7 +60,7 @@ pub struct Memory {
 impl Memory {
     /// Create a new memory instance
     pub fn new(ty: MemoryType) -> Result<Self> {
-        let data = vec![0; ty.min as usize * 65536];
+        let data = vec![0; ty.limits.min as usize * 65536];
         Ok(Self { ty, data })
     }
 
@@ -87,7 +87,7 @@ pub struct Table {
 impl Table {
     /// Create a new table instance
     pub fn new(ty: TableType) -> Result<Self> {
-        let elements = vec![None; ty.min as usize];
+        let elements = vec![None; ty.limits.min as usize];
         Ok(Self { ty, elements })
     }
 

@@ -19,15 +19,13 @@ use core::{
 use std::sync::Weak;
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     operations::{
         record_global_operation,
         Type as OperationType,
     },
     safe_managed_alloc,
+    traits::{Checksummable, FromBytes, ToBytes},
     verification::VerificationLevel,
     Arc,
     CrateId,
@@ -61,8 +59,39 @@ const RESOURCE_DROP_FUEL: u64 = 10;
 const RESOURCE_TRANSFER_FUEL: u64 = 8;
 
 /// Resource handle type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceHandle(pub u64);
+
+impl Default for ResourceHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for ResourceHandle {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceHandle {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResourceHandle {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Resource state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -127,7 +156,7 @@ impl<T> TrackedResource<T> {
         let created_at = wrt_foundation::operations::global_fuel_consumed();
 
         // Record resource creation
-        record_global_operation(OperationType::Other)?;
+        record_global_operation(OperationType::Other, verification_level);
 
         Ok(Self {
             handle,
@@ -247,7 +276,7 @@ pub struct ResourceLifetimeManager {
     resources: BoundedMap<
         ResourceHandle,
         Arc<dyn core::any::Any + Send + Sync>,
-        MAX_RESOURCES_PER_COMPONENT,
+        MAX_RESOURCES_PER_COMPONENT
     >,
     /// Next resource handle
     next_handle:         AtomicU64,
@@ -259,8 +288,8 @@ pub struct ResourceLifetimeManager {
     total_fuel_consumed: AtomicU64,
     /// Cleanup callbacks
     cleanup_callbacks: BoundedVec<
-        Box<dyn FnOnce() + Send, 256, crate::bounded_component_infra::ComponentProvider>,
-        MAX_RESOURCES_PER_COMPONENT,
+        Box<dyn FnOnce() + Send>,
+        MAX_RESOURCES_PER_COMPONENT
     >,
 }
 
@@ -268,8 +297,8 @@ impl ResourceLifetimeManager {
     /// Create a new resource lifetime manager
     pub fn new(component_id: u64, global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let resources = BoundedMap::new(provider.clone())?;
-        let cleanup_callbacks = BoundedVec::new(provider)?;
+        let resources = BoundedMap::new();
+        let cleanup_callbacks = BoundedVec::new().unwrap();
 
         Ok(Self {
             resources,
@@ -437,7 +466,7 @@ impl ResourceScope {
         type_name: &str,
         verification_level: VerificationLevel,
     ) -> Result<ResourceHandle> {
-        let handle = self.manager.lock()?.create_resource(
+        let handle = self.manager.lock().create_resource(
             data,
             creator_task,
             type_name,
@@ -452,10 +481,9 @@ impl ResourceScope {
 impl Drop for ResourceScope {
     fn drop(&mut self) {
         // Clean up all resources in reverse order
-        if let Ok(mut manager) = self.manager.lock() {
-            for handle in self.resources.iter().rev() {
-                let _ = manager.drop_resource(*handle);
-            }
+        let mut manager = self.manager.lock();
+        for handle in self.resources.iter().rev() {
+            let _ = manager.drop_resource(*handle);
         }
     }
 }
@@ -472,7 +500,7 @@ impl ComponentResourceTracker {
     /// Create a new component resource tracker
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        let managers = BoundedMap::new(provider)?;
+        let managers = BoundedMap::new();
 
         Ok(Self {
             managers,
@@ -501,9 +529,8 @@ impl ComponentResourceTracker {
     /// Cleanup all resources for a component
     pub fn cleanup_component(&mut self, component_id: u64) -> Result<()> {
         if let Some(manager) = self.managers.remove(&component_id) {
-            if let Ok(mut manager) = manager.lock() {
-                manager.run_cleanup()?;
-            }
+            let mut manager = manager.lock();
+            manager.run_cleanup()?;
         }
         Ok(())
     }

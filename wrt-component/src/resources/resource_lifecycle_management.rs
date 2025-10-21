@@ -14,7 +14,7 @@ use std::{fmt, mem, ptr};
 use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{ BoundedString},
     prelude::*,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
@@ -38,8 +38,7 @@ const MAX_DROP_HANDLERS: usize = 8;
 /// Maximum call stack depth for drop operations
 const MAX_DROP_STACK_DEPTH: usize = 32;
 
-// Type alias for resource management
-type ResourceProvider = NoStdProvider<65536>;
+// ResourceProvider removed - using capability-based allocation via safe_managed_alloc!
 
 /// Resource lifecycle manager
 #[derive(Debug)]
@@ -289,7 +288,7 @@ impl ResourceLifecycleManager {
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
                     .expect(".expect("Failed to allocate memory for resources"));")
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             drop_handlers: Vec::new(),
@@ -297,7 +296,7 @@ impl ResourceLifecycleManager {
             drop_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
                     .expect(".expect("Failed to allocate memory for drop handlers"));")
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             policies: LifecyclePolicies::default(),
             stats: LifecycleStats::new(),
@@ -619,11 +618,11 @@ impl ResourceLifecycleManager {
     pub fn check_for_leaks(&mut self) -> core::result::Result<BoundedVec<ResourceId, 64, ResourceProvider>, Error> {
         if !self.policies.leak_detection {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            return Ok(BoundedVec::new(provider).unwrap();
+            return Ok(BoundedVec::new().unwrap();
         }
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut leaked_resources = BoundedVec::new(provider).unwrap();
+        let mut leaked_resources = BoundedVec::new().unwrap();
         let current_time = self.get_current_time);
 
         for resource in &self.resources {
@@ -730,21 +729,22 @@ impl ResourceMetadata {
             #[cfg(not(feature = "std"))]
             tags: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             properties: Vec::new(),
             #[cfg(not(feature = "std"))]
             properties: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
         })
     }
 
     /// Add a tag to the metadata
     pub fn add_tag(&mut self, tag: &str) -> Result<()> {
-        let bounded_tag = BoundedString::from_str(tag).map_err(|_| {
+        let provider = safe_managed_alloc!(512, CrateId::Component)?;
+        let bounded_tag = BoundedString::from_str(tag, provider).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         
@@ -758,7 +758,8 @@ impl ResourceMetadata {
 
     /// Add a property to the metadata
     pub fn add_property(&mut self, key: &str, value: Value) -> Result<()> {
-        let bounded_key = BoundedString::from_str(key).map_err(|_| {
+        let provider = safe_managed_alloc!(512, CrateId::Component)?;
+        let bounded_key = BoundedString::from_str(key, provider).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         
@@ -866,7 +867,7 @@ mod tests {
             #[cfg(not(feature = "std"))]
             custom_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
         };
         
@@ -889,7 +890,7 @@ mod tests {
             #[cfg(not(feature = "std"))]
             custom_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
         };
         
@@ -940,7 +941,7 @@ mod tests {
             #[cfg(not(feature = "std"))]
             custom_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
         };
         

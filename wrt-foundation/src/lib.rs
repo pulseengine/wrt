@@ -120,6 +120,10 @@ use wrt_error::{
 pub mod prelude;
 pub mod safety_features;
 
+// NEW: Static collections (heapless-inspired, self-contained)
+// SW-REQ-ID: REQ_RESOURCE_001 (static allocation)
+pub mod collections;
+
 // Execution-related shared types
 pub mod execution;
 
@@ -217,6 +221,8 @@ pub mod validation;
 pub mod values;
 /// Verification and integrity checking
 pub mod verification;
+/// Verified memory allocator with GlobalAlloc and scope support
+pub mod verified_allocator;
 /// Formal verification using Kani
 #[cfg(any(doc, kani))]
 pub mod verify;

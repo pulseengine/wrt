@@ -347,8 +347,15 @@ impl ModuleBuilder {
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
     #[cfg(all(feature = "decoder"))]
     {
+        // Enter runtime scope to cover both decoding and conversion
+        // This ensures decoder's Vec allocations remain valid during conversion to BoundedVec
+        let _scope = wrt_foundation::capabilities::MemoryFactory::enter_module_scope(
+            wrt_foundation::budget_aware_provider::CrateId::Runtime,
+        )?;
+
         let decoder_module = wrt_decoder::decode_module(binary)?;
         Module::from_wrt_module(&decoder_module)
+        // Scope drops here, memory available for reuse
     }
     #[cfg(all(not(feature = "decoder"), feature = "std"))]
     {

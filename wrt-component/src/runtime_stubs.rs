@@ -16,7 +16,7 @@ pub enum Value {
 }
 
 // Execution context stub
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionContext {
     pub component_id: ComponentId,
     pub instance_id: InstanceId,
@@ -58,15 +58,15 @@ impl GenericMemoryAdapter {
 impl UnifiedMemoryAdapter for GenericMemoryAdapter {
     fn allocate(&mut self, size: usize) -> core::result::Result<&mut [u8], wrt_error::Error> {
         if self.allocated + size > self.total_memory {
-            return Err(wrt_error::Error::OUT_OF_MEMORY;
+            return Err(wrt_error::Error::resource_exhausted("Out of memory"));
         }
         self.allocated += size;
         // This is a stub - real implementation would return actual memory
-        Err(wrt_error::Error::Unsupported("Memory allocation stub".into())
+        Err(wrt_error::Error::runtime_error("Memory allocation stub"))
     }
-    
+
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
-        Ok(()
+        Ok(())
     }
     
     fn available_memory(&self) -> usize {
@@ -86,7 +86,7 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(pub u32;
+pub struct FunctionId(pub u32);
 
 #[derive(Debug, Clone)]
 pub struct FunctionSignature {
@@ -105,10 +105,10 @@ pub enum ValueType {
 
 // Component and instance identifiers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub u32;
+pub struct ComponentId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InstanceId(pub u32;
+pub struct InstanceId(pub u32);
 
 // CFI engine stub
 pub struct CfiEngine {
@@ -125,14 +125,15 @@ impl CfiEngine {
     pub fn validate_call(&self, _function: &Function) -> core::result::Result<(), wrt_error::Error> {
         if self.validation_enabled {
             // Stub validation always passes
-            Ok(()
+            Ok(())
         } else {
-            Ok(()
+            Ok(())
         }
     }
 }
 
 // Execution limits stub
+#[derive(Debug, Clone)]
 pub struct ExecutionLimits {
     pub max_stack_depth: usize,
     pub max_value_stack: usize,
@@ -169,7 +170,7 @@ pub struct CallFrame {
 
 impl ExecutionEngine {
     pub fn new(platform_limits: &ComprehensivePlatformLimits) -> core::result::Result<Self, wrt_error::Error> {
-        let limits = ExecutionLimits::from_platform(platform_limits;
+        let limits = ExecutionLimits::from_platform(platform_limits);
         let cfi_engine = CfiEngine::new(&limits)?;
         
         Ok(Self {
@@ -184,14 +185,14 @@ impl ExecutionEngine {
     pub fn execute_function(&mut self, function: &Function, args: &[Value]) -> core::result::Result<alloc::vec::Vec<Value>, wrt_error::Error> {
         // Validate execution against limits
         if self.call_stack.len() >= self.limits.max_stack_depth {
-            return Err(wrt_error::Error::StackOverflow;
+            return Err(wrt_error::Error::runtime_stack_overflow("Call stack depth exceeded"));
         }
         
         // CFI validation
         self.cfi_engine.validate_call(function)?;
-        
+
         // Stub execution - just return empty result
-        Ok(alloc::vec::Vec::new()
+        Ok(alloc::vec::Vec::new())
     }
 }
 
