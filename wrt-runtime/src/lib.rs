@@ -58,6 +58,10 @@ pub mod memory;
 // WebAssembly bulk memory operations runtime
 pub mod bulk_memory;
 
+// WebAssembly 3.0 multi-memory runtime
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod multi_memory;
+
 // Simplified type system - CRITICAL COMPILATION FIX
 pub mod simple_types;
 pub mod unified_types;

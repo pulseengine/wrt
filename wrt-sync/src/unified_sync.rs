@@ -96,10 +96,14 @@ mod foundation_stubs {
     pub type WrtResult<T> = Result<T, Error>;
 }
 
-use foundation_stubs::{
+// Re-export foundation stubs for public use
+pub use foundation_stubs::{
     AsilLevel,
-    Error,
     SafetyContext,
+};
+
+use foundation_stubs::{
+    Error,
     WrtResult,
 };
 
