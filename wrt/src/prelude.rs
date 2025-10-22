@@ -221,6 +221,9 @@ pub use wrt_foundation::{
     types::{
         BlockType,
         FuncType,
+        GlobalType,
+        MemoryType,
+        TableType,
         ValueType,
     },
     // validation::{Checksummed}, // Not available yet
@@ -234,6 +237,12 @@ pub use wrt_foundation::{
         VerificationLevel,
     },
 };
+
+// Type aliases for component model types (re-export core types with Component prefix)
+pub type ComponentMemoryType = MemoryType;
+pub type ComponentGlobalType = GlobalType;
+pub type ComponentTableType = TableType;
+
 // Note: wrt-host exports would go here if available
 // Note: wrt-instructions behavior exports would go here if available
 // Note: wrt-instructions exports would go here if available

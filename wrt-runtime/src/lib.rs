@@ -55,6 +55,9 @@ pub mod func;
 pub mod global;
 pub mod memory;
 
+// WebAssembly bulk memory operations runtime
+pub mod bulk_memory;
+
 // Simplified type system - CRITICAL COMPILATION FIX
 pub mod simple_types;
 pub mod unified_types;

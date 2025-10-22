@@ -127,6 +127,9 @@ pub mod collections;
 // Execution-related shared types
 pub mod execution;
 
+// Runtime memory budget limits for safety-critical operations
+pub mod runtime_limits;
+
 // Re-export common types from prelude
 pub use prelude::*;
 
@@ -614,6 +617,17 @@ pub use values::Value;
 pub use verification::{
     Checksum,
     VerificationLevel,
+};
+// Re-export runtime limits for safety-critical configurations
+pub use runtime_limits::{
+    // Resource limits
+    AGGREGATE_RESOURCES_LIMIT,
+    RECORD_FIELDS_LIMIT,
+    RESOURCE_TABLE_LIMIT,
+    // Execution limits
+    FUNCTIONS_PER_MODULE_LIMIT,
+    MODULE_SIZE_LIMIT,
+    STACK_DEPTH_LIMIT,
 };
 // Re-export capability-based memory factory and deprecated coordinator for compatibility
 pub use wrt_memory_system::CapabilityWrtFactory;
