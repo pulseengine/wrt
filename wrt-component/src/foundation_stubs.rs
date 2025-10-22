@@ -9,7 +9,7 @@
 // Foundation stubs for component module development
 // These provide the interface to the foundation module's types
 
-use alloc::vec::Vec;
+use crate::prelude::Vec;
 
 // Temporary stubs for bounded collections from Agent A's work
 pub type SmallVec<T> = Vec<T>;

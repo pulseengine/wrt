@@ -8,10 +8,6 @@
 use std::{
     sync::Arc,
     thread,
-};
-#[cfg(feature = "std")]
-use std::{
-    sync::Arc,
     vec::Vec,
 };
 

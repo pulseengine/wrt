@@ -77,7 +77,7 @@ use crate::prelude::{
 };
 
 /// Represents a runtime instance of a WebAssembly module
-#[derive(Debug)]
+#[cfg_attr(not(feature = "debug"), derive(Debug))]
 pub struct ModuleInstance {
     /// The module this instance was instantiated from
     module:      Arc<Module>,
@@ -94,6 +94,18 @@ pub struct ModuleInstance {
     /// Debug information (optional)
     #[cfg(feature = "debug")]
     debug_info:  Option<DwarfDebugInfo<'static>>,
+}
+
+// Manual Debug implementation when debug feature is enabled
+#[cfg(feature = "debug")]
+impl Debug for ModuleInstance {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ModuleInstance")
+            .field("module", &self.module)
+            .field("instance_id", &self.instance_id)
+            .field("debug_info", &self.debug_info.is_some())
+            .finish()
+    }
 }
 
 impl ModuleInstance {
@@ -304,7 +316,7 @@ impl ModuleInstance {
     /// Initialize debug information for this instance
     #[cfg(feature = "debug")]
     pub fn init_debug_info(&mut self, module_bytes: &'static [u8]) -> Result<()> {
-        let mut debug_info = DwarfDebugInfo::new(module_bytes);
+        let debug_info = DwarfDebugInfo::new(module_bytes)?;
 
         // TODO: Extract debug section offsets from the module
         // For now, this is a placeholder that would need module parsing integration

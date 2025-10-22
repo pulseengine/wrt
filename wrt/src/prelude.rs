@@ -201,10 +201,10 @@ pub use wrt_foundation::{
     component::{
         ComponentType,
         ExternType,
-        GlobalType as ComponentGlobalType,
+        // GlobalType as ComponentGlobalType, // TODO: Private types
         InstanceType,
-        MemoryType as ComponentMemoryType,
-        TableType as ComponentTableType,
+        // MemoryType as ComponentMemoryType, // TODO: Private types
+        // TableType as ComponentTableType, // TODO: Private types
     },
     component_value::{
         ComponentValue,
@@ -239,6 +239,7 @@ pub use wrt_foundation::{
 // Note: wrt-instructions exports would go here if available
 // Note: wrt-intercept exports would go here if available
 // Re-export from wrt-platform (platform-specific implementations)
+#[cfg(feature = "integration")]
 pub use wrt_platform::{
     BranchTargetIdentification,
     BtiExceptionLevel,

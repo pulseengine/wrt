@@ -4,6 +4,8 @@
 //! This module provides an async executor that uses fuel consumption for timing
 //! guarantees, enabling deterministic async execution across all ASIL levels.
 
+extern crate alloc;
+
 use core::fmt;
 
 use crate::{
@@ -1634,7 +1636,7 @@ impl FuelMonitor {
                         alerts
                             .push(FuelAlert::ASILViolation {
                                 mode:           asil_mode,
-                                violation_type: alloc::format!(
+                                violation_type: format!(
                                     "ASIL-D task {} exceeded fuel limit: {} > {}",
                                     task_id.0, amount, self.asil_thresholds.asil_d_task_limit
                                 ),
@@ -1651,7 +1653,7 @@ impl FuelMonitor {
                         alerts
                             .push(FuelAlert::ASILViolation {
                                 mode:           asil_mode,
-                                violation_type: alloc::format!(
+                                violation_type: format!(
                                     "ASIL-C component exceeded fuel budget: {} > {}",
                                     total_consumed, self.asil_thresholds.asil_c_component_limit
                                 ),
@@ -1667,7 +1669,7 @@ impl FuelMonitor {
                         alerts
                             .push(FuelAlert::ASILViolation {
                                 mode:           asil_mode,
-                                violation_type: alloc::format!(
+                                violation_type: format!(
                                     "ASIL-B task {} exceeded slice fuel limit: {} > {}",
                                     task_id.0, amount, self.asil_thresholds.asil_b_slice_limit
                                 ),

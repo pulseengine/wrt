@@ -30,11 +30,14 @@ use alloc::{
     boxed::Box,
     collections::BTreeMap as HashMap,
     sync::Arc,
+    vec::Vec,
 };
 #[cfg(feature = "std")]
 use std::{
+    boxed::Box,
     collections::HashMap,
     sync::Arc,
+    vec::Vec,
 };
 
 use wrt_error::{
@@ -47,7 +50,7 @@ use wrt_foundation::{
     traits::BoundedCapacity,
     types::ValueType,
     values::Value,
-    ComponentMemoryType,
+    // ComponentMemoryType, // TODO: Does not exist - needs to be defined or removed
 };
 use wrt_instructions::{
     memory_ops::{
@@ -618,9 +621,10 @@ impl DataSegmentOperations for DummyDataSegments {
         Ok(())
     }
 
-    fn is_segment_dropped(&self, _index: u32) -> bool {
-        false
-    }
+    // TODO: is_segment_dropped is not part of the DataSegmentOperations trait
+    // fn is_segment_dropped(&self, _index: u32) -> bool {
+    //     false
+    // }
 }
 
 // ================================================================================================

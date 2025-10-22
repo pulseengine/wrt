@@ -1,9 +1,9 @@
 // Runtime stubs for component module development
 // These provide the interface to the runtime module's types
 
+use crate::prelude::{Box, Vec};
 use crate::foundation_stubs::{SmallVec, MediumVec, LargeVec, SafetyContext};
 use crate::platform_stubs::ComprehensivePlatformLimits;
-use alloc::boxed::Box;
 
 // Basic value type stub
 #[derive(Debug, Clone, PartialEq)]
@@ -182,17 +182,17 @@ impl ExecutionEngine {
         })
     }
     
-    pub fn execute_function(&mut self, function: &Function, args: &[Value]) -> core::result::Result<alloc::vec::Vec<Value>, wrt_error::Error> {
+    pub fn execute_function(&mut self, function: &Function, args: &[Value]) -> core::result::Result<Vec<Value>, wrt_error::Error> {
         // Validate execution against limits
         if self.call_stack.len() >= self.limits.max_stack_depth {
             return Err(wrt_error::Error::runtime_stack_overflow("Call stack depth exceeded"));
         }
-        
+
         // CFI validation
         self.cfi_engine.validate_call(function)?;
 
         // Stub execution - just return empty result
-        Ok(alloc::vec::Vec::new())
+        Ok(Vec::new())
     }
 }
 

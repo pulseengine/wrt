@@ -25,7 +25,6 @@ use wrt_foundation::{
     collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
-    resource::ResourceHandle,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
@@ -43,7 +42,7 @@ use crate::{
         WaitableSet,
     },
     prelude::*,
-    resource_lifecycle::ResourceLifecycleManager,
+    resources::resource_lifecycle::ResourceLifecycleManager,
     types::{
         ValType,
         Value,

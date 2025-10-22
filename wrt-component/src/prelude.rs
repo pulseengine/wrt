@@ -116,9 +116,6 @@ pub use wrt_error::{
 
 // Re-export from wrt-format
 pub use wrt_format::component::ValType as FormatValType;
-// Re-export BoundedVec and BoundedString only when std is enabled to avoid conflicts
-#[cfg(feature = "std")]
-pub use wrt_foundation::bounded::BoundedString;
 // Import component builders and resource builders with proper feature gates
 #[cfg(feature = "std")]
 pub use wrt_foundation::builder::ResourceItemBuilder;
@@ -169,6 +166,7 @@ pub use wrt_foundation::{
     },
     // Budget management
     budget_aware_provider::CrateId,
+    safe_managed_alloc,
     // Builtin types
     builtin::BuiltinType,
     component::ComponentType,

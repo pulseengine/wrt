@@ -44,6 +44,7 @@
 // Cross-environment imports
 #[cfg(feature = "std")]
 use std::{
+    any::Any,
     boxed::Box,
     collections::HashMap,
     format,

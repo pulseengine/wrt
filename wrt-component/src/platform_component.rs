@@ -4,7 +4,6 @@
 use crate::foundation_stubs::{SmallVec, MediumVec, SafetyContext, AsilLevel};
 use crate::platform_stubs::{ComprehensivePlatformLimits, PlatformId};
 use crate::runtime_stubs::{ComponentId, InstanceId, ExecutionContext, WasmConfiguration};
-use alloc::boxed::Box;
 use wrt_error::{Error, Result};
 
 use crate::prelude::*;
@@ -31,8 +30,8 @@ pub enum ComponentState {
 
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
-    pub name: Option<alloc::string::String>,
-    pub version: Option<alloc::string::String>,
+    pub name: Option<String>,
+    pub version: Option<String>,
     pub creation_time: u64, // Timestamp in milliseconds
     pub safety_level: AsilLevel,
 }
@@ -94,22 +93,22 @@ impl ComponentInstance {
 pub struct ComponentRequirements {
     pub memory_usage: usize,
     pub resource_count: usize,
-    pub name: Option<alloc::string::String>,
-    pub version: Option<alloc::string::String>,
+    pub name: Option<String>,
+    pub version: Option<String>,
     pub imports: SmallVec<ImportRequirement>,
     pub exports: SmallVec<ExportRequirement>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ImportRequirement {
-    pub module: alloc::string::String,
-    pub name: alloc::string::String,
+    pub module: String,
+    pub name: String,
     pub kind: ImportKind,
 }
 
 #[derive(Debug, Clone)]
 pub struct ExportRequirement {
-    pub name: alloc::string::String,
+    pub name: String,
     pub kind: ExportKind,
 }
 

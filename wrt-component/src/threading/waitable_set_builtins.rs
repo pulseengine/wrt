@@ -16,20 +16,16 @@
 
 extern crate alloc;
 
+#[cfg(feature = "std")]
 use std::{
     boxed::Box,
     cell::RefCell as AtomicRefCell,
     collections::{
         BTreeMap,
         BTreeSet,
+        HashMap,
+        HashSet,
     },
-    vec::Vec,
-};
-#[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    collections::HashSet,
     vec::Vec,
 };
 
@@ -39,10 +35,10 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    bounded::{
+    bounded::BoundedVec,
+    bounded_collections::{
         BoundedMap,
         BoundedSet,
-        BoundedVec,
     },
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
@@ -59,7 +55,7 @@ use crate::{
         Waitable,
         WaitableSet,
     },
-    task_builtins::{
+    threading::task_builtins::{
         TaskId as TaskBuiltinId,
         TaskStatus,
     },

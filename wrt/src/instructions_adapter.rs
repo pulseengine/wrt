@@ -12,34 +12,36 @@ pub use wrt_instructions::{
         AggregateOp,
         AggregateOperations,
     },
-    behavior::{
-        ControlFlow,
-        ControlFlowBehavior,
-        FrameBehavior,
-        InstructionExecutor,
-        StackBehavior,
-    },
-    calls::CallInstruction,
-    control::ControlInstruction,
-    execution::{
-        ExecutionContext as InstructionExecutionContext,
-        PureExecutionContext,
-    },
+    // behavior::{  // TODO: Module does not exist
+    //     ControlFlow,
+    //     ControlFlowBehavior,
+    //     FrameBehavior,
+    //     InstructionExecutor,
+    //     StackBehavior,
+    // },
+    // calls::CallInstruction, // TODO: Module does not exist
+    // control::ControlInstruction, // TODO: Module does not exist - use control_ops
+    control_ops::ControlOp,
+    // execution::{  // TODO: Check if module exists with these types
+    //     ExecutionContext as InstructionExecutionContext,
+    //     PureExecutionContext,
+    // },
     memory_ops::{
-        MemoryArg,
-        MemoryLoad,
+        // MemoryArg, // TODO: Use MemArg from wrt_foundation instead
+        // MemoryLoad,  // TODO: Check if these exist
         MemoryOperations,
-        MemoryStore,
+        // MemoryStore,
     },
-    numeric::NumericInstruction,
+    // numeric::NumericInstruction, // TODO: Module does not exist - use arithmetic_ops
+    arithmetic_ops::ArithmeticOp,
     simd_ops::{
-        SimdContext,
-        SimdExecutionContext,
-        SimdInstruction,
+        // SimdContext,  // TODO: Check if these exist
+        // SimdExecutionContext,
+        // SimdInstruction,
         SimdOp,
     },
-    Instruction,
-    InstructionExecutable,
+    // Instruction,  // TODO: Does not exist as standalone type
+    // InstructionExecutable, // TODO: Does not exist
 };
 use wrt_runtime::stackless::{
     StacklessEngine,
@@ -287,7 +289,7 @@ pub fn execute_instruction<'a, T>(
     engine: &'a mut StacklessEngine,
 ) -> Result<()>
 where
-    T: wrt_instructions::InstructionExecutable<WrtExecutionContextAdapter<'a>>,
+    // T: wrt_instructions::InstructionExecutable<WrtExecutionContextAdapter<'a>>, // TODO: InstructionExecutable trait does not exist
 {
     // Create an adapter for the execution context
     let mut context_adapter = WrtExecutionContextAdapter::new(stack, frame, engine);

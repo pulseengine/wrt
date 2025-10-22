@@ -34,10 +34,8 @@ use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 use wrt_foundation::{
-    bounded::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     types::ValueType,
 };
 #[cfg(not(feature = "std"))]
@@ -55,7 +53,7 @@ type ThreadingString = BoundedString<256>;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::{
+use crate::threading::{
     task_cancellation::{
         with_cancellation_scope,
         CancellationToken,

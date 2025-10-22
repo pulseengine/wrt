@@ -28,8 +28,8 @@ use wrt_platform::{
 };
 
 use crate::{
-    canonical_options::CanonicalOptions,
-    execution::{
+    canonical_abi::canonical_options::CanonicalOptions,
+    execution_engine::{
         TimeBoundedConfig,
         TimeBoundedContext,
         TimeBoundedOutcome,
@@ -39,25 +39,27 @@ use crate::{
         CleanupTaskType,
         PostReturnRegistry,
     },
-    task_manager::{
-        TaskId,
-        TaskManager,
-        TaskState,
+    threading::{
+        task_manager::{
+            TaskId,
+            TaskManager,
+            TaskState,
+        },
+        thread_spawn::{
+            ComponentThreadManager,
+            ThreadConfiguration,
+            ThreadHandle,
+            ThreadId,
+            ThreadResult,
+            ThreadSpawnError,
+            ThreadSpawnErrorKind,
+            ThreadSpawnRequest,
+            ThreadSpawnResult,
+        },
     },
-    thread_spawn::{
-        ComponentThreadManager,
-        ThreadConfiguration,
-        ThreadHandle,
-        ThreadId,
-        ThreadResult,
-        ThreadSpawnError,
-        ThreadSpawnErrorKind,
-        ThreadSpawnRequest,
-        ThreadSpawnResult,
-    },
+    types::ValType,
     ComponentInstanceId,
     ResourceHandle,
-    ValType,
 };
 
 const MAX_FUEL_PER_THREAD: u64 = 1_000_000;

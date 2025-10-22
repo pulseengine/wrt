@@ -26,10 +26,12 @@ use wrt_platform::{
         ThreadPriority,
         ThreadingLimits,
     },
-    wasm_thread_manager::{
-        WasmModuleInfo,
-        WasmThreadManager,
-    },
+};
+
+#[cfg(feature = "threading")]
+use wrt_platform::wasm_thread_manager::{
+    WasmModuleInfo,
+    WasmThreadManager,
 };
 
 use super::BuiltinHandler;

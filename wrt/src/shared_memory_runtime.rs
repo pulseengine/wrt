@@ -25,16 +25,20 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
+    boxed::Box,
     collections::BTreeMap as HashMap,
     sync::Arc,
+    vec::Vec,
 };
 #[cfg(not(feature = "std"))]
 use core::time::Duration;
 #[cfg(feature = "std")]
 use std::{
+    boxed::Box,
     collections::HashMap,
     sync::Arc,
     time::Duration,
+    vec::Vec,
 };
 
 use wrt_error::{
@@ -59,17 +63,13 @@ use wrt_instructions::atomic_ops::{
     AtomicWaitNotifyOp,
     MemoryOrdering,
 };
-use wrt_runtime::{
-    atomic_execution_safe::{
-        AtomicExecutionStats,
-        SafeAtomicMemoryContext,
-    },
-    memory::MemoryOperations,
-    thread_manager::{
-        ThreadExecutionContext,
-        ThreadId,
-        ThreadManager,
-    },
+use wrt_runtime::memory::MemoryOperations;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+use wrt_runtime::thread_manager::{
+    // ThreadExecutionContext, // TODO: Check if exists
+    ThreadId,
+    ThreadManager,
 };
 use wrt_sync::{
     SafeAtomicCounter,

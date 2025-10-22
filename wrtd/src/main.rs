@@ -100,7 +100,6 @@ use wrt_host::{
 #[cfg(feature = "wrt-execution")]
 use wrt_platform::{
     // memory::PlatformMemory, // Not available
-    threading::PlatformThreadPool,
     time::PlatformTime,
 };
 #[cfg(feature = "wasi")]

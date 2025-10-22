@@ -17,21 +17,19 @@ use core::{
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
+    fmt,
+    mem,
     sync::{
+        atomic::{
+            AtomicBool,
+            AtomicU32,
+            Ordering,
+        },
         Arc,
+        Mutex,
         Weak,
     },
     vec::Vec,
-};
-#[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        Ordering,
-    },
 };
 
 use wrt_error::{
@@ -47,15 +45,14 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
-    sync::Mutex,
 };
 
 use crate::{
-    async_execution_engine::{
+    async_::async_execution_engine::{
         AsyncExecutionEngine,
         ExecutionId,
     },
-    task_manager::{
+    threading::task_manager::{
         TaskId,
         TaskState,
     },

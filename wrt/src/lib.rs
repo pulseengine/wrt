@@ -116,16 +116,19 @@ pub mod memory_limits;
 // Bulk memory operations runtime
 pub mod bulk_memory_runtime;
 
-// Atomic operations runtime
+// Atomic operations runtime (requires std/alloc for thread support)
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_runtime;
 
-// Shared memory runtime for WebAssembly 3.0 threads
+// Shared memory runtime for WebAssembly 3.0 threads (requires std/alloc)
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod shared_memory_runtime;
 
 // Multi-memory runtime for WebAssembly 3.0 multi-memory proposal
 pub mod multi_memory_runtime;
 
-// Unified WebAssembly 3.0 features runtime integration
+// Unified WebAssembly 3.0 features runtime integration (requires std/alloc)
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod webassembly_3_runtime;
 
 // Module adapters for integration between specialized crates

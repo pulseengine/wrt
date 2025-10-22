@@ -12,6 +12,7 @@ use wrt_foundation::{
 use super::{
     MemoryStrategy,
     Resource,
+    ResourceArena,
     ResourceInterceptor,
     ResourceTable,
     VerificationLevel,

@@ -26,7 +26,7 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     vec::Vec,
 };
 
@@ -50,6 +50,8 @@ use wrt_foundation::{
 // TODO: Replace with proper atomic implementation
 #[cfg(not(feature = "std"))]
 use crate::prelude::Mutex as AtomicRefCell;
+#[cfg(feature = "std")]
+use std::cell::RefCell as AtomicRefCell;
 use crate::bounded_component_infra::ComponentProvider;
 use crate::prelude::WrtComponentValue;
 

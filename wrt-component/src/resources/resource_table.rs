@@ -8,6 +8,8 @@ use std::{
     sync::Weak,
 };
 
+use crate::resources::ResourceInterceptor;
+
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{
     WrtHashMap,

@@ -45,13 +45,8 @@ use wrt_instructions::atomic_ops::{
     AtomicWaitNotifyOp,
     MemoryOrdering,
 };
-use wrt_runtime::{
-    atomic_execution_safe::{
-        AtomicExecutionStats,
-        SafeAtomicMemoryContext,
-    },
-    thread_manager::ThreadId,
-};
+#[cfg(any(feature = "std", feature = "alloc"))]
+use wrt_runtime::thread_manager::ThreadId;
 
 /// Provider trait for atomic operations across ASIL levels
 pub trait AtomicProvider {

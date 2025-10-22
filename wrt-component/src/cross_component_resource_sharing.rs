@@ -49,7 +49,7 @@ use crate::{
 
 // Type aliases for static memory allocation
 type TypeIdVec<const N: usize> = StaticVec<TypeId, N>;
-type StringVec<const N: usize> = StaticVec<alloc::string::String, N>;
+type StringVec<const N: usize> = StaticVec<String, N>;
 type ComponentIdVec<const N: usize> = StaticVec<ComponentInstanceId, N>;
 type U32Vec<const N: usize> = StaticVec<u32, N>;
 type PolicyRuleVec = StaticVec<PolicyRule, 32>;

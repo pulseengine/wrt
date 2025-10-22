@@ -50,7 +50,7 @@ use wrt_foundation::{
     BoundedMap,
 };
 
-use crate::task_cancellation::{
+use crate::threading::task_cancellation::{
     with_cancellation_scope,
     CancellationToken,
 };

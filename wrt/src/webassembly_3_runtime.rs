@@ -24,11 +24,16 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::format;
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+use alloc::{
+    format,
+    sync::Arc,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    vec::Vec,
+};
 
 use wrt_error::{
     codes,
@@ -41,16 +46,15 @@ use wrt_instructions::{
     atomic_ops::AtomicOp,
     control_ops::ControlOp,
 };
-use wrt_runtime::{
-    atomic_execution_safe::SafeAtomicMemoryContext,
-    stackless::{
-        tail_call::TailCallContext,
-        StacklessEngine,
-    },
-    thread_manager::{
-        ThreadId,
-        ThreadManager,
-    },
+use wrt_runtime::stackless::{
+    // tail_call::TailCallContext, // TODO: Module does not exist
+    StacklessEngine,
+};
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+use wrt_runtime::thread_manager::{
+    ThreadId,
+    ThreadManager,
 };
 
 // Import all WebAssembly 3.0 runtime modules

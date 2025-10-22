@@ -317,6 +317,16 @@ pub const fn poisoned_lock_error(message: &'static str) -> PoisonedLockError {
     PoisonedLockError(message)
 }
 
+/// Threading error for thread spawn and management issues
+#[derive(Debug, Clone)]
+pub struct ThreadingError(pub &'static str);
+
+/// Helper function for creating `ThreadingError`
+#[must_use]
+pub const fn threading_error(message: &'static str) -> ThreadingError {
+    ThreadingError(message)
+}
+
 /// Helper function for creating `TypeMismatchError`
 #[must_use]
 pub const fn type_mismatch_error(message: &'static str) -> TypeMismatchError {
@@ -1005,5 +1015,15 @@ impl core::fmt::Display for SimdOperationError {
 impl core::fmt::Display for TailCallError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Tail call error: {}", self.message)
+    }
+}
+
+impl core::fmt::Display for ThreadingError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "Threading error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }

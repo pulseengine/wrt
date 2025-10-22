@@ -49,7 +49,15 @@ std = [
 ]
 
 # Enable actual WRT execution (vs demo mode) - without wrt-component for now
-wrt-execution = ["std", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host"]
+wrt-execution = [
+    "std",
+    "dep:wrt-runtime",
+    "dep:wrt-platform",
+    "dep:wrt-host",
+    "wrt-runtime/std",
+    "wrt-platform/std",
+    "wrt-host/std"
+]
 
 # WASI support features
 wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2"]
