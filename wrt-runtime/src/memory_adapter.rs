@@ -238,9 +238,9 @@ impl StdMemoryProvider {
     }
 
     /// Create a safe slice of memory with verification
-    pub fn create_safe_slice<'a>(
+    pub fn create_safe_slice(
         &self,
-        buffer: &'a [u8],
+        buffer: &[u8],
         offset: usize,
         len: usize,
     ) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {

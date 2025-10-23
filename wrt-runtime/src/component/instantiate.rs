@@ -45,6 +45,7 @@ type ComponentString = BoundedString<256, RuntimeProvider>;
 
 /// Result of component instantiation
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct InstantiationResult {
     /// Instance handle
     pub handle:  u32,
@@ -52,14 +53,6 @@ pub struct InstantiationResult {
     pub exports: HashMap<ComponentString, ExportedItem>,
 }
 
-impl Default for InstantiationResult {
-    fn default() -> Self {
-        Self {
-            handle:  0,
-            exports: HashMap::default(),
-        }
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for InstantiationResult {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -222,6 +215,7 @@ pub struct InstantiationContext {
 
 /// Represents an instantiated core module
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct CoreModuleInstance {
     /// Module reference
     pub module_idx: u32,
@@ -231,15 +225,6 @@ pub struct CoreModuleInstance {
     pub exports:    HashMap<ComponentString, ExportedItem>,
 }
 
-impl Default for CoreModuleInstance {
-    fn default() -> Self {
-        Self {
-            module_idx: 0,
-            imports:    HashMap::default(),
-            exports:    HashMap::default(),
-        }
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for CoreModuleInstance {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

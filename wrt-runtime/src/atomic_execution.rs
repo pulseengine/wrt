@@ -13,7 +13,6 @@
 #![allow(unsafe_code)]
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::undocumented_unsafe_blocks)]
-#![allow(clippy::unsafe_block)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
 // alloc is imported in lib.rs with proper feature gates
@@ -222,18 +221,18 @@ impl AtomicMemoryContext {
             AtomicOp::Load(load_op) => self.execute_atomic_load(load_op),
             AtomicOp::Store(store_op) => {
                 // Get value from operands
-                let value = operands.get(0).copied().unwrap_or(0u64);
+                let value = operands.first().copied().unwrap_or(0u64);
                 self.execute_atomic_store(store_op, value)?;
                 result_vec![]
             },
             AtomicOp::RMW(rmw_op) => {
                 // Get value from operands
-                let value = operands.get(0).copied().unwrap_or(0u64);
+                let value = operands.first().copied().unwrap_or(0u64);
                 self.execute_atomic_rmw(rmw_op, value)
             },
             AtomicOp::Cmpxchg(cmpxchg_op) => {
                 // Get expected and replacement values from operands
-                let expected = operands.get(0).copied().unwrap_or(0u64);
+                let expected = operands.first().copied().unwrap_or(0u64);
                 let replacement = operands.get(1).copied().unwrap_or(0u64);
                 self.execute_atomic_cmpxchg(cmpxchg_op, expected, replacement)
             },

@@ -217,7 +217,7 @@ impl ArcMemoryExt for Arc<Memory> {
                 1024,
                 wrt_foundation::budget_aware_provider::CrateId::Runtime
             )?;
-            return Ok(wrt_foundation::safe_memory::SafeStack::new(provider)?);
+            return wrt_foundation::safe_memory::SafeStack::new(provider);
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer

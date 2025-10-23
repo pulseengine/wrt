@@ -233,13 +233,13 @@ impl ModuleInstance {
 
         for param in params_slice {
             params
-                .push(param.clone())
+                .push(*param)
                 .map_err(|_| Error::capacity_limit_exceeded("Too many params"))?;
         }
 
         for result in results_slice {
             results
-                .push(result.clone())
+                .push(*result)
                 .map_err(|_| Error::capacity_limit_exceeded("Too many results"))?;
         }
 
@@ -365,7 +365,7 @@ impl ModuleInstance {
             .get(idx)
             .map_err(|_| Error::runtime_function_not_found("Function index not found"))?;
 
-        Ok(self.module.types.get(function.type_idx as usize)?)
+        self.module.types.get(function.type_idx as usize)
     }
 
     /// Get a table by index - alias for compatibility with tail_call.rs
@@ -375,7 +375,7 @@ impl ModuleInstance {
 
     /// Get a type by index - alias for compatibility with tail_call.rs
     pub fn get_type(&self, idx: usize) -> Result<WrtFuncType> {
-        Ok(self.module.types.get(idx)?)
+        self.module.types.get(idx)
     }
 }
 
@@ -426,7 +426,6 @@ impl ReferenceOperations for ModuleInstance {
 
 /// Manual trait implementations for ModuleInstance since fields don't support
 /// automatic derivation
-
 impl Default for ModuleInstance {
     fn default() -> Self {
         // Create a default module instance with a default module
@@ -526,7 +525,6 @@ impl PartialEq for ModuleInstance {
 impl Eq for ModuleInstance {}
 
 /// Trait implementations for ModuleInstance to support BoundedMap usage
-
 impl Checksummable for ModuleInstance {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use instance ID and module checksum for unique identification

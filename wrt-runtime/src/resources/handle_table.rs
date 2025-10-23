@@ -324,9 +324,9 @@ mod tests {
     use wrt_foundation::traits::DefaultMemoryProvider;
 
     use super::*;
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     extern crate alloc;
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     use alloc::string::String as StdString;
 
     #[test]

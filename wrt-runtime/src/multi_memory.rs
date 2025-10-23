@@ -173,7 +173,7 @@ impl MultiMemoryInstance {
     pub fn new(memory_index: u32, memory_type: MemoryType) -> Result<Self> {
         // Convert MemoryType to CoreMemoryType for Memory::new()
         let core_mem_type = CoreMemoryType {
-            limits: memory_type.limits.clone(),
+            limits: memory_type.limits,
             shared: memory_type.shared,
         };
         let memory = Memory::new(core_mem_type)
