@@ -41,26 +41,13 @@
 
 // Cross-environment imports
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, format, string::String, sync::Arc, vec::Vec};
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    CrateId,
-    WrtHashMap as HashMap,
-    WrtVec as Vec,
-};
+use wrt_foundation::allocator::{CrateId, WrtHashMap as HashMap, WrtVec as Vec};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
-    safe_memory::NoStdProvider,
+    bounded::BoundedString, collections::StaticVec as BoundedVec, safe_memory::NoStdProvider,
 };
 
 // Type aliases for no_std environment with proper generics
@@ -73,78 +60,51 @@ type Vec<T> = BoundedVec<T, 256>;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    format,
-    vec,
-};
+use alloc::{boxed::Box, format, vec};
 
 // Arc is already imported from prelude, no need for type alias
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::ValType;
-use wrt_intercept::{
-    LinkInterceptorStrategy,
-    ResourceCanonicalOperation,
-};
+use wrt_intercept::{LinkInterceptorStrategy, ResourceCanonicalOperation};
 
 // Import our communication system components
 pub use crate::components::component_communication::{
-    CallContext,
-    CallRouter,
-    CallRouterConfig,
-    CallState,
-    CommunicationError,
-    MarshalingConfig,
-    ParameterBridge,
-    ResourceBridge,
-    ResourceTransferType,
+    CallContext, CallRouter, CallRouterConfig, CallState, CommunicationError, MarshalingConfig,
+    ParameterBridge, ResourceBridge, ResourceTransferType,
 };
 // Import our prelude for type aliases like WrtComponentValue
 use crate::prelude::*;
 use crate::{
     call_context::{
-        CallContextConfig,
-        CallContextManager,
-        MarshalingConfig as ContextMarshalingConfig,
+        CallContextConfig, CallContextManager, MarshalingConfig as ContextMarshalingConfig,
     },
-    component_instantiation::{
-        ComponentInstance,
-        InstanceId,
-    },
-    resource_management::{
-        ResourceHandle,
-        ResourceManager as ComponentResourceManager,
-    },
+    component_instantiation::{ComponentInstance, InstanceId},
+    resource_management::{ResourceHandle, ResourceManager as ComponentResourceManager},
 };
 
 /// Component communication strategy that implements LinkInterceptorStrategy
 #[derive(Debug)]
 pub struct ComponentCommunicationStrategy {
     /// Call router for managing cross-component calls
-    call_router:          CallRouter,
+    call_router: CallRouter,
     /// Call context manager for call lifecycle
     call_context_manager: CallContextManager,
     /// Instance registry for component lookup
     #[cfg(feature = "safety-critical")]
-    instance_registry:    WrtHashMap<InstanceId, String, { CrateId::Component as u8 }, 256>,
+    instance_registry: WrtHashMap<InstanceId, String, { CrateId::Component as u8 }, 256>,
     #[cfg(not(feature = "safety-critical"))]
-    instance_registry:    HashMap<InstanceId, String>,
+    instance_registry: HashMap<InstanceId, String>,
     /// Security policies for component interactions
     #[cfg(feature = "safety-critical")]
     security_policies:
         WrtHashMap<String, ComponentSecurityPolicy, { CrateId::Component as u8 }, 64>,
     #[cfg(not(feature = "safety-critical"))]
-    security_policies:    HashMap<String, ComponentSecurityPolicy>,
+    security_policies: HashMap<String, ComponentSecurityPolicy>,
     /// Configuration
-    config:               ComponentCommunicationConfig,
+    config: ComponentCommunicationConfig,
     /// Statistics
-    stats:                CommunicationStats,
+    stats: CommunicationStats,
 }
 
 /// Security policy for component interactions
@@ -152,52 +112,52 @@ pub struct ComponentCommunicationStrategy {
 pub struct ComponentSecurityPolicy {
     /// Allowed target components
     #[cfg(feature = "safety-critical")]
-    pub allowed_targets:         WrtVec<String, { CrateId::Component as u8 }, 32>,
+    pub allowed_targets: WrtVec<String, { CrateId::Component as u8 }, 32>,
     #[cfg(not(feature = "safety-critical"))]
-    pub allowed_targets:         Vec<String>,
+    pub allowed_targets: Vec<String>,
     /// Allowed function patterns
     #[cfg(feature = "safety-critical")]
-    pub allowed_functions:       WrtVec<String, { CrateId::Component as u8 }, 64>,
+    pub allowed_functions: WrtVec<String, { CrateId::Component as u8 }, 64>,
     #[cfg(not(feature = "safety-critical"))]
-    pub allowed_functions:       Vec<String>,
+    pub allowed_functions: Vec<String>,
     /// Resource access permissions
     pub allow_resource_transfer: bool,
     /// Maximum call depth
-    pub max_call_depth:          usize,
+    pub max_call_depth: usize,
     /// Enable parameter validation
-    pub validate_parameters:     bool,
+    pub validate_parameters: bool,
 }
 
 /// Configuration for component communication strategy
 #[derive(Debug, Clone)]
 pub struct ComponentCommunicationConfig {
     /// Enable call tracing
-    pub enable_tracing:     bool,
+    pub enable_tracing: bool,
     /// Enable security checks
-    pub enable_security:    bool,
+    pub enable_security: bool,
     /// Enable performance monitoring
-    pub enable_monitoring:  bool,
+    pub enable_monitoring: bool,
     /// Maximum parameter size
     pub max_parameter_size: u32,
     /// Call timeout in microseconds
-    pub call_timeout_us:    u64,
+    pub call_timeout_us: u64,
 }
 
 /// Communication statistics
 #[derive(Debug, Clone, Default)]
 pub struct CommunicationStats {
     /// Total function calls intercepted
-    pub function_calls_intercepted:      u64,
+    pub function_calls_intercepted: u64,
     /// Total parameters marshaled
-    pub parameters_marshaled:            u64,
+    pub parameters_marshaled: u64,
     /// Total resource operations intercepted
     pub resource_operations_intercepted: u64,
     /// Total successful calls
-    pub successful_calls:                u64,
+    pub successful_calls: u64,
     /// Total failed calls
-    pub failed_calls:                    u64,
+    pub failed_calls: u64,
     /// Average call duration
-    pub average_call_duration_us:        u64,
+    pub average_call_duration_us: u64,
 }
 
 /// Call routing information
@@ -208,9 +168,9 @@ pub struct CallRoutingInfo {
     /// Target component
     pub target_component: String,
     /// Function name
-    pub function_name:    String,
+    pub function_name: String,
     /// Call context ID
-    pub call_context_id:  Option<u64>,
+    pub call_context_id: Option<u64>,
 }
 
 /// Parameter marshaling result
@@ -222,22 +182,22 @@ pub struct ParameterMarshalingResult {
     #[cfg(not(feature = "safety-critical"))]
     pub marshaled_data: Vec<u8>,
     /// Marshaling metadata
-    pub metadata:       MarshalingMetadata,
+    pub metadata: MarshalingMetadata,
     /// Success status
-    pub success:        bool,
+    pub success: bool,
     /// Error message (if failed)
-    pub error_message:  Option<String>,
+    pub error_message: Option<String>,
 }
 
 /// Marshaling metadata
 #[derive(Debug, Clone)]
 pub struct MarshalingMetadata {
     /// Original parameter count
-    pub original_count:        usize,
+    pub original_count: usize,
     /// Marshaled size in bytes
-    pub marshaled_size:        u32,
+    pub marshaled_size: u32,
     /// Marshaling time in microseconds
-    pub marshaling_time_us:    u64,
+    pub marshaling_time_us: u64,
     /// Conversion operations performed
     pub conversions_performed: u32,
 }
@@ -245,11 +205,11 @@ pub struct MarshalingMetadata {
 impl Default for ComponentCommunicationConfig {
     fn default() -> Self {
         Self {
-            enable_tracing:     false,
-            enable_security:    true,
-            enable_monitoring:  true,
+            enable_tracing: false,
+            enable_security: true,
+            enable_monitoring: true,
             max_parameter_size: 1024 * 1024, // 1MB
-            call_timeout_us:    5_000_000,   // 5 seconds
+            call_timeout_us: 5_000_000,      // 5 seconds
         }
     }
 }
@@ -281,20 +241,20 @@ impl ComponentCommunicationStrategy {
     /// Create a new strategy with custom configuration
     pub fn with_config(config: ComponentCommunicationConfig) -> Self {
         let router_config = CallRouterConfig {
-            enable_call_tracing:               config.enable_tracing,
-            max_call_stack_depth:              64,
-            enable_security_checks:            config.enable_security,
-            call_timeout_us:                   config.call_timeout_us,
-            enable_optimization:               true,
+            enable_call_tracing: config.enable_tracing,
+            max_call_stack_depth: 64,
+            enable_security_checks: config.enable_security,
+            call_timeout_us: config.call_timeout_us,
+            enable_optimization: true,
             max_concurrent_calls_per_instance: 256,
         };
 
         let context_config = CallContextConfig {
-            enable_tracing:                config.enable_tracing,
+            enable_tracing: config.enable_tracing,
             enable_performance_monitoring: config.enable_monitoring,
-            enable_parameter_validation:   true,
-            enable_resource_coordination:  true,
-            max_call_duration_us:          config.call_timeout_us,
+            enable_parameter_validation: true,
+            enable_resource_coordination: true,
+            max_call_duration_us: config.call_timeout_us,
         };
 
         Self {
@@ -367,8 +327,8 @@ impl ComponentCommunicationStrategy {
             Some(CallRoutingInfo {
                 source_component: BoundedString::from_str("unknown").unwrap_or_default(), // Will be set by caller
                 target_component: BoundedString::from_str(component_part).unwrap_or_default(),
-                function_name:    BoundedString::from_str(function_part).unwrap_or_default(),
-                call_context_id:  None,
+                function_name: BoundedString::from_str(function_part).unwrap_or_default(),
+                call_context_id: None,
             })
         } else {
             None
@@ -393,19 +353,20 @@ impl ComponentCommunicationStrategy {
 
             // Check allowed functions
             if !policy.allowed_functions.is_empty()
-                && !policy
-                    .allowed_functions
-                    .iter()
-                    .any(|pattern| {
-                        #[cfg(feature = "std")]
-                        let pattern_str = pattern.as_str();
-                        #[cfg(not(feature = "std"))]
-                        let pattern_str = pattern.as_str().unwrap_or("");
-                        #[cfg(feature = "std")]
-                        return routing_info.function_name.contains(pattern_str);
-                        #[cfg(not(feature = "std"))]
-                        routing_info.function_name.as_str().map(|s| s.contains(pattern_str)).unwrap_or(false)
-                    })
+                && !policy.allowed_functions.iter().any(|pattern| {
+                    #[cfg(feature = "std")]
+                    let pattern_str = pattern.as_str();
+                    #[cfg(not(feature = "std"))]
+                    let pattern_str = pattern.as_str().unwrap_or("");
+                    #[cfg(feature = "std")]
+                    return routing_info.function_name.contains(pattern_str);
+                    #[cfg(not(feature = "std"))]
+                    routing_info
+                        .function_name
+                        .as_str()
+                        .map(|s| s.contains(pattern_str))
+                        .unwrap_or(false)
+                })
             {
                 return Err(Error::security_access_denied(
                     "Function not allowed by security policy",
@@ -468,13 +429,15 @@ impl ComponentCommunicationStrategy {
                 #[cfg(not(feature = "safety-critical"))]
                 marshaled_data: Vec::new(),
                 metadata: MarshalingMetadata {
-                    original_count:        args.len(),
-                    marshaled_size:        0,
-                    marshaling_time_us:    0,
+                    original_count: args.len(),
+                    marshaled_size: 0,
+                    marshaling_time_us: 0,
                     conversions_performed: 0,
                 },
                 success: false,
-                error_message: Some(BoundedString::from_str("Parameter data too large").unwrap_or_default()),
+                error_message: Some(
+                    BoundedString::from_str("Parameter data too large").unwrap_or_default(),
+                ),
             });
         }
 
@@ -534,7 +497,10 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Calculate marshaled size for component values
-    fn calculate_marshaled_size(&self, values: &[WrtComponentValue<ComponentProvider>]) -> Result<u32> {
+    fn calculate_marshaled_size(
+        &self,
+        values: &[WrtComponentValue<ComponentProvider>],
+    ) -> Result<u32> {
         let mut total_size = 0u32;
 
         for value in values {
@@ -611,7 +577,10 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Serialize a component value to bytes
-    fn serialize_component_value(&self, value: &WrtComponentValue<ComponentProvider>) -> Result<Vec<u8>> {
+    fn serialize_component_value(
+        &self,
+        value: &WrtComponentValue<ComponentProvider>,
+    ) -> Result<Vec<u8>> {
         // Simplified serialization - would use proper canonical ABI in full
         // implementation
         match value {
@@ -620,7 +589,8 @@ impl ComponentCommunicationStrategy {
                 let mut vec = Vec::new();
                 for byte in bytes {
                     #[cfg(not(feature = "std"))]
-                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    vec.push(byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     vec.push(byte);
                 }
@@ -631,7 +601,8 @@ impl ComponentCommunicationStrategy {
                 let mut vec = Vec::new();
                 for byte in bytes {
                     #[cfg(not(feature = "std"))]
-                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    vec.push(byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     vec.push(byte);
                 }
@@ -642,7 +613,8 @@ impl ComponentCommunicationStrategy {
                 let mut vec = Vec::new();
                 for byte in bytes {
                     #[cfg(not(feature = "std"))]
-                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    vec.push(byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     vec.push(byte);
                 }
@@ -653,7 +625,8 @@ impl ComponentCommunicationStrategy {
                 let mut vec = Vec::new();
                 for byte in bytes {
                     #[cfg(not(feature = "std"))]
-                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    vec.push(byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     vec.push(byte);
                 }
@@ -664,14 +637,18 @@ impl ComponentCommunicationStrategy {
                 // Add length prefix
                 for byte in (s.len() as u32).to_le_bytes() {
                     #[cfg(not(feature = "std"))]
-                    bytes.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    bytes
+                        .push(byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     bytes.push(byte);
                 }
                 // Add string bytes
                 for byte in s.as_bytes() {
                     #[cfg(not(feature = "std"))]
-                    bytes.push(*byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    bytes
+                        .push(*byte)
+                        .map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
                     #[cfg(feature = "std")]
                     bytes.push(*byte);
                 }
@@ -918,7 +895,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
         source: &str,
         target: &str,
         function: &str,
-        args: &[wrt_foundation::values::Value],
+        _args: &[wrt_foundation::values::Value],
     ) -> Result<()> {
         // Simplified validation for no_std
         if let Some(mut routing_info) = self.parse_component_call(function) {
@@ -932,10 +909,10 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
 
     fn after_call(
         &self,
-        source: &str,
-        target: &str,
-        function: &str,
-        args: &[wrt_foundation::values::Value],
+        _source: &str,
+        _target: &str,
+        _function: &str,
+        _args: &[wrt_foundation::values::Value],
         result: Result<()>,
     ) -> Result<()> {
         // Update statistics if enabled
@@ -1016,9 +993,9 @@ pub fn create_default_security_policy() -> ComponentSecurityPolicy {
 pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
     ComponentSecurityPolicy {
         #[cfg(feature = "std")]
-        allowed_targets:         vec![String::from("*")],
+        allowed_targets: vec![String::from("*")],
         #[cfg(not(feature = "std"))]
-        allowed_targets:         {
+        allowed_targets: {
             let mut vec = Vec::new();
             if let Ok(s) = BoundedString::from_str("*") {
                 let _ = vec.push(s);
@@ -1026,9 +1003,9 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
             vec
         },
         #[cfg(feature = "std")]
-        allowed_functions:       vec![String::from("*")],
+        allowed_functions: vec![String::from("*")],
         #[cfg(not(feature = "std"))]
-        allowed_functions:       {
+        allowed_functions: {
             let mut vec = Vec::new();
             if let Ok(s) = BoundedString::from_str("*") {
                 let _ = vec.push(s);
@@ -1036,8 +1013,8 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
             vec
         },
         allow_resource_transfer: true,
-        max_call_depth:          64,
-        validate_parameters:     false,
+        max_call_depth: 64,
+        validate_parameters: false,
     }
 }
 
@@ -1069,11 +1046,11 @@ mod tests {
         let mut strategy = ComponentCommunicationStrategy::new();
 
         let policy = ComponentSecurityPolicy {
-            allowed_targets:         vec!["math_component".to_owned()],
-            allowed_functions:       vec!["add".to_owned(), "subtract".to_owned()],
+            allowed_targets: vec!["math_component".to_owned()],
+            allowed_functions: vec!["add".to_owned(), "subtract".to_owned()],
             allow_resource_transfer: false,
-            max_call_depth:          16,
-            validate_parameters:     true,
+            max_call_depth: 16,
+            validate_parameters: true,
         };
 
         strategy.set_security_policy("calculator".to_owned(), policy);
@@ -1081,8 +1058,8 @@ mod tests {
         let routing_info = CallRoutingInfo {
             source_component: "calculator".to_owned(),
             target_component: "math_component".to_owned(),
-            function_name:    "add".to_owned(),
-            call_context_id:  None,
+            function_name: "add".to_owned(),
+            call_context_id: None,
         };
 
         let result = strategy.validate_security_policy(&routing_info);
@@ -1150,11 +1127,11 @@ mod tests {
     #[test]
     fn test_configuration() {
         let config = ComponentCommunicationConfig {
-            enable_tracing:     true,
-            enable_security:    false,
-            enable_monitoring:  true,
+            enable_tracing: true,
+            enable_security: false,
+            enable_monitoring: true,
             max_parameter_size: 2048,
-            call_timeout_us:    10_000_000,
+            call_timeout_us: 10_000_000,
         };
 
         let strategy = ComponentCommunicationStrategy::with_config(config.clone());

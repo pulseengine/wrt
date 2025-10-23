@@ -9,32 +9,17 @@ extern crate alloc;
 use core::fmt;
 
 use crate::{
-    canonical_abi::{
-        CanonicalOptions,
-        ComponentValue,
-    },
-    execution_engine::{
-        TimeBoundedConfig,
-        TimeBoundedContext,
-    },
+    canonical_abi::{CanonicalOptions, ComponentValue},
+    execution_engine::{TimeBoundedConfig, TimeBoundedContext},
     prelude::*,
     resource_limits_loader::extract_resource_limits_from_binary,
-    types::{
-        ComponentInstance,
-        ComponentInstanceState as InstanceState,
-    },
+    types::{ComponentInstance, ComponentInstanceState as InstanceState},
     ComponentInstanceId,
 };
 #[cfg(feature = "component-model-threading")]
 use crate::{
-    threading::task_manager::{
-        TaskId,
-        TaskState,
-    },
-    threading::thread_spawn_fuel::{
-        FuelTrackedThreadContext,
-        ThreadFuelStatus,
-    },
+    threading::task_manager::{TaskId, TaskState},
+    threading::thread_spawn_fuel::{FuelTrackedThreadContext, ThreadFuelStatus},
 };
 
 // Stub types when threading is not enabled
@@ -85,11 +70,11 @@ pub enum ThreadFuelStatus {
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DebtCreditBalance {
-    pub task_id:          TaskId,
-    pub component_id:     u64,
-    pub current_debt:     u64,
+    pub task_id: TaskId,
+    pub component_id: u64,
+    pub current_debt: u64,
     pub available_credit: u64,
-    pub net_balance:      i64,
+    pub net_balance: i64,
 }
 
 #[cfg(not(feature = "component-model-threading"))]
@@ -111,71 +96,34 @@ use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        global_fuel_consumed,
-        record_global_operation,
-        Type as OperationType,
-    },
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{global_fuel_consumed, record_global_operation, Type as OperationType},
     safe_managed_alloc,
     verification::VerificationLevel,
-    Arc,
-    CrateId,
-    Mutex,
+    Arc, CrateId, Mutex,
 };
 use wrt_platform::{
-    advanced_sync::{
-        Priority,
-        PriorityInheritanceMutex,
-    },
-    sync::{
-        FutexLike,
-        SpinFutex,
-    },
+    advanced_sync::{Priority, PriorityInheritanceMutex},
+    sync::{FutexLike, SpinFutex},
 };
 
 use crate::async_::{
-    async_task_executor::{
-        ASILExecutorFactory,
-        AsyncTaskExecutor,
-    },
+    async_task_executor::{ASILExecutorFactory, AsyncTaskExecutor},
     fuel_aware_waker::{
-        create_fuel_aware_waker,
-        create_fuel_aware_waker_with_asil,
-        create_noop_waker,
+        create_fuel_aware_waker, create_fuel_aware_waker_with_asil, create_noop_waker,
         WakeCoalescer,
     },
-    fuel_debt_credit::{
-        CreditRestriction,
-        DebtPolicy,
-        FuelDebtCreditSystem,
-    },
-    fuel_dynamic_manager::{
-        FuelAllocationPolicy,
-        FuelDynamicManager,
-    },
-    fuel_preemption_support::{
-        FuelPreemptionManager,
-        PreemptionDecision,
-        PreemptionPolicy,
-    },
+    fuel_debt_credit::{CreditRestriction, DebtPolicy, FuelDebtCreditSystem},
+    fuel_dynamic_manager::{FuelAllocationPolicy, FuelDynamicManager},
+    fuel_preemption_support::{FuelPreemptionManager, PreemptionDecision, PreemptionPolicy},
 };
 
 /// Maximum number of concurrent async tasks
@@ -194,25 +142,25 @@ const ASYNC_TASK_POLL_FUEL: u64 = 15;
 #[derive(Debug, Default, Clone)]
 pub struct FuelMonitoringStats {
     pub total_fuel_consumed: u64,
-    pub current_rate:        u64,
-    pub peak_rate:           u64,
-    pub violations_count:    u64,
+    pub current_rate: u64,
+    pub peak_rate: u64,
+    pub violations_count: u64,
 }
 
 /// Placeholder for debt credit configuration
 #[derive(Debug, Default, Clone)]
 pub struct DebtCreditConfig {
-    pub max_debt:    u64,
+    pub max_debt: u64,
     pub credit_rate: u64,
-    pub enabled:     bool,
+    pub enabled: bool,
 }
 
 /// Placeholder for debt credit statistics
 #[derive(Debug, Default, Clone)]
 pub struct DebtCreditStats {
-    pub current_debt:        u64,
+    pub current_debt: u64,
     pub total_credit_earned: u64,
-    pub debt_violations:     u64,
+    pub debt_violations: u64,
 }
 
 // FuelConsumptionRecord and FuelAlert are defined later in the file with
@@ -223,7 +171,9 @@ pub struct DebugFuture(Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>
 
 impl core::fmt::Debug for DebugFuture {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Future").field("type", &"dyn Future<Output = Result<()>>").finish()
+        f.debug_struct("Future")
+            .field("type", &"dyn Future<Output = Result<()>>")
+            .finish()
     }
 }
 
@@ -242,16 +192,16 @@ impl DebugFuture {
 /// Async task representation with fuel tracking
 #[derive(Debug)]
 pub struct FuelAsyncTask {
-    pub id:                   TaskId,
-    pub component_id:         ComponentInstanceId,
-    pub fuel_budget:          u64,
-    pub fuel_consumed:        AtomicU64,
-    pub priority:             Priority,
-    pub verification_level:   VerificationLevel,
-    pub state:                AsyncTaskState,
-    pub waker:                Option<Waker>,
-    pub future:               DebugFuture,
-    pub execution_context:    ExecutionContext,
+    pub id: TaskId,
+    pub component_id: ComponentInstanceId,
+    pub fuel_budget: u64,
+    pub fuel_consumed: AtomicU64,
+    pub priority: Priority,
+    pub verification_level: VerificationLevel,
+    pub state: AsyncTaskState,
+    pub waker: Option<Waker>,
+    pub future: DebugFuture,
+    pub execution_context: ExecutionContext,
     pub waiting_on_waitables: Option<Vec<WaitableHandle>>,
 }
 
@@ -316,40 +266,40 @@ pub enum ComponentAsyncOperationResult {
 /// Execution state information for monitoring
 #[derive(Debug, Clone)]
 pub struct ExecutionStateInfo {
-    pub task_id:                TaskId,
-    pub component_id:           ComponentInstanceId,
-    pub asil_mode:              ASILExecutionMode, /* TODO: Remove this field and use execution_context.asil_config.mode instead */
-    pub stack_depth:            u32,
-    pub max_stack_depth:        u32,
-    pub fuel_consumed:          u64,
-    pub has_yield_point:        bool,
+    pub task_id: TaskId,
+    pub component_id: ComponentInstanceId,
+    pub asil_mode: ASILExecutionMode, /* TODO: Remove this field and use execution_context.asil_config.mode instead */
+    pub stack_depth: u32,
+    pub max_stack_depth: u32,
+    pub fuel_consumed: u64,
+    pub has_yield_point: bool,
     pub has_component_instance: bool,
-    pub error_state:            Option<Error>,
+    pub error_state: Option<Error>,
 }
 
 /// Execution context for async task execution
 #[derive(Debug)]
 pub struct ExecutionContext {
     /// Component instance for WebAssembly execution
-    pub component_instance:     Option<Arc<ComponentInstance>>,
+    pub component_instance: Option<Arc<ComponentInstance>>,
     /// Current execution stack depth
-    pub stack_depth:            u32,
+    pub stack_depth: u32,
     /// Maximum allowed stack depth (ASIL compliance)
-    pub max_stack_depth:        u32,
+    pub max_stack_depth: u32,
     /// Execution state storage for suspendable functions
-    pub execution_state:        Option<Box<dyn ExecutionState>>,
+    pub execution_state: Option<Box<dyn ExecutionState>>,
     /// Fuel consumption tracking within this context
-    pub context_fuel_consumed:  AtomicU64,
+    pub context_fuel_consumed: AtomicU64,
     /// Last yield point for resumable execution
-    pub last_yield_point:       Option<YieldPoint>,
+    pub last_yield_point: Option<YieldPoint>,
     /// Error state for propagation
-    pub error_state:            Option<Error>,
+    pub error_state: Option<Error>,
     /// ASIL execution configuration including limits
-    pub asil_config:            ASILExecutionConfig,
+    pub asil_config: ASILExecutionConfig,
     /// Current function index being executed
     pub current_function_index: u32,
     /// Function parameters for execution
-    pub function_params:        Vec<wrt_foundation::Value>,
+    pub function_params: Vec<wrt_foundation::Value>,
 }
 
 /// Trait for execution state that can be suspended and resumed
@@ -361,9 +311,13 @@ pub trait ExecutionState: core::fmt::Debug + Send + Sync {
     /// Get the current function index being executed
     fn current_function_index(&self) -> Option<u32>;
     /// Get local variables state
-    fn get_locals(&self) -> &[wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>];
+    fn get_locals(&self)
+        -> &[wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>];
     /// Set local variables state
-    fn set_locals(&mut self, locals: Vec<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>>) -> Result<()>;
+    fn set_locals(
+        &mut self,
+        locals: Vec<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>>,
+    ) -> Result<()>;
 }
 
 /// Trait providing access to executor services for execution contexts
@@ -399,21 +353,21 @@ pub trait ExecutorServices: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct YieldPoint {
     /// Instruction pointer or yield location
-    pub instruction_pointer:  u32,
+    pub instruction_pointer: u32,
     /// Operand stack at yield point
-    pub stack:                Vec<wrt_foundation::Value>,
+    pub stack: Vec<wrt_foundation::Value>,
     /// Local variables at yield point
-    pub locals:               Vec<wrt_foundation::Value>,
+    pub locals: Vec<wrt_foundation::Value>,
     /// Call stack at yield point
-    pub call_stack:           Vec<u32>,
+    pub call_stack: Vec<u32>,
     /// Fuel consumed up to this yield point
-    pub fuel_at_yield:        u64,
+    pub fuel_at_yield: u64,
     /// Timestamp of yield (for deterministic replay)
-    pub yield_timestamp:      u64,
+    pub yield_timestamp: u64,
     /// Type of yield that occurred
-    pub yield_type:           YieldType,
+    pub yield_type: YieldType,
     /// Yield context for restoration
-    pub yield_context:        YieldContext,
+    pub yield_context: YieldContext,
     /// Conditional resumption criteria
     pub resumption_condition: Option<ResumptionCondition>,
 }
@@ -441,15 +395,15 @@ pub enum YieldType {
 #[derive(Debug, Clone)]
 pub struct YieldContext {
     /// WebAssembly module state at yield
-    pub module_state:     Option<ModuleExecutionState>,
+    pub module_state: Option<ModuleExecutionState>,
     /// Memory state snapshot (for ASIL-D)
-    pub memory_snapshot:  Option<Vec<u8>>,
+    pub memory_snapshot: Option<Vec<u8>>,
     /// Global variables state
-    pub globals:          Vec<wrt_foundation::Value>,
+    pub globals: Vec<wrt_foundation::Value>,
     /// Table state if modified
-    pub tables:           Vec<TableState>,
+    pub tables: Vec<TableState>,
     /// Linear memory bounds at yield
-    pub memory_bounds:    Option<(u32, u32)>,
+    pub memory_bounds: Option<(u32, u32)>,
     /// Active function import/export context
     pub function_context: FunctionExecutionContext,
 }
@@ -460,22 +414,22 @@ pub struct ModuleExecutionState {
     /// Current WebAssembly function being executed
     pub current_function: u32,
     /// Execution frame stack
-    pub frame_stack:      Vec<ExecutionFrame>,
+    pub frame_stack: Vec<ExecutionFrame>,
     /// Control flow stack (blocks, loops, if/else)
-    pub control_stack:    Vec<ControlFrame>,
+    pub control_stack: Vec<ControlFrame>,
     /// Exception handling state
-    pub exception_state:  Option<ExceptionState>,
+    pub exception_state: Option<ExceptionState>,
 }
 
 /// WebAssembly execution frame
 #[derive(Debug, Clone)]
 pub struct ExecutionFrame {
     /// Function index
-    pub function_index:       u32,
+    pub function_index: u32,
     /// Local variables for this frame
-    pub locals:               Vec<wrt_foundation::Value>,
+    pub locals: Vec<wrt_foundation::Value>,
     /// Return address (instruction pointer in caller)
-    pub return_address:       u32,
+    pub return_address: u32,
     /// Stack pointer in caller frame
     pub caller_stack_pointer: u32,
 }
@@ -486,11 +440,11 @@ pub struct ControlFrame {
     /// Type of control structure
     pub control_type: ControlType,
     /// Block type signature
-    pub block_type:   BlockType,
+    pub block_type: BlockType,
     /// Start instruction pointer
-    pub start_ip:     u32,
+    pub start_ip: u32,
     /// End instruction pointer
-    pub end_ip:       u32,
+    pub end_ip: u32,
     /// Stack height at block entry
     pub stack_height: u32,
 }
@@ -518,9 +472,9 @@ pub enum BlockType {
 #[derive(Debug, Clone)]
 pub struct ExceptionState {
     /// Exception tag
-    pub tag:        u32,
+    pub tag: u32,
     /// Exception values
-    pub values:     Vec<wrt_foundation::Value>,
+    pub values: Vec<wrt_foundation::Value>,
     /// Handler instruction pointer
     pub handler_ip: Option<u32>,
 }
@@ -531,18 +485,18 @@ pub struct TableState {
     /// Table index
     pub table_index: u32,
     /// Table elements
-    pub elements:    Vec<Option<wrt_foundation::Value>>,
+    pub elements: Vec<Option<wrt_foundation::Value>>,
     /// Table size
-    pub size:        u32,
+    pub size: u32,
 }
 
 /// Function execution context
 #[derive(Debug, Clone)]
 pub struct FunctionExecutionContext {
     /// Function signature
-    pub signature:          FunctionSignature,
+    pub signature: FunctionSignature,
     /// Import/export status
-    pub function_kind:      FunctionKind,
+    pub function_kind: FunctionKind,
     /// Calling convention used
     pub calling_convention: CallingConvention,
 }
@@ -551,7 +505,7 @@ pub struct FunctionExecutionContext {
 #[derive(Debug, Clone)]
 pub struct FunctionSignature {
     /// Parameter types
-    pub params:  Vec<wrt_foundation::types::ValueType>,
+    pub params: Vec<wrt_foundation::types::ValueType>,
     /// Return types
     pub returns: Vec<wrt_foundation::types::ValueType>,
 }
@@ -615,7 +569,7 @@ pub enum ASILExecutionMode {
     /// ASIL-C: Freedom from interference
     C {
         /// Spatial isolation enforced
-        spatial_isolation:  bool,
+        spatial_isolation: bool,
         /// Temporal isolation enforced
         temporal_isolation: bool,
         /// Resource isolation enforced
@@ -626,11 +580,11 @@ pub enum ASILExecutionMode {
         /// Deterministic execution required
         deterministic_execution: bool,
         /// Bounded execution time required
-        bounded_execution_time:  bool,
+        bounded_execution_time: bool,
         /// Formal verification hooks enabled
-        formal_verification:     bool,
+        formal_verification: bool,
         /// Maximum fuel per execution slice
-        max_fuel_per_slice:      u64,
+        max_fuel_per_slice: u64,
     },
 }
 
@@ -647,28 +601,28 @@ impl Default for ASILExecutionMode {
 #[derive(Debug, Clone)]
 pub struct ExecutionLimitsConfig {
     /// Maximum fuel per execution step (required for timing guarantees)
-    pub max_fuel_per_step:         Option<u64>,
+    pub max_fuel_per_step: Option<u64>,
     /// Maximum memory usage in bytes (required for spatial isolation)
-    pub max_memory_usage:          Option<u64>,
+    pub max_memory_usage: Option<u64>,
     /// Maximum call stack depth (required for stack overflow prevention)
-    pub max_call_depth:            Option<u32>,
+    pub max_call_depth: Option<u32>,
     /// Maximum stack depth (alias for max_call_depth for compatibility)
-    pub max_stack_depth:           Option<u32>,
+    pub max_stack_depth: Option<u32>,
     /// Maximum instructions per execution step (required for determinism)
     pub max_instructions_per_step: Option<u32>,
     /// Maximum execution time slice in milliseconds (required for temporal
     /// isolation)
-    pub max_execution_slice_ms:    Option<u32>,
+    pub max_execution_slice_ms: Option<u32>,
     /// Maximum concurrent async operations
-    pub max_async_operations:      Option<u32>,
+    pub max_async_operations: Option<u32>,
     /// Maximum waitables per task
-    pub max_waitables_per_task:    Option<u32>,
+    pub max_waitables_per_task: Option<u32>,
     /// Maximum concurrent tasks
-    pub max_concurrent_tasks:      Option<u32>,
+    pub max_concurrent_tasks: Option<u32>,
     /// Maximum yields per execution step
-    pub max_yields_per_step:       Option<u32>,
+    pub max_yields_per_step: Option<u32>,
     /// Source of these limits (for qualification traceability)
-    pub limit_source:              LimitSource,
+    pub limit_source: LimitSource,
 }
 
 /// Source of execution limits for qualification and traceability
@@ -678,17 +632,17 @@ pub enum LimitSource {
     Conservative,
     /// Limits extracted from WebAssembly binary custom sections
     BinaryMetadata {
-        section_name:  String,
+        section_name: String,
         verified_hash: [u8; 32],
     },
     /// Limits derived from ASIL mode requirements
     ASILRequirements {
-        asil_level:         String,
+        asil_level: String,
         constraint_version: u32,
     },
     /// Platform-imposed limits (e.g., from WRTD configuration)
     PlatformConstraints {
-        platform_id:      String,
+        platform_id: String,
         capability_level: u8,
     },
     /// Default fallback limits (should not be used in ASIL-C/D)
@@ -698,8 +652,8 @@ pub enum LimitSource {
 /// Combined configuration for ASIL-compliant execution
 #[derive(Debug, Clone)]
 pub struct ASILExecutionConfig {
-    pub mode:                 ASILExecutionMode,
-    pub limits:               ExecutionLimitsConfig,
+    pub mode: ASILExecutionMode,
+    pub limits: ExecutionLimitsConfig,
     /// Whether this configuration has been qualified for the specific binary
     pub qualified_for_binary: Option<String>, // Binary hash
 }
@@ -801,18 +755,18 @@ impl ExecutionLimitsConfig {
             })?;
 
             Ok(Self {
-                max_fuel_per_step:         resource_limits.max_fuel_per_step,
-                max_memory_usage:          resource_limits.max_memory_usage,
-                max_call_depth:            resource_limits.max_call_depth,
-                max_stack_depth:           resource_limits.max_call_depth,
+                max_fuel_per_step: resource_limits.max_fuel_per_step,
+                max_memory_usage: resource_limits.max_memory_usage,
+                max_call_depth: resource_limits.max_call_depth,
+                max_stack_depth: resource_limits.max_call_depth,
                 max_instructions_per_step: resource_limits.max_instructions_per_step,
-                max_execution_slice_ms:    resource_limits.max_execution_slice_ms,
-                max_async_operations:      None,
-                max_waitables_per_task:    None,
-                max_concurrent_tasks:      None,
-                max_yields_per_step:       None,
-                limit_source:              LimitSource::BinaryMetadata {
-                    section_name:  "wrt.resource_limits".to_owned(),
+                max_execution_slice_ms: resource_limits.max_execution_slice_ms,
+                max_async_operations: None,
+                max_waitables_per_task: None,
+                max_concurrent_tasks: None,
+                max_yields_per_step: None,
+                limit_source: LimitSource::BinaryMetadata {
+                    section_name: "wrt.resource_limits".to_owned(),
                     verified_hash: binary_hash,
                 },
             })
@@ -822,24 +776,34 @@ impl ExecutionLimitsConfig {
         {
             // Fallback when decoder is not available - use conservative defaults
             Ok(Self {
-                max_fuel_per_step:         Some(1000),
-                max_memory_usage:          Some(1024 * 1024), // 1MB
-                max_call_depth:            Some(256),
-                max_stack_depth:           Some(256),
+                max_fuel_per_step: Some(1000),
+                max_memory_usage: Some(1024 * 1024), // 1MB
+                max_call_depth: Some(256),
+                max_stack_depth: Some(256),
                 max_instructions_per_step: Some(1000),
-                max_execution_slice_ms:    Some(100),
-                max_async_operations:      None,
-                max_waitables_per_task:    None,
-                max_concurrent_tasks:      None,
-                max_yields_per_step:       None,
-                limit_source:              LimitSource::Conservative,
+                max_execution_slice_ms: Some(100),
+                max_async_operations: None,
+                max_waitables_per_task: None,
+                max_concurrent_tasks: None,
+                max_yields_per_step: None,
+                limit_source: LimitSource::Conservative,
             })
         }
     }
 
     /// Create limits config from ASIL mode requirements
     pub fn from_asil_requirements(mode: ASILExecutionMode, constraint_version: u32) -> Self {
-        let (max_fuel, max_memory, max_call_depth, max_instructions, max_slice_ms, max_async_ops, max_waitables, max_tasks, max_yields) = match mode {
+        let (
+            max_fuel,
+            max_memory,
+            max_call_depth,
+            max_instructions,
+            max_slice_ms,
+            max_async_ops,
+            max_waitables,
+            max_tasks,
+            max_yields,
+        ) = match mode {
             ASILExecutionMode::ASIL_D => (
                 Some(100),
                 Some(32 * 1024),
@@ -864,12 +828,28 @@ impl ExecutionLimitsConfig {
                 Some(4),
                 Some(2),
             ),
-            ASILExecutionMode::ASIL_C => {
-                (Some(1000), Some(64 * 1024), Some(16), Some(10), Some(20), Some(8), Some(8), Some(16), Some(8))
-            },
-            ASILExecutionMode::C { .. } => {
-                (Some(1000), Some(64 * 1024), Some(16), Some(10), Some(20), Some(8), Some(8), Some(16), Some(8))
-            },
+            ASILExecutionMode::ASIL_C => (
+                Some(1000),
+                Some(64 * 1024),
+                Some(16),
+                Some(10),
+                Some(20),
+                Some(8),
+                Some(8),
+                Some(16),
+                Some(8),
+            ),
+            ASILExecutionMode::C { .. } => (
+                Some(1000),
+                Some(64 * 1024),
+                Some(16),
+                Some(10),
+                Some(20),
+                Some(8),
+                Some(8),
+                Some(16),
+                Some(8),
+            ),
             ASILExecutionMode::ASIL_B => (
                 Some(5000),
                 Some(128 * 1024),
@@ -1109,27 +1089,27 @@ impl ExecutionContext {
     /// Create comprehensive yield context for restoration
     fn create_yield_context(&self) -> Result<YieldContext> {
         Ok(YieldContext {
-            module_state:     Some(ModuleExecutionState {
+            module_state: Some(ModuleExecutionState {
                 current_function: self.current_function_index,
-                frame_stack:      vec![ExecutionFrame {
-                    function_index:       self.current_function_index,
-                    locals:               vec![], // Will be populated from self.locals
-                    return_address:       0,      // Would come from call stack
+                frame_stack: vec![ExecutionFrame {
+                    function_index: self.current_function_index,
+                    locals: vec![],    // Will be populated from self.locals
+                    return_address: 0, // Would come from call stack
                     caller_stack_pointer: 0,
                 }],
-                control_stack:    vec![], // Would be populated with active control structures
-                exception_state:  None,
+                control_stack: vec![], // Would be populated with active control structures
+                exception_state: None,
             }),
-            memory_snapshot:  None, // Only for ASIL-D deterministic execution
-            globals:          vec![], // Would be populated from module globals
-            tables:           vec![], // Would be populated from module tables
-            memory_bounds:    None, // Would come from memory instance
+            memory_snapshot: None, // Only for ASIL-D deterministic execution
+            globals: vec![],       // Would be populated from module globals
+            tables: vec![],        // Would be populated from module tables
+            memory_bounds: None,   // Would come from memory instance
             function_context: FunctionExecutionContext {
-                signature:          FunctionSignature {
-                    params:  vec![], // Would come from function type
+                signature: FunctionSignature {
+                    params: vec![], // Would come from function type
                     returns: vec![],
                 },
-                function_kind:      FunctionKind::Local, // Would be determined from module
+                function_kind: FunctionKind::Local, // Would be determined from module
                 calling_convention: CallingConvention::WebAssembly,
             },
         })
@@ -1169,8 +1149,12 @@ impl ExecutionContext {
             ComponentValue::U32(val) => Ok(wrt_foundation::Value::I32(val as i32)),
             ComponentValue::S64(val) => Ok(wrt_foundation::Value::I64(val)),
             ComponentValue::U64(val) => Ok(wrt_foundation::Value::I64(val as i64)),
-            ComponentValue::F32(val) => Ok(wrt_foundation::Value::F32(wrt_foundation::FloatBits32::from_float(val))),
-            ComponentValue::F64(val) => Ok(wrt_foundation::Value::F64(wrt_foundation::FloatBits64::from_float(val))),
+            ComponentValue::F32(val) => Ok(wrt_foundation::Value::F32(
+                wrt_foundation::FloatBits32::from_float(val),
+            )),
+            ComponentValue::F64(val) => Ok(wrt_foundation::Value::F64(
+                wrt_foundation::FloatBits64::from_float(val),
+            )),
             _ => Ok(wrt_foundation::Value::I32(0)), // Placeholder for complex types
         }
     }
@@ -1327,14 +1311,14 @@ impl ExecutionContext {
         let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
 
         self.last_yield_point = Some(YieldPoint {
-            instruction_pointer:  yield_info.instruction_pointer,
-            stack:                yield_info.stack,
-            locals:               yield_info.locals,
-            call_stack:           yield_info.call_stack,
-            fuel_at_yield:        fuel_consumed,
-            yield_timestamp:      self.get_deterministic_timestamp(),
-            yield_type:           yield_info.yield_type,
-            yield_context:        YieldContext {
+            instruction_pointer: yield_info.instruction_pointer,
+            stack: yield_info.stack,
+            locals: yield_info.locals,
+            call_stack: yield_info.call_stack,
+            fuel_at_yield: fuel_consumed,
+            yield_timestamp: self.get_deterministic_timestamp(),
+            yield_type: yield_info.yield_type,
+            yield_context: YieldContext {
                 module_state: yield_info.module_state,
                 memory_snapshot,
                 globals: yield_info.globals,
@@ -1386,16 +1370,16 @@ impl ExecutionContext {
 /// Yield information for creating yield points
 #[derive(Debug)]
 pub struct YieldInfo {
-    pub instruction_pointer:  u32,
-    pub stack:                Vec<wrt_foundation::Value>,
-    pub locals:               Vec<wrt_foundation::Value>,
-    pub call_stack:           Vec<u32>,
-    pub yield_type:           YieldType,
-    pub module_state:         Option<ModuleExecutionState>,
-    pub globals:              Vec<wrt_foundation::Value>,
-    pub tables:               Vec<TableState>,
-    pub memory_bounds:        Option<(u32, u32)>,
-    pub function_context:     FunctionExecutionContext,
+    pub instruction_pointer: u32,
+    pub stack: Vec<wrt_foundation::Value>,
+    pub locals: Vec<wrt_foundation::Value>,
+    pub call_stack: Vec<u32>,
+    pub yield_type: YieldType,
+    pub module_state: Option<ModuleExecutionState>,
+    pub globals: Vec<wrt_foundation::Value>,
+    pub tables: Vec<TableState>,
+    pub memory_bounds: Option<(u32, u32)>,
+    pub function_context: FunctionExecutionContext,
     pub resumption_condition: Option<ResumptionCondition>,
 }
 
@@ -1406,32 +1390,25 @@ pub type WaitableHandle = u64;
 #[derive(Debug, Clone)]
 pub struct WaitableState {
     /// Handle for this waitable
-    pub handle:        WaitableHandle,
+    pub handle: WaitableHandle,
     /// Component that owns this waitable
-    pub component_id:  ComponentInstanceId,
+    pub component_id: ComponentInstanceId,
     /// Whether the waitable is ready
-    pub is_ready:      bool,
+    pub is_ready: bool,
     /// Tasks waiting on this waitable
     pub waiting_tasks: Vec<TaskId>,
     /// Resource associated with waitable (if any)
-    pub resource_id:   Option<u64>,
+    pub resource_id: Option<u64>,
 }
 
 /// Waitable registry for tracking async operations
 pub struct WaitableRegistry {
     /// Next handle to allocate
-    next_handle:     AtomicU64,
+    next_handle: AtomicU64,
     /// Registered waitables
-    waitables: BoundedMap<
-        WaitableHandle,
-        WaitableState,
-        MAX_ASYNC_TASKS,
-    >,
+    waitables: BoundedMap<WaitableHandle, WaitableState, MAX_ASYNC_TASKS>,
     /// Ready waitables queue
-    ready_waitables: BoundedVec<
-        WaitableHandle,
-        MAX_ASYNC_TASKS,
-    >,
+    ready_waitables: BoundedVec<WaitableHandle, MAX_ASYNC_TASKS>,
 }
 
 impl WaitableRegistry {
@@ -1439,8 +1416,8 @@ impl WaitableRegistry {
     pub fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         Ok(Self {
-            next_handle:     AtomicU64::new(1),
-            waitables:       BoundedMap::new(),
+            next_handle: AtomicU64::new(1),
+            waitables: BoundedMap::new(),
             ready_waitables: BoundedVec::new().unwrap(),
         })
     }
@@ -1507,17 +1484,9 @@ impl WaitableRegistry {
 /// Fuel-based async executor for Component Model
 pub struct FuelAsyncExecutor {
     /// Task storage with bounded capacity
-    tasks: BoundedMap<
-        TaskId,
-        FuelAsyncTask,
-        MAX_ASYNC_TASKS,
-    >,
+    tasks: BoundedMap<TaskId, FuelAsyncTask, MAX_ASYNC_TASKS>,
     /// Ready queue for tasks that can be polled
-    ready_queue: Arc<
-        Mutex<
-            BoundedVec<TaskId, MAX_ASYNC_TASKS>,
-        >,
-    >,
+    ready_queue: Arc<Mutex<BoundedVec<TaskId, MAX_ASYNC_TASKS>>>,
     /// Component instance registry for real module lookup
     component_registry: BoundedMap<ComponentInstanceId, Arc<ComponentInstance>, MAX_ASYNC_TASKS>,
     /// Waitable registry for async operations
@@ -1559,8 +1528,14 @@ impl core::fmt::Debug for FuelAsyncExecutor {
         f.debug_struct("FuelAsyncExecutor")
             .field("tasks", &self.tasks.len())
             .field("ready_queue", &"<Arc<Mutex<...>>>")
-            .field("global_fuel_limit", &self.global_fuel_limit.load(Ordering::Relaxed))
-            .field("global_fuel_consumed", &self.global_fuel_consumed.load(Ordering::Relaxed))
+            .field(
+                "global_fuel_limit",
+                &self.global_fuel_limit.load(Ordering::Relaxed),
+            )
+            .field(
+                "global_fuel_consumed",
+                &self.global_fuel_consumed.load(Ordering::Relaxed),
+            )
             .field("executor_state", &self.executor_state)
             .field("next_task_id", &self.next_task_id.load(Ordering::Relaxed))
             .finish_non_exhaustive()
@@ -1592,9 +1567,9 @@ impl FuelMonitor {
     pub fn get_statistics(&self) -> FuelMonitoringStats {
         FuelMonitoringStats {
             total_fuel_consumed: self.window_fuel_consumed.load(Ordering::Relaxed),
-            current_rate:        self.current_rate.load(Ordering::Relaxed),
-            peak_rate:           self.peak_rate.load(Ordering::Relaxed),
-            violations_count:    0, // Placeholder
+            current_rate: self.current_rate.load(Ordering::Relaxed),
+            peak_rate: self.peak_rate.load(Ordering::Relaxed),
+            violations_count: 0, // Placeholder
         }
     }
 
@@ -1635,7 +1610,7 @@ impl FuelMonitor {
                     if alerts.len() < 32 {
                         alerts
                             .push(FuelAlert::ASILViolation {
-                                mode:           asil_mode,
+                                mode: asil_mode,
                                 violation_type: format!(
                                     "ASIL-D task {} exceeded fuel limit: {} > {}",
                                     task_id.0, amount, self.asil_thresholds.asil_d_task_limit
@@ -1643,7 +1618,9 @@ impl FuelMonitor {
                             })
                             .ok();
                     }
-                    return Err(Error::async_fuel_exhausted("ASIL-D task fuel limit exceeded"));
+                    return Err(Error::async_fuel_exhausted(
+                        "ASIL-D task fuel limit exceeded",
+                    ));
                 }
             },
             ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
@@ -1652,7 +1629,7 @@ impl FuelMonitor {
                     if alerts.len() < 32 {
                         alerts
                             .push(FuelAlert::ASILViolation {
-                                mode:           asil_mode,
+                                mode: asil_mode,
                                 violation_type: format!(
                                     "ASIL-C component exceeded fuel budget: {} > {}",
                                     total_consumed, self.asil_thresholds.asil_c_component_limit
@@ -1668,7 +1645,7 @@ impl FuelMonitor {
                     if alerts.len() < 32 {
                         alerts
                             .push(FuelAlert::ASILViolation {
-                                mode:           asil_mode,
+                                mode: asil_mode,
                                 violation_type: format!(
                                     "ASIL-B task {} exceeded slice fuel limit: {} > {}",
                                     task_id.0, amount, self.asil_thresholds.asil_b_slice_limit
@@ -1704,9 +1681,9 @@ impl FuelMonitor {
         if history.len() < 128 {
             history
                 .push(FuelConsumptionRecord {
-                    timestamp:         total_consumed, // Using fuel as timestamp for determinism
-                    fuel_consumed:     amount,
-                    active_tasks:      1, // Single task consumption
+                    timestamp: total_consumed, // Using fuel as timestamp for determinism
+                    fuel_consumed: amount,
+                    active_tasks: 1, // Single task consumption
                     highest_asil_mode: asil_mode,
                 })
                 .ok();
@@ -1729,14 +1706,14 @@ impl FuelAsyncExecutor {
         // Create executor for each ASIL level
         let asil_d = ASILExecutionMode::D {
             deterministic_execution: true,
-            bounded_execution_time:  true,
-            formal_verification:     true,
-            max_fuel_per_slice:      1000,
+            bounded_execution_time: true,
+            formal_verification: true,
+            max_fuel_per_slice: 1000,
         };
         asil_executors.insert(0, ASILExecutorFactory::create_executor(asil_d)).ok();
 
         let asil_c = ASILExecutionMode::C {
-            spatial_isolation:  true,
+            spatial_isolation: true,
             temporal_isolation: true,
             resource_isolation: true,
         };
@@ -1864,7 +1841,11 @@ impl FuelAsyncExecutor {
     pub fn enable_dynamic_fuel_management(&mut self, policy: FuelAllocationPolicy) -> Result<()> {
         let mut manager = FuelDynamicManager::new(policy, 1_000_000)?;
         // Register default component
-        manager.register_component(ComponentInstanceId::new(0), 100_000, 128 /* Normal priority */)?;
+        manager.register_component(
+            ComponentInstanceId::new(0),
+            100_000,
+            128, /* Normal priority */
+        )?;
         self.fuel_manager = Some(manager);
         Ok(())
     }
@@ -1941,12 +1922,13 @@ impl FuelAsyncExecutor {
                 remaining_fuel,
                 &policy.asil_policies.asil_b,
             ),
-            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A | ASILExecutionMode::A { .. } => self.enforce_asil_a_policy(
-                task,
-                fuel_to_consume,
-                remaining_fuel,
-                &policy.asil_policies.asil_a,
-            ),
+            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A | ASILExecutionMode::A { .. } => self
+                .enforce_asil_a_policy(
+                    task,
+                    fuel_to_consume,
+                    remaining_fuel,
+                    &policy.asil_policies.asil_a,
+                ),
         }
     }
 
@@ -2001,7 +1983,7 @@ impl FuelAsyncExecutor {
                     let transfer_needed = fuel_to_consume - component_fuel_available;
                     if transfer_needed <= policy.max_transfer_amount {
                         return Ok(FuelEnforcementDecision::AllowWithTransfer {
-                            transfer_amount:  transfer_needed,
+                            transfer_amount: transfer_needed,
                             source_component: None, // Would specify source
                         });
                     }
@@ -2240,8 +2222,13 @@ impl FuelAsyncExecutor {
             let (should_check, fuel_exhausted, needs_preemption_check) = {
                 if let Some(task) = self.tasks.get(&task_id) {
                     let should_check_fuel = self.should_check_fuel(&task);
-                    let fuel_exhausted = should_check_fuel && (task.fuel_consumed.load(Ordering::Acquire) >= task.fuel_budget);
-                    (should_check_fuel, fuel_exhausted, self.preemption_manager.is_some())
+                    let fuel_exhausted = should_check_fuel
+                        && (task.fuel_consumed.load(Ordering::Acquire) >= task.fuel_budget);
+                    (
+                        should_check_fuel,
+                        fuel_exhausted,
+                        self.preemption_manager.is_some(),
+                    )
                 } else {
                     continue;
                 }
@@ -2250,7 +2237,9 @@ impl FuelAsyncExecutor {
             // Handle fuel exhaustion
             if fuel_exhausted {
                 if let Some(ref mut fuel_mgr) = self.fuel_manager {
-                    if let Ok(emergency_fuel) = fuel_mgr.handle_fuel_exhaustion(task_id.into_inner()) {
+                    if let Ok(emergency_fuel) =
+                        fuel_mgr.handle_fuel_exhaustion(task_id.into_inner())
+                    {
                         if let Some(task) = self.tasks.get_mut(&task_id) {
                             task.fuel_budget += emergency_fuel;
                         }
@@ -2327,7 +2316,9 @@ impl FuelAsyncExecutor {
 
             // Step 2: Execute task (needs &mut self, so no task borrow can be held)
             let verification_level = {
-                self.tasks.get(&task_id).map(|t| t.verification_level)
+                self.tasks
+                    .get(&task_id)
+                    .map(|t| t.verification_level)
                     .unwrap_or(wrt_foundation::verification::VerificationLevel::Standard)
             };
             record_global_operation(OperationType::FunctionCall, verification_level);
@@ -2370,7 +2361,9 @@ impl FuelAsyncExecutor {
                     if let Some(ref mut fuel_mgr) = self.fuel_manager {
                         if let Some(task) = self.tasks.get(&task_id) {
                             let fuel_consumed = task.fuel_consumed.load(Ordering::Acquire);
-                            fuel_mgr.update_task_history(task_id.into_inner(), fuel_consumed, 1, true).ok();
+                            fuel_mgr
+                                .update_task_history(task_id.into_inner(), fuel_consumed, 1, true)
+                                .ok();
                         }
                     }
                 },
@@ -2413,7 +2406,10 @@ impl FuelAsyncExecutor {
     pub fn wake_task(&mut self, task_id: TaskId) -> Result<()> {
         // Check state and extract verification level before mutable borrow
         let (needs_wake, verification_level) = if let Some(task) = self.tasks.get(&task_id) {
-            (task.state == AsyncTaskState::Waiting, task.verification_level)
+            (
+                task.state == AsyncTaskState::Waiting,
+                task.verification_level,
+            )
         } else {
             return Ok(());
         };
@@ -2444,12 +2440,12 @@ impl FuelAsyncExecutor {
     /// Get task status including fuel information
     pub fn get_task_status(&self, task_id: TaskId) -> Option<AsyncTaskStatus> {
         self.tasks.get(&task_id).map(|task| AsyncTaskStatus {
-            id:                 task.id,
-            component_id:       task.component_id,
-            state:              task.state,
-            fuel_budget:        task.fuel_budget,
-            fuel_consumed:      task.fuel_consumed.load(Ordering::Acquire),
-            priority:           task.priority,
+            id: task.id,
+            component_id: task.component_id,
+            state: task.state,
+            fuel_budget: task.fuel_budget,
+            fuel_consumed: task.fuel_consumed.load(Ordering::Acquire),
+            priority: task.priority,
             verification_level: task.verification_level,
         })
     }
@@ -2457,11 +2453,11 @@ impl FuelAsyncExecutor {
     /// Get global fuel status
     pub fn get_global_fuel_status(&self) -> GlobalAsyncFuelStatus {
         GlobalAsyncFuelStatus {
-            limit:               self.global_fuel_limit.load(Ordering::Acquire),
-            consumed:            self.global_fuel_consumed.load(Ordering::Acquire),
+            limit: self.global_fuel_limit.load(Ordering::Acquire),
+            consumed: self.global_fuel_consumed.load(Ordering::Acquire),
             enforcement_enabled: self.fuel_enforcement.load(Ordering::Acquire),
-            active_tasks:        self.tasks.len(),
-            ready_tasks:         self.ready_queue.lock().len(),
+            active_tasks: self.tasks.len(),
+            ready_tasks: self.ready_queue.lock().len(),
         }
     }
 
@@ -2476,7 +2472,11 @@ impl FuelAsyncExecutor {
     }
 
     /// Consume fuel from global budget with verification level tracking
-    pub fn consume_fuel(&mut self, amount: u64, verification_level: VerificationLevel) -> Result<()> {
+    pub fn consume_fuel(
+        &mut self,
+        amount: u64,
+        verification_level: VerificationLevel,
+    ) -> Result<()> {
         // Check global fuel limit
         let current_consumed = self.global_fuel_consumed.load(Ordering::Acquire);
         let limit = self.global_fuel_limit.load(Ordering::Acquire);
@@ -2550,22 +2550,26 @@ impl FuelAsyncExecutor {
 
     fn asil_mode_for_priority(&self, priority: Priority) -> ASILExecutionMode {
         match priority {
-            225..=255 => ASILExecutionMode::D { // Critical priority
+            225..=255 => ASILExecutionMode::D {
+                // Critical priority
                 deterministic_execution: true,
-                bounded_execution_time:  true,
-                formal_verification:     true,
-                max_fuel_per_slice:      1000,
+                bounded_execution_time: true,
+                formal_verification: true,
+                max_fuel_per_slice: 1000,
             },
-            161..=224 => ASILExecutionMode::C { // High priority
-                spatial_isolation:  true,
+            161..=224 => ASILExecutionMode::C {
+                // High priority
+                spatial_isolation: true,
                 temporal_isolation: true,
                 resource_isolation: true,
             },
-            97..=160 => ASILExecutionMode::B { // Normal priority
+            97..=160 => ASILExecutionMode::B {
+                // Normal priority
                 strict_resource_limits: true,
                 max_execution_slice_ms: 10,
             },
-            0..=96 => ASILExecutionMode::A { // Low priority
+            0..=96 => ASILExecutionMode::A {
+                // Low priority
                 error_detection: true,
             },
         }
@@ -2607,7 +2611,7 @@ impl FuelAsyncExecutor {
                         // to ensure atomicity
                     } else {
                         return Err(Error::runtime_execution_error(
-                            "Task credit exhausted: deficit exceeds credit limit"
+                            "Task credit exhausted: deficit exceeds credit limit",
                         ));
                     }
                 } else if !self.can_incur_debt(task.id, deficit) {
@@ -2620,7 +2624,7 @@ impl FuelAsyncExecutor {
             } else {
                 // No debt/credit system - strict enforcement
                 return Err(Error::runtime_execution_error(
-                    "Insufficient fuel available for operation"
+                    "Insufficient fuel available for operation",
                 ));
             }
         }
@@ -2879,6 +2883,9 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with ASIL-D constraints from configuration
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Note: StacklessEngine is a simple engine without fuel/constraint management
@@ -2916,6 +2923,9 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with isolation constraints from configuration
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Note: StacklessEngine is a simple engine without fuel/constraint management
@@ -2964,6 +2974,9 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with resource limits
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // engine.set_fuel(Some(400)); // Bounded fuel for ASIL-B - Not supported
@@ -2989,6 +3002,9 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with relaxed constraints
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // engine.set_fuel(Some(1000)); // More fuel for ASIL-A - Not supported
@@ -3103,11 +3119,7 @@ impl FuelAsyncExecutor {
                 if let Some(monitor) = &self.fuel_monitor {
                     // Yielding is important for ASIL-D determinism
                     if let ASILExecutionMode::D { .. } = asil_mode {
-                        monitor.update_consumption(
-                            ASYNC_TASK_YIELD_FUEL,
-                            task_id,
-                            asil_mode,
-                        )?;
+                        monitor.update_consumption(ASYNC_TASK_YIELD_FUEL, task_id, asil_mode)?;
                     }
                 }
 
@@ -3206,8 +3218,12 @@ impl FuelAsyncExecutor {
                 let component_val = match local {
                     wrt_foundation::Value::I32(v) => WrtComponentValue::U32(*v as u32),
                     wrt_foundation::Value::I64(v) => WrtComponentValue::U64(*v as u64),
-                    wrt_foundation::Value::F32(v) => WrtComponentValue::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits())),
-                    wrt_foundation::Value::F64(v) => WrtComponentValue::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits())),
+                    wrt_foundation::Value::F32(v) => {
+                        WrtComponentValue::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits()))
+                    },
+                    wrt_foundation::Value::F64(v) => {
+                        WrtComponentValue::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits()))
+                    },
                     _ => WrtComponentValue::Unit,
                 };
                 locals_vec.push(component_val);
@@ -3263,7 +3279,6 @@ impl FuelAsyncExecutor {
         Ok(())
     }
 
-
     /// Execute WebAssembly function with fuel integration using StacklessEngine
     fn execute_wasm_function_with_fuel(
         &mut self,
@@ -3272,6 +3287,9 @@ impl FuelAsyncExecutor {
         _waker_context: &mut Context<'_>,
     ) -> Result<ExecutionStepResult> {
         // Create a StacklessEngine for WebAssembly execution
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Set fuel limit based on task's remaining fuel budget
@@ -3291,12 +3309,18 @@ impl FuelAsyncExecutor {
 
         // Set verification level to match task's ASIL mode
         let verification_level = match task.execution_context.asil_config.mode {
-            ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => wrt_foundation::verification::VerificationLevel::Full,
+            ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+                wrt_foundation::verification::VerificationLevel::Full
+            },
             ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
                 wrt_foundation::verification::VerificationLevel::Standard
             },
-            ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => wrt_foundation::verification::VerificationLevel::Basic,
-            ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => wrt_foundation::verification::VerificationLevel::Off,
+            ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => {
+                wrt_foundation::verification::VerificationLevel::Basic
+            },
+            ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => {
+                wrt_foundation::verification::VerificationLevel::Off
+            },
             ASILExecutionMode::QM => wrt_foundation::verification::VerificationLevel::Off,
         };
 
@@ -3478,17 +3502,28 @@ impl FuelAsyncExecutor {
         use wrt_foundation::safe_memory::NoStdProvider;
 
         // Create BoundedVecs with the exact provider types expected by EngineState
-        let mut operand_stack = wrt_foundation::bounded::BoundedVec::<wrt_foundation::Value, 256, NoStdProvider<4096>>::new(NoStdProvider::default())?;
+        let mut operand_stack = wrt_foundation::bounded::BoundedVec::<
+            wrt_foundation::Value,
+            256,
+            NoStdProvider<4096>,
+        >::new(NoStdProvider::default())?;
         for val in &yield_point.stack {
             operand_stack.push(val.clone())?;
         }
 
-        let mut locals_vec = wrt_foundation::bounded::BoundedVec::<wrt_foundation::Value, 128, NoStdProvider<2048>>::new(NoStdProvider::default())?;
+        let mut locals_vec = wrt_foundation::bounded::BoundedVec::<
+            wrt_foundation::Value,
+            128,
+            NoStdProvider<2048>,
+        >::new(NoStdProvider::default())?;
         for val in &yield_point.locals {
             locals_vec.push(val.clone())?;
         }
 
-        let mut call_stack_vec = wrt_foundation::bounded::BoundedVec::<u32, 64, NoStdProvider<512>>::new(NoStdProvider::default())?;
+        let mut call_stack_vec =
+            wrt_foundation::bounded::BoundedVec::<u32, 64, NoStdProvider<512>>::new(
+                NoStdProvider::default(),
+            )?;
         for val in &yield_point.call_stack {
             call_stack_vec.push(*val)?;
         }
@@ -3496,8 +3531,8 @@ impl FuelAsyncExecutor {
         engine.restore_state(wrt_runtime::stackless::EngineState {
             instruction_pointer: yield_point.instruction_pointer,
             operand_stack,
-            locals:              locals_vec,
-            call_stack:          call_stack_vec,
+            locals: locals_vec,
+            call_stack: call_stack_vec,
         })?;
 
         // Continue execution from where we left off
@@ -3512,7 +3547,8 @@ impl FuelAsyncExecutor {
                 // Yielded again - update yield point
                 // Convert wrt_runtime::stackless::YieldInfo to fuel_async_executor::YieldInfo
                 #[cfg(feature = "std")]
-                let stack_vec2: Vec<wrt_foundation::Value> = yield_info.operand_stack.iter().cloned().collect();
+                let stack_vec2: Vec<wrt_foundation::Value> =
+                    yield_info.operand_stack.iter().cloned().collect();
                 #[cfg(not(feature = "std"))]
                 let stack_vec2: Vec<wrt_foundation::Value> = {
                     let mut v = Vec::new();
@@ -3523,7 +3559,8 @@ impl FuelAsyncExecutor {
                 };
 
                 #[cfg(feature = "std")]
-                let locals_vec2: Vec<wrt_foundation::Value> = yield_info.locals.iter().cloned().collect();
+                let locals_vec2: Vec<wrt_foundation::Value> =
+                    yield_info.locals.iter().cloned().collect();
                 #[cfg(not(feature = "std"))]
                 let locals_vec2: Vec<wrt_foundation::Value> = {
                     let mut v = Vec::new();
@@ -3545,21 +3582,21 @@ impl FuelAsyncExecutor {
                 };
 
                 task.execution_context.save_yield_point(YieldInfo {
-                    instruction_pointer:  yield_info.instruction_pointer,
-                    stack:                stack_vec2,
-                    locals:               locals_vec2,
-                    call_stack:           call_stack_vec2,
-                    yield_type:           YieldType::ExplicitYield,
-                    module_state:         None,
-                    globals:              Vec::new(),
-                    tables:               Vec::new(),
-                    memory_bounds:        None,
-                    function_context:     FunctionExecutionContext {
-                        signature:          FunctionSignature {
-                            params:  Vec::new(),
+                    instruction_pointer: yield_info.instruction_pointer,
+                    stack: stack_vec2,
+                    locals: locals_vec2,
+                    call_stack: call_stack_vec2,
+                    yield_type: YieldType::ExplicitYield,
+                    module_state: None,
+                    globals: Vec::new(),
+                    tables: Vec::new(),
+                    memory_bounds: None,
+                    function_context: FunctionExecutionContext {
+                        signature: FunctionSignature {
+                            params: Vec::new(),
                             returns: Vec::new(),
                         },
-                        function_kind:      FunctionKind::Local,
+                        function_kind: FunctionKind::Local,
                         calling_convention: CallingConvention::WebAssembly,
                     },
                     resumption_condition: None,
@@ -3580,8 +3617,10 @@ impl FuelAsyncExecutor {
                 task.waiting_on_waitables = Some(vec![waitable_handle]);
 
                 // Update async yield point with new resource
-                task.execution_context
-                    .create_async_yield_point(engine.get_instruction_pointer()?, resource_id as u64)?;
+                task.execution_context.create_async_yield_point(
+                    engine.get_instruction_pointer()?,
+                    resource_id as u64,
+                )?;
 
                 Ok(ExecutionStepResult::Waiting)
             },
@@ -3654,17 +3693,13 @@ impl FuelAsyncExecutor {
                 wrt_foundation::Value::Void => {
                     // Void has no data representation
                 },
-                wrt_foundation::Value::StructRef(opt_ref) => {
-                    match opt_ref {
-                        Some(_) => result.extend_from_slice(&[1u8]),
-                        None => result.extend_from_slice(&[0u8]),
-                    }
+                wrt_foundation::Value::StructRef(opt_ref) => match opt_ref {
+                    Some(_) => result.extend_from_slice(&[1u8]),
+                    None => result.extend_from_slice(&[0u8]),
                 },
-                wrt_foundation::Value::ArrayRef(opt_ref) => {
-                    match opt_ref {
-                        Some(_) => result.extend_from_slice(&[1u8]),
-                        None => result.extend_from_slice(&[0u8]),
-                    }
+                wrt_foundation::Value::ArrayRef(opt_ref) => match opt_ref {
+                    Some(_) => result.extend_from_slice(&[1u8]),
+                    None => result.extend_from_slice(&[0u8]),
                 },
                 &wrt_foundation::Value::Bool(v) => {
                     result.extend_from_slice(&[if v { 1u8 } else { 0u8 }]);
@@ -3748,7 +3783,9 @@ impl FuelAsyncExecutor {
         } else if config.max_debt == 0 {
             DebtPolicy::Unlimited
         } else if config.credit_rate > 0 {
-            DebtPolicy::Forgiveness { rate: config.credit_rate }
+            DebtPolicy::Forgiveness {
+                rate: config.credit_rate,
+            }
         } else {
             DebtPolicy::Strict
         };
@@ -3756,10 +3793,7 @@ impl FuelAsyncExecutor {
         // Use capped credit restriction by default
         let credit_restriction = CreditRestriction::Capped;
 
-        let system = FuelDebtCreditSystem::new(
-            debt_policy,
-            credit_restriction,
-        )?;
+        let system = FuelDebtCreditSystem::new(debt_policy, credit_restriction)?;
 
         self.debt_credit_system = Some(system);
         Ok(())
@@ -3771,20 +3805,28 @@ impl FuelAsyncExecutor {
             if let Some(task) = self.tasks.get(&task_id) {
                 // Get debt policy based on ASIL mode
                 let policy = match task.execution_context.asil_config.mode {
-                    ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => DebtPolicy::NeverAllow,
-                    ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => DebtPolicy::LimitedDebt { max_debt: 1000 },
-                    ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => DebtPolicy::ModerateDebt {
-                        max_debt:      5000,
-                        interest_rate: 0.05,
+                    ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+                        DebtPolicy::NeverAllow
                     },
-                    ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => DebtPolicy::FlexibleDebt {
-                        soft_limit:    10000,
-                        hard_limit:    20000,
-                        interest_rate: 0.10,
+                    ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
+                        DebtPolicy::LimitedDebt { max_debt: 1000 }
+                    },
+                    ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => {
+                        DebtPolicy::ModerateDebt {
+                            max_debt: 5000,
+                            interest_rate: 0.05,
+                        }
+                    },
+                    ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => {
+                        DebtPolicy::FlexibleDebt {
+                            soft_limit: 10000,
+                            hard_limit: 20000,
+                            interest_rate: 0.10,
+                        }
                     },
                     ASILExecutionMode::QM => DebtPolicy::FlexibleDebt {
-                        soft_limit:    50000,
-                        hard_limit:    100000,
+                        soft_limit: 50000,
+                        hard_limit: 100000,
                         interest_rate: 0.15,
                     },
                 };
@@ -3813,17 +3855,17 @@ impl FuelAsyncExecutor {
         // Get debt policy based on ASIL mode
         let policy = match task.execution_context.asil_config.mode {
             ASILExecutionMode::QM => DebtPolicy::FlexibleDebt {
-                soft_limit:    10000,
-                hard_limit:    20000,
+                soft_limit: 10000,
+                hard_limit: 20000,
                 interest_rate: 0.10,
             },
             ASILExecutionMode::ASIL_A => DebtPolicy::FlexibleDebt {
-                soft_limit:    10000,
-                hard_limit:    20000,
+                soft_limit: 10000,
+                hard_limit: 20000,
                 interest_rate: 0.10,
             },
             ASILExecutionMode::ASIL_B => DebtPolicy::ModerateDebt {
-                max_debt:      5000,
+                max_debt: 5000,
                 interest_rate: 0.05,
             },
             ASILExecutionMode::ASIL_C => DebtPolicy::LimitedDebt { max_debt: 1000 },
@@ -3831,12 +3873,12 @@ impl FuelAsyncExecutor {
             ASILExecutionMode::D { .. } => DebtPolicy::NeverAllow,
             ASILExecutionMode::C { .. } => DebtPolicy::LimitedDebt { max_debt: 1000 },
             ASILExecutionMode::B { .. } => DebtPolicy::ModerateDebt {
-                max_debt:      5000,
+                max_debt: 5000,
                 interest_rate: 0.05,
             },
             ASILExecutionMode::A { .. } => DebtPolicy::FlexibleDebt {
-                soft_limit:    10000,
-                hard_limit:    20000,
+                soft_limit: 10000,
+                hard_limit: 20000,
                 interest_rate: 0.10,
             },
         };
@@ -3904,15 +3946,15 @@ impl FuelAsyncExecutor {
 
                 // Repay debt with interest
                 let interest_rate = match task.execution_context.asil_config.mode {
-                    ASILExecutionMode::QM => 0.10,          // 10% interest for QM
-                    ASILExecutionMode::ASIL_A => 0.10,      // 10% interest for ASIL-A
-                    ASILExecutionMode::ASIL_B => 0.05,      // 5% interest for ASIL-B
-                    ASILExecutionMode::ASIL_C => 0.02,      // 2% interest for ASIL-C
-                    ASILExecutionMode::ASIL_D => 0.0,       // No interest for ASIL-D (shouldn't have debt)
-                    ASILExecutionMode::D { .. } => 0.0,     // No interest for ASIL-D (shouldn't have debt)
-                    ASILExecutionMode::C { .. } => 0.02,    // 2% interest for ASIL-C
-                    ASILExecutionMode::B { .. } => 0.05,    // 5% interest for ASIL-B
-                    ASILExecutionMode::A { .. } => 0.10,    // 10% interest for ASIL-A
+                    ASILExecutionMode::QM => 0.10,       // 10% interest for QM
+                    ASILExecutionMode::ASIL_A => 0.10,   // 10% interest for ASIL-A
+                    ASILExecutionMode::ASIL_B => 0.05,   // 5% interest for ASIL-B
+                    ASILExecutionMode::ASIL_C => 0.02,   // 2% interest for ASIL-C
+                    ASILExecutionMode::ASIL_D => 0.0, // No interest for ASIL-D (shouldn't have debt)
+                    ASILExecutionMode::D { .. } => 0.0, // No interest for ASIL-D (shouldn't have debt)
+                    ASILExecutionMode::C { .. } => 0.02, // 2% interest for ASIL-C
+                    ASILExecutionMode::B { .. } => 0.05, // 5% interest for ASIL-B
+                    ASILExecutionMode::A { .. } => 0.10, // 10% interest for ASIL-A
                 };
 
                 system.repay_debt(task_id, debt_payment, interest_rate)?;
@@ -3931,9 +3973,9 @@ impl FuelAsyncExecutor {
     /// Get debt/credit system statistics
     pub fn get_debt_credit_stats(&self) -> Option<DebtCreditStats> {
         self.debt_credit_system.as_ref().map(|system| DebtCreditStats {
-            current_debt:        0, // TODO: Track current debt properly
+            current_debt: 0,        // TODO: Track current debt properly
             total_credit_earned: 0, // TODO: Track total credit earned
-            debt_violations:     0, // TODO: Track debt violations
+            debt_violations: 0,     // TODO: Track debt violations
         })
     }
 }
@@ -3947,23 +3989,23 @@ impl Default for FuelAsyncExecutor {
 /// Status information for an async task
 #[derive(Debug, Clone)]
 pub struct AsyncTaskStatus {
-    pub id:                 TaskId,
-    pub component_id:       ComponentInstanceId,
-    pub state:              AsyncTaskState,
-    pub fuel_budget:        u64,
-    pub fuel_consumed:      u64,
-    pub priority:           Priority,
+    pub id: TaskId,
+    pub component_id: ComponentInstanceId,
+    pub state: AsyncTaskState,
+    pub fuel_budget: u64,
+    pub fuel_consumed: u64,
+    pub priority: Priority,
     pub verification_level: VerificationLevel,
 }
 
 /// Global fuel status for the async executor
 #[derive(Debug, Clone)]
 pub struct GlobalAsyncFuelStatus {
-    pub limit:               u64,
-    pub consumed:            u64,
+    pub limit: u64,
+    pub consumed: u64,
     pub enforcement_enabled: bool,
-    pub active_tasks:        usize,
-    pub ready_tasks:         usize,
+    pub active_tasks: usize,
+    pub ready_tasks: usize,
 }
 
 impl GlobalAsyncFuelStatus {
@@ -3983,10 +4025,10 @@ impl GlobalAsyncFuelStatus {
 /// Polling statistics for monitoring executor performance
 #[derive(Debug, Default, Clone)]
 pub struct PollingStatistics {
-    pub total_polls:     u64,
+    pub total_polls: u64,
     pub tasks_completed: u64,
-    pub tasks_failed:    u64,
-    pub tasks_yielded:   u64,
+    pub tasks_failed: u64,
+    pub tasks_yielded: u64,
     pub wakes_coalesced: usize,
 }
 
@@ -3994,30 +4036,30 @@ pub struct PollingStatistics {
 #[derive(Debug)]
 pub struct FuelMonitor {
     /// Current fuel consumption rate (fuel per ms)
-    current_rate:         AtomicU64,
+    current_rate: AtomicU64,
     /// Peak fuel consumption rate observed
-    peak_rate:            AtomicU64,
+    peak_rate: AtomicU64,
     /// Total fuel consumed in current monitoring window
     window_fuel_consumed: AtomicU64,
     /// Monitoring window start time (in fuel units for determinism)
-    window_start:         AtomicU64,
+    window_start: AtomicU64,
     /// ASIL-specific fuel thresholds
-    asil_thresholds:      ASILFuelThresholds,
+    asil_thresholds: ASILFuelThresholds,
     /// Fuel consumption history for trend analysis
-    consumption_history:  Mutex<BoundedVec<FuelConsumptionRecord, 128>>,
+    consumption_history: Mutex<BoundedVec<FuelConsumptionRecord, 128>>,
     /// Active alerts for fuel issues
-    active_alerts:        Mutex<BoundedVec<FuelAlert, 32>>,
+    active_alerts: Mutex<BoundedVec<FuelAlert, 32>>,
 }
 
 /// ASIL-specific fuel thresholds
 #[derive(Debug, Clone)]
 pub struct ASILFuelThresholds {
     /// ASIL-D: Strict deterministic fuel limit per task
-    asil_d_task_limit:        u64,
+    asil_d_task_limit: u64,
     /// ASIL-C: Isolated fuel budget per component
-    asil_c_component_limit:   u64,
+    asil_c_component_limit: u64,
     /// ASIL-B: Resource-limited fuel per time slice
-    asil_b_slice_limit:       u64,
+    asil_b_slice_limit: u64,
     /// ASIL-A: Basic fuel warning threshold
     asil_a_warning_threshold: u64,
 }
@@ -4026,15 +4068,15 @@ pub struct ASILFuelThresholds {
 #[derive(Debug, Clone)]
 pub struct ASILFuelEnforcementPolicy {
     /// Enable strict enforcement (fail fast)
-    pub strict_enforcement:         bool,
+    pub strict_enforcement: bool,
     /// Enable fuel borrowing between tasks
-    pub allow_fuel_borrowing:       bool,
+    pub allow_fuel_borrowing: bool,
     /// Enable emergency fuel reserves
     pub emergency_reserves_enabled: bool,
     /// Emergency reserve fuel amount
-    pub emergency_reserve_amount:   u64,
+    pub emergency_reserve_amount: u64,
     /// ASIL-specific policies
-    pub asil_policies:              ASILSpecificPolicies,
+    pub asil_policies: ASILSpecificPolicies,
 }
 
 /// ASIL-specific enforcement policies
@@ -4054,13 +4096,13 @@ pub struct ASILSpecificPolicies {
 #[derive(Debug, Clone)]
 pub struct ASILDPolicy {
     /// Fuel quantum for deterministic allocation
-    pub fuel_quantum:                   u64,
+    pub fuel_quantum: u64,
     /// Maximum fuel per execution step
-    pub max_step_fuel:                  u64,
+    pub max_step_fuel: u64,
     /// Enforce deterministic fuel ordering
     pub enforce_deterministic_ordering: bool,
     /// Preallocation required
-    pub require_preallocation:          bool,
+    pub require_preallocation: bool,
 }
 
 /// ASIL-C specific fuel policy
@@ -4071,16 +4113,16 @@ pub struct ASILCPolicy {
     /// Maximum inter-component fuel transfer
     pub max_transfer_amount: u64,
     /// Temporal fuel windows
-    pub temporal_window_ms:  u64,
+    pub temporal_window_ms: u64,
 }
 
 /// ASIL-B specific fuel policy
 #[derive(Debug, Clone)]
 pub struct ASILBPolicy {
     /// Fuel budget per time slice
-    pub slice_fuel_budget:    u64,
+    pub slice_fuel_budget: u64,
     /// Allow fuel rollover between slices
-    pub allow_rollover:       bool,
+    pub allow_rollover: bool,
     /// Maximum rollover percentage
     pub max_rollover_percent: u32,
 }
@@ -4089,9 +4131,9 @@ pub struct ASILBPolicy {
 #[derive(Debug, Clone)]
 pub struct ASILAPolicy {
     /// Soft limit before warnings
-    pub soft_limit:      u64,
+    pub soft_limit: u64,
     /// Hard limit before failure
-    pub hard_limit:      u64,
+    pub hard_limit: u64,
     /// Grace period for exceeding soft limit
     pub grace_period_ms: u64,
 }
@@ -4100,11 +4142,11 @@ pub struct ASILAPolicy {
 #[derive(Debug, Clone)]
 pub struct FuelConsumptionRecord {
     /// Timestamp (in fuel units for determinism)
-    timestamp:         u64,
+    timestamp: u64,
     /// Fuel consumed in this period
-    fuel_consumed:     u64,
+    fuel_consumed: u64,
     /// Number of tasks active
-    active_tasks:      u32,
+    active_tasks: u32,
     /// ASIL mode of highest priority task
     highest_asil_mode: ASILExecutionMode,
 }
@@ -4114,19 +4156,19 @@ pub struct FuelConsumptionRecord {
 pub enum FuelAlert {
     /// Task approaching fuel limit
     TaskApproachingLimit {
-        task_id:        TaskId,
+        task_id: TaskId,
         remaining_fuel: u64,
     },
     /// Component exceeding budget
     ComponentExceedingBudget {
         component_id: ComponentInstanceId,
-        overage:      u64,
+        overage: u64,
     },
     /// Global fuel consumption spike
     ConsumptionSpike { rate: u64, threshold: u64 },
     /// ASIL violation detected
     ASILViolation {
-        mode:           ASILExecutionMode,
+        mode: ASILExecutionMode,
         violation_type: String,
     },
 }
@@ -4142,7 +4184,7 @@ pub enum FuelEnforcementDecision {
     AllowWithWarning { warning: String },
     /// Allow with fuel transfer from another component
     AllowWithTransfer {
-        transfer_amount:  u64,
+        transfer_amount: u64,
         source_component: Option<ComponentInstanceId>,
     },
     /// Allow with rollover from previous time slice
@@ -4159,10 +4201,7 @@ mod tests {
     use core::{
         future::Ready,
         pin::Pin,
-        task::{
-            Context,
-            Poll,
-        },
+        task::{Context, Poll},
     };
 
     use super::*;
@@ -4203,7 +4242,12 @@ mod tests {
 
         let future = async { Ok(()) };
         let task_id = executor
-            .spawn_task(ComponentInstanceId::new(1), 1000, 128 /* Normal priority */, future)
+            .spawn_task(
+                ComponentInstanceId::new(1),
+                1000,
+                128, /* Normal priority */
+                future,
+            )
             .unwrap();
 
         let status = executor.get_task_status(task_id).unwrap();
