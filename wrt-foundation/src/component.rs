@@ -198,7 +198,7 @@ where
         let mut elements = BoundedVec::new(provider.clone())?;
         for part in s.split(':') {
             if !part.is_empty() {
-                let name_element = WasmName::from_str(part, provider.clone())?;
+                let name_element = WasmName::from_str(part)?;
                 elements.push(name_element)?;
             }
         }
@@ -251,26 +251,22 @@ pub enum ComponentAlias<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
-    InstanceExport(ComponentAliasInstanceExport<P>),
-    CoreInstanceExport(ComponentAliasCoreInstanceExport<P>),
+    InstanceExport(ComponentAliasInstanceExport),
+    CoreInstanceExport(ComponentAliasCoreInstanceExport),
     Outer(ComponentAliasOuter),
+    #[doc(hidden)]
+    _Phantom(core::marker::PhantomData<P>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ComponentAliasInstanceExport<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+pub struct ComponentAliasInstanceExport {
     pub instance_idx: u32,
     pub name:         WasmName<MAX_NAME_LEN>,
     pub kind:         ComponentAliasExportKind,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ComponentAliasCoreInstanceExport<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+pub struct ComponentAliasCoreInstanceExport {
     pub core_instance_idx: u32,
     pub name:              WasmName<MAX_NAME_LEN>,
 }
@@ -364,13 +360,12 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
-pub struct ComponentInstantiationArg<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+pub struct ComponentInstantiationArg<P> {
     pub name:  WasmName<MAX_NAME_LEN>,
     pub index: u32, // Index of the item being passed as argument (e.g. func_idx, table_idx)
     pub kind:  ExternKind, // The kind of the item being passed
+    #[doc(hidden)]
+    _phantom: core::marker::PhantomData<P>,
 }
 
 /// Represents a core WebAssembly module instance declaration.
@@ -399,13 +394,12 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
-pub struct CoreInstantiationArg<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+pub struct CoreInstantiationArg<P> {
     pub name:  WasmName<MAX_NAME_LEN>,
     pub index: u32,
     pub kind:  ExternKind,
+    #[doc(hidden)]
+    _phantom: core::marker::PhantomData<P>,
 }
 
 /// Represents a core type definition (func, table, memory, global, tag).
@@ -839,7 +833,7 @@ where
         reader: &mut ReadStream<'a>,
         provider: &PStream,
     ) -> wrt_error::Result<Self> {
-        let name = WasmName::<MAX_NAME_LEN, P>::from_bytes_with_provider(reader, provider)?;
+        let name = WasmName::<MAX_NAME_LEN>::from_bytes_with_provider(reader, provider)?;
         let ty = ExternType::<P>::from_bytes_with_provider(reader, provider)?;
         let desc = Option::<WasmName<MAX_NAME_LEN>>::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, ty, desc })
@@ -1096,15 +1090,15 @@ where
 {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         let discriminant_byte = match self {
-            ComponentAlias::InstanceExport(_) => 0u8,
-            ComponentAlias::CoreInstanceExport(_) => 1u8,
-            ComponentAlias::Outer(_) => 2u8,
+            ComponentAlias<P>::InstanceExport(_) => 0u8,
+            ComponentAlias<P>::CoreInstanceExport(_) => 1u8,
+            ComponentAlias<P>::Outer(_) => 2u8,
         };
         discriminant_byte.update_checksum(checksum);
         match self {
-            ComponentAlias::InstanceExport(e) => e.update_checksum(checksum),
-            ComponentAlias::CoreInstanceExport(e) => e.update_checksum(checksum),
-            ComponentAlias::Outer(e) => e.update_checksum(checksum),
+            ComponentAlias<P>::InstanceExport(e) => e.update_checksum(checksum),
+            ComponentAlias<P>::CoreInstanceExport(e) => e.update_checksum(checksum),
+            ComponentAlias<P>::Outer(e) => e.update_checksum(checksum),
         }
     }
 }
@@ -1119,15 +1113,15 @@ where
         provider: &PStream,
     ) -> wrt_error::Result<()> {
         match self {
-            ComponentAlias::InstanceExport(e) => {
+            ComponentAlias<P>::InstanceExport(e) => {
                 writer.write_u8(0)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
-            ComponentAlias::CoreInstanceExport(e) => {
+            ComponentAlias<P>::CoreInstanceExport(e) => {
                 writer.write_u8(1)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
-            ComponentAlias::Outer(e) => {
+            ComponentAlias<P>::Outer(e) => {
                 writer.write_u8(2)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
@@ -1150,20 +1144,20 @@ where
             0 => {
                 let inner =
                     ComponentAliasInstanceExport::<P>::from_bytes_with_provider(reader, provider)?;
-                Ok(ComponentAlias::InstanceExport(inner))
+                Ok(ComponentAlias<P>::InstanceExport(inner))
             },
             1 => {
                 let inner = ComponentAliasCoreInstanceExport::<P>::from_bytes_with_provider(
                     reader, provider,
                 )?;
-                Ok(ComponentAlias::CoreInstanceExport(inner))
+                Ok(ComponentAlias<P>::CoreInstanceExport(inner))
             },
             2 => {
                 let inner = ComponentAliasOuter::from_bytes_with_provider(reader, provider)?;
-                Ok(ComponentAlias::Outer(inner))
+                Ok(ComponentAlias<P>::Outer(inner))
             },
             _ => Err(Error::runtime_execution_error(
-                "Invalid variant index for ComponentAlias",
+                "Invalid variant index for ComponentAlias<P>",
             )),
         }
     }
@@ -1495,11 +1489,11 @@ impl FromBytes for ComponentAliasOuter {
 }
 
 // ComponentInstantiationArg<P>
-impl_checksummable_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_tobytes_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
+impl_checksummable_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
+impl_tobytes_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
+impl_frombytes_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
 
 // CoreInstantiationArg<P>
-impl_checksummable_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_tobytes_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
+impl_checksummable_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
+impl_tobytes_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
+impl_frombytes_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);

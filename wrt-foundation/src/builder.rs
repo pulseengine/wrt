@@ -194,15 +194,15 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
     }
 
     /// Builds a WasmName with the configured settings.
-    pub fn build_wasm_name(self) -> wrt_error::Result<WasmName<N, P>> {
+    pub fn build_wasm_name(self) -> wrt_error::Result<WasmName<N>> {
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
-                WasmName::from_str_truncate(content, self.provider).map_err(Error::from)
+                WasmName::from_str_truncate(content).map_err(Error::from)
             },
             (Some(content), false) => {
-                WasmName::from_str(content, self.provider).map_err(Error::from)
+                WasmName::from_str(content).map_err(Error::from)
             },
-            (None, _) => WasmName::new(self.provider).map_err(Error::from),
+            (None, _) => WasmName::new().map_err(Error::from),
         }
     }
 }
@@ -280,7 +280,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceBuilder<P> {
         let name = match self.name {
             Some(name_str) => {
                 let wasm_name =
-                    WasmName::from_str_truncate(name_str, P::default()).map_err(Error::from)?;
+                    WasmName::from_str_truncate(name_str).map_err(Error::from)?;
                 Some(wasm_name)
             },
             None => None,
@@ -301,7 +301,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::D
 
 #[cfg(feature = "std")]
 /// Enum to represent the possible variants of ResourceType
-enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
+enum ResourceTypeVariant {
     /// Record type with field names
     Record(Vec<(String, P)>),
     /// Aggregate type with resource IDs
@@ -310,7 +310,7 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
 
 #[cfg(not(feature = "std"))]
 /// Enum to represent the possible variants of ResourceType
-enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
+enum ResourceTypeVariant {
     /// Record type with field names
     Record(BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>),
     /// Aggregate type with resource IDs
@@ -502,7 +502,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceItemBuilder<
 
         let name = match self.name {
             Some(name_str) => {
-                let wasm_name = WasmName::from_str_truncate(name_str, self.provider.clone())?;
+                let wasm_name = WasmName::from_str_truncate(name_str)?;
                 Some(wasm_name)
             },
             None => None,

@@ -2277,7 +2277,7 @@ impl FromBytes for LocalEntry {
 /// Represents a custom section in a WebAssembly module.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CustomSection<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
-    pub name: WasmName<MAX_WASM_NAME_LENGTH, P>,
+    pub name: WasmName<MAX_WASM_NAME_LENGTH>,
     pub data: BoundedVec<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>,
 }
 
@@ -2297,7 +2297,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
     /// Creates a new `CustomSection` from a name and data.
     pub fn new(provider: P, name_str: &str, data: &[u8]) -> Result<Self> {
         // Create WasmName for the section name
-        let name = WasmName::from_str_truncate(name_str, P::default()) // Assuming P can be defaulted here for WasmName
+        let name = WasmName::from_str_truncate(name_str)
             .map_err(|e| {
                 // Log or convert BoundedError to crate::Error
                 // For now, creating a generic error:
@@ -2410,7 +2410,7 @@ impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + 
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
     ) -> wrt_error::Result<Self> {
-        let name = WasmName::<MAX_WASM_NAME_LENGTH, PCustom>::from_bytes_with_provider(
+        let name = WasmName::<MAX_WASM_NAME_LENGTH>::from_bytes_with_provider(
             reader,
             stream_provider,
         )?;
@@ -2495,8 +2495,8 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
 /// Represents an import in a WebAssembly module.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Import<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
-    pub module_name: WasmName<MAX_MODULE_NAME_LEN, P>,
-    pub item_name:   WasmName<MAX_ITEM_NAME_LEN, P>,
+    pub module_name: WasmName<MAX_MODULE_NAME_LEN>,
+    pub item_name:   WasmName<MAX_ITEM_NAME_LEN>,
     pub desc:        ImportDesc<P>,
 }
 
@@ -2520,7 +2520,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
         desc: ImportDesc<P>,
     ) -> Result<Self> {
         let module_name =
-            WasmName::from_str(module_name_str, provider.clone()).map_err(|e| match e {
+            WasmName::from_str(module_name_str).map_err(|e| match e {
                 SerializationError::Custom(_) => {
                     Error::runtime_execution_error("Custom serialization error in module name")
                 },
@@ -2530,7 +2530,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
                     "Invalid module name serialization",
                 ),
             })?;
-        let item_name = WasmName::from_str(item_name_str, provider).map_err(|e| match e {
+        let item_name = WasmName::from_str(item_name_str).map_err(|e| match e {
             SerializationError::Custom(_) => {
                 Error::runtime_execution_error("Custom serialization error in export item name")
             },
@@ -2709,9 +2709,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Import<
         stream_provider: &PStream,
     ) -> wrt_error::Result<Self> {
         let module_name =
-            WasmName::<MAX_MODULE_NAME_LEN, P>::from_bytes_with_provider(reader, stream_provider)?;
+            WasmName::<MAX_MODULE_NAME_LEN>::from_bytes_with_provider(reader, stream_provider)?;
         let item_name =
-            WasmName::<MAX_ITEM_NAME_LEN, P>::from_bytes_with_provider(reader, stream_provider)?;
+            WasmName::<MAX_ITEM_NAME_LEN>::from_bytes_with_provider(reader, stream_provider)?;
         let desc = ImportDesc::<P>::from_bytes_with_provider(reader, stream_provider)?;
         Ok(Import {
             module_name,

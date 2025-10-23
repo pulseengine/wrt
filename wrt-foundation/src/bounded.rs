@@ -3829,8 +3829,8 @@ where
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
-    BoundedString<N_BYTES, P>
+impl<const N_BYTES: usize>
+    BoundedString<N_BYTES>
 {
     /// Creates a new BoundedString from a string slice.
     ///
@@ -4303,16 +4303,8 @@ impl<
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable
-    for WasmName<N_BYTES, P>
-{
-    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        self.inner.update_checksum(checksum);
-    }
-}
-
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes
-    for WasmName<N_BYTES, P>
+impl<const N_BYTES: usize> ToBytes
+    for WasmName<N_BYTES>
 {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
@@ -4329,14 +4321,14 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes
-    for WasmName<N_BYTES, P>
+impl<const N_BYTES: usize> FromBytes
+    for WasmName<N_BYTES>
 {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &PStream,
     ) -> Result<Self> {
-        BoundedString::<N_BYTES, P>::from_bytes_with_provider(reader, provider)
+        BoundedString::<N_BYTES>::from_bytes_with_provider(reader, provider)
             .map(|inner_bs| Self { inner: inner_bs })
     }
 
@@ -4438,8 +4430,8 @@ where
 
 // Alloc-dependent methods for BoundedString
 #[cfg(feature = "std")]
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
-    BoundedString<N_BYTES, P>
+impl<const N_BYTES: usize>
+    BoundedString<N_BYTES>
 {
     /// Splits the string by the given delimiter and returns a vector of
     /// BoundedStrings.

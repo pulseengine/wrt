@@ -418,7 +418,7 @@ pub struct Resource<P: MemoryProvider + Default + Clone + Eq + Debug> {
     pub repr:           ResourceRepr<P>,
     /// Optional human-readable name for the resource.
     // Using WasmName (which uses BoundedString internally)
-    pub name: Option<WasmName<MAX_WASM_NAME_LENGTH, P>>, // MAX_WASM_NAME_LENGTH from bounded.rs
+    pub name: Option<WasmName<MAX_WASM_NAME_LENGTH>>, // MAX_WASM_NAME_LENGTH from bounded.rs
     /// Verification level for operations on this resource.
     verification_level: VerificationLevel,
 }
@@ -428,7 +428,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> Resource<P> {
     pub fn new(
         id: u32,
         repr: ResourceRepr<P>,
-        name: Option<WasmName<MAX_WASM_NAME_LENGTH, P>>,
+        name: Option<WasmName<MAX_WASM_NAME_LENGTH>>,
         verification_level: VerificationLevel,
     ) -> Self {
         Self {
@@ -453,7 +453,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> Resource<P> {
 impl<P: MemoryProvider + Default + Clone + Eq + Debug> Checksummable for Resource<P>
 where
     ResourceRepr<P>: Checksummable,
-    Option<WasmName<MAX_WASM_NAME_LENGTH, P>>: Checksummable, // Assuming WasmName is Checksummable
+    Option<WasmName<MAX_WASM_NAME_LENGTH>>: Checksummable, // Assuming WasmName is Checksummable
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
         self.id.update_checksum(checksum);
@@ -484,7 +484,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for Resource<P>
     ) -> wrt_error::Result<Self> {
         let id = u32::from_bytes_with_provider(reader, stream_provider)?; // u32 doesn't use provider, but trait requires it
         let repr = ResourceRepr::<P>::from_bytes_with_provider(reader, stream_provider)?;
-        let name = Option::<WasmName<MAX_WASM_NAME_LENGTH, P>>::from_bytes_with_provider(
+        let name = Option::<WasmName<MAX_WASM_NAME_LENGTH>>::from_bytes_with_provider(
             reader,
             stream_provider,
         )?;
@@ -547,7 +547,7 @@ pub struct ResourceItem<P: MemoryProvider + Default + Clone + Eq> {
     /// The type of the resource.
     pub type_: ResourceType<P>,
     /// Optional human-readable name for the resource.
-    pub name:  Option<WasmName<MAX_WASM_NAME_LENGTH, P>>,
+    pub name:  Option<WasmName<MAX_WASM_NAME_LENGTH>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
