@@ -195,6 +195,9 @@ impl HostBuilder {
     /// Register a built-in handler.
     ///
     /// This method registers a handler for a specific built-in function.
+    ///
+    /// # Panics
+    /// Panics if provider creation fails in no_std mode
     pub fn with_builtin_handler<F>(self, builtin_type: BuiltinType, handler: F) -> Self
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,

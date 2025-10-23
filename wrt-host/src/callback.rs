@@ -280,6 +280,9 @@ impl CallbackRegistry {
     }
 
     /// Create a new callback registry (`no_std` version)
+    ///
+    /// # Panics
+    /// Panics if provider creation fails
     #[must_use]
     #[cfg(not(feature = "std"))]
     pub fn new() -> Self {

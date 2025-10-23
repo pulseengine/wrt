@@ -15,6 +15,8 @@
 #[cfg(feature = "std")]
 use std::string::ToString;
 
+use crate::collections::StaticVec;
+
 /// Bounded collections with functional safety verification
 ///
 /// This module provides bounded collection types that are designed for
@@ -3573,28 +3575,22 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BoundedString<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
-{
-    bytes: BoundedVec<u8, N_BYTES, P>,
+/// Migration Note: Migrated from BoundedVec to StaticVec (Issue #118)
+/// - Removed MemoryProvider generic parameter P
+/// - Simplified to static inline storage
+pub struct BoundedString<const N_BYTES: usize> {
+    bytes: StaticVec<u8, N_BYTES>,
 }
 
 // Implement Ord specifically for BoundedString to support HashMap keys in
 // no_std (BTreeMap)
-impl<
-        const N_BYTES: usize,
-        P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord,
-    > PartialOrd for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> PartialOrd for BoundedString<N_BYTES> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<
-        const N_BYTES: usize,
-        P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord,
-    > Ord for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> Ord for BoundedString<N_BYTES> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         // Compare strings lexicographically by comparing their byte sequences
         // If as_str() fails, fall back to comparing the raw bytes
@@ -3624,9 +3620,7 @@ impl<
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes
-    for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> ToBytes for BoundedString<N_BYTES> {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -3642,15 +3636,13 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes
-    for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> FromBytes for BoundedString<N_BYTES> {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
     ) -> Result<Self> {
         Ok(Self {
-            bytes: BoundedVec::<u8, N_BYTES, P>::from_bytes_with_provider(reader, stream_provider)?,
+            bytes: StaticVec::<u8, N_BYTES>::from_bytes_with_provider(reader, stream_provider)?,
         })
     }
 
@@ -3661,18 +3653,13 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable
-    for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> Checksummable for BoundedString<N_BYTES> {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.bytes.update_checksum(checksum); // Delegate to inner
-                                              // BoundedVec<u8>
+        self.bytes.update_checksum(checksum); // Delegate to inner StaticVec<u8>
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Hash
-    for BoundedString<N_BYTES, P>
-{
+impl<const N_BYTES: usize> Hash for BoundedString<N_BYTES> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.bytes.hash(state);
     }
