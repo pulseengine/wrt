@@ -3803,46 +3803,51 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
 }
 
 /// Placeholder for element segment
+///
+/// **Migration Note:** Migrated from `BoundedVec<T, N, P>` to `StaticVec<T, N>` (Issue #118)
+/// - Removed MemoryProvider generic parameter P
+/// - Simplified to static inline storage
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ElementSegment<
-    P: MemoryProvider + Default + Clone + PartialEq + Eq = DefaultMemoryProvider,
-> {
+pub struct ElementSegment {
     /// Table index
     pub table_index: u32,
-    /// Offset expression
-    pub offset:      BoundedVec<u8, 1024, P>,
-    /// Elements
-    pub elements:    BoundedVec<u32, 1024, P>,
+    /// Offset expression (static inline storage, no heap)
+    pub offset:      StaticVec<u8, 1024>,
+    /// Elements (static inline storage, no heap)
+    pub elements:    StaticVec<u32, 1024>,
 }
 
-impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ElementSegment<P> {
+impl Default for ElementSegment {
     fn default() -> Self {
         Self {
             table_index: 0,
-            offset:      BoundedVec::new(P::default()).unwrap_or_default(),
-            elements:    BoundedVec::new(P::default()).unwrap_or_default(),
+            offset:      StaticVec::new(),
+            elements:    StaticVec::new(),
         }
     }
 }
 
 /// Placeholder for data segment
+///
+/// **Migration Note:** Migrated from `BoundedVec<T, N, P>` to `StaticVec<T, N>` (Issue #118)
+/// - Removed MemoryProvider generic parameter P
+/// - Simplified to static inline storage
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DataSegment<P: MemoryProvider + Default + Clone + PartialEq + Eq = DefaultMemoryProvider>
-{
+pub struct DataSegment {
     /// Memory index
     pub memory_index: u32,
-    /// Offset expression
-    pub offset:       BoundedVec<u8, 1024, P>,
-    /// Data bytes
-    pub data:         BoundedVec<u8, 1024, P>,
+    /// Offset expression (static inline storage, no heap)
+    pub offset:       StaticVec<u8, 1024>,
+    /// Data bytes (static inline storage, no heap)
+    pub data:         StaticVec<u8, 1024>,
 }
 
-impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for DataSegment<P> {
+impl Default for DataSegment {
     fn default() -> Self {
         Self {
             memory_index: 0,
-            offset:       BoundedVec::new(P::default()).unwrap_or_default(),
-            data:         BoundedVec::new(P::default()).unwrap_or_default(),
+            offset:       StaticVec::new(),
+            data:         StaticVec::new(),
         }
     }
 }
