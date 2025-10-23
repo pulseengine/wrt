@@ -163,7 +163,7 @@ mod no_std_utils {
         data: &[u8],
         offset: usize,
     ) -> Result<(
-        BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>,
+        BoundedString<256>,
         usize,
     )> {
         if offset >= data.len() {
@@ -185,7 +185,7 @@ mod no_std_utils {
 
         // Create the properly sized bounded string for the return type
         let provider = wrt_foundation::safe_managed_alloc!(512, wrt_foundation::CrateId::Decoder)?;
-        let name_string = BoundedString::<256, _>::from_str(name_str, provider)
+        let name_string = BoundedString::<256>::from_str(name_str)
             .map_err(|_| Error::parse_error("Failed to create bounded string for name"))?;
 
         Ok((name_string, length + 1))

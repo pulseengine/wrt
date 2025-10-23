@@ -36,7 +36,7 @@ mod no_std_types {
     use super::*;
 
     /// Component string type for no_std environments
-    pub type ComponentString = BoundedString<256, NoStdProvider<4096>>;
+    pub type ComponentString = BoundedString<256>;
 
     /// Component vector type for no_std environments
     pub type ComponentVec<T> = BoundedVec<T, 128, NoStdProvider<4096>>;
@@ -357,9 +357,9 @@ impl ExportInfo {
                 wrt_foundation::budget_aware_provider::CrateId::Decoder
             )?;
             Ok(Self {
-                name:      crate::prelude::DecoderString::from_str("", provider.clone())?,
-                kind:      crate::prelude::DecoderString::from_str("", provider.clone())?,
-                type_info: crate::prelude::DecoderString::from_str("", provider)?,
+                name:      crate::prelude::DecoderString::from_str("")?,
+                kind:      crate::prelude::DecoderString::from_str("")?,
+                type_info: crate::prelude::DecoderString::from_str("")?,
             })
         }
     }
@@ -433,10 +433,10 @@ impl ImportInfo {
                 wrt_foundation::budget_aware_provider::CrateId::Decoder
             )?;
             Ok(Self {
-                module:    crate::prelude::DecoderString::from_str("", provider.clone())?,
-                name:      crate::prelude::DecoderString::from_str("", provider.clone())?,
-                kind:      crate::prelude::DecoderString::from_str("", provider.clone())?,
-                type_info: crate::prelude::DecoderString::from_str("", provider)?,
+                module:    crate::prelude::DecoderString::from_str("")?,
+                name:      crate::prelude::DecoderString::from_str("")?,
+                kind:      crate::prelude::DecoderString::from_str("")?,
+                type_info: crate::prelude::DecoderString::from_str("")?,
             })
         }
     }

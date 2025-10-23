@@ -66,7 +66,7 @@ mod std_parsing {
                 Ok(p) => p,
                 Err(_) => return "[allocation_error]".to_string(),
             };
-            let mut s = match crate::prelude::String::from_str(message, provider.clone()) {
+            let mut s = match crate::prelude::String::from_str(message) {
                 Ok(s) => s,
                 Err(_) => return "[string_error]".to_string(),
             };
@@ -1291,15 +1291,8 @@ mod std_parsing {
                     let mut bounded = BoundedVec::new(provider.clone())?;
                     for field in fields {
                         let bounded_string = BoundedString::<
-                            MAX_RESOURCE_FIELD_NAME_LEN,
-                            NoStdProvider<4096>,
-                        >::from_str(
-                            &field,
-                            wrt_foundation::safe_managed_alloc!(
-                                4096,
-                                wrt_foundation::budget_aware_provider::CrateId::Decoder
-                            )?,
-                        )
+                            MAX_RESOURCE_FIELD_NAME_LEN
+                        >::from_str(&field)
                         .map_err(|_| {
                             Error::runtime_execution_error("Failed to create bounded string")
                         })?;
@@ -1313,7 +1306,7 @@ mod std_parsing {
                     }
                     Ok::<
                         BoundedVec<
-                            BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<4096>>,
+                            BoundedString<64>,
                             16,
                             wrt_foundation::safe_memory::NoStdProvider<4096>,
                         >,

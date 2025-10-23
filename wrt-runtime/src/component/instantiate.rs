@@ -41,7 +41,7 @@ use wrt_foundation::{
     safe_managed_alloc,
     BoundedString,
 };
-type ComponentString = BoundedString<256, RuntimeProvider>;
+type ComponentString = BoundedString<256>;
 
 /// Result of component instantiation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -466,9 +466,8 @@ impl CoreModuleInstantiator {
                         },
                     };
                     // Convert String to ComponentString
-                    let name_provider = create_runtime_provider()?;
                     let component_name =
-                        ComponentString::from_str_truncate(&export.name, name_provider)?;
+                        ComponentString::from_str_truncate(&export.name)?;
                     export_map.insert(component_name, item)?;
                 }
 

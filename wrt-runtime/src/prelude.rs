@@ -251,14 +251,9 @@ pub trait ToString {
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl ToString for &str {
     fn to_string(&self) -> RuntimeString {
-        let provider = wrt_foundation::safe_managed_alloc!(
-            1024,
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        )
-        .expect("Failed to allocate memory for string conversion");
-        RuntimeString::from_str(self, provider.clone()).unwrap_or_else(|_| {
-            // If conversion fails, create empty string with same provider
-            RuntimeString::from_str("", provider).unwrap()
+        RuntimeString::from_str(self).unwrap_or_else(|_| {
+            // If conversion fails, create empty string
+            RuntimeString::from_str("").unwrap()
         })
     }
 }
@@ -368,8 +363,7 @@ pub use wrt_foundation::{
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type CoreFuncType =
-    wrt_foundation::types::FuncType<crate::bounded_runtime_infra::RuntimeProvider>;
+pub type CoreFuncType = wrt_foundation::types::FuncType;
 
 // Fallback for no_std environments - provide core types
 #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -380,13 +374,12 @@ pub use wrt_foundation::types::{
 };
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type CoreFuncType =
-    wrt_foundation::types::FuncType<crate::bounded_runtime_infra::RuntimeProvider>;
+pub type CoreFuncType = wrt_foundation::types::FuncType;
 
 // Public type aliases using clean CORE types (not component types)
 /// Type alias for WebAssembly function types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type FuncType<P> = wrt_foundation::types::FuncType<P>;
+pub type FuncType = wrt_foundation::types::FuncType;
 /// Type alias for WebAssembly memory types
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type MemoryType = CoreMemoryType;
@@ -426,18 +419,17 @@ pub type DefaultProviderFactory = wrt_foundation::type_factory::RuntimeFactory64
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub type DefaultProviderFactory = wrt_foundation::type_factory::RuntimeFactory8K;
 
-/// Runtime function type alias for consistency  
+/// Runtime function type alias for consistency
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type RuntimeFuncType = FuncType<crate::memory_adapter::StdMemoryProvider>;
+pub type RuntimeFuncType = FuncType;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type RuntimeFuncType<P> = wrt_foundation::types::FuncType<P>;
+pub type RuntimeFuncType = wrt_foundation::types::FuncType;
 
 /// Runtime string type alias for consistency
 #[cfg(feature = "std")]
 pub type RuntimeString = String;
 #[cfg(not(feature = "std"))]
-pub type RuntimeString =
-    wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type RuntimeString = wrt_foundation::bounded::BoundedString<256>;
 
 // Safety-critical wrapper types for runtime (deterministic, verifiable)
 // SIMD execution integration

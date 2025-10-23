@@ -304,7 +304,7 @@ impl<'a> StreamingDecoder<'a> {
                 use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId, BoundedString};
 
                 let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
-                let name = BoundedString::<1024, _>::from_str(export_name_str, provider)?;
+                let name = BoundedString::<1024>::from_str(export_name_str)?;
 
                 self.module.exports.push(wrt_format::module::Export {
                     name,

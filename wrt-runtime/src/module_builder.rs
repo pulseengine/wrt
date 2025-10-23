@@ -58,7 +58,7 @@ use crate::{
 type String = alloc::string::String;
 #[cfg(not(feature = "std"))]
 type String =
-    wrt_foundation::bounded::BoundedString<256, crate::bounded_runtime_infra::RuntimeProvider>;
+    wrt_foundation::bounded::BoundedString<256>;
 
 // Define trait locally if not available from wrt_decoder
 pub trait RuntimeModuleBuilder {

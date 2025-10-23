@@ -234,10 +234,7 @@ pub struct InstrumentationPoint {
     /// Location in code
     pub location:   usize,
     /// Type of instrumentation
-    pub point_type: wrt_foundation::bounded::BoundedString<
-        64,
-        wrt_foundation::safe_memory::NoStdProvider<1024>,
-    >,
+    pub point_type: wrt_foundation::bounded::BoundedString<64>,
 }
 
 impl InstrumentationPoint {
@@ -249,10 +246,9 @@ impl InstrumentationPoint {
         )?;
         let bounded_point_type: wrt_foundation::bounded::BoundedString<
             64,
-            wrt_foundation::safe_memory::NoStdProvider<1024>,
-        > = wrt_foundation::bounded::BoundedString::from_str_truncate(point_type, provider.clone())
+        > = wrt_foundation::bounded::BoundedString::from_str_truncate(point_type)
             .unwrap_or_else(|_| {
-                wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap()
+                wrt_foundation::bounded::BoundedString::from_str_truncate("").unwrap()
             });
         Ok(Self {
             location,

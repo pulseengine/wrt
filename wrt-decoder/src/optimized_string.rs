@@ -41,7 +41,7 @@ pub fn parse_utf8_string_inplace(
     bytes: &[u8],
     offset: usize,
 ) -> Result<(
-    wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>,
+    wrt_foundation::BoundedString<256>,
     usize,
 )> {
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
@@ -60,7 +60,7 @@ pub fn parse_utf8_string_inplace(
         CrateId,
     };
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    let bounded_string = wrt_foundation::BoundedString::from_str(string_str, provider)
+    let bounded_string = wrt_foundation::BoundedString::from_str(string_str)
         .map_err(|_| Error::runtime_execution_error("Failed to create bounded string"))?;
     Ok((bounded_string, new_offset))
 }

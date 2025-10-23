@@ -238,10 +238,10 @@ pub struct ComponentHeader {
     pub types:              BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
     /// Component exports
     pub exports:
-        BoundedVec<ComponentExport<DecoderProvider>, MAX_COMPONENT_EXPORTS, DecoderProvider>,
+        BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, DecoderProvider>,
     /// Component imports
     pub imports:
-        BoundedVec<ComponentImport<DecoderProvider>, MAX_COMPONENT_IMPORTS, DecoderProvider>,
+        BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, DecoderProvider>,
     /// Whether the component contains a start function
     pub has_start:          bool,
     /// Whether the component contains core modules
@@ -491,7 +491,7 @@ fn check_for_resource_types(bytes: &[u8], offset: usize, size: u32) -> bool {
 fn scan_component_imports(
     section_data: &[u8],
     imports: &mut BoundedVec<
-        ComponentImport<DecoderProvider>,
+        ComponentImport,
         MAX_COMPONENT_IMPORTS,
         DecoderProvider,
     >,
@@ -524,7 +524,7 @@ fn scan_component_imports(
                 name:       {
                     let name_str = core::str::from_utf8(name)
                         .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
-                    BoundedString::from_str_truncate(name_str, create_provider_1024()?)?
+                    BoundedString::from_str_truncate(name_str)?
                 },
                 type_index: 0, // Placeholder
             };
@@ -557,7 +557,7 @@ fn scan_component_imports(
 fn scan_component_exports(
     section_data: &[u8],
     exports: &mut BoundedVec<
-        ComponentExport<DecoderProvider>,
+        ComponentExport,
         MAX_COMPONENT_EXPORTS,
         DecoderProvider,
     >,
@@ -590,7 +590,7 @@ fn scan_component_exports(
                 name:       {
                     let name_str = core::str::from_utf8(name)
                         .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
-                    BoundedString::from_str_truncate(name_str, create_provider_1024()?)?
+                    BoundedString::from_str_truncate(name_str)?
                 },
                 type_index: 0, // Placeholder
                 kind:       0, // Placeholder

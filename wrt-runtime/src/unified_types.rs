@@ -150,13 +150,13 @@ pub type DefaultMediumVec<T> = BoundedVec<T, 1024, DefaultRuntimeProvider>;
 pub type DefaultLargeVec<T> = BoundedVec<T, 65536, DefaultRuntimeProvider>;
 
 /// Default small bounded string
-pub type DefaultSmallString = BoundedString<64, DefaultRuntimeProvider>;
+pub type DefaultSmallString = BoundedString<64>;
 
 /// Default medium bounded string
-pub type DefaultMediumString = BoundedString<1024, DefaultRuntimeProvider>;
+pub type DefaultMediumString = BoundedString<1024>;
 
-/// Default large bounded string  
-pub type DefaultLargeString = BoundedString<65536, DefaultRuntimeProvider>;
+/// Default large bounded string
+pub type DefaultLargeString = BoundedString<65536>;
 
 /// Default runtime map - K and V must implement required traits
 pub type DefaultRuntimeMap<K, V> = BoundedMap<K, V, 1024, DefaultRuntimeProvider>;
@@ -194,10 +194,10 @@ pub type InstructionVec = BoundedVec<u8, 65536, DefaultRuntimeProvider>;
 pub type MemoryBuffer = BoundedVec<u8, 65536, DefaultRuntimeProvider>;
 
 /// String for runtime identifiers and names
-pub type RuntimeString = BoundedString<1024, DefaultRuntimeProvider>;
+pub type RuntimeString = BoundedString<1024>;
 
 /// String for component and module names
-pub type ComponentName = BoundedString<64, DefaultRuntimeProvider>;
+pub type ComponentName = BoundedString<64>;
 
 /// Map for storing exports by name (using BTreeMap-style bounded map)
 /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` +

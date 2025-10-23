@@ -30,11 +30,9 @@ use wrt_foundation::{
 /// A simplified version of the wrt-foundation component::Export for
 /// use in memory-constrained environments.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct ComponentExport<
-    P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>,
-> {
+pub struct ComponentExport {
     /// Export name
-    pub name:       BoundedString<MAX_WASM_NAME_LENGTH, P>,
+    pub name:       BoundedString<MAX_WASM_NAME_LENGTH>,
     /// Export type index
     pub type_index: u32,
     /// Export kind
@@ -46,11 +44,9 @@ pub struct ComponentExport<
 /// A simplified version of the wrt-foundation component::Import for
 /// use in memory-constrained environments.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct ComponentImport<
-    P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>,
-> {
+pub struct ComponentImport {
     /// Import name
-    pub name:       BoundedString<MAX_WASM_NAME_LENGTH, P>,
+    pub name:       BoundedString<MAX_WASM_NAME_LENGTH>,
     /// Import type index
     pub type_index: u32,
 }
@@ -105,7 +101,7 @@ pub struct ComponentType {
 }
 
 // Implement required traits for ComponentExport
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentExport<P> {
+impl Checksummable for ComponentExport {
     fn update_checksum(&self, checksum: &mut Checksum) {
         self.name.update_checksum(checksum);
         self.type_index.update_checksum(checksum);
@@ -113,7 +109,7 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for Com
     }
 }
 
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for ComponentExport<P> {
+impl ToBytes for ComponentExport {
     fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -126,7 +122,7 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for Component
     }
 }
 
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for ComponentExport<P> {
+impl FromBytes for ComponentExport {
     fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &PStream,
@@ -140,14 +136,14 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for Compone
 }
 
 // Implement required traits for ComponentImport
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentImport<P> {
+impl Checksummable for ComponentImport {
     fn update_checksum(&self, checksum: &mut Checksum) {
         self.name.update_checksum(checksum);
         self.type_index.update_checksum(checksum);
     }
 }
 
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for ComponentImport<P> {
+impl ToBytes for ComponentImport {
     fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -159,7 +155,7 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for Component
     }
 }
 
-impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for ComponentImport<P> {
+impl FromBytes for ComponentImport {
     fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &PStream,

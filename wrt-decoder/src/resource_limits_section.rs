@@ -65,7 +65,7 @@ pub const MAX_ENCODED_SIZE: usize = 8192;
 
 /// Type alias for custom limits map with bounded capacity for ASIL-D
 pub type CustomLimitsMap<P> =
-    BoundedMap<BoundedString<MAX_RESOURCE_NAME_LEN, P>, u64, MAX_CUSTOM_LIMITS_PER_TYPE, P>;
+    BoundedMap<BoundedString<MAX_RESOURCE_NAME_LEN>, u64, MAX_CUSTOM_LIMITS_PER_TYPE, P>;
 
 /// Resource limits specification embedded in WebAssembly custom section
 ///
@@ -103,7 +103,7 @@ pub struct ResourceLimitsSection<
     /// Resource type limits using bounded map
     /// ASIL-D: Fixed capacity, managed through capability system
     pub resource_type_limits: BoundedMap<
-        BoundedString<MAX_RESOURCE_NAME_LEN, P>,
+        BoundedString<MAX_RESOURCE_NAME_LEN>,
         ResourceTypeLimit<P>,
         MAX_RESOURCE_TYPES,
         P,
@@ -115,7 +115,7 @@ pub struct ResourceLimitsSection<
 
     /// ASIL level this configuration is qualified for
     /// ASIL-D: Bounded string with compile-time length limit
-    pub qualified_asil_level: Option<BoundedString<MAX_ASIL_STRING_LEN, P>>,
+    pub qualified_asil_level: Option<BoundedString<MAX_ASIL_STRING_LEN>>,
 }
 
 /// Limits for a specific resource type (e.g., filesystem, network)
@@ -252,7 +252,6 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     for ResourceLimitsSection<P>
 {
     fn default() -> Self {
-        // Use safe default provider construction for ASIL-D
         let provider = P::default();
         Self {
             version:                   RESOURCE_LIMITS_VERSION,
@@ -261,7 +260,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
             max_call_depth:            None,
             max_instructions_per_step: None,
             max_execution_slice_ms:    None,
-            resource_type_limits:      BoundedMap::new(provider.clone())
+            resource_type_limits:      BoundedMap::new(provider)
                 .expect("ASIL-D: Default map creation must succeed"),
             qualification_hash:        None,
             qualified_asil_level:      None,
@@ -281,7 +280,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             max_call_depth:            None,
             max_instructions_per_step: None,
             max_execution_slice_ms:    None,
-            resource_type_limits:      BoundedMap::new(provider.clone()).map_err(|_| {
+            resource_type_limits:      BoundedMap::new(provider).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
             qualification_hash:        None,
@@ -311,7 +310,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             max_call_depth,
             max_instructions_per_step,
             max_execution_slice_ms,
-            resource_type_limits: BoundedMap::new(provider.clone()).map_err(|_| {
+            resource_type_limits: BoundedMap::new(provider).map_err(|_| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::OUT_OF_MEMORY,
@@ -333,7 +332,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         max_instructions_per_step: u32,
         max_execution_slice_ms: u32,
     ) -> Result<Self, Error> {
-        let asil_level = BoundedString::from_str("ASIL-D ", provider.clone())
+        let asil_level = BoundedString::from_str("ASIL-D ")
             .map_err(|_| Error::parse_error("Failed to create ASIL-D string "))?;
 
         Ok(Self {
@@ -343,7 +342,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             max_call_depth:            Some(max_call_depth),
             max_instructions_per_step: Some(max_instructions_per_step),
             max_execution_slice_ms:    Some(max_execution_slice_ms),
-            resource_type_limits:      BoundedMap::new(provider.clone()).map_err(|_| {
+            resource_type_limits:      BoundedMap::new(provider).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
             qualification_hash:        None,
@@ -367,9 +366,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
-        // Create bounded string for resource type name using a default provider
-        let provider = P::default();
-        let resource_name = BoundedString::from_str(resource_type, provider)
+        // Create bounded string for resource type name
+        let resource_name = BoundedString::from_str(resource_type)
             .map_err(|_| Error::parse_error("Failed to create resource name "))?;
 
         self.resource_type_limits
@@ -384,13 +382,12 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         mut self,
         hash: [u8; 32],
         asil_level: &str,
-        provider: P,
     ) -> Result<Self, Error> {
         if asil_level.len() > MAX_ASIL_STRING_LEN {
             return Err(Error::parse_error("Invalid parameter "));
         }
 
-        let bounded_asil_level = BoundedString::from_str(asil_level, provider)
+        let bounded_asil_level = BoundedString::from_str(asil_level)
             .map_err(|_| Error::parse_error("Failed to create bounded string for ASIL level "))?;
 
         self.qualification_hash = Some(hash);
@@ -645,7 +642,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             let (limits, new_offset) = Self::decode_resource_type_limit(data, offset)?;
             offset = new_offset;
 
-            let name = BoundedString::from_str(&name_str, provider.clone()).map_err(|_| {
+            let name = BoundedString::from_str(&name_str).map_err(|_| {
                 Error::parse_error("Failed to create bounded string during decode ")
             })?;
 
@@ -678,12 +675,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         let qualified_asil_level = if offset < data.len() && data[offset] == 1 {
             offset += 1;
             let (asil_level_str, _) = Self::decode_string(data, offset)?;
-            let asil_level =
-                BoundedString::from_str(&asil_level_str, provider.clone()).map_err(|_| {
-                    Error::parse_error(
-                        "Failed to create bounded string for ASIL level during decode",
-                    )
-                })?;
+            let asil_level = BoundedString::from_str(&asil_level_str).map_err(|_| {
+                Error::parse_error("Failed to create bounded string for ASIL level during decode")
+            })?;
             Some(asil_level)
         } else {
             None
@@ -814,7 +808,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         &self,
         buffer: &mut [u8],
         mut offset: usize,
-        limits: &ResourceTypeLimit<P>,
+        limits: &ResourceTypeLimit,
     ) -> Result<usize, Error> {
         offset = self.encode_optional_u32_to_buffer(buffer, offset, limits.max_handles)?;
         offset = self.encode_optional_u64_to_buffer(buffer, offset, limits.max_memory)?;
@@ -887,7 +881,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     fn encode_resource_type_limit(
         &self,
         buffer: &mut Vec<u8>,
-        limits: &ResourceTypeLimit<P>,
+        limits: &ResourceTypeLimit,
     ) -> Result<(), Error> {
         self.encode_optional_u32(buffer, limits.max_handles)?;
         self.encode_optional_u64(buffer, limits.max_memory)?;
@@ -1044,7 +1038,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             ]);
             offset += 8;
 
-            let name = BoundedString::from_str(&name_str, provider.clone()).map_err(|_| {
+            let name = BoundedString::from_str(&name_str).map_err(|_| {
                 Error::parse_error(
                     "Failed to create bounded string for custom limit name during decode",
                 )
@@ -1159,8 +1153,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
             ));
         }
 
-        let provider = P::default();
-        let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
+        let bounded_name = BoundedString::from_str(name).map_err(|_| {
             Error::parse_error("Failed to create bounded string for custom limit name")
         })?;
 

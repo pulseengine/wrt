@@ -13,7 +13,7 @@ use alloc::string::String;
 use alloc::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type String =
-    wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>;
+    wrt_foundation::bounded::BoundedString<256>;
 
 pub mod engine;
 pub mod extensions;

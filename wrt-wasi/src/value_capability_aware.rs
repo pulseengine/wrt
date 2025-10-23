@@ -36,7 +36,7 @@ const MAX_WASI_COLLECTION_SIZE: usize = 1024;
 pub type WasiValueProvider = NoStdProvider<8192>;
 
 /// Bounded string for WASI values
-pub type WasiBoundedString = BoundedString<MAX_WASI_STRING_LEN, WasiValueProvider>;
+pub type WasiBoundedString = BoundedString<MAX_WASI_STRING_LEN>;
 
 /// Bounded vector for WASI values
 pub type WasiBoundedVec<T> = BoundedVec<T, MAX_WASI_COLLECTION_SIZE, WasiValueProvider>;
@@ -128,7 +128,7 @@ impl CapabilityAwareValue {
     /// Create a capability-aware string value
     pub fn string_from_str(s: &str) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
-        let bounded_string = WasiBoundedString::from_str(s, provider)?;
+        let bounded_string = WasiBoundedString::from_str(s)?;
         Ok(CapabilityAwareValue::String(bounded_string))
     }
 
@@ -154,7 +154,7 @@ impl CapabilityAwareValue {
         let mut bounded_vec = WasiBoundedVec::new(provider.clone())?;
 
         for (key, value) in pairs {
-            let bounded_key = WasiBoundedString::from_str(&key, provider.clone())?;
+            let bounded_key = WasiBoundedString::from_str(&key)?;
             bounded_vec.push((bounded_key, value))?;
         }
 
@@ -227,7 +227,7 @@ impl CapabilityAwareValue {
             CapabilityAwareValue::String(s) => Ok(s.clone()),
             _ => {
                 let provider = create_wasi_value_provider()?;
-                Ok(WasiBoundedString::from_str("", provider)?)
+                Ok(WasiBoundedString::from_str("")?)
             },
         }
     }

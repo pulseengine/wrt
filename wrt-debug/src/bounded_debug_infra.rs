@@ -67,9 +67,9 @@ pub const DEBUG_PROVIDER_SIZE: usize = 32768;
 pub type DebugProvider = NoStdProvider<DEBUG_PROVIDER_SIZE>;
 
 /// Create a debug-specific string type
-pub fn create_debug_string(s: &str) -> Result<BoundedString<MAX_FILE_PATH_LEN, DebugProvider>> {
+pub fn create_debug_string(s: &str) -> Result<BoundedString<MAX_FILE_PATH_LEN>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    BoundedString::from_str(s, guard.clone())
+    BoundedString::from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
 
@@ -117,10 +117,10 @@ pub type BoundedStackTraceVec<T> = BoundedVec<T, MAX_STACK_TRACE_DEPTH, DebugPro
 pub type BoundedSourceFileVec<T> = BoundedVec<T, MAX_SOURCE_FILES, DebugProvider>;
 
 /// Bounded string for file paths
-pub type BoundedFilePath = BoundedString<MAX_FILE_PATH_LEN, DebugProvider>;
+pub type BoundedFilePath = BoundedString<MAX_FILE_PATH_LEN>;
 
 /// Bounded string for function names
-pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN, DebugProvider>;
+pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN>;
 
 /// Bounded vector for breakpoints
 pub type BoundedBreakpointVec<T> = BoundedVec<T, MAX_BREAKPOINTS, DebugProvider>;
@@ -141,14 +141,14 @@ pub type BoundedSourceMap<V> = BoundedHashMap<u32, V, MAX_SOURCE_MAP_ENTRIES, De
 pub type BoundedDiagnosticVec<T> = BoundedVec<T, MAX_DIAGNOSTIC_MESSAGES, DebugProvider>;
 
 /// Bounded string for diagnostic messages
-pub type BoundedDiagnosticMessage = BoundedString<MAX_DIAGNOSTIC_MESSAGE_LEN, DebugProvider>;
+pub type BoundedDiagnosticMessage = BoundedString<MAX_DIAGNOSTIC_MESSAGE_LEN>;
 
 /// Bounded map for symbol table
 pub type BoundedSymbolMap<V> =
     BoundedHashMap<BoundedFunctionName, V, MAX_SYMBOL_TABLE_ENTRIES, DebugProvider>;
 
 /// Bounded string for debug output
-pub type BoundedDebugString = BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>;
+pub type BoundedDebugString = BoundedString<MAX_DEBUG_STRING_LEN>;
 
 /// Create a new bounded stack trace vector
 pub fn new_stack_trace_vec<T>() -> Result<BoundedStackTraceVec<T>>
@@ -188,7 +188,7 @@ where
 pub fn new_file_path() -> Result<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create file path"))
 }
 
@@ -196,7 +196,7 @@ pub fn new_file_path() -> Result<BoundedFilePath> {
 pub fn bounded_file_path_from_str(s: &str) -> Result<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider)
+    BoundedString::from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create file path from str"))
 }
 
@@ -204,7 +204,7 @@ pub fn bounded_file_path_from_str(s: &str) -> Result<BoundedFilePath> {
 pub fn new_function_name() -> Result<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create function name"))
 }
 
@@ -212,7 +212,7 @@ pub fn new_function_name() -> Result<BoundedFunctionName> {
 pub fn bounded_function_name_from_str(s: &str) -> Result<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider)
+    BoundedString::from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create function name from str"))
 }
 
@@ -310,7 +310,7 @@ where
 pub fn new_diagnostic_message() -> Result<BoundedDiagnosticMessage> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create diagnostic message"))
 }
 
@@ -318,7 +318,7 @@ pub fn new_diagnostic_message() -> Result<BoundedDiagnosticMessage> {
 pub fn bounded_diagnostic_from_str(s: &str) -> Result<BoundedDiagnosticMessage> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider).map_err(|_e| {
+    BoundedString::from_str(s).map_err(|_e| {
         wrt_error::Error::memory_error("Failed to create diagnostic message from str")
     })
 }
@@ -326,7 +326,7 @@ pub fn bounded_diagnostic_from_str(s: &str) -> Result<BoundedDiagnosticMessage> 
 /// Create a new bounded symbol map
 pub fn new_symbol_map<V>() -> Result<
     BoundedHashMap<
-        BoundedString<MAX_FUNCTION_NAME_LEN, DebugProvider>,
+        BoundedString<MAX_FUNCTION_NAME_LEN>,
         V,
         MAX_SYMBOL_TABLE_ENTRIES,
         DebugProvider,
@@ -342,19 +342,19 @@ where
 }
 
 /// Create a new bounded debug string
-pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
+pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
 
 /// Create a bounded debug string from str
 pub fn bounded_debug_string_from_str(
     s: &str,
-) -> Result<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
+) -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider)
+    BoundedString::from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string from str"))
 }

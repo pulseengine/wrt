@@ -31,7 +31,7 @@ use wrt_foundation::types::{
 use wrt_foundation::NoStdProvider;
 
 // Type aliases with result types for error propagation
-type WrtFuncType = FuncType<wrt_foundation::NoStdProvider<65536>>;
+type WrtFuncType = FuncType;
 type WrtFoundationImport = WrtImport<wrt_foundation::NoStdProvider<65536>>;
 
 // Import segment types from wrt-format
@@ -57,7 +57,7 @@ type SectionVec<T> = wrt_foundation::BoundedVec<T, 256, wrt_foundation::NoStdPro
 #[cfg(feature = "std")]
 type SectionString = std::string::String;
 #[cfg(not(feature = "std"))]
-type SectionString = wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
+type SectionString = wrt_foundation::BoundedString<256>;
 
 /// WebAssembly section representation
 #[derive(Debug, Clone)]
@@ -242,7 +242,7 @@ pub mod parsers {
                 65536,
                 wrt_foundation::budget_aware_provider::CrateId::Decoder
             )?;
-            format_func_types.push(wrt_format::types::FuncType::new(provider, params, results)?);
+            format_func_types.push(wrt_format::types::FuncType::new(params, results)?);
         }
 
         // Since wrt_format::types::FuncType is re-exported from wrt_foundation,
@@ -341,14 +341,11 @@ pub mod parsers {
         )?;
 
         for format_import in format_imports {
-            let module_name = wrt_foundation::bounded::WasmName::from_str(
-                &format_import.module,
-                provider.clone(),
-            )
+            let module_name = wrt_foundation::bounded::WasmName::from_str(&format_import.module)
             .map_err(|_| Error::parse_error("Module name too long for bounded string"))?;
 
             let item_name =
-                wrt_foundation::bounded::WasmName::from_str(&format_import.name, provider.clone())
+                wrt_foundation::bounded::WasmName::from_str(&format_import.name)
                     .map_err(|_| Error::parse_error("Item name too long for bounded string"))?;
 
             let wrt_desc = match format_import.desc {

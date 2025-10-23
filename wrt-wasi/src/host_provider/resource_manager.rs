@@ -80,33 +80,33 @@ pub enum WasiResourceType {
     /// File descriptor
     FileDescriptor {
         #[cfg(feature = "std")]
-        path:     BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        path:     BoundedString<256>,
         #[cfg(not(feature = "std"))]
-        path:     BoundedString<256, NoStdProvider<8192>>,
+        path:     BoundedString<256>,
         readable: bool,
         writable: bool,
     },
     /// Directory handle
     DirectoryHandle {
         #[cfg(feature = "std")]
-        path: BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        path: BoundedString<256>,
         #[cfg(not(feature = "std"))]
-        path: BoundedString<256, NoStdProvider<8192>>,
+        path: BoundedString<256>,
     },
     /// Input stream
     InputStream {
         #[cfg(feature = "std")]
-        name:     BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        name:     BoundedString<64>,
         #[cfg(not(feature = "std"))]
-        name:     BoundedString<64, NoStdProvider<8192>>,
+        name:     BoundedString<64>,
         position: u64,
     },
     /// Output stream
     OutputStream {
         #[cfg(feature = "std")]
-        name:     BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        name:     BoundedString<64>,
         #[cfg(not(feature = "std"))]
-        name:     BoundedString<64, NoStdProvider<8192>>,
+        name:     BoundedString<64>,
         position: u64,
     },
     /// Clock handle
@@ -288,7 +288,7 @@ impl WasiResourceManager {
         readable: bool,
         writable: bool,
     ) -> Result<WasiHandle> {
-        let path_string = BoundedString::from_str(path, self.provider.clone())
+        let path_string = BoundedString::from_str(path)
             .map_err(|_| Error::runtime_execution_error("Path string too long"))?;
 
         let resource_type = WasiResourceType::FileDescriptor {
@@ -309,7 +309,7 @@ impl WasiResourceManager {
 
     /// Create a directory handle resource
     pub fn create_directory_handle(&mut self, path: &str) -> Result<WasiHandle> {
-        let path_string = BoundedString::from_str(path, self.provider.clone()).map_err(|_| {
+        let path_string = BoundedString::from_str(path).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
@@ -331,7 +331,7 @@ impl WasiResourceManager {
 
     /// Create an input stream resource
     pub fn create_input_stream(&mut self, name: &str) -> Result<WasiHandle> {
-        let name_string = BoundedString::from_str(name, self.provider.clone())
+        let name_string = BoundedString::from_str(name)
             .map_err(|_| Error::runtime_execution_error("Stream name too long"))?;
 
         let resource_type = WasiResourceType::InputStream {
@@ -351,7 +351,7 @@ impl WasiResourceManager {
 
     /// Create an output stream resource
     pub fn create_output_stream(&mut self, name: &str) -> Result<WasiHandle> {
-        let name_string = BoundedString::from_str(name, self.provider.clone()).map_err(|_| {
+        let name_string = BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,

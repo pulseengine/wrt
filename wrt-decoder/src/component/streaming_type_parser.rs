@@ -1211,7 +1211,7 @@ impl<'a> StreamingTypeParser<'a> {
         #[cfg(not(feature = "std"))]
         let bounded_string = {
             let provider = create_decoder_provider::<4096>()?;
-            DecoderString::from_str(string_str, provider)
+            DecoderString::from_str(string_str)
                 .map_err(|_| Error::runtime_execution_error("Streaming type parser error "))?
         };
         #[cfg(feature = "std")]

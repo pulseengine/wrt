@@ -172,7 +172,7 @@ pub mod platform_types {
         )?;
 
         // Use from_str_truncate to create an empty string
-        BoundedString::from_str_truncate("", provider)
+        BoundedString::from_str_truncate("")
             .map_err(|_| Error::memory_error("Failed to create bounded string"))
     }
 
