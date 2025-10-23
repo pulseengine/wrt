@@ -10,7 +10,6 @@ path = "lib.rs"
 
 [dependencies]
 # Use workspace dependencies
-wrt = { workspace = true }
 wrt-component = { workspace = true }
 wrt-decoder = { workspace = true }
 wrt-error = { workspace = true }

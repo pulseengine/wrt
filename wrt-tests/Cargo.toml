@@ -18,7 +18,6 @@ path = "integration/lib.rs"
 
 [dependencies]
 # Core WRT dependencies for testing
-wrt = { path = "../wrt", features = ["std"] }
 wrt-component = { path = "../wrt-component", features = ["std"] }
 wrt-decoder = { path = "../wrt-decoder", features = ["std"] }
 wrt-format = { path = "../wrt-format", features = ["std"] }

@@ -23,7 +23,6 @@ wrt-foundation = { workspace = true, default-features = false, optional = true }
 wrt-panic = { workspace = true, default-features = false }
 
 # Only add core WRT libraries when actually needed
-wrt = { workspace = true, default-features = false, optional = true }
 wrt-runtime = { workspace = true, default-features = false, optional = true }
 wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-host = { workspace = true, default-features = false, optional = true }

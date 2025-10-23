@@ -3487,16 +3487,6 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.232.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a447e61e38d1226b57e4628edadff36d16760be24a343712ba236b5106c95156"
-dependencies = [
- "leb128fmt",
- "wasmparser 0.232.0",
-]
-
-[[package]]
-name = "wasm-encoder"
 version = "0.235.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3bc393c395cb621367ff02d854179882b9a351b4e0c93d1397e6090b53a5c2a"
@@ -3530,17 +3520,6 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.232.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "917739b33bb1eb0e9a49bcd2637a351931be4578d0cc4d37b908d7a797784fbb"
-dependencies = [
- "bitflags 2.9.1",
- "indexmap",
- "semver",
-]
-
-[[package]]
-name = "wasmparser"
 version = "0.235.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "161296c618fa2d63f6ed5fffd1112937e803cb9ec71b32b01a76321555660917"
@@ -3559,19 +3538,6 @@ dependencies = [
  "bitflags 2.9.1",
  "indexmap",
  "semver",
-]
-
-[[package]]
-name = "wast"
-version = "232.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5a22bfb0c309f5cf4b0cfa4fae77801e52570e88bff1344c1b7673a9977954"
-dependencies = [
- "bumpalo",
- "leb128fmt",
- "memchr",
- "unicode-width",
- "wasm-encoder 0.232.0",
 ]
 
 [[package]]
@@ -3989,35 +3955,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2f10b9bb0928dfb1b42b65e1f9e36f7f54dbdf08457afefb38afcdec4fa2bb"
 
 [[package]]
-name = "wrt"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "criterion 0.6.0",
- "hex",
- "lazy_static",
- "rayon",
- "tempfile",
- "tracing",
- "tracing-subscriber",
- "walkdir",
- "wast 232.0.0",
- "wrt-component",
- "wrt-decoder",
- "wrt-error",
- "wrt-format",
- "wrt-foundation",
- "wrt-host",
- "wrt-instructions",
- "wrt-intercept",
- "wrt-logging",
- "wrt-math",
- "wrt-platform",
- "wrt-runtime",
- "wrt-sync",
-]
-
-[[package]]
 name = "wrt-build-core"
 version = "0.2.0"
 dependencies = [
@@ -4158,7 +4095,6 @@ version = "0.1.0"
 dependencies = [
  "kani-verifier",
  "tempfile",
- "wrt",
  "wrt-component",
  "wrt-decoder",
  "wrt-error",
@@ -4260,7 +4196,6 @@ name = "wrtd"
 version = "0.2.0"
 dependencies = [
  "linked_list_allocator",
- "wrt",
  "wrt-component",
  "wrt-decoder",
  "wrt-error",
