@@ -10,7 +10,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     format,
     vec::Vec,
 };

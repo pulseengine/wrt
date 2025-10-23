@@ -120,9 +120,9 @@ use core::{
     time::Duration,
 };
 #[cfg(feature = "std")]
-use std::borrow::BorrowMut;
+use core::borrow::BorrowMut;
 #[cfg(feature = "std")]
-use std::vec;
+use alloc::vec;
 
 // External crates
 use wrt_foundation::safe_memory::{
@@ -666,12 +666,12 @@ impl Memory {
     /// For memory-safe access, prefer using `get_safe_slice()` or
     /// `as_safe_slice()` methods instead.
     #[cfg(feature = "std")]
-    pub fn buffer(&self) -> Result<std::vec::Vec<u8>> {
+    pub fn buffer(&self) -> Result<alloc::vec::Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
-            return Ok(std::vec::Vec::new());
+            return Ok(alloc::vec::Vec::new());
         }
 
         // Get a safe slice over the entire memory
@@ -681,7 +681,7 @@ impl Memory {
         let memory_data = safe_slice.data()?;
 
         // Create a new RuntimeVec with the data
-        let mut result = std::vec::Vec::with_capacity(data_size);
+        let mut result = alloc::vec::Vec::with_capacity(data_size);
         for &byte in memory_data.iter().take(result.capacity()) {
             result.push(byte);
         }
@@ -2011,7 +2011,7 @@ impl Memory {
     ///
     /// A string containing the statistics
     #[cfg(feature = "std")]
-    pub fn safety_stats(&self) -> std::string::String {
+    pub fn safety_stats(&self) -> alloc::string::String {
         let memory_stats = self.memory_stats();
         let access_count = self.access_count();
         let peak_memory = self.peak_memory();
@@ -2212,7 +2212,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(std::vec::Vec::new());
+            return Ok(alloc::vec::Vec::new());
         }
 
         // Convert to usize and check for overflow

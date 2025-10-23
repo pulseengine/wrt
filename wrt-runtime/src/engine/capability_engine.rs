@@ -11,7 +11,7 @@ use core::sync::atomic::{
     Ordering,
 };
 #[cfg(feature = "std")]
-use std::sync::Arc;
+use alloc::sync::Arc;
 
 // Import decoder function
 use wrt_decoder::decoder::decode_module;

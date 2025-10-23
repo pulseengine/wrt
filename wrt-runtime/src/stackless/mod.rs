@@ -10,7 +10,7 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::String;
 #[cfg(feature = "std")]
-use std::string::String;
+use alloc::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type String =
     wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>;

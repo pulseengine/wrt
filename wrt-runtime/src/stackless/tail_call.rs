@@ -29,7 +29,7 @@ use crate::{
 type WrtFuncType = wrt_foundation::types::FuncType<RuntimeProvider>;
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 /// Tail call implementation for the stackless engine
 impl StacklessEngine {

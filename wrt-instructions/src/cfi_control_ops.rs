@@ -21,10 +21,6 @@
 
 #![allow(dead_code)] // Allow during development
 
-// Remove unused imports
-
-#[cfg(not(feature = "std"))]
-use wrt_foundation::safe_memory::NoStdProvider;
 use wrt_foundation::{
     safe_managed_alloc,
     CrateId,
