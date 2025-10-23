@@ -771,8 +771,8 @@ pub fn read_string(_data: &[u8], _offset: usize) -> wrt_error::Result<(&[u8], us
 /// Validate WebAssembly header
 pub fn is_valid_wasm_header(data: &[u8]) -> bool {
     data.len() >= 8
-        && &data[0..4] == wrt_format::binary::WASM_MAGIC
-        && &data[4..8] == wrt_format::binary::WASM_VERSION
+        && data[0..4] == wrt_format::binary::WASM_MAGIC
+        && data[4..8] == wrt_format::binary::WASM_VERSION
 }
 
 // read_name is now imported from wrt_format

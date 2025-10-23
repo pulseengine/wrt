@@ -86,7 +86,7 @@ impl<'a> StreamingDecoder<'a> {
         }
 
         // Check version
-        if &self.binary[4..8] != &[0x01, 0x00, 0x00, 0x00] {
+        if self.binary[4..8] != [0x01, 0x00, 0x00, 0x00] {
             return Err(Error::parse_error("Unsupported WebAssembly version"));
         }
 
@@ -136,7 +136,7 @@ impl<'a> StreamingDecoder<'a> {
             10 => self.process_code_section(data),
             11 => self.process_data_section(data),
             12 => self.process_data_count_section(data),
-            0 | _ => self.process_custom_section(data),
+            _ => self.process_custom_section(data),
         }
     }
 
@@ -144,7 +144,10 @@ impl<'a> StreamingDecoder<'a> {
     fn process_type_section(&mut self, data: &[u8]) -> Result<()> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        offset += bytes_read;
+        #[allow(unused_assignments)]
+        {
+            offset += bytes_read;
+        }
 
         // Process each type one at a time
         for _ in 0..count {
@@ -159,7 +162,10 @@ impl<'a> StreamingDecoder<'a> {
     fn process_import_section(&mut self, data: &[u8]) -> Result<()> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        offset += bytes_read;
+        #[allow(unused_assignments)]
+        {
+            offset += bytes_read;
+        }
 
         // Process each import one at a time
         for _ in 0..count {
@@ -203,7 +209,10 @@ impl<'a> StreamingDecoder<'a> {
     fn process_memory_section(&mut self, data: &[u8]) -> Result<()> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        offset += bytes_read;
+        #[allow(unused_assignments)]
+        {
+            offset += bytes_read;
+        }
 
         // Check memory count against platform limits
         if count > 1 && !self.platform_limits.max_components > 0 {

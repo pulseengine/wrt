@@ -9,7 +9,6 @@ use wrt_foundation::collections::{StaticVec, StaticMap};
 
 /// New static collections eliminate Provider abstraction
 /// All memory is inline with compile-time capacity enforcement
-
 // Re-export foundation types for simplified migration
 // These will be fully migrated later when wrt-foundation types are updated
 pub use wrt_foundation::types::{

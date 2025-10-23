@@ -23,8 +23,6 @@
 //! 3. Memory allocation is controlled via the capability system
 //! 4. All operations are bounded and deterministic
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 // Environment setup
 #[cfg(not(feature = "std"))]
 extern crate alloc;

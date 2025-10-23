@@ -262,7 +262,10 @@ impl LazyDetector {
                                 return SectionHint::Core;
                             }
                         }
-                        offset += module_len as usize;
+                        #[allow(unused_assignments)]
+                        {
+                            offset += module_len as usize;
+                        }
 
                         // Skip name and type for now
                         break;

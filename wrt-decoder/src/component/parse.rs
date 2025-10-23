@@ -54,7 +54,7 @@ mod std_parsing {
             format!("{}: {}", message, value)
         }
 
-        #[cfg(all(not(feature = "std")))]
+        #[cfg(not(feature = "std"))]
         {
             alloc::format!("{}: {}", message, value)
         }

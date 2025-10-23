@@ -111,13 +111,14 @@ pub use platform_stubs::{
 pub use runtime_stubs::WasmConfiguration;
 
 /// WASM section types for validation
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Section {
     /// Custom section
+    #[default]
     Custom,
     /// Type section
     Type,
-    /// Import section  
+    /// Import section
     Import,
     /// Function section
     Function,
@@ -137,12 +138,6 @@ pub enum Section {
     Code(CodeSection),
     /// Data section
     Data,
-}
-
-impl Default for Section {
-    fn default() -> Self {
-        Section::Custom
-    }
 }
 
 // Trait implementations for Section to work with BoundedVec
@@ -374,12 +369,12 @@ impl StreamingWasmValidator {
         }
 
         // Check magic number (0x00 0x61 0x73 0x6D)
-        if &wasm_bytes[0..4] != &[0x00, 0x61, 0x73, 0x6D] {
+        if wasm_bytes[0..4] != [0x00, 0x61, 0x73, 0x6D] {
             return Err(Error::parse_error("Invalid WASM magic number"));
         }
 
         // Check version (0x01 0x00 0x00 0x00)
-        if &wasm_bytes[4..8] != &[0x01, 0x00, 0x00, 0x00] {
+        if wasm_bytes[4..8] != [0x01, 0x00, 0x00, 0x00] {
             return Err(Error::parse_error("Unsupported WASM version"));
         }
 
@@ -418,7 +413,7 @@ impl StreamingWasmValidator {
             let section_data = &wasm_bytes[offset..offset + section_size as usize];
             let section = self.parse_section_type(section_id, section_data)?;
 
-            if let Err(_) = sections.push(section) {
+            if sections.push(section).is_err() {
                 return Err(Error::resource_exhausted("Too many sections"));
             }
 

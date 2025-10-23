@@ -536,7 +536,10 @@ impl FormatDetectionTests {
             value >>= 7;
             if value == 0 {
                 result[i] = byte;
-                i += 1;
+                #[allow(unused_assignments)]
+                {
+                    i += 1;
+                }
                 break;
             } else {
                 result[i] = byte | 0x80;

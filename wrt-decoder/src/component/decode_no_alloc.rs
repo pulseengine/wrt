@@ -288,11 +288,9 @@ impl ComponentHeader {
     ///
     /// * `Option<(usize, u32)>` - The offset and size of the section, if found
     pub fn find_section(&self, id: ComponentSectionId) -> Option<(usize, u32)> {
-        for section in &self.sections {
-            if let Some(section_info) = section {
-                if section_info.id == id {
-                    return Some((section_info.offset, section_info.size));
-                }
+        for section_info in self.sections.iter().flatten() {
+            if section_info.id == id {
+                return Some((section_info.offset, section_info.size));
             }
         }
         None
