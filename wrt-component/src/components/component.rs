@@ -631,7 +631,12 @@ impl MemoryValue {
     ///
     /// Returns an error if the memory cannot be created
     pub fn new(ty: MemoryType) -> Result<Self> {
-        let memory = Memory::new(ty.clone())?;
+        // Convert MemoryType to CoreMemoryType for Memory::new
+        let core_ty = wrt_runtime::CoreMemoryType {
+            limits: ty.limits,
+            shared: ty.shared,
+        };
+        let memory = Memory::new(core_ty)?;
         Ok(Self {
             ty,
             memory: Arc::new(RwLock::new(memory)),
@@ -653,7 +658,12 @@ impl MemoryValue {
     ///
     /// Returns an error if the memory cannot be created
     pub fn new_with_name(ty: MemoryType, name: &str) -> Result<Self> {
-        let memory = Memory::new_with_name(ty.clone(), name)?;
+        // Convert MemoryType to CoreMemoryType for Memory::new_with_name
+        let core_ty = wrt_runtime::CoreMemoryType {
+            limits: ty.limits,
+            shared: ty.shared,
+        };
+        let memory = Memory::new_with_name(core_ty, name)?;
         Ok(Self {
             ty,
             memory: Arc::new(RwLock::new(memory)),
