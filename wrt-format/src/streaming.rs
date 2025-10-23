@@ -458,7 +458,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
     }
 
     /// Parse a string from current position
-    pub fn parse_string(&mut self) -> core::result::Result<WasmString<P>, Error> {
+    pub fn parse_string(&mut self) -> core::result::Result<WasmString, Error> {
         let buffer_slice = self
             .buffer
             .as_internal_slice()
@@ -469,7 +469,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
         let str_content = core::str::from_utf8(str_bytes)
             .map_err(|_| Error::validation_parse_error("Invalid UTF-8 string"))?;
 
-        WasmString::from_str(str_content, self.provider.clone())
+        WasmString::from_str(str_content)
             .map_err(|_| Error::memory_error("String too large"))
     }
 

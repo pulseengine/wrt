@@ -74,13 +74,13 @@ pub type BoundedUnionVec<T> = BoundedVec<T, MAX_UNION_TYPES, FormatProvider>;
 pub type BoundedTypeParamsVec<T> = BoundedVec<T, MAX_TYPE_PARAMS, FormatProvider>;
 
 /// Bounded string for module names
-pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LENGTH, FormatProvider>;
+pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LENGTH>;
 
 /// Bounded string for field names
-pub type BoundedFieldName = BoundedString<MAX_FIELD_NAME_LENGTH, FormatProvider>;
+pub type BoundedFieldName = BoundedString<MAX_FIELD_NAME_LENGTH>;
 
 /// Bounded string for package URLs
-pub type BoundedPackageUrl = BoundedString<MAX_PACKAGE_URL_LENGTH, FormatProvider>;
+pub type BoundedPackageUrl = BoundedString<MAX_PACKAGE_URL_LENGTH>;
 
 /// Bounded map for interface definitions
 pub type BoundedInterfaceMap<V> =
@@ -152,25 +152,25 @@ where
 /// Create a new bounded module name
 pub fn new_module_name() -> Result<BoundedModuleName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str_truncate("", provider)?)
+    Ok(BoundedString::from_str_truncate("")?)
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_from_str(s: &str) -> Result<BoundedModuleName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str(s, provider)?)
+    Ok(BoundedString::from_str(s)?)
 }
 
 /// Create a new bounded field name
 pub fn new_field_name() -> Result<BoundedFieldName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str_truncate("", provider)?)
+    Ok(BoundedString::from_str_truncate("")?)
 }
 
 /// Create a bounded field name from str
 pub fn bounded_field_from_str(s: &str) -> Result<BoundedFieldName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str(s, provider)?)
+    Ok(BoundedString::from_str(s)?)
 }
 
 /// Create a new bounded interface map

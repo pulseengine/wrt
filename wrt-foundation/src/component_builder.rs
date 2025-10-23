@@ -79,7 +79,7 @@ pub struct ComponentTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq 
     instances:       BoundedVec<ComponentInstance<P>, MAX_BUILDER_INSTANCES, P>,
     core_instances:  BoundedVec<CoreInstance<P>, MAX_BUILDER_CORE_INSTANCES, P>,
     component_types: BoundedVec<TypeRef, MAX_BUILDER_COMPONENT_TYPES, P>,
-    core_types:      BoundedVec<CoreType<P>, MAX_BUILDER_CORE_TYPES, P>,
+    core_types:      BoundedVec<CoreType, MAX_BUILDER_CORE_TYPES, P>,
 }
 
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<P> {
@@ -206,13 +206,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
     }
 
     /// Adds a core type to the component type.
-    pub fn with_core_type(mut self, core_type: CoreType<P>) -> Self {
+    pub fn with_core_type(mut self, core_type: CoreType) -> Self {
         drop(self.core_types.push(core_type));
         self
     }
 
     /// Adds multiple core types to the component type.
-    pub fn with_core_types(mut self, core_types: impl IntoIterator<Item = CoreType<P>>) -> Self {
+    pub fn with_core_types(mut self, core_types: impl IntoIterator<Item = CoreType>) -> Self {
         self.core_types.extend(core_types);
         self
     }
@@ -275,7 +275,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 pub struct ImportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     provider:  P,
     namespace: Option<Namespace<P>>,
-    name:      Option<WasmName<MAX_NAME_LEN, P>>,
+    name:      Option<WasmName<MAX_NAME_LEN>>,
     ty:        Option<ExternType<P>>,
 }
 
@@ -318,14 +318,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     }
 
     /// Sets the name for the import.
-    pub fn with_name(mut self, name: WasmName<MAX_NAME_LEN, P>) -> Self {
+    pub fn with_name(mut self, name: WasmName<MAX_NAME_LEN>) -> Self {
         self.name = Some(name);
         self
     }
 
     /// Sets the name for the import from a string.
     pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
-        let name = WasmName::from_str(name_str, self.provider.clone())?;
+        let name = WasmName::from_str(name_str)?;
         self.name = Some(name);
         Ok(self)
     }
@@ -358,9 +358,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
 #[derive(Debug)]
 pub struct ExportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     provider: P,
-    name:     Option<WasmName<MAX_NAME_LEN, P>>,
+    name:     Option<WasmName<MAX_NAME_LEN>>,
     ty:       Option<ExternType<P>>,
-    desc:     Option<WasmName<MAX_NAME_LEN, P>>,
+    desc:     Option<WasmName<MAX_NAME_LEN>>,
 }
 
 #[cfg(feature = "std")]
@@ -389,14 +389,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     }
 
     /// Sets the name for the export.
-    pub fn with_name(mut self, name: WasmName<MAX_NAME_LEN, P>) -> Self {
+    pub fn with_name(mut self, name: WasmName<MAX_NAME_LEN>) -> Self {
         self.name = Some(name);
         self
     }
 
     /// Sets the name for the export from a string.
     pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
-        let name = WasmName::from_str(name_str, self.provider.clone())?;
+        let name = WasmName::from_str(name_str)?;
         self.name = Some(name);
         Ok(self)
     }
@@ -408,14 +408,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     }
 
     /// Sets the description for the export.
-    pub fn with_description(mut self, desc: WasmName<MAX_NAME_LEN, P>) -> Self {
+    pub fn with_description(mut self, desc: WasmName<MAX_NAME_LEN>) -> Self {
         self.desc = Some(desc);
         self
     }
 
     /// Sets the description for the export from a string.
     pub fn with_description_str(mut self, desc_str: &str) -> wrt_error::Result<Self> {
-        let desc = WasmName::from_str(desc_str, self.provider.clone())?;
+        let desc = WasmName::from_str(desc_str)?;
         self.desc = Some(desc);
         Ok(self)
     }
@@ -439,7 +439,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
 #[derive(Debug)]
 pub struct NamespaceBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     provider: P,
-    elements: BoundedVec<WasmName<MAX_NAME_LEN, P>, MAX_NAMESPACE_ELEMENTS, P>,
+    elements: BoundedVec<WasmName<MAX_NAME_LEN>, MAX_NAMESPACE_ELEMENTS, P>,
 }
 
 #[cfg(feature = "std")]
@@ -466,14 +466,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     }
 
     /// Adds an element to the namespace.
-    pub fn with_element(mut self, element: WasmName<MAX_NAME_LEN, P>) -> wrt_error::Result<Self> {
+    pub fn with_element(mut self, element: WasmName<MAX_NAME_LEN>) -> wrt_error::Result<Self> {
         self.elements.push(element)?;
         Ok(self)
     }
 
     /// Adds an element to the namespace from a string.
     pub fn with_element_str(mut self, element_str: &str) -> wrt_error::Result<Self> {
-        let element = WasmName::from_str(element_str, self.provider.clone())?;
+        let element = WasmName::from_str(element_str)?;
         self.elements.push(element)?;
         Ok(self)
     }
@@ -481,7 +481,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     /// Adds multiple elements to the namespace.
     pub fn with_elements(
         mut self,
-        elements: impl IntoIterator<Item = WasmName<MAX_NAME_LEN, P>>,
+        elements: impl IntoIterator<Item = WasmName<MAX_NAME_LEN>>,
     ) -> wrt_error::Result<Self> {
         for element in elements {
             self.elements.push(element)?;
@@ -522,7 +522,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq +
 /// Enum to represent the variants of `ResourceType`.
 #[derive(Debug)]
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
-    Record(BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH, P>, 32, P>),
+    Record(BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH>, 32, P>),
     Aggregate(BoundedVec<u32, { crate::resource::MAX_RESOURCE_AGGREGATE_IDS }, P>),
 }
 
@@ -552,7 +552,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     /// Configures this as a record resource type with the given field names.
     pub fn as_record(
         mut self,
-        field_names: BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH, P>, 32, P>,
+        field_names: BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH>, 32, P>,
     ) -> Self {
         self.variant = Some(ResourceTypeVariant::Record(field_names));
         self
@@ -578,14 +578,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
             ResourceTypeVariant::Record(field_names) => {
                 let mut fields = BoundedVec::new(self.provider.clone())?;
                 for field in field_names {
-                    // Convert BoundedString<MAX_WASM_NAME_LENGTH, P> to
-                    // BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>
+                    // Convert BoundedString<MAX_WASM_NAME_LENGTH> to
+                    // BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>
                     let field_str = field.as_str().map_err(Error::from)?;
-                    let provider_clone = self.provider.clone();
                     let converted_field = BoundedString::<
                         { crate::resource::MAX_RESOURCE_FIELD_NAME_LEN },
-                        P,
-                    >::from_str(field_str, provider_clone)
+                    >::from_str(field_str)
                     .map_err(Error::from)?;
                     fields.push(converted_field)?;
                 }
@@ -650,7 +648,7 @@ mod tests {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test record resource type
-        let field_name = BoundedString::from_str("field", provider.clone())?;
+        let field_name = BoundedString::from_str("field")?;
         let mut field_names = BoundedVec::new(provider.clone())?;
         field_names.push(field_name)?;
 

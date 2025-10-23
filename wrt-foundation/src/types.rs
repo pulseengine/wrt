@@ -2343,7 +2343,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
         P: Default, // Ensure P can be defaulted for this convenience function
     {
         let provider = P::default();
-        let name = WasmName::from_str_truncate(name_str, provider.clone())
+        let name = WasmName::from_str_truncate(name_str)
             .map_err(|_| Error::runtime_execution_error("Failed to create WasmName from string"))?;
 
         let mut data_bounded_vec = BoundedVec::<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>::new(provider)

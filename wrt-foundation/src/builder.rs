@@ -184,12 +184,12 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
     pub fn build_string(self) -> wrt_error::Result<BoundedString<N>> {
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
-                BoundedString::from_str_truncate(content, self.provider).map_err(Error::from)
+                BoundedString::from_str_truncate(content).map_err(Error::from)
             },
             (Some(content), false) => {
-                BoundedString::from_str(content, self.provider).map_err(Error::from)
+                BoundedString::from_str(content).map_err(Error::from)
             },
-            (None, _) => BoundedString::from_str_truncate("", self.provider).map_err(Error::from),
+            (None, _) => BoundedString::from_str_truncate("").map_err(Error::from),
         }
     }
 
@@ -295,7 +295,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceBuilder<P> {
 /// This builder provides a fluent API for constructing ResourceType objects
 /// used in the WebAssembly component model.
 pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> {
-    variant:  Option<ResourceTypeVariant<P>>,
+    variant:  Option<ResourceTypeVariant>,
     provider: P,
 }
 
@@ -303,7 +303,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::D
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant {
     /// Record type with field names
-    Record(Vec<(String, P)>),
+    Record(Vec<String>),
     /// Aggregate type with resource IDs
     Aggregate(Vec<u32>),
 }
@@ -343,7 +343,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     pub fn as_record<S: AsRef<str>>(mut self, field_names: Vec<S>) -> Result<Self> {
         let fields = field_names
             .into_iter()
-            .map(|s| (s.as_ref().to_string(), self.provider.clone()))
+            .map(|s| s.as_ref().to_string())
             .collect();
 
         self.variant = Some(ResourceTypeVariant::Record(fields));
@@ -353,7 +353,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     #[cfg(not(feature = "std"))]
     /// Configures this as a Record resource type with the given field name.
     pub fn as_record<S: AsRef<str>>(mut self, field_name: S) -> Result<Self> {
-        let field = BoundedString::from_str(field_name.as_ref(), self.provider.clone())?;
+        let field = BoundedString::from_str(field_name.as_ref())?;
         self.variant = Some(ResourceTypeVariant::Record(field));
         Ok(self)
     }
@@ -370,7 +370,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     /// Configures this as an Aggregate resource type with the given resource
     /// ID.
     pub fn as_aggregate(mut self, resource_id: u32) -> Self {
-        self.variant = Some(ResourceTypeVariant::<P>::Aggregate(resource_id));
+        self.variant = Some(ResourceTypeVariant::Aggregate(resource_id));
         self
     }
 
@@ -388,8 +388,8 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         match variant {
             ResourceTypeVariant::Record(fields) => {
                 let mut bounded_fields = BoundedVec::new(self.provider.clone())?;
-                for (name, provider) in fields {
-                    let bounded_name = BoundedString::from_str(&name, provider)?;
+                for name in fields {
+                    let bounded_name = BoundedString::from_str(&name)?;
                     bounded_fields.push(bounded_name)?;
                 }
                 Ok(ResourceType::Record(bounded_fields))

@@ -72,7 +72,7 @@ mod factory {
         fn create_bounded_string<const N: usize>(
             &self,
             s: &str,
-        ) -> Result<BoundedString<N, Self::Provider>>;
+        ) -> Result<BoundedString<N>>;
 
         /// Create a bounded vector from a clean vector
         fn create_bounded_vec<T, const N: usize>(
@@ -144,8 +144,8 @@ mod factory {
         fn create_bounded_string<const N: usize>(
             &self,
             s: &str,
-        ) -> Result<BoundedString<N, Self::Provider>> {
-            BoundedString::from_str(s, self.provider.clone())
+        ) -> Result<BoundedString<N>> {
+            BoundedString::from_str(s)
                 .map_err(|_| Error::memory_error("String too long for bounded string"))
         }
 
@@ -214,8 +214,8 @@ mod factory {
         fn create_bounded_string<const N: usize>(
             &self,
             s: &str,
-        ) -> Result<BoundedString<N, Self::Provider>> {
-            BoundedString::from_str(s, self.provider.clone())
+        ) -> Result<BoundedString<N>> {
+            BoundedString::from_str(s)
                 .map_err(|_| Error::memory_error("String too long for bounded string"))
         }
 
