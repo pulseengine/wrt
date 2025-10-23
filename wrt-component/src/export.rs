@@ -77,12 +77,12 @@ impl Default for Export {
             use wrt_foundation::bounded::MAX_WASM_NAME_LENGTH;
 
             // Create function type using Default
-            let func_type = wrt_foundation::types::FuncType::<NoStdProvider<1024>>::default();
+            let func_type = wrt_foundation::types::FuncType::default();
 
             // Create export name using BoundedString
             let export_name_provider = NoStdProvider::<512>::default();
-            let export_name = wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>
-                ::from_str_truncate("", export_name_provider)
+            let export_name = wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH>
+                ::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default export name"));
 
             FunctionValue {

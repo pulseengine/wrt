@@ -75,7 +75,7 @@ pub struct HostFunctionRegistry {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
     /// Function signature
     pub signature: ComponentType,
     /// Function implementation
@@ -252,7 +252,7 @@ pub enum EventData {
         #[cfg(feature = "std")]
         message: String,
         #[cfg(not(any(feature = "std", )))]
-        message: BoundedString<256, NoStdProvider<1024>>,
+        message: BoundedString<256>,
         error_code: u32,
     },
 }
@@ -396,7 +396,7 @@ impl HostIntegrationManager {
     #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
-        name: BoundedString<64, NoStdProvider<512>>,
+        name: BoundedString<64>,
         signature: ComponentType,
         implementation: fn(&[Value]) -> WrtResult<Value>,
         permissions: HostFunctionPermissions,

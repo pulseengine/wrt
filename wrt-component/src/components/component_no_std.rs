@@ -99,7 +99,7 @@ macro_rules! impl_basic_traits {
 
 // Define types for resources, memories, tables, and function types
 /// Type alias for function type
-pub type FuncType = wrt_foundation::types::FuncType<NoStdProvider<1024>>;
+pub type FuncType = wrt_foundation::types::FuncType;
 /// Type alias for global type
 pub type GlobalType = wrt_foundation::types::GlobalType;
 /// Type alias for memory limit (using Limits from foundation)
@@ -125,7 +125,7 @@ pub enum ExternValue {
     /// Global value
     Global(GlobalValue),
     /// Trap value
-    Trap(BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>),
+    Trap(BoundedString<MAX_WASM_NAME_LENGTH>),
 }
 
 /// Represents a function value
@@ -134,7 +134,7 @@ pub struct FunctionValue {
     /// Function type
     pub ty:          FuncType,
     /// Export name that this function refers to
-    pub export_name: BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+    pub export_name: BoundedString<MAX_WASM_NAME_LENGTH>,
 }
 
 /// Represents a table value
@@ -156,7 +156,7 @@ pub struct MemoryValue {
     /// Memory access count
     pub access_count: u64,
     /// Debug name
-    pub debug_name:   Option<BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>>,
+    pub debug_name:   Option<BoundedString<MAX_WASM_NAME_LENGTH>>,
 }
 
 impl MemoryValue {
@@ -175,7 +175,7 @@ impl MemoryValue {
     pub fn new_with_name(ty: MemoryType, name: &str) -> Result<Self> {
         let memory = BoundedVec::new();
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let debug_name = Some(BoundedString::from_str(name, provider).map_err(|_| {
+        let debug_name = Some(BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -328,7 +328,7 @@ impl MemoryValue {
     /// Sets a debug name for this memory
     pub fn set_debug_name(&mut self, name: &str) {
         if let Ok(provider) = safe_managed_alloc!(512, CrateId::Component) {
-            if let Ok(bounded_name) = BoundedString::from_str(name, provider) {
+            if let Ok(bounded_name) = BoundedString::from_str(name) {
                 self.debug_name = Some(bounded_name);
             }
         }
@@ -376,8 +376,8 @@ pub struct WrtComponentType {
     /// Component imports
     pub imports: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             ExternType,
         ),
         MAX_COMPONENT_IMPORTS,
@@ -385,7 +385,7 @@ pub struct WrtComponentType {
     /// Component exports
     pub exports: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             ExternType,
         ),
         MAX_COMPONENT_EXPORTS,
@@ -429,7 +429,7 @@ impl WrtComponentType {
     pub fn add_import(&mut self, namespace: &str, name: &str, ty: ExternType) -> Result<()> {
         // Create bounded strings
         let provider1 = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_namespace = BoundedString::from_str(namespace, provider1).map_err(|_| {
+        let bounded_namespace = BoundedString::from_str(namespace).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -438,7 +438,7 @@ impl WrtComponentType {
         })?;
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name, provider2).map_err(|_| {
+        let bounded_name = BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -462,7 +462,7 @@ impl WrtComponentType {
     pub fn add_export(&mut self, name: &str, ty: ExternType) -> Result<()> {
         // Create bounded string
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
+        let bounded_name = BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -615,7 +615,7 @@ pub struct BuiltinRequirements {
     /// Map of required builtin instances
     pub instances: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             BuiltinType,
         ),
         MAX_COMPONENT_INSTANCES,
@@ -637,7 +637,7 @@ pub struct RuntimeInstance {
     /// Functions exported by this runtime
     functions: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             ExternValue,
         ),
         MAX_COMPONENT_EXPORTS,
@@ -645,7 +645,7 @@ pub struct RuntimeInstance {
     /// Memory exported by this runtime
     memories: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             MemoryValue,
         ),
         MAX_COMPONENT_EXPORTS,
@@ -653,7 +653,7 @@ pub struct RuntimeInstance {
     /// Tables exported by this runtime
     tables: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             TableValue,
         ),
         MAX_COMPONENT_EXPORTS,
@@ -661,7 +661,7 @@ pub struct RuntimeInstance {
     /// Globals exported by this runtime
     globals: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             GlobalValue,
         ),
         MAX_COMPONENT_EXPORTS,
@@ -691,7 +691,7 @@ impl RuntimeInstance {
     pub fn register_function(&mut self, name: &str, function: ExternValue) -> Result<()> {
         if let ExternValue::Function(_) = &function {
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
-            let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
+            let bounded_name = BoundedString::from_str(name).map_err(|_| {
                 Error::new(
                     ErrorCategory::Parameter,
                     codes::VALIDATION_ERROR,
@@ -720,7 +720,7 @@ impl RuntimeInstance {
     /// Register an exported memory
     pub fn register_memory(&mut self, name: &str, memory: MemoryValue) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
+        let bounded_name = BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -776,7 +776,7 @@ pub struct Component {
     /// Linked components with their namespaces (names and component IDs)
     pub linked_components: BoundedVec<
         (
-            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+            BoundedString<MAX_WASM_NAME_LENGTH>,
             usize,
         ),
         MAX_LINKED_COMPONENTS,
@@ -929,7 +929,7 @@ impl Component {
     /// Link a component with a namespace
     pub fn link_component(&mut self, name: &str, component_id: usize) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
+        let bounded_name = BoundedString::from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -1374,7 +1374,7 @@ impl Default for FunctionValue {
             .expect("Failed to allocate memory for FunctionValue::default");
         Self {
             ty:          FuncType::default(),
-            export_name: BoundedString::from_str("", provider)
+            export_name: BoundedString::from_str("")
                 .expect("Failed to create BoundedString for FunctionValue::default"),
         }
     }

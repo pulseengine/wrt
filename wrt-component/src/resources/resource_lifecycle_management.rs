@@ -744,7 +744,7 @@ impl ResourceMetadata {
     /// Add a tag to the metadata
     pub fn add_tag(&mut self, tag: &str) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_tag = BoundedString::from_str(tag, provider).map_err(|_| {
+        let bounded_tag = BoundedString::from_str(tag).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         
@@ -759,7 +759,7 @@ impl ResourceMetadata {
     /// Add a property to the metadata
     pub fn add_property(&mut self, key: &str, value: Value) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_key = BoundedString::from_str(key, provider).map_err(|_| {
+        let bounded_key = BoundedString::from_str(key).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         

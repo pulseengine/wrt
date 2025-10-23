@@ -65,7 +65,7 @@ use wrt_foundation::{
 
 // Type aliases for no_std environment with proper generics
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<1024>>;
+type String = BoundedString<256>;
 #[cfg(not(feature = "std"))]
 type Vec<T> = BoundedVec<T, 256>;
 
@@ -365,9 +365,9 @@ impl ComponentCommunicationStrategy {
 
             let provider = NoStdProvider::<1024>::default();
             Some(CallRoutingInfo {
-                source_component: BoundedString::from_str("unknown", provider.clone()).unwrap_or_default(), // Will be set by caller
-                target_component: BoundedString::from_str(component_part, provider.clone()).unwrap_or_default(),
-                function_name:    BoundedString::from_str(function_part, provider).unwrap_or_default(),
+                source_component: BoundedString::from_str("unknown").unwrap_or_default(), // Will be set by caller
+                target_component: BoundedString::from_str(component_part).unwrap_or_default(),
+                function_name:    BoundedString::from_str(function_part).unwrap_or_default(),
                 call_context_id:  None,
             })
         } else {
@@ -474,7 +474,7 @@ impl ComponentCommunicationStrategy {
                     conversions_performed: 0,
                 },
                 success: false,
-                error_message: Some(BoundedString::from_str("Parameter data too large", NoStdProvider::<1024>::default()).unwrap_or_default()),
+                error_message: Some(BoundedString::from_str("Parameter data too large").unwrap_or_default()),
             });
         }
 
@@ -922,7 +922,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<()> {
         // Simplified validation for no_std
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = String::from_str(source, NoStdProvider::<1024>::default()).map_err(|_| {
+            routing_info.source_component = String::from_str(source).map_err(|_| {
                 wrt_error::Error::validation_error("Source component name too long")
             })?;
             self.validate_security_policy(&routing_info)?;
@@ -1020,7 +1020,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_targets:         {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::from_str("*", NoStdProvider::<1024>::default()) {
+            if let Ok(s) = BoundedString::from_str("*") {
                 let _ = vec.push(s);
             }
             vec
@@ -1030,7 +1030,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_functions:       {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::from_str("*", NoStdProvider::<1024>::default()) {
+            if let Ok(s) = BoundedString::from_str("*") {
                 let _ = vec.push(s);
             }
             vec

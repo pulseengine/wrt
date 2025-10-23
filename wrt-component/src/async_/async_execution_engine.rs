@@ -153,7 +153,7 @@ pub struct ExecutionContext {
     pub component_instance: u32,
 
     /// Current function being executed
-    pub function_name: BoundedString<128, NoStdProvider<512>>,
+    pub function_name: BoundedString<128>,
 
     /// Call stack
     #[cfg(feature = "std")]
@@ -178,7 +178,7 @@ pub struct ExecutionContext {
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Function name
-    pub function: BoundedString<128, NoStdProvider<512>>,
+    pub function: BoundedString<128>,
 
     /// Return address (instruction pointer)
     pub return_ip: usize,
@@ -294,7 +294,7 @@ pub enum AsyncExecutionState {
 pub enum AsyncExecutionOperation {
     /// Calling an async function
     FunctionCall {
-        name: BoundedString<128, NoStdProvider<512>>,
+        name: BoundedString<128>,
         args: ComponentVec<Value>,
     },
 
@@ -318,7 +318,7 @@ pub enum AsyncExecutionOperation {
 
     /// Creating a subtask
     SpawnSubtask {
-        function: BoundedString<128, NoStdProvider<512>>,
+        function: BoundedString<128>,
         args:     ComponentVec<Value>,
     },
 }
@@ -648,7 +648,7 @@ impl AsyncExecutionEngine {
         // Push call frame
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str(name, provider).map_err(|_| {
+            function:      BoundedString::from_str(name).map_err(|_| {
                 Error::runtime_execution_error("Failed to create function name BoundedString")
             })?,
             return_ip:     0,
@@ -700,7 +700,7 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("stream.read", provider).map_err(|_| {
+            function:      BoundedString::from_str("stream.read").map_err(|_| {
                 Error::runtime_execution_error("Failed to create stream.read BoundedString")
             })?,
             return_ip:     0,
@@ -759,7 +759,7 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("future.get", provider).map_err(|_| {
+            function:      BoundedString::from_str("future.get").map_err(|_| {
                 Error::runtime_execution_error("Failed to create future.get BoundedString")
             })?,
             return_ip:     0,
@@ -813,7 +813,7 @@ impl AsyncExecutionEngine {
         // Wait for multiple operations
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("wait.multiple", provider).map_err(|_| {
+            function:      BoundedString::from_str("wait.multiple").map_err(|_| {
                 Error::runtime_execution_error("Failed to create wait.multiple BoundedString")
             })?,
             return_ip:     0,
@@ -842,7 +842,7 @@ impl AsyncExecutionEngine {
         // Create subtask operation
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let subtask_op = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str(function, provider).map_err(|_| {
+            name: BoundedString::from_str(function).map_err(|_| {
                 Error::runtime_execution_error("Failed to create subtask function name BoundedString")
             })?,
             args: {
@@ -920,7 +920,7 @@ impl ExecutionContext {
     pub fn new() -> Result<Self> {
         Ok(Self {
             component_instance: 0,
-            function_name: BoundedString::from_str_truncate("", NoStdProvider::default())
+            function_name: BoundedString::from_str_truncate("")
                 .map_err(|_| Error::runtime_execution_error("Failed to create function_name"))?,
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
@@ -941,7 +941,7 @@ impl ExecutionContext {
     /// Reset context for reuse
     pub fn reset(&mut self) {
         self.component_instance = 0;
-        self.function_name = BoundedString::from_str_truncate("", NoStdProvider::default())
+        self.function_name = BoundedString::from_str_truncate("")
             .unwrap_or_else(|_| panic!("Failed to reset function_name"));
         self.call_stack.clear();
         self.locals.clear();
@@ -1045,7 +1045,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str("test_function", provider).unwrap(),
+            name: BoundedString::from_str("test_function").unwrap(),
             args: {
                 #[cfg(feature = "std")]
                 {
@@ -1075,7 +1075,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str("test_function", provider).unwrap(),
+            name: BoundedString::from_str("test_function").unwrap(),
             args: {
                 #[cfg(feature = "std")]
                 {
@@ -1125,7 +1125,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::SpawnSubtask {
-            function: BoundedString::from_str("child_function", provider).unwrap(),
+            function: BoundedString::from_str("child_function").unwrap(),
             args:     {
                 #[cfg(feature = "std")]
                 {
@@ -1157,7 +1157,7 @@ mod tests {
 
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("test", provider).unwrap(),
+            function:      BoundedString::from_str("test").unwrap(),
             return_ip:     100,
             stack_pointer: 200,
             async_state:   FrameAsyncState::Sync,

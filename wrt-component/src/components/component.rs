@@ -1425,7 +1425,7 @@ pub fn convert_verification_level(
     level: wrt_foundation::VerificationLevel,
 ) -> crate::resources::VerificationLevel {
     match level {
-        wrt_foundation::VerificationLevel::None => crate::resources::VerificationLevel::None,
+        wrt_foundation::VerificationLevel::Off => crate::resources::VerificationLevel::None,
         wrt_foundation::VerificationLevel::Basic => {
             crate::resources::VerificationLevel::None
         },

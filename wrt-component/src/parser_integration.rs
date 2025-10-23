@@ -104,7 +104,7 @@ pub struct ParsedImport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
     /// Import type
     pub import_type: ImportKind,
 }
@@ -138,7 +138,7 @@ pub struct ParsedExport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
     /// Export kind
     pub export_kind: ExportKind,
 }
@@ -187,7 +187,7 @@ pub struct InstantiationArg {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
     /// Argument index/value
     pub index: u32,
 }
@@ -312,7 +312,7 @@ impl ComponentLoader {
         let import_name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("default", provider)
+            BoundedString::from_str("default")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string"))?
         };
 
@@ -328,7 +328,7 @@ impl ComponentLoader {
         let export_name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("main", provider)
+            BoundedString::from_str("main")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string"))?
         };
 
@@ -455,7 +455,7 @@ impl ComponentLoader {
         let name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("module", provider)
+            BoundedString::from_str("module")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?
         };
 

@@ -133,9 +133,9 @@ pub enum BuiltinType {
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct InterceptContext {
-    component_name: BoundedString<128, NoStdProvider<512>>,
+    component_name: BoundedString<128>,
     builtin_type:   BuiltinType,
-    host_id:        BoundedString<128, NoStdProvider<512>>,
+    host_id:        BoundedString<128>,
 }
 
 #[cfg(not(feature = "std"))]
@@ -144,9 +144,9 @@ impl InterceptContext {
         let provider1 = safe_managed_alloc!(512, CrateId::Component)?;
         let provider2 = safe_managed_alloc!(512, CrateId::Component)?;
         Ok(Self {
-            component_name: BoundedString::from_str(component_name, provider1).unwrap_or_default(),
+            component_name: BoundedString::from_str(component_name).unwrap_or_default(),
             builtin_type,
-            host_id: BoundedString::from_str(host_id, provider2).unwrap_or_default(),
+            host_id: BoundedString::from_str(host_id).unwrap_or_default(),
         })
     }
 }

@@ -477,9 +477,8 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
                 .map(|val_type| format_val_type_to_value_type(val_type))
                 .collect::<Result<Vec<_>>>()?;
 
-            let provider = P::default();
+            let _provider = P::default();
             Ok(TypesWrtExternType::Func(TypesFuncType::new(
-                provider,
                 converted_params,
                 converted_results,
             )?))
@@ -498,9 +497,8 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
         FormatExternType::Type(type_idx) => {
             // Type reference - this would need context from the component
             // For now, provide a sensible default
-            let provider = P::default();
+            let _provider = P::default();
             Ok(TypesWrtExternType::Func(TypesFuncType::new(
-                provider,
                 vec![],
                 vec![],
             )?))
@@ -513,7 +511,7 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
             let mut export_vec = wrt_foundation::BoundedVec::new(provider.clone())?;
 
             for (name, ext_type) in exports.iter() {
-                let wasm_name = WasmName::from_str_truncate(name.as_str(), provider.clone())
+                let wasm_name = WasmName::from_str_truncate(name.as_str())
                     .map_err(|_| Error::runtime_execution_error("Failed to create WasmName"))?;
                 let extern_ty = format_to_runtime_extern_type(ext_type)?;
                 let export = wrt_foundation::component::Export {
@@ -537,7 +535,7 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (ns, name, ext_type) in imports.iter() {
                 let namespace = Namespace::from_str(ns.as_str(), provider.clone())?;
-                let item_name = WasmName::from_str_truncate(name.as_str(), provider.clone())
+                let item_name = WasmName::from_str_truncate(name.as_str())
                     .map_err(|_| Error::runtime_execution_error("Failed to create WasmName"))?;
                 let extern_ty = format_to_runtime_extern_type(ext_type)?;
                 let import = wrt_foundation::component::Import {
@@ -554,7 +552,7 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
             let mut export_vec = wrt_foundation::BoundedVec::new(provider.clone())?;
 
             for (name, ext_type) in exports.iter() {
-                let wasm_name = WasmName::from_str_truncate(name.as_str(), provider.clone())
+                let wasm_name = WasmName::from_str_truncate(name.as_str())
                     .map_err(|_| Error::runtime_execution_error("Failed to create WasmName"))?;
                 let extern_ty = format_to_runtime_extern_type(ext_type)?;
                 let export = wrt_foundation::component::Export {
@@ -788,7 +786,7 @@ pub fn common_to_format_val_type(
 /// # Returns
 ///
 /// The function type if the extern type is a function, or an error otherwise
-pub fn extern_type_to_func_type<P: wrt_foundation::MemoryProvider>(extern_type: &WrtExternType<P>) -> Result<TypesFuncType<P>> {
+pub fn extern_type_to_func_type<P: wrt_foundation::MemoryProvider>(extern_type: &WrtExternType<P>) -> Result<TypesFuncType> {
     match extern_type {
         WrtExternType::Func(func_type) => Ok(func_type.clone()),
         _ => Err(Error::runtime_type_mismatch(
@@ -1209,7 +1207,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             // Create a new FuncType properly
             let provider = P::default();
             Ok(wrt_foundation::ExternType::Func(
-                wrt_foundation::FuncType::new(provider, param_types, result_types)?,
+                wrt_foundation::FuncType::new(param_types, result_types)?,
             ))
         },
         FormatExternType::Value(format_val_type) => {
@@ -1253,7 +1251,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (name, extern_type) in exports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name, provider.clone())
+                let name_wasm = wrt_foundation::WasmName::from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
                 let export = wrt_foundation::Export {
                     name: name_wasm,
@@ -1283,8 +1281,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (namespace, name, extern_type) in imports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let namespace_obj = wrt_foundation::Namespace::from_str(namespace, provider.clone())?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name, provider.clone())
+                let namespace_obj = wrt_foundation::Namespace::from_str(namespace, P::default())?;
+                let name_wasm = wrt_foundation::WasmName::from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid import name"))?;
                 let import = wrt_foundation::Import {
                     key: wrt_foundation::ImportKey {
@@ -1306,7 +1304,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (name, extern_type) in exports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name, provider.clone())
+                let name_wasm = wrt_foundation::WasmName::from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
                 let export = wrt_foundation::Export {
                     name: name_wasm,

@@ -120,7 +120,7 @@ pub struct OwnedHandleEntry {
     pub owner: ComponentId,
     
     /// Type name for debugging
-    pub type_name: BoundedString<64, NoStdProvider<512>>,
+    pub type_name: BoundedString<64>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -383,8 +383,8 @@ impl HandleLifetimeTracker {
             owner,
             type_name: {
                 let provider = safe_managed_alloc!(64, CrateId::Component)?;
-                BoundedString::from_str_truncate(type_name, provider).unwrap_or_else(|_| {
-                    BoundedString::from_str_truncate("", provider).unwrap_or_default()
+                BoundedString::from_str_truncate(type_name).unwrap_or_else(|_| {
+                    BoundedString::from_str_truncate("").unwrap_or_default()
                 })
             },
             created_at: self.get_current_time(),

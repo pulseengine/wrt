@@ -138,7 +138,7 @@ impl StackFrame {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn new(function_name: &str) -> Result<Self> {
-        let bounded_name = BoundedString::new_from_str(function_name)
+        let bounded_name = BoundedString::from_str(function_name)
             .map_err(|_| Error::memory_allocation_failed("Function name too long for no_std environment"))?;
         Ok(Self {
             function_name: bounded_name,
@@ -158,7 +158,7 @@ impl StackFrame {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn with_location(mut self, file_name: &str, line: u32, column: u32) -> Result<Self> {
-        let bounded_file = BoundedString::new_from_str(file_name)
+        let bounded_file = BoundedString::from_str(file_name)
             .map_err(|_| Error::memory_allocation_failed("File name too long for no_std environment"))?;
         self.file_name = Some(bounded_file);
         self.line_number = Some(line);
@@ -338,7 +338,7 @@ impl ErrorContextImpl {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn new(message: &str, severity: ErrorSeverity) -> Result<Self> {
-        let bounded_message = BoundedString::new_from_str(message)
+        let bounded_message = BoundedString::from_str(message)
             .map_err(|_| Error::memory_allocation_failed("Debug message too long for no_std environment"))?;
         Ok(Self {
             id: ErrorContextId::new(),
@@ -381,7 +381,7 @@ impl ErrorContextImpl {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn set_metadata(&mut self, key: &str, value: ComponentValue) -> Result<()> {
-        let bounded_key = BoundedString::new_from_str(key)
+        let bounded_key = BoundedString::from_str(key)
             .map_err(|_| Error::memory_allocation_failed("Metadata key too long for no_std environment"))?;
         self.metadata.insert(bounded_key, value)
             .map_err(|_| Error::memory_allocation_failed("Metadata storage full"))?;
@@ -395,7 +395,7 @@ impl ErrorContextImpl {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
-        if let Ok(bounded_key) = BoundedString::new_from_str(key) {
+        if let Ok(bounded_key) = BoundedString::from_str(key) {
             self.metadata.get(&bounded_key)
         } else {
             None
@@ -431,7 +431,7 @@ impl ErrorContextImpl {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn format_stack_trace(&self) -> core::result::Result<BoundedString<1024, NoStdProvider<2048>>> {
+    pub fn format_stack_trace(&self) -> core::result::Result<BoundedString<1024>> {
         let mut output = BoundedString::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
             // Binary std/no_std choice
@@ -634,7 +634,7 @@ impl ErrorContextBuiltins {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn error_context_stack_trace(context_id: ErrorContextId) -> core::result::Result<BoundedString<1024, NoStdProvider<2048>>> {
+    pub fn error_context_stack_trace(context_id: ErrorContextId) -> core::result::Result<BoundedString<1024>> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
                 context.format_stack_trace()

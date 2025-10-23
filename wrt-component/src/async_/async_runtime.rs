@@ -373,7 +373,7 @@ impl Default for ScheduledTask {
             priority: 0,
             estimated_time_us: 0,
             task_fn: TaskFunction::Custom {
-                name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                name: BoundedString::from_str_truncate("")
                     .unwrap_or_else(|_| panic!("Failed to create default task name")),
                 placeholder: 0,
             },
@@ -419,7 +419,7 @@ impl wrt_runtime::FromBytes for ScheduledTask {
             priority: u8::from_bytes_with_provider(reader, provider)?,
             estimated_time_us: u64::from_bytes_with_provider(reader, provider)?,
             task_fn: TaskFunction::Custom {
-                name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                name: BoundedString::from_str_truncate("")
                     .map_err(|_| Error::foundation_bounded_capacity_exceeded("Failed to create task name"))?,
                 placeholder: 0,
             },
@@ -504,7 +504,7 @@ pub enum TaskFunction {
     },
     /// Custom user function
     Custom {
-        name:        BoundedString<64, NoStdProvider<512>>,
+        name:        BoundedString<64>,
         // In a real implementation, this would be a function pointer
         // For now, we'll use a placeholder
         placeholder: u32,
@@ -1141,7 +1141,7 @@ impl TaskScheduler {
                     priority:          0, // Default priority
                     estimated_time_us: 1000,
                     task_fn:           TaskFunction::Custom {
-                        name:        BoundedString::from_str("timeout", provider).unwrap_or_default(),
+                        name:        BoundedString::from_str("timeout").unwrap_or_default(),
                         placeholder: 0,
                     },
                 };
@@ -1295,7 +1295,7 @@ mod tests {
 
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let task_fn = TaskFunction::Custom {
-            name:        BoundedString::from_str("test", provider).unwrap(),
+            name:        BoundedString::from_str("test").unwrap(),
             placeholder: 42,
         };
 
@@ -1335,7 +1335,7 @@ mod tests {
             priority:          0,
             estimated_time_us: 1000,
             task_fn:           TaskFunction::Custom {
-                name:        BoundedString::from_str("test", provider).unwrap(),
+                name:        BoundedString::from_str("test").unwrap(),
                 placeholder: 0,
             },
         };

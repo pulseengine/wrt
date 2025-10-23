@@ -81,7 +81,7 @@ use wrt_foundation::{
 };
 
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<1024>>;
+type String = BoundedString<256>;
 
 #[cfg(not(feature = "std"))]
 type Vec<T> = BoundedVec<T, 256, NoStdProvider<4096>>;
@@ -89,8 +89,8 @@ type Vec<T> = BoundedVec<T, 256, NoStdProvider<4096>>;
 // Helper function to convert &str to String in no_std mode
 #[cfg(not(feature = "std"))]
 fn str_to_string(s: &str) -> String {
-    BoundedString::from_str_truncate(s, NoStdProvider::<1024>::default())
-        .unwrap_or_else(|_| BoundedString::from_str_truncate("", NoStdProvider::<1024>::default()).unwrap())
+    BoundedString::from_str_truncate(s)
+        .unwrap_or_else(|_| BoundedString::from_str_truncate("").unwrap())
 }
 
 #[cfg(feature = "std")]

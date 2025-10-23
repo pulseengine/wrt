@@ -298,7 +298,7 @@ mod tests {
         let table = ResourceTableBuilder::new()
             .with_max_resources(100)
             .with_default_memory_strategy(MemoryStrategy::ZeroCopy)
-            .with_default_verification_level(VerificationLevel::None)
+            .with_default_verification_level(VerificationLevel::Off)
             .with_optimized_memory()
             .build();
 

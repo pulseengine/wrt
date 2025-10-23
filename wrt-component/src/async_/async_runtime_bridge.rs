@@ -12,7 +12,7 @@ use alloc::string::{String, ToString};
 #[cfg(feature = "std")]
 use std::string::{String, ToString};
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+type String = wrt_foundation::bounded::BoundedString<256>;
 
 use core::{
     pin::Pin,
@@ -144,10 +144,10 @@ pub mod component_async {
         use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
         // Use a stack-allocated provider for error strings
         let provider1 = NoStdProvider::<1024>::default();
-        BoundedString::from_str(msg, provider1)
+        BoundedString::from_str(msg)
             .unwrap_or_else(|_| {
                 let provider2 = NoStdProvider::<1024>::default();
-                BoundedString::from_str("Error", provider2).unwrap()
+                BoundedString::from_str("Error").unwrap()
             })
     }
 

@@ -241,7 +241,7 @@ pub enum AsyncCleanupData {
         #[cfg(feature = "std")]
         cleanup_id: String,
         #[cfg(not(any(feature = "std",)))]
-        cleanup_id: BoundedString<64, NoStdProvider<512>>,
+        cleanup_id: BoundedString<64>,
         data:       u64, // Generic data field
     },
 }

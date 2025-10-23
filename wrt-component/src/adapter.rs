@@ -70,7 +70,7 @@ pub struct CoreModuleAdapter {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std",)))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
 
     /// Function adapters
     #[cfg(feature = "std")]
@@ -225,7 +225,7 @@ impl CoreModuleAdapter {
 
     /// Create a new core module adapter (no_std version)
     #[cfg(not(any(feature = "std",)))]
-    pub fn new(name: BoundedString<64, NoStdProvider<512>>) -> core::result::Result<Self, Error> {
+    pub fn new(name: BoundedString<64>) -> core::result::Result<Self, Error> {
         Ok(Self {
             name,
             functions: BoundedVec::new(),
@@ -341,11 +341,11 @@ impl CoreModuleAdapter {
                 value: ExternValue::Function(FunctionValue {
                     ty: {
                         use wrt_foundation::types::FuncType;
-                        FuncType::<NoStdProvider<1024>>::default()
+                        FuncType::default()
                     },
                     export_name: {
-                        let provider = safe_managed_alloc!(512, CrateId::Component)?;
-                        BoundedString::from_str(&format!("func_{}", func_adapter.core_index), provider)?
+                        let _provider = safe_managed_alloc!(512, CrateId::Component)?;
+                        BoundedString::from_str(&format!("func_{}", func_adapter.core_index))?
                     },
                 }),
                 kind: ExportKind::Function { function_index: func_adapter.core_index },
@@ -776,7 +776,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-            let name = BoundedString::from_str("test_module", provider).unwrap();
+            let name = BoundedString::from_str("test_module").unwrap();
             let adapter = CoreModuleAdapter::new(name).unwrap();
             assert_eq!(adapter.name.as_str(), "test_module");
             assert_eq!(adapter.functions.len(), 0);

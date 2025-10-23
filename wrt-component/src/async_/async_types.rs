@@ -208,7 +208,7 @@ pub struct ErrorContext {
     #[cfg(feature = "std")]
     pub message:     String,
     #[cfg(not(any(feature = "std",)))]
-    pub message:     BoundedString<1024, NoStdProvider<2048>>,
+    pub message:     BoundedString<1024>,
     /// Stack trace if available
     #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
@@ -253,7 +253,7 @@ pub struct StackFrame {
     #[cfg(feature = "std")]
     pub function:           String,
     #[cfg(not(any(feature = "std",)))]
-    pub function:           BoundedString<128, NoStdProvider<512>>,
+    pub function:           BoundedString<128>,
     /// Component instance
     pub component_instance: Option<u32>,
     /// Instruction offset
@@ -266,7 +266,7 @@ impl Default for StackFrame {
             #[cfg(feature = "std")]
             function: String::new(),
             #[cfg(not(any(feature = "std",)))]
-            function: BoundedString::from_str_truncate("", NoStdProvider::default())
+            function: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default StackFrame function name")),
             component_instance: None,
             offset: None,
@@ -314,7 +314,7 @@ impl FromBytes for StackFrame {
         #[cfg(feature = "std")]
         let function = String::from_bytes_with_provider(reader, provider)?;
         #[cfg(not(any(feature = "std",)))]
-        let function = BoundedString::<128, NoStdProvider<512>>::from_bytes_with_provider(reader, provider)?;
+        let function = BoundedString::<128>::from_bytes_with_provider(reader, provider)?;
 
         let component_instance = Option::<u32>::from_bytes_with_provider(reader, provider)?;
         let offset = Option::<u32>::from_bytes_with_provider(reader, provider)?;
@@ -339,7 +339,7 @@ pub struct DebugInfo {
     pub properties:       Vec<(String, ComponentValue)>,
     #[cfg(not(any(feature = "std",)))]
     pub properties: BoundedVec<
-        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
+        (BoundedString<64>, ComponentValue),
         16
     >,
 }
@@ -603,7 +603,7 @@ impl ErrorContext {
     #[cfg(not(any(feature = "std",)))]
     pub fn new(
         handle: ErrorContextHandle,
-        message: BoundedString<1024, NoStdProvider<2048>>,
+        message: BoundedString<1024>,
     ) -> WrtResult<Self> {
         Ok(Self {
             handle,
@@ -628,7 +628,7 @@ impl ErrorContext {
 
     /// Get debug string representation
     #[cfg(not(any(feature = "std",)))]
-    pub fn debug_string(&self) -> BoundedString<1024, NoStdProvider<2048>> {
+    pub fn debug_string(&self) -> BoundedString<1024> {
         // In no_std, just return the message
         self.message.clone()
     }
@@ -660,7 +660,7 @@ impl DebugInfo {
     #[cfg(not(any(feature = "std",)))]
     pub fn add_property(
         &mut self,
-        key: BoundedString<64, NoStdProvider<512>>,
+        key: BoundedString<64>,
         value: ComponentValue,
     ) -> WrtResult<()> {
         self.properties

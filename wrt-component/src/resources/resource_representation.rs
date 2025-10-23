@@ -126,7 +126,7 @@ pub struct ResourceEntry {
 #[derive(Debug, Clone)]
 pub struct ResourceMetadata {
     /// Type name
-    pub type_name: BoundedString<64, NoStdProvider<512>>,
+    pub type_name: BoundedString<64>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -175,7 +175,7 @@ pub struct ResourceRepresentationEntry {
 #[derive(Debug, Clone)]
 pub struct ConcreteResourceRepresentation {
     /// Type name
-    pub type_name: BoundedString<64, NoStdProvider<512>>,
+    pub type_name: BoundedString<64>,
     
     /// Representation size
     pub size: usize,
@@ -226,10 +226,10 @@ pub struct NetworkConnection {
     pub socket_fd: i32,
     
     /// Local address
-    pub local_addr: BoundedString<64, NoStdProvider<512>>,
+    pub local_addr: BoundedString<64>,
     
     /// Remote address
-    pub remote_addr: BoundedString<64, NoStdProvider<512>>,
+    pub remote_addr: BoundedString<64>,
     
     /// Connection state
     pub state: ConnectionState,

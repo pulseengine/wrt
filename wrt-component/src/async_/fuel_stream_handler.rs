@@ -317,7 +317,7 @@ impl Default for ComponentStream {
                 state: StreamState::Active,
                 fuel_budget: 0,
                 fuel_consumed: 0,
-                verification_level: VerificationLevel::None,
+                verification_level: VerificationLevel::Off,
                 waker: None,
             },
             metadata: StreamMetadata {
@@ -402,7 +402,7 @@ impl FromBytes for ComponentStream {
                 state: StreamState::Active,
                 fuel_budget: 0,
                 fuel_consumed: 0,
-                verification_level: VerificationLevel::None,
+                verification_level: VerificationLevel::Off,
                 waker: None,
             },
             metadata: StreamMetadata {

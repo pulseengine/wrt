@@ -191,7 +191,7 @@ pub struct TaskContext {
     pub storage:            BTreeMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
     pub storage: BoundedVec<
-        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
+        (BoundedString<64>, ComponentValue),
         32,
     >,
     /// Task creation time (simplified)

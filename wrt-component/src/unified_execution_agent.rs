@@ -88,7 +88,7 @@ const MAX_OPERAND_STACK_SIZE: usize = 2048;
 type AgentProvider = ComponentProvider;
 
 /// Bounded string for agent operations (256 bytes)
-type AgentBoundedString = BoundedString<256, ComponentProvider>;
+type AgentBoundedString = BoundedString<256>;
 
 /// Unified execution agent that combines all execution capabilities
 #[derive(Debug, Clone)]
@@ -690,7 +690,7 @@ impl UnifiedExecutionAgent {
         let frame = UnifiedCallFrame {
             instance_id,
             function_index,
-            function_name: BoundedString::from_str("function", name_provider).unwrap_or_default(),
+            function_name: BoundedString::from_str("function").unwrap_or_default(),
             #[cfg(feature = "std")]
             locals: args.to_vec(),
             #[cfg(not(feature = "std"))]
@@ -748,9 +748,9 @@ impl UnifiedExecutionAgent {
         #[cfg(feature = "std")]
         let function_name = "Component not found";
         #[cfg(not(feature = "std"))]
-        let function_name: BoundedString<64, NoStdProvider<512>> = {
+        let function_name: BoundedString<64> = {
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
-            BoundedString::from_str("Component operation result", provider).unwrap_or_default()
+            BoundedString::from_str("Component operation result").unwrap_or_default()
         };
 
         // TODO: Implement proper value conversion and component function execution

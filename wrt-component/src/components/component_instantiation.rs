@@ -63,7 +63,7 @@ use wrt_foundation::{
 use wrt_foundation::collections::StaticVec as BoundedVec;
 
 #[cfg(not(feature = "std"))]
-type InstantiationString = BoundedString<256, NoStdProvider<1024>>;
+type InstantiationString = BoundedString<256>;
 
 #[cfg(not(feature = "std"))]
 type InstantiationVec<T> = BoundedVec<T, 64>;
@@ -266,7 +266,7 @@ pub struct ResolvedImport {
     #[cfg(feature = "std")]
     pub provider_export: String,
     #[cfg(not(feature = "std"))]
-    pub provider_export: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<512>>,
+    pub provider_export: wrt_foundation::bounded::BoundedString<64>,
 }
 
 /// Component function implementation
@@ -296,7 +296,7 @@ pub enum FunctionImplementation {
         #[cfg(feature = "std")]
         callback: String, // Simplified - would be actual callback in full implementation
         #[cfg(not(feature = "std"))]
-        callback: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<512>>,
+        callback: wrt_foundation::bounded::BoundedString<64>,
     },
     /// Component function (calls through canonical ABI)
     Component {
@@ -306,7 +306,7 @@ pub enum FunctionImplementation {
         #[cfg(feature = "std")]
         target_function: String,
         #[cfg(not(feature = "std"))]
-        target_function: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<512>>,
+        target_function: wrt_foundation::bounded::BoundedString<64>,
     },
 }
 
@@ -1063,7 +1063,7 @@ impl Default for ResolvedImport {
         #[cfg(feature = "std")]
         let provider_export = String::new();
         #[cfg(not(feature = "std"))]
-        let provider_export = wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::default())
+        let provider_export = wrt_foundation::bounded::BoundedString::from_str_truncate("")
             .unwrap_or_else(|_| panic!("Failed to create default ResolvedImport provider_export"));
 
         Self {
