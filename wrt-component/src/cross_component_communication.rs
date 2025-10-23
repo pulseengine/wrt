@@ -887,70 +887,8 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     }
 }
 
-// Simplified no_std implementation
-#[cfg(not(feature = "std"))]
-impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
-    fn before_call(
-        &self,
-        source: &str,
-        target: &str,
-        function: &str,
-        _args: &[wrt_foundation::values::Value],
-    ) -> Result<()> {
-        // Simplified validation for no_std
-        if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = String::from_str(source).map_err(|_| {
-                wrt_error::Error::validation_error("Source component name too long")
-            })?;
-            self.validate_security_policy(&routing_info)?;
-        }
-        Ok(())
-    }
-
-    fn after_call(
-        &self,
-        _source: &str,
-        _target: &str,
-        _function: &str,
-        _args: &[wrt_foundation::values::Value],
-        result: Result<()>,
-    ) -> Result<()> {
-        // Update statistics if enabled
-        result
-    }
-
-    fn should_bypass(&self) -> bool {
-        false
-    }
-
-    fn should_intercept_canonical(&self) -> bool {
-        true
-    }
-
-    fn should_intercept_function(&self) -> bool {
-        true
-    }
-
-    fn intercept_resource_operation(
-        &self,
-        _handle: u32,
-        _operation: &ResourceCanonicalOperation,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    fn get_memory_strategy(&self, _handle: u32) -> Option<u8> {
-        None
-    }
-
-    fn before_start(&self, _component_name: &str) -> Result<()> {
-        Ok(())
-    }
-
-    fn after_start(&self, _component_name: &str, _result_data: Option<&[u8]>) -> Result<()> {
-        Ok(())
-    }
-}
+// Note: no_std implementation removed because workspace builds always compile
+// wrt-intercept with std features, so the std trait is always active
 
 impl Default for ComponentCommunicationStrategy {
     fn default() -> Self {
