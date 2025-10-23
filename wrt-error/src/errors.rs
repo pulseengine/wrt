@@ -500,7 +500,7 @@ impl Error {
         Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, message)
     }
 
-    /// Create a runtime poisoned lock error (alias for poisoned_lock)
+    /// Create a runtime poisoned lock error (alias for `poisoned_lock`)
     #[must_use]
     pub const fn runtime_poisoned_lock(message: &'static str) -> Self {
         Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, message)

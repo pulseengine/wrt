@@ -49,33 +49,53 @@ use core::{
 // Import foundation types when available
 // These will be replaced during integration phase
 mod foundation_stubs {
+    /// ASIL (Automotive Safety Integrity Level) classification.
+    ///
+    /// Defines the safety integrity levels according to ISO 26262 standard.
     #[derive(Debug, Clone, Copy)]
     pub enum AsilLevel {
+        /// Quality Management (QM) - non-safety-critical
         QM,
+        /// ASIL-A - lowest safety level
         AsilA,
+        /// ASIL-B - medium-low safety level
         AsilB,
+        /// ASIL-C - medium-high safety level
         AsilC,
+        /// ASIL-D - highest safety level
         AsilD,
     }
 
+    /// Safety context tracking for ASIL compliance.
+    ///
+    /// Maintains the current ASIL level and provides safety verification methods.
     #[derive(Debug)]
     pub struct SafetyContext {
+        /// Current ASIL level
         pub asil_level: AsilLevel,
     }
 
     impl SafetyContext {
+        /// Creates a new safety context with the specified ASIL level.
+        #[must_use]
         pub const fn new(level: AsilLevel) -> Self {
             Self { asil_level: level }
         }
 
+        /// Returns the effective ASIL level of this context.
+        #[must_use]
         pub fn effective_asil(&self) -> AsilLevel {
             self.asil_level
         }
 
+        /// Records a safety violation and returns the violation count.
+        #[must_use]
         pub fn record_violation(&self) -> u8 {
             0
         }
 
+        /// Checks if safety verification should be performed at this level.
+        #[must_use]
         pub fn should_verify(&self) -> bool {
             false
         }
@@ -161,7 +181,7 @@ impl<T> SafeMutex<T> {
     pub fn lock(&self) -> WrtResult<SafeMutexGuard<'_, T>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation();
+            let _ = self.safety_context.record_violation();
             return Err(Error::Safety);
         }
 
@@ -203,7 +223,7 @@ impl<T> SafeMutex<T> {
     pub fn try_lock(&self) -> WrtResult<Option<SafeMutexGuard<'_, T>>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation();
+            let _ = self.safety_context.record_violation();
             return Err(Error::Safety);
         }
 
@@ -454,13 +474,13 @@ impl SafeAtomicCounter {
         let current = self.value.load(Ordering::Relaxed);
 
         if current >= self.max_value {
-            self.safety_context.record_violation();
+            let _ = self.safety_context.record_violation();
             return Err(Error::Capacity);
         }
 
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_counter_safety(current + 1) {
-            self.safety_context.record_violation();
+            let _ = self.safety_context.record_violation();
             return Err(Error::Safety);
         }
 
@@ -469,7 +489,7 @@ impl SafeAtomicCounter {
         if new_value > self.max_value {
             // Rollback the increment
             self.value.fetch_sub(1, Ordering::AcqRel);
-            self.safety_context.record_violation();
+            let _ = self.safety_context.record_violation();
             return Err(Error::Capacity);
         }
 
