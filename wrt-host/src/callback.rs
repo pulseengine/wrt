@@ -66,7 +66,7 @@ type StringVec = Vec<String>;
 
 #[cfg(not(feature = "std"))]
 type StringVec = wrt_foundation::BoundedVec<
-    wrt_foundation::bounded::BoundedString<64, HostProvider>,
+    wrt_foundation::bounded::BoundedString<64>,
     32,
     HostProvider,
 >;

@@ -39,10 +39,10 @@ pub type BoundedLogEntryVec = BoundedVec<crate::BoundedLogEntry, MAX_LOG_ENTRIES
 pub type BoundedLoggerVec<T> = BoundedVec<T, MAX_LOGGERS, LogProvider>;
 
 /// Bounded string for log messages
-pub type BoundedLogMessage = BoundedString<MAX_LOG_MESSAGE_LEN, LogProvider>;
+pub type BoundedLogMessage = BoundedString<MAX_LOG_MESSAGE_LEN>;
 
 /// Bounded string for module names
-pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN, LogProvider>;
+pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN>;
 
 /// Create a new bounded log entry vector
 pub fn new_log_entry_vec() -> WrtResult<BoundedLogEntryVec> {
