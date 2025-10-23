@@ -161,12 +161,12 @@ pub struct ValidationStats {
 impl Default for ValidationStats {
     fn default() -> Self {
         Self {
-            bytes_validated:                    0,
-            sections_validated:                 0,
-            functions_validated:                0,
-            types_validated:                    0,
+            bytes_validated:     0,
+            sections_validated:  0,
+            functions_validated: 0,
+            types_validated:     0,
             #[cfg(feature = "std")]
-            start_time:                         std::time::Instant::now(),
+            start_time:          std::time::Instant::now(),
         }
     }
 }
@@ -242,7 +242,7 @@ impl StreamingValidator {
         }
 
         // Check magic number
-        if &data[0..4] != &[0x00, 0x61, 0x73, 0x6d] {
+        if data[0..4] != [0x00, 0x61, 0x73, 0x6d] {
             self.add_issue(
                 ValidationIssue::new(
                     ValidationSeverity::Critical,
@@ -487,7 +487,7 @@ impl StreamingValidator {
 
     /// Check if a value type is valid
     fn is_valid_value_type(&self, type_byte: u8) -> bool {
-        matches!(type_byte, 0x7F | 0x7E | 0x7D | 0x7C) // i32, i64, f32, f64
+        matches!(type_byte, 0x7C..=0x7F) // i32, i64, f32, f64
     }
 
     /// Get all validation issues

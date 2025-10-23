@@ -205,7 +205,7 @@ pub fn extract_inline_module(
     // find the first module in the component
 
     match extract_embedded_modules(bytes) {
-        Ok(modules) if modules.len() > 0 => match modules.get(0) {
+        Ok(modules) if !modules.is_empty() => match modules.get(0) {
             Ok(first_module) => Ok(Some(first_module.clone())),
             Err(_) => Ok(None),
         },

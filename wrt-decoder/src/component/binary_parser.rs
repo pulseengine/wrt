@@ -788,6 +788,12 @@ pub mod no_std_stubs {
     #[derive(Debug, Clone)]
     pub struct Component;
 
+    impl Default for ComponentBinaryParser {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ComponentBinaryParser {
         pub fn new() -> Self {
             Self

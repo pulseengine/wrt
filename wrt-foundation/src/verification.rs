@@ -58,9 +58,9 @@ pub enum VerificationLevel {
 
 impl VerificationLevel {
     /// Alias for Off - no verification checks are performed.
-    pub const None: Self = Self::Off;
+    pub const NONE: Self = Self::Off;
     /// Alias for Full - critical safety-level verification.
-    pub const Critical: Self = Self::Full;
+    pub const CRITICAL: Self = Self::Full;
 }
 
 impl VerificationLevel {

@@ -979,6 +979,7 @@ where
 }
 
 /// EMERGENCY FIX: Get item size without causing recursion
+#[allow(clippy::unused_type_parameters)]
 fn get_item_size_impl<T>() -> usize
 where
     T: crate::traits::ToBytes + crate::traits::FromBytes + Default,
@@ -3237,6 +3238,8 @@ where
 
         for i in 0..tail_len {
             if let Ok(item) = self.vec.get(self.range.end + i) {
+                // Explicitly ignore set result - drain operation is best-effort
+                #[allow(clippy::let_underscore_must_use)]
                 let _ = self.vec.set(self.range.start + i, item);
             }
         }

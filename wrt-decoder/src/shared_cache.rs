@@ -184,7 +184,7 @@ impl DecodedCache {
         let mut size = core::mem::size_of::<Self>();
 
         // Estimate section data size
-        for (_, section) in &self.sections {
+        for section in self.sections.values() {
             size += match section {
                 SectionData::Types(types) => types.len() * 50, // Rough estimate
                 SectionData::Imports(imports) => imports.len() * 100,
@@ -294,7 +294,6 @@ impl CacheManager {
         // Simple implementation: remove first entry
         // In a real implementation, we'd track access times
         if let Some((&key, _)) = self.caches.iter().next() {
-            let key = key;
             if let Some(cache) = self.caches.remove(&key) {
                 self.current_cache_size =
                     self.current_cache_size.saturating_sub(cache.cache_size_estimate());
