@@ -47,7 +47,7 @@ pub struct SourceChange {
     /// Type of change
     pub change_type: ChangeType,
     /// New text (for insert/replace)
-    pub text:        Option<BoundedString<1024, NoStdProvider<1024>>>,
+    pub text:        Option<BoundedString<1024>>,
 }
 
 /// Parse tree node for incremental parsing
@@ -96,7 +96,7 @@ pub struct IncrementalParser {
     parse_tree: Option<ParseNode>,
 
     /// Source content
-    source: Vec<BoundedString<1024, NoStdProvider<1024>>>,
+    source: Vec<BoundedString<1024>>,
 
     /// Total source length
     total_length: u32,
@@ -147,7 +147,7 @@ impl IncrementalParser {
         )?;
 
         for line in content.lines() {
-            let bounded_line = BoundedString::from_str(line, provider.clone())
+            let bounded_line = BoundedString::from_str(line)
                 .map_err(|_| Error::parse_error("Line too long"))?;
             self.source.push(bounded_line);
             self.total_length += line.len() as u32 + 1; // +1 for newline
@@ -267,7 +267,7 @@ impl IncrementalParser {
     fn apply_insert(
         &mut self,
         offset: u32,
-        text: &BoundedString<1024, NoStdProvider<1024>>,
+        text: &BoundedString<1024>,
     ) -> Result<()> {
         // Find the line containing this offset
         let (_line_idx, _line_offset) = self.offset_to_line_position(offset)?;
@@ -300,7 +300,7 @@ impl IncrementalParser {
         &mut self,
         offset: u32,
         old_length: u32,
-        text: &BoundedString<1024, NoStdProvider<1024>>,
+        text: &BoundedString<1024>,
     ) -> Result<()> {
         self.apply_delete(offset, old_length)?;
         self.apply_insert(offset, text)?;

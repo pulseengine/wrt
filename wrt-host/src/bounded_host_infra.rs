@@ -84,13 +84,13 @@ pub type BoundedCallbackVec<T> = BoundedVec<T, MAX_CALLBACKS, HostProvider>;
 pub type BoundedHostModuleVec<T> = BoundedVec<T, MAX_HOST_MODULES, HostProvider>;
 
 /// Bounded string for host function names
-pub type BoundedHostFunctionName = BoundedString<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>;
+pub type BoundedHostFunctionName = BoundedString<MAX_HOST_FUNCTION_NAME_LEN>;
 
 /// Bounded string for host module names
-pub type BoundedHostModuleName = BoundedString<MAX_HOST_MODULE_NAME_LEN, HostProvider>;
+pub type BoundedHostModuleName = BoundedString<MAX_HOST_MODULE_NAME_LEN>;
 
 /// Bounded string for host ID
-pub type BoundedHostId = BoundedString<MAX_HOST_ID_LEN, HostProvider>;
+pub type BoundedHostId = BoundedString<MAX_HOST_ID_LEN>;
 
 /// Bounded vector for host instances
 pub type BoundedHostInstanceVec<T> = BoundedVec<T, MAX_HOST_INSTANCES, HostProvider>;
@@ -115,8 +115,8 @@ pub type BoundedCallbackMap<V> = BoundedHashMap<
 
 /// Bounded map for environment variables
 pub type BoundedEnvMap = BoundedHashMap<
-    BoundedString<MAX_ENV_VAR_NAME_LEN, HostProvider>,
-    BoundedString<MAX_ENV_VAR_VALUE_LEN, HostProvider>,
+    BoundedString<MAX_ENV_VAR_NAME_LEN>,
+    BoundedString<MAX_ENV_VAR_VALUE_LEN>,
     MAX_ENV_VARS,
     HostProvider,
 >;
@@ -175,7 +175,7 @@ where
 /// Create a new bounded host function name
 pub fn new_host_function_name() -> wrt_error::Result<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(
+    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN>::from_str("").map_err(
         |_| {
             wrt_error::Error::platform_memory_allocation_failed(
                 "Failed to create empty bounded string",
@@ -187,7 +187,7 @@ pub fn new_host_function_name() -> wrt_error::Result<BoundedHostFunctionName> {
 /// Create a bounded host function name from str
 pub fn bounded_host_function_name_from_str(s: &str) -> wrt_error::Result<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
+    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN>::from_str(s).map_err(|_| {
         wrt_error::Error::validation_error("String too long for bounded host function name")
     })
 }
@@ -195,7 +195,7 @@ pub fn bounded_host_function_name_from_str(s: &str) -> wrt_error::Result<Bounded
 /// Create a new bounded host module name
 pub fn new_host_module_name() -> wrt_error::Result<BoundedHostModuleName> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
+    BoundedString::<MAX_HOST_MODULE_NAME_LEN>::from_str("").map_err(|_| {
         wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
     })
 }
@@ -203,7 +203,7 @@ pub fn new_host_module_name() -> wrt_error::Result<BoundedHostModuleName> {
 /// Create a bounded host module name from str
 pub fn bounded_host_module_name_from_str(s: &str) -> wrt_error::Result<BoundedHostModuleName> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
+    BoundedString::<MAX_HOST_MODULE_NAME_LEN>::from_str(s).map_err(|_| {
         wrt_error::Error::validation_error("String too long for bounded host module name")
     })
 }
@@ -211,7 +211,7 @@ pub fn bounded_host_module_name_from_str(s: &str) -> wrt_error::Result<BoundedHo
 /// Create a new bounded host ID
 pub fn new_host_id() -> wrt_error::Result<BoundedHostId> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str("", provider).map_err(|_| {
+    BoundedString::<MAX_HOST_ID_LEN>::from_str("").map_err(|_| {
         wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
     })
 }
@@ -219,7 +219,7 @@ pub fn new_host_id() -> wrt_error::Result<BoundedHostId> {
 /// Create a bounded host ID from str
 pub fn bounded_host_id_from_str(s: &str) -> wrt_error::Result<BoundedHostId> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, provider)
+    BoundedString::<MAX_HOST_ID_LEN>::from_str(s)
         .map_err(|_| wrt_error::Error::validation_error("String too long for bounded host ID"))
 }
 

@@ -25,8 +25,8 @@ use wrt_foundation::{
 };
 
 // Type aliases to replace wit_parser types
-type WitBoundedString = BoundedString<64, NoStdProvider<1024>>;
-type WitBoundedStringSmall = BoundedString<32, NoStdProvider<1024>>;
+type WitBoundedString = BoundedString<64>;
+type WitBoundedStringSmall = BoundedString<32>;
 
 /// Source location span for AST nodes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

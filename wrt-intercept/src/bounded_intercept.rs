@@ -32,7 +32,7 @@ pub const MAX_FUNCTION_NAME_LEN: usize = 128;
 
 /// Bounded map for function stats
 pub type BoundedStatsMap = BoundedMap<
-    BoundedString<MAX_FUNCTION_NAME_LEN, InterceptProvider>,
+    BoundedString<MAX_FUNCTION_NAME_LEN>,
     crate::strategies::FunctionStats,
     MAX_FUNCTION_STATS,
     InterceptProvider,
@@ -41,7 +41,7 @@ pub type BoundedStatsMap = BoundedMap<
 /// Bounded map for executing functions
 pub type BoundedExecutingMap = BoundedMap<
     u64, // Thread ID
-    BoundedString<MAX_FUNCTION_NAME_LEN, InterceptProvider>,
+    BoundedString<MAX_FUNCTION_NAME_LEN>,
     MAX_EXECUTING_FUNCTIONS,
     InterceptProvider,
 >;

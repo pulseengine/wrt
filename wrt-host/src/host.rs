@@ -45,7 +45,7 @@ fn create_host_provider() -> Result<HostProvider> {
 }
 
 #[cfg(not(feature = "std"))]
-type HostString = wrt_foundation::bounded::BoundedString<256, HostProvider>;
+type HostString = wrt_foundation::bounded::BoundedString<256>;
 
 #[cfg(feature = "std")]
 type HostString = String;
@@ -205,9 +205,9 @@ impl Default for BuiltinHost {
             let map_provider = create_host_provider().expect("Failed to create host provider");
 
             Self {
-                component_name:    HostString::from_str("", string_provider.clone())
+                component_name:    HostString::from_str("")
                     .expect("Failed to create empty string"),
-                host_id:           HostString::from_str("", string_provider.clone())
+                host_id:           HostString::from_str("")
                     .expect("Failed to create empty string"),
                 handlers:          HandlerMap::new(map_provider.clone())
                     .expect("Failed to create HandlerMap"),
@@ -257,10 +257,10 @@ impl BuiltinHost {
     pub fn new(component_name: &str, host_id: &str) -> Self {
         let string_provider = create_host_provider().expect("Failed to create host provider");
         let map_provider = create_host_provider().expect("Failed to create host provider");
-        let comp_name = HostString::from_str(component_name, string_provider.clone())
+        let comp_name = HostString::from_str(component_name)
             .expect("Failed to create component name");
         let host_name =
-            HostString::from_str(host_id, string_provider).expect("Failed to create host id");
+            HostString::from_str(host_id).expect("Failed to create host id");
 
         Self {
             component_name:    comp_name,
@@ -302,7 +302,7 @@ impl BuiltinHost {
     {
         // In no_std mode, we can't store function handlers dynamically
         let provider = create_host_provider().expect("Failed to create host provider");
-        let name = HostString::from_str(builtin_type.name(), provider)
+        let name = HostString::from_str(builtin_type.name())
             .expect("Failed to create builtin name");
         let _ = self.handlers.insert(name, HandlerData::default());
     }
@@ -350,7 +350,7 @@ impl BuiltinHost {
         {
             // In no_std mode, check if we have any handlers registered
             let provider = create_host_provider().expect("Failed to create host provider");
-            let name = HostString::from_str(builtin_type.name(), provider)
+            let name = HostString::from_str(builtin_type.name())
                 .expect("Failed to create builtin name");
             self.handlers.contains_key(&name).unwrap_or(false)
         }
