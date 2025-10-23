@@ -17,7 +17,7 @@ use crate::{
 /// Helper function to extract file descriptor from WASI arguments
 #[allow(dead_code)]
 fn extract_file_descriptor(args: &[Value]) -> Result<u32> {
-    args.get(0)
+    args.first()
         .and_then(|v| match v {
             Value::U32(fd) => Some(*fd),
             _ => None,
@@ -31,7 +31,7 @@ fn extract_length(args: &[Value], index: usize) -> Result<u64> {
     args.get(index)
         .and_then(|v| match v {
             Value::U64(len) => Some(*len),
-            Value::U32(len) => Some(*len as u64),
+            Value::U32(len) => Some(u64::from(*len)),
             _ => None,
         })
         .ok_or_else(|| Error::parameter_wasi_invalid_fd("Invalid length argument"))

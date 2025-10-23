@@ -176,6 +176,7 @@ pub struct FunctionSignature {
 
 /// Component export definition
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ComponentExport {
     /// Export name
     pub name:        String,
@@ -185,6 +186,7 @@ pub struct ComponentExport {
 
 /// Component import definition
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ComponentImport {
     /// Import name
     pub name:        String,
@@ -271,6 +273,7 @@ pub struct ResolvedImport {
 
 /// Component function implementation
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ComponentFunction {
     /// Function handle
     pub handle:         FunctionHandle,
@@ -331,6 +334,7 @@ pub struct ComponentMemory {
 
 /// Instance metadata for debugging and introspection
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct InstanceMetadata {
     /// Creation timestamp
     pub created_at:         u64,
@@ -363,16 +367,6 @@ impl Default for MemoryConfig {
     }
 }
 
-impl Default for InstanceMetadata {
-    fn default() -> Self {
-        Self {
-            created_at:         0, // Would use actual timestamp in full implementation
-            function_calls:     0,
-            memory_allocations: 0,
-            memory_usage:       0,
-        }
-    }
-}
 
 impl ComponentInstance {
     /// Create a new component instance
@@ -1006,15 +1000,6 @@ macro_rules! impl_basic_traits {
 }
 
 // Default implementations for complex types
-impl Default for ComponentFunction {
-    fn default() -> Self {
-        Self {
-            handle:         0,
-            signature:      FunctionSignature::default(),
-            implementation: FunctionImplementation::default(),
-        }
-    }
-}
 
 impl Default for FunctionSignature {
     fn default() -> Self {
@@ -1027,24 +1012,7 @@ impl Default for FunctionSignature {
 }
 
 // Default implementations for additional types
-impl Default for ComponentExport {
-    fn default() -> Self {
-        Self {
-            name:        String::new(),
-            export_type: ExportType::default(),
-        }
-    }
-}
 
-impl Default for ComponentImport {
-    fn default() -> Self {
-        Self {
-            name:        String::new(),
-            module:      String::new(),
-            import_type: ImportType::default(),
-        }
-    }
-}
 
 impl Default for ExportType {
     fn default() -> Self {

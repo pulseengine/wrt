@@ -193,7 +193,7 @@ impl<'a> StreamingDecoder<'a> {
                 code: alloc::vec::Vec::new(),
             };
 
-            let _ = self.module.functions.push(func);
+            self.module.functions.push(func);
         }
 
         Ok(())

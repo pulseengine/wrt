@@ -301,21 +301,18 @@ impl<K: Ord, V, const N: usize> StaticMap<K, V, N> {
 
     /// Returns an iterator over keys in sorted order.
     #[inline]
-    #[must_use]
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.iter().map(|(k, _)| k)
     }
 
     /// Returns an iterator over values.
     #[inline]
-    #[must_use]
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.iter().map(|(_, v)| v)
     }
 
     /// Returns a mutable iterator over values.
     #[inline]
-    #[must_use]
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.iter_mut().map(|(_, v)| v)
     }

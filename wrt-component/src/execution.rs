@@ -26,6 +26,7 @@ pub enum TimeBoundedOutcome {
 
 /// Configuration for time-bounded execution
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct TimeBoundedConfig {
     /// Maximum execution time in milliseconds (None means unlimited)
     pub time_limit_ms: Option<u64>,
@@ -35,11 +36,6 @@ pub struct TimeBoundedConfig {
     pub fuel_limit: Option<u64>,
 }
 
-impl Default for TimeBoundedConfig {
-    fn default() -> Self {
-        Self { time_limit_ms: None, allow_extension: false, fuel_limit: None }
-    }
-}
 
 /// Context for time-bounded execution
 #[derive(Debug)]
@@ -186,7 +182,7 @@ where
             } else if error_msg.contains("terminated") || error_msg.contains("limit exceeded") {
                 TimeBoundedOutcome::Terminated
             } else {
-                TimeBoundedOutcome::Error(Arc::new(e.clone()))
+                TimeBoundedOutcome::Error(Arc::new(*e))
             }
         }
     };

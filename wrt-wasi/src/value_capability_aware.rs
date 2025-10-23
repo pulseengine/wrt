@@ -6,9 +6,7 @@
 extern crate alloc;
 
 use wrt_error::{
-    codes,
     Error,
-    ErrorCategory,
     Result,
 };
 use wrt_foundation::{
@@ -17,10 +15,7 @@ use wrt_foundation::{
         BoundedVec,
     },
     budget_aware_provider::CrateId,
-    capabilities::{
-        MemoryCapabilityContext,
-        MemoryOperation,
-    },
+    capabilities::MemoryOperation,
     memory_init::get_global_capability_context,
     prelude::*,
     safe_memory::NoStdProvider,
@@ -107,13 +102,15 @@ impl WasiValueBox {
     }
 
     /// Get the inner value
+    #[must_use] 
     pub fn into_inner(self) -> CapabilityAwareValue {
         *self.inner
     }
 
     /// Get a reference to the inner value
+    #[must_use] 
     pub fn as_inner(&self) -> &CapabilityAwareValue {
-        &*self.inner
+        &self.inner
     }
 }
 
@@ -201,38 +198,38 @@ impl CapabilityAwareValue {
 /// Value extraction methods with capability awareness
 impl CapabilityAwareValue {
     /// Extract a u32 from the value, returning 0 if not possible
+    #[must_use] 
     pub fn as_u32(&self) -> u32 {
         match self {
             CapabilityAwareValue::U32(v) => *v,
-            CapabilityAwareValue::U16(v) => *v as u32,
-            CapabilityAwareValue::U8(v) => *v as u32,
+            CapabilityAwareValue::U16(v) => u32::from(*v),
+            CapabilityAwareValue::U8(v) => u32::from(*v),
             _ => 0,
         }
     }
 
     /// Extract a u64 from the value, returning 0 if not possible
+    #[must_use] 
     pub fn as_u64(&self) -> u64 {
         match self {
             CapabilityAwareValue::U64(v) => *v,
-            CapabilityAwareValue::U32(v) => *v as u64,
-            CapabilityAwareValue::U16(v) => *v as u64,
-            CapabilityAwareValue::U8(v) => *v as u64,
+            CapabilityAwareValue::U32(v) => u64::from(*v),
+            CapabilityAwareValue::U16(v) => u64::from(*v),
+            CapabilityAwareValue::U8(v) => u64::from(*v),
             _ => 0,
         }
     }
 
     /// Extract a string from the value, returning bounded string if possible
     pub fn as_bounded_string(&self) -> Result<WasiBoundedString> {
-        match self {
-            CapabilityAwareValue::String(s) => Ok(s.clone()),
-            _ => {
-                let provider = create_wasi_value_provider()?;
-                Ok(WasiBoundedString::from_str("")?)
-            },
+        if let CapabilityAwareValue::String(s) = self { Ok(s.clone()) } else {
+            let provider = create_wasi_value_provider()?;
+            Ok(WasiBoundedString::from_str("")?)
         }
     }
 
     /// Extract a string as &str, returning empty string if not possible
+    #[must_use] 
     pub fn as_str(&self) -> &str {
         match self {
             CapabilityAwareValue::String(s) => s.as_str().unwrap_or(""),
@@ -241,6 +238,7 @@ impl CapabilityAwareValue {
     }
 
     /// Extract a boolean from the value, returning false if not possible
+    #[must_use] 
     pub fn as_bool(&self) -> bool {
         match self {
             CapabilityAwareValue::Bool(b) => *b,
@@ -251,6 +249,7 @@ impl CapabilityAwareValue {
     }
 
     /// Get the list values if this is a list
+    #[must_use] 
     pub fn as_list(&self) -> Option<&WasiBoundedVec<CapabilityAwareValue>> {
         match self {
             CapabilityAwareValue::List(list) => Some(list.as_ref()),
@@ -259,6 +258,7 @@ impl CapabilityAwareValue {
     }
 
     /// Get the record pairs if this is a record
+    #[must_use] 
     pub fn as_record(&self) -> Option<&WasiBoundedVec<(WasiBoundedString, CapabilityAwareValue)>> {
         match self {
             CapabilityAwareValue::Record(record) => Some(record.as_ref()),
@@ -274,10 +274,10 @@ fn create_wasi_value_provider() -> Result<NoStdProvider<8192>> {
     context.verify_operation(CrateId::Wasi, &operation)?;
 
     use wrt_foundation::capabilities::MemoryFactory;
-    MemoryFactory::create_with_context::<8192>(&context, CrateId::Wasi)
+    MemoryFactory::create_with_context::<8192>(context, CrateId::Wasi)
 }
 
-/// Conversion from legacy Value to CapabilityAwareValue
+/// Conversion from legacy Value to `CapabilityAwareValue`
 impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
     type Error = Error;
 
@@ -429,7 +429,7 @@ impl wrt_foundation::traits::Checksummable for CapabilityAwareValue {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Basic checksum implementation
         match self {
-            CapabilityAwareValue::Bool(b) => checksum.update_slice(&[*b as u8]),
+            CapabilityAwareValue::Bool(b) => checksum.update_slice(&[u8::from(*b)]),
             CapabilityAwareValue::U8(v) => checksum.update_slice(&[*v]),
             CapabilityAwareValue::U16(v) => checksum.update_slice(&v.to_le_bytes()),
             CapabilityAwareValue::U32(v) => checksum.update_slice(&v.to_le_bytes()),
@@ -467,7 +467,7 @@ impl wrt_foundation::traits::ToBytes for CapabilityAwareValue {
         match self {
             CapabilityAwareValue::Bool(b) => {
                 writer.write_u8(0)?;
-                writer.write_u8(*b as u8)?;
+                writer.write_u8(u8::from(*b))?;
             },
             CapabilityAwareValue::U8(v) => {
                 writer.write_u8(1)?;

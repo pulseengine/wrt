@@ -84,13 +84,9 @@ pub struct ResourceAsyncOperations {
 
 /// Resource operation identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ResourceOperationId(u64);
 
-impl Default for ResourceOperationId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for ResourceOperationId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -674,14 +670,14 @@ impl ResourceAsyncOperations {
         limits: Option<ResourceLimits>,
         config: Option<AsyncResourceConfig>,
     ) -> Result<()> {
-        let limits = limits.unwrap_or_else(|| ResourceLimits {
+        let limits = limits.unwrap_or(ResourceLimits {
             max_owned_resources:       64,
             max_borrowed_resources:    32,
             max_concurrent_operations: 16,
             resource_memory_limit:     1024 * 1024, // 1MB
         });
 
-        let config = config.unwrap_or_else(|| AsyncResourceConfig {
+        let config = config.unwrap_or(AsyncResourceConfig {
             enable_async_creation: true,
             enable_async_methods:  true,
             enable_async_drop:     true,
@@ -742,7 +738,7 @@ impl ResourceAsyncOperations {
                 constructor_args: constructor_args.clone(),
             },
             resource_handle: None,
-            resource_type: resource_type.clone(),
+            resource_type,
             abi_operation_id: None,
             created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
@@ -811,7 +807,7 @@ impl ResourceAsyncOperations {
                     "Resource not in valid state for method calls",
                 ));
             }
-            resource_info.resource_type.clone()
+            resource_info.resource_type
         } else if context.borrowed_resources.contains_key(&resource_handle) {
             0 // Borrowed resource type - placeholder
         } else {
@@ -959,7 +955,7 @@ impl ResourceAsyncOperations {
         }
 
         // Extract resource type before creating operation
-        let resource_type = resource_info.resource_type.clone();
+        let resource_type = resource_info.resource_type;
 
         let operation = ResourceAsyncOperation {
             id: operation_id,

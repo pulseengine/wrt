@@ -226,7 +226,7 @@ fn calculate_result_layout(
 /// Calculate layout for flags type
 fn calculate_flags_layout(num_flags: usize) -> MemoryLayout {
     // Flags are stored as bit fields
-    let num_bytes = (num_flags + 7) / 8;
+    let num_bytes = num_flags.div_ceil(8);
 
     // Align to natural size up to 8 bytes
     let alignment = if num_bytes <= 1 {
@@ -477,7 +477,7 @@ impl CanonicalMemoryPool {
     pub fn release(&mut self, ptr: *mut u8) {
         for pool in &mut self.pools {
             for buffer in pool.iter_mut() {
-                if buffer.data.as_ptr() as *mut u8 == ptr {
+                if core::ptr::eq(buffer.data.as_ptr(), ptr) {
                     buffer.in_use = false;
                     return;
                 }

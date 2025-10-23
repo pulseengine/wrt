@@ -20,7 +20,6 @@ use wrt_foundation::{
         ValueType,
     },
     values::Value,
-    BoundedVec,
 };
 use wrt_math;
 
@@ -119,7 +118,7 @@ impl ConstExprSequence {
         Ok(())
     }
 
-    /// Helper to pop from stack in both std and no_std environments
+    /// Helper to pop from stack in both std and `no_std` environments
     #[cfg(feature = "std")]
     fn stack_pop(stack: &mut Vec<Value>) -> Result<Value> {
         stack

@@ -426,12 +426,10 @@ mod component_validation {
 
     /// Validate a single instance
     fn validate_instance(_ctx: &ValidationContext, instance: &Instance) -> Result<(), Error> {
-        match instance {
-            _ => {
-                // TODO: Implement proper instance validation once Instance enum structure is
-                // clarified
-                _ = instance; // Suppress unused warning
-            },
+        {
+            // TODO: Implement proper instance validation once Instance enum structure is
+            // clarified
+            _ = instance; // Suppress unused warning
         }
         Ok(())
     }

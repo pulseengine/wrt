@@ -482,7 +482,7 @@ impl CrossComponentResourceSharingManager {
             AuditAction::ResourceShared,
             agreement.source_component,
             true,
-            &"Component not found",
+            "Component not found",
         )?;
 
         Ok(shared_handle)
@@ -518,7 +518,7 @@ impl CrossComponentResourceSharingManager {
             source_instance: source_component,
             priority: 100, // High priority
             data: crate::post_return::CleanupData::Resource {
-                handle: resource_handle.into(),
+                handle: resource_handle,
                 resource_type: crate::types::TypeId(0), // Generic type
             },
         };
@@ -538,7 +538,7 @@ impl CrossComponentResourceSharingManager {
         let shared_resource =
             self.shared_resources
                 .get(&resource_handle)
-                .ok_or_else(|| ResourceSharingError {
+                .ok_or(ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
                     message:          "Resource not shared",
                     source_component: Some(component_id),
@@ -596,7 +596,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceAccessed,
                 component_id,
                 true,
-                &"Component not found",
+                "Component not found",
             )?;
         }
 
@@ -610,7 +610,7 @@ impl CrossComponentResourceSharingManager {
     ) -> ResourceSharingResult<()> {
         // Extract agreement IDs before mutable operations
         let agreement_ids = {
-            let shared_resource = self.shared_resources.get_mut(&resource_handle).ok_or_else(|| {
+            let shared_resource = self.shared_resources.get_mut(&resource_handle).ok_or({
                 ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
                     message:          "Resource not shared",
@@ -651,7 +651,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceReturned,
                 component_id,
                 true,
-                &"Component not found",
+                "Component not found",
             )?;
         }
 
@@ -891,7 +891,7 @@ impl CrossComponentResourceSharingManager {
             // Convert the type alias ResourceHandle (u32) to the newtype ResourceHandle struct
             let resource_handle = crate::resource_management::ResourceHandle::new(handle);
             let resource_type =
-                self.type_registry.get_resource_type(resource_handle).ok_or_else(|| ResourceSharingError {
+                self.type_registry.get_resource_type(resource_handle).ok_or(ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
                     message:          "Component not found",
                     source_component: Some(owner),
@@ -972,7 +972,7 @@ impl CrossComponentResourceSharingManager {
     }
 
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
-        self.sharing_agreements.get(&agreement_id).ok_or_else(|| ResourceSharingError {
+        self.sharing_agreements.get(&agreement_id).ok_or(ResourceSharingError {
             kind:             ResourceSharingErrorKind::InvalidSharingAgreement,
             message:          "Component not found",
             source_component: None,

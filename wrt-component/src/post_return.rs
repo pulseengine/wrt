@@ -79,16 +79,13 @@ pub struct SubtaskManager;
 
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum SubtaskResult {
+    #[default]
     Success,
     Failure,
 }
 
-impl Default for SubtaskResult {
-    fn default() -> Self {
-        SubtaskResult::Success
-    }
-}
 
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -206,6 +203,7 @@ impl wrt_foundation::traits::FromBytes for PostReturnFunction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct CleanupTask {
     /// Type of cleanup task
     pub task_type: CleanupTaskType,
@@ -217,16 +215,6 @@ pub struct CleanupTask {
     pub data: CleanupData,
 }
 
-impl Default for CleanupTask {
-    fn default() -> Self {
-        Self {
-            task_type: CleanupTaskType::default(),
-            source_instance: ComponentInstanceId::default(),
-            priority: 0,
-            data: CleanupData::default(),
-        }
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for CleanupTask {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -260,6 +248,7 @@ impl wrt_foundation::traits::FromBytes for CleanupTask {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum CleanupTaskType {
     /// Binary std/no_std choice
     DeallocateMemory,
@@ -268,6 +257,7 @@ pub enum CleanupTaskType {
     /// Release reference
     ReleaseReference,
     /// Custom cleanup
+    #[default]
     Custom,
     /// Async cleanup (for streams/futures)
     AsyncCleanup,
@@ -283,11 +273,6 @@ pub enum CleanupTaskType {
     FinalizeSubtask,
 }
 
-impl Default for CleanupTaskType {
-    fn default() -> Self {
-        CleanupTaskType::Custom
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for CleanupTaskType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

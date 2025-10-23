@@ -116,20 +116,14 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtMutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Attempt a non-blocking check for Debug representation if possible,
         // otherwise indicate locked status. Avoids deadlocking Debug.
-        // Use load with relaxed ordering as we don't need synchronization guarantees
-        // here, just a snapshot of the state for debugging.
+        // For safety-critical code, Debug should not access potentially-locked data
+        // or create race conditions. Edition 2024's stricter lifetime rules
+        // correctly reject the previous unsafe dereference pattern.
+        // Always show a safe representation without accessing the data.
         if self.locked.load(Ordering::Relaxed) {
             f.debug_struct("WrtMutex").field("data", &"<locked>").finish()
         } else {
-            // # Safety
-            // This `unsafe` block is used for debug printing. It accesses the
-            // `UnsafeCell` data. While a `locked.load()` check is performed,
-            // there's a small race window where the lock could be acquired by
-            // another thread between the check and `data.get()`. However, this
-            // is for a non-critical debug representation. `data.get()` itself
-            // is safe as it only returns a raw pointer. Dereferencing it is
-            // the unsafe part, justified by the debug context.
-            f.debug_struct("WrtMutex").field("data", unsafe { &&*self.data.get() }).finish()
+            f.debug_struct("WrtMutex").field("data", &"<unlocked>").finish()
         }
     }
 }

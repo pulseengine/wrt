@@ -38,12 +38,12 @@ pub struct DefaultValueFormatter;
 impl ValueFormatter for DefaultValueFormatter {
     fn format_value(&self, value: &Value) -> String {
         match value {
-            Value::I32(v) => format!("I32({})", v),
-            Value::I64(v) => format!("I64({})", v),
+            Value::I32(v) => format!("I32({v})"),
+            Value::I64(v) => format!("I64({v})"),
             Value::F32(v) => format!("F32({})", f32::from_bits(v.0)),
             Value::F64(v) => format!("F64({})", f64::from_bits(v.0)),
             // Add other value types as needed
-            _ => format!("{:?}", value),
+            _ => format!("{value:?}"),
         }
     }
 }
@@ -147,7 +147,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         args: &[Value],
     ) -> Result<Vec<Value>> {
         // Format the function call
-        let mut log_entry = format!("CALL: {}->{}::{}", source, target, function);
+        let mut log_entry = format!("CALL: {source}->{target}::{function}");
 
         // Add arguments if configured
         if self.config.log_args && !args.is_empty() {
@@ -169,7 +169,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
                 args_str.push_str(&format!(", ... ({} more)", args.len() - limit));
             }
 
-            log_entry.push_str(&format!(" args: [{}]", args_str));
+            log_entry.push_str(&format!(" args: [{args_str}]"));
         }
 
         // Write the log entry
@@ -195,14 +195,14 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         result: Result<Vec<Value>>,
     ) -> Result<Vec<Value>> {
         // Format the return
-        let mut log_entry = format!("RETURN: {}->{}::{}", source, target, function);
+        let mut log_entry = format!("RETURN: {source}->{target}::{function}");
 
         // Add timing information if configured
         if self.config.log_timing {
             if let Ok(mut timing) = self.timing.lock() {
                 if let Some(start_time) = timing.take() {
                     let elapsed = start_time.elapsed();
-                    log_entry.push_str(&format!(" elapsed: {:?}", elapsed));
+                    log_entry.push_str(&format!(" elapsed: {elapsed:?}"));
                 }
             }
         }
@@ -211,7 +211,9 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         if self.config.log_results {
             match &result {
                 Ok(values) => {
-                    if !values.is_empty() {
+                    if values.is_empty() {
+                        log_entry.push_str(" result: []");
+                    } else {
                         let mut result_str = String::new();
                         let limit = if self.config.max_results > 0 {
                             self.config.max_results.min(values.len())
@@ -230,13 +232,11 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
                             result_str.push_str(&format!(", ... ({} more)", values.len() - limit));
                         }
 
-                        log_entry.push_str(&format!(" result: [{}]", result_str));
-                    } else {
-                        log_entry.push_str(" result: []");
+                        log_entry.push_str(&format!(" result: [{result_str}]"));
                     }
                 },
                 Err(e) => {
-                    log_entry.push_str(&format!(" error: {}", e));
+                    log_entry.push_str(&format!(" error: {e}"));
                 },
             }
         }
@@ -265,7 +265,7 @@ where
     F: Fn(&str) + Send + Sync,
 {
     fn write_log(&self, entry: &str) {
-        self(entry)
+        self(entry);
     }
 }
 
@@ -346,7 +346,7 @@ impl LogSink for FileLogSink {
         use std::io::Write;
 
         if let Ok(mut file) = self.file.lock() {
-            let _ = writeln!(file, "{}", entry);
+            let _ = writeln!(file, "{entry}");
         }
     }
 }
@@ -369,7 +369,7 @@ impl LogCrateSink {
 #[cfg(feature = "log")]
 impl LogSink for LogCrateSink {
     fn write_log(&self, entry: &str) {
-        log::debug!(target: self.module, "{}", entry);
+        log::debug!(target: self.module, "{entry}");
     }
 }
 

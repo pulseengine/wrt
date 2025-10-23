@@ -288,8 +288,8 @@ impl WakerData {
     /// Basic wake (ASIL-A)
     fn wake_basic(&self) {
         let mut queue = self.ready_queue.lock();
-        if !queue.iter().any(|&id| id == self.task_id) {
-            if queue.push(self.task_id).is_err() {
+        if !queue.iter().any(|&id| id == self.task_id)
+            && queue.push(self.task_id).is_err() {
                 // Basic error detection - queue full
                 // Remove duplicates using retain (StaticVec doesn't have dedup)
                 let mut seen = [false; 128];
@@ -304,7 +304,6 @@ impl WakerData {
                 });
                 let _ = queue.push(self.task_id);
             }
-        }
     }
 
     /// Get deterministic timestamp for ASIL-D

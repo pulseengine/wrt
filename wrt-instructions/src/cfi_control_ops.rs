@@ -21,10 +21,6 @@
 
 #![allow(dead_code)] // Allow during development
 
-use wrt_foundation::{
-    safe_managed_alloc,
-    CrateId,
-};
 
 use crate::{
     control_ops::BranchTarget,
@@ -87,6 +83,7 @@ impl Default for CfiControlFlowProtection {
 
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
+    #[must_use] 
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
         let mut config = Self::default();
         config.protection_level = level;
@@ -141,7 +138,7 @@ pub enum CfiArchitecture {
     ArmBti,
     /// RISC-V with CFI extension
     RiscVCfi,
-    /// x86_64 with CET support
+    /// `x86_64` with CET support
     X86Cet,
 }
 
@@ -161,7 +158,7 @@ pub enum HardwareCfiSettings {
         /// Landing pads enabled
         landing_pads: bool,
     },
-    /// x86_64 CET settings
+    /// `x86_64` CET settings
     X86Cet {
         /// Shadow stack enabled
         shadow_stack:             bool,
@@ -278,9 +275,9 @@ impl wrt_foundation::traits::Checksummable for CfiTargetType {
 }
 
 impl wrt_foundation::traits::ToBytes for CfiTargetType {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         let discriminant = match self {
@@ -428,24 +425,24 @@ impl wrt_foundation::traits::Checksummable for CfiExpectedValue {
             Self::None => checksum.update_slice(&[0u8]),
             Self::FunctionSignatureHash(hash) => {
                 checksum.update_slice(&[1u8]);
-                let _ = checksum.update_slice(&hash.to_le_bytes());
+                let () = checksum.update_slice(&hash.to_le_bytes());
             },
             Self::ReturnAddress(addr) => {
                 checksum.update_slice(&[2u8]);
-                let _ = checksum.update_slice(&addr.to_le_bytes());
+                let () = checksum.update_slice(&addr.to_le_bytes());
             },
             Self::CallSiteId(id) => {
                 checksum.update_slice(&[3u8]);
-                let _ = checksum.update_slice(&id.to_le_bytes());
+                let () = checksum.update_slice(&id.to_le_bytes());
             },
         }
     }
 }
 
 impl wrt_foundation::traits::ToBytes for CfiExpectedValue {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         match self {
@@ -571,23 +568,23 @@ impl wrt_foundation::traits::Checksummable for CfiValidationRequirement {
             Self::ShadowStackCheck => checksum.update_slice(&[1u8]),
             Self::ControlFlowTargetCheck { valid_targets } => {
                 checksum.update_slice(&[2u8]);
-                for target in valid_targets.iter() {
+                for target in valid_targets {
                     checksum.update_slice(&target.to_le_bytes());
                 }
             },
             Self::CallingConventionCheck => checksum.update_slice(&[3u8]),
             Self::TemporalCheck { max_duration } => {
                 checksum.update_slice(&[4u8]);
-                let _ = checksum.update_slice(&max_duration.to_le_bytes());
+                let () = checksum.update_slice(&max_duration.to_le_bytes());
             },
         }
     }
 }
 
 impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         match self {
@@ -607,7 +604,7 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
                 #[cfg(feature = "std")]
                 {
                     writer.write_u32_le(valid_targets.len() as u32)?;
-                    for target in valid_targets.iter() {
+                    for target in valid_targets {
                         writer.write_u32_le(*target)?;
                     }
                 }
@@ -991,9 +988,9 @@ impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
 }
 
 impl wrt_foundation::traits::ToBytes for ShadowStackEntry {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         writer.write_all(&self.return_address.0.to_le_bytes())?;
@@ -1041,6 +1038,7 @@ impl wrt_foundation::traits::FromBytes for ShadowStackEntry {
 
 /// Landing pad expectation for CFI validation
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct LandingPadExpectation {
     /// Expected function index
     pub function_index:     u32,
@@ -1054,17 +1052,6 @@ pub struct LandingPadExpectation {
     pub metadata:           CfiLandingPad,
 }
 
-impl Default for LandingPadExpectation {
-    fn default() -> Self {
-        Self {
-            function_index:     0,
-            instruction_offset: 0,
-            target_type:        CfiTargetType::default(),
-            deadline:           None,
-            metadata:           CfiLandingPad::default(),
-        }
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -1082,9 +1069,9 @@ impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
 }
 
 impl wrt_foundation::traits::ToBytes for LandingPadExpectation {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         provider: &PStream,
     ) -> wrt_error::Result<()> {
         writer.write_all(&self.function_index.to_le_bytes())?;
@@ -1485,12 +1472,12 @@ impl DefaultCfiControlFlowOps {
 
     fn compute_return_address(&self, context: &CfiExecutionContext) -> u64 {
         // Combine function index and instruction offset into return address
-        ((context.current_function as u64) << 32) | (context.current_instruction as u64)
+        (u64::from(context.current_function) << 32) | u64::from(context.current_instruction)
     }
 
     fn compute_signature_hash(&self, type_idx: u32) -> u64 {
         // Simple hash for now - real implementation would use proper type information
-        type_idx as u64 * 0x9e3779b97f4a7c15
+        u64::from(type_idx) * 0x9e3779b97f4a7c15
     }
 
     fn get_current_timestamp(&self) -> u64 {
@@ -1833,7 +1820,7 @@ impl DefaultCfiControlFlowOps {
 
         // ASIL-B: Check current instruction is a valid target
         let current_target = context.current_instruction;
-        if !valid_targets.iter().any(|&target| target == current_target) {
+        if !valid_targets.contains(&current_target) {
             // Increment violation count for monitoring
             // Note: In real implementation, would update mutable context
             return Err(Error::security_runtime_error(

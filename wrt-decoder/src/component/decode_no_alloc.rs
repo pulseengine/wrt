@@ -308,19 +308,17 @@ impl ComponentHeader {
     ///
     /// * `Option<(usize, u32)>` - The offset and size of the section data
     ///   (after the name), if found
-    pub fn find_custom_section<'a>(&self, bytes: &'a [u8], name: &str) -> Option<(usize, u32)> {
-        for section in &self.sections {
-            if let Some(section_info) = section {
-                if section_info.id == ComponentSectionId::Custom {
-                    let section_data = &bytes
-                        [section_info.offset..section_info.offset + section_info.size as usize];
-                    if let Ok((section_name, name_size)) = read_name(section_data, 0) {
-                        if core::str::from_utf8(section_name).map_or(false, |s| s == name) {
-                            return Some((
-                                section_info.offset + name_size,
-                                section_info.size - name_size as u32,
-                            ));
-                        }
+    pub fn find_custom_section(&self, bytes: &[u8], name: &str) -> Option<(usize, u32)> {
+        for section_info in self.sections.iter().flatten() {
+            if section_info.id == ComponentSectionId::Custom {
+                let section_data = &bytes
+                    [section_info.offset..section_info.offset + section_info.size as usize];
+                if let Ok((section_name, name_size)) = read_name(section_data, 0) {
+                    if core::str::from_utf8(section_name) == Ok(name) {
+                        return Some((
+                            section_info.offset + name_size,
+                            section_info.size - name_size as u32,
+                        ));
                     }
                 }
             }
@@ -942,11 +940,9 @@ pub fn extract_component_section_info(
 ) -> Result<Option<ComponentSectionInfo>> {
     let header = decode_component_header_simple(bytes)?;
 
-    for section in &header.sections {
-        if let Some(section_info) = section {
-            if section_info.id == section_id {
-                return Ok(Some(section_info.clone()));
-            }
+    for section_info in header.sections.iter().flatten() {
+        if section_info.id == section_id {
+            return Ok(Some(*section_info));
         }
     }
 

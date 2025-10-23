@@ -119,6 +119,7 @@ pub struct CallRouter {
 
 /// Call context for managing individual cross-component calls
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub struct CallContext {
     /// Unique call identifier
     pub call_id:          CallId,
@@ -153,6 +154,7 @@ pub struct CallStack {
 
 /// Individual call frame in the call stack
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct CallFrame {
     /// Call ID for this frame
     pub call_id:         CallId,
@@ -179,6 +181,7 @@ pub struct ParameterBridge {
 
 /// Memory context for parameter marshaling
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct MemoryContext {
     /// Instance ID this context belongs to
     pub instance_id:      InstanceId,
@@ -274,6 +277,7 @@ pub struct ResourceTransfer {
 
 /// Call metadata for tracking and debugging
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct CallMetadata {
     /// Call start timestamp
     pub started_at:          u64,
@@ -978,56 +982,9 @@ macro_rules! impl_basic_traits {
 }
 
 // Default implementations for complex types
-impl Default for CallContext {
-    fn default() -> Self {
-        Self {
-            call_id:          0,
-            source_instance:  0,
-            target_instance:  0,
-            target_function:  String::new(),
-            parameters:       Vec::new(),
-            return_types:     Vec::new(),
-            resource_handles: Vec::new(),
-            metadata:         CallMetadata::default(),
-            state:            CallState::default(),
-        }
-    }
-}
 
-impl Default for CallFrame {
-    fn default() -> Self {
-        Self {
-            call_id:         0,
-            source_instance: 0,
-            target_instance: 0,
-            function_name:   String::new(),
-            created_at:      0,
-        }
-    }
-}
 
-impl Default for CallMetadata {
-    fn default() -> Self {
-        Self {
-            started_at:          0,
-            completed_at:        0,
-            duration_us:         0,
-            parameter_count:     0,
-            parameter_data_size: 0,
-            custom_fields:       HashMap::new(),
-        }
-    }
-}
 
-impl Default for MemoryContext {
-    fn default() -> Self {
-        Self {
-            instance_id:      0,
-            memory_size:      0,
-            protection_flags: MemoryProtectionFlags::default(),
-        }
-    }
-}
 
 impl Default for ResourceTransfer {
     fn default() -> Self {

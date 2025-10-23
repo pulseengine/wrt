@@ -88,7 +88,7 @@ impl Default for Import {
 
             FunctionValue {
                 ty:          func_type,
-                export_name: export_name,
+                export_name,
             }
         };
 

@@ -93,6 +93,7 @@ pub fn wasi_thread_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Res
 /// Convert nanoseconds to WASI datetime record
 ///
 /// Helper function to convert nanoseconds since Unix epoch to WASI datetime
+#[must_use] 
 pub fn nanoseconds_to_datetime(nanoseconds: u64) -> Value {
     let seconds = nanoseconds / 1_000_000_000;
     let nanos = (nanoseconds % 1_000_000_000) as u32;
@@ -128,7 +129,7 @@ pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
                 }
             }
 
-            Ok(seconds * 1_000_000_000 + nanoseconds as u64)
+            Ok(seconds * 1_000_000_000 + u64::from(nanoseconds))
         },
         _ => Err(Error::wasi_invalid_fd("Invalid datetime format")),
     }

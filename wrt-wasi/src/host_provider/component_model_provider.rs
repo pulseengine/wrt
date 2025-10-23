@@ -1,6 +1,6 @@
 //! Component model provider for WASI integration
 //!
-//! This module provides the ComponentModelProvider that integrates WASI host
+//! This module provides the `ComponentModelProvider` that integrates WASI host
 //! functions with the WRT component model using proven patterns from wrt-host
 //! and wrt-component. Uses safety-aware allocation and respects configured
 //! safety levels.
@@ -17,17 +17,7 @@ use std::vec;
 #[cfg(feature = "std")]
 use wrt_format::component::ExternType;
 // Use foundation Value type for compatibility with host functions
-use wrt_foundation::values::Value;
-use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    BoundedString,
-    BoundedVec,
-};
-use wrt_host::{
-    CloneableFn,
-    HostFunctionHandler,
-};
+use wrt_host::HostFunctionHandler;
 
 use crate::{
     capabilities::WasiCapabilities,
@@ -35,7 +25,6 @@ use crate::{
     prelude::*,
     wasi_safety_level,
     HostFunction,
-    WASI_CRATE_ID,
 };
 #[cfg(not(feature = "std"))]
 type WasiHostString = BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
@@ -48,7 +37,7 @@ fn make_string(s: &str) -> Result<WasiHostString> {
         .map_err(|_| Error::wasi_invalid_argument("Failed to create bounded string"))
 }
 
-/// Convert foundation Value types to value_compat Value types
+/// Convert foundation Value types to `value_compat` Value types
 #[cfg(feature = "std")]
 fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<crate::Value>> {
     let mut converted = Vec::new();
@@ -68,21 +57,21 @@ fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<c
     Ok(converted)
 }
 
-/// Convert value_compat Value types back to foundation Value types
+/// Convert `value_compat` Value types back to foundation Value types
 #[cfg(feature = "std")]
 fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<FoundationValueVec> {
     let mut converted = Vec::new();
     for value in values {
         match value {
             crate::Value::Bool(v) => {
-                converted.push(wrt_foundation::values::Value::I32(if v { 1 } else { 0 }))
+                converted.push(wrt_foundation::values::Value::I32(i32::from(v)));
             },
-            crate::Value::U8(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
-            crate::Value::U16(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
-            crate::Value::U32(v) => converted.push(wrt_foundation::values::Value::I64(v as i64)),
+            crate::Value::U8(v) => converted.push(wrt_foundation::values::Value::I32(i32::from(v))),
+            crate::Value::U16(v) => converted.push(wrt_foundation::values::Value::I32(i32::from(v))),
+            crate::Value::U32(v) => converted.push(wrt_foundation::values::Value::I64(i64::from(v))),
             crate::Value::U64(v) => converted.push(wrt_foundation::values::Value::I64(v as i64)),
-            crate::Value::S8(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
-            crate::Value::S16(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
+            crate::Value::S8(v) => converted.push(wrt_foundation::values::Value::I32(i32::from(v))),
+            crate::Value::S16(v) => converted.push(wrt_foundation::values::Value::I32(i32::from(v))),
             crate::Value::S32(v) => converted.push(wrt_foundation::values::Value::I32(v)),
             crate::Value::S64(v) => converted.push(wrt_foundation::values::Value::I64(v)),
             crate::Value::F32(v) => converted.push(wrt_foundation::values::Value::F32(
@@ -419,7 +408,7 @@ impl ComponentModelProvider {
         // use crate::preview2::filesystem::wasi_filesystem_read;
 
         // Use capability-aware value conversion
-        use crate::value_capability_aware::CapabilityAwareValue;
+        
 
         Ok(HostFunction {
             #[cfg(feature = "std")]
@@ -807,6 +796,7 @@ pub struct WasiProviderBuilder {
 
 impl WasiProviderBuilder {
     /// Create a new WASI provider builder
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             capabilities: None,

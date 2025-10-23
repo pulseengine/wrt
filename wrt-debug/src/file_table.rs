@@ -16,6 +16,7 @@ use crate::strings::DebugString;
 
 /// A file entry in the DWARF file table
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct FileEntry<'a> {
     /// File path (may be relative or absolute)
     pub path:      DebugString<'a>,
@@ -28,16 +29,6 @@ pub struct FileEntry<'a> {
 }
 
 // Implement required traits for BoundedVec compatibility
-impl<'a> Default for FileEntry<'a> {
-    fn default() -> Self {
-        Self {
-            path:      DebugString::default(),
-            dir_index: 0,
-            mod_time:  0,
-            size:      0,
-        }
-    }
-}
 
 impl<'a> PartialEq for FileEntry<'a> {
     fn eq(&self, other: &Self) -> bool {
@@ -102,6 +93,12 @@ pub struct FileTable<'a> {
         MAX_DWARF_FILE_TABLE,
         NoStdProvider<{ MAX_DWARF_FILE_TABLE * 64 }>,
     >,
+}
+
+impl<'a> Default for FileTable<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> FileTable<'a> {

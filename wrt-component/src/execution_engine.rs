@@ -403,7 +403,7 @@ impl ComponentExecutionEngine {
         };
         let result = self
             .runtime_bridge
-            .execute_component_function(instance_id, &function_name, &component_values)
+            .execute_component_function(instance_id, function_name, &component_values)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to execute component function"))?;
 
         // Convert result back to engine value format
@@ -741,7 +741,7 @@ impl ExecutionContext {
         Self {
             memory_layout:     MemoryLayout::new(1, 1),
             string_encoding:   StringEncoding::Utf8,
-            canonical_options: CanonicalOptions::default(),
+            canonical_options: CanonicalOptions,
             max_call_depth:    1024,
             max_memory:        1024 * 1024, // 1MB default
         }

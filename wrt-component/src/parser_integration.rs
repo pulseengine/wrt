@@ -344,7 +344,7 @@ impl ComponentLoader {
     fn validate_component(&self, parsed: &ParsedComponent) -> WrtResult<()> {
         if self.validation_level == ValidationLevel::Basic {
             // Basic validation - check we have at least some content
-            if parsed.types.len() == 0 {
+            if parsed.types.is_empty() {
                 return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"));
             }
         } else if self.validation_level == ValidationLevel::Full {

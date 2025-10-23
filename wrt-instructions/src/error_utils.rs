@@ -61,44 +61,43 @@ pub enum InstructionErrorContext {
     },
 }
 
-/// Binary std/no_std choice
+/// Binary `std/no_std` choice
 #[cfg(feature = "std")]
+#[must_use] 
 pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
     use std::format;
 
     let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, actual } => {
-            format!("Expected {}, got {}", expected, actual)
+            format!("Expected {expected}, got {actual}")
         },
         InstructionErrorContext::StackUnderflow {
             required,
             available,
         } => {
             format!(
-                "Stack underflow: required {}, available {}",
-                required, available
+                "Stack underflow: required {required}, available {available}"
             )
         },
         InstructionErrorContext::InvalidMemoryAccess { offset, size } => {
             format!(
-                "Invalid memory access at offset {} with size {}",
-                offset, size
+                "Invalid memory access at offset {offset} with size {size}"
             )
         },
         InstructionErrorContext::DivisionByZero => "Division by zero".into(),
         InstructionErrorContext::IntegerOverflow => "Integer overflow".into(),
         InstructionErrorContext::InvalidConversion { from, to } => {
-            format!("Invalid conversion from {} to {}", from, to)
+            format!("Invalid conversion from {from} to {to}")
         },
         InstructionErrorContext::TableOutOfBounds { index, size } => {
-            format!("Table index {} out of bounds (size: {})", index, size)
+            format!("Table index {index} out of bounds (size: {size})")
         },
         InstructionErrorContext::InvalidReference => "Invalid reference".into(),
         InstructionErrorContext::FunctionNotFound { index } => {
-            format!("Function {} not found", index)
+            format!("Function {index} not found")
         },
         InstructionErrorContext::InvalidBranchTarget { depth } => {
-            format!("Invalid branch target depth: {}", depth)
+            format!("Invalid branch target depth: {depth}")
         },
     };
 

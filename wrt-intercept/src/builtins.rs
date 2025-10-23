@@ -84,6 +84,7 @@ impl InterceptContext {
 
     /// Get context data (only available with `std` feature)
     #[cfg(feature = "std")]
+    #[must_use] 
     pub fn get_data(&self, key: &str) -> Option<&Value> {
         self.context_data.get(key)
     }
@@ -275,7 +276,7 @@ impl BuiltinSerialization {
     // }
 }
 
-/// The BuiltinInterceptor trait defines methods for intercepting and
+/// The `BuiltinInterceptor` trait defines methods for intercepting and
 /// potentially modifying built-in function calls in the WebAssembly
 /// Component Model implementation.
 #[cfg(feature = "std")]

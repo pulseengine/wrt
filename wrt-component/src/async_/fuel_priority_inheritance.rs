@@ -69,6 +69,7 @@ pub struct FuelPriorityInheritanceProtocol {
 
 /// Resource identifier for blocking relationships
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ResourceId(pub u64);
 
 impl ResourceId {
@@ -81,11 +82,6 @@ impl ResourceId {
     }
 }
 
-impl Default for ResourceId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for ResourceId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

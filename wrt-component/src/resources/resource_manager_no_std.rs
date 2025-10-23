@@ -70,6 +70,12 @@ pub struct ResourceManager {
     max_resources: usize,
 }
 
+impl Default for ResourceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceManager {
     /// Create a new resource manager with default settings
     pub fn new() -> Self {

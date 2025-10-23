@@ -83,9 +83,9 @@ impl BasicType {
         match self {
             Self::Void => 0,
             Self::Bool => 1,
-            Self::SignedInt(size) => 2 + (*size as u8),
-            Self::UnsignedInt(size) => 10 + (*size as u8),
-            Self::Float(size) => 18 + (*size as u8),
+            Self::SignedInt(size) => 2 + *size,
+            Self::UnsignedInt(size) => 10 + *size,
+            Self::Float(size) => 18 + *size,
             Self::Pointer => 26,
             Self::Reference => 27,
             Self::Array => 28,
@@ -214,6 +214,12 @@ pub struct ParameterList<'a> {
     >,
 }
 
+impl<'a> Default for ParameterList<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> ParameterList<'a> {
     /// Create a new empty parameter list
     pub fn new() -> Self {
@@ -286,6 +292,7 @@ impl<'a> ParameterList<'a> {
 
 /// Inline function information
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct InlinedFunction<'a> {
     /// Name of the inlined function
     pub name:            Option<DebugString<'a>>,
@@ -306,20 +313,6 @@ pub struct InlinedFunction<'a> {
 }
 
 // Implement required traits for BoundedVec compatibility
-impl<'a> Default for InlinedFunction<'a> {
-    fn default() -> Self {
-        Self {
-            name:            None,
-            abstract_origin: 0,
-            low_pc:          0,
-            high_pc:         0,
-            call_file:       0,
-            call_line:       0,
-            call_column:     0,
-            depth:           0,
-        }
-    }
-}
 
 impl<'a> PartialEq for InlinedFunction<'a> {
     fn eq(&self, other: &Self) -> bool {

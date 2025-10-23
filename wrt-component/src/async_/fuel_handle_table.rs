@@ -89,6 +89,7 @@ impl<T> HandleEntry<T> {
 
 /// Handle with generation for ABA prevention
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub struct GenerationalHandle {
     /// Index in the handle table
     pub index:      u32,
@@ -117,14 +118,6 @@ impl GenerationalHandle {
     }
 }
 
-impl Default for GenerationalHandle {
-    fn default() -> Self {
-        Self {
-            index: 0,
-            generation: 0,
-        }
-    }
-}
 
 impl Checksummable for GenerationalHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {

@@ -11,7 +11,7 @@
 //! - **Resource Management**: Built on WRT's proven resource management
 //!   patterns
 //! - **Memory Safety**: Uses WRT's safe memory allocation system
-//! - **Platform Abstraction**: Works across std/no_std environments
+//! - **Platform Abstraction**: Works across `std/no_std` environments
 //! - **Preview3 Preparation**: Foundation for future WASI Preview3 features
 //!
 //! ## Supported WASI Interfaces
@@ -61,10 +61,7 @@ pub use wrt_error::{
     Result,
 };
 // Safety configuration for WASI
-use wrt_foundation::safety_features::{
-    allocation::MEMORY_STRATEGY,
-    runtime,
-};
+use wrt_foundation::safety_features::runtime;
 pub use wrt_foundation::{
     resource::Resource,
     MemoryProvider,
@@ -86,11 +83,13 @@ pub use wrt_host::{
 pub const WASI_CRATE_ID: CrateId = CrateId::Wasi;
 
 /// Get the current safety level for WASI operations
+#[must_use] 
 pub const fn wasi_safety_level() -> &'static str {
     runtime::current_safety_level()
 }
 
 /// Get maximum allocation size for WASI operations based on safety level
+#[must_use] 
 pub const fn wasi_max_allocation_size() -> usize {
     runtime::max_allocation_size()
 }
@@ -238,7 +237,7 @@ impl core::fmt::Debug for HostFunction {
 
 /// Error types specific to WASI operations
 pub mod error {
-    use wrt_error::ErrorCategory;
+    
 
     /// WASI-specific error codes
     pub mod codes {

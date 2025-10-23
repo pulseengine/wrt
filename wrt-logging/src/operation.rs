@@ -4,7 +4,7 @@
 //! logging.
 
 #[cfg(feature = "std")]
-use std::string::String;
+use alloc::string::String;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]

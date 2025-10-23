@@ -30,7 +30,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 use wrt_error::{
     codes,
@@ -199,7 +199,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
             ));
         }
 
-        if &module_data[0..4] != WASM_MAGIC {
+        if module_data[0..4] != WASM_MAGIC {
             return Err(Error::parse_invalid_binary(
                 "Invalid WASM magic number in core module",
             ));
@@ -280,7 +280,7 @@ impl CoreModuleSection {
     }
 
     /// Iterate over all modules (ASIL-safe)
-    pub fn iter_modules(&self) -> impl Iterator<Item = &CoreModule> + ExactSizeIterator {
+    pub fn iter_modules(&self) -> impl ExactSizeIterator<Item = &CoreModule> {
         self.modules.iter()
     }
 

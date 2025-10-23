@@ -47,6 +47,12 @@ pub struct ResourceLifecycleManager {
     next_handle: u32,
 }
 
+impl Default for ResourceLifecycleManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceLifecycleManager {
     pub fn new() -> Self {
         Self { next_handle: 1 }
@@ -88,6 +94,12 @@ pub struct RuntimeBridgeConfig;
 /// Component runtime bridge stub
 #[derive(Debug, Clone)]
 pub struct ComponentRuntimeBridge;
+
+impl Default for ComponentRuntimeBridge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ComponentRuntimeBridge {
     pub fn new() -> Self {

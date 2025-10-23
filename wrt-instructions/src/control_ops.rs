@@ -57,11 +57,7 @@
 // Remove unused imports
 
 use wrt_error::Result;
-use wrt_foundation::{
-    BoundedCapacity,
-    BoundedVec,
-    Value,
-};
+use wrt_foundation::Value;
 
 use crate::{
     prelude::{
@@ -102,6 +98,7 @@ pub enum Block {
 
 /// Represents a pure control flow operation for WebAssembly.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ControlOp {
     /// A basic block of instructions with a label that can be branched to
     Block(ControlBlockType),
@@ -149,6 +146,7 @@ pub enum ControlOp {
         type_idx:  u32,
     },
     /// Execute a nop instruction (no operation)
+    #[default]
     Nop,
     /// Execute an unreachable instruction (causes trap)
     Unreachable,
@@ -158,11 +156,6 @@ pub enum ControlOp {
     BrOnNonNull(u32),
 }
 
-impl Default for ControlOp {
-    fn default() -> Self {
-        ControlOp::Nop
-    }
-}
 
 /// Return operation (return)
 #[derive(Debug, Clone, PartialEq)]
@@ -310,8 +303,9 @@ pub struct BrTable {
 }
 
 impl BrTable {
-    /// Binary std/no_std choice
+    /// Binary `std/no_std` choice
     #[cfg(feature = "std")]
+    #[must_use] 
     pub fn new(table: Vec<u32>, default: u32) -> Self {
         Self { table, default }
     }

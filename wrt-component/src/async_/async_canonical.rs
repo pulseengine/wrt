@@ -114,6 +114,12 @@ impl Default for CanonicalLowerContext {
 #[derive(Debug, Clone)]
 pub struct TaskManager;
 
+impl Default for TaskManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskManager {
     pub fn new() -> Self {
         Self

@@ -596,7 +596,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         },
         ComponentComponentValue::Result(result) => {
             // Serialize success flag
-            let is_ok = matches!(result, Ok(_));
+            let is_ok = result.is_ok();
             writer.write_bool(is_ok)?;
 
             // TODO: ComponentValue uses ValueRef (indices) not direct values

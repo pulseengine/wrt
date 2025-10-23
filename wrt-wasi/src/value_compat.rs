@@ -13,16 +13,7 @@ use std::string::String;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
-    budget_aware_provider::CrateId,
-    prelude::*,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
-};
+use wrt_foundation::prelude::*;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type Box<T> = T; // Simple workaround for no_std without alloc
 #[cfg(not(feature = "std"))]
@@ -175,7 +166,7 @@ impl wrt_foundation::traits::ToBytes for Value {
         };
         writer.write_u8(discriminant)?;
         match self {
-            Value::Bool(v) => writer.write_u8(if *v { 1 } else { 0 }),
+            Value::Bool(v) => writer.write_u8(u8::from(*v)),
             Value::U8(v) => writer.write_u8(*v),
             _ => Ok(()), // Placeholder for other types
         }
@@ -194,10 +185,10 @@ impl wrt_foundation::traits::FromBytes for Value {
             1 => Ok(Value::U8(reader.read_u8()?)),
             3 => {
                 // Read u32 manually (4 bytes, little-endian)
-                let b0 = reader.read_u8()? as u32;
-                let b1 = reader.read_u8()? as u32;
-                let b2 = reader.read_u8()? as u32;
-                let b3 = reader.read_u8()? as u32;
+                let b0 = u32::from(reader.read_u8()?);
+                let b1 = u32::from(reader.read_u8()?);
+                let b2 = u32::from(reader.read_u8()?);
+                let b3 = u32::from(reader.read_u8()?);
                 Ok(Value::U32(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)))
             },
             _ => Ok(Value::U32(0)), // Default fallback
@@ -207,28 +198,31 @@ impl wrt_foundation::traits::FromBytes for Value {
 
 impl Value {
     /// Extract a u32 from the value, returning 0 if not possible
+    #[must_use] 
     pub fn as_u32(&self) -> u32 {
         match self {
             Value::U32(v) => *v,
-            Value::U16(v) => *v as u32,
-            Value::U8(v) => *v as u32,
+            Value::U16(v) => u32::from(*v),
+            Value::U8(v) => u32::from(*v),
             _ => 0,
         }
     }
 
     /// Extract a u64 from the value, returning 0 if not possible
+    #[must_use] 
     pub fn as_u64(&self) -> u64 {
         match self {
             Value::U64(v) => *v,
-            Value::U32(v) => *v as u64,
-            Value::U16(v) => *v as u64,
-            Value::U8(v) => *v as u64,
+            Value::U32(v) => u64::from(*v),
+            Value::U16(v) => u64::from(*v),
+            Value::U8(v) => u64::from(*v),
             _ => 0,
         }
     }
 
     /// Extract a string from the value, returning empty string if not possible
     #[cfg(feature = "std")]
+    #[must_use] 
     pub fn as_string(&self) -> String {
         match self {
             Value::String(s) => s.clone(),
@@ -258,6 +252,7 @@ impl Value {
     }
 
     /// Extract a boolean from the value, returning false if not possible
+    #[must_use] 
     pub fn as_bool(&self) -> bool {
         match self {
             Value::Bool(b) => *b,

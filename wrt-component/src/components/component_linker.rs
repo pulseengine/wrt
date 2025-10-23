@@ -724,6 +724,12 @@ impl ComponentLinker {
     }
 }
 
+impl Default for LinkGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LinkGraph {
     /// Create a new empty link graph
     pub fn new() -> Self {

@@ -22,7 +22,7 @@ use core::{
     assert_eq,
 };
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 use crate::{
     lazy_detection::{

@@ -79,13 +79,9 @@ pub struct AsyncCombinators {
 
 /// Combinator operation identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Default)]
 pub struct CombinatorId(u64);
 
-impl Default for CombinatorId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for CombinatorId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

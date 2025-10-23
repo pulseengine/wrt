@@ -631,11 +631,7 @@ impl FuelWcetAnalyzer {
 
             // Update accuracy statistics
             let accuracy = if result.wcet_fuel > 0 {
-                let error = if actual_fuel > result.wcet_fuel {
-                    actual_fuel - result.wcet_fuel
-                } else {
-                    result.wcet_fuel - actual_fuel
-                };
+                let error = actual_fuel.abs_diff(result.wcet_fuel);
                 let accuracy_ratio = 1.0 - (error as f64 / result.wcet_fuel as f64);
                 (accuracy_ratio * 1000.0) as u64
             } else {

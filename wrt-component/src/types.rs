@@ -94,6 +94,7 @@ impl TaskId {
 
 /// Metadata for component instance tracking
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ComponentMetadata {
     /// Number of function calls made
     pub function_calls: u64,
@@ -103,15 +104,6 @@ pub struct ComponentMetadata {
     pub last_accessed: u64,
 }
 
-impl Default for ComponentMetadata {
-    fn default() -> Self {
-        Self {
-            function_calls: 0,
-            created_at: 0,
-            last_accessed: 0,
-        }
-    }
-}
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
 ///
@@ -211,8 +203,10 @@ impl Default for ComponentInstanceState {
 
 /// Component model value type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum ValType {
     /// Boolean type
+    #[default]
     Bool,
     /// Signed 8-bit integer
     S8,
@@ -609,6 +603,7 @@ impl wrt_foundation::traits::Checksummable for Value {
 
 /// Component instance identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ComponentInstanceId(pub u32);
 
 impl ComponentInstanceId {
@@ -633,11 +628,6 @@ impl ComponentInstanceId {
     }
 }
 
-impl Default for ComponentInstanceId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl From<ComponentInstanceId> for u64 {
     fn from(id: ComponentInstanceId) -> Self {
@@ -672,6 +662,7 @@ impl FromBytes for ComponentInstanceId {
 
 /// Type identifier for generative types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct TypeId(pub u32);
 
 impl TypeId {
@@ -691,11 +682,6 @@ impl TypeId {
     }
 }
 
-impl Default for TypeId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for TypeId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -724,6 +710,7 @@ impl FromBytes for TypeId {
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ResourceId(pub u32);
 
 impl ResourceId {
@@ -743,11 +730,6 @@ impl ResourceId {
     }
 }
 
-impl Default for ResourceId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for ResourceId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -941,11 +923,6 @@ macro_rules! impl_basic_traits {
 }
 
 // Default implementations for complex types
-impl Default for ValType {
-    fn default() -> Self {
-        ValType::Bool
-    }
-}
 
 impl Default for Record {
     fn default() -> Self {

@@ -412,7 +412,7 @@ impl HandleRepresentationManager {
         self.verify_access(source_component, handle, &operation)?;
 
         // Get original representation
-        let original = self.get_representation(handle)?.clone();
+        let original = *self.get_representation(handle)?;
 
         // Create new handle for target component
         let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst);

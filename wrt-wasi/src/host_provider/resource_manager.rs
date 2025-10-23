@@ -3,12 +3,8 @@
 //! This module provides resource management for WASI handles using the proven
 //! Resource<P> patterns from wrt-foundation.
 
-use core::any::Any;
 
-use wrt_error::{
-    ErrorSource,
-    Result,
-};
+use wrt_error::Result;
 #[cfg(feature = "std")]
 use wrt_foundation::capabilities::CapabilityAwareProvider;
 use wrt_foundation::{
@@ -16,7 +12,6 @@ use wrt_foundation::{
     resource::{
         Resource,
         ResourceOperation,
-        ResourceRepr,
     },
     safe_managed_alloc,
     safe_memory::NoStdProvider,
@@ -30,8 +25,6 @@ use wrt_foundation::{
     verification::Checksum,
     BoundedMap,
     BoundedString,
-    BoundedVec,
-    CrateId,
 };
 
 use crate::prelude::*;
@@ -174,6 +167,7 @@ impl Default for WasiResource {
 
 /// Capabilities for WASI resources
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct WasiResourceCapabilities {
     /// Can read from this resource
     pub readable:        bool,
@@ -251,7 +245,7 @@ impl WasiResourceManager {
         })
     }
 
-    /// Get a WASI resource by handle (for modification via update_resource)
+    /// Get a WASI resource by handle (for modification via `update_resource`)
     pub fn get_resource_mut(&mut self, handle: WasiHandle) -> Result<WasiResource> {
         // Note: BoundedMap doesn't support get_mut due to serialization constraints
         // Use get() and then update_resource() to modify
@@ -462,16 +456,6 @@ impl WasiResource {
     }
 }
 
-impl Default for WasiResourceCapabilities {
-    fn default() -> Self {
-        Self {
-            readable:        false,
-            writable:        false,
-            seekable:        false,
-            metadata_access: false,
-        }
-    }
-}
 
 // Implement required traits for WasiResource to work with BoundedMap
 impl Checksummable for WasiResource {
@@ -488,7 +472,7 @@ impl Checksummable for WasiResource {
                 if let Ok(path_str) = path.as_str() {
                     checksum.update_slice(path_str.as_bytes());
                 }
-                checksum.update_slice(&[*readable as u8, *writable as u8]);
+                checksum.update_slice(&[u8::from(*readable), u8::from(*writable)]);
             },
             WasiResourceType::DirectoryHandle { path } => {
                 checksum.update_slice(b"dir");
@@ -516,7 +500,7 @@ impl Checksummable for WasiResource {
             },
             WasiResourceType::RandomHandle { secure } => {
                 checksum.update_slice(b"random");
-                checksum.update_slice(&[*secure as u8]);
+                checksum.update_slice(&[u8::from(*secure)]);
             },
         }
     }
