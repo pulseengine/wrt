@@ -163,7 +163,7 @@ pub mod platform_types {
     use super::*;
 
     /// Create a platform-aware bounded string type
-    pub fn create_bounded_string() -> Result<BoundedString<512, NoStdProvider<1024>>> {
+    pub fn create_bounded_string() -> Result<BoundedString<512>> {
         let config = runtime_memory_config();
         // Use config-defined size, but macro requires compile-time constant
         let provider = wrt_foundation::safe_managed_alloc!(

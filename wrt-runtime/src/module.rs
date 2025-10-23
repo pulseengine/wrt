@@ -1010,17 +1010,10 @@ impl Module {
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Converting {} types from wrt_module", wrt_module.types.len());
         for func_type in &wrt_module.types {
-            let mut params = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
-            let mut results = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
+            let param_types: Vec<_> = func_type.params.iter().copied().collect();
+            let result_types: Vec<_> = func_type.results.iter().copied().collect();
 
-            for param in &func_type.params {
-                params.push(*param)?;
-            }
-            for result in &func_type.results {
-                results.push(*result)?;
-            }
-
-            let wrt_func_type = WrtFuncType { params, results };
+            let wrt_func_type = WrtFuncType::new(param_types, result_types)?;
             runtime_module.types.push(wrt_func_type)?;
         }
 
@@ -1095,15 +1088,13 @@ impl Module {
         for export in &wrt_module.exports {
             // Create the export name with correct provider size (8192)
             let name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &export.name,
-                shared_provider.clone(),
+                &export.name
             )?;
 
             // Create key with correct type for ExportMap (BoundedString<256,
             // RuntimeProvider>)
             let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &export.name,
-                shared_provider.clone(),
+                &export.name
             )?;
 
             let kind = match export.kind {
@@ -1147,18 +1138,11 @@ impl Module {
 
         // Convert types
         for func_type in &wrt_module.types {
-            let provider = create_runtime_provider()?;
-            let mut params = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
-            let mut results = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
-
-            for param in &func_type.params {
-                params.push(*param)?;
-            }
-            for result in &func_type.results {
-                results.push(*result)?;
-            }
-
-            let wrt_func_type = WrtFuncType { params, results };
+            let _provider = create_runtime_provider()?;
+            let wrt_func_type = WrtFuncType::new(
+                func_type.params.iter().copied(),
+                func_type.results.iter().copied()
+            )?;
             runtime_module.types.push(wrt_func_type)?;
         }
 
@@ -1537,10 +1521,8 @@ impl Module {
                     ))
                 },
             };
-            let provider = create_runtime_provider()?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 export_def.name.as_str()?,
-                provider,
             )?;
             let export = crate::module::Export::new(name_key.as_str()?, kind, index)?;
             runtime_module.exports.insert(name_key, export)?;
@@ -1555,10 +1537,8 @@ impl Module {
         // struct
 
         for custom_def in &wrt_module.custom_sections {
-            let provider = create_runtime_provider()?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 custom_def.name.as_str()?,
-                provider,
             )?;
             runtime_module.custom_sections.insert(name_key, custom_def.data.clone())?;
         }
@@ -1622,17 +1602,13 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name,
-                create_runtime_provider()?,
-            )?;
+                name)?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
-                create_runtime_provider()?,
-            )?;
+                &name)?;
             self.exports.insert(bounded_name, export)?;
         }
         Ok(())
@@ -1644,17 +1620,13 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name,
-                create_runtime_provider()?,
-            )?;
+                name)?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
-                create_runtime_provider()?,
-            )?;
+                &name)?;
             self.exports.insert(bounded_name, export)?;
         }
         Ok(())
@@ -1666,17 +1638,13 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name,
-                create_runtime_provider()?,
-            )?;
+                name)?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
-                create_runtime_provider()?,
-            )?;
+                &name)?;
             self.exports.insert(bounded_name, export)?;
         }
         Ok(())
@@ -1688,17 +1656,13 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                name,
-                create_runtime_provider()?,
-            )?;
+                name)?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
-                create_runtime_provider()?,
-            )?;
+                &name)?;
             self.exports.insert(bounded_name, export)?;
         }
         Ok(())
@@ -1726,8 +1690,7 @@ impl Module {
             runtime_export
                 .name
                 .as_str()
-                .map_err(|_| Error::runtime_error("Invalid export name"))?,
-            create_runtime_provider()?,
+                .map_err(|_| Error::runtime_error("Invalid export name"))?
         )?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
@@ -1736,9 +1699,7 @@ impl Module {
     /// Set the name of the module
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name,
-            create_runtime_provider()?,
-        )?;
+            name)?;
         self.name = Some(bounded_name);
         Ok(())
     }
@@ -1780,13 +1741,9 @@ impl Module {
         {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
 
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
@@ -1804,13 +1761,9 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
             let mut inner_map = BoundedMap::new(provider)?;
@@ -1837,13 +1790,9 @@ impl Module {
         {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
 
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
@@ -1861,13 +1810,9 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
             let mut inner_map = BoundedMap::new(provider)?;
@@ -1894,13 +1839,9 @@ impl Module {
         {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
 
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
@@ -1918,13 +1859,9 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
             let mut inner_map = BoundedMap::new(provider)?;
@@ -1954,13 +1891,9 @@ impl Module {
         )?;
 
         let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            module_name,
-            create_runtime_provider()?,
-        )?;
+            module_name)?;
         let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            item_name,
-            create_runtime_provider()?,
-        )?;
+            item_name)?;
         let provider = create_runtime_provider()?;
         let mut inner_map = BoundedMap::new(provider)?;
         inner_map.insert(item_key, import)?;
@@ -2017,9 +1950,7 @@ impl Module {
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name,
-            create_runtime_provider()?,
-        )?;
+            name)?;
         let export = Export::new(name, ExportKind::Function, index)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -2032,9 +1963,7 @@ impl Module {
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name,
-            create_runtime_provider()?,
-        )?;
+            name)?;
         let export = Export::new(bounded_name.as_str()?, ExportKind::Table, index)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -2049,9 +1978,7 @@ impl Module {
         let export = Export::new(name, ExportKind::Memory, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name,
-            create_runtime_provider()?,
-        )?;
+            name)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
@@ -2065,9 +1992,7 @@ impl Module {
         let export = Export::new(name, ExportKind::Global, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name,
-            create_runtime_provider()?,
-        )?;
+            name)?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
@@ -2239,13 +2164,9 @@ impl Module {
         {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
 
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
@@ -2263,13 +2184,9 @@ impl Module {
         #[cfg(not(feature = "std"))]
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                module_name,
-                create_runtime_provider()?,
-            )?;
+                module_name)?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                item_name,
-                create_runtime_provider()?,
-            )?;
+                item_name)?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
             let mut inner_map = BoundedMap::new(provider)?;
@@ -2369,8 +2286,7 @@ impl Module {
         section: WrtCustomSection<RuntimeProvider>,
     ) -> Result<()> {
         let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            section.name.as_str()?,
-            create_runtime_provider()?,
+            section.name.as_str()?
         )?;
         // Convert section.data to the expected type
         let provider_data = create_runtime_provider()?;
@@ -2454,7 +2370,6 @@ impl Module {
                     // For now, create a simple function type
                     // In a full implementation, we'd look up the actual type
                     let func_type = WrtFuncType::new(
-                        create_runtime_provider()?,
                         core::iter::empty::<WrtValueType>(), // empty params
                         core::iter::empty::<WrtValueType>(), // empty results
                     )?;
@@ -2511,13 +2426,9 @@ impl Module {
 
             // Add to imports map
             let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &import.module,
-                create_runtime_provider()?,
-            )?;
+                &import.module)?;
             let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &import.name,
-                create_runtime_provider()?,
-            )?;
+                &import.name)?;
 
             // Get or create inner map
             let mut inner_map = match runtime_module.imports.get(&module_key)? {
@@ -2541,9 +2452,7 @@ impl Module {
 
             let runtime_export = Export::new(&export.name, export_kind, export.index)?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &export.name,
-                create_runtime_provider()?,
-            )?;
+                &export.name)?;
             runtime_module.exports.insert(name_key, runtime_export)?;
         }
 
@@ -2756,9 +2665,8 @@ impl wrt_foundation::traits::FromBytes for Module {
             reader.read_exact(&mut name_bytes[..name_len as usize])?;
             let name_str = core::str::from_utf8(&name_bytes[..name_len as usize])
                 .map_err(|_| wrt_error::Error::runtime_error("Invalid module name UTF-8"))?;
-            let provider = create_runtime_provider()?;
             Some(wrt_foundation::bounded::BoundedString::from_str(
-                name_str, provider,
+                name_str
             )?)
         } else {
             None

@@ -32,7 +32,7 @@ pub trait ModuleInstance: Debug {
     fn function_type(
         &self,
         idx: u32,
-    ) -> Result<wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>>;
+    ) -> Result<wrt_foundation::types::FuncType>;
 }
 
 // Further implementations will be added in subsequent updates

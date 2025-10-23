@@ -56,7 +56,7 @@ use crate::{
     },
     table::Table,
 };
-type WrtFuncType = wrt_foundation::types::FuncType<RuntimeProvider>;
+type WrtFuncType = wrt_foundation::types::FuncType;
 
 // Platform sync primitives - use prelude imports for consistency
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -208,14 +208,8 @@ impl ModuleInstance {
 
         // Convert from provider-aware FuncType to clean CoreFuncType
         // Create BoundedVecs manually since FromIterator isn't implemented
-        let params_slice = ty
-            .params
-            .as_slice()
-            .map_err(|_| Error::runtime_error("Failed to access params"))?;
-        let results_slice = ty
-            .results
-            .as_slice()
-            .map_err(|_| Error::runtime_error("Failed to access results"))?;
+        let params_slice = ty.params.as_slice();
+        let results_slice = ty.results.as_slice();
 
         let mut params = wrt_foundation::bounded::BoundedVec::<
             wrt_foundation::ValueType,
@@ -243,7 +237,11 @@ impl ModuleInstance {
                 .map_err(|_| Error::capacity_limit_exceeded("Too many results"))?;
         }
 
-        Ok(crate::prelude::CoreFuncType { params, results })
+        // Use FuncType::new() instead of struct literal
+        // Note: BoundedVec's iter() yields ValueType by value, not by reference
+        let param_types: Vec<_> = params.iter().collect();
+        let result_types: Vec<_> = results.iter().collect();
+        crate::prelude::CoreFuncType::new(param_types, result_types)
     }
 
     /// Get the function type for a function (no_std version)

@@ -2027,11 +2027,8 @@ impl Memory {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Runtime
         )?;
-        Ok(RuntimeString::from_str_truncate(
-            "Memory Safety Stats: [Runtime memory]",
-            provider.clone(),
-        )
-        .unwrap_or_else(|_| RuntimeString::from_str_truncate("", provider).unwrap()))
+        Ok(RuntimeString::from_str_truncate("Memory Safety Stats: [Runtime memory]")
+            .unwrap_or_else(|_| RuntimeString::from_str_truncate("").unwrap()))
     }
 
     /// Returns a `SafeSlice` representing the entire memory

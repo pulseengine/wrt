@@ -67,8 +67,8 @@ pub trait RuntimeModuleBuilder {
     fn new() -> Self;
     fn set_name(&mut self, name: String);
     fn set_start(&mut self, start_func: u32);
-    fn add_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
-    fn add_function_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
+    fn add_type(&mut self, func_type: FuncType) -> Result<u32>;
+    fn add_function_type(&mut self, func_type: FuncType) -> Result<u32>;
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
     fn add_function(&mut self, type_idx: u32) -> Result<u32>;
     fn add_function_body(
@@ -124,7 +124,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         // Start function setting not implemented in current Module struct
     }
 
-    fn add_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32> {
+    fn add_type(&mut self, func_type: FuncType) -> Result<u32> {
         self.add_function_type(func_type)
     }
 
@@ -162,7 +162,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(())
     }
 
-    fn add_function_type(&mut self, _func_type: FuncType<StdMemoryProvider>) -> Result<u32> {
+    fn add_function_type(&mut self, _func_type: FuncType) -> Result<u32> {
         // Function type addition not implemented
         Ok(0)
     }

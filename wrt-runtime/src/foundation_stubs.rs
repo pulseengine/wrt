@@ -89,7 +89,7 @@ pub struct UnifiedTypes<const SMALL: usize, const MEDIUM: usize, const LARGE: us
 pub type UnifiedSmallVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, NoStdProvider<1024>>;
 pub type UnifiedMediumVec<T> = wrt_foundation::bounded::BoundedVec<T, 1024, NoStdProvider<8192>>;
 pub type UnifiedLargeVec<T> = wrt_foundation::bounded::BoundedVec<T, 65536, NoStdProvider<65536>>;
-pub type UnifiedRuntimeString = wrt_foundation::bounded::BoundedString<1024, NoStdProvider<1024>>;
+pub type UnifiedRuntimeString = wrt_foundation::bounded::BoundedString<1024>;
 
 /// Default type configuration
 pub type DefaultTypes = UnifiedTypes<64, 1024, 65536>;
