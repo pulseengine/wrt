@@ -169,10 +169,12 @@ pub use rwlock::{
 };
 // Re-export unified synchronization primitives
 pub use unified_sync::{
+    AsilLevel,
     BoundedChannel,
     BoundedReceiver,
     BoundedSender,
     SafeAtomicCounter,
+    SafetyContext,
     SafeMutex,
     SafeMutexGuard,
 };
