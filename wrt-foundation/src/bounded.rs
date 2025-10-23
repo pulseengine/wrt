@@ -3754,6 +3754,34 @@ impl<const N_BYTES: usize> WasmName<N_BYTES> {
     }
 }
 
+// Trait implementations for WasmName
+impl<const N_BYTES: usize> ToBytes for WasmName<N_BYTES> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> Result<()> {
+        self.inner.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl<const N_BYTES: usize> FromBytes for WasmName<N_BYTES> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> Result<Self> {
+        Ok(Self {
+            inner: BoundedString::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+impl<const N_BYTES: usize> Checksummable for WasmName<N_BYTES> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.inner.update_checksum(checksum);
+    }
+}
+
 // Ensure CoreHasher is used in Hasher bounds
 impl<T, const N_ELEMENTS: usize, P> Hash for BoundedStack<T, N_ELEMENTS, P>
 where

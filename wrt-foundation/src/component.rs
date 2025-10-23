@@ -160,9 +160,9 @@ where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug, /* For WasmName default and
                                                                   * BoundedVec usage */
 {
-    pub name: WasmName<MAX_NAME_LEN, P>,
+    pub name: WasmName<MAX_NAME_LEN>,
     pub ty:   ExternType<P>,
-    pub desc: Option<WasmName<MAX_NAME_LEN, P>>,
+    pub desc: Option<WasmName<MAX_NAME_LEN>>,
 }
 
 /// Key for an import, consisting of a namespace and a name.
@@ -173,7 +173,7 @@ where
                                                                   * Namespace default */
 {
     pub namespace: Namespace<P>,
-    pub name:      WasmName<MAX_NAME_LEN, P>,
+    pub name:      WasmName<MAX_NAME_LEN>,
 }
 
 /// Namespace for imports.
@@ -182,7 +182,7 @@ pub struct Namespace<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug, // For BoundedVec default
 {
-    pub elements: BoundedVec<WasmName<MAX_NAME_LEN, P>, MAX_NAMESPACE_ELEMENTS, P>,
+    pub elements: BoundedVec<WasmName<MAX_NAME_LEN>, MAX_NAMESPACE_ELEMENTS, P>,
 }
 
 impl<P> Namespace<P>
@@ -262,7 +262,7 @@ where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
     pub instance_idx: u32,
-    pub name:         WasmName<MAX_NAME_LEN, P>,
+    pub name:         WasmName<MAX_NAME_LEN>,
     pub kind:         ComponentAliasExportKind,
 }
 
@@ -272,7 +272,7 @@ where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
     pub core_instance_idx: u32,
-    pub name:              WasmName<MAX_NAME_LEN, P>,
+    pub name:              WasmName<MAX_NAME_LEN>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
@@ -368,7 +368,7 @@ pub struct ComponentInstantiationArg<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
-    pub name:  WasmName<MAX_NAME_LEN, P>,
+    pub name:  WasmName<MAX_NAME_LEN>,
     pub index: u32, // Index of the item being passed as argument (e.g. func_idx, table_idx)
     pub kind:  ExternKind, // The kind of the item being passed
 }
@@ -403,7 +403,7 @@ pub struct CoreInstantiationArg<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
-    pub name:  WasmName<MAX_NAME_LEN, P>,
+    pub name:  WasmName<MAX_NAME_LEN>,
     pub index: u32,
     pub kind:  ExternKind,
 }
@@ -501,7 +501,7 @@ impl<P: MemoryProvider> Default for ResourceType<P> {
 // Example for Export<P>: Checksummable
 // impl<P: MemoryProvider + Clone + Default> Checksummable for Export<P>
 // where
-//     WasmName<MAX_NAME_LEN, P>: Checksummable,
+//     WasmName<MAX_NAME_LEN>: Checksummable,
 //     ExternType<P>: Checksummable, // This will be complex for an enum
 // {
 //     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
@@ -841,7 +841,7 @@ where
     ) -> wrt_error::Result<Self> {
         let name = WasmName::<MAX_NAME_LEN, P>::from_bytes_with_provider(reader, provider)?;
         let ty = ExternType::<P>::from_bytes_with_provider(reader, provider)?;
-        let desc = Option::<WasmName<MAX_NAME_LEN, P>>::from_bytes_with_provider(reader, provider)?;
+        let desc = Option::<WasmName<MAX_NAME_LEN>>::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, ty, desc })
     }
     // from_bytes is provided by the trait
@@ -850,13 +850,13 @@ where
 // ImportKey<P>
 impl_checksummable_struct!(ImportKey<P: MemoryProvider + Clone + Default + Eq + Debug>, namespace, name);
 impl_tobytes_struct!(ImportKey<P: MemoryProvider + Clone + Default + Eq + Debug>, namespace, name);
-impl_frombytes_struct!(ImportKey<P: MemoryProvider + Clone + Default + Eq + Debug>, namespace: Namespace<P>, name: WasmName<MAX_NAME_LEN, P>);
+impl_frombytes_struct!(ImportKey<P: MemoryProvider + Clone + Default + Eq + Debug>, namespace: Namespace<P>, name: WasmName<MAX_NAME_LEN>);
 
 // Namespace<P>
 impl_checksummable_struct!(Namespace<P: MemoryProvider + Clone + Default + Eq + Debug>, elements);
 impl_tobytes_struct!(Namespace<P: MemoryProvider + Clone + Default + Eq + Debug>, elements);
 impl_frombytes_struct!(Namespace<P: MemoryProvider + Clone + Default + Eq + Debug>,
-    elements: BoundedVec<WasmName<MAX_NAME_LEN, P>, MAX_NAMESPACE_ELEMENTS, P>
+    elements: BoundedVec<WasmName<MAX_NAME_LEN>, MAX_NAMESPACE_ELEMENTS, P>
 );
 
 // ExternType<P>
@@ -1082,12 +1082,12 @@ impl FromBytes for ComponentAliasExportKind {
 // ComponentAliasCoreInstanceExport<P>
 impl_checksummable_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx, name);
 impl_tobytes_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx, name);
-impl_frombytes_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx: u32, name: WasmName<MAX_NAME_LEN, P>);
+impl_frombytes_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx: u32, name: WasmName<MAX_NAME_LEN>);
 
 // ComponentAliasInstanceExport<P>
 impl_checksummable_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx, name, kind);
 impl_tobytes_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx, name, kind);
-impl_frombytes_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx: u32, name: WasmName<MAX_NAME_LEN, P>, kind: ComponentAliasExportKind);
+impl_frombytes_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx: u32, name: WasmName<MAX_NAME_LEN>, kind: ComponentAliasExportKind);
 
 // ComponentAlias<P>
 impl<P> Checksummable for ComponentAlias<P>
@@ -1497,9 +1497,9 @@ impl FromBytes for ComponentAliasOuter {
 // ComponentInstantiationArg<P>
 impl_checksummable_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
 impl_tobytes_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN, P>, index: u32, kind: ExternKind);
+impl_frombytes_struct!(ComponentInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
 
 // CoreInstantiationArg<P>
 impl_checksummable_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
 impl_tobytes_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN, P>, index: u32, kind: ExternKind);
+impl_frombytes_struct!(CoreInstantiationArg<P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);

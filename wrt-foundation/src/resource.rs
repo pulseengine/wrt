@@ -293,7 +293,7 @@ pub enum ResourceRepr<P: MemoryProvider + Default + Clone + Eq + Debug> {
     /// The resource is represented as a simple primitive type.
     Primitive(ValueType),
     /// The resource is a record with named fields.
-    Record(BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>),
+    Record(BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>, MAX_RESOURCE_FIELDS, P>),
     /// The resource is a list of a single element type.
     List(ValueType),
     /// The resource is an aggregate of other resource IDs
@@ -306,10 +306,10 @@ pub enum ResourceRepr<P: MemoryProvider + Default + Clone + Eq + Debug> {
 impl<P: MemoryProvider + Default + Clone + Eq + Debug> Checksummable for ResourceRepr<P>
 where
     ValueType: Checksummable, // Already is
-    BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>:
+    BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>, MAX_RESOURCE_FIELDS, P>:
         Checksummable,
     BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, P>: Checksummable,
-    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>: Checksummable,
+    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>: Checksummable,
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
         let discriminant_byte = match self {
@@ -384,7 +384,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for ResourceRep
             },
             1 => {
                 let fields = BoundedVec::<
-                    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>,
+                    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>,
                     MAX_RESOURCE_FIELDS,
                     P,
                 >::from_bytes_with_provider(reader, stream_provider)
@@ -504,7 +504,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for Resource<P>
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResourceType<P: MemoryProvider + Default + Clone + Eq> {
     /// A resource represented as a record of named fields (strings).
-    Record(BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>),
+    Record(BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>, MAX_RESOURCE_FIELDS, P>),
     /// A resource that is an aggregate of other resource IDs.
     Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, P>),
     /// A resource handle with an identifier
@@ -519,7 +519,7 @@ impl<P: MemoryProvider + Default + Clone + Eq> Default for ResourceType<P> {
 
 impl<P: MemoryProvider + Default + Clone + Eq> Checksummable for ResourceType<P>
 where
-    BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>, MAX_RESOURCE_FIELDS, P>: Checksummable,
+    BoundedVec<BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>, MAX_RESOURCE_FIELDS, P>: Checksummable,
     BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, P>: Checksummable,
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -609,7 +609,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for ResourceTyp
             DISCRIMINANT_RESOURCE_TYPE_RECORD => {
                 // Read the fields for the Record variant
                 let fields = BoundedVec::<
-                    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>,
+                    BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>,
                     MAX_RESOURCE_FIELDS,
                     P,
                 >::from_bytes_with_provider(reader, stream_provider)

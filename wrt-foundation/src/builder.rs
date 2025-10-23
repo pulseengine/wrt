@@ -181,7 +181,7 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
     }
 
     /// Builds a `BoundedString` with the configured settings.
-    pub fn build_string(self) -> wrt_error::Result<BoundedString<N, P>> {
+    pub fn build_string(self) -> wrt_error::Result<BoundedString<N>> {
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
                 BoundedString::from_str_truncate(content, self.provider).map_err(Error::from)
@@ -312,7 +312,7 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     /// Record type with field names
-    Record(BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>),
+    Record(BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>),
     /// Aggregate type with resource IDs
     Aggregate(u32),
 }
