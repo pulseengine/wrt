@@ -341,7 +341,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         P: Clone,
     {
         let mut flag_values = BoundedVec::<
-            (WasmName<MAX_WASM_NAME_LENGTH, P>, bool),
+            (WasmName<MAX_WASM_NAME_LENGTH>, bool),
             MAX_COMPONENT_FLAGS,
             P,
         >::new(self.provider.clone())
@@ -349,7 +349,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
         for (name_str, val) in flags {
             let name =
-                WasmName::from_str(name_str.as_ref(), self.provider.clone()).map_err(|_e| {
+                WasmName::from_str(name_str.as_ref()).map_err(|_e| {
                     Error::runtime_execution_error("Failed to create WasmName from string")
                 })?;
             flag_values.push((name, val)).map_err(|_e| {
@@ -371,7 +371,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     where
         P: Clone,
     {
-        let name = WasmName::from_str(case.as_ref(), self.provider.clone())
+        let name = WasmName::from_str(case.as_ref())
             .map_err(|_e| Error::runtime_execution_error("Failed to create enum case name"))?;
         let comp_val = ComponentValue::<P>::Enum(name);
         let new_ref = self.add_value(comp_val)?;

@@ -1138,11 +1138,9 @@ impl Default for Element {
 /// WebAssembly export - Pure No_std Version
 #[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Export<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
-> {
+pub struct Export {
     /// Export name (visible external name)
-    pub name:  crate::WasmString<P>,
+    pub name:  crate::WasmString,
     /// Export kind (what type of item is being exported)
     pub kind:  ExportKind,
     /// Export index (index into the corresponding space)
@@ -1150,7 +1148,7 @@ pub struct Export<
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Export<P> {
+impl Default for Export {
     fn default() -> Self {
         Export {
             name:  crate::WasmString::default(),
@@ -1161,8 +1159,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Expor
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
-    for Export<P>
+impl wrt_foundation::traits::Checksummable
+    for Export
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum);
@@ -1172,8 +1170,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
-    for Export<P>
+impl wrt_foundation::traits::ToBytes
+    for Export
 {
     fn to_bytes_with_provider<PStream>(
         &self,
@@ -1191,8 +1189,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
-    for Export<P>
+impl wrt_foundation::traits::FromBytes
+    for Export
 {
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
@@ -1254,9 +1252,9 @@ pub struct Import<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// Module name (where to import from)
-    pub module: crate::WasmString<P>,
+    pub module: crate::WasmString,
     /// Import name (specific item name)
-    pub name:   crate::WasmString<P>,
+    pub name:   crate::WasmString,
     /// Import description (what type of item)
     pub desc:   ImportDesc<P>,
 }
@@ -1493,15 +1491,13 @@ pub enum ImportDesc {
 /// - Pure No_std Version
 #[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeInformationEntry<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
-> {
+pub struct TypeInformationEntry {
     pub type_index: u32, // Assuming TypeIdx is u32
-    pub name:       crate::WasmString<P>,
+    pub name:       crate::WasmString,
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for TypeInformationEntry<P> {
+impl Default for TypeInformationEntry {
     fn default() -> Self {
         TypeInformationEntry {
             type_index: 0,
@@ -1511,8 +1507,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for TypeI
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
-    for TypeInformationEntry<P>
+impl wrt_foundation::traits::Checksummable
+    for TypeInformationEntry
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         checksum.update_slice(&self.type_index.to_le_bytes());
@@ -1521,8 +1517,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
-    for TypeInformationEntry<P>
+impl wrt_foundation::traits::ToBytes
+    for TypeInformationEntry
 {
     fn to_bytes_with_provider<PStream>(
         &self,
@@ -1539,8 +1535,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 #[cfg(not(any(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
-    for TypeInformationEntry<P>
+impl wrt_foundation::traits::FromBytes
+    for TypeInformationEntry
 {
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
@@ -1574,7 +1570,7 @@ pub struct TypeInformationEntry {
 pub struct TypeInformationSection<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
-    pub entries: crate::WasmVec<TypeInformationEntry<P>, P>,
+    pub entries: crate::WasmVec<TypeInformationEntry, P>,
 }
 
 /// Hypothetical Finding F5: Represents the custom TypeInformation section -
@@ -1592,7 +1588,7 @@ pub struct Module<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// Function type signatures
-    pub types:             crate::WasmVec<FuncType<P>, P>,
+    pub types:             crate::WasmVec<FuncType, P>,
     /// Function definitions (code)
     pub functions:         crate::WasmVec<Function, P>,
     /// Table definitions
@@ -1606,7 +1602,7 @@ pub struct Module<
     /// Data segments (memory initializers) - using pure format internally
     pub data:              crate::WasmVec<crate::pure_format_types::PureDataSegment, P>,
     /// Module exports (visible functions/globals/etc)
-    pub exports:           crate::WasmVec<Export<P>, P>,
+    pub exports:           crate::WasmVec<Export, P>,
     /// Module imports (external dependencies)
     pub imports:           crate::WasmVec<Import<P>, P>,
     /// Start function index (entry point)

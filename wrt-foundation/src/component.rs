@@ -602,11 +602,8 @@ where
     }
 }
 
-// Default for ComponentAliasCoreInstanceExport<P>
-impl<P> Default for ComponentAliasCoreInstanceExport<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+// Default for ComponentAliasCoreInstanceExport
+impl Default for ComponentAliasCoreInstanceExport {
     fn default() -> Self {
         Self {
             core_instance_idx: 0,
@@ -615,11 +612,8 @@ where
     }
 }
 
-// Default for ComponentAliasInstanceExport<P>
-impl<P> Default for ComponentAliasInstanceExport<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+// Default for ComponentAliasInstanceExport
+impl Default for ComponentAliasInstanceExport {
     fn default() -> Self {
         Self {
             instance_idx: 0,
@@ -1073,15 +1067,15 @@ impl FromBytes for ComponentAliasExportKind {
     }
 }
 
-// ComponentAliasCoreInstanceExport<P>
-impl_checksummable_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx, name);
-impl_tobytes_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx, name);
-impl_frombytes_struct!(ComponentAliasCoreInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, core_instance_idx: u32, name: WasmName<MAX_NAME_LEN>);
+// ComponentAliasCoreInstanceExport
+impl_checksummable_struct!(ComponentAliasCoreInstanceExport, core_instance_idx, name);
+impl_tobytes_struct!(ComponentAliasCoreInstanceExport, core_instance_idx, name);
+impl_frombytes_struct!(ComponentAliasCoreInstanceExport, core_instance_idx: u32, name: WasmName<MAX_NAME_LEN>);
 
-// ComponentAliasInstanceExport<P>
-impl_checksummable_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx, name, kind);
-impl_tobytes_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx, name, kind);
-impl_frombytes_struct!(ComponentAliasInstanceExport<P: MemoryProvider + Clone + Default + Eq + Debug>, instance_idx: u32, name: WasmName<MAX_NAME_LEN>, kind: ComponentAliasExportKind);
+// ComponentAliasInstanceExport
+impl_checksummable_struct!(ComponentAliasInstanceExport, instance_idx, name, kind);
+impl_tobytes_struct!(ComponentAliasInstanceExport, instance_idx, name, kind);
+impl_frombytes_struct!(ComponentAliasInstanceExport, instance_idx: u32, name: WasmName<MAX_NAME_LEN>, kind: ComponentAliasExportKind);
 
 // ComponentAlias<P>
 impl<P> Checksummable for ComponentAlias<P>
@@ -1093,12 +1087,14 @@ where
             ComponentAlias::InstanceExport(_) => 0u8,
             ComponentAlias::CoreInstanceExport(_) => 1u8,
             ComponentAlias::Outer(_) => 2u8,
+            ComponentAlias::_Phantom(_) => unreachable!("_Phantom should never be instantiated"),
         };
         discriminant_byte.update_checksum(checksum);
         match self {
             ComponentAlias::InstanceExport(e) => e.update_checksum(checksum),
             ComponentAlias::CoreInstanceExport(e) => e.update_checksum(checksum),
             ComponentAlias::Outer(e) => e.update_checksum(checksum),
+            ComponentAlias::_Phantom(_) => unreachable!("_Phantom should never be instantiated"),
         }
     }
 }
@@ -1125,6 +1121,10 @@ where
                 writer.write_u8(2)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
+            ComponentAlias::_Phantom(_) => {
+                // PhantomData variant should never be instantiated
+                unreachable!("PhantomData variant should never be serialized")
+            },
         }
         Ok(())
     }
@@ -1143,11 +1143,11 @@ where
         match variant_idx {
             0 => {
                 let inner =
-                    ComponentAliasInstanceExport::<P>::from_bytes_with_provider(reader, provider)?;
+                    ComponentAliasInstanceExport::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentAlias::InstanceExport(inner))
             },
             1 => {
-                let inner = ComponentAliasCoreInstanceExport::<P>::from_bytes_with_provider(
+                let inner = ComponentAliasCoreInstanceExport::from_bytes_with_provider(
                     reader, provider,
                 )?;
                 Ok(ComponentAlias::CoreInstanceExport(inner))

@@ -182,7 +182,7 @@ pub enum ResourceRepresentation {
     #[cfg(feature = "std")]
     Record(
         BoundedVec<
-            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, MediumProvider>,
+            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>,
             MAX_RESOURCE_FIELDS,
             MediumProvider,
         >,
@@ -236,7 +236,7 @@ impl core::str::FromStr for ResourceRepresentation {
 
                     let (vec, _capability) =
                         capability_factories::safe_static_bounded_vec::<
-                            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, MediumProvider>,
+                            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN>,
                             MAX_RESOURCE_FIELDS,
                             { size_classes::MEDIUM },
                         >(CrateId::Foundation, VerificationLevel::Standard)?;

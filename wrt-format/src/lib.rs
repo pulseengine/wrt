@@ -113,7 +113,7 @@ pub use wrt_foundation::{
 
 // Type aliases for pure no_std mode
 #[cfg(not(any(feature = "std")))]
-pub type WasmString<P> = BoundedString<MAX_WASM_STRING_SIZE, P>;
+pub type WasmString = BoundedString<MAX_WASM_STRING_SIZE>;
 #[cfg(not(any(feature = "std")))]
 pub type WasmVec<T, P> = BoundedVec<T, 1024, P>; // General purpose bounded vector
                                                  // Module type aliases for pure no_std mode
@@ -122,7 +122,7 @@ pub type ModuleFunctions<P> = BoundedVec<crate::module::Function, MAX_MODULE_FUN
 #[cfg(not(any(feature = "std")))]
 pub type ModuleImports<P> = BoundedVec<crate::module::Import<P>, MAX_MODULE_IMPORTS, P>;
 #[cfg(not(any(feature = "std")))]
-pub type ModuleExports<P> = BoundedVec<crate::module::Export<P>, MAX_MODULE_EXPORTS, P>;
+pub type ModuleExports<P> = BoundedVec<crate::module::Export, MAX_MODULE_EXPORTS, P>;
 #[cfg(not(any(feature = "std")))]
 pub type ModuleGlobals<P> = BoundedVec<crate::module::Global<P>, MAX_MODULE_GLOBALS, P>;
 #[cfg(not(any(feature = "std")))]
@@ -544,7 +544,7 @@ pub mod no_std_demo {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;
-        let wasm_str = WasmString::<NoStdProvider<1024>>::from_str("hello", provider)
+        let wasm_str = WasmString::from_str("hello")
             .map_err(|_| wrt_foundation::bounded::CapacityError)?;
         assert_eq!(wasm_str.as_str().unwrap(), "hello");
         Ok(())

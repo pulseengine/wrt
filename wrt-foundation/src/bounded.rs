@@ -3605,7 +3605,7 @@ impl<const N_BYTES: usize> Ord for BoundedString<N_BYTES> {
 
                 for i in 0..min_len {
                     match (self.bytes.get(i), other.bytes.get(i)) {
-                        (Ok(a), Ok(b)) => {
+                        (Some(a), Some(b)) => {
                             let cmp = a.cmp(&b);
                             if cmp != core::cmp::Ordering::Equal {
                                 return cmp;
@@ -3835,6 +3835,38 @@ where
 impl<const N_BYTES: usize>
     BoundedString<N_BYTES>
 {
+    /// Creates a new BoundedString from a string slice (truncating if needed).
+    ///
+    /// # Errors
+    /// Returns an error if the internal storage allocation fails.
+    pub fn from_str_truncate(s: &str) -> core::result::Result<Self, BoundedError> {
+        let s_bytes = s.as_bytes();
+        let len_to_copy = core::cmp::min(s_bytes.len(), N_BYTES);
+
+        // Find UTF-8 boundary
+        let mut actual_len = len_to_copy;
+        while actual_len > 0 && !s.is_char_boundary(actual_len) {
+            actual_len -= 1;
+        }
+
+        let mut bytes = StaticVec::new();
+        for i in 0..actual_len {
+            bytes.push(s_bytes[i])?;
+        }
+        Ok(Self { bytes })
+    }
+
+    /// Creates a new BoundedString from a string slice.
+    ///
+    /// # Errors
+    /// Returns an error if the string is too long or allocation fails.
+    pub fn from_str(s: &str) -> core::result::Result<Self, SerializationError> {
+        if s.len() > N_BYTES {
+            return Err(SerializationError::Custom("String too long for BoundedString"));
+        }
+        Self::from_str_truncate(s).map_err(|_| SerializationError::Custom("Failed to create BoundedString"))
+    }
+
     /// Returns the string as a slice.
     ///
     /// This will panic if the internal bytes are not valid UTF-8.
@@ -3858,9 +3890,9 @@ impl<const N_BYTES: usize>
     /// Returns an error if the internal bytes cannot be accessed.
     /// Use the `AsRef<[u8]>` trait to convert to a byte slice.
     pub fn as_bytes(&self) -> core::result::Result<crate::safe_memory::Slice<'_>, BoundedError> {
-        // BoundedVec stores elements serialized, but for u8 the serialization
-        // is just the raw bytes. We use as_raw_slice to get direct access.
-        self.bytes.as_raw_slice()
+        // StaticVec returns &[u8], wrap it in a Slice
+        crate::safe_memory::Slice::new(self.bytes.as_slice())
+            .map_err(|_| BoundedError::runtime_execution_error("Failed to create Slice"))
     }
 
     /// Returns the string bytes as a slice.
@@ -3934,7 +3966,8 @@ impl<const N_BYTES: usize>
     /// assert!(s.is_empty());
     /// ```
     pub fn clear(&mut self) -> core::result::Result<(), BoundedError> {
-        self.bytes.clear()
+        self.bytes.clear();
+        Ok(())
     }
 
     /// Checks if this string starts with the given prefix.
@@ -4024,16 +4057,13 @@ impl<const N_BYTES: usize>
     /// assert_eq!(lowercase.as_str().unwrap(), "hello world";
     /// ```
     #[cfg(feature = "std")]
-    pub fn to_lowercase(&self) -> core::result::Result<Self, BoundedError>
-    where
-        P: Clone,
-    {
+    pub fn to_lowercase(&self) -> core::result::Result<Self, BoundedError> {
         let s = self.as_str()?;
         // Allocate a String to perform the lowercase conversion
         // Binary std/no_std choice
         let lowercase = s.to_lowercase();
 
-        Self::from_str_truncate(&lowercase, self.bytes.provider.clone())
+        Self::from_str_truncate(&lowercase)
     }
 
     /// Converts all characters in the string to uppercase.
@@ -4052,14 +4082,11 @@ impl<const N_BYTES: usize>
     /// assert_eq!(uppercase.as_str().unwrap(), "HELLO WORLD";
     /// ```
     #[cfg(feature = "std")]
-    pub fn to_uppercase(&self) -> core::result::Result<Self, BoundedError>
-    where
-        P: Clone,
-    {
+    pub fn to_uppercase(&self) -> core::result::Result<Self, BoundedError> {
         let s = self.as_str()?;
         let uppercase = s.to_uppercase();
 
-        Self::from_str_truncate(&uppercase, self.bytes.provider.clone())
+        Self::from_str_truncate(&uppercase)
     }
 
     /// Returns the capacity of the string in bytes.
@@ -4196,41 +4223,8 @@ impl<
     }
 }
 
-impl<const N_BYTES: usize> ToBytes
-    for WasmName<N_BYTES>
-{
-    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
-        &self,
-        writer: &mut WriteStream<'a>,
-        provider: &PStream,
-    ) -> Result<()> {
-        self.inner.to_bytes_with_provider(writer, provider)
-    }
-
-    // to_bytes is provided by the trait if default-provider feature is enabled
-    #[cfg(feature = "default-provider")]
-    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> Result<()> {
-        self.inner.to_bytes(writer)
-    }
-}
-
-impl<const N_BYTES: usize> FromBytes
-    for WasmName<N_BYTES>
-{
-    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
-        reader: &mut ReadStream<'a>,
-        provider: &PStream,
-    ) -> Result<Self> {
-        BoundedString::<N_BYTES>::from_bytes_with_provider(reader, provider)
-            .map(|inner_bs| Self { inner: inner_bs })
-    }
-
-    // from_bytes is provided by the trait if default-provider feature is enabled
-    #[cfg(feature = "default-provider")]
-    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> Result<Self> {
-        BoundedString::<N_BYTES, P>::from_bytes(reader).map(|inner_bs| Self { inner: inner_bs })
-    }
-}
+// ToBytes and FromBytes for WasmName are already defined earlier around line 3758-3775
+// These duplicate impls removed to fix E0119 conflicting implementations
 
 // Note: This impl block was removed due to overlapping type bounds with the
 // main impl block. All necessary methods are already defined in the main impl
@@ -4343,15 +4337,12 @@ impl<const N_BYTES: usize>
     /// assert_eq!(parts[1].as_str().unwrap(), "World";
     /// assert_eq!(parts[2].as_str().unwrap(), "Rust";
     /// ```
-    pub fn split(&self, delimiter: char) -> core::result::Result<Vec<Self>, BoundedError>
-    where
-        P: Clone,
-    {
+    pub fn split(&self, delimiter: char) -> core::result::Result<Vec<Self>, BoundedError> {
         let s = self.as_str()?;
         let mut result = Vec::new();
 
         for part in s.split(delimiter) {
-            let bounded_part = Self::from_str_truncate(part, self.bytes.provider.clone())?;
+            let bounded_part = Self::from_str_truncate(part)?;
             result.push(bounded_part);
         }
 

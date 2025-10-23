@@ -156,11 +156,11 @@ pub enum ValType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Reference to another entity
     Ref(u32),
     /// Record with named fields
-    Record(BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH, P>, ValTypeRef), MAX_TYPE_RECORD_FIELDS, P>),
+    Record(BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH>, ValTypeRef), MAX_TYPE_RECORD_FIELDS, P>),
     /// Variant with cases
     Variant(
         BoundedVec<
-            (WasmName<MAX_WASM_NAME_LENGTH, P>, Option<ValTypeRef>),
+            (WasmName<MAX_WASM_NAME_LENGTH>, Option<ValTypeRef>),
             MAX_TYPE_VARIANT_CASES,
             P,
         >,
@@ -172,9 +172,9 @@ pub enum ValType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Tuple of elements
     Tuple(BoundedVec<ValTypeRef, MAX_TYPE_TUPLE_ELEMENTS, P>),
     /// Flags (set of named boolean flags)
-    Flags(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_FLAGS_NAMES, P>),
+    Flags(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH>, MAX_TYPE_FLAGS_NAMES, P>),
     /// Enumeration of variants
-    Enum(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_ENUM_NAMES, P>),
+    Enum(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH>, MAX_TYPE_ENUM_NAMES, P>),
     /// `Option` type
     Option(ValTypeRef), // Replaced Box<ValType>
     /// `Result` type with both `Ok` and `Err` types (both optional for void)
@@ -387,7 +387,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
             },
             14 => {
                 let fields = BoundedVec::<
-                    (WasmName<MAX_WASM_NAME_LENGTH, P>, ValTypeRef),
+                    (WasmName<MAX_WASM_NAME_LENGTH>, ValTypeRef),
                     MAX_TYPE_RECORD_FIELDS,
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
@@ -395,7 +395,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
             },
             15 => {
                 let cases = BoundedVec::<
-                    (WasmName<MAX_WASM_NAME_LENGTH, P>, Option<ValTypeRef>),
+                    (WasmName<MAX_WASM_NAME_LENGTH>, Option<ValTypeRef>),
                     MAX_TYPE_VARIANT_CASES,
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
@@ -418,11 +418,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
                 Ok(ValType::Tuple(elements))
             },
             19 => {
-                let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_FLAGS_NAMES, P>::from_bytes_with_provider(reader, provider)?;
+                let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH>, MAX_TYPE_FLAGS_NAMES, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Flags(names))
             },
             20 => {
-                let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_ENUM_NAMES, P>::from_bytes_with_provider(reader, provider)?;
+                let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH>, MAX_TYPE_ENUM_NAMES, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Enum(names))
             },
             21 => {
@@ -497,23 +497,23 @@ pub enum ComponentValue<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     #[cfg(feature = "std")]
     String(crate::prelude::String),
     #[cfg(not(any(feature = "std")))]
-    String(BoundedString<MAX_COMPONENT_STRING_LENGTH, P>),
+    String(BoundedString<MAX_COMPONENT_STRING_LENGTH>),
     /// List of component values
     List(BoundedVec<ValueRef, MAX_COMPONENT_LIST_ITEMS, P>),
     /// Fixed-length list of component values with a known length
     FixedList(BoundedVec<ValueRef, MAX_COMPONENT_FIXED_LIST_ITEMS, P>, u32),
     /// Record with named fields
     Record(
-        BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH, P>, ValueRef), MAX_COMPONENT_RECORD_FIELDS, P>,
+        BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH>, ValueRef), MAX_COMPONENT_RECORD_FIELDS, P>,
     ),
     /// Variant with case name and optional value
-    Variant(WasmName<MAX_WASM_NAME_LENGTH, P>, Option<ValueRef>),
+    Variant(WasmName<MAX_WASM_NAME_LENGTH>, Option<ValueRef>),
     /// Tuple of component values
     Tuple(BoundedVec<ValueRef, MAX_COMPONENT_TUPLE_ITEMS, P>),
     /// Flags with boolean fields
-    Flags(BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH, P>, bool), MAX_COMPONENT_FLAGS, P>),
+    Flags(BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH>, bool), MAX_COMPONENT_FLAGS, P>),
     /// Enumeration with case name
-    Enum(WasmName<MAX_WASM_NAME_LENGTH, P>),
+    Enum(WasmName<MAX_WASM_NAME_LENGTH>),
     /// Optional value (`Some`/`None`)
     Option(Option<ValueRef>),
     /// `Result` value (`Ok`/`Err`)
@@ -1030,14 +1030,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
             },
             16 => {
                 let fields = BoundedVec::<
-                    (WasmName<MAX_WASM_NAME_LENGTH, P>, ValueRef),
+                    (WasmName<MAX_WASM_NAME_LENGTH>, ValueRef),
                     MAX_COMPONENT_RECORD_FIELDS,
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::Record(fields))
             },
             17 => {
-                let name = WasmName::<MAX_WASM_NAME_LENGTH, P>::from_bytes_with_provider(
+                let name = WasmName::<MAX_WASM_NAME_LENGTH>::from_bytes_with_provider(
                     reader, provider,
                 )?;
                 let opt_val_ref = if reader.read_u8()? == 1 {
@@ -1056,14 +1056,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
             },
             19 => {
                 let flags = BoundedVec::<
-                    (WasmName<MAX_WASM_NAME_LENGTH, P>, bool),
+                    (WasmName<MAX_WASM_NAME_LENGTH>, bool),
                     MAX_COMPONENT_FLAGS,
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::Flags(flags))
             },
             20 => {
-                let name = WasmName::<MAX_WASM_NAME_LENGTH, P>::from_bytes_with_provider(
+                let name = WasmName::<MAX_WASM_NAME_LENGTH>::from_bytes_with_provider(
                     reader, provider,
                 )?;
                 Ok(ComponentValue::Enum(name))

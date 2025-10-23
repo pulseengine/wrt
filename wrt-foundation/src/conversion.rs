@@ -106,8 +106,8 @@ pub mod func_type {
     ///
     /// This is a utility function that can be used by any crate that
     /// needs to validate a function type.
-    pub fn verify<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq>(
-        func_type: &FuncType<P>,
+    pub fn verify(
+        func_type: &FuncType,
     ) -> Result<()> {
         func_type.verify()
     }
@@ -120,8 +120,8 @@ pub mod func_type {
         provider: P,
         params: &[ValueType],
         results: &[ValueType],
-    ) -> Result<FuncType<P>> {
-        let func_type = FuncType::new(provider, params.iter().copied(), results.iter().copied())?;
+    ) -> Result<FuncType> {
+        let func_type = FuncType::new(params.iter().copied(), results.iter().copied())?;
         verify(&func_type)?;
         Ok(func_type)
     }
