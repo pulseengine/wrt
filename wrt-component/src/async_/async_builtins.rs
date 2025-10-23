@@ -16,7 +16,7 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+type String = wrt_foundation::bounded::BoundedString<256>;
 
 use wrt_error::{
     Error,
@@ -198,7 +198,7 @@ pub struct TaskInfo {
     pub context:       std::collections::HashMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
     pub context: BoundedVec<
-        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
+        (BoundedString<64>, ComponentValue),
         64,
     >,
 }
@@ -589,7 +589,7 @@ impl TaskRegistry {
             for (task_handle, task_info) in &mut self.tasks {
                 if *task_handle == handle {
                     let provider = safe_managed_alloc!(512, CrateId::Component)?;
-                    let key_bounded = BoundedString::from_str(key, provider).map_err(|_| {
+                    let key_bounded = BoundedString::from_str(key).map_err(|_| {
                         Error::runtime_execution_error(
                             "Failed to create bounded string for task context key",
                         )

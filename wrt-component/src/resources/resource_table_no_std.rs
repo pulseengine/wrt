@@ -70,7 +70,7 @@ pub struct Resource {
     /// Resource data pointer (simplified for no_std)
     pub data_ptr:      usize,
     /// Debug name for the resource (optional)
-    pub name:          Option<BoundedString<64, NoStdProvider<512>>>,
+    pub name:          Option<BoundedString<64>>,
     /// Creation timestamp
     pub created_at:    Instant,
     /// Last access timestamp
@@ -97,7 +97,7 @@ impl Resource {
     pub fn new_with_name(type_idx: u32, data_ptr: usize, name: &str) -> Self {
         let mut resource = Self::new(type_idx, data_ptr);
         if let Ok(provider) = safe_managed_alloc!(512, CrateId::Component) {
-            resource.name = BoundedString::from_str(name, provider).ok();
+            resource.name = BoundedString::from_str(name).ok();
         }
         resource
     }

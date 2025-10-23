@@ -34,7 +34,7 @@ pub const MAX_INSTANCE_EXPORTS: usize = 64;
 #[derive(Debug, Clone)]
 pub struct InstanceValue {
     /// The name of the instance
-    pub name:    BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<512>>,
+    pub name:    BoundedString<MAX_WASM_NAME_LENGTH>,
     /// Instance type
     pub ty:      ComponentTypeDefinition,
     /// Instance exports
@@ -53,7 +53,7 @@ impl Default for InstanceValue {
     fn default() -> Self {
         use wrt_format::component::ComponentTypeDefinition;
         Self {
-            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+            name: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default InstanceValue name")),
             ty: ComponentTypeDefinition::Instance { exports: vec![] },
             exports: BoundedVec::new(NoStdProvider::default()).unwrap(),
@@ -94,7 +94,7 @@ impl InstanceValue {
     /// Creates a new instance value
     pub fn new(name: &str, ty: ComponentTypeDefinition, exports: &[Export]) -> Result<Self> {
         let name_provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name, name_provider)
+        let bounded_name = BoundedString::from_str(name)
             .map_err(|_| Error::parameter_validation_error("Instance name too long"))?;
 
         let provider = safe_managed_alloc!(16384, CrateId::Component)?;

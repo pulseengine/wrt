@@ -743,7 +743,7 @@ impl AsyncCanonicalAbi {
         #[cfg(not(any(feature = "std",)))]
         let error_context = {
             let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-            ErrorContext::new(handle, BoundedString::from_str(message, provider).unwrap_or_default())?
+            ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default())?
         };
 
         #[cfg(feature = "std")]
@@ -778,7 +778,7 @@ impl AsyncCanonicalAbi {
     pub fn error_context_debug_string(
         &self,
         handle: ErrorContextHandle,
-    ) -> Result<BoundedString<1024, NoStdProvider<2048>>> {
+    ) -> Result<BoundedString<1024>> {
         for (ctx_handle, error_context) in &self.error_contexts {
             if *ctx_handle == handle {
                 return Ok(error_context.debug_string());

@@ -185,7 +185,7 @@ pub struct Task {
     pub metadata:           HashMap<String, ComponentValue>,
     #[cfg(not(any(feature = "std",)))]
     pub metadata: BoundedMap<
-        BoundedString<32, NoStdProvider<512>>,
+        BoundedString<32>,
         ComponentValue,
         8,
     >,
@@ -251,7 +251,7 @@ impl Task {
 
     #[cfg(not(any(feature = "std",)))]
     pub fn set_metadata(&mut self, key: &str, value: ComponentValue) -> Result<()> {
-        let bounded_key = BoundedString::new_from_str(key)
+        let bounded_key = BoundedString::from_str(key)
             .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         self.metadata.insert(bounded_key, value).map_err(|_| {
             Error::new(
@@ -270,7 +270,7 @@ impl Task {
 
     #[cfg(not(any(feature = "std",)))]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
-        if let Ok(bounded_key) = BoundedString::new_from_str(key) {
+        if let Ok(bounded_key) = BoundedString::from_str(key) {
             self.metadata.get(&bounded_key)
         } else {
             None

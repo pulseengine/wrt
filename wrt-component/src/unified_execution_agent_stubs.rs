@@ -137,7 +137,7 @@ impl ComponentRuntimeBridge {
     #[cfg(not(feature = "std"))]
     pub fn register_host_function(
         &mut self,
-        _name: BoundedString<64, NoStdProvider<512>>,
+        _name: BoundedString<64>,
         _signature: crate::component_instantiation::FunctionSignature,
         _func: fn(
             &[WrtComponentValue<ComponentProvider>],
@@ -167,15 +167,15 @@ impl From<WrtComponentValue<ComponentProvider>> for Value {
             WrtComponentValue::String(s) => {
                 let provider = safe_managed_alloc!(2048, CrateId::Component)
                     .unwrap_or_else(|_| NoStdProvider::default());
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(&s, provider)
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(&s)
                     .unwrap_or_else(|_| panic!("Failed to convert string"));
                 Value::String(bounded_str)
             },
             #[cfg(not(any(feature = "std",)))]
             WrtComponentValue::String(s) => {
-                let provider = safe_managed_alloc!(2048, CrateId::Component)
+                let _provider = safe_managed_alloc!(2048, CrateId::Component)
                     .unwrap_or_else(|_| NoStdProvider::default());
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str(), provider)
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str())
                     .unwrap_or_else(|_| panic!("Failed to convert string"));
                 Value::String(bounded_str)
             },

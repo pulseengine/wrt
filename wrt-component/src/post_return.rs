@@ -361,7 +361,7 @@ pub enum CleanupData {
     #[cfg(feature = "std")]
     Custom { cleanup_id: String, parameters: Vec<ComponentValue> },
     #[cfg(not(any(feature = "std", )))]
-    Custom { cleanup_id: BoundedString<64, NoStdProvider<512>>, parameters: BoundedVec<ComponentValue<NoStdProvider<2048>>, 16> },
+    Custom { cleanup_id: BoundedString<64>, parameters: BoundedVec<ComponentValue<NoStdProvider<2048>>, 16> },
     /// Async cleanup data
     Async {
         stream_handle: Option<StreamHandle>,
@@ -570,7 +570,7 @@ pub struct PostReturnContext {
     #[cfg(feature = "std")]
     pub custom_handlers: BTreeMap<String, Box<dyn Fn(&CleanupData) -> Result<()> + Send + Sync>>,
     #[cfg(not(any(feature = "std", )))]
-    pub custom_handlers: BoundedVec<(BoundedString<64, NoStdProvider<512>>, fn(&CleanupData) -> core::result::Result<(), wrt_error::Error>), MAX_CLEANUP_HANDLERS>,
+    pub custom_handlers: BoundedVec<(BoundedString<64>, fn(&CleanupData) -> core::result::Result<(), wrt_error::Error>), MAX_CLEANUP_HANDLERS>,
     /// Async canonical ABI for async cleanup
     pub async_abi: Option<Arc<AsyncCanonicalAbi>>,
     /// Component ID for this context
@@ -1348,7 +1348,7 @@ pub mod helpers {
         use wrt_foundation::safe_memory::NoStdProvider;
 
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let cleanup_id = BoundedString::from_str(cleanup_id, provider).map_err(|_| {
+        let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {
             Error::runtime_execution_error("Failed to create cleanup task ID as bounded string")
         })?;
 

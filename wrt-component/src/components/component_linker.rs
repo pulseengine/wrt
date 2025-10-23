@@ -34,7 +34,7 @@ use crate::prelude::*;
 
 // Type aliases for no_std environment with proper generics
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<1024>>;
+type String = BoundedString<256>;
 #[cfg(not(feature = "std"))]
 type Vec<T> = BoundedVec<T, 256>;
 #[cfg(not(feature = "std"))]
@@ -227,13 +227,13 @@ impl Default for ComponentMetadata {
                 .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata author"));
 
             Self {
-                name:        BoundedString::from_str("", name_provider)
+                name:        BoundedString::from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata name")),
-                version:     BoundedString::from_str("1.0.0", version_provider)
+                version:     BoundedString::from_str("1.0.0")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata version")),
-                description: BoundedString::from_str("", description_provider)
+                description: BoundedString::from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata description")),
-                author:      BoundedString::from_str("", author_provider)
+                author:      BoundedString::from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata author")),
                 compiled_at: 0,
             }
@@ -1091,7 +1091,7 @@ impl Default for GraphNode {
                 .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphNode::default"));
 
             Self {
-                component_id: BoundedString::from_str("", id_provider)
+                component_id: BoundedString::from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create GraphNode component_id")),
                 index:        0,
                 dependencies: Vec::new(),

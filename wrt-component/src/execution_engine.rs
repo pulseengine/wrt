@@ -598,18 +598,18 @@ impl ComponentExecutionEngine {
             #[cfg(feature = "std")]
             ComponentValue::String(s) => {
                 // Convert std String to BoundedString for Value
-                let provider = safe_managed_alloc!(2048, CrateId::Component)
+                let _provider = safe_managed_alloc!(2048, CrateId::Component)
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate memory provider for string conversion"))?;
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str(), provider)
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str())
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert String to BoundedString"))?;
                 Ok(Value::String(bounded_str))
             },
             #[cfg(not(any(feature = "std",)))]
             ComponentValue::String(s) => {
                 // Convert String to BoundedString for Value
-                let provider = safe_managed_alloc!(2048, CrateId::Component)
+                let _provider = safe_managed_alloc!(2048, CrateId::Component)
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate memory provider for string conversion"))?;
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str(), provider)
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str())
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert String to BoundedString"))?;
                 Ok(Value::String(bounded_str))
             },
@@ -635,8 +635,8 @@ impl ComponentExecutionEngine {
                 // In no_std mode, convert BoundedString to String for runtime_bridge
                 let provider = safe_managed_alloc!(512, CrateId::Component)
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
-                let bounded: wrt_foundation::bounded::BoundedString<256, _> =
-                    wrt_foundation::bounded::BoundedString::from_str(module_name, provider)
+                let bounded: wrt_foundation::bounded::BoundedString<256> =
+                    wrt_foundation::bounded::BoundedString::from_str(module_name)
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
                 let str_slice = bounded.as_str().map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str"))?;
                 String::from(str_slice)
@@ -692,8 +692,8 @@ impl ComponentExecutionEngine {
 
         let provider = safe_managed_alloc!(512, CrateId::Component)
             .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
-        let name_bounded: wrt_foundation::bounded::BoundedString<64, _> =
-            wrt_foundation::bounded::BoundedString::from_str(name, provider)
+        let name_bounded: wrt_foundation::bounded::BoundedString<64> =
+            wrt_foundation::bounded::BoundedString::from_str(name)
             .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
 
         // Convert BoundedString to String for FunctionSignature.name

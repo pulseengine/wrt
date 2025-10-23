@@ -237,7 +237,7 @@ impl VerificationLevel {
             not(feature = "maximum-safety")
         ))]
         {
-            VerificationLevel::None
+            VerificationLevel::Off
         }
         #[cfg(not(any(
             feature = "dynamic-allocation",
@@ -935,7 +935,7 @@ mod tests {
     #[test]
     fn test_resource_count_limit() {
         let mut table =
-            ResourceTable::new_with_config(2, MemoryStrategy::BoundedCopy, VerificationLevel::None);
+            ResourceTable::new_with_config(2, MemoryStrategy::BoundedCopy, VerificationLevel::Off);
 
         let data1 = Arc::new(TestData { value: 1 });
         let data2 = Arc::new(TestData { value: 2 });

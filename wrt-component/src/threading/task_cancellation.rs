@@ -116,7 +116,7 @@ pub enum CancellationHandlerFn {
 
     /// Cleanup function
     Cleanup {
-        name:        BoundedString<64, NoStdProvider<512>>,
+        name:        BoundedString<64>,
         // In real implementation, this would be a function pointer
         placeholder: u32,
     },
@@ -241,7 +241,7 @@ pub enum CompletionHandlerFn {
 
     /// Custom handler
     Custom {
-        name:        BoundedString<64, NoStdProvider<512>>,
+        name:        BoundedString<64>,
         placeholder: u32,
     },
 }

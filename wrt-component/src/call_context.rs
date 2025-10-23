@@ -147,7 +147,7 @@ pub struct ParameterMarshaler {
     type_cache: HashMap<String, TypeCompatibility>,
     #[cfg(not(feature = "std"))]
     type_cache: BoundedVec<
-        (BoundedString<128, NoStdProvider<512>>, TypeCompatibility),
+        (BoundedString<128>, TypeCompatibility),
         64
     >,
 }
@@ -210,7 +210,7 @@ pub struct PerformanceMonitor {
 pub struct PerformanceMonitorNoStd {
     /// Call timing metrics
     timing_metrics: BoundedVec<
-        (BoundedString<128, NoStdProvider<512>>, TimingMetrics),
+        (BoundedString<128>, TimingMetrics),
         64
     >,
     /// Parameter size metrics
@@ -240,7 +240,7 @@ pub struct MarshalingState {
     #[cfg(feature = "std")]
     pub errors:               Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub errors: BoundedVec<BoundedString<256, ComponentProvider>, 16>,
+    pub errors: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Resource state during call execution
@@ -295,7 +295,7 @@ pub struct ValidationResults {
     #[cfg(feature = "std")]
     pub messages:             Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub messages: BoundedVec<BoundedString<256, ComponentProvider>, 16>,
+    pub messages: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Call context manager configuration
@@ -342,7 +342,7 @@ pub struct ValidationConfig {
     pub custom_rules:              Vec<String>,
     #[cfg(not(feature = "std"))]
     pub custom_rules:
-        BoundedVec<BoundedString<128, ComponentProvider>, 16>,
+        BoundedVec<BoundedString<128>, 16>,
 }
 
 /// Resource lock for coordinating resource access
@@ -393,7 +393,7 @@ pub struct TransferPolicy {
     pub required_permissions: Vec<String>,
     #[cfg(not(feature = "std"))]
     pub required_permissions:
-        BoundedVec<BoundedString<128, ComponentProvider>, 16>,
+        BoundedVec<BoundedString<128>, 16>,
 }
 
 /// Security policy for instance interactions
@@ -409,7 +409,7 @@ pub struct SecurityPolicy {
     pub allowed_functions:    Vec<String>,
     #[cfg(not(feature = "std"))]
     pub allowed_functions:
-        BoundedVec<BoundedString<128, ComponentProvider>, 32>,
+        BoundedVec<BoundedString<128>, 32>,
     /// Resource access permissions
     pub resource_permissions: ResourcePermissions,
     /// Memory access limits
@@ -423,12 +423,12 @@ pub struct ValidationRule {
     #[cfg(feature = "std")]
     pub name:        String,
     #[cfg(not(feature = "std"))]
-    pub name:        BoundedString<128, NoStdProvider<512>>,
+    pub name:        BoundedString<128>,
     /// Rule description
     #[cfg(feature = "std")]
     pub description: String,
     #[cfg(not(feature = "std"))]
-    pub description: BoundedString<256, NoStdProvider<1024>>,
+    pub description: BoundedString<256>,
     /// Rule type
     pub rule_type:   ValidationRuleType,
     /// Rule severity
@@ -485,7 +485,7 @@ pub struct OptimizationSuggestion {
     #[cfg(feature = "std")]
     pub description:     String,
     #[cfg(not(feature = "std"))]
-    pub description:     BoundedString<256, NoStdProvider<1024>>,
+    pub description:     BoundedString<256>,
     /// Potential impact
     pub impact:          OptimizationImpact,
     /// Implementation complexity
@@ -518,7 +518,7 @@ pub struct TransferResult {
     #[cfg(feature = "std")]
     pub error_message:   Option<String>,
     #[cfg(not(feature = "std"))]
-    pub error_message:   Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub error_message:   Option<BoundedString<256>>,
 }
 
 /// Type compatibility information
@@ -583,7 +583,7 @@ pub struct ParameterValidationResult {
     pub error_messages:          Vec<String>,
     #[cfg(not(feature = "std"))]
     pub error_messages:
-        BoundedVec<BoundedString<256, ComponentProvider>, 16>,
+        BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Security validation result
@@ -605,7 +605,7 @@ pub struct SecurityValidationResult {
     #[cfg(feature = "std")]
     pub warnings:               Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub warnings: BoundedVec<BoundedString<256, ComponentProvider>, 16>,
+    pub warnings: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Resource validation result
@@ -628,7 +628,7 @@ pub struct ResourceValidationResult {
     #[cfg(feature = "std")]
     pub errors: Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub errors: BoundedVec<BoundedString<256, ComponentProvider>, 16>,
+    pub errors: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Type check result
@@ -646,7 +646,7 @@ pub struct TypeCheckResult {
     #[cfg(feature = "std")]
     pub error_message:   Option<String>,
     #[cfg(not(feature = "std"))]
-    pub error_message:   Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub error_message:   Option<BoundedString<256>>,
 }
 
 /// Size validation result
@@ -669,14 +669,14 @@ pub struct PermissionCheckResult {
     #[cfg(feature = "std")]
     pub permission:    String,
     #[cfg(not(feature = "std"))]
-    pub permission:    BoundedString<128, NoStdProvider<512>>,
+    pub permission:    BoundedString<128>,
     /// Check passed
     pub granted:       bool,
     /// Reason for denial (if denied)
     #[cfg(feature = "std")]
     pub denial_reason: Option<String>,
     #[cfg(not(feature = "std"))]
-    pub denial_reason: Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub denial_reason: Option<BoundedString<256>>,
 }
 
 /// Access control result
@@ -686,14 +686,14 @@ pub struct AccessControlResult {
     #[cfg(feature = "std")]
     pub accessed_item: String,
     #[cfg(not(feature = "std"))]
-    pub accessed_item: BoundedString<128, NoStdProvider<512>>,
+    pub accessed_item: BoundedString<128>,
     /// Access allowed
     pub allowed:       bool,
     /// Access control rule applied
     #[cfg(feature = "std")]
     pub rule_applied:  String,
     #[cfg(not(feature = "std"))]
-    pub rule_applied:  BoundedString<128, NoStdProvider<512>>,
+    pub rule_applied:  BoundedString<128>,
 }
 
 /// Resource availability result
@@ -722,7 +722,7 @@ pub struct TransferPermissionResult {
     #[cfg(feature = "std")]
     pub policy_applied:  String,
     #[cfg(not(feature = "std"))]
-    pub policy_applied:  BoundedString<128, NoStdProvider<512>>,
+    pub policy_applied:  BoundedString<128>,
 }
 
 // Enumerations
@@ -1515,7 +1515,7 @@ mod tests {
             ComponentValue::String("hello".to_owned()),
             #[cfg(not(feature = "std"))]
             ComponentValue::String(
-                BoundedString::from_str_truncate("hello", NoStdProvider::default()).unwrap()
+                BoundedString::from_str_truncate("hello").unwrap()
             ),
             ComponentValue::Bool(true),
         ];
@@ -1888,12 +1888,12 @@ impl Default for ValidationRule {
             #[cfg(feature = "std")]
             name: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+            name: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default ValidationRule name")),
             #[cfg(feature = "std")]
             description: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            description: BoundedString::from_str_truncate("", NoStdProvider::default())
+            description: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default ValidationRule description")),
             rule_type: ValidationRuleType::Parameter,
             severity: ValidationSeverity::Info,
@@ -1916,7 +1916,7 @@ impl Default for OptimizationSuggestion {
             #[cfg(feature = "std")]
             description: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            description: BoundedString::from_str_truncate("", NoStdProvider::default())
+            description: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default OptimizationSuggestion description")),
             impact: OptimizationImpact::Low,
             complexity: OptimizationComplexity::Simple,
@@ -1938,7 +1938,7 @@ impl Default for PermissionCheckResult {
             #[cfg(feature = "std")]
             permission: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            permission: BoundedString::from_str_truncate("", NoStdProvider::default())
+            permission: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default PermissionCheckResult permission")),
             granted: false,
             denial_reason: None,
@@ -1960,13 +1960,13 @@ impl Default for AccessControlResult {
             #[cfg(feature = "std")]
             accessed_item: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            accessed_item: BoundedString::from_str_truncate("", NoStdProvider::default())
+            accessed_item: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default AccessControlResult accessed_item")),
             allowed: false,
             #[cfg(feature = "std")]
             rule_applied: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            rule_applied: BoundedString::from_str_truncate("", NoStdProvider::default())
+            rule_applied: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default AccessControlResult rule_applied")),
         }
     }
@@ -2025,7 +2025,7 @@ impl Default for TransferPermissionResult {
             #[cfg(feature = "std")]
             policy_applied: std::string::String::new(),
             #[cfg(not(feature = "std"))]
-            policy_applied: BoundedString::from_str_truncate("", NoStdProvider::default())
+            policy_applied: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default TransferPermissionResult policy_applied")),
         }
     }

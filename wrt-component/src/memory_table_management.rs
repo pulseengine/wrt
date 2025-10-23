@@ -205,7 +205,7 @@ pub struct MemoryAccess {
     /// Bytes read/written
     pub bytes_accessed: usize,
     /// Error message if failed
-    pub error: Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub error: Option<BoundedString<256>>,
 }
 
 impl ComponentMemoryManager {
@@ -359,7 +359,7 @@ impl ComponentMemoryManager {
             return Ok(MemoryAccess {
                 success: false,
                 bytes_accessed: 0,
-                error: Some(BoundedString::from_str("Write permission denied", provider).unwrap_or_default()),
+                error: Some(BoundedString::from_str("Write permission denied").unwrap_or_default()),
             };
         }
 
@@ -376,7 +376,7 @@ impl ComponentMemoryManager {
                 success: false,
                 bytes_accessed: 0,
                 error: Some(
-                    BoundedString::from_str("Memory access out of bounds", provider).unwrap_or_default(),
+                    BoundedString::from_str("Memory access out of bounds").unwrap_or_default(),
                 ),
             };
         }

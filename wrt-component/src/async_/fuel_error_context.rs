@@ -52,9 +52,9 @@ pub struct ErrorContext {
     /// Task that was executing when error occurred
     pub task_id:       Option<u64>,
     /// Location in the code (file:line)
-    pub location:      BoundedString<128, NoStdProvider<512>>,
+    pub location:      BoundedString<128>,
     /// Additional context information
-    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH, NoStdProvider<2048>>,
+    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
     /// Fuel consumed up to this error
     pub fuel_consumed: u64,
 }
@@ -64,9 +64,9 @@ impl Default for ErrorContext {
         Self {
             component_id:  0,
             task_id:       None,
-            location:      BoundedString::from_str_truncate("", NoStdProvider::default())
+            location:      BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default location")),
-            context:       BoundedString::from_str_truncate("", NoStdProvider::default())
+            context:       BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default context")),
             fuel_consumed: 0,
         }
@@ -121,10 +121,10 @@ impl ErrorContext {
         let location_provider = safe_managed_alloc!(512, CrateId::Component)?;
         let context_provider = safe_managed_alloc!(2048, CrateId::Component)?;
 
-        let bounded_location = BoundedString::from_str_truncate(location, location_provider)
+        let bounded_location = BoundedString::from_str_truncate(location)
             .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create location string"))?;
 
-        let bounded_context = BoundedString::from_str_truncate(context, context_provider)
+        let bounded_context = BoundedString::from_str_truncate(context)
             .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create context string"))?;
 
         Ok(Self {

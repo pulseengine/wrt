@@ -70,14 +70,14 @@ pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg(not(any(feature = "std",)))]
-pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE, NoStdProvider<512>>);
+pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
 
 impl Default for ContextKey {
     fn default() -> Self {
         #[cfg(feature = "std")]
         return Self(String::new());
         #[cfg(not(any(feature = "std",)))]
-        return Self(BoundedString::from_str_truncate("", NoStdProvider::default()).unwrap_or_else(|_| {
+        return Self(BoundedString::from_str_truncate("").unwrap_or_else(|_| {
             // Fallback: This should never happen, but we need to handle it gracefully
             panic!("Failed to create empty BoundedString");
         }));
@@ -121,7 +121,7 @@ impl ContextKey {
     #[cfg(not(any(feature = "std",)))]
     pub fn new(key: &str) -> Result<Self> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_key = BoundedString::new_from_str(key, provider)
+        let bounded_key = BoundedString::from_str(key)
             .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self(bounded_key))
     }

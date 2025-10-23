@@ -46,7 +46,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedImport {
     /// Import name
-    pub name:     BoundedString<64, NoStdProvider<512>>,
+    pub name:     BoundedString<64>,
     /// Resolved value
     pub value:    ImportValue,
     /// Type information
@@ -57,7 +57,7 @@ pub struct ResolvedImport {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedExport {
     /// Export name
-    pub name:     BoundedString<64, NoStdProvider<512>>,
+    pub name:     BoundedString<64>,
     /// Resolved value
     pub value:    ExportValue,
     /// Type information
@@ -134,10 +134,10 @@ pub struct ComponentResolver {
     bounds_checker: TypeBoundsChecker,
     /// Import resolution cache
     import_cache:
-        BTreeMap<(ComponentInstanceId, BoundedString<64, NoStdProvider<512>>), ResolvedImport>,
+        BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedImport>,
     /// Export resolution cache
     export_cache:
-        BTreeMap<(ComponentInstanceId, BoundedString<64, NoStdProvider<512>>), ResolvedExport>,
+        BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedExport>,
 }
 
 impl ComponentResolver {
@@ -154,7 +154,7 @@ impl ComponentResolver {
     pub fn resolve_import(
         &mut self,
         instance_id: ComponentInstanceId,
-        import_name: BoundedString<64, NoStdProvider<512>>,
+        import_name: BoundedString<64>,
         provided_value: ImportValue,
     ) -> core::result::Result<ResolvedImport, ComponentError> {
         // Check cache first
@@ -180,7 +180,7 @@ impl ComponentResolver {
     pub fn resolve_export(
         &mut self,
         instance_id: ComponentInstanceId,
-        export_name: BoundedString<64, NoStdProvider<512>>,
+        export_name: BoundedString<64>,
         export_value: ExportValue,
     ) -> core::result::Result<ResolvedExport, ComponentError> {
         // Check cache first
@@ -377,7 +377,7 @@ impl Default for ComponentResolver {
 #[derive(Debug, Clone)]
 pub struct ImportResolution {
     /// Import name
-    pub name:           BoundedString<64, NoStdProvider<512>>,
+    pub name:           BoundedString<64>,
     /// Instance ID
     pub instance_id:    ComponentInstanceId,
     /// Resolved value
@@ -388,7 +388,7 @@ pub struct ImportResolution {
 #[derive(Debug, Clone)]
 pub struct ExportResolution {
     /// Export name
-    pub name:           BoundedString<64, NoStdProvider<512>>,
+    pub name:           BoundedString<64>,
     /// Instance ID
     pub instance_id:    ComponentInstanceId,
     /// Exported value
@@ -411,7 +411,7 @@ mod tests {
         let mut resolver = ComponentResolver::new().unwrap();
         let instance_id = ComponentInstanceId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-        let import_name = BoundedString::from_str("test_import", provider).unwrap();
+        let import_name = BoundedString::from_str("test_import").unwrap();
 
         let import_value = ImportValue::Value {
             val_type: ValType::U32,
@@ -430,12 +430,12 @@ mod tests {
         let mut resolver = ComponentResolver::new().unwrap();
         let instance_id = ComponentInstanceId(1);
         let provider1 = safe_managed_alloc!(512, CrateId::Component).unwrap();
-        let export_name = BoundedString::from_str("test_export", provider1).unwrap();
+        let export_name = BoundedString::from_str("test_export").unwrap();
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let export_value = ExportValue::Value {
             val_type: ValType::String,
-            value:    WrtComponentValue::String(BoundedString::from_str("hello", provider2).unwrap()),
+            value:    WrtComponentValue::String(BoundedString::from_str("hello").unwrap()),
         };
 
         let result = resolver.resolve_export(instance_id, export_name.clone(), export_value);
@@ -452,7 +452,7 @@ mod tests {
         // Create matching import and export
         let provider1 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let import = ResolvedImport {
-            name:     BoundedString::from_str("test", provider1).unwrap(),
+            name:     BoundedString::from_str("test").unwrap(),
             value:    ImportValue::Value {
                 val_type: ValType::U32,
                 value:    WrtComponentValue::U32(0),
@@ -462,7 +462,7 @@ mod tests {
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let export = ResolvedExport {
-            name:     BoundedString::from_str("test", provider2).unwrap(),
+            name:     BoundedString::from_str("test").unwrap(),
             value:    ExportValue::Value {
                 val_type: ValType::U32,
                 value:    WrtComponentValue::U32(42),
@@ -535,7 +535,7 @@ impl ImportResolution {
     pub fn new() -> core::result::Result<Self, ComponentError> {
         let provider = safe_managed_alloc!(512, CrateId::Component)
             .map_err(|_| ComponentError::AllocationFailed)?;
-        let name = BoundedString::from_str_truncate("", provider)
+        let name = BoundedString::from_str_truncate("")
             .map_err(|_| ComponentError::AllocationFailed)?;
 
         Ok(Self {
@@ -556,7 +556,7 @@ impl ExportResolution {
     pub fn new() -> core::result::Result<Self, ComponentError> {
         let provider = safe_managed_alloc!(512, CrateId::Component)
             .map_err(|_| ComponentError::AllocationFailed)?;
-        let name = BoundedString::from_str_truncate("", provider)
+        let name = BoundedString::from_str_truncate("")
             .map_err(|_| ComponentError::AllocationFailed)?;
 
         Ok(Self {

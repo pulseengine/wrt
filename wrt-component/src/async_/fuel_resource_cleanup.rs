@@ -443,7 +443,7 @@ impl Default for TaskCleanupContext {
             handle_entries: BoundedVec::new(),
             cleanup_executed: AtomicBool::new(false),
             cleanup_fuel_consumed: AtomicU64::new(0),
-            verification_level: VerificationLevel::None,
+            verification_level: VerificationLevel::Off,
         }
     }
 }
@@ -520,7 +520,7 @@ impl FromBytes for TaskCleanupContext {
             handle_entries: BoundedVec::new(),
             cleanup_executed: AtomicBool::new(cleanup_executed_val),
             cleanup_fuel_consumed: AtomicU64::new(cleanup_fuel_consumed_val),
-            verification_level: VerificationLevel::None,
+            verification_level: VerificationLevel::Off,
         })
     }
 }

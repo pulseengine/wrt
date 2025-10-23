@@ -279,7 +279,7 @@ pub struct Field {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std",)))]
-    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub name: BoundedString<64>,
     pub ty:   Box<ValType>, // Boxed to break recursive type cycle
 }
 
@@ -307,7 +307,7 @@ pub struct Case {
     #[cfg(feature = "std")]
     pub name:    String,
     #[cfg(not(any(feature = "std",)))]
-    pub name:    BoundedString<64, NoStdProvider<512>>,
+    pub name:    BoundedString<64>,
     pub ty:      Option<Box<ValType>>, // Boxed to break recursive cycle
     pub refines: Option<u32>,
 }
@@ -319,7 +319,7 @@ pub struct Enum {
     pub cases: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
     pub cases: BoundedVec<
-        BoundedString<64, NoStdProvider<512>>,
+        BoundedString<64>,
         64,
     >,
 }
@@ -338,7 +338,7 @@ pub struct Flags {
     pub labels: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
     pub labels: BoundedVec<
-        BoundedString<64, NoStdProvider<512>>,
+        BoundedString<64>,
         64,
     >,
 }
@@ -371,7 +371,7 @@ pub enum Value {
     /// Character value
     Char(char),
     /// String value
-    String(BoundedString<1024, NoStdProvider<2048>>),
+    String(BoundedString<1024>),
     /// List value - Boxed to break recursive type cycle
     #[cfg(feature = "std")]
     List(Box<Vec<Value>>),
@@ -964,7 +964,7 @@ impl Default for Field {
             #[cfg(feature = "std")]
             name: String::new(),
             #[cfg(not(any(feature = "std",)))]
-            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+            name: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default Field name")),
             ty: Box::new(ValType::default()),
         }
@@ -999,7 +999,7 @@ impl Default for Case {
             #[cfg(feature = "std")]
             name: String::new(),
             #[cfg(not(any(feature = "std",)))]
-            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+            name: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default Case name")),
             ty: None,
             refines: None,

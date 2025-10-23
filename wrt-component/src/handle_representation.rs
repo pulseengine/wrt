@@ -30,7 +30,7 @@ use alloc::{vec, format};
 use std::{string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
-type String = wrt_foundation::BoundedString<256, NoStdProvider<1024>>;
+type String = wrt_foundation::BoundedString<256>;
 #[cfg(not(feature = "std"))]
 type Vec<T> = BoundedVec<T, 64>;
 
@@ -38,7 +38,7 @@ type Vec<T> = BoundedVec<T, 64>;
 #[cfg(not(feature = "std"))]
 fn error_msg(s: &str) -> String {
     let provider = NoStdProvider::<1024>::default();
-    wrt_foundation::BoundedString::from_str_truncate(s, provider).unwrap_or_default()
+    wrt_foundation::BoundedString::from_str_truncate(s).unwrap_or_default()
 }
 
 #[cfg(feature = "std")]

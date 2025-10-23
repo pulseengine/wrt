@@ -68,7 +68,7 @@ pub struct ResourceType {
     #[cfg(feature = "std")]
     pub name:       String,
     #[cfg(not(feature = "std"))]
-    pub name:       BoundedString<64, NoStdProvider<512>>,
+    pub name:       BoundedString<64>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
 }
@@ -235,7 +235,7 @@ impl ResourceLifecycleManager {
                 use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
                 let provider = safe_managed_alloc!(512, CrateId::Component)
                     .map_err(|_| Error::resource_error("Failed to allocate memory for resource name"))?;
-                BoundedString::from_str(name, provider)
+                BoundedString::from_str(name)
                     .map_err(|_| Error::resource_error("Resource type name too long"))?
             },
             destructor,

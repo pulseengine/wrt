@@ -500,12 +500,12 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         })
     }
 
-    fn decode_string(&mut self, options: &CanonicalOptions) -> Result<BoundedString<1024, NoStdProvider<2048>>> {
+    fn decode_string(&mut self, options: &CanonicalOptions) -> Result<BoundedString<1024>> {
         let _len = self.decode_u32()?;
         let _ptr = self.decode_u32()?;
         // In real implementation, would read from linear memory
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-        BoundedString::from_str("decoded_string", provider).map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
+        BoundedString::from_str("decoded_string").map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
     }
 
     fn decode_list(
