@@ -44,6 +44,8 @@ pub mod clean_runtime_tests;
 pub mod atomic_execution;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod atomic_runtime;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
