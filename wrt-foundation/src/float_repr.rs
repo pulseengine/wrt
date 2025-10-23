@@ -64,6 +64,24 @@ impl FloatBits32 {
     pub const fn from_bits(bits: u32) -> Self {
         Self(bits)
     }
+
+    /// Creates a `FloatBits32` from an `f32` value (alias for `from_float`).
+    #[must_use]
+    pub fn from_f32(val: f32) -> Self {
+        Self::from_float(val)
+    }
+
+    /// Converts this `FloatBits32` to an `f32` value (alias for `value`).
+    #[must_use]
+    pub const fn to_f32(self) -> f32 {
+        self.value()
+    }
+
+    /// Returns the little-endian byte representation of this `FloatBits32`.
+    #[must_use]
+    pub const fn to_le_bytes(self) -> [u8; 4] {
+        self.0.to_le_bytes()
+    }
 }
 
 impl Hash for FloatBits32 {
@@ -132,6 +150,24 @@ impl FloatBits64 {
     #[must_use]
     pub const fn from_bits(bits: u64) -> Self {
         Self(bits)
+    }
+
+    /// Creates a `FloatBits64` from an `f64` value (alias for `from_float`).
+    #[must_use]
+    pub fn from_f64(val: f64) -> Self {
+        Self::from_float(val)
+    }
+
+    /// Converts this `FloatBits64` to an `f64` value (alias for `value`).
+    #[must_use]
+    pub const fn to_f64(self) -> f64 {
+        self.value()
+    }
+
+    /// Returns the little-endian byte representation of this `FloatBits64`.
+    #[must_use]
+    pub const fn to_le_bytes(self) -> [u8; 8] {
+        self.0.to_le_bytes()
     }
 }
 

@@ -83,16 +83,16 @@ mod tests {
         let mut host = Host::new();
 
         let func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
+            params: vec![("a".to_owned(), ValType::S32), ("b".to_owned(), ValType::S32)],
             results: vec![ValType::S32],
         };
 
         let function = HostFunction {
             ty: func_type,
-            implementation: HostFunctionImpl::Callback("add".to_string()),
+            implementation: HostFunctionImpl::Callback("add".to_owned()),
         };
 
-        host.add_function("add".to_string(), function;
+        host.add_function("add".to_owned(), function;
 
         let retrieved = host.get_function("add";
         assert!(retrieved.is_some();

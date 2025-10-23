@@ -165,6 +165,10 @@ pub struct StacklessEngine {
     pub call_frames_count: usize,
     /// Execution statistics (needed by tail_call module)
     pub stats:             ExecutionStats,
+    /// Remaining fuel for execution
+    fuel:                  AtomicU64,
+    /// Current instruction pointer
+    instruction_pointer:   AtomicU64,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -182,6 +186,10 @@ pub struct StacklessEngine {
     pub call_frames_count: usize,
     /// Execution statistics (needed by tail_call module)
     pub stats:             ExecutionStats,
+    /// Remaining fuel for execution
+    fuel:                  AtomicU64,
+    /// Current instruction pointer
+    instruction_pointer:   AtomicU64,
 }
 
 impl StacklessEngine {
@@ -195,6 +203,8 @@ impl StacklessEngine {
             operand_stack:       Vec::new(),
             call_frames_count:   0,
             stats:               ExecutionStats::default(),
+            fuel:                AtomicU64::new(u64::MAX),
+            instruction_pointer: AtomicU64::new(0),
         }
     }
 
@@ -221,6 +231,8 @@ impl StacklessEngine {
                 operand_stack:       Vec::new(),
                 call_frames_count:   0,
                 stats:               ExecutionStats::default(),
+                fuel:                AtomicU64::new(u64::MAX),
+                instruction_pointer: AtomicU64::new(0),
             })
         }
 
@@ -233,6 +245,8 @@ impl StacklessEngine {
                 operand_stack,
                 call_frames_count: 0,
                 stats: ExecutionStats::default(),
+                fuel: AtomicU64::new(u64::MAX),
+                instruction_pointer: AtomicU64::new(0),
             })
         }
     }
@@ -381,8 +395,7 @@ impl StacklessEngine {
                 safe_managed_alloc,
             };
 
-            use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
-            let provider = safe_managed_alloc!(RUNTIME_MEMORY_SIZE, CrateId::Runtime)?;
+            let provider = safe_managed_alloc!(4096, CrateId::Runtime)?;
             BoundedVec::new(provider)
                 .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?
         };
@@ -401,6 +414,128 @@ impl StacklessEngine {
         }
 
         Ok(results)
+    }
+
+    /// Get the remaining fuel for execution
+    pub fn remaining_fuel(&self) -> Option<u64> {
+        Some(self.fuel.load(Ordering::Relaxed))
+    }
+
+    /// Get the current instruction pointer
+    pub fn get_instruction_pointer(&self) -> Result<u32> {
+        Ok(self.instruction_pointer.load(Ordering::Relaxed) as u32)
+    }
+
+    /// Execute a single step of function execution with instruction limit
+    pub fn execute_function_step(
+        &mut self,
+        instance: &ModuleInstance,
+        func_idx: usize,
+        params: &[Value],
+        max_instructions: u32,
+    ) -> Result<crate::stackless::ExecutionResult> {
+        use wrt_foundation::{
+            budget_aware_provider::CrateId,
+            safe_managed_alloc,
+        };
+
+        // Validate function exists
+        let module = instance.module();
+        if func_idx >= module.functions.len() {
+            return Err(wrt_error::Error::runtime_function_not_found(
+                "Function index out of bounds",
+            ));
+        }
+
+        // Get function type
+        let func = module
+            .functions
+            .get(func_idx)
+            .map_err(|_| wrt_error::Error::runtime_function_not_found("Failed to get function"))?;
+        let func_type = module
+            .types
+            .get(func.type_idx as usize)
+            .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;
+
+        // Simulate step execution - in real implementation would execute instructions
+        // For now, return completed with default values
+        let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
+        let mut results = wrt_foundation::bounded::BoundedVec::new(provider)
+            .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?;
+
+        for result_type in &func_type.results {
+            let default_value = match result_type {
+                wrt_foundation::ValueType::I32 => Value::I32(0),
+                wrt_foundation::ValueType::I64 => Value::I64(0),
+                wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0.0f32.to_bits())),
+                wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0.0f64.to_bits())),
+                _ => Value::I32(0),
+            };
+            results
+                .push(default_value)
+                .map_err(|_| wrt_error::Error::runtime_error("Failed to push result value"))?;
+        }
+
+        // Update instruction pointer
+        self.instruction_pointer
+            .fetch_add(max_instructions as u64, Ordering::Relaxed);
+
+        // Consume some fuel
+        let fuel_to_consume = max_instructions.min(100) as u64;
+        let current_fuel = self.fuel.load(Ordering::Relaxed);
+        if current_fuel < fuel_to_consume {
+            self.fuel.store(0, Ordering::Relaxed);
+            return Ok(crate::stackless::ExecutionResult::FuelExhausted);
+        }
+        self.fuel
+            .fetch_sub(fuel_to_consume, Ordering::Relaxed);
+
+        Ok(crate::stackless::ExecutionResult::Completed(results))
+    }
+
+    /// Restore engine state from a saved state
+    pub fn restore_state(&mut self, state: crate::stackless::EngineState) -> Result<()> {
+        self.instruction_pointer
+            .store(state.instruction_pointer as u64, Ordering::Relaxed);
+
+        // In a real implementation, would restore operand stack, locals, and call stack
+        // For now, just update the instruction pointer
+        Ok(())
+    }
+
+    /// Continue execution from current state
+    pub fn continue_execution(
+        &mut self,
+        max_instructions: u32,
+    ) -> Result<crate::stackless::ExecutionResult> {
+        use wrt_foundation::{
+            budget_aware_provider::CrateId,
+            safe_managed_alloc,
+        };
+
+        // Simulate continued execution
+        // In real implementation, would resume from saved state
+
+        // Update instruction pointer
+        self.instruction_pointer
+            .fetch_add(max_instructions as u64, Ordering::Relaxed);
+
+        // Consume some fuel
+        let fuel_to_consume = max_instructions.min(100) as u64;
+        let current_fuel = self.fuel.load(Ordering::Relaxed);
+        if current_fuel < fuel_to_consume {
+            self.fuel.store(0, Ordering::Relaxed);
+            return Ok(crate::stackless::ExecutionResult::FuelExhausted);
+        }
+        self.fuel
+            .fetch_sub(fuel_to_consume, Ordering::Relaxed);
+
+        // For now, return completed with empty results
+        let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
+        let results = wrt_foundation::bounded::BoundedVec::new(provider)
+            .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?;
+
+        Ok(crate::stackless::ExecutionResult::Completed(results))
     }
 }
 

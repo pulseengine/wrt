@@ -1,24 +1,30 @@
 //! Minimal stubs for unified execution engine compilation
 //! These stubs allow the unified engine to compile without all dependencies
 
+// For no_std, override prelude's bounded::BoundedVec with StaticVec
+#[cfg(not(feature = "std"))]
+use wrt_foundation::collections::StaticVec as BoundedVec;
+
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
     WrtResult,
 };
 
+// Import BoundedVec only for std - no_std uses StaticVec alias above
+#[cfg(feature = "std")]
+use wrt_foundation::bounded::BoundedVec;
+
 use crate::{
+    bounded_component_infra::ComponentProvider,
     prelude::WrtComponentValue,
     types::Value,
 };
 
 /// Canonical ABI processor stub
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CanonicalAbi;
 
 impl CanonicalAbi {
@@ -35,8 +41,8 @@ pub struct CanonicalOptions;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResourceHandle(pub u32);
 
-/// Resource lifecycle manager stub  
-#[derive(Debug)]
+/// Resource lifecycle manager stub
+#[derive(Debug, Clone)]
 pub struct ResourceLifecycleManager {
     next_handle: u32,
 }
@@ -49,7 +55,7 @@ impl ResourceLifecycleManager {
     pub fn create_resource(
         &mut self,
         _type_id: u32,
-        _data: WrtComponentValue,
+        _data: WrtComponentValue<ComponentProvider>,
     ) -> WrtResult<ResourceHandle> {
         let handle = ResourceHandle(self.next_handle);
         self.next_handle += 1;
@@ -60,9 +66,9 @@ impl ResourceLifecycleManager {
         Ok(())
     }
 
-    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue> {
+    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue<ComponentProvider>> {
         // Return a dummy value - in real implementation this would be tracked
-        static DUMMY: WrtComponentValue = WrtComponentValue::Bool(false);
+        static DUMMY: WrtComponentValue<ComponentProvider> = WrtComponentValue::Bool(false);
         Ok(&DUMMY)
     }
 
@@ -76,11 +82,11 @@ impl ResourceLifecycleManager {
 }
 
 /// Runtime bridge configuration stub
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct RuntimeBridgeConfig;
 
 /// Component runtime bridge stub
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentRuntimeBridge;
 
 impl ComponentRuntimeBridge {
@@ -96,10 +102,10 @@ impl ComponentRuntimeBridge {
         &mut self,
         _instance_id: u32,
         _function_name: &str,
-        _args: &[WrtComponentValue],
-    ) -> core::result::Result<WrtComponentValue, wrt_error::Error> {
+        _args: &[WrtComponentValue<ComponentProvider>],
+    ) -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error> {
         // Return a dummy successful result
-        Ok(WrtComponentValue::U32(42))
+        Ok(WrtComponentValue::<ComponentProvider>::U32(42))
     }
 
     pub fn register_component_instance(
@@ -120,7 +126,7 @@ impl ComponentRuntimeBridge {
         _func: F,
     ) -> core::result::Result<usize, wrt_error::Error>
     where
-        F: Fn(&[WrtComponentValue]) -> core::result::Result<WrtComponentValue, wrt_error::Error>
+        F: Fn(&[WrtComponentValue<ComponentProvider>]) -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>
             + Send
             + Sync
             + 'static,
@@ -131,19 +137,19 @@ impl ComponentRuntimeBridge {
     #[cfg(not(feature = "std"))]
     pub fn register_host_function(
         &mut self,
-        _name: BoundedString<64>,
+        _name: BoundedString<64, NoStdProvider<512>>,
         _signature: crate::component_instantiation::FunctionSignature,
         _func: fn(
-            &[WrtComponentValue],
-        ) -> core::result::Result<WrtComponentValue, wrt_error::Error>,
+            &[WrtComponentValue<ComponentProvider>],
+        ) -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>,
     ) -> core::result::Result<usize, wrt_error::Error> {
         Ok(0)
     }
 }
 
 /// Component value conversion stubs
-impl From<WrtComponentValue> for Value {
-    fn from(cv: WrtComponentValue) -> Self {
+impl From<WrtComponentValue<ComponentProvider>> for Value {
+    fn from(cv: WrtComponentValue<ComponentProvider>) -> Self {
         match cv {
             WrtComponentValue::Bool(b) => Value::Bool(b),
             WrtComponentValue::U8(v) => Value::U8(v),
@@ -154,16 +160,31 @@ impl From<WrtComponentValue> for Value {
             WrtComponentValue::S16(v) => Value::S16(v),
             WrtComponentValue::S32(v) => Value::S32(v),
             WrtComponentValue::S64(v) => Value::S64(v),
-            WrtComponentValue::F32(v) => Value::F32(v),
-            WrtComponentValue::F64(v) => Value::F64(v),
+            WrtComponentValue::F32(v) => Value::F32(v.to_f32()),
+            WrtComponentValue::F64(v) => Value::F64(v.to_f64()),
             WrtComponentValue::Char(c) => Value::Char(c),
-            WrtComponentValue::String(s) => Value::String(s),
+            #[cfg(feature = "std")]
+            WrtComponentValue::String(s) => {
+                let provider = safe_managed_alloc!(2048, CrateId::Component)
+                    .unwrap_or_else(|_| NoStdProvider::default());
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(&s, provider)
+                    .unwrap_or_else(|_| panic!("Failed to convert string"));
+                Value::String(bounded_str)
+            },
+            #[cfg(not(any(feature = "std",)))]
+            WrtComponentValue::String(s) => {
+                let provider = safe_managed_alloc!(2048, CrateId::Component)
+                    .unwrap_or_else(|_| NoStdProvider::default());
+                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str(), provider)
+                    .unwrap_or_else(|_| panic!("Failed to convert string"));
+                Value::String(bounded_str)
+            },
             _ => Value::Bool(false), // Fallback
         }
     }
 }
 
-impl From<Value> for WrtComponentValue {
+impl From<Value> for WrtComponentValue<ComponentProvider> {
     fn from(v: Value) -> Self {
         match v {
             Value::Bool(b) => WrtComponentValue::Bool(b),
@@ -175,10 +196,26 @@ impl From<Value> for WrtComponentValue {
             Value::S16(v) => WrtComponentValue::S16(v),
             Value::S32(v) => WrtComponentValue::S32(v),
             Value::S64(v) => WrtComponentValue::S64(v),
-            Value::F32(v) => WrtComponentValue::F32(v),
-            Value::F64(v) => WrtComponentValue::F64(v),
+            Value::F32(v) => WrtComponentValue::F32(wrt_foundation::FloatBits32::from_f32(v)),
+            Value::F64(v) => WrtComponentValue::F64(wrt_foundation::FloatBits64::from_f64(v)),
             Value::Char(c) => WrtComponentValue::Char(c),
-            Value::String(s) => WrtComponentValue::String(s),
+            #[cfg(feature = "std")]
+            Value::String(s) => {
+                let string = s.as_str()
+                    .unwrap_or_else(|_| panic!("Failed to get string slice"))
+                    .to_string();
+                WrtComponentValue::String(string)
+            },
+            #[cfg(not(any(feature = "std",)))]
+            Value::String(s) => {
+                match s.as_str() {
+                    Ok(str_ref) => {
+                        // Convert BoundedString to String
+                        WrtComponentValue::String(str_ref.into())
+                    },
+                    Err(_) => WrtComponentValue::Bool(false), // Fallback on error
+                }
+            },
             _ => WrtComponentValue::Bool(false), // Fallback
         }
     }
@@ -200,6 +237,18 @@ pub mod async_stubs {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct FutureHandle(pub u32);
 
+    impl FutureHandle {
+        /// Create a new future handle
+        pub const fn new(id: u32) -> Self {
+            Self(id)
+        }
+
+        /// Extract the inner value
+        pub const fn into_inner(self) -> u32 {
+            self.0
+        }
+    }
+
     /// Future state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FutureState {
@@ -211,6 +260,18 @@ pub mod async_stubs {
     /// Stream handle stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct StreamHandle(pub u32);
+
+    impl StreamHandle {
+        /// Create a new stream handle
+        pub const fn new(id: u32) -> Self {
+            Self(id)
+        }
+
+        /// Extract the inner value
+        pub const fn into_inner(self) -> u32 {
+            self.0
+        }
+    }
 
     /// Stream state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -348,12 +409,12 @@ pub mod cfi_stubs {
                 current_instruction:      0,
                 shadow_stack:             {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
                 violation_count:          0,
                 landing_pad_expectations: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
                 metrics:                  CfiMetrics::default(),
             })

@@ -4,6 +4,8 @@
 //! Component Model, including async runtimes, execution engines, and async
 //! canonical ABI implementations.
 
+// Advanced sync primitives require Arc/Weak which need std or alloc
+#[cfg(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation"))]
 pub mod advanced_sync_primitives;
 pub mod async_builtins;
 pub mod async_canonical;
@@ -42,6 +44,7 @@ pub mod resource_async_operations;
 pub mod task_manager_async_bridge;
 pub mod timer_integration;
 
+#[cfg(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation"))]
 pub use advanced_sync_primitives::*;
 pub use async_builtins::*;
 pub use async_canonical::*;

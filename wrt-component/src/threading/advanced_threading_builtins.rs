@@ -34,10 +34,8 @@ use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 use wrt_foundation::{
-    bounded::{
-        BoundedMap,
-        BoundedVec,
-    },
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
     types::ValueType,
 };
 #[cfg(not(feature = "std"))]
@@ -55,7 +53,7 @@ type ThreadingString = BoundedString<256>;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::{
+use crate::threading::{
     task_cancellation::{
         with_cancellation_scope,
         CancellationToken,
@@ -164,7 +162,7 @@ pub struct IndirectCall {
     #[cfg(feature = "std")]
     pub arguments:      Vec<ComponentValue>,
     #[cfg(not(any(feature = "std",)))]
-    pub arguments:      BoundedVec<ComponentValue, 16>,
+    pub arguments:      BoundedVec<ComponentValue<ComponentProvider>, 16>,
 }
 
 impl IndirectCall {
@@ -283,7 +281,7 @@ impl AdvancedThread {
             #[cfg(not(any(feature = "std",)))]
             thread_locals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedMap::new(provider)?
+                BoundedMap::new()
             },
             result: None,
             error: None,
@@ -293,7 +291,7 @@ impl AdvancedThread {
             #[cfg(not(any(feature = "std",)))]
             child_threads: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
         })
     }
@@ -408,7 +406,7 @@ impl AdvancedThreadRegistry {
             #[cfg(not(any(feature = "std",)))]
             threads:                                    {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedMap::new(provider)?
+                BoundedMap::new()
             },
         }
     }
@@ -765,7 +763,7 @@ pub mod advanced_threading_helpers {
         parent_id: AdvancedThreadId,
     ) -> Result<BoundedVec<AdvancedThreadId, MAX_THREADS>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut cancelled = BoundedVec::new(provider)?;
+        let mut cancelled = BoundedVec::new().unwrap();
 
         AdvancedThreadingBuiltins::with_registry_mut(|registry| {
             if let Some(parent) = registry.get_thread(parent_id) {
@@ -816,7 +814,7 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            let func_ref = FunctionReference::new("test_function".to_string(), signature, 0, 42);
+            let func_ref = FunctionReference::new("test_function".to_owned(), signature, 0, 42);
             assert_eq!(func_ref.name(), "test_function");
             assert_eq!(func_ref.module_index, 0);
             assert_eq!(func_ref.function_index, 42);
@@ -990,7 +988,7 @@ mod tests {
         };
 
         #[cfg(feature = "std")]
-        let func_ref = FunctionReference::new("test_func".to_string(), signature, 0, 42);
+        let func_ref = FunctionReference::new("test_func".to_owned(), signature, 0, 42);
         #[cfg(not(any(feature = "std",)))]
         let func_ref = FunctionReference::new("test_func", signature, 0, 42).unwrap();
 
@@ -1028,7 +1026,7 @@ mod tests {
 
         #[cfg(feature = "std")]
         let func_ref = FunctionReference::new(
-            "test_func".to_string(),
+            "test_func".to_owned(),
             FunctionSignature {
                 params:  vec![],
                 results: vec![],

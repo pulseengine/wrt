@@ -5,25 +5,22 @@ use std::{
 };
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    BoundedMap as BTreeMap,
-    BoundedVec as Vec,
-};
+use wrt_foundation::collections::StaticMap as BTreeMap;
 
 // Type aliases for no_std compatibility
 #[cfg(not(feature = "std"))]
-type TypeBoundsMap<K, V> = BTreeMap<K, V, 64, NoStdProvider<65536>>;
+type TypeBoundsMap<K, V> = BTreeMap<K, V, 64>;
 
 use core::fmt;
 
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_GENERATIVE_TYPES,
+    collections::{
+        StaticVec as BoundedVec,
+        StaticMap as BoundedMap,
     },
-    bounded_collections::BoundedMap,
+    bounded::MAX_GENERATIVE_TYPES,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
@@ -47,18 +44,20 @@ use crate::{
 pub struct TypeBoundsChecker {
     #[cfg(feature = "std")]
     type_hierarchy:
-        BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
+        BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>>,
     #[cfg(not(feature = "std"))]
     type_hierarchy: BTreeMap<
         TypeId,
-        BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+        BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>,
         32,
-        NoStdProvider<65536>,
     >,
+    #[cfg(feature = "std")]
     cached_relations: BTreeMap<(TypeId, TypeId), RelationResult>,
+    #[cfg(not(feature = "std"))]
+    cached_relations: BTreeMap<(TypeId, TypeId), RelationResult, 64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TypeRelation {
     pub sub_type:      TypeId,
     pub super_type:    TypeId,
@@ -66,34 +65,150 @@ pub struct TypeRelation {
     pub confidence:    RelationConfidence,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RelationKind {
     /// Types are equal
     Eq,
     /// sub_type is a subtype of super_type
     Sub,
     /// Types are unrelated
+    #[default]
     None,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RelationConfidence {
     /// Relation is definitively known
     Definite,
     /// Relation is inferred from other relations
     Inferred,
     /// Relation is assumed but not verified
+    #[default]
     Assumed,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RelationResult {
     /// Types satisfy the bound
     Satisfied,
     /// Types do not satisfy the bound
     Violated,
     /// Relationship is unknown/undecidable
+    #[default]
     Unknown,
+}
+
+// Serialization trait implementations for TypeRelation
+use wrt_runtime::{Checksummable, ToBytes, FromBytes};
+use wrt_foundation::{Checksum, MemoryProvider};
+use wrt_foundation::traits::{WriteStream, ReadStream};
+
+impl Checksummable for TypeRelation {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.sub_type.update_checksum(checksum);
+        self.super_type.update_checksum(checksum);
+        match self.relation_kind {
+            RelationKind::Eq => 0u8.update_checksum(checksum),
+            RelationKind::Sub => 1u8.update_checksum(checksum),
+            RelationKind::None => 2u8.update_checksum(checksum),
+        }
+        match self.confidence {
+            RelationConfidence::Definite => 0u8.update_checksum(checksum),
+            RelationConfidence::Inferred => 1u8.update_checksum(checksum),
+            RelationConfidence::Assumed => 2u8.update_checksum(checksum),
+        }
+    }
+}
+
+impl ToBytes for TypeRelation {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.sub_type.to_bytes_with_provider(writer, provider)?;
+        self.super_type.to_bytes_with_provider(writer, provider)?;
+        let kind_byte = match self.relation_kind {
+            RelationKind::Eq => 0u8,
+            RelationKind::Sub => 1u8,
+            RelationKind::None => 2u8,
+        };
+        kind_byte.to_bytes_with_provider(writer, provider)?;
+        let conf_byte = match self.confidence {
+            RelationConfidence::Definite => 0u8,
+            RelationConfidence::Inferred => 1u8,
+            RelationConfidence::Assumed => 2u8,
+        };
+        conf_byte.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for TypeRelation {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let sub_type = TypeId::from_bytes_with_provider(reader, provider)?;
+        let super_type = TypeId::from_bytes_with_provider(reader, provider)?;
+        let kind_byte = u8::from_bytes_with_provider(reader, provider)?;
+        let relation_kind = match kind_byte {
+            0 => RelationKind::Eq,
+            1 => RelationKind::Sub,
+            _ => RelationKind::None,
+        };
+        let conf_byte = u8::from_bytes_with_provider(reader, provider)?;
+        let confidence = match conf_byte {
+            0 => RelationConfidence::Definite,
+            1 => RelationConfidence::Inferred,
+            _ => RelationConfidence::Assumed,
+        };
+        Ok(Self {
+            sub_type,
+            super_type,
+            relation_kind,
+            confidence,
+        })
+    }
+}
+
+// Serialization trait implementations for RelationResult
+impl Checksummable for RelationResult {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            RelationResult::Satisfied => 0u8.update_checksum(checksum),
+            RelationResult::Violated => 1u8.update_checksum(checksum),
+            RelationResult::Unknown => 2u8.update_checksum(checksum),
+        }
+    }
+}
+
+impl ToBytes for RelationResult {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        let byte = match self {
+            RelationResult::Satisfied => 0u8,
+            RelationResult::Violated => 1u8,
+            RelationResult::Unknown => 2u8,
+        };
+        byte.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for RelationResult {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let byte = u8::from_bytes_with_provider(reader, provider)?;
+        Ok(match byte {
+            0 => RelationResult::Satisfied,
+            1 => RelationResult::Violated,
+            _ => RelationResult::Unknown,
+        })
+    }
 }
 
 impl TypeBoundsChecker {
@@ -107,16 +222,9 @@ impl TypeBoundsChecker {
         }
         #[cfg(not(feature = "std"))]
         {
-            let hierarchy_provider = safe_managed_alloc!(65536, CrateId::Component)
-                .map_err(|_| ComponentError::TooManyTypeBounds)?;
-            let cached_provider = safe_managed_alloc!(65536, CrateId::Component)
-                .map_err(|_| ComponentError::TooManyTypeBounds)?;
-
             Ok(Self {
-                type_hierarchy:   BTreeMap::new(hierarchy_provider)
-                    .map_err(|_| ComponentError::TooManyTypeBounds)?,
-                cached_relations: BTreeMap::new(cached_provider)
-                    .map_err(|_| ComponentError::TooManyTypeBounds)?,
+                type_hierarchy:   BTreeMap::new(),
+                cached_relations: BTreeMap::new(),
             })
         }
     }
@@ -216,13 +324,13 @@ impl TypeBoundsChecker {
             #[cfg(feature = "std")]
             let mut new_relations = Vec::new();
             #[cfg(not(feature = "std"))]
-            let mut new_relations = {
+            let mut new_relations: BoundedVec<TypeRelation, 64> = {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
                     .map_err(|_| ComponentError::TooManyTypeBounds)?;
-                BoundedVec::new(provider).map_err(|_| ComponentError::TooManyTypeBounds)?
+                BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?
             };
 
-            for (type_id, relations) in &self.type_hierarchy {
+            for (type_id, relations) in self.type_hierarchy.iter() {
                 for relation in relations.iter() {
                     if let Some(super_relations) = self.type_hierarchy.get(&relation.super_type) {
                         for super_relation in super_relations.iter() {
@@ -259,7 +367,7 @@ impl TypeBoundsChecker {
     }
 
     pub fn validate_consistency(&self) -> core::result::Result<(), ComponentError> {
-        for (type_id, relations) in &self.type_hierarchy {
+        for (type_id, relations) in self.type_hierarchy.iter() {
             for relation in relations.iter() {
                 if *type_id == relation.super_type && relation.relation_kind == RelationKind::Sub {
                     return Err(ComponentError::InvalidSubtypeRelation(
@@ -290,11 +398,11 @@ impl TypeBoundsChecker {
     pub fn get_all_supertypes(
         &self,
         type_id: TypeId,
-    ) -> Result<BoundedVec<TypeId, 64, NoStdProvider<65536>>, ComponentError> {
+    ) -> Result<BoundedVec<TypeId, 64>, ComponentError> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
             .map_err(|_| ComponentError::TooManyTypeBounds)?;
         let mut supertypes =
-            BoundedVec::new(provider).map_err(|_| ComponentError::TooManyTypeBounds)?;
+            BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
         self.collect_supertypes(type_id, &mut supertypes)?;
         Ok(supertypes)
     }
@@ -321,13 +429,11 @@ impl TypeBoundsChecker {
     pub fn get_all_subtypes(
         &self,
         type_id: TypeId,
-    ) -> Result<BoundedVec<TypeId, 64, NoStdProvider<65536>>, ComponentError> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .map_err(|_| ComponentError::TooManyTypeBounds)?;
+    ) -> Result<BoundedVec<TypeId, 64>, ComponentError> {
         let mut subtypes =
-            BoundedVec::new(provider).map_err(|_| ComponentError::TooManyTypeBounds)?;
+            BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
 
-        for (sub_type_id, relations) in &self.type_hierarchy {
+        for (sub_type_id, relations) in self.type_hierarchy.iter() {
             for relation in relations.iter() {
                 if relation.super_type == type_id
                     && (relation.relation_kind == RelationKind::Sub
@@ -349,25 +455,24 @@ impl TypeBoundsChecker {
         }
         #[cfg(not(feature = "std"))]
         {
+            let sub_type = relation.sub_type;
             // Check if the key exists, if not insert a new BoundedVec
-            if let Some(existing_relations) = self.type_hierarchy.get(&relation.sub_type) {
+            if let Some(existing_relations) = self.type_hierarchy.get(&sub_type) {
                 // Key exists, clone the existing vector, add the relation, and re-insert
                 let mut updated_relations = existing_relations.clone();
                 updated_relations
                     .push(relation)
                     .map_err(|_| ComponentError::TooManyTypeBounds)?;
                 self.type_hierarchy
-                    .insert(relation.sub_type, updated_relations)
+                    .insert(sub_type, updated_relations)
                     .map_err(|_| ComponentError::TooManyTypeBounds)?;
             } else {
                 // Key doesn't exist, create a new BoundedVec
-                let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .map_err(|_| ComponentError::TooManyTypeBounds)?;
                 let mut new_vec =
-                    BoundedVec::new(provider).map_err(|_| ComponentError::TooManyTypeBounds)?;
+                    BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
                 new_vec.push(relation).map_err(|_| ComponentError::TooManyTypeBounds)?;
                 self.type_hierarchy
-                    .insert(relation.sub_type, new_vec)
+                    .insert(sub_type, new_vec)
                     .map_err(|_| ComponentError::TooManyTypeBounds)?;
             }
         }
@@ -458,7 +563,7 @@ impl TypeBoundsChecker {
     fn collect_supertypes(
         &self,
         type_id: TypeId,
-        supertypes: &mut BoundedVec<TypeId, 64, NoStdProvider<65536>>,
+        supertypes: &mut BoundedVec<TypeId, 64>,
     ) -> Result<(), ComponentError> {
         if let Some(relations) = self.type_hierarchy.get(&type_id) {
             for relation in relations.iter() {

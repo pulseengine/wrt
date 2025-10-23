@@ -5,6 +5,11 @@
 //! ecosystem.
 
 #[cfg(not(feature = "std"))]
+use alloc::{
+    format,
+    vec,
+};
+#[cfg(not(feature = "std"))]
 use core::{
     fmt,
     mem,
@@ -21,7 +26,7 @@ use std::{
     mem,
 };
 
-use wrt_foundation::bounded::BoundedVec;
+use wrt_foundation::collections::StaticVec as BoundedVec;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
@@ -31,11 +36,13 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     BoundedString,
 };
+use wrt_foundation::RefType;
 
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
 use crate::{
+    bounded_component_infra::ComponentProvider,
     canonical_abi::CanonicalABI,
     components::Component,
     execution_engine::ComponentExecutionEngine,
@@ -45,6 +52,13 @@ use crate::{
         Value,
     },
 };
+
+use crate::export::Export;
+
+#[cfg(feature = "std")]
+use crate::components::component::{ExternValue, FunctionValue, MemoryValue, TableValue, GlobalValue};
+#[cfg(not(feature = "std"))]
+use crate::components::component_no_std::{ExternValue, FunctionValue, MemoryValue, TableValue, GlobalValue};
 
 /// Maximum number of adapted functions in no_std environments
 const MAX_ADAPTED_FUNCTIONS: usize = 256;
@@ -56,31 +70,31 @@ pub struct CoreModuleAdapter {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std",)))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, NoStdProvider<512>>,
 
     /// Function adapters
     #[cfg(feature = "std")]
     pub functions: Vec<FunctionAdapter>,
     #[cfg(not(any(feature = "std",)))]
-    pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS, NoStdProvider<65536>>,
+    pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS>,
 
     /// Memory adapters
     #[cfg(feature = "std")]
     pub memories: Vec<MemoryAdapter>,
     #[cfg(not(any(feature = "std",)))]
-    pub memories: BoundedVec<MemoryAdapter, 16, NoStdProvider<65536>>,
+    pub memories: BoundedVec<MemoryAdapter, 16>,
 
     /// Table adapters
     #[cfg(feature = "std")]
     pub tables: Vec<TableAdapter>,
     #[cfg(not(any(feature = "std",)))]
-    pub tables: BoundedVec<TableAdapter, 16, NoStdProvider<65536>>,
+    pub tables: BoundedVec<TableAdapter, 16>,
 
     /// Global adapters
     #[cfg(feature = "std")]
     pub globals: Vec<GlobalAdapter>,
     #[cfg(not(any(feature = "std",)))]
-    pub globals: BoundedVec<GlobalAdapter, 64, NoStdProvider<65536>>,
+    pub globals: BoundedVec<GlobalAdapter, 64>,
 }
 
 /// Adapter for core module functions
@@ -89,7 +103,7 @@ pub struct FunctionAdapter {
     /// Core function index
     pub core_index:          u32,
     /// Component function signature
-    pub component_signature: WrtComponentType,
+    pub component_signature: WrtComponentType<ComponentProvider>,
     /// Core function signature (WebAssembly types)
     pub core_signature:      CoreFunctionSignature,
     /// Adaptation mode
@@ -97,18 +111,18 @@ pub struct FunctionAdapter {
 }
 
 /// Core WebAssembly function signature
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreFunctionSignature {
     /// Parameter types (WebAssembly core types)
     #[cfg(feature = "std")]
     pub params:  Vec<CoreValType>,
     #[cfg(not(any(feature = "std",)))]
-    pub params:  BoundedVec<CoreValType, 32, NoStdProvider<65536>>,
+    pub params:  BoundedVec<CoreValType, 32>,
     /// Result types (WebAssembly core types)
     #[cfg(feature = "std")]
     pub results: Vec<CoreValType>,
     #[cfg(not(any(feature = "std",)))]
-    pub results: BoundedVec<CoreValType, 8, NoStdProvider<65536>>,
+    pub results: BoundedVec<CoreValType, 8>,
 }
 
 /// WebAssembly core value types
@@ -132,7 +146,7 @@ pub enum CoreValType {
 }
 
 /// Function adaptation mode
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum AdaptationMode {
     #[default]
     /// Direct mapping (no adaptation needed)
@@ -211,14 +225,13 @@ impl CoreModuleAdapter {
 
     /// Create a new core module adapter (no_std version)
     #[cfg(not(any(feature = "std",)))]
-    pub fn new(name: BoundedString<64, NoStdProvider<65536>>) -> core::result::Result<Self, Error> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+    pub fn new(name: BoundedString<64, NoStdProvider<512>>) -> core::result::Result<Self, Error> {
         Ok(Self {
             name,
-            functions: BoundedVec::new(provider.clone())?,
-            memories: BoundedVec::new(provider.clone())?,
-            tables: BoundedVec::new(provider.clone())?,
-            globals: BoundedVec::new(provider)?,
+            functions: BoundedVec::new(),
+            memories: BoundedVec::new(),
+            tables: BoundedVec::new(),
+            globals: BoundedVec::new(),
         })
     }
 
@@ -304,50 +317,160 @@ impl CoreModuleAdapter {
 
     /// Convert this adapter to a component
     pub fn to_component(&self) -> Result<Component> {
-        let mut component = Component::new(WrtComponentType::default());
+        #[cfg(feature = "std")]
+        let mut component = Component::new(crate::components::component::WrtComponentType::default());
+        #[cfg(not(feature = "std"))]
+        let mut component = Component::new()?;
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
             // Add the function to the component
             // This is simplified - in reality would need more complex conversion
-            component.add_function(func_adapter.component_signature.clone())?;
+            // Create an Export from the function adapter
+            #[cfg(feature = "std")]
+            let name = format!("func_{}", func_adapter.core_index);
+            #[cfg(not(feature = "std"))]
+            let name = format!("func_{}", func_adapter.core_index);
+
+            let export = Export {
+                name,
+                ty: wrt_format::component::ExternType::Function {
+                    params: vec![],
+                    results: vec![],
+                },
+                value: ExternValue::Function(FunctionValue {
+                    ty: {
+                        use wrt_foundation::types::FuncType;
+                        FuncType::<NoStdProvider<1024>>::default()
+                    },
+                    export_name: {
+                        let provider = safe_managed_alloc!(512, CrateId::Component)?;
+                        BoundedString::from_str(&format!("func_{}", func_adapter.core_index), provider)?
+                    },
+                }),
+                kind: ExportKind::Function { function_index: func_adapter.core_index },
+                attributes: HashMap::new(),
+                integrity_hash: None,
+            };
+            component.add_function(export)?;
         }
 
         // Convert memory adapters to component memories
         for mem_adapter in &self.memories {
-            component.add_memory(mem_adapter.limits.min, mem_adapter.limits.max)?;
+            let export = Export {
+                name: format!("memory_{}", mem_adapter.core_index),
+                ty: wrt_format::component::ExternType::Type(mem_adapter.core_index),
+                value: ExternValue::Memory(
+                    MemoryValue::new(wrt_foundation::types::MemoryType {
+                        limits: wrt_foundation::types::Limits {
+                            min: mem_adapter.limits.min,
+                            max: mem_adapter.limits.max,
+                        },
+                        shared: mem_adapter.shared,
+                    })?
+                ),
+                kind: ExportKind::Value { value_index: mem_adapter.core_index },
+                attributes: HashMap::new(),
+                integrity_hash: None,
+            };
+            component.add_memory(export)?;
         }
 
         // Convert table adapters to component tables
         for table_adapter in &self.tables {
-            component.add_table(
-                self.core_type_to_component_type(table_adapter.element_type),
-                table_adapter.limits.min,
-                table_adapter.limits.max,
-            )?;
+            #[cfg(feature = "std")]
+            let table_value = TableValue {
+                ty: wrt_foundation::types::TableType {
+                    limits: wrt_foundation::types::Limits {
+                        min: table_adapter.limits.min,
+                        max: table_adapter.limits.max,
+                    },
+                    element_type: RefType::Funcref,
+                },
+                table: wrt_runtime::table::Table::new(wrt_foundation::types::TableType {
+                    limits: wrt_foundation::types::Limits {
+                        min: table_adapter.limits.min,
+                        max: table_adapter.limits.max,
+                    },
+                    element_type: RefType::Funcref,
+                })?,
+            };
+
+            #[cfg(not(feature = "std"))]
+            let table_value = TableValue {
+                ty: wrt_foundation::types::TableType {
+                    limits: wrt_foundation::types::Limits {
+                        min: table_adapter.limits.min,
+                        max: table_adapter.limits.max,
+                    },
+                    element_type: RefType::Funcref,
+                },
+                table: BoundedVec::new(),
+            };
+
+            let export = Export {
+                name: format!("table_{}", table_adapter.core_index),
+                ty: wrt_format::component::ExternType::Type(table_adapter.core_index),
+                value: ExternValue::Table(table_value),
+                kind: ExportKind::Value { value_index: table_adapter.core_index },
+                attributes: HashMap::new(),
+                integrity_hash: None,
+            };
+            component.add_table(export)?;
         }
 
         // Convert global adapters to component globals
         for global_adapter in &self.globals {
-            component.add_global(
-                self.core_type_to_component_type(global_adapter.global_type),
-                global_adapter.mutable,
-            )?;
+            #[cfg(feature = "std")]
+            let global_value = GlobalValue {
+                ty: wrt_foundation::types::GlobalType {
+                    mutable: global_adapter.mutable,
+                    value_type: wrt_foundation::types::ValueType::I32,
+                },
+                global: wrt_runtime::global::Global::new(
+                    wrt_foundation::types::ValueType::I32,
+                    global_adapter.mutable,
+                    wrt_foundation::Value::I32(0),
+                )?,
+            };
+
+            #[cfg(not(feature = "std"))]
+            let global_value = GlobalValue {
+                ty: wrt_foundation::types::GlobalType {
+                    mutable: global_adapter.mutable,
+                    value_type: wrt_foundation::types::ValueType::I32,
+                },
+                value: wrt_foundation::Value::I32(0),
+            };
+
+            let export = Export {
+                name: format!("global_{}", global_adapter.core_index),
+                ty: wrt_format::component::ExternType::Type(global_adapter.core_index),
+                value: ExternValue::Global(global_value),
+                kind: ExportKind::Value { value_index: global_adapter.core_index },
+                attributes: HashMap::new(),
+                integrity_hash: None,
+            };
+            component.add_global(export)?;
         }
 
         Ok(component)
     }
 
     /// Convert core type to component type
-    fn core_type_to_component_type(&self, core_type: CoreValType) -> WrtComponentType {
+    fn core_type_to_component_type(&self, core_type: CoreValType) -> Result<WrtComponentType<ComponentProvider>> {
+        // Create a provider for the component type
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+
+        // All core types map to Unit for this simplified implementation
         match core_type {
-            CoreValType::I32 => WrtComponentType::Unit, // Simplified
-            CoreValType::I64 => WrtComponentType::Unit,
-            CoreValType::F32 => WrtComponentType::Unit,
-            CoreValType::F64 => WrtComponentType::Unit,
-            CoreValType::V128 => WrtComponentType::Unit,
-            CoreValType::FuncRef => WrtComponentType::Unit,
-            CoreValType::ExternRef => WrtComponentType::Unit,
+            CoreValType::I32 => WrtComponentType::unit(provider),
+            CoreValType::I64 => WrtComponentType::unit(provider),
+            CoreValType::F32 => WrtComponentType::unit(provider),
+            CoreValType::F64 => WrtComponentType::unit(provider),
+            CoreValType::V128 => WrtComponentType::unit(provider),
+            CoreValType::FuncRef => WrtComponentType::unit(provider),
+            CoreValType::ExternRef => WrtComponentType::unit(provider),
         }
     }
 
@@ -430,7 +553,7 @@ impl CoreModuleAdapter {
     fn lift_result_to_component(
         &self,
         result: Value,
-        _component_signature: &WrtComponentType,
+        _component_signature: &WrtComponentType<ComponentProvider>,
     ) -> Result<Value> {
         // Simplified lifting - in reality would use canonical ABI
         Ok(result)
@@ -441,7 +564,7 @@ impl FunctionAdapter {
     /// Create a new function adapter
     pub fn new(
         core_index: u32,
-        component_signature: WrtComponentType,
+        component_signature: WrtComponentType<ComponentProvider>,
         core_signature: CoreFunctionSignature,
         mode: AdaptationMode,
     ) -> Self {
@@ -471,14 +594,14 @@ impl CoreFunctionSignature {
             #[cfg(not(feature = "std"))]
             params:                               {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             results:                              Vec::new(),
             #[cfg(not(feature = "std"))]
             results:                              {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
         })
     }
@@ -520,11 +643,11 @@ impl Default for CoreFunctionSignature {
             #[cfg(feature = "std")]
             params:                               Vec::new(),
             #[cfg(not(feature = "std"))]
-            params:                               BoundedVec::new_with_default_provider().unwrap(),
+            params:                               BoundedVec::new(),
             #[cfg(feature = "std")]
             results:                              Vec::new(),
             #[cfg(not(feature = "std"))]
-            results:                              BoundedVec::new_with_default_provider().unwrap(),
+            results:                              BoundedVec::new(),
         })
     }
 }
@@ -600,7 +723,7 @@ use wrt_foundation::traits::{
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 // Simple checksum without unsafe code
                 0u32.update_checksum(checksum);
             }
@@ -611,7 +734,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 // Simple stub implementation
                 Ok(())
             }
@@ -621,7 +744,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -646,13 +769,14 @@ mod tests {
     fn test_core_module_adapter_creation() {
         #[cfg(feature = "std")]
         {
-            let adapter = CoreModuleAdapter::new("test_module".to_string());
+            let adapter = CoreModuleAdapter::new("test_module".to_owned());
             assert_eq!(adapter.name, "test_module");
             assert_eq!(adapter.functions.len(), 0);
         }
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_module").unwrap();
+            let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
+            let name = BoundedString::from_str("test_module", provider).unwrap();
             let adapter = CoreModuleAdapter::new(name).unwrap();
             assert_eq!(adapter.name.as_str(), "test_module");
             assert_eq!(adapter.functions.len(), 0);
@@ -666,7 +790,7 @@ mod tests {
         core_sig.add_result(CoreValType::I32).unwrap();
 
         let adapter =
-            FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct);
+            FunctionAdapter::new(0, WrtComponentType::<ComponentProvider>::Unit, core_sig, AdaptationMode::Direct);
 
         assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.mode, AdaptationMode::Direct);

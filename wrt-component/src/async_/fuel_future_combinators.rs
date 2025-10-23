@@ -75,7 +75,7 @@ where
     F1: Future + Unpin,
     F2: Future<Output = F1::Output> + Unpin,
 {
-    type Output = Result<F1::Output, Error>;
+    type Output = Result<F1::Output>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Consume fuel for select operation
@@ -127,7 +127,7 @@ impl<F1, F2> FuelSelect<F1, F2> {
         }
 
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
-        record_global_operation(OperationType::FutureOperation)?;
+        record_global_operation(OperationType::FutureOperation, self.verification_level);
         Ok(())
     }
 }
@@ -173,7 +173,7 @@ where
     F2: Future + Unpin,
     T: Unpin,
 {
-    type Output = Result<F2::Output, Error>;
+    type Output = Result<F2::Output>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Consume fuel for chain operation
@@ -222,13 +222,17 @@ impl<F1, F2, T> FuelChain<F1, F2, T> {
         }
 
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
-        record_global_operation(OperationType::FutureOperation)?;
+        record_global_operation(OperationType::FutureOperation, self.verification_level);
         Ok(())
     }
 }
 
 /// A future that joins two futures and waits for both
-pub struct FuelJoin<F1, F2> {
+pub struct FuelJoin<F1, F2>
+where
+    F1: Future,
+    F2: Future,
+{
     future1:            Option<F1>,
     future2:            Option<F2>,
     result1:            Option<F1::Output>,
@@ -267,21 +271,27 @@ where
     F1: Future + Unpin,
     F2: Future + Unpin,
 {
-    type Output = Result<(F1::Output, F2::Output), Error>;
+    type Output = Result<(F1::Output, F2::Output)>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    #[allow(unsafe_code)] // Required for Pin-based Future implementation
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: FuelJoin contains only Unpin futures (F1: Unpin, F2: Unpin)
+        // and other simple types (Option, u64, VerificationLevel) which are all Unpin.
+        // It's safe to get mutable access without moving anything out.
+        let this = unsafe { self.get_unchecked_mut() };
+
         // Consume fuel for join operation
-        if let Err(e) = self.consume_fuel(FUTURE_JOIN_FUEL) {
+        if let Err(e) = this.consume_fuel(FUTURE_JOIN_FUEL) {
             return Poll::Ready(Err(e));
         }
 
         // Poll first future if not complete
-        if self.result1.is_none() {
-            if let Some(future1) = &mut self.future1 {
+        if this.result1.is_none() {
+            if let Some(future1) = &mut this.future1 {
                 match Pin::new(future1).poll(cx) {
                     Poll::Ready(output) => {
-                        self.result1 = Some(output);
-                        self.future1 = None;
+                        this.result1 = Some(output);
+                        this.future1 = None;
                     },
                     Poll::Pending => {},
                 }
@@ -289,12 +299,12 @@ where
         }
 
         // Poll second future if not complete
-        if self.result2.is_none() {
-            if let Some(future2) = &mut self.future2 {
+        if this.result2.is_none() {
+            if let Some(future2) = &mut this.future2 {
                 match Pin::new(future2).poll(cx) {
                     Poll::Ready(output) => {
-                        self.result2 = Some(output);
-                        self.future2 = None;
+                        this.result2 = Some(output);
+                        this.future2 = None;
                     },
                     Poll::Pending => {},
                 }
@@ -302,7 +312,7 @@ where
         }
 
         // Check if both are complete
-        if let (Some(result1), Some(result2)) = (self.result1.take(), self.result2.take()) {
+        if let (Some(result1), Some(result2)) = (this.result1.take(), this.result2.take()) {
             Poll::Ready(Ok((result1, result2)))
         } else {
             Poll::Pending
@@ -310,7 +320,11 @@ where
     }
 }
 
-impl<F1, F2> FuelJoin<F1, F2> {
+impl<F1, F2> FuelJoin<F1, F2>
+where
+    F1: Future,
+    F2: Future,
+{
     fn consume_fuel(&mut self, base_cost: u64) -> Result<()> {
         let adjusted_cost = OperationType::fuel_cost_for_operation(
             OperationType::FutureOperation,
@@ -326,7 +340,7 @@ impl<F1, F2> FuelJoin<F1, F2> {
         }
 
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
-        record_global_operation(OperationType::FutureOperation)?;
+        record_global_operation(OperationType::FutureOperation, self.verification_level);
         Ok(())
     }
 }
@@ -407,7 +421,7 @@ impl<T> ComponentFuture<T> {
 }
 
 impl<T> Future for ComponentFuture<T> {
-    type Output = Result<T, Error>;
+    type Output = Result<T>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Check fuel budget

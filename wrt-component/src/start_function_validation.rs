@@ -6,7 +6,8 @@ use crate::{
 };
 use core::{fmt, time::Duration};
 use wrt_foundation::{
-    bounded_collections::{BoundedMap, BoundedVec},
+    BoundedVec,
+    bounded_collections::BoundedMap,
     component_value::ComponentValue,
     safe_memory::{SafeMemory, NoStdProvider},
     budget_aware_provider::CrateId,
@@ -51,12 +52,12 @@ pub type StartFunctionResult<T> = Result<T, StartFunctionError>;
 #[derive(Debug, Clone)]
 pub struct StartFunctionDescriptor {
     pub name: String,
-    pub parameters: BoundedVec<StartFunctionParam, MAX_START_FUNCTION_PARAMS, NoStdProvider<65536>>,
+    pub parameters: BoundedVec<StartFunctionParam, MAX_START_FUNCTION_PARAMS>,
     pub return_type: Option<ValType>,
     pub required: bool,
     pub timeout_ms: u64,
     pub validation_level: ValidationLevel,
-    pub dependencies: BoundedVec<String, MAX_START_FUNCTION_EXPORTS, NoStdProvider<65536>>,
+    pub dependencies: BoundedVec<String, MAX_START_FUNCTION_EXPORTS>,
 }
 
 #[derive(Debug, Clone)]
@@ -102,7 +103,7 @@ pub struct StartFunctionExecutionResult {
     pub execution_time_ms: u64,
     pub memory_usage: usize,
     pub error_message: Option<String>,
-    pub side_effects: BoundedVec<SideEffect, 32, NoStdProvider<65536>>,
+    pub side_effects: BoundedVec<SideEffect, 32>,
 }
 
 #[derive(Debug, Clone)]
@@ -147,7 +148,7 @@ pub struct StartFunctionValidator {
 impl StartFunctionValidator {
     pub fn new() -> Self {
         Self {
-            validations: BoundedMap::new(provider.clone())?,
+            validations: BoundedMap::new(),
             execution_engine: ComponentExecutionEngine::new(),
             post_return_registry: PostReturnRegistry::new(),
             default_timeout_ms: DEFAULT_START_TIMEOUT_MS,
@@ -189,7 +190,7 @@ impl StartFunctionValidator {
 
         self.validations.insert(component_id, validation).map_err(|_| StartFunctionError {
             kind: StartFunctionErrorKind::ResourceLimitExceeded,
-            message: "Too many start function validations".to_string(),
+            message: "Too many start function validations".to_owned(),
             component_id: Some(component_id),
         })?;
 
@@ -203,7 +204,7 @@ impl StartFunctionValidator {
         let validation =
             self.validations.get_mut(&component_id).ok_or_else(|| StartFunctionError {
                 kind: StartFunctionErrorKind::StartFunctionNotFound,
-                message: "No start function registered for component".to_string(),
+                message: "No start function registered for component".to_owned(),
                 component_id: Some(component_id),
             })?;
 
@@ -242,14 +243,10 @@ impl StartFunctionValidator {
     pub fn validate_all_pending(
         &mut self,
     ) -> StartFunctionResult<
-        BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS, NoStdProvider<65536>>,
+        BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>,
     > {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut results = BoundedVec::new(provider).map_err(|_| StartFunctionError {
-            kind: StartFunctionErrorKind::ResourceLimitExceeded,
-            message: "Failed to create validation results vector".to_string(),
-            component_id: None,
-        })?;
+        let mut results = BoundedVec::new();
 
         let pending_components: Vec<ComponentInstanceId> = self
             .validations
@@ -262,7 +259,7 @@ impl StartFunctionValidator {
             let state = self.validate_start_function(component_id)?;
             results.push((component_id, state)).map_err(|_| StartFunctionError {
                 kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                message: "Too many validation results".to_string(),
+                message: "Too many validation results".to_owned(),
                 component_id: Some(component_id),
             })?;
         }
@@ -312,7 +309,7 @@ impl StartFunctionValidator {
         } else {
             Err(StartFunctionError {
                 kind: StartFunctionErrorKind::StartFunctionNotFound,
-                message: "No validation found for component".to_string(),
+                message: "No validation found for component".to_owned(),
                 component_id: Some(component_id),
             })
         }
@@ -330,7 +327,7 @@ impl StartFunctionValidator {
         if descriptor.name.is_empty() {
             return Err(StartFunctionError {
                 kind: StartFunctionErrorKind::InvalidSignature,
-                message: "Start function name cannot be empty".to_string(),
+                message: "Start function name cannot be empty".to_owned(),
                 component_id: None,
             };
         }
@@ -338,7 +335,7 @@ impl StartFunctionValidator {
         if descriptor.timeout_ms == 0 {
             return Err(StartFunctionError {
                 kind: StartFunctionErrorKind::InvalidSignature,
-                message: "Timeout must be greater than zero".to_string(),
+                message: "Timeout must be greater than zero".to_owned(),
                 component_id: None,
             };
         }
@@ -348,7 +345,7 @@ impl StartFunctionValidator {
             if param.name.is_empty() {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::InvalidSignature,
-                    message: "Parameter name cannot be empty".to_string(),
+                    message: "Parameter name cannot be empty".to_owned(),
                     component_id: None,
                 };
             }
@@ -356,7 +353,7 @@ impl StartFunctionValidator {
             if param.required && param.default_value.is_some() {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::InvalidSignature,
-                    message: "Required parameters cannot have default values".to_string(),
+                    message: "Required parameters cannot have default values".to_owned(),
                     component_id: None,
                 };
             }
@@ -432,13 +429,9 @@ impl StartFunctionValidator {
     fn prepare_arguments(
         &self,
         descriptor: &StartFunctionDescriptor,
-    ) -> StartFunctionResult<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS, NoStdProvider<65536>>> {
+    ) -> StartFunctionResult<BoundedVec<ComponentValue<ComponentProvider>, MAX_START_FUNCTION_PARAMS>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut arguments = BoundedVec::new(provider).map_err(|_| StartFunctionError {
-            kind: StartFunctionErrorKind::ResourceLimitExceeded,
-            message: "Failed to create arguments vector".to_string(),
-            component_id: None,
-        })?;
+        let mut arguments = BoundedVec::new();
 
         for param in descriptor.parameters.iter() {
             let value = if let Some(ref default) = param.default_value {
@@ -455,7 +448,7 @@ impl StartFunctionValidator {
 
             arguments.push(value).map_err(|_| StartFunctionError {
                 kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                message: "Too many start function parameters".to_string(),
+                message: "Too many start function parameters".to_owned(),
                 component_id: None,
             })?;
         }
@@ -493,19 +486,15 @@ impl StartFunctionValidator {
     fn analyze_side_effects(
         &self,
         execution_context: &ExecutionContext,
-    ) -> StartFunctionResult<BoundedVec<SideEffect, 32, NoStdProvider<65536>>> {
+    ) -> StartFunctionResult<BoundedVec<SideEffect, 32>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut side_effects = BoundedVec::new(provider).map_err(|_| StartFunctionError {
-            kind: StartFunctionErrorKind::ResourceLimitExceeded,
-            message: "Failed to create side effects vector".to_string(),
-            component_id: None,
-        })?;
+        let mut side_effects = BoundedVec::new();
 
         // Binary std/no_std choice
         if execution_context.memory_allocations() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::MemoryAllocation,
-                description: "Memory allocated during start function execution".to_string(),
+                description: "Memory allocated during start function execution".to_owned(),
                 severity: if execution_context.memory_usage() > 1024 * 1024 {
                     SideEffectSeverity::Warning
                 } else {
@@ -514,7 +503,7 @@ impl StartFunctionValidator {
             };
             side_effects.push(effect).map_err(|_| StartFunctionError {
                 kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                message: "Too many side effects".to_string(),
+                message: "Too many side effects".to_owned(),
                 component_id: None,
             })?;
         }
@@ -523,12 +512,12 @@ impl StartFunctionValidator {
         if execution_context.resources_created() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::ResourceCreation,
-                description: "Resources created during start function execution".to_string(),
+                description: "Resources created during start function execution".to_owned(),
                 severity: SideEffectSeverity::Info,
             };
             side_effects.push(effect).map_err(|_| StartFunctionError {
                 kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                message: "Too many side effects".to_string(),
+                message: "Too many side effects".to_owned(),
                 component_id: None,
             })?;
         }
@@ -628,14 +617,14 @@ pub fn create_start_function_descriptor(name: &str) -> StartFunctionResult<Start
     let parameters_provider = safe_managed_alloc!(65536, CrateId::Component)?;
     let parameters = BoundedVec::new(parameters_provider).map_err(|_| StartFunctionError {
         kind: StartFunctionErrorKind::ResourceLimitExceeded,
-        message: "Failed to create parameters vector".to_string(),
+        message: "Failed to create parameters vector".to_owned(),
         component_id: None,
     })?;
     
     let dependencies_provider = safe_managed_alloc!(65536, CrateId::Component)?;
     let dependencies = BoundedVec::new(dependencies_provider).map_err(|_| StartFunctionError {
         kind: StartFunctionErrorKind::ResourceLimitExceeded,
-        message: "Failed to create dependencies vector".to_string(),
+        message: "Failed to create dependencies vector".to_owned(),
         component_id: None,
     })?;
     

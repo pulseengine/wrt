@@ -6,7 +6,7 @@
 #[cfg(all(feature = "std", feature = "wrt-execution"))]
 #[test]
 fn test_add_wasm_execution() {
-    use wrt::engine::{CapabilityAwareEngine, EnginePreset};
+    use wrt_runtime::engine::{CapabilityAwareEngine, EnginePreset};
     use wrt_foundation::values::Value;
     
     // Load test_add.wasm binary

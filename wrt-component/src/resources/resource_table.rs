@@ -8,14 +8,15 @@ use std::{
     sync::Weak,
 };
 
+use crate::resources::ResourceInterceptor;
+
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{
     WrtHashMap,
     WrtVec,
 };
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     budget_aware_provider::CrateId,
     resource::{
         ResourceOperation as FormatResourceOperation,
@@ -190,7 +191,7 @@ struct ResourceEntry {
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     borrows:            Vec<Weak<Mutex<Resource>>>,
     #[cfg(not(feature = "std"))]
-    borrows:            BoundedVec<Weak<Mutex<Resource>>, 32, ComponentProvider>,
+    borrows:            BoundedVec<Weak<Mutex<Resource>>, 32>,
     /// Memory strategy for this resource
     memory_strategy:    MemoryStrategy,
     /// Verification level
@@ -323,7 +324,7 @@ pub struct ResourceTable {
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     interceptors:               Vec<Arc<dyn ResourceInterceptor>>,
     #[cfg(not(feature = "std"))]
-    interceptors:               BoundedVec<Arc<dyn ResourceInterceptor>, 16, ComponentProvider>,
+    interceptors:               BoundedVec<Arc<dyn ResourceInterceptor>, 16>,
     /// Memory budget guard for this resource table
     #[cfg(not(feature = "std"))]
     _memory_guard:              ComponentProvider,
@@ -655,7 +656,7 @@ impl ResourceTable {
         &mut self,
         handle: u32,
         operation: FormatResourceOperation,
-    ) -> Result<ComponentValue> {
+    ) -> Result<ComponentValue<ComponentProvider>> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
             return Err(Error::resource_error("Resource not found"));
@@ -972,7 +973,7 @@ mod tests {
 
         // Check interceptor operations
         let operations = interceptor.get_operations();
-        assert!(operations.contains(&"create_1".to_string()));
+        assert!(operations.contains(&"create_1".to_owned()));
         assert!(operations.contains(&format!("access_{}", handle)));
         assert!(operations.contains(&format!("operation_{}", handle)));
     }
@@ -1013,10 +1014,10 @@ mod tests {
 
         // Check that operations were recorded
         let ops = interceptor.get_operations();
-        assert!(ops.contains(&"create_1".to_string()));
+        assert!(ops.contains(&"create_1".to_owned()));
         assert!(ops.contains(&format!("operation_{}", handle)));
-        assert!(ops.contains(&"operation_42".to_string()));
-        assert!(ops.contains(&"intercept_42".to_string()));
+        assert!(ops.contains(&"operation_42".to_owned()));
+        assert!(ops.contains(&"intercept_42".to_owned()));
     }
 
     #[test]

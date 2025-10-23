@@ -16,20 +16,16 @@
 
 extern crate alloc;
 
+#[cfg(feature = "std")]
 use std::{
     boxed::Box,
     cell::RefCell as AtomicRefCell,
     collections::{
         BTreeMap,
         BTreeSet,
+        HashMap,
+        HashSet,
     },
-    vec::Vec,
-};
-#[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    collections::HashSet,
     vec::Vec,
 };
 
@@ -39,10 +35,10 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
-    bounded::{
+    bounded::BoundedVec,
+    bounded_collections::{
         BoundedMap,
         BoundedSet,
-        BoundedVec,
     },
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
@@ -59,7 +55,7 @@ use crate::{
         Waitable,
         WaitableSet,
     },
-    task_builtins::{
+    threading::task_builtins::{
         TaskId as TaskBuiltinId,
         TaskStatus,
     },
@@ -238,7 +234,7 @@ impl WaitableSetImpl {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
             Ok(Self {
                 id:        WaitableSetId::new(),
-                waitables: BoundedMap::new(provider)?,
+                waitables: BoundedMap::new(),
                 closed:    false,
             })
         }
@@ -305,9 +301,9 @@ impl WaitableSetImpl {
     #[cfg(not(any(feature = "std",)))]
     pub fn check_ready(
         &mut self,
-    ) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>> {
+    ) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut ready = BoundedVec::new(provider)
+        let mut ready = BoundedVec::new()
             .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
@@ -369,7 +365,7 @@ impl WaitableSetRegistry {
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
             Ok(Self {
-                sets: BoundedMap::new(provider)?,
+                sets: BoundedMap::new(),
             })
         }
     }
@@ -575,8 +571,8 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_poll_all(
         set_id: WaitableSetId,
     ) -> core::result::Result<
-        BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>,
-        NoStdProvider<65536>,
+        BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>,
+        wrt_error::Error,
     > {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
@@ -622,7 +618,7 @@ pub mod waitable_set_helpers {
     #[cfg(not(any(feature = "std",)))]
     pub fn wait_for_any_future(futures: &[Future]) -> Result<WaitResult> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut waitables = BoundedVec::new(provider)?;
+        let mut waitables = BoundedVec::new().unwrap();
         for future in futures {
             waitables
                 .push(Waitable::Future(future.clone()))
@@ -643,7 +639,7 @@ pub mod waitable_set_helpers {
     #[cfg(not(any(feature = "std",)))]
     pub fn wait_for_any_stream(streams: &[Stream]) -> Result<WaitResult> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut waitables = BoundedVec::new(provider)?;
+        let mut waitables = BoundedVec::new().unwrap();
         for stream in streams {
             waitables
                 .push(Waitable::Stream(stream.clone()))

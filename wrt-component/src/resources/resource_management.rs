@@ -64,15 +64,15 @@ const MAX_RESOURCES_PER_INSTANCE: usize = 65536;
 const MAX_GLOBAL_RESOURCES: usize = 1024 * 1024;
 
 /// Invalid resource handle constant
-pub const INVALID_HANDLE: ResourceHandle = ResourceHandle(u32::MAX;
+pub const INVALID_HANDLE: ResourceHandle = ResourceHandle(u32::MAX);
 
 /// Resource handle - unique identifier for a resource instance
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceHandle(pub u32;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceHandle(pub u32);
 
 /// Resource type identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceTypeId(pub u32;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceTypeId(pub u32);
 
 /// Resource instance state
 #[derive(Debug, Clone, PartialEq)]
@@ -178,7 +178,7 @@ pub enum ResourceData {
 }
 
 /// Resource table for managing resources within a component instance
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceTable {
     /// Instance that owns this table
     pub instance_id: InstanceId,
@@ -210,7 +210,7 @@ pub struct ResourceTableStats {
 }
 
 /// Global resource manager
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceManager {
     /// Registered resource types
     resource_types: HashMap<ResourceTypeId, ResourceType>,
@@ -927,7 +927,7 @@ mod tests {
         let mut manager = ResourceManager::new();
 
         let type_id = manager
-            .register_resource_type("file".to_string(), "File handle".to_string(), true, true)
+            .register_resource_type("file".to_owned(), "File handle".to_owned(), true, true)
             .unwrap();
 
         assert!(type_id.is_valid();
@@ -961,7 +961,7 @@ mod tests {
 
         // Register resource type
         let file_type = manager
-            .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
+            .register_resource_type("file".to_owned(), "File handle".to_owned(), true, false)
             .unwrap();
 
         // Create instance table
@@ -991,8 +991,8 @@ mod tests {
         // Register borrowable resource type
         let file_type = manager
             .register_resource_type(
-                "file".to_string(),
-                "File handle".to_string(),
+                "file".to_owned(),
+                "File handle".to_owned(),
                 true, // borrowable
                 false,
             )
@@ -1026,7 +1026,7 @@ mod tests {
 
         // Register resource type
         let file_type = manager
-            .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
+            .register_resource_type("file".to_owned(), "File handle".to_owned(), true, false)
             .unwrap();
 
         // Create instance tables
@@ -1063,7 +1063,7 @@ mod tests {
         let external = create_resource_data_external(12345;
         assert!(matches!(external, ResourceData::ExternalHandle(12345);
 
-        let custom = create_resource_data_custom("MyType".to_string(), vec![4, 5, 6];
+        let custom = create_resource_data_custom("MyType".to_owned(), vec![4, 5, 6];
         assert!(matches!(custom, ResourceData::Custom { .. });
     }
 
@@ -1073,7 +1073,7 @@ mod tests {
 
         // Register resource type
         let file_type = manager
-            .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
+            .register_resource_type("file".to_owned(), "File handle".to_owned(), true, false)
             .unwrap();
 
         // Create instance table
@@ -1094,7 +1094,7 @@ mod tests {
 
         // Register resource type
         let file_type = manager
-            .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
+            .register_resource_type("file".to_owned(), "File handle".to_owned(), true, false)
             .unwrap();
 
         // Create instance table

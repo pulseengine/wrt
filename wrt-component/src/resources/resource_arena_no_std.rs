@@ -5,7 +5,7 @@
 
 use wrt_error::kinds::PoisonedLockError;
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
@@ -41,7 +41,7 @@ impl<'a> ResourceArena<'a> {
         Ok(Self {
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             table,
             name: None,
@@ -53,7 +53,7 @@ impl<'a> ResourceArena<'a> {
         Ok(Self {
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             table,
             name: Some(name),
@@ -64,13 +64,14 @@ impl<'a> ResourceArena<'a> {
     ///
     /// The resource will be automatically cleaned up when the arena is dropped
     /// or when release_all() is called.
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn create_resource(
         &mut self,
         type_idx: u32,
         data: Box<dyn Any + Send + Sync>,
     ) -> Result<u32> {
         let mut table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         let handle = table.create_resource(type_idx, data)?;
         // Add to arena's resources, checking capacity
@@ -85,6 +86,7 @@ impl<'a> ResourceArena<'a> {
     }
 
     /// Create a named resource in this arena
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn create_named_resource(
         &mut self,
         type_idx: u32,
@@ -92,7 +94,7 @@ impl<'a> ResourceArena<'a> {
         name: &str,
     ) -> Result<u32> {
         let mut table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         // Create the resource
         let handle = table.create_resource(type_idx, data)?;
@@ -120,9 +122,9 @@ impl<'a> ResourceArena<'a> {
     }
 
     /// Get access to a resource
-    pub fn get_resource(&self, handle: u32) -> Result<Box<Mutex<super::Resource>>> {
+    pub fn get_resource(&self, handle: u32) -> Result<ResourceId> {
         let table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         table.get_resource(handle)
     }
@@ -137,7 +139,7 @@ impl<'a> ResourceArena<'a> {
 
         // Then check if it exists in the table
         let table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         match table.get_resource(id.0) {
             Ok(_) => Ok(true),
@@ -167,7 +169,7 @@ impl<'a> ResourceArena<'a> {
 
         // Then drop it from the table
         let mut table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         table.drop_resource(handle)
     }
@@ -175,11 +177,11 @@ impl<'a> ResourceArena<'a> {
     /// Release all resources managed by this arena
     pub fn release_all(&mut self) -> Result<()> {
         if self.resources.is_empty() {
-            return Ok();
+            return Ok(());
         }
 
         let mut table =
-            self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
+            self.table.lock();
 
         let mut error = None;
 
@@ -250,7 +252,7 @@ mod tests {
         let mut arena = ResourceArena::new(&table).unwrap();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap();
+        let handle1 = arena.create_resource(1, Box::new("test1".to_owned())).unwrap();
         let handle2 = arena.create_resource(2, Box::new(42)).unwrap();
 
         // Verify they exist
@@ -281,7 +283,7 @@ mod tests {
         let mut arena = ResourceArena::new(&table).unwrap();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap();
+        let handle1 = arena.create_resource(1, Box::new("test1".to_owned())).unwrap();
         let handle2 = arena.create_resource(2, Box::new(42)).unwrap();
 
         // Drop one resource
@@ -305,7 +307,7 @@ mod tests {
         // Create resources in a scope
         {
             let mut arena = ResourceArena::new(&table).unwrap();
-            let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
+            let handle = arena.create_resource(1, Box::new("test".to_owned())).unwrap();
 
             // Verify it exists
             assert!(arena.has_resource(ResourceId(handle)).unwrap());
@@ -333,7 +335,7 @@ mod tests {
         let resource = arena.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string()));
+        assert_eq!(guard.name, Some("answer".to_owned()));
 
         // Check arena name
         assert_eq!(arena.name(), Some("test-arena"));

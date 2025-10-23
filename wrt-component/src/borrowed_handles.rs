@@ -12,7 +12,7 @@ use std::{fmt, mem, marker::PhantomData, sync::atomic::{AtomicU32, AtomicU64, Or
 use std::{boxed::Box, vec::Vec, sync::Arc};
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{ BoundedString},
     prelude::*,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
@@ -120,7 +120,7 @@ pub struct OwnedHandleEntry {
     pub owner: ComponentId,
     
     /// Type name for debugging
-    pub type_name: BoundedString<64>,
+    pub type_name: BoundedString<64, NoStdProvider<512>>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -340,7 +340,7 @@ impl HandleLifetimeTracker {
             #[cfg(not(any(feature = "std", )))]
             owned_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             
             #[cfg(feature = "std")]
@@ -348,7 +348,7 @@ impl HandleLifetimeTracker {
             #[cfg(not(any(feature = "std", )))]
             borrowed_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             
             #[cfg(feature = "std")]
@@ -356,7 +356,7 @@ impl HandleLifetimeTracker {
             #[cfg(not(any(feature = "std", )))]
             scope_stack: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             
             next_handle_id: AtomicU32::new(1),
@@ -547,7 +547,7 @@ impl HandleLifetimeTracker {
             #[cfg(not(any(feature = "std", )))]
             borrows: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             created_at: self.get_current_time(),
             active: true,

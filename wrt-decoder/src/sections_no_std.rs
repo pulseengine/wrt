@@ -56,7 +56,6 @@ use wrt_foundation::{
 };
 
 // Import bounded infrastructure
-use crate::bounded_decoder_infra::DecoderProvider;
 use crate::{
     bounded_decoder_infra::*,
     memory_optimized::{
@@ -65,6 +64,7 @@ use crate::{
     },
     optimized_string::parse_utf8_string_inplace,
 };
+use wrt_foundation::collections::StaticVec;
 
 /// WebAssembly section representation for no_std environments
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -255,7 +255,7 @@ pub mod parsers {
         check_bounds_u32(count, MAX_TYPES as u32, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
 
-        let mut format_func_types = new_type_vec()?;
+        let mut format_func_types = new_type_vec();
 
         for _ in 0..count {
             // Read function type tag (0x60)
@@ -277,7 +277,7 @@ pub mod parsers {
             check_bounds_u32(param_count, MAX_FUNCTION_PARAMS as u32, "parameter count")?;
             let param_count_usize = safe_usize_conversion(param_count, "parameter count")?;
 
-            let mut params = new_params_vec()?;
+            let mut params = new_params_vec();
 
             for _ in 0..param_count {
                 if offset >= bytes.len() {
@@ -301,7 +301,7 @@ pub mod parsers {
             check_bounds_u32(result_count, MAX_FUNCTION_RESULTS as u32, "result count")?;
             let result_count_usize = safe_usize_conversion(result_count, "result count")?;
 
-            let mut results = new_results_vec()?;
+            let mut results = new_results_vec();
 
             for _ in 0..result_count {
                 if offset >= bytes.len() {
@@ -318,43 +318,13 @@ pub mod parsers {
                     .map_err(|_| Error::memory_error("Too many results in function type"))?;
             }
 
-            // Convert to WrtFuncType - Note: This conversion needs to be implemented
-            // For now, we'll create a placeholder
-            // Convert to the correct BoundedVec type for FuncType
-            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-            let mut func_type_params =
-                BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
-                    provider.clone(),
-                )
-                .map_err(|_| Error::memory_error("Failed to create params vector"))?;
-            let mut func_type_results =
-                BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
-                    provider.clone(),
-                )
-                .map_err(|_| Error::memory_error("Failed to create results vector"))?;
-
-            // Copy parameters
-            for i in 0..params.len() {
-                if let Ok(param) = params.get(i) {
-                    func_type_params
-                        .push(param)
-                        .map_err(|_| Error::memory_error("Too many parameters"))?;
-                }
-            }
-
-            // Copy results
-            for i in 0..results.len() {
-                if let Ok(result) = results.get(i) {
-                    func_type_results
-                        .push(result)
-                        .map_err(|_| Error::memory_error("Too many results"))?;
-                }
-            }
-
-            let func_type = WrtFuncType {
-                params:  func_type_params,
-                results: func_type_results,
-            };
+            // Create FuncType using Provider-based constructor (use DecoderProvider size)
+            let provider = safe_managed_alloc!(65536, CrateId::Decoder)?;
+            let func_type = WrtFuncType::new(
+                provider,
+                params.iter().copied(),
+                results.iter().copied(),
+            )?;
 
             format_func_types
                 .push(func_type)
@@ -370,7 +340,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_FUNCTIONS as u32, "function count")?;
 
-        let mut func_indices = new_function_vec()?;
+        let mut func_indices = new_function_vec();
 
         for _ in 0..count {
             let (func_idx, new_offset) = binary::read_leb128_u32(bytes, offset)?;
@@ -392,7 +362,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_IMPORTS as u32, "import count")?;
 
-        let mut format_imports = new_import_vec()?;
+        let mut format_imports = new_import_vec();
 
         for _ in 0..count {
             // Parse module name
@@ -456,9 +426,8 @@ pub mod parsers {
                 },
             };
 
-            // Convert to WrtImport
-            // Create bounded string from the parsed string
-            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+            // Convert to WrtImport (use DecoderProvider size for consistency)
+            let provider = safe_managed_alloc!(65536, CrateId::Decoder)?;
             let module_str = module_string
                 .as_str()
                 .map_err(|_| Error::parse_error("Invalid module string"))?;
@@ -489,7 +458,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_TABLE_ENTRIES as u32, "table count")?;
 
-        let mut tables = new_table_vec()?;
+        let mut tables = new_table_vec();
 
         for _ in 0..count {
             let (table_type, new_offset) = (wrt_foundation::TableType::default(), offset + 1); // TODO: Implement table type parsing
@@ -515,7 +484,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_MEMORIES as u32, "memory count")?;
 
-        let mut memories = new_memory_vec()?;
+        let mut memories = new_memory_vec();
 
         for _ in 0..count {
             let (limits, new_offset) = parse_limits(bytes, offset)?;
@@ -545,7 +514,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_GLOBALS as u32, "global count")?;
 
-        let mut globals = new_global_vec()?;
+        let mut globals = new_global_vec();
 
         for _ in 0..count {
             let (global_type, new_offset) = (wrt_foundation::GlobalType::default(), offset + 1); // TODO: Implement global type parsing
@@ -574,7 +543,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_EXPORTS as u32, "export count")?;
 
-        let mut exports = new_export_vec()?;
+        let mut exports = new_export_vec();
 
         for _ in 0..count {
             // Parse export name
@@ -634,18 +603,12 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_ELEMENTS as u32, "element count")?;
 
-        let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-        let mut elements = BoundedVec::<
-            wrt_format::pure_format_types::PureElementSegment,
-            MAX_ELEMENTS,
-            DecoderProvider,
-        >::new(provider)?;
+        let mut elements = StaticVec::<wrt_format::pure_format_types::PureElementSegment, MAX_ELEMENTS>::new();
 
         for _ in 0..count {
             let (pure_element, new_offset) = parse_element_segment(bytes, offset)?;
             offset = new_offset;
 
-            // Use the pure element segment directly (it's already the right type)
             elements
                 .push(pure_element)
                 .map_err(|_| Error::memory_error("Too many element segments"))?;
@@ -660,7 +623,7 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_FUNCTIONS as u32, "code count")?;
 
-        let mut bodies = new_code_bodies_vec()?;
+        let mut bodies = new_code_bodies_vec();
 
         for _ in 0..count {
             // Parse body size
@@ -682,9 +645,7 @@ pub mod parsers {
             }
 
             // Copy body data
-            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-            let mut body = BoundedVec::new(provider)
-                .map_err(|_| Error::memory_error("Failed to allocate function body"))?;
+            let mut body = StaticVec::<u8, MAX_CUSTOM_SECTION_SIZE>::new();
 
             let body_slice = &bytes[offset..offset + body_size_usize];
             for &byte in body_slice {
@@ -707,12 +668,10 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_DATA_SEGMENTS as u32, "data count")?;
 
-        let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-        let mut data_segments = BoundedVec::<
+        let mut data_segments = StaticVec::<
             wrt_format::pure_format_types::PureDataSegment,
             MAX_DATA_SEGMENTS,
-            DecoderProvider,
-        >::new(provider)?;
+        >::new();
 
         for _ in 0..count {
             let (pure_data, new_offset) = parse_data(bytes, offset)?;

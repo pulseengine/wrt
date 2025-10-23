@@ -5,7 +5,12 @@
 //! interception support.
 
 #[cfg(feature = "std")]
-use std::sync::Weak;
+use std::{
+    sync::Weak,
+    time::Duration,
+};
+#[cfg(not(feature = "std"))]
+use core::time::Duration;
 
 // Submodules
 pub mod bounded_buffer_pool;
@@ -96,10 +101,9 @@ pub use resource_manager_no_std::{
 // pub use resource_operation_no_std::{from_format_resource_operation,
 // to_format_resource_operation}; Export ResourceStrategy
 pub use resource_strategy::ResourceStrategy;
-pub use resource_strategy_no_std::{
-    ResourceStrategyNoStd,
-    MAX_BUFFER_SIZE,
-};
+pub use resource_strategy_no_std::ResourceStrategyNoStd;
+// Re-export MAX_BUFFER_SIZE directly from wrt_foundation for public access
+pub use wrt_foundation::bounded::MAX_BUFFER_SIZE;
 // Export ResourceTable components based on feature flags
 #[cfg(feature = "std")]
 pub use resource_table::{

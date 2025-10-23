@@ -23,20 +23,22 @@ use std::{
 use wrt_error::Result as WrtResult;
 #[cfg(feature = "std")]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     component_value::ComponentValue,
     prelude::*,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
-    safe_memory::NoStdProvider as _,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
     NoStdProvider,
+    MemoryProvider,
 };
 
 // Import prelude for no_std to get Vec, Box, etc.
@@ -57,12 +59,98 @@ const MAX_STREAM_BUFFER: usize = 1024;
 const MAX_WAITABLES: usize = 64;
 
 /// Handle to a stream
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StreamHandle(pub u32);
 
+impl StreamHandle {
+    /// Create a new stream handle
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+impl Checksummable for StreamHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for StreamHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for StreamHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
+impl Default for StreamHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
 /// Handle to a future
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FutureHandle(pub u32);
+
+impl FutureHandle {
+    /// Create a new future handle
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+impl Checksummable for FutureHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for FutureHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for FutureHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
+impl Default for FutureHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
 
 /// Handle to an error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -70,7 +158,10 @@ pub struct ErrorContextHandle(pub u32);
 
 /// Stream type for incremental value passing
 #[derive(Debug, Clone)]
-pub struct Stream<T> {
+pub struct Stream<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
     /// Stream handle
     pub handle:          StreamHandle,
     /// Element type
@@ -81,7 +172,7 @@ pub struct Stream<T> {
     #[cfg(feature = "std")]
     pub buffer:          Vec<T>,
     #[cfg(not(any(feature = "std",)))]
-    pub buffer:          BoundedVec<T, MAX_STREAM_BUFFER, NoStdProvider<65536>>,
+    pub buffer:          BoundedVec<T, MAX_STREAM_BUFFER>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed  
@@ -90,7 +181,10 @@ pub struct Stream<T> {
 
 /// Future type for deferred values
 #[derive(Debug, Clone)]
-pub struct Future<T> {
+pub struct Future<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
     /// Future handle
     pub handle:          FutureHandle,
     /// Value type
@@ -114,12 +208,12 @@ pub struct ErrorContext {
     #[cfg(feature = "std")]
     pub message:     String,
     #[cfg(not(any(feature = "std",)))]
-    pub message:     BoundedString<1024, NoStdProvider<65536>>,
+    pub message:     BoundedString<1024, NoStdProvider<2048>>,
     /// Stack trace if available
     #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
     #[cfg(not(any(feature = "std",)))]
-    pub stack_trace: Option<BoundedVec<StackFrame, 32, NoStdProvider<65536>>>,
+    pub stack_trace: Option<BoundedVec<StackFrame, 32>>,
     /// Additional debug information
     pub debug_info:  DebugInfo,
 }
@@ -148,20 +242,89 @@ pub enum FutureState {
     Cancelled,
     /// Future encountered an error
     Error,
+    /// Future failed with error
+    Failed,
 }
 
 /// Stack frame information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StackFrame {
     /// Function name
     #[cfg(feature = "std")]
     pub function:           String,
     #[cfg(not(any(feature = "std",)))]
-    pub function:           BoundedString<128, NoStdProvider<65536>>,
+    pub function:           BoundedString<128, NoStdProvider<512>>,
     /// Component instance
     pub component_instance: Option<u32>,
     /// Instruction offset
     pub offset:             Option<u32>,
+}
+
+impl Default for StackFrame {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            function: String::new(),
+            #[cfg(not(any(feature = "std",)))]
+            function: BoundedString::from_str_truncate("", NoStdProvider::default())
+                .unwrap_or_else(|_| panic!("Failed to create default StackFrame function name")),
+            component_instance: None,
+            offset: None,
+        }
+    }
+}
+
+impl Checksummable for StackFrame {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        #[cfg(feature = "std")]
+        self.function.update_checksum(checksum);
+        #[cfg(not(any(feature = "std",)))]
+        {
+            if let Ok(s) = self.function.as_str() {
+                checksum.update_slice(s.as_bytes());
+            }
+        }
+
+        self.component_instance.update_checksum(checksum);
+        self.offset.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for StackFrame {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        #[cfg(feature = "std")]
+        self.function.to_bytes_with_provider(writer, provider)?;
+        #[cfg(not(any(feature = "std",)))]
+        self.function.to_bytes_with_provider(writer, provider)?;
+
+        self.component_instance.to_bytes_with_provider(writer, provider)?;
+        self.offset.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for StackFrame {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        #[cfg(feature = "std")]
+        let function = String::from_bytes_with_provider(reader, provider)?;
+        #[cfg(not(any(feature = "std",)))]
+        let function = BoundedString::<128, NoStdProvider<512>>::from_bytes_with_provider(reader, provider)?;
+
+        let component_instance = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+        let offset = Option::<u32>::from_bytes_with_provider(reader, provider)?;
+
+        Ok(Self {
+            function,
+            component_instance,
+            offset,
+        })
+    }
 }
 
 /// Debug information for error contexts
@@ -176,9 +339,8 @@ pub struct DebugInfo {
     pub properties:       Vec<(String, ComponentValue)>,
     #[cfg(not(any(feature = "std",)))]
     pub properties: BoundedVec<
-        (BoundedString<64, NoStdProvider<65536>>, ComponentValue),
-        16,
-        NoStdProvider<65536>,
+        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
+        16
     >,
 }
 
@@ -196,7 +358,7 @@ pub enum AsyncReadResult {
 }
 
 /// Waitable resource for task synchronization
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Waitable {
     /// Stream readable
     StreamReadable(StreamHandle),
@@ -208,6 +370,79 @@ pub enum Waitable {
     FutureWritable(FutureHandle),
 }
 
+impl Default for Waitable {
+    fn default() -> Self {
+        Self::StreamReadable(StreamHandle(0))
+    }
+}
+
+impl Checksummable for Waitable {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            Self::StreamReadable(h) => {
+                0u8.update_checksum(checksum);
+                h.0.update_checksum(checksum);
+            }
+            Self::StreamWritable(h) => {
+                1u8.update_checksum(checksum);
+                h.0.update_checksum(checksum);
+            }
+            Self::FutureReadable(h) => {
+                2u8.update_checksum(checksum);
+                h.0.update_checksum(checksum);
+            }
+            Self::FutureWritable(h) => {
+                3u8.update_checksum(checksum);
+                h.0.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+impl ToBytes for Waitable {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        match self {
+            Self::StreamReadable(h) => {
+                0u8.to_bytes_with_provider(writer, provider)?;
+                h.0.to_bytes_with_provider(writer, provider)
+            }
+            Self::StreamWritable(h) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                h.0.to_bytes_with_provider(writer, provider)
+            }
+            Self::FutureReadable(h) => {
+                2u8.to_bytes_with_provider(writer, provider)?;
+                h.0.to_bytes_with_provider(writer, provider)
+            }
+            Self::FutureWritable(h) => {
+                3u8.to_bytes_with_provider(writer, provider)?;
+                h.0.to_bytes_with_provider(writer, provider)
+            }
+        }
+    }
+}
+
+impl FromBytes for Waitable {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        let tag = u8::from_bytes_with_provider(reader, provider)?;
+        let value = u32::from_bytes_with_provider(reader, provider)?;
+        match tag {
+            0 => Ok(Self::StreamReadable(StreamHandle(value))),
+            1 => Ok(Self::StreamWritable(StreamHandle(value))),
+            2 => Ok(Self::FutureReadable(FutureHandle(value))),
+            3 => Ok(Self::FutureWritable(FutureHandle(value))),
+            _ => Err(wrt_error::Error::validation_invalid_type("Invalid Waitable tag")),
+        }
+    }
+}
+
 /// Set of waitables for task synchronization
 #[derive(Debug, Clone)]
 pub struct WaitableSet {
@@ -215,12 +450,15 @@ pub struct WaitableSet {
     #[cfg(feature = "std")]
     pub waitables:  Vec<Waitable>,
     #[cfg(not(any(feature = "std",)))]
-    pub waitables:  BoundedVec<Waitable, MAX_WAITABLES, NoStdProvider<65536>>,
+    pub waitables:  BoundedVec<Waitable, MAX_WAITABLES>,
     /// Ready mask (bit per waitable)
     pub ready_mask: u64,
 }
 
-impl<T> Stream<T> {
+impl<T> Stream<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
     /// Create a new stream
     pub fn new(handle: StreamHandle, element_type: ValType) -> WrtResult<Self> {
         Ok(Self {
@@ -232,7 +470,7 @@ impl<T> Stream<T> {
             #[cfg(not(any(feature = "std",)))]
             buffer: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             readable_closed: false,
             writable_closed: false,
@@ -266,7 +504,31 @@ impl<T> Stream<T> {
     }
 }
 
-impl<T> Future<T> {
+impl<T> Default for Stream<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        let buffer = Vec::new();
+        #[cfg(not(any(feature = "std",)))]
+        let buffer = Default::default();
+
+        Self {
+            handle: StreamHandle::default(),
+            element_type: ValType::Bool,
+            state: StreamState::Open,
+            buffer,
+            readable_closed: false,
+            writable_closed: false,
+        }
+    }
+}
+
+impl<T> Future<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
     /// Create a new future
     pub fn new(handle: FutureHandle, value_type: ValType) -> Self {
         Self {
@@ -309,6 +571,22 @@ impl<T> Future<T> {
     }
 }
 
+impl<T> Default for Future<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+{
+    fn default() -> Self {
+        Self {
+            handle: FutureHandle::default(),
+            value_type: ValType::Bool,
+            state: FutureState::Pending,
+            value: None,
+            readable_closed: false,
+            writable_closed: false,
+        }
+    }
+}
+
 impl ErrorContext {
     /// Create a new error context
     #[cfg(feature = "std")]
@@ -325,7 +603,7 @@ impl ErrorContext {
     #[cfg(not(any(feature = "std",)))]
     pub fn new(
         handle: ErrorContextHandle,
-        message: BoundedString<1024, NoStdProvider<65536>>,
+        message: BoundedString<1024, NoStdProvider<2048>>,
     ) -> WrtResult<Self> {
         Ok(Self {
             handle,
@@ -336,23 +614,23 @@ impl ErrorContext {
     }
 
     /// Get debug string representation
-    pub fn debug_string(&self) -> BoundedString<2048, NoStdProvider<65536>> {
-        #[cfg(feature = "std")]
-        {
-            let mut result = self.message.clone();
-            if let Some(trace) = &self.stack_trace {
-                result.push_str("\nStack trace:\n");
-                for frame in trace {
-                    result.push_str(&format!("  {}\n", frame));
-                }
+    #[cfg(feature = "std")]
+    pub fn debug_string(&self) -> String {
+        let mut result = self.message.clone();
+        if let Some(trace) = &self.stack_trace {
+            result.push_str("\nStack trace:\n");
+            for frame in trace {
+                result.push_str(&format!("  {}\n", frame.function));
             }
-            BoundedString::from_str(&result).unwrap_or_default()
         }
-        #[cfg(not(any(feature = "std",)))]
-        {
-            // In no_std, just return the message
-            self.message.clone()
-        }
+        result
+    }
+
+    /// Get debug string representation
+    #[cfg(not(any(feature = "std",)))]
+    pub fn debug_string(&self) -> BoundedString<1024, NoStdProvider<2048>> {
+        // In no_std, just return the message
+        self.message.clone()
     }
 }
 
@@ -367,7 +645,7 @@ impl DebugInfo {
             #[cfg(not(any(feature = "std",)))]
             properties: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
         })
     }
@@ -382,7 +660,7 @@ impl DebugInfo {
     #[cfg(not(any(feature = "std",)))]
     pub fn add_property(
         &mut self,
-        key: BoundedString<64, NoStdProvider<65536>>,
+        key: BoundedString<64, NoStdProvider<512>>,
         value: ComponentValue,
     ) -> WrtResult<()> {
         self.properties
@@ -400,7 +678,7 @@ impl WaitableSet {
             #[cfg(not(any(feature = "std",)))]
             waitables: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
+                BoundedVec::new().unwrap()
             },
             ready_mask: 0,
         })
@@ -478,7 +756,7 @@ impl Default for DebugInfo {
             #[cfg(feature = "std")]
             properties: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            properties: BoundedVec::new_with_default_provider().unwrap(),
+            properties: BoundedVec::new(),
         })
     }
 }
@@ -489,7 +767,7 @@ impl Default for WaitableSet {
             #[cfg(feature = "std")]
             waitables: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            waitables: BoundedVec::new_with_default_provider().unwrap(),
+            waitables: BoundedVec::new(),
             ready_mask: 0,
         })
     }
@@ -513,6 +791,7 @@ impl fmt::Display for FutureState {
             FutureState::Ready => write!(f, "ready"),
             FutureState::Cancelled => write!(f, "cancelled"),
             FutureState::Error => write!(f, "error"),
+            FutureState::Failed => write!(f, "failed"),
         }
     }
 }
@@ -576,7 +855,7 @@ mod tests {
     #[test]
     fn test_error_context() {
         #[cfg(feature = "std")]
-        let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string());
+        let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_owned());
         #[cfg(not(any(feature = "std",)))]
         let error = ErrorContext::new(
             ErrorContextHandle(1),
@@ -585,7 +864,10 @@ mod tests {
         .unwrap();
 
         let debug_str = error.debug_string();
-        assert!(debug_str.as_str().contains("Test error"));
+        #[cfg(feature = "std")]
+        assert!(debug_str.contains("Test error"));
+        #[cfg(not(any(feature = "std",)))]
+        assert!(debug_str.as_str().unwrap().contains("Test error"));
     }
 
     #[test]

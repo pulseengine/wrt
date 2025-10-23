@@ -22,7 +22,7 @@ use std::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
@@ -55,7 +55,7 @@ const MAX_COMPONENTS_PER_ZONE: usize = 32;
 const MAX_ISOLATION_POLICIES: usize = 16;
 
 /// Blast zone isolation levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum IsolationLevel {
     /// No isolation - failures can propagate freely
     None,
@@ -148,7 +148,7 @@ pub struct BlastZone {
     #[cfg(feature = "std")]
     components:        Vec<u32>,
     #[cfg(not(any(feature = "std",)))]
-    components:        BoundedVec<u32, MAX_COMPONENTS_PER_ZONE, NoStdProvider<4096>>,
+    components:        BoundedVec<u32, MAX_COMPONENTS_PER_ZONE>,
     /// Current failure count
     failure_count:     u32,
     /// Last failure timestamp
@@ -178,7 +178,7 @@ pub struct IsolationPolicy {
     #[cfg(feature = "std")]
     pub required_capabilities:  Vec<String>,
     #[cfg(not(any(feature = "std",)))]
-    pub required_capabilities:  BoundedVec<String, 8, NoStdProvider<4096>>,
+    pub required_capabilities:  BoundedVec<String, 8>,
     /// Maximum data transfer size
     pub max_transfer_size:      usize,
     /// Whether resource sharing is allowed
@@ -208,25 +208,25 @@ pub struct BlastZoneManager {
     #[cfg(feature = "std")]
     zones: HashMap<u32, BlastZone>,
     #[cfg(not(any(feature = "std",)))]
-    zones: BoundedVec<(u32, BlastZone), MAX_BLAST_ZONES, NoStdProvider<65536>>,
+    zones: BoundedVec<(u32, BlastZone), MAX_BLAST_ZONES>,
 
     /// Isolation policies
     #[cfg(feature = "std")]
     policies: Vec<IsolationPolicy>,
     #[cfg(not(any(feature = "std",)))]
-    policies: BoundedVec<IsolationPolicy, MAX_ISOLATION_POLICIES, NoStdProvider<65536>>,
+    policies: BoundedVec<IsolationPolicy, MAX_ISOLATION_POLICIES>,
 
     /// Component to zone mapping
     #[cfg(feature = "std")]
     component_zones: HashMap<u32, u32>,
     #[cfg(not(any(feature = "std",)))]
-    component_zones: BoundedVec<(u32, u32), 256, NoStdProvider<65536>>,
+    component_zones: BoundedVec<(u32, u32), 256>,
 
     /// Recent failures for analysis
     #[cfg(feature = "std")]
     failure_history: Vec<ZoneFailure>,
     #[cfg(not(any(feature = "std",)))]
-    failure_history: BoundedVec<ZoneFailure, 64, NoStdProvider<65536>>,
+    failure_history: BoundedVec<ZoneFailure, 64>,
 
     /// Global failure threshold
     global_failure_threshold: u32,
@@ -291,17 +291,12 @@ impl BlastZone {
             #[cfg(feature = "std")]
             components: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            components: {
-                let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create components vector")
-                })?
-            },
+            components: BoundedVec::new(),
             failure_count: 0,
             last_failure_time: 0,
             memory_used: 0,
             resources_used: 0,
-            resource_manager: Some(ResourceLifecycleManager::new()),
+            resource_manager: Some(()),
             recovery_attempts: 0,
         })
     }
@@ -484,39 +479,19 @@ impl BlastZoneManager {
             #[cfg(feature = "std")]
             zones: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            zones: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create zones vector")
-                })?
-            },
+            zones: BoundedVec::new(),
             #[cfg(feature = "std")]
             policies: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            policies: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create policies vector")
-                })?
-            },
+            policies: BoundedVec::new(),
             #[cfg(feature = "std")]
             component_zones: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            component_zones: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create component zones vector")
-                })?
-            },
+            component_zones: BoundedVec::new(),
             #[cfg(feature = "std")]
             failure_history: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            failure_history: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create failure history vector")
-                })?
-            },
+            failure_history: BoundedVec::new(),
             global_failure_threshold: 10,
             global_failure_count: 0,
         })
@@ -549,7 +524,7 @@ impl BlastZoneManager {
             let zone = self
                 .zones
                 .get_mut(&zone_id)
-                .ok_or_else(|| wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))?;
+                .ok_or_else(|| wrt_error::Error::invalid_value("Zone not found"))?;
             zone.add_component(component_id)?;
             self.component_zones.insert(component_id, zone_id);
         }
@@ -564,7 +539,7 @@ impl BlastZoneManager {
                 }
             }
             if !zone_found {
-                return Err(wrt_foundation::wrt_error::Error::invalid_value(
+                return Err(wrt_error::Error::invalid_value(
                     "Zone not found",
                 ));
             }
@@ -587,7 +562,7 @@ impl BlastZoneManager {
 
         // Find the zone containing this component
         let zone_id = self.get_component_zone(component_id).ok_or_else(|| {
-            wrt_foundation::wrt_error::Error::invalid_value("Component not in any zone")
+            wrt_error::Error::invalid_value("Component not in any zone")
         })?;
 
         // Record the failure
@@ -724,7 +699,7 @@ impl BlastZoneManager {
             let zone = self
                 .zones
                 .get_mut(&zone_id)
-                .ok_or_else(|| wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))?;
+                .ok_or_else(|| wrt_error::Error::invalid_value("Zone not found"))?;
             zone.attempt_recovery()
         }
         #[cfg(not(any(feature = "std",)))]
@@ -734,7 +709,7 @@ impl BlastZoneManager {
                     return zone.attempt_recovery();
                 }
             }
-            Err(wrt_foundation::wrt_error::Error::invalid_value(
+            Err(wrt_error::Error::invalid_value(
                 "Zone not found",
             ))
         }
@@ -909,7 +884,7 @@ mod tests {
             required_capabilities: {
                 let provider = safe_managed_alloc!(4096, CrateId::Component)
                     .unwrap_or_else(|_| panic!("Failed to allocate test memory"));
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             max_transfer_size: 0,
             allow_resource_sharing: false,

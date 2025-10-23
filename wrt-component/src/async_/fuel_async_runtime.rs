@@ -20,7 +20,8 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedMap, BoundedVec},
+    BoundedVec,
+    bounded_collections::BoundedMap,
     operations::{record_global_operation, Type as OperationType, global_fuel_consumed},
     verification::VerificationLevel,
     safe_managed_alloc, CrateId,
@@ -145,8 +146,8 @@ impl FuelAsyncRuntime {
             config.verification_level,
         )?));
         
-        let components = BoundedMap::new(provider.clone())?;
-        let task_results = BoundedMap::new(provider)?;
+        let components = BoundedMap::new();
+        let task_results = BoundedMap::new();
         
         let cleanup_manager = Arc::new(Mutex::new(
             GlobalCleanupManager::new(config.global_fuel_budget / 10)?
@@ -179,7 +180,7 @@ impl FuelAsyncRuntime {
         self.stats.components_registered += 1;
         
         // Register with cleanup manager
-        self.cleanup_manager.lock()?.get_or_create_manager(component_id)?;
+        self.cleanup_manager.lock().get_or_create_manager(component_id)?;
         
         record_global_operation(OperationType::Other)?;
         Ok(())
@@ -217,7 +218,7 @@ impl FuelAsyncRuntime {
         execution_context.function_params = params;
         
         // Create and spawn task
-        let task_id = self.executor.lock()?.spawn_async_task(
+        let task_id = self.executor.lock().spawn_async_task(
             component_id,
             fuel_budget,
             self.verification_level,
@@ -225,7 +226,7 @@ impl FuelAsyncRuntime {
         )?;
         
         // Register task for cleanup
-        self.cleanup_manager.lock()?.register_task(
+        self.cleanup_manager.lock().register_task(
             task_id,
             component_id,
             self.verification_level,
@@ -280,7 +281,7 @@ impl FuelAsyncRuntime {
         
         while !self.is_task_complete(task_id)? {
             // Check if task still exists
-            if !self.executor.lock()?.has_task(task_id) {
+            if !self.executor.lock().has_task(task_id) {
                 return Ok(TaskResult::Failed(async_error(
                     AsyncErrorKind::TaskCancelled,
                     0,
@@ -311,7 +312,7 @@ impl FuelAsyncRuntime {
     fn poll_tasks(&mut self) -> Result<u32> {
         self.consume_runtime_fuel(RUNTIME_POLL_FUEL)?;
         
-        let polled = self.executor.lock()?.poll_ready_tasks(RUNTIME_POLLING_BATCH as u32)?;
+        let polled = self.executor.lock().poll_ready_tasks(RUNTIME_POLLING_BATCH as u32)?;
         
         // Collect completed task results
         self.collect_completed_tasks()?;
@@ -325,7 +326,7 @@ impl FuelAsyncRuntime {
         
         // Get completed tasks from executor
         {
-            let executor = self.executor.lock()?;
+            let executor = self.executor.lock();
             for (task_id, task) in executor.get_tasks() {
                 match task.state {
                     AsyncTaskState::Completed => {
@@ -356,10 +357,10 @@ impl FuelAsyncRuntime {
             self.task_results.insert(task_id, result)?;
             
             // Run cleanup for completed task
-            let _cleanup_errors = self.cleanup_manager.lock()?.cancel_task(task_id)?;
+            let _cleanup_errors = self.cleanup_manager.lock().cancel_task(task_id)?;
             
             // Remove task from executor
-            self.executor.lock()?.remove_task(task_id)?;
+            self.executor.lock().remove_task(task_id)?;
         }
         
         Ok(())
@@ -375,7 +376,7 @@ impl FuelAsyncRuntime {
     
     /// Check if there are active tasks
     fn has_active_tasks(&self) -> Result<bool> {
-        Ok(self.executor.lock()?.has_tasks())
+        Ok(self.executor.lock().has_tasks())
     }
     
     /// Check if a specific task is complete
@@ -384,7 +385,7 @@ impl FuelAsyncRuntime {
             return Ok(true);
         }
         
-        if let Some(task) = self.executor.lock()?.get_task(task_id) {
+        if let Some(task) = self.executor.lock().get_task(task_id) {
             match task.state {
                 AsyncTaskState::Completed | AsyncTaskState::Failed | AsyncTaskState::Cancelled => {
                     Ok(true)
@@ -410,10 +411,10 @@ impl FuelAsyncRuntime {
         self.consume_runtime_fuel(RUNTIME_CLEANUP_FUEL)?;
         
         // Cancel in executor
-        self.executor.lock()?.cancel_task(task_id)?;
+        self.executor.lock().cancel_task(task_id)?;
         
         // Run cleanup
-        self.cleanup_manager.lock()?.cancel_task(task_id)?;
+        self.cleanup_manager.lock().cancel_task(task_id)?;
         
         // Store cancelled result
         self.task_results.insert(task_id, TaskResult::Cancelled)?;
@@ -427,13 +428,13 @@ impl FuelAsyncRuntime {
         self.state = RuntimeState::ShuttingDown;
         
         // Cancel all active tasks
-        let active_tasks: Vec<TaskId> = self.executor.lock()?.get_active_task_ids();
+        let active_tasks: Vec<TaskId> = self.executor.lock().get_active_task_ids();
         for task_id in active_tasks {
             let _ = self.cancel_task(task_id);
         }
         
         // Run global cleanup
-        self.cleanup_manager.lock()?.run_cleanup()?;
+        self.cleanup_manager.lock().run_cleanup()?;
         
         self.state = RuntimeState::Stopped;
         Ok(())

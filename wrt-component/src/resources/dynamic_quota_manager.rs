@@ -23,7 +23,7 @@ use std::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
@@ -235,19 +235,19 @@ pub struct DynamicQuotaManager {
     #[cfg(feature = "std")]
     nodes: HashMap<u32, QuotaNode>,
     #[cfg(not(any(feature = "std",)))]
-    nodes: BoundedVec<(u32, QuotaNode), MAX_QUOTA_NODES, NoStdProvider<65536>>,
+    nodes: BoundedVec<(u32, QuotaNode), MAX_QUOTA_NODES>,
 
     /// Active reservations
     #[cfg(feature = "std")]
     reservations: HashMap<u32, (u32, u64)>, // reservation_id -> (node_id, amount)
     #[cfg(not(any(feature = "std",)))]
-    reservations: BoundedVec<(u32, (u32, u64)), 256, NoStdProvider<65536>>,
+    reservations: BoundedVec<(u32, (u32, u64)), 256>,
 
     /// Quota policies
     #[cfg(feature = "std")]
     policies: Vec<Box<dyn QuotaWatcher + Send + Sync>>,
     #[cfg(not(any(feature = "std",)))]
-    policies: BoundedVec<u32, MAX_QUOTA_POLICIES, NoStdProvider<65536>>, // Simplified for no_std
+    policies: BoundedVec<u32, MAX_QUOTA_POLICIES>, // Simplified for no_std
 
     /// Integration with existing resource manager
     resource_manager: Option<ResourceManager>,
@@ -262,7 +262,7 @@ pub struct DynamicQuotaManager {
     next_reservation_id: u32,
 
     /// Global memory provider for quota enforcement
-    memory_provider: Option<CapabilityAwareProvider<NoStdProvider<65536>>>,
+    memory_provider: Option<CapabilityAwareProvider<NoStdProvider<4096>>>,
 }
 
 impl QuotaNode {
@@ -434,21 +434,21 @@ impl DynamicQuotaManager {
             #[cfg(not(any(feature = "std",)))]
             nodes: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             reservations: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
             reservations: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             #[cfg(feature = "std")]
             policies: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
             policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).unwrap()
+                BoundedVec::new().unwrap()
             },
             resource_manager: None,
             blast_zone_manager: None,
@@ -473,7 +473,7 @@ impl DynamicQuotaManager {
     }
 
     /// Set memory provider for quota enforcement
-    pub fn set_memory_provider(&mut self, provider: CapabilityAwareProvider<NoStdProvider<65536>>) {
+    pub fn set_memory_provider(&mut self, provider: CapabilityAwareProvider<NoStdProvider<4096>>) {
         self.memory_provider = Some(provider);
     }
 
@@ -527,7 +527,7 @@ impl DynamicQuotaManager {
                 granted:        false,
                 amount_granted: 0,
                 reservation_id: None,
-                reason:         Some("Hierarchical quota exceeded".to_string()),
+                reason:         Some(String::from("Hierarchical quota exceeded")),
                 retry_after_ms: Some(1000),
             });
         }
@@ -559,7 +559,7 @@ impl DynamicQuotaManager {
                         granted:        false,
                         amount_granted: 0,
                         reservation_id: None,
-                        reason:         Some("Memory provider capacity exceeded".to_string()),
+                        reason:         Some(String::from("Memory provider capacity exceeded")),
                         retry_after_ms: Some(5000),
                     });
                 }
@@ -577,7 +577,7 @@ impl DynamicQuotaManager {
                 granted:        false,
                 amount_granted: 0,
                 reservation_id: None,
-                reason:         Some("Quota allocation failed".to_string()),
+                reason:         Some(String::from("Quota allocation failed")),
                 retry_after_ms: Some(2000),
             })
         }
@@ -682,7 +682,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Err(wrt_foundation::wrt_error::Error::invalid_value(
+        Err(wrt_error::Error::invalid_value(
             "Quota node not found",
         ))
     }
@@ -693,7 +693,7 @@ impl DynamicQuotaManager {
 
         while let Some(id) = current_id {
             let node = self.get_quota_status(id).ok_or_else(|| {
-                wrt_foundation::wrt_error::Error::invalid_value("Invalid node ID")
+                wrt_error::Error::invalid_value("Invalid node ID")
             })?;
 
             if !node.can_allocate(amount) {
@@ -718,8 +718,7 @@ impl DynamicQuotaManager {
         let mut allocated_nodes = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut allocated_nodes = {
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            BoundedVec::<u32, 64, NoStdProvider<65536>>::new(provider).unwrap()
+            BoundedVec::<u32, 64>::new().unwrap()
         };
 
         // First pass: check if all nodes can allocate

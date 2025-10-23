@@ -10,15 +10,16 @@ use core::sync::atomic::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     operations::{
         record_global_operation,
         Type as OperationType,
     },
     safe_managed_alloc,
-    verification::VerificationLevel,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::{Checksum, VerificationLevel},
     CrateId,
+    MemoryProvider,
 };
 
 use crate::{
@@ -116,13 +117,51 @@ impl GenerationalHandle {
     }
 }
 
+impl Default for GenerationalHandle {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            generation: 0,
+        }
+    }
+}
+
+impl Checksummable for GenerationalHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.index.update_checksum(checksum);
+        self.generation.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for GenerationalHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.generation.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for GenerationalHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let generation = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { index, generation })
+    }
+}
+
 /// Handle table with fuel tracking
 pub struct FuelHandleTable<T> {
     /// Table identifier
     pub table_id:       u64,
     /// Entries in the table
     entries: BoundedVec<
-        HandleEntry<T, 256, crate::bounded_component_infra::ComponentProvider>,
+        HandleEntry<T>,
         MAX_HANDLES_PER_TABLE,
     >,
     /// Free list for handle reuse
@@ -164,8 +203,8 @@ impl<T> FuelHandleTable<T> {
     ) -> Result<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
-        let mut entries = BoundedVec::new(provider.clone())?;
-        let mut free_list = BoundedVec::new(provider)?;
+        let mut entries = BoundedVec::new().unwrap();
+        let mut free_list = BoundedVec::new().unwrap();
 
         // Pre-allocate entries
         for i in (0..initial_capacity).rev() {
@@ -173,7 +212,7 @@ impl<T> FuelHandleTable<T> {
         }
 
         // Record table creation
-        record_global_operation(OperationType::CollectionCreate)?;
+        record_global_operation(OperationType::CollectionCreate, verification_level);
 
         Ok(Self {
             table_id,
@@ -196,8 +235,20 @@ impl<T> FuelHandleTable<T> {
             ));
         }
 
+        // Get generation first
+        let generation = self.next_generation.fetch_add(1, Ordering::AcqRel);
+
         // Get index from free list or extend table
         let index = if let Some(index) = self.free_list.pop() {
+            // Update existing entry
+            if let Some(entry) = self.entries.get_mut(index as usize) {
+                entry.data = Some(data);
+                entry.generation = generation;
+                entry.state = ResourceState::Available;
+                entry.touch();
+            } else {
+                return Err(Error::resource_error("Failed to update handle entry"));
+            }
             index
         } else {
             // Need to extend the table
@@ -208,22 +259,11 @@ impl<T> FuelHandleTable<T> {
             }
 
             let new_index = self.entries.len() as u32;
-            self.entries.push(HandleEntry::new(data))?;
+            let mut entry = HandleEntry::new(data);
+            entry.generation = generation;
+            self.entries.push(entry)?;
             new_index
         };
-
-        // Get generation
-        let generation = self.next_generation.fetch_add(1, Ordering::AcqRel);
-
-        // Update entry
-        if let Some(entry) = self.entries.get_mut(index as usize) {
-            entry.data = Some(data);
-            entry.generation = generation;
-            entry.state = ResourceState::Available;
-            entry.touch();
-        } else {
-            return Err(Error::resource_error("Failed to update handle entry"));
-        }
 
         // Update stats
         self.stats.total_allocations.fetch_add(1, Ordering::Relaxed);
@@ -286,6 +326,9 @@ impl<T> FuelHandleTable<T> {
             ));
         }
 
+        // Consume fuel before borrowing to avoid borrow conflict
+        self.consume_fuel(HANDLE_UPDATE_FUEL)?;
+
         // Validate index
         let entry = self
             .entries
@@ -307,7 +350,6 @@ impl<T> FuelHandleTable<T> {
             .as_mut()
             .ok_or_else(|| Error::resource_not_found("Handle data not found"))?;
 
-        self.consume_fuel(HANDLE_UPDATE_FUEL)?;
         Ok(data)
     }
 
@@ -364,7 +406,7 @@ impl<T> FuelHandleTable<T> {
 
         let total = amount.saturating_add(adjusted);
         self.fuel_consumed.fetch_add(total, Ordering::AcqRel);
-        record_global_operation(OperationType::Other)?;
+        record_global_operation(OperationType::Other, self.verification_level);
 
         Ok(())
     }
@@ -401,7 +443,7 @@ impl HandleTableManager {
     /// Create a new handle table manager
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        let tables = BoundedMap::new(provider)?;
+        let tables = BoundedMap::new();
 
         Ok(Self {
             tables,
@@ -534,7 +576,7 @@ mod tests {
 
         {
             let table = manager.get_table_mut::<String>(table_id).unwrap();
-            let handle = table.allocate("test".to_string()).unwrap();
+            let handle = table.allocate("test".to_owned()).unwrap();
             assert_eq!(table.lookup(handle).unwrap(), "test");
         }
 

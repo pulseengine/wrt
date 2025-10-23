@@ -51,7 +51,7 @@ pub enum ValType {
     Char,
     String,
 }
-use wrt_foundation::resource::{
+pub use wrt_foundation::resource::{
     ResourceDrop,
     ResourceNew,
     ResourceRep,
@@ -553,7 +553,7 @@ pub enum ComponentTypeDefinition {
 }
 
 /// Component external type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExternType {
     /// Function type
     Function {

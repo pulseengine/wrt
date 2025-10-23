@@ -8,11 +8,11 @@
 extern crate alloc;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::string::String;
+use alloc::string::{String, ToString};
 #[cfg(feature = "std")]
-use std::string::String;
+use std::string::{String, ToString};
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
+type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 use core::{
     pin::Pin,
@@ -25,10 +25,8 @@ use core::{
 
 use wrt_error::Error;
 #[cfg(feature = "std")]
-use wrt_foundation::{
-    bounded_collections::BoundedVec,
-    component_value::ComponentValue,
-};
+use wrt_foundation::BoundedVec;
+use wrt_runtime::{Checksummable, ToBytes, FromBytes};
 
 use super::async_types::{
     Future as WasmFuture,
@@ -43,8 +41,7 @@ use crate::threading::task_manager::{
     TaskManager,
     TaskState,
 };
-#[cfg(not(feature = "std"))]
-// For no_std, use a simpler ComponentValue representation
+// Use Value for all component values (non-generic)
 use crate::types::Value as ComponentValue;
 use crate::ComponentInstanceId;
 
@@ -69,6 +66,7 @@ pub type ValType = u32;
 pub mod rust_async_bridge {
     use std::{
         future::Future as RustFuture,
+        string::String,
         sync::{
             Arc,
             Mutex,
@@ -96,11 +94,13 @@ pub mod rust_async_bridge {
                     if let Some(ref value) = future.value {
                         Poll::Ready(Ok(value.clone()))
                     } else {
-                        Poll::Ready(Err("Future ready but no value".to_string()))
+                        Poll::Ready(Err(String::from("Future ready but no value")))
                     }
                 },
-                FutureState::Failed => Poll::Ready(Err("Future failed".to_string())),
-                FutureState::Cancelled => Poll::Ready(Err("Future cancelled".to_string())),
+                FutureState::Error | FutureState::Failed => {
+                    Poll::Ready(Err(String::from("Future failed")))
+                },
+                FutureState::Cancelled => Poll::Ready(Err(String::from("Future cancelled"))),
                 FutureState::Pending => {
                     // Register waker with task manager
                     // In a real implementation, this would notify the task manager
@@ -125,7 +125,7 @@ pub mod rust_async_bridge {
         // This would spawn the Rust future and create a Component Model future
         // that completes when the Rust future completes
         // For now, this is a placeholder
-        Err("Not implemented".to_string())
+        Err(String::from("Not implemented"))
     }
 }
 
@@ -133,48 +133,87 @@ pub mod rust_async_bridge {
 pub mod component_async {
     use super::*;
 
+    /// Helper to create error strings compatible with all feature configurations
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn error_string(msg: &str) -> String {
+        String::from(msg)
+    }
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn error_string(msg: &str) -> String {
+        use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
+        // Use a stack-allocated provider for error strings
+        let provider1 = NoStdProvider::<1024>::default();
+        BoundedString::from_str(msg, provider1)
+            .unwrap_or_else(|_| {
+                let provider2 = NoStdProvider::<1024>::default();
+                BoundedString::from_str("Error", provider2).unwrap()
+            })
+    }
+
     /// Execute an async Component Model operation without Rust's async runtime
     pub fn execute_async_operation(
         task_manager: &mut TaskManager,
         operation: AsyncOperation,
     ) -> core::result::Result<TaskId, String> {
-        // Create a task for the async operation
-        let task_id = task_manager
-            .create_task(operation.component_id, &operation.name)
-            .map_err(|e| Error::component_resource_lifecycle_error("Component not found"))?;
+        #[cfg(feature = "component-model-threading")]
+        {
+            // Create a task for the async operation
+            let task_id = task_manager
+                .spawn_task(
+                    crate::threading::task_manager::TaskType::AsyncOperation,
+                    operation.component_id.0,
+                    None,
+                )
+                .map_err(|_| Error::component_resource_lifecycle_error("Failed to spawn task"))?;
 
-        // Start the task
-        task_manager
-            .start_task(task_id)
-            .map_err(|e| Error::component_resource_lifecycle_error("Failed to start task"))?;
+            // Start the task
+            task_manager
+                .switch_to_task(task_id)
+                .map_err(|_| Error::component_resource_lifecycle_error("Failed to start task"))?;
 
-        Ok(task_id)
+            Ok(task_id)
+        }
+        #[cfg(not(feature = "component-model-threading"))]
+        {
+            // Return a dummy task ID when threading is not available
+            // TaskId is just u32 when threading is disabled
+            Ok(0)
+        }
     }
 
     /// Poll a Component Model future manually
     pub fn poll_future<T>(
         future: &mut WasmFuture<T>,
         task_manager: &mut TaskManager,
-    ) -> PollResult<T> {
+    ) -> PollResult<T>
+    where
+        T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    {
         match future.state {
             FutureState::Ready => {
                 if let Some(ref value) = future.value {
                     PollResult::Ready(value.clone())
                 } else {
-                    PollResult::Error("Future ready but no value".to_string())
+                    PollResult::Error(error_string("Future ready but no value"))
                 }
             },
             FutureState::Pending => PollResult::Pending,
-            FutureState::Failed => PollResult::Error("Future failed".to_string()),
-            FutureState::Cancelled => PollResult::Error("Future cancelled".to_string()),
+            FutureState::Error | FutureState::Failed => {
+                PollResult::Error(error_string("Future failed"))
+            },
+            FutureState::Cancelled => PollResult::Error(error_string("Future cancelled")),
         }
     }
 
-    /// Poll a Component Model stream manually  
+    /// Poll a Component Model stream manually
     pub fn poll_stream<T>(
         stream: &mut WasmStream<T>,
         task_manager: &mut TaskManager,
-    ) -> StreamPollResult<T> {
+    ) -> StreamPollResult<T>
+    where
+        T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    {
         if !stream.buffer.is_empty() {
             // Return first item from buffer
             #[cfg(feature = "std")]
@@ -183,8 +222,8 @@ pub mod component_async {
             }
             #[cfg(not(any(feature = "std",)))]
             {
-                if let Some(item) = stream.buffer.pop_front() {
-                    StreamPollResult::Item(item)
+                if !stream.buffer.is_empty() {
+                    StreamPollResult::Item(stream.buffer.remove(0))
                 } else {
                     StreamPollResult::Pending
                 }
@@ -235,8 +274,9 @@ mod tests {
     };
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_component_model_async_without_rust_futures() {
-        let mut task_manager = TaskManager::new();
+        let mut task_manager = TaskManager::new().unwrap();
         let component_id = ComponentInstanceId::new(1);
 
         // Create a Component Model future - no Rust Future trait needed!
@@ -256,8 +296,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_component_model_stream_without_rust_futures() {
-        let mut task_manager = TaskManager::new();
+        let mut task_manager = TaskManager::new().unwrap();
 
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1);
@@ -266,8 +307,8 @@ mod tests {
         // Add some values
         #[cfg(feature = "std")]
         {
-            wasm_stream.buffer.push("Hello".to_string());
-            wasm_stream.buffer.push("World".to_string());
+            wasm_stream.buffer.push("Hello".to_owned());
+            wasm_stream.buffer.push("World".to_owned());
         }
 
         // Poll values manually

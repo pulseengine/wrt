@@ -17,7 +17,7 @@ pub fn verify_component_header(_data: &[u8]) -> Result<bool> {
 }
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},
+    bounded::{ MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},
     safe_memory::{NoStdProvider, SafeSlice},
     verification::VerificationLevel,
 };

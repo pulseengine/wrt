@@ -48,7 +48,7 @@ pub struct DefaultLimitProvider;
 
 impl ComprehensiveLimitProvider for DefaultLimitProvider {
     fn discover_limits(&self) -> core::result::Result<ComprehensivePlatformLimits, wrt_error::Error> {
-        Ok(ComprehensivePlatformLimits::default()
+        Ok(ComprehensivePlatformLimits::default())
     }
     
     fn platform_id(&self) -> PlatformId {
@@ -95,12 +95,12 @@ impl PlatformDebugLimits {
 
 impl PartialOrd for DebugLevel {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        Some(self.cmp(other)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for DebugLevel {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        (*self as u8).cmp(&(*other as u8)
+        (*self as u8).cmp(&(*other as u8))
     }
 }

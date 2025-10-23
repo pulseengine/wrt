@@ -2,6 +2,9 @@
 
 // Cross-environment imports
 #[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::{
@@ -20,10 +23,8 @@ use wrt_error::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    collections::StaticVec as BoundedVec,
+    bounded::BoundedString,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
@@ -33,25 +34,28 @@ use crate::prelude::*;
 
 // Type aliases for no_std environment with proper generics
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<65536>>;
+type String = BoundedString<256, NoStdProvider<1024>>;
 #[cfg(not(feature = "std"))]
-type Vec<T> = BoundedVec<T, 256, NoStdProvider<65536>>;
+type Vec<T> = BoundedVec<T, 256>;
 #[cfg(not(feature = "std"))]
-type HashMap<K, V> =
-    wrt_foundation::bounded_collections::BoundedMap<K, V, 64, NoStdProvider<65536>>;
+type HashMap<K, V> = wrt_foundation::collections::StaticMap<K, V, 64>;
 
-use crate::components::component_instantiation::{
-    create_component_export,
-    create_component_import,
-    ComponentExport,
-    ComponentImport,
-    ComponentInstance,
-    ExportType,
-    FunctionSignature,
-    ImportType,
-    InstanceConfig,
-    InstanceId,
-    ResolvedImport,
+use crate::{
+    components::{
+        component::Component,
+        component_instantiation::{
+            create_component_export,
+            create_component_import,
+            ComponentExport,
+            ComponentImport,
+            ExportType,
+            FunctionSignature,
+            ImportType,
+            InstanceConfig,
+            InstanceId,
+        },
+    },
+    types::ComponentInstance,
 };
 
 /// Maximum number of components in linker
@@ -83,11 +87,11 @@ pub struct ComponentDefinition {
     /// Component ID
     pub id:       ComponentId,
     /// Component binary (simplified as bytes)
-    pub binary:   BoundedVec<u8, 1048576, NoStdProvider<65536>>, // 1MB max binary size
+    pub binary:   Vec<u8>, // Use Vec for std, BoundedVec handled in no_std type alias
     /// Parsed exports
-    pub exports:  BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
+    pub exports:  Vec<ComponentExport>,
     /// Parsed imports
-    pub imports:  BoundedVec<ComponentImport, 64, NoStdProvider<65536>>,
+    pub imports:  Vec<ComponentImport>,
     /// Component metadata
     pub metadata: ComponentMetadata,
 }
@@ -199,12 +203,40 @@ impl Default for LinkerConfig {
 
 impl Default for ComponentMetadata {
     fn default() -> Self {
-        Self {
-            name:        String::new(),
-            version:     "1.0.0".to_string(),
-            description: String::new(),
-            author:      String::new(),
-            compiled_at: 0,
+        #[cfg(feature = "std")]
+        {
+            Self {
+                name:        String::new(),
+                version:     "1.0.0".to_owned(),
+                description: String::new(),
+                author:      String::new(),
+                compiled_at: 0,
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+
+            let name_provider = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata name"));
+            let version_provider = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata version"));
+            let description_provider = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata description"));
+            let author_provider = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata author"));
+
+            Self {
+                name:        BoundedString::from_str("", name_provider)
+                    .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata name")),
+                version:     BoundedString::from_str("1.0.0", version_provider)
+                    .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata version")),
+                description: BoundedString::from_str("", description_provider)
+                    .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata description")),
+                author:      BoundedString::from_str("", author_provider)
+                    .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata author")),
+                compiled_at: 0,
+            }
         }
     }
 }
@@ -238,9 +270,28 @@ impl ComponentLinker {
         // Parse component binary (simplified)
         let (exports, imports, metadata) = self.parse_component_binary(binary)?;
 
+        // Convert binary slice to Vec
+        #[cfg(feature = "std")]
+        let binary_vec = binary.to_vec();
+
+        #[cfg(not(feature = "std"))]
+        let binary_vec = {
+            let mut vec = Vec::new();
+            for &byte in binary {
+                vec.push(byte).map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Capacity,
+                        codes::CAPACITY_EXCEEDED,
+                        "Binary too large for component",
+                    )
+                })?;
+            }
+            vec
+        };
+
         let definition = ComponentDefinition {
             id: id.clone(),
-            binary: binary.to_vec(),
+            binary: binary_vec,
             exports,
             imports,
             metadata,
@@ -266,12 +317,25 @@ impl ComponentLinker {
         }
 
         // Check if any instances are using this component
+        #[cfg(feature = "std")]
         let dependent_instances: Vec<_> = self
             .instances
             .values()
-            .filter(|instance| &instance.name == id)
+            .filter(|instance| {
+                instance.component.id.as_ref().map(|s| s.as_str()) == Some(id.as_str())
+            })
             .map(|instance| instance.id)
             .collect();
+
+        #[cfg(not(feature = "std"))]
+        let mut dependent_instances = Vec::new();
+        for instance in self.instances.values() {
+            if let (Some(comp_id), Ok(linker_id)) = (instance.component.id.as_ref(), id.as_str()) {
+                if comp_id.as_str() == linker_id {
+                    let _ = dependent_instances.push(instance.id);
+                }
+            }
+        }
 
         if !dependent_instances.is_empty() {
             return Err(Error::runtime_execution_error(
@@ -292,36 +356,118 @@ impl ComponentLinker {
         component_id: &ComponentId,
         config: Option<InstanceConfig>,
     ) -> Result<InstanceId> {
-        // Find component definition
+        // Find component definition and extract imports
+        let imports = {
+            let component = self
+                .components
+                .get(component_id)
+                .ok_or_else(|| Error::component_not_found("Component not found"))?;
+            component.imports.clone()
+        };
+
+        // Resolve dependencies
+        #[cfg(feature = "std")]
+        let resolved_imports = self.resolve_imports(component_id, &imports)?;
+        #[cfg(not(feature = "std"))]
+        let resolved_imports = {
+            // Convert BoundedVec to slice for resolve_imports
+            self.resolve_imports(component_id, imports.as_slice())?
+        };
+
+        // Get component again for instance creation
         let component = self
             .components
             .get(component_id)
             .ok_or_else(|| Error::component_not_found("Component not found"))?;
 
-        // Resolve dependencies
-        let resolved_imports = self.resolve_imports(component_id, &component.imports)?;
-
         // Create instance
         let instance_id = self.next_instance_id;
         self.next_instance_id += 1;
 
-        let instance_config = config.unwrap_or_else(InstanceConfig::default);
+        // Create Component from definition (using new constructor)
+        let mut comp = Component::new(crate::components::component::WrtComponentType::default());
 
-        let mut instance = ComponentInstance::new(
-            instance_id,
-            component_id.clone(),
-            instance_config,
-            component.exports.clone(),
-            component.imports.clone(),
-        )?;
-
-        // Add resolved imports
-        for resolved in resolved_imports {
-            instance.add_resolved_import(resolved)?;
+        // Set the component ID
+        #[cfg(feature = "std")]
+        {
+            comp.id = Some(component.id.clone());
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // Convert BoundedString to String for Component id
+            if let Ok(id_str) = component.id.as_str() {
+                comp.id = Some(alloc::string::String::from(id_str));
+            }
         }
 
-        // Initialize instance
-        instance.initialize()?;
+        // Create ComponentInstance
+        let mut instance = ComponentInstance {
+            id: instance_id,
+            component: comp,
+            state: crate::types::ComponentInstanceState::Initialized,
+            resource_manager: None,
+            memory: None,
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            functions: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            functions: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            functions: BoundedVec::new(),
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            imports: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            imports: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            imports: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new()
+            },
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            exports: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            exports: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            exports: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new()
+            },
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            resource_tables: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            resource_tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            resource_tables: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new()
+            },
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            module_instances: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            module_instances: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            module_instances: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new()
+            },
+            metadata: crate::types::ComponentMetadata::default(),
+        };
+
+        // Add resolved imports from instantiation module
+        #[cfg(feature = "std")]
+        for resolved in resolved_imports {
+            instance.imports.push(crate::instantiation::ResolvedImport::Value(
+                crate::prelude::WrtComponentValue::Unit,
+            ));
+        }
+        #[cfg(not(feature = "std"))]
+        for resolved in resolved_imports {
+            let _ = instance.imports.push(crate::instantiation::ResolvedImport::Value(
+                crate::prelude::WrtComponentValue::Unit,
+            ));
+        }
+
+        // Transition to running state
+        instance.state = crate::types::ComponentInstanceState::Running;
 
         // Add to instances map
         self.instances.insert(instance_id, instance);
@@ -372,7 +518,7 @@ impl ComponentLinker {
         Vec<ComponentExport>,
         Vec<ComponentImport>,
         ComponentMetadata,
-    )> {
+    ), Error> {
         // Simplified component parsing
         if binary.is_empty() {
             return Err(Error::runtime_execution_error("Empty component binary"));
@@ -381,9 +527,9 @@ impl ComponentLinker {
         // Create some example exports and imports based on binary content
         #[cfg(feature = "std")]
         let exports = vec![create_component_export(
-            "main".to_string(),
+            "main".to_owned(),
             ExportType::Function(crate::component_instantiation::create_function_signature(
-                "main".to_string(),
+                "main".to_owned(),
                 vec![],
                 vec![crate::canonical_abi::ComponentType::S32],
             )),
@@ -391,26 +537,53 @@ impl ComponentLinker {
 
         #[cfg(not(feature = "std"))]
         let exports = {
-            let mut exports = Vec::new();
-            let mut params = Vec::new();
-            let mut results = Vec::new();
+            let mut exports: Vec<ComponentExport> = Vec::new();
+            let mut params: Vec<crate::canonical_abi::ComponentType> = Vec::new();
+            let mut results: Vec<crate::canonical_abi::ComponentType> = Vec::new();
             results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| {
                 Error::platform_memory_allocation_failed("Memory allocation failed")
             })?;
 
+            let name_provider1 = safe_managed_alloc!(1024, CrateId::Component).map_err(|_| {
+                Error::platform_memory_allocation_failed("Memory allocation failed")
+            })?;
+            let name_provider2 = safe_managed_alloc!(1024, CrateId::Component).map_err(|_| {
+                Error::platform_memory_allocation_failed("Memory allocation failed")
+            })?;
+
+            // Convert params and results to Vec for create_function_signature
+            // Convert to std Vec for create_function_signature which expects Vec
+            #[cfg(feature = "std")]
+            let params_vec: Vec<crate::canonical_abi::ComponentType> = params.iter().cloned().collect();
+            #[cfg(not(feature = "std"))]
+            let params_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
+                params.iter().cloned().collect();
+
+            #[cfg(feature = "std")]
+            let results_vec: Vec<crate::canonical_abi::ComponentType> = results.iter().cloned().collect();
+            #[cfg(not(feature = "std"))]
+            let results_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
+                results.iter().cloned().collect();
+
+            #[cfg(feature = "std")]
+            let name_str = "main".to_owned();
+            #[cfg(not(feature = "std"))]
+            let name_str = alloc::string::String::from("main");
+
             let signature = crate::component_instantiation::create_function_signature(
-                String::new_from_str("main").map_err(|_| {
-                    Error::platform_memory_allocation_failed("Memory allocation failed")
-                })?,
-                params,
-                results,
+                name_str,
+                params_vec,
+                results_vec,
             );
+
+            #[cfg(feature = "std")]
+            let export_name = "main".to_owned();
+            #[cfg(not(feature = "std"))]
+            let export_name = alloc::string::String::from("main");
 
             exports
                 .push(create_component_export(
-                    String::new_from_str("main").map_err(|_| {
-                        Error::platform_memory_allocation_failed("Memory allocation failed")
-                    })?,
+                    export_name,
                     ExportType::Function(signature),
                 ))
                 .map_err(|_| {
@@ -421,14 +594,53 @@ impl ComponentLinker {
 
         #[cfg(feature = "std")]
         let imports = vec![create_component_import(
-            "log".to_string(),
-            "env".to_string(),
+            "log".to_owned(),
+            "env".to_owned(),
             ImportType::Function(crate::component_instantiation::create_function_signature(
-                "log".to_string(),
+                "log".to_owned(),
                 vec![crate::canonical_abi::ComponentType::String],
                 vec![],
             )),
         )];
+
+        #[cfg(not(feature = "std"))]
+        let imports = {
+            let mut imp_vec = Vec::new();
+
+            let mut params: Vec<crate::canonical_abi::ComponentType> = Vec::new();
+            let _ = params.push(crate::canonical_abi::ComponentType::String);
+
+            let results: Vec<crate::canonical_abi::ComponentType> = Vec::new();
+
+            // Convert params and results to std Vec for create_function_signature
+            #[cfg(feature = "std")]
+            let params_vec: Vec<crate::canonical_abi::ComponentType> = params.iter().cloned().collect();
+            #[cfg(not(feature = "std"))]
+            let params_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
+                params.iter().cloned().collect();
+
+            #[cfg(feature = "std")]
+            let results_vec: Vec<crate::canonical_abi::ComponentType> = results.iter().cloned().collect();
+            #[cfg(not(feature = "std"))]
+            let results_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
+                results.iter().cloned().collect();
+
+            // Use std String for component instantiation
+            let log_name = alloc::string::String::from("log");
+            let env_name = alloc::string::String::from("env");
+            let log_func_name = alloc::string::String::from("log");
+
+            let _ = imp_vec.push(create_component_import(
+                log_name,
+                env_name,
+                ImportType::Function(crate::component_instantiation::create_function_signature(
+                    log_func_name,
+                    params_vec,
+                    results_vec,
+                )),
+            ));
+            imp_vec
+        };
 
         let metadata = ComponentMetadata::default();
 
@@ -439,7 +651,7 @@ impl ComponentLinker {
         &mut self,
         component_id: &ComponentId,
         imports: &[ComponentImport],
-    ) -> Result<Vec<ResolvedImport>> {
+    ) -> Result<Vec<crate::instantiation::ResolvedImport>> {
         let mut resolved = Vec::new();
 
         for import in imports {
@@ -455,16 +667,15 @@ impl ComponentLinker {
         &self,
         _component_id: &ComponentId,
         import: &ComponentImport,
-    ) -> Result<ResolvedImport> {
+    ) -> Result<crate::instantiation::ResolvedImport> {
         // Find a component that exports what we need
         for (provider_id, component) in &self.components {
             for export in &component.exports {
                 if self.is_compatible_import_export(import, export)? {
-                    return Ok(ResolvedImport {
-                        import:          import.clone(),
-                        provider_id:     1, // Simplified - would map component ID to instance ID
-                        provider_export: export.name.clone(),
-                    });
+                    // Return a placeholder resolved import (actual resolution would be more complex)
+                    return Ok(crate::instantiation::ResolvedImport::Value(
+                        crate::prelude::WrtComponentValue::Unit,
+                    ));
                 }
             }
         }
@@ -559,8 +770,13 @@ impl LinkGraph {
         self.nodes.remove(node_index);
 
         // Update indices in remaining nodes and edges
+        #[cfg(feature = "std")]
         for node in &mut self.nodes[node_index..] {
             node.index -= 1;
+        }
+        #[cfg(not(feature = "std"))]
+        for i in node_index..self.nodes.len() {
+            self.nodes[i].index -= 1;
         }
 
         for edge in &mut self.edges {
@@ -595,14 +811,8 @@ impl LinkGraph {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create bounded vectors
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut visited = BoundedVec::new(provider).map_err(|_| {
-                Error::platform_memory_allocation_failed("Failed to create visited vector")
-            })?;
-            let provider2 = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut temp_visited = BoundedVec::new(provider2).map_err(|_| {
-                Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
-            })?;
+            let mut visited = Vec::new();
+            let mut temp_visited = Vec::new();
             let mut result = Vec::new();
 
             // Initialize with false values
@@ -638,7 +848,7 @@ impl LinkGraph {
         }
 
         if visited[node_index] {
-            return Ok();
+            return Ok(());
         }
 
         temp_visited[node_index] = true;
@@ -686,7 +896,7 @@ mod tests {
         let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
-        let result = linker.add_component("test_component".to_string(), &binary);
+        let result = linker.add_component("test_component".to_owned(), &binary);
         assert!(result.is_ok());
         assert_eq!(linker.components.len(), 1);
         assert_eq!(linker.stats.components_registered, 1);
@@ -697,10 +907,10 @@ mod tests {
         let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test_component".to_string(), &binary).unwrap();
+        linker.add_component("test_component".to_owned(), &binary).unwrap();
         assert_eq!(linker.components.len(), 1);
 
-        let result = linker.remove_component(&"test_component".to_string());
+        let result = linker.remove_component(&"test_component".to_owned());
         assert!(result.is_ok());
         assert_eq!(linker.components.len(), 0);
     }
@@ -710,12 +920,12 @@ mod tests {
         let mut graph = LinkGraph::new();
 
         // Add components
-        graph.add_component("comp1".to_string()).unwrap();
-        graph.add_component("comp2".to_string()).unwrap();
+        graph.add_component("comp1".to_owned()).unwrap();
+        graph.add_component("comp2".to_owned()).unwrap();
         assert_eq!(graph.nodes.len(), 2);
 
         // Remove component
-        graph.remove_component(&"comp1".to_string()).unwrap();
+        graph.remove_component(&"comp1".to_owned()).unwrap();
         assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].component_id, "comp2");
     }
@@ -730,10 +940,10 @@ mod tests {
     #[test]
     fn test_topological_sort_single() {
         let mut graph = LinkGraph::new();
-        graph.add_component("comp1".to_string()).unwrap();
+        graph.add_component("comp1".to_owned()).unwrap();
 
         let result = graph.topological_sort().unwrap();
-        assert_eq!(result, vec!["comp1".to_string()]);
+        assert_eq!(result, vec!["comp1".to_owned()]);
     }
 
     #[test]
@@ -754,7 +964,7 @@ mod tests {
         let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test".to_string(), &binary).unwrap();
+        linker.add_component("test".to_owned(), &binary).unwrap();
 
         let stats = linker.get_stats();
         assert_eq!(stats.components_registered, 1);
@@ -775,7 +985,7 @@ use wrt_foundation::traits::{
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 0u32.update_checksum(checksum);
             }
         }
@@ -804,38 +1014,89 @@ macro_rules! impl_basic_traits {
 // Default implementations for complex types
 impl Default for GraphEdge {
     fn default() -> Self {
-        Self {
-            from:   0,
-            to:     0,
-            import: ComponentImport {
-                name:        String::new(),
-                module:      String::new(),
-                import_type: ImportType::Function(FunctionSignature {
-                    name:    String::new(),
-                    params:  Vec::new(),
-                    returns: Vec::new(),
-                }),
-            },
-            export: ComponentExport {
-                name:        String::new(),
-                export_type: ExportType::Function(FunctionSignature {
-                    name:    String::new(),
-                    params:  Vec::new(),
-                    returns: Vec::new(),
-                }),
-            },
-            weight: 0,
+        #[cfg(feature = "std")]
+        {
+            Self {
+                from:   0,
+                to:     0,
+                import: ComponentImport {
+                    name:        String::new(),
+                    module:      String::new(),
+                    import_type: ImportType::Function(FunctionSignature {
+                        name:    String::new(),
+                        params:  Vec::new(),
+                        returns: Vec::new(),
+                    }),
+                },
+                export: ComponentExport {
+                    name:        String::new(),
+                    export_type: ExportType::Function(FunctionSignature {
+                        name:    String::new(),
+                        params:  Vec::new(),
+                        returns: Vec::new(),
+                    }),
+                },
+                weight: 0,
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+
+            let provider1 = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphEdge::default"));
+            let provider2 = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphEdge::default"));
+            let provider3 = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphEdge::default"));
+
+            Self {
+                from:   0,
+                to:     0,
+                import: ComponentImport {
+                    name:        alloc::string::String::new(),
+                    module:      alloc::string::String::new(),
+                    import_type: ImportType::Function(FunctionSignature {
+                        name:    alloc::string::String::new(),
+                        params:  BoundedVec::new(),
+                        returns: BoundedVec::new(),
+                    }),
+                },
+                export: ComponentExport {
+                    name:        alloc::string::String::new(),
+                    export_type: ExportType::Function(FunctionSignature::default()),
+                },
+                weight: 0,
+            }
         }
     }
 }
 
 impl Default for GraphNode {
     fn default() -> Self {
-        Self {
-            component_id: String::new(),
-            index:        0,
-            dependencies: Vec::new(),
-            dependents:   Vec::new(),
+        #[cfg(feature = "std")]
+        {
+            Self {
+                component_id: String::new(),
+                index:        0,
+                dependencies: Vec::new(),
+                dependents:   Vec::new(),
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+
+            let id_provider = safe_managed_alloc!(1024, CrateId::Component)
+                .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphNode::default"));
+
+            Self {
+                component_id: BoundedString::from_str("", id_provider)
+                    .unwrap_or_else(|_| panic!("Failed to create GraphNode component_id")),
+                index:        0,
+                dependencies: Vec::new(),
+                dependents:   Vec::new(),
+            }
         }
     }
 }

@@ -22,10 +22,9 @@ use std::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
-    resource::ResourceHandle,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
@@ -43,7 +42,7 @@ use crate::{
         WaitableSet,
     },
     prelude::*,
-    resource_lifecycle::ResourceLifecycleManager,
+    resources::resource_lifecycle::ResourceLifecycleManager,
     types::{
         ValType,
         Value,
@@ -64,19 +63,37 @@ const MAX_TASK_CALL_DEPTH: usize = 64;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TaskId(pub u32);
 
+impl TaskId {
+    /// Create a new task identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+impl fmt::Display for TaskId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Task({})", self.0)
+    }
+}
+
 /// Task management system
 pub struct TaskManager {
     /// All tasks in the system
     #[cfg(feature = "std")]
     tasks: BTreeMap<TaskId, Task>,
     #[cfg(not(feature = "std"))]
-    tasks: BoundedVec<(TaskId, Task), MAX_TASKS, NoStdProvider<65536>>,
+    tasks: BoundedVec<(TaskId, Task), MAX_TASKS>,
 
     /// Ready queue for runnable tasks
     #[cfg(feature = "std")]
     ready_queue: Vec<TaskId>,
     #[cfg(not(feature = "std"))]
-    ready_queue: BoundedVec<TaskId, MAX_TASKS, NoStdProvider<65536>>,
+    ready_queue: BoundedVec<TaskId, MAX_TASKS>,
 
     /// Currently executing task
     current_task: Option<TaskId>,
@@ -106,12 +123,12 @@ pub struct Task {
     #[cfg(feature = "std")]
     pub subtasks:         Vec<TaskId>,
     #[cfg(not(feature = "std"))]
-    pub subtasks:         BoundedVec<TaskId, MAX_SUBTASKS, NoStdProvider<65536>>,
+    pub subtasks:         BoundedVec<TaskId, MAX_SUBTASKS>,
     /// Borrowed resource handles
     #[cfg(feature = "std")]
     pub borrowed_handles: Vec<ResourceHandle>,
     #[cfg(not(feature = "std"))]
-    pub borrowed_handles: BoundedVec<ResourceHandle, 64, NoStdProvider<65536>>,
+    pub borrowed_handles: BoundedVec<ResourceHandle, 64>,
     /// Task-local storage
     pub context:          TaskContext,
     /// Waiting on waitables
@@ -120,7 +137,7 @@ pub struct Task {
     #[cfg(feature = "std")]
     pub return_values:    Option<Vec<Value>>,
     #[cfg(not(feature = "std"))]
-    pub return_values:    Option<BoundedVec<Value, 16, NoStdProvider<65536>>>,
+    pub return_values:    Option<BoundedVec<Value, 16>>,
     /// Error context (if failed)
     pub error_context:    Option<ErrorContextHandle>,
 }
@@ -168,15 +185,14 @@ pub struct TaskContext {
     #[cfg(feature = "std")]
     pub call_stack:         Vec<CallFrame>,
     #[cfg(not(feature = "std"))]
-    pub call_stack:         BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH, NoStdProvider<65536>>,
+    pub call_stack:         BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH>,
     /// Task-local storage
     #[cfg(feature = "std")]
     pub storage:            BTreeMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
     pub storage: BoundedVec<
-        (BoundedString<64, NoStdProvider<65536>>, ComponentValue),
+        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
         32,
-        NoStdProvider<65536>,
     >,
     /// Task creation time (simplified)
     pub created_at:         u64,
@@ -195,7 +211,7 @@ pub struct CallFrame {
     #[cfg(feature = "std")]
     pub locals:             Vec<Value>,
     #[cfg(not(feature = "std"))]
-    pub locals:             BoundedVec<Value, 32, NoStdProvider<65536>>,
+    pub locals:             BoundedVec<Value, 32>,
     /// Return address
     pub return_address:     Option<u32>,
 }
@@ -224,7 +240,7 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             tasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
+                BoundedVec::new()
                     .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             #[cfg(feature = "std")]
@@ -232,7 +248,7 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             ready_queue: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
+                BoundedVec::new()
                     .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             current_task: None,
@@ -272,7 +288,7 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
+                BoundedVec::new()
                     .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             #[cfg(feature = "std")]
@@ -280,7 +296,7 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             borrowed_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
+                BoundedVec::new()
                     .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             context: TaskContext {
@@ -291,7 +307,7 @@ impl TaskManager {
                 #[cfg(not(feature = "std"))]
                 call_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)
+                    BoundedVec::new()
                         .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
                 },
                 #[cfg(feature = "std")]
@@ -299,7 +315,7 @@ impl TaskManager {
                 #[cfg(not(feature = "std"))]
                 storage: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)
+                    BoundedVec::new()
                         .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
                 },
                 created_at: self.get_current_time(),
@@ -444,7 +460,7 @@ impl TaskManager {
                 #[cfg(not(feature = "std"))]
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    let mut bounded_values = BoundedVec::new(provider)
+                    let mut bounded_values = BoundedVec::new()
                         .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?;
                     for value in values {
                         bounded_values.push(value).map_err(|_| {

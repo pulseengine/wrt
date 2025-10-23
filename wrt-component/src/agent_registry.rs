@@ -14,15 +14,10 @@ use std::{
 };
 
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
     budget_aware_provider::CrateId,
+    collections::StaticVec,
     prelude::*,
     safe_managed_alloc,
-    safe_memory::NoStdProvider,
-    WrtResult,
 };
 
 // Re-export async types when available
@@ -48,21 +43,13 @@ pub struct AgentRegistry {
     #[cfg(feature = "std")]
     unified_agents: HashMap<AgentId, Box<UnifiedExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    unified_agents: BoundedVec<
-        (AgentId, UnifiedExecutionAgent),
-        MAX_AGENTS,
-        crate::bounded_component_infra::ComponentProvider,
-    >,
+    unified_agents: StaticVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS>,
 
     /// Legacy agents (deprecated)
     #[cfg(feature = "std")]
     legacy_agents: HashMap<AgentId, Box<dyn LegacyExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    legacy_agents: BoundedVec<
-        (AgentId, LegacyAgentType),
-        16,
-        crate::bounded_component_infra::ComponentProvider,
-    >,
+    legacy_agents: StaticVec<(AgentId, LegacyAgentType), 16>,
 
     /// Next agent ID
     next_agent_id: u32,
@@ -98,8 +85,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub pending_migrations: Vec<AgentId>,
     #[cfg(not(feature = "std"))]
-    pub pending_migrations:
-        BoundedVec<AgentId, MAX_AGENTS, crate::bounded_component_infra::ComponentProvider>,
+    pub pending_migrations: StaticVec<AgentId, MAX_AGENTS>,
 
     /// Completed migrations
     pub completed_migrations: u32,
@@ -108,8 +94,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub warnings: Vec<MigrationWarning>,
     #[cfg(not(feature = "std"))]
-    pub warnings:
-        BoundedVec<MigrationWarning, 16, crate::bounded_component_infra::ComponentProvider>,
+    pub warnings: StaticVec<MigrationWarning, 16>,
 }
 
 /// Migration warning information
@@ -117,7 +102,7 @@ pub struct MigrationStatus {
 pub struct MigrationWarning {
     pub agent_id:     AgentId,
     pub warning_type: WarningType,
-    pub message:      BoundedString<256, NoStdProvider<65536>>,
+    pub message:      StaticVec<u8, 256>,
 }
 
 /// Types of migration warnings
@@ -152,7 +137,7 @@ pub trait LegacyExecutionAgent: Send + Sync {
         instance_id: u32,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value>;
+    ) -> Result<Value>;
 
     /// Get agent type name
     fn agent_type(&self) -> &'static str;
@@ -191,19 +176,17 @@ pub enum PreferredAgentType {
 
 impl AgentRegistry {
     /// Create a new agent registry
-    pub fn new() -> WrtResult<Self> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-
+    pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            unified_agents:                              HashMap::new(),
+            unified_agents: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            unified_agents:                              BoundedVec::new(provider.clone())?,
+            unified_agents: StaticVec::new(),
 
             #[cfg(feature = "std")]
-            legacy_agents:                              HashMap::new(),
+            legacy_agents: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            legacy_agents:                              BoundedVec::new(provider.clone())?,
+            legacy_agents: StaticVec::new(),
 
             next_agent_id:    1,
             stats:            RegistryStatistics::default(),
@@ -211,22 +194,22 @@ impl AgentRegistry {
                 #[cfg(feature = "std")]
                 pending_migrations: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                pending_migrations: BoundedVec::new(provider.clone())?,
+                pending_migrations: StaticVec::new(),
                 completed_migrations: 0,
                 #[cfg(feature = "std")]
                 warnings: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                warnings: BoundedVec::new(provider)?,
+                warnings: StaticVec::new(),
             },
         })
     }
 
     /// Create a new unified execution agent (recommended)
-    pub fn create_unified_agent(&mut self, config: AgentConfiguration) -> WrtResult<AgentId> {
+    pub fn create_unified_agent(&mut self, config: AgentConfiguration) -> Result<AgentId> {
         let agent_id = AgentId(self.next_agent_id);
         self.next_agent_id += 1;
 
-        let agent = UnifiedExecutionAgent::new(config);
+        let agent = UnifiedExecutionAgent::new(config)?;
 
         #[cfg(feature = "std")]
         {
@@ -246,7 +229,7 @@ impl AgentRegistry {
     }
 
     /// Create an agent with options
-    pub fn create_agent(&mut self, options: AgentCreationOptions) -> WrtResult<AgentId> {
+    pub fn create_agent(&mut self, options: AgentCreationOptions) -> Result<AgentId> {
         match options.agent_type {
             PreferredAgentType::Unified => self.create_unified_agent(options.config),
             PreferredAgentType::LegacyComponent => {
@@ -276,11 +259,11 @@ impl AgentRegistry {
     }
 
     /// Create a legacy component agent (deprecated)
-    pub fn create_legacy_component_agent(&mut self) -> WrtResult<AgentId> {
+    pub fn create_legacy_component_agent(&mut self) -> Result<AgentId> {
         let agent_id = AgentId(self.next_agent_id);
         self.next_agent_id += 1;
 
-        let agent = ComponentExecutionEngine::new();
+        let agent = ComponentExecutionEngine::new()?;
 
         #[cfg(feature = "std")]
         {
@@ -304,7 +287,7 @@ impl AgentRegistry {
 
     /// Create a legacy async agent (deprecated)
     #[cfg(feature = "async")]
-    pub fn create_legacy_async_agent(&mut self) -> WrtResult<AgentId> {
+    pub fn create_legacy_async_agent(&mut self) -> Result<AgentId> {
         let agent_id = AgentId(self.next_agent_id);
         self.next_agent_id += 1;
 
@@ -337,7 +320,7 @@ impl AgentRegistry {
         instance_id: u32,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         // Try unified agents first
         #[cfg(feature = "std")]
         {
@@ -387,7 +370,7 @@ impl AgentRegistry {
     }
 
     /// Migrate a legacy agent to unified agent
-    pub fn migrate_agent(&mut self, agent_id: AgentId) -> WrtResult<()> {
+    pub fn migrate_agent(&mut self, agent_id: AgentId) -> Result<()> {
         // Check if agent exists and is legacy
         #[cfg(feature = "std")]
         let migration_config = {
@@ -435,7 +418,7 @@ impl AgentRegistry {
         };
 
         // Create new unified agent
-        let unified_agent = UnifiedExecutionAgent::new(migration_config);
+        let unified_agent = UnifiedExecutionAgent::new(migration_config)?;
 
         // Replace legacy agent with unified agent
         #[cfg(feature = "std")]
@@ -522,7 +505,7 @@ impl AgentRegistry {
     }
 
     /// Remove an agent from the registry
-    pub fn remove_agent(&mut self, agent_id: AgentId) -> WrtResult<()> {
+    pub fn remove_agent(&mut self, agent_id: AgentId) -> Result<()> {
         let mut removed = false;
 
         // Try unified agents
@@ -580,20 +563,15 @@ impl AgentRegistry {
     }
 
     /// Migrate all eligible legacy agents
-    pub fn migrate_all_agents(&mut self) -> WrtResult<u32> {
+    pub fn migrate_all_agents(&mut self) -> Result<u32> {
         let mut migrated_count = 0;
 
         // Get list of legacy agent IDs to avoid borrow conflicts
         #[cfg(feature = "std")]
         let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
         #[cfg(not(feature = "std"))]
-        let legacy_ids: BoundedVec<
-            AgentId,
-            MAX_AGENTS,
-            crate::bounded_component_infra::ComponentProvider,
-        > = {
-            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut ids = BoundedVec::new(provider)?;
+        let legacy_ids: StaticVec<AgentId, MAX_AGENTS> = {
+            let mut ids = StaticVec::new();
             for (id, _) in &self.legacy_agents {
                 let _ = ids.push(*id);
             }
@@ -678,7 +656,7 @@ impl LegacyExecutionAgent for ComponentExecutionEngine {
         instance_id: u32,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         ComponentExecutionEngine::call_function(self, instance_id, function_index, args)
     }
 
@@ -706,7 +684,7 @@ impl LegacyExecutionAgent for AsyncExecutionEngine {
         _instance_id: u32,
         _function_index: u32,
         _args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         // Async engines need different API - this is just a placeholder
         Err(wrt_error::Error::runtime_error(
             "Async agent requires different API",
@@ -840,7 +818,7 @@ use wrt_foundation::traits::{
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 0u32.update_checksum(checksum);
             }
         }
@@ -850,7 +828,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -859,7 +837,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -876,7 +854,11 @@ impl Default for AgentId {
 #[cfg(not(feature = "std"))]
 impl Default for LegacyAgentType {
     fn default() -> Self {
-        Self::Component(ComponentExecutionEngine::new())
+        Self::Component(ComponentExecutionEngine::new().unwrap_or_else(|_| {
+            // Fallback implementation for default - this should rarely fail
+            // as it's only during initialization
+            panic!("Failed to create default ComponentExecutionEngine")
+        }))
     }
 }
 
@@ -884,9 +866,13 @@ impl Default for LegacyAgentType {
 impl Clone for LegacyAgentType {
     fn clone(&self) -> Self {
         match self {
-            Self::Component(_) => Self::Component(ComponentExecutionEngine::new()),
+            Self::Component(_) => Self::Component(ComponentExecutionEngine::new().unwrap_or_else(|_| {
+                panic!("Failed to clone ComponentExecutionEngine")
+            })),
             #[cfg(feature = "async")]
-            Self::Async(_) => Self::Async(AsyncExecutionEngine::new()),
+            Self::Async(_) => Self::Async(AsyncExecutionEngine::new().unwrap_or_else(|_| {
+                panic!("Failed to clone AsyncExecutionEngine")
+            })),
         }
     }
 }
@@ -903,12 +889,11 @@ impl PartialEq for LegacyAgentType {
 impl Eq for LegacyAgentType {}
 
 impl MigrationWarning {
-    fn new() -> WrtResult<Self> {
-        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+    fn new() -> Result<Self> {
         Ok(Self {
             agent_id:     AgentId::default(),
             warning_type: WarningType::FeatureNotSupported,
-            message:      BoundedString::new(provider)?,
+            message:      StaticVec::new(),
         })
     }
 }

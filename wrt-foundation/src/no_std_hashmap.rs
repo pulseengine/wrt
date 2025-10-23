@@ -335,6 +335,201 @@ where
         self.len = 0;
         Ok(())
     }
+
+    /// Returns an iterator over the map entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use wrt_foundation::no_std_hashmap::SimpleHashMap;
+    /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId, safe_memory::NoStdProvider};
+    /// #
+    /// # let provider = safe_managed_alloc!(512, CrateId::Foundation).unwrap();
+    /// # let mut map = SimpleHashMap::<u32, i32, 8, NoStdProvider<512>>::new(provider).unwrap();
+    /// # map.insert(1, 100).unwrap();
+    /// # map.insert(2, 200).unwrap();
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// ```
+    pub fn iter(&self) -> SimpleHashMapIter<'_, K, V, N, P> {
+        SimpleHashMapIter {
+            map: self,
+            index: 0,
+        }
+    }
+
+    /// Returns a mutable iterator over the map entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use wrt_foundation::no_std_hashmap::SimpleHashMap;
+    /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId, safe_memory::NoStdProvider};
+    /// #
+    /// # let provider = safe_managed_alloc!(512, CrateId::Foundation).unwrap();
+    /// # let mut map = SimpleHashMap::<u32, i32, 8, NoStdProvider<512>>::new(provider).unwrap();
+    /// # map.insert(1, 100).unwrap();
+    /// # map.insert(2, 200).unwrap();
+    /// for (key, value) in map.iter_mut() {
+    ///     *value *= 2;
+    /// }
+    /// ```
+    pub fn iter_mut(&mut self) -> SimpleHashMapIterMut<'_, K, V, N, P> {
+        SimpleHashMapIterMut {
+            map: self,
+            index: 0,
+        }
+    }
+}
+
+/// Iterator over SimpleHashMap entries
+pub struct SimpleHashMapIter<
+    'a,
+    K,
+    V,
+    const N: usize,
+    P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+> where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+{
+    map: &'a SimpleHashMap<K, V, N, P>,
+    index: usize,
+}
+
+impl<
+        'a,
+        K,
+        V,
+        const N: usize,
+        P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+    > Iterator for SimpleHashMapIter<'a, K, V, N, P>
+where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+{
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.index < N {
+            let current_index = self.index;
+            self.index += 1;
+
+            // Try to get the entry at current_index
+            // Note: BoundedVec::get() returns owned values, not references
+            if let Ok(Some(entry)) = self.map.entries.get(current_index) {
+                return Some((entry.key, entry.value));
+            }
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.map.len))
+    }
+}
+
+/// Mutable iterator over SimpleHashMap entries
+pub struct SimpleHashMapIterMut<
+    'a,
+    K,
+    V,
+    const N: usize,
+    P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+> where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+{
+    map: &'a mut SimpleHashMap<K, V, N, P>,
+    index: usize,
+}
+
+impl<
+        'a,
+        K,
+        V,
+        const N: usize,
+        P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+    > SimpleHashMapIterMut<'a, K, V, N, P>
+where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+{
+    /// Get the next mutable entry accessor
+    ///
+    /// This returns an accessor that allows reading and writing values.
+    /// Since the underlying storage is serialized, we can't return direct mutable references.
+    pub fn next_mut(&mut self) -> wrt_error::Result<Option<SimpleHashMapMutEntry<'_, K, V, N, P>>> {
+        while self.index < N {
+            let current_index = self.index;
+            self.index += 1;
+
+            // Check if this slot has an entry
+            if let Ok(Some(entry)) = self.map.entries.get(current_index) {
+                return Ok(Some(SimpleHashMapMutEntry {
+                    map: self.map,
+                    index: current_index,
+                    key: entry.key,
+                }));
+            }
+        }
+        Ok(None)
+    }
+}
+
+/// Mutable entry accessor for SimpleHashMap
+pub struct SimpleHashMapMutEntry<'a, K, V, const N: usize, P>
+where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+    P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+{
+    map: &'a mut SimpleHashMap<K, V, N, P>,
+    index: usize,
+    key: K,
+}
+
+impl<'a, K, V, const N: usize, P> SimpleHashMapMutEntry<'a, K, V, N, P>
+where
+    K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
+    V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
+    P: MemoryProvider + Default + Clone + fmt::Debug + PartialEq + Eq,
+{
+    /// Get the key
+    pub fn key(&self) -> &K {
+        &self.key
+    }
+
+    /// Get the current value
+    pub fn get(&self) -> wrt_error::Result<V> {
+        if let Some(entry) = self.map.entries.get(self.index)? {
+            Ok(entry.value)
+        } else {
+            Err(crate::Error::internal_error("Entry disappeared during iteration"))
+        }
+    }
+
+    /// Set a new value
+    pub fn set(&mut self, value: V) -> wrt_error::Result<()> {
+        if let Some(mut entry) = self.map.entries.get(self.index)? {
+            entry.value = value;
+            self.map.entries.set(self.index, Some(entry))?;
+            Ok(())
+        } else {
+            Err(crate::Error::internal_error("Entry disappeared during iteration"))
+        }
+    }
+
+    /// Modify the value using a function
+    pub fn modify<F>(&mut self, f: F) -> wrt_error::Result<()>
+    where
+        F: FnOnce(V) -> V,
+    {
+        let value = self.get()?;
+        let new_value = f(value);
+        self.set(new_value)
+    }
 }
 
 #[cfg(test)]

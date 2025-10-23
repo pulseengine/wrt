@@ -39,7 +39,7 @@ use wrt_component::{
     },
 };
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     managed_alloc,
     WrtError,

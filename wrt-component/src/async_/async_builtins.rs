@@ -16,7 +16,7 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
+type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 use wrt_error::{
     Error,
@@ -28,12 +28,15 @@ use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
     bounded::{
         BoundedString,
-        BoundedVec,
     },
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     safe_managed_alloc,
-    safe_memory::NoStdProvider,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
     values::Value,
+    MemoryProvider,
+    WrtResult,
 };
 
 #[cfg(not(feature = "std"))]
@@ -56,9 +59,71 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TaskHandle(pub u32);
 
+impl Default for TaskHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for TaskHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for TaskHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for TaskHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
 /// Subtask handle for subtask cancellation operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SubtaskHandle(pub u32);
+
+impl Default for SubtaskHandle {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for SubtaskHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for SubtaskHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for SubtaskHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Task cancellation result
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,7 +147,20 @@ impl fmt::Display for CancelResult {
             CancelResult::AlreadyCompleted => write!(f, "already-completed"),
             CancelResult::AlreadyCancelled => write!(f, "already-cancelled"),
             CancelResult::NotFound => write!(f, "not-found"),
-            CancelResult::Failed(msg) => write!(f, "failed: {}", msg),
+            CancelResult::Failed(msg) => {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                {
+                    write!(f, "failed: {}", msg)
+                }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                {
+                    // BoundedString::as_str() returns Result<&str> in no_std
+                    match msg.as_str() {
+                        Ok(s) => write!(f, "failed: {}", s),
+                        Err(_) => write!(f, "failed: <invalid string>"),
+                    }
+                }
+            },
         }
     }
 }
@@ -92,19 +170,19 @@ pub struct TaskRegistry {
     #[cfg(feature = "std")]
     tasks: std::collections::HashMap<TaskHandle, TaskInfo>,
     #[cfg(not(feature = "std"))]
-    tasks: BoundedVec<(TaskHandle, TaskInfo), 1024, NoStdProvider<65536>>,
+    tasks: BoundedVec<(TaskHandle, TaskInfo), 1024>,
 
     #[cfg(feature = "std")]
     subtasks: std::collections::HashMap<SubtaskHandle, SubtaskInfo>,
     #[cfg(not(feature = "std"))]
-    subtasks: BoundedVec<(SubtaskHandle, SubtaskInfo), 1024, NoStdProvider<65536>>,
+    subtasks: BoundedVec<(SubtaskHandle, SubtaskInfo), 1024>,
 
     next_task_id:    u32,
     next_subtask_id: u32,
 }
 
 /// Information about a tracked task
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TaskInfo {
     pub handle:        TaskHandle,
     pub state:         TaskState,
@@ -114,26 +192,127 @@ pub struct TaskInfo {
     #[cfg(feature = "std")]
     pub subtasks:      std::vec::Vec<SubtaskHandle>,
     #[cfg(not(feature = "std"))]
-    pub subtasks:      BoundedVec<SubtaskHandle, 64, NoStdProvider<65536>>,
+    pub subtasks:      BoundedVec<SubtaskHandle, 64>,
     /// Task-local context storage
     #[cfg(feature = "std")]
     pub context:       std::collections::HashMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
     pub context: BoundedVec<
-        (BoundedString<64, NoStdProvider<65536>>, ComponentValue),
+        (BoundedString<64, NoStdProvider<512>>, ComponentValue),
         64,
-        NoStdProvider<65536>,
     >,
 }
 
+impl Eq for TaskInfo {}
+
+impl Default for TaskInfo {
+    fn default() -> Self {
+        Self {
+            handle: TaskHandle::default(),
+            state: TaskState::Running,
+            future_handle: None,
+            stream_handle: None,
+            parent_task: None,
+            #[cfg(feature = "std")]
+            subtasks: std::vec::Vec::new(),
+            #[cfg(not(feature = "std"))]
+            subtasks: BoundedVec::new(),
+            #[cfg(feature = "std")]
+            context: std::collections::HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            context: BoundedVec::new(),
+        }
+    }
+}
+
+impl Checksummable for TaskInfo {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.handle.update_checksum(checksum);
+        // Add other fields as needed
+    }
+}
+
+impl ToBytes for TaskInfo {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        // Add other fields as needed
+        Ok(())
+    }
+}
+
+impl FromBytes for TaskInfo {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        let handle = TaskHandle::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            handle,
+            ..Default::default()
+        })
+    }
+}
+
 /// Information about a tracked subtask
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SubtaskInfo {
     pub handle:        SubtaskHandle,
     pub state:         TaskState,
     pub parent_task:   TaskHandle,
     pub future_handle: Option<FutureHandle>,
     pub stream_handle: Option<StreamHandle>,
+}
+
+impl Eq for SubtaskInfo {}
+
+impl Default for SubtaskInfo {
+    fn default() -> Self {
+        Self {
+            handle: SubtaskHandle::default(),
+            state: TaskState::Running,
+            parent_task: TaskHandle::default(),
+            future_handle: None,
+            stream_handle: None,
+        }
+    }
+}
+
+impl Checksummable for SubtaskInfo {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.handle.update_checksum(checksum);
+        self.parent_task.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for SubtaskInfo {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        self.parent_task.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for SubtaskInfo {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        let handle = SubtaskHandle::from_bytes_with_provider(reader, provider)?;
+        let parent_task = TaskHandle::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            handle,
+            parent_task,
+            ..Default::default()
+        })
+    }
 }
 
 /// Task state for cancellation tracking
@@ -158,20 +337,15 @@ impl TaskRegistry {
             #[cfg(feature = "std")]
             tasks:                              std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            tasks:                              {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
-                    .map_err(|_| Error::runtime_execution_error("Failed to create tasks vector"))?
+            tasks: {
+                BoundedVec::new()
             },
 
             #[cfg(feature = "std")]
             subtasks:                              std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            subtasks:                              {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::runtime_execution_error("Failed to create subtasks vector")
-                })?
+            subtasks: {
+                BoundedVec::new()
             },
 
             next_task_id:    1,
@@ -198,18 +372,13 @@ impl TaskRegistry {
             subtasks: std::vec::Vec::new(),
             #[cfg(not(feature = "std"))]
             subtasks: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    Error::runtime_execution_error("Failed to create subtasks vector")
-                })?
+                BoundedVec::new()
             },
             #[cfg(feature = "std")]
             context: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
             context: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)
-                    .map_err(|_| Error::runtime_execution_error("Failed to create task context"))?
+                BoundedVec::new()
             },
         };
 
@@ -419,7 +588,7 @@ impl TaskRegistry {
         {
             for (task_handle, task_info) in &mut self.tasks {
                 if *task_handle == handle {
-                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    let provider = safe_managed_alloc!(512, CrateId::Component)?;
                     let key_bounded = BoundedString::from_str(key, provider).map_err(|_| {
                         Error::runtime_execution_error(
                             "Failed to create bounded string for task context key",
@@ -429,7 +598,7 @@ impl TaskRegistry {
                     // Remove existing entry if present
                     let mut index_to_remove = None;
                     for (i, (existing_key, _)) in task_info.context.iter().enumerate() {
-                        if existing_key.as_str() == key {
+                        if existing_key.as_str()? == key {
                             index_to_remove = Some(i);
                             break;
                         }
@@ -468,7 +637,7 @@ impl TaskRegistry {
             for (task_handle, task_info) in &self.tasks {
                 if *task_handle == handle {
                     for (existing_key, value) in &task_info.context {
-                        if existing_key.as_str() == key {
+                        if existing_key.as_str().ok() == Some(key) {
                             return Some(value.clone());
                         }
                     }
@@ -522,7 +691,7 @@ fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
 
 /// Get the global task registry (no_std fallback)
 #[cfg(not(feature = "std"))]
-fn get_task_registry() -> Result<TaskRegistry, Error> {
+fn get_task_registry() -> Result<TaskRegistry> {
     TaskRegistry::new()
 }
 

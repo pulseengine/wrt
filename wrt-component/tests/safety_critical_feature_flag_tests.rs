@@ -15,7 +15,7 @@ extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     managed_alloc,
     safe_managed_alloc,
@@ -204,7 +204,7 @@ mod feature_flag_tests {
     #[test]
     fn test_memory_provider_abstraction() {
         // ComponentProvider should work consistently
-        type TestVec = BoundedVec<u32, 100, ComponentProvider>;
+        type TestVec = BoundedVec<u32, 100>;
 
         // Direct provider usage with modern safe pattern
         let provider = ComponentProvider::default();

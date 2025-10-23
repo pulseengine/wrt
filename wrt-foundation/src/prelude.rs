@@ -103,13 +103,16 @@ pub use std::{
         String,
         ToString,
     },
-    sync::{
-        Arc,
-        Mutex,
-        RwLock,
-    },
+    sync::Arc,
     vec,
     vec::Vec,
+};
+
+// Always use wrt_sync for consistent Mutex/RwLock behavior
+#[cfg(feature = "std-allocation")]
+pub use wrt_sync::{
+    Mutex,
+    RwLock,
 };
 
 // bounded-allocation and static-allocation alternatives
@@ -205,7 +208,10 @@ pub use crate::{
     // Component model types
     component::{
         ComponentType,
+        Export,
         ExternType,
+        Import,
+        ImportKey,
         InstanceType, // Limits,
         Namespace,
         ResourceType,
@@ -400,6 +406,15 @@ pub use crate::capabilities::{
 };
 // Re-export NoStdProvider only once
 pub use crate::safe_memory::NoStdProvider;
+// Verified allocator with GlobalAlloc and scope support
+pub use crate::verified_allocator::{
+    ScopeGuard,
+    ScopeInfo,
+    VerifiedAllocator,
+    TOTAL_HEAP_SIZE,
+    MAX_MODULE_SIZE,
+    MAX_SCOPES,
+};
 pub use crate::{
     // Budget management
     budget_aware_provider::CrateId,

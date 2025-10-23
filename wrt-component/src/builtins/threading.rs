@@ -35,7 +35,7 @@ use wrt_error::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     safe_memory::NoStdProvider,
 };
 #[cfg(feature = "std")]
@@ -279,7 +279,7 @@ impl ThreadManager {
                         .read()
                         .unwrap()
                         .clone()
-                        .unwrap_or_else(|| "Unknown thread error".to_string());
+                        .unwrap_or_else(|| "Unknown thread error".to_owned());
                     Err(Error::threading_error(&err_msg))
                 },
                 ThreadState::Running => {
@@ -302,7 +302,7 @@ impl ThreadManager {
                 Err(_) => {
                     // Thread panicked
                     *thread.state.write().unwrap() = ThreadState::Error;
-                    *thread.error.write().unwrap() = Some("Thread panicked".to_string());
+                    *thread.error.write().unwrap() = Some("Thread panicked".to_owned());
                     Err(Error::threading_error("Thread panicked during execution"))
                 },
             }
@@ -935,7 +935,7 @@ mod tests {
 
                 // Return a simple result
                 Ok(vec![
-                    ComponentValue::String("Slept".to_string()),
+                    ComponentValue::String("Slept".to_owned()),
                     ComponentValue::U32(sleep_ms),
                 ])
             },
@@ -956,7 +956,7 @@ mod tests {
         let thread_id = manager
             .spawn(
                 1,
-                vec![ComponentValue::String("Hello".to_string())],
+                vec![ComponentValue::String("Hello".to_owned())],
                 test_executor,
             )
             .unwrap();
@@ -965,7 +965,7 @@ mod tests {
         let result = manager.join(thread_id).unwrap();
 
         // Verify result
-        assert_eq!(result, vec![ComponentValue::String("Hello".to_string())]);
+        assert_eq!(result, vec![ComponentValue::String("Hello".to_owned())]);
     }
 
     #[test]
@@ -991,7 +991,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                ComponentValue::String("Slept".to_string()),
+                ComponentValue::String("Slept".to_owned()),
                 ComponentValue::U32(50)
             ]
         );
@@ -1022,7 +1022,7 @@ mod tests {
         // Test with valid arguments
         let args = vec![
             ComponentValue::U32(1),                     // Function ID
-            ComponentValue::String("Test".to_string()), // Function argument
+            ComponentValue::String("Test".to_owned()), // Function argument
         ];
 
         let result = handler.execute(&args).unwrap();
@@ -1037,11 +1037,11 @@ mod tests {
         let join_result = thread_manager.join(thread_id).unwrap();
         assert_eq!(
             join_result,
-            vec![ComponentValue::String("Test".to_string())]
+            vec![ComponentValue::String("Test".to_owned())]
         );
 
         // Test with invalid arguments
-        let args = vec![ComponentValue::String("invalid".to_string())];
+        let args = vec![ComponentValue::String("invalid".to_owned())];
         assert!(handler.execute(&args).is_err());
 
         // Test with insufficient arguments
@@ -1058,7 +1058,7 @@ mod tests {
         let thread_id = thread_manager
             .spawn(
                 1,
-                vec![ComponentValue::String("Test".to_string())],
+                vec![ComponentValue::String("Test".to_owned())],
                 executor,
             )
             .unwrap();
@@ -1068,10 +1068,10 @@ mod tests {
 
         // Test joining the thread
         let result = handler.execute(&[ComponentValue::U64(thread_id)]).unwrap();
-        assert_eq!(result, vec![ComponentValue::String("Test".to_string())]);
+        assert_eq!(result, vec![ComponentValue::String("Test".to_owned())]);
 
         // Test with invalid arguments
-        let args = vec![ComponentValue::String("invalid".to_string())];
+        let args = vec![ComponentValue::String("invalid".to_owned())];
         assert!(handler.execute(&args).is_err());
 
         // Test with insufficient arguments
@@ -1086,7 +1086,7 @@ mod tests {
 
         // Test creating a mutex
         let result =
-            handler.execute(&[ComponentValue::String("create-mutex".to_string())]).unwrap();
+            handler.execute(&[ComponentValue::String("create-mutex".to_owned())]).unwrap();
         assert_eq!(result.len(), 1);
 
         let mutex_id = match result[0] {
@@ -1097,9 +1097,9 @@ mod tests {
         // Test locking the mutex
         let result = handler
             .execute(&[
-                ComponentValue::String("lock-mutex".to_string()),
+                ComponentValue::String("lock-mutex".to_owned()),
                 ComponentValue::U64(mutex_id),
-                ComponentValue::String("data".to_string()),
+                ComponentValue::String("data".to_owned()),
             ])
             .unwrap();
 
@@ -1109,17 +1109,17 @@ mod tests {
         // Test locking again (should return previous data)
         let result = handler
             .execute(&[
-                ComponentValue::String("lock-mutex".to_string()),
+                ComponentValue::String("lock-mutex".to_owned()),
                 ComponentValue::U64(mutex_id),
-                ComponentValue::String("new-data".to_string()),
+                ComponentValue::String("new-data".to_owned()),
             ])
             .unwrap();
 
-        assert_eq!(result, vec![ComponentValue::String("data".to_string())]);
+        assert_eq!(result, vec![ComponentValue::String("data".to_owned())]);
 
         // Test creating a condvar
         let result = handler
-            .execute(&[ComponentValue::String("create-condvar".to_string())])
+            .execute(&[ComponentValue::String("create-condvar".to_owned())])
             .unwrap();
         let condvar_id = match result[0] {
             ComponentValue::U64(id) => id,
@@ -1129,15 +1129,15 @@ mod tests {
         // Test signaling the condvar
         handler
             .execute(&[
-                ComponentValue::String("signal-condvar".to_string()),
+                ComponentValue::String("signal-condvar".to_owned()),
                 ComponentValue::U64(condvar_id),
-                ComponentValue::String("signal-data".to_string()),
+                ComponentValue::String("signal-data".to_owned()),
             ])
             .unwrap();
 
         // Test creating an rwlock
         let result =
-            handler.execute(&[ComponentValue::String("create-rwlock".to_string())]).unwrap();
+            handler.execute(&[ComponentValue::String("create-rwlock".to_owned())]).unwrap();
         let rwlock_id = match result[0] {
             ComponentValue::U64(id) => id,
             _ => panic!("Expected U64 result"),
@@ -1146,27 +1146,27 @@ mod tests {
         // Test writing to the rwlock
         handler
             .execute(&[
-                ComponentValue::String("write-rwlock".to_string()),
+                ComponentValue::String("write-rwlock".to_owned()),
                 ComponentValue::U64(rwlock_id),
-                ComponentValue::String("rwlock-data".to_string()),
+                ComponentValue::String("rwlock-data".to_owned()),
             ])
             .unwrap();
 
         // Test reading from the rwlock
         let result = handler
             .execute(&[
-                ComponentValue::String("read-rwlock".to_string()),
+                ComponentValue::String("read-rwlock".to_owned()),
                 ComponentValue::U64(rwlock_id),
             ])
             .unwrap();
 
         assert_eq!(
             result,
-            vec![ComponentValue::String("rwlock-data".to_string())]
+            vec![ComponentValue::String("rwlock-data".to_owned())]
         );
 
         // Test with invalid operation
-        let args = vec![ComponentValue::String("invalid-op".to_string())];
+        let args = vec![ComponentValue::String("invalid-op".to_owned())];
         assert!(handler.execute(&args).is_err());
     }
 

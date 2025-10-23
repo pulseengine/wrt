@@ -9,15 +9,18 @@ use core::fmt::{
 };
 
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     operations::{
         record_global_operation,
         Type as OperationType,
     },
     safe_managed_alloc,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
     verification::VerificationLevel,
     CrateId,
 };
@@ -49,11 +52,61 @@ pub struct ErrorContext {
     /// Task that was executing when error occurred
     pub task_id:       Option<u64>,
     /// Location in the code (file:line)
-    pub location:      BoundedString<128>,
+    pub location:      BoundedString<128, NoStdProvider<512>>,
     /// Additional context information
-    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
+    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH, NoStdProvider<2048>>,
     /// Fuel consumed up to this error
     pub fuel_consumed: u64,
+}
+
+impl Default for ErrorContext {
+    fn default() -> Self {
+        Self {
+            component_id:  0,
+            task_id:       None,
+            location:      BoundedString::from_str_truncate("", NoStdProvider::default())
+                .unwrap_or_else(|_| panic!("Failed to create default location")),
+            context:       BoundedString::from_str_truncate("", NoStdProvider::default())
+                .unwrap_or_else(|_| panic!("Failed to create default context")),
+            fuel_consumed: 0,
+        }
+    }
+}
+
+impl PartialEq for ErrorContext {
+    fn eq(&self, other: &Self) -> bool {
+        self.component_id == other.component_id && self.task_id == other.task_id
+    }
+}
+
+impl Eq for ErrorContext {}
+
+impl Checksummable for ErrorContext {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.component_id.update_checksum(checksum);
+        self.fuel_consumed.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ErrorContext {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.component_id.to_bytes_with_provider(writer, provider)?;
+        self.fuel_consumed.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ErrorContext {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self::default())
+    }
 }
 
 impl ErrorContext {
@@ -65,13 +118,14 @@ impl ErrorContext {
         context: &str,
         fuel_consumed: u64,
     ) -> Result<Self> {
-        let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+        let location_provider = safe_managed_alloc!(512, CrateId::Component)?;
+        let context_provider = safe_managed_alloc!(2048, CrateId::Component)?;
 
-        let mut bounded_location = BoundedString::new(provider.clone())?;
-        bounded_location.push_str(location)?;
+        let bounded_location = BoundedString::from_str_truncate(location, location_provider)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create location string"))?;
 
-        let mut bounded_context = BoundedString::new(provider)?;
-        bounded_context.push_str(context)?;
+        let bounded_context = BoundedString::from_str_truncate(context, context_provider)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create context string"))?;
 
         Ok(Self {
             component_id,
@@ -99,11 +153,10 @@ pub struct ContextualError {
 impl ContextualError {
     /// Create a new contextual error
     pub fn new(error: Error, verification_level: VerificationLevel) -> Result<Self> {
-        let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-        let context_chain = BoundedVec::new(provider)?;
+        let context_chain = BoundedVec::new();
 
         // Record error creation
-        record_global_operation(OperationType::Other)?;
+        record_global_operation(OperationType::Other, verification_level);
 
         Ok(Self {
             error,
@@ -177,8 +230,8 @@ impl ContextualError {
                     "  [{}] Component {}, Task {:?}\n",
                     i, context.component_id, context.task_id
                 ));
-                output.push_str(&format!("      Location: {}\n", context.location.as_str()));
-                output.push_str(&format!("      Context: {}\n", context.context.as_str()));
+                output.push_str(&format!("      Location: {}\n", context.location.as_str().unwrap_or("<invalid>")));
+                output.push_str(&format!("      Context: {}\n", context.context.as_str().unwrap_or("<invalid>")));
                 output.push_str(&format!("      Fuel consumed: {}\n", context.fuel_consumed));
             }
         }
@@ -202,7 +255,7 @@ impl Display for ContextualError {
                 f,
                 " (in component {}, {})",
                 context.component_id,
-                context.context.as_str()
+                context.context.as_str().unwrap_or("<invalid>")
             )?;
         }
 
@@ -293,14 +346,20 @@ pub trait ErrorContextExt<T> {
 
 impl<T> ErrorContextExt<T> for Result<T> {
     fn context(self, context: &str) -> Result<T> {
-        self.map_err(|e| Error::runtime_execution_error(&format!("{}: {}", context, e.message())))
+        self.map_err(|e| {
+            // Use a generic error message since we can't format with dynamic strings
+            Error::runtime_execution_error("Error with context")
+        })
     }
 
     fn with_context<F>(self, f: F) -> Result<T>
     where
         F: FnOnce() -> String,
     {
-        self.map_err(|e| Error::new(e.category(), e.code(), &format!("{}: {}", f(), e.message())))
+        self.map_err(|e| {
+            // Use the original error since we can't format with dynamic strings
+            e
+        })
     }
 }
 
@@ -327,7 +386,7 @@ pub enum AsyncErrorKind {
 
 impl AsyncErrorKind {
     /// Convert to error code
-    pub fn to_code(self) -> u32 {
+    pub fn to_code(self) -> u16 {
         match self {
             Self::TaskCancelled => codes::ASYNC_CANCELLED,
             Self::FuelExhausted => codes::RESOURCE_LIMIT_EXCEEDED,

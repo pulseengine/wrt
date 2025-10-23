@@ -14,8 +14,7 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     safe_managed_alloc,
     Arc,
     CrateId,
@@ -32,7 +31,7 @@ use crate::threading::task_manager::{
 #[cfg(not(feature = "component-model-threading"))]
 pub type TaskManager = ();
 #[cfg(not(feature = "component-model-threading"))]
-pub type TaskId = u32;
+use crate::async_::fuel_async_executor::TaskId;
 use crate::{
     async_::{
         async_types::{
@@ -71,7 +70,7 @@ pub struct ComponentModelAsyncOps {
     task_manager:      Arc<Mutex<TaskManager>>,
     /// Active wait operations
     active_waits:
-        BoundedMap<TaskId, WaitOperation, 128, crate::bounded_component_infra::ComponentProvider>,
+        BoundedMap<TaskId, WaitOperation, 128>,
     /// Waitable registry
     waitable_registry: WaitableRegistry,
     /// Operation statistics
@@ -100,28 +99,24 @@ struct WaitableRegistry {
         FutureHandle,
         WaitableState,
         256,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     /// Future handles (writable state)
     futures_writable: BoundedMap<
         FutureHandle,
         WaitableState,
         256,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     /// Stream handles (readable state)
     streams_readable: BoundedMap<
         StreamHandle,
         WaitableState,
         128,
-        crate::bounded_component_infra::ComponentProvider,
     >,
     /// Stream handles (writable state)
     streams_writable: BoundedMap<
         StreamHandle,
         WaitableState,
         128,
-        crate::bounded_component_infra::ComponentProvider,
     >,
 }
 
@@ -159,7 +154,7 @@ impl ComponentModelAsyncOps {
         Ok(Self {
             executor,
             task_manager,
-            active_waits: BoundedMap::new(provider.clone())?,
+            active_waits: BoundedMap::new(),
             waitable_registry: WaitableRegistry::new()?,
             stats: AsyncOpStats::default(),
         })
@@ -180,11 +175,7 @@ impl ComponentModelAsyncOps {
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
-            return Err(Error::runtime_execution_error(&format!(
-                "Too many waitables: {} exceeds limit {}",
-                waitables.waitables.len(),
-                MAX_WAITABLES
-            )));
+            return Err(Error::runtime_execution_error("Too many waitables exceeds limit"));
         }
 
         // Consume fuel for the operation
@@ -224,33 +215,34 @@ impl ComponentModelAsyncOps {
         self.consume_fuel_for_task(current_task, TASK_YIELD_FUEL)?;
 
         // Get execution context
-        let mut executor = self.executor.lock()?;
+        let mut executor = self.executor.lock();
 
-        // Force task to yield by marking it as waiting temporarily
-        if let Some(task) = executor.tasks.get_mut(&current_task) {
-            match task.state {
-                AsyncTaskState::Ready => {
-                    // Create yield point in execution context
-                    task.execution_context.create_yield_point(
+        // Check task state
+        let task_state = executor.get_task_state(current_task)
+            .ok_or_else(|| Error::validation_invalid_input("Task not found"))?;
+
+        match task_state {
+            AsyncTaskState::Ready => {
+                // Create yield point in execution context
+                if let Some(context) = executor.get_task_execution_context_mut(current_task) {
+                    context.create_yield_point(
                         0,      // Would be real instruction pointer
                         vec![], // Would capture stack
                         vec![], // Would capture locals
                     )?;
+                }
 
-                    // Mark as waiting (will be immediately re-queued)
-                    task.state = AsyncTaskState::Waiting;
+                // Mark as waiting (will be immediately re-queued)
+                executor.set_task_state(current_task, AsyncTaskState::Waiting)?;
 
-                    // Immediately wake the task to re-queue it
-                    drop(executor); // Release lock before waking
-                    self.wake_task(current_task)?;
-                },
-                _ => {
-                    // Task not in ready state, can't yield
-                    return Err(Error::invalid_state_error("Task not in ready state"));
-                },
-            }
-        } else {
-            return Err(Error::validation_invalid_input("Task not found"));
+                // Immediately wake the task to re-queue it
+                drop(executor); // Release lock before waking
+                self.wake_task(current_task)?;
+            },
+            _ => {
+                // Task not in ready state, can't yield
+                return Err(Error::invalid_state_error("Task not in ready state"));
+            },
         }
 
         Ok(())
@@ -283,23 +275,36 @@ impl ComponentModelAsyncOps {
         // Check all active wait operations
         let mut completed_waits = Vec::new();
 
-        for (task_id, wait_op) in self.active_waits.iter_mut() {
+        // Collect task IDs and waitables to check (to avoid borrowing conflict)
+        let wait_checks: Vec<_> = self
+            .active_waits
+            .iter()
+            .map(|(task_id, wait_op)| {
+                (*task_id, wait_op.waitables.clone(), wait_op.timeout_ms, wait_op.start_time)
+            })
+            .collect();
+
+        // Process each wait operation
+        for (task_id, waitables, timeout_ms, start_time) in wait_checks {
             // Check for timeout
-            if wait_op.timeout_ms > 0 {
-                let elapsed = current_time.saturating_sub(wait_op.start_time);
-                if elapsed >= wait_op.timeout_ms {
+            if timeout_ms > 0 {
+                let elapsed = current_time.saturating_sub(start_time);
+                if elapsed >= timeout_ms {
                     // Timeout occurred
                     self.stats.wait_timeouts.fetch_add(1, Ordering::Relaxed);
-                    completed_waits.push((*task_id, None));
+                    completed_waits.push((task_id, None));
                     continue;
                 }
             }
 
             // Check if any waitable is ready
-            if let Some(ready_index) = self.check_waitables_ready(&wait_op.waitables)? {
-                wait_op.ready_index = Some(ready_index);
+            if let Some(ready_index) = self.check_waitables_ready(&waitables)? {
+                // Update the wait operation
+                if let Some(wait_op) = self.active_waits.get_mut(&task_id) {
+                    wait_op.ready_index = Some(ready_index);
+                }
                 self.stats.wait_successes.fetch_add(1, Ordering::Relaxed);
-                completed_waits.push((*task_id, Some(ready_index)));
+                completed_waits.push((task_id, Some(ready_index)));
             }
         }
 
@@ -376,23 +381,17 @@ impl ComponentModelAsyncOps {
     }
 
     fn consume_fuel_for_task(&self, task_id: TaskId, fuel: u64) -> Result<()> {
-        let executor = self.executor.lock()?;
-        if let Some(task) = executor.tasks.get(&task_id) {
-            executor.consume_task_fuel(task, fuel)?;
-        }
-        Ok(())
+        let executor = self.executor.lock();
+        executor.consume_fuel_for_task(task_id, fuel)
     }
 
     fn mark_task_waiting(&self, task_id: TaskId) -> Result<()> {
-        let mut executor = self.executor.lock()?;
-        if let Some(task) = executor.tasks.get_mut(&task_id) {
-            task.state = AsyncTaskState::Waiting;
-        }
-        Ok(())
+        let mut executor = self.executor.lock();
+        executor.set_task_state(task_id, AsyncTaskState::Waiting)
     }
 
     fn wake_task(&self, task_id: TaskId) -> Result<()> {
-        let mut executor = self.executor.lock()?;
+        let mut executor = self.executor.lock();
         executor.wake_task(task_id)
     }
 
@@ -416,10 +415,10 @@ impl WaitableRegistry {
     fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         Ok(Self {
-            futures_readable: BoundedMap::new(provider.clone())?,
-            futures_writable: BoundedMap::new(provider.clone())?,
-            streams_readable: BoundedMap::new(provider.clone())?,
-            streams_writable: BoundedMap::new(provider.clone())?,
+            futures_readable: BoundedMap::new(),
+            futures_writable: BoundedMap::new(),
+            streams_readable: BoundedMap::new(),
+            streams_writable: BoundedMap::new(),
         })
     }
 

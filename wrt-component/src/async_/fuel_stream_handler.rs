@@ -13,18 +13,19 @@ use core::{
 };
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedDeque,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap, StaticQueue as BoundedDeque},
     operations::{
         record_global_operation,
         Type as OperationType,
     },
     safe_managed_alloc,
-    verification::VerificationLevel,
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::{Checksum, VerificationLevel},
     CrateId,
+    MemoryProvider,
 };
+
+use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::{
     async_::{
@@ -34,7 +35,6 @@ use crate::{
         },
         fuel_aware_waker::create_fuel_aware_waker,
     },
-    canonical_abi::ComponentValue,
     prelude::*,
 };
 
@@ -64,6 +64,7 @@ pub enum StreamState {
 }
 
 /// A fuel-tracked stream for Component Model
+#[derive(Debug)]
 pub struct FuelStream<T> {
     /// Stream identifier
     pub id:                 u64,
@@ -81,14 +82,16 @@ pub struct FuelStream<T> {
     pub waker:              Option<core::task::Waker>,
 }
 
-impl<T> FuelStream<T> {
+impl<T> FuelStream<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
     /// Create a new fuel-tracked stream
     pub fn new(id: u64, fuel_budget: u64, verification_level: VerificationLevel) -> Result<Self> {
-        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        let buffer = BoundedDeque::new(provider)?;
+        let buffer = BoundedDeque::new();
 
         // Record stream creation
-        record_global_operation(OperationType::StreamCreate)?;
+        record_global_operation(OperationType::StreamCreate, verification_level);
 
         Ok(Self {
             id,
@@ -104,7 +107,10 @@ impl<T> FuelStream<T> {
     /// Poll the stream for the next item
     pub fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
         // Consume fuel for polling
-        self.consume_fuel(STREAM_POLL_FUEL)?;
+        if let Err(_) = self.consume_fuel(STREAM_POLL_FUEL) {
+            self.state = StreamState::Failed;
+            return Poll::Ready(None);
+        }
 
         // Check stream state
         match self.state {
@@ -115,8 +121,11 @@ impl<T> FuelStream<T> {
         }
 
         // Check for buffered items
-        if let Some(item) = self.buffer.pop_front()? {
-            self.consume_fuel(STREAM_ITEM_FUEL)?;
+        if let Some(item) = self.buffer.pop() {
+            if let Err(_) = self.consume_fuel(STREAM_ITEM_FUEL) {
+                self.state = StreamState::Failed;
+                return Poll::Ready(None);
+            }
             return Poll::Ready(Some(item));
         }
 
@@ -137,7 +146,7 @@ impl<T> FuelStream<T> {
         self.consume_fuel(STREAM_YIELD_FUEL)?;
 
         // Buffer the item
-        self.buffer.push_back(item)?;
+        self.buffer.push(item)?;
 
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
@@ -209,11 +218,18 @@ impl<T> FuelStreamAdapter<T> {
     }
 }
 
-impl<T> Future for FuelStreamAdapter<T> {
+impl<T> Future for FuelStreamAdapter<T>
+where
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
     type Output = Option<T>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.stream.poll_next(cx)
+    #[allow(unsafe_code)] // Required for Pin-based Future implementation
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: FuelStreamNext contains only Unpin types,
+        // so it's safe to get mutable access without moving anything out.
+        let this = unsafe { self.get_unchecked_mut() };
+        this.stream.poll_next(cx)
     }
 }
 
@@ -227,7 +243,7 @@ pub struct ComponentStream {
     /// Target component instance
     pub target_component: u64,
     /// Stream of component values
-    pub value_stream:     FuelStream<ComponentValue>,
+    pub value_stream:     FuelStream<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>>,
     /// Stream metadata
     pub metadata:         StreamMetadata,
 }
@@ -267,7 +283,7 @@ impl ComponentStream {
     }
 
     /// Send a value through the stream
-    pub fn send(&mut self, value: ComponentValue) -> Result<()> {
+    pub fn send(&mut self, value: wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>) -> Result<()> {
         // Check bounded stream limits
         if self.metadata.is_bounded {
             if let Some(max_items) = self.metadata.max_items {
@@ -283,8 +299,119 @@ impl ComponentStream {
     }
 
     /// Receive a value from the stream
-    pub async fn receive(&mut self) -> Option<ComponentValue> {
-        FuelStreamAdapter::new(self.value_stream).await
+    pub async fn receive(&mut self) -> Option<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>> {
+        // Poll the stream directly using core::future::poll_fn
+        core::future::poll_fn(|cx| self.value_stream.poll_next(cx)).await
+    }
+}
+
+impl Default for ComponentStream {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            source_component: 0,
+            target_component: 0,
+            value_stream: FuelStream {
+                id: 0,
+                buffer: BoundedDeque::new(),
+                state: StreamState::Active,
+                fuel_budget: 0,
+                fuel_consumed: 0,
+                verification_level: VerificationLevel::None,
+                waker: None,
+            },
+            metadata: StreamMetadata {
+                name: String::new(),
+                item_type: String::new(),
+                is_bounded: false,
+                max_items: None,
+            },
+        }
+    }
+}
+
+impl Clone for ComponentStream {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            source_component: self.source_component,
+            target_component: self.target_component,
+            value_stream: FuelStream {
+                id: self.value_stream.id,
+                state: self.value_stream.state,
+                buffer: self.value_stream.buffer.clone(),
+                fuel_consumed: self.value_stream.fuel_consumed,
+                fuel_budget: self.value_stream.fuel_budget,
+                verification_level: self.value_stream.verification_level,
+                waker: None, // Waker cannot be cloned
+            },
+            metadata: self.metadata.clone(),
+        }
+    }
+}
+
+impl PartialEq for ComponentStream {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.source_component == other.source_component
+            && self.target_component == other.target_component
+    }
+}
+
+impl Eq for ComponentStream {}
+
+impl Checksummable for ComponentStream {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.id.update_checksum(checksum);
+        self.source_component.update_checksum(checksum);
+        self.target_component.update_checksum(checksum);
+        // Note: value_stream and metadata contain complex types that don't all implement Checksummable
+    }
+}
+
+impl ToBytes for ComponentStream {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.id.to_bytes_with_provider(writer, provider)?;
+        self.source_component.to_bytes_with_provider(writer, provider)?;
+        self.target_component.to_bytes_with_provider(writer, provider)?;
+        // Note: Complex stream state and metadata are not serialized
+        Ok(())
+    }
+}
+
+impl FromBytes for ComponentStream {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let id = u64::from_bytes_with_provider(reader, provider)?;
+        let source_component = u64::from_bytes_with_provider(reader, provider)?;
+        let target_component = u64::from_bytes_with_provider(reader, provider)?;
+
+        Ok(Self {
+            id,
+            source_component,
+            target_component,
+            value_stream: FuelStream {
+                id,
+                buffer: BoundedDeque::new(),
+                state: StreamState::Active,
+                fuel_budget: 0,
+                fuel_consumed: 0,
+                verification_level: VerificationLevel::None,
+                waker: None,
+            },
+            metadata: StreamMetadata {
+                name: String::new(),
+                item_type: String::new(),
+                is_bounded: false,
+                max_items: None,
+            },
+        })
     }
 }
 
@@ -304,7 +431,7 @@ impl FuelStreamManager {
     /// Create a new stream manager
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let streams = BoundedMap::new(provider)?;
+        let streams = BoundedMap::new();
 
         Ok(Self {
             streams,

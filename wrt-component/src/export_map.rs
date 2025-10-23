@@ -8,7 +8,10 @@
 extern crate alloc;
 
 use crate::{export::Export, prelude::*};
-use wrt_foundation::bounded::{BoundedMap, BoundedString};
+use wrt_foundation::{
+    collections::StaticMap as BoundedMap,
+    bounded::BoundedString,
+};
 use wrt_foundation::budget_aware_provider::CrateId;
 use wrt_foundation::capabilities::{CapabilityAwareProvider, MemoryCapabilityContext};
 use wrt_error::{Error, ErrorCategory, codes};
@@ -20,7 +23,7 @@ const MAX_EXPORTS: usize = 512;
 const MAX_EXPORT_NAME_LEN: usize = 128;
 
 /// Helper function to create component provider using capability-driven design
-fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>> {
+fn create_component_provider() -> Result<impl wrt_foundation::MemoryProvider> {
     use wrt_foundation::memory_init::get_global_capability_context;
     
     let context = get_global_capability_context()
@@ -60,7 +63,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     /// Create a new empty export map
     pub fn new() -> Result<Self> {
         let provider = P::default());
-        let exports = BoundedMap::new(provider)?;
+        let exports = BoundedMap::new();
         Ok(Self { exports })
     }
 
@@ -142,13 +145,13 @@ impl SafeExportMap {
             let (existing_name, _) = self.exports.get(i)?;
             if existing_name == name {
                 // Replace the existing export
-                self.exports.set(i, (name.to_string(), export))?;
+                self.exports.set(i, (name.to_owned(), export))?;
                 return Ok();
             }
         }
 
         // Name doesn't exist, add a new entry
-        self.exports.push((name.to_string(), export))?;
+        self.exports.push((name.to_owned(), export))?;
         Ok(()
     }
 
@@ -204,9 +207,9 @@ impl SafeExportMap {
     }
 
     /// Get all export names
-    pub fn names(&self) -> Result<BoundedVec<String, MAX_EXPORTS, CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>> {
+    pub fn names(&self) -> Result<BoundedVec<String, MAX_EXPORTS>> {
         let provider = create_component_provider()?;
-        let mut names = BoundedVec::new(provider)?;
+        let mut names = BoundedVec::new().unwrap();
         for i in 0..self.exports.len() {
             if let Ok((name, _)) = self.exports.get(i) {
                 names.push(name)?;
@@ -216,9 +219,9 @@ impl SafeExportMap {
     }
 
     /// Get all exports as bounded collection of (name, export) pairs
-    pub fn get_all(&self) -> Result<BoundedVec<(String, Arc<Export>), MAX_EXPORTS, CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>> {
+    pub fn get_all(&self) -> Result<BoundedVec<(String, Arc<Export>), MAX_EXPORTS>> {
         let provider = create_component_provider()?;
-        let mut pairs = BoundedVec::new(provider)?;
+        let mut pairs = BoundedVec::new().unwrap();
         let items = self.exports.to_vec()?;
         for item in items {
             pairs.push(item)?;

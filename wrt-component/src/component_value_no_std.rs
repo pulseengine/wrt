@@ -10,7 +10,7 @@
 
 use wrt_format::component::ValType as FormatValType;
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_COMPONENT_TYPES},
+    bounded::{ MAX_COMPONENT_TYPES},
     // component_value::{ComponentValue, ValType as TypesValType, ValTypeRef}, // Commented out - std only
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
@@ -35,11 +35,9 @@ type CanonicalValType = TypesValType;
 /// Serialize a ComponentValue to a bounded buffer in a no_std environment
 pub fn serialize_component_value_no_std(
     value: &ComponentValue,
-) -> Result<BoundedVec<u8, MAX_SERIALIZED_VALUE_SIZE, NoStdProvider<65536>>> {
+) -> Result<BoundedVec<u8, MAX_SERIALIZED_VALUE_SIZE>> {
     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-    let mut buffer = BoundedVec::new(provider).map_err(|_| {
-        Error::capacity_exceeded("Failed to create serialization buffer")
-    })?;
+    let mut buffer = BoundedVec::new();
 
     match value {
         ComponentValue::Bool(b) => {
@@ -437,7 +435,7 @@ mod tests {
         assert_eq!(serialized.as_slice(), &[0x78, 0x56, 0x34, 0x12]); // Little endian
 
         // Test string serialization
-        let string_value = ComponentValue::String("test".to_string());
+        let string_value = ComponentValue::String("test".to_owned());
         let serialized = serialize_component_value_no_std(&string_value).unwrap();
         assert_eq!(serialized.as_slice(), &[4, 0, 0, 0, b't', b'e', b's', b't'];
     }

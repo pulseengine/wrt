@@ -1,13 +1,20 @@
 //! Resource table implementation for no_std environments
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+use std::boxed::Box;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
+
 // Implement required traits for BoundedVec compatibility
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
     traits::{
         Checksummable,
         FromBytes,
@@ -26,7 +33,7 @@ use super::{
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 0u32.update_checksum(checksum);
             }
         }
@@ -36,7 +43,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -45,7 +52,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -63,7 +70,7 @@ pub struct Resource {
     /// Resource data pointer (simplified for no_std)
     pub data_ptr:      usize,
     /// Debug name for the resource (optional)
-    pub name:          Option<BoundedString<64>>,
+    pub name:          Option<BoundedString<64, NoStdProvider<512>>>,
     /// Creation timestamp
     pub created_at:    Instant,
     /// Last access timestamp
@@ -89,7 +96,9 @@ impl Resource {
     /// Create a new resource with a debug name
     pub fn new_with_name(type_idx: u32, data_ptr: usize, name: &str) -> Self {
         let mut resource = Self::new(type_idx, data_ptr);
-        resource.name = BoundedString::from_str(name).ok();
+        if let Ok(provider) = safe_managed_alloc!(512, CrateId::Component) {
+            resource.name = BoundedString::from_str(name, provider).ok();
+        }
         resource
     }
 
@@ -107,6 +116,18 @@ pub enum MemoryStrategy {
     FixedBuffer,
     /// Use bounded collections
     BoundedCollections,
+    /// Bounded copy strategy - copy with size limits
+    BoundedCopy,
+    /// Zero-copy strategy - pass references
+    ZeroCopy,
+    /// Isolated memory regions
+    Isolated,
+    /// Reference-based strategy
+    Reference,
+    /// Full isolation between components
+    FullIsolation,
+    /// Copy strategy - always copy data
+    Copy,
 }
 
 impl Default for MemoryStrategy {
@@ -124,6 +145,8 @@ pub enum VerificationLevel {
     Basic,
     /// Full verification
     Full,
+    /// Critical safety-level verification
+    Critical,
 }
 
 impl Default for VerificationLevel {
@@ -145,11 +168,11 @@ pub trait BufferPoolTrait {
 }
 
 /// Resource table for managing component resources in no_std
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceTable {
     /// Storage for resources
     resources: BoundedVec<
-        Option<Resource, 256, crate::bounded_component_infra::ComponentProvider>,
+        Option<Resource>,
         MAX_RESOURCES,
     >,
     /// Next available resource ID
@@ -162,12 +185,9 @@ pub struct ResourceTable {
 
 impl ResourceTable {
     /// Create a new resource table
-    pub fn new() -> wrt_foundation::WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
-            resources:          {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            resources:          BoundedVec::new().unwrap(),
             next_id:            1,
             memory_strategy:    MemoryStrategy::default(),
             verification_level: VerificationLevel::default(),
@@ -178,12 +198,9 @@ impl ResourceTable {
     pub fn with_config(
         memory_strategy: MemoryStrategy,
         verification_level: VerificationLevel,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
-            resources: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider)?
-            },
+            resources: BoundedVec::new().unwrap(),
             next_id: 1,
             memory_strategy,
             verification_level,
@@ -191,7 +208,7 @@ impl ResourceTable {
     }
 
     /// Insert a resource and return its ID
-    pub fn insert(&mut self, resource: Resource) -> wrt_foundation::WrtResult<ResourceId> {
+    pub fn insert(&mut self, resource: Resource) -> wrt_error::Result<ResourceId> {
         let id = ResourceId(self.next_id);
         self.next_id += 1;
 
@@ -206,7 +223,7 @@ impl ResourceTable {
         // No empty slot found, try to add new one
         self.resources
             .push(Some(resource))
-            .map_err(|_| wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred"))?;
+            .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?;
 
         Ok(id)
     }
@@ -252,6 +269,43 @@ impl ResourceTable {
     /// Set verification level
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
+    }
+
+    /// Create a resource with type and data pointer (compatibility method)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub fn create_resource(
+        &mut self,
+        type_idx: u32,
+        data: Box<dyn core::any::Any + Send + Sync>,
+    ) -> wrt_error::Result<u32> {
+        // Convert Box to raw pointer
+        let data_ptr = Box::into_raw(data) as *mut () as usize;
+
+        // Create resource
+        let resource = Resource::new(type_idx, data_ptr);
+
+        // Insert and return the ID as handle
+        let resource_id = self.insert(resource)?;
+        Ok(resource_id.0)
+    }
+
+    /// Get a resource by handle (compatibility method)
+    /// Returns the resource ID for get/get_mut operations
+    pub fn get_resource(&self, handle: u32) -> wrt_error::Result<ResourceId> {
+        let id = ResourceId(handle);
+        if self.get(id).is_some() {
+            Ok(id)
+        } else {
+            Err(wrt_error::Error::resource_error("Resource not found"))
+        }
+    }
+
+    /// Drop/remove a resource by handle (compatibility method)
+    pub fn drop_resource(&mut self, handle: u32) -> wrt_error::Result<()> {
+        let id = ResourceId(handle);
+        self.remove(id)
+            .ok_or_else(|| wrt_error::Error::resource_error("Resource not found"))?;
+        Ok(())
     }
 }
 

@@ -74,6 +74,7 @@ use crate::{
         MAX_WASM_NAME_LENGTH,
     },
     codes,
+    collections::StaticVec,  // New: static collections for migration
     component::Export,
     prelude::{
         BoundedCapacity,

@@ -3,6 +3,8 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+use wrt_error::Result;
+
 #[cfg(feature = "std")]
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 

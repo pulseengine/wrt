@@ -22,6 +22,7 @@ use wrt_foundation::{
     component_value::ComponentValue,
     resource::ResourceType,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
 };
 
 use crate::{
@@ -39,7 +40,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct GenerativeResourceType {
     pub base_type:      ResourceType<ComponentProvider>,
     pub instance_id:    ComponentInstanceId,
@@ -47,24 +48,110 @@ pub struct GenerativeResourceType {
     pub generation:     u32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl wrt_foundation::traits::Checksummable for GenerativeResourceType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.base_type.update_checksum(checksum);
+        self.instance_id.0.update_checksum(checksum);
+        self.unique_type_id.0.update_checksum(checksum);
+        self.generation.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for GenerativeResourceType {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.base_type.to_bytes_with_provider(writer, provider)?;
+        self.instance_id.0.to_bytes_with_provider(writer, provider)?;
+        self.unique_type_id.0.to_bytes_with_provider(writer, provider)?;
+        self.generation.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for GenerativeResourceType {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            base_type: ResourceType::from_bytes_with_provider(reader, provider)?,
+            instance_id: ComponentInstanceId(u32::from_bytes_with_provider(reader, provider)?),
+            unique_type_id: TypeId(u32::from_bytes_with_provider(reader, provider)?),
+            generation: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TypeBound {
     pub type_id:     TypeId,
     pub bound_kind:  BoundKind,
     pub target_type: TypeId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl wrt_foundation::traits::Checksummable for TypeBound {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.type_id.0.update_checksum(checksum);
+        match self.bound_kind {
+            BoundKind::Eq => 0u8.update_checksum(checksum),
+            BoundKind::Sub => 1u8.update_checksum(checksum),
+        }
+        self.target_type.0.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for TypeBound {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.type_id.0.to_bytes_with_provider(writer, provider)?;
+        match self.bound_kind {
+            BoundKind::Eq => 0u8.to_bytes_with_provider(writer, provider)?,
+            BoundKind::Sub => 1u8.to_bytes_with_provider(writer, provider)?,
+        }
+        self.target_type.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for TypeBound {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let type_id = TypeId(u32::from_bytes_with_provider(reader, provider)?);
+        let bound_kind_byte = u8::from_bytes_with_provider(reader, provider)?;
+        let bound_kind = match bound_kind_byte {
+            0 => BoundKind::Eq,
+            1 => BoundKind::Sub,
+            _ => BoundKind::Eq, // Default fallback
+        };
+        let target_type = TypeId(u32::from_bytes_with_provider(reader, provider)?);
+        Ok(Self { type_id, bound_kind, target_type })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoundKind {
     Eq,
     Sub,
 }
 
+impl Default for BoundKind {
+    fn default() -> Self {
+        BoundKind::Eq
+    }
+}
+
+#[derive(Debug)]
 pub struct GenerativeTypeRegistry {
     next_type_id:      AtomicU32,
     instance_types:
-        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>>,
-    type_bounds:       BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES>>,
+        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
+    type_bounds:       BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
     resource_mappings: BTreeMap<ResourceHandle, GenerativeResourceType>,
     bounds_checker:    TypeBoundsChecker,
 }
@@ -76,7 +163,7 @@ impl GenerativeTypeRegistry {
             instance_types:    BTreeMap::new(),
             type_bounds:       BTreeMap::new(),
             resource_mappings: BTreeMap::new(),
-            bounds_checker:    TypeBoundsChecker::new(),
+            bounds_checker:    TypeBoundsChecker::new().expect("Failed to create TypeBoundsChecker"),
         }
     }
 
@@ -111,11 +198,16 @@ impl GenerativeTypeRegistry {
         &self,
         type_id: TypeId,
         instance_id: ComponentInstanceId,
-    ) -> Option<&GenerativeResourceType> {
-        self.instance_types
-            .get(&instance_id)?
-            .iter()
-            .find(|t| t.unique_type_id == type_id)
+    ) -> Option<GenerativeResourceType> {
+        let instance_types = self.instance_types.get(&instance_id)?;
+        for i in 0..instance_types.len() {
+            if let Ok(t) = instance_types.get(i) {
+                if t.unique_type_id == type_id {
+                    return Some(t);
+                }
+            }
+        }
+        None
     }
 
     pub fn add_type_bound(
@@ -224,11 +316,29 @@ impl GenerativeTypeRegistry {
     }
 
     pub fn get_all_supertypes(&self, type_id: TypeId) -> Vec<TypeId> {
-        self.bounds_checker.get_all_supertypes(type_id)
+        #[cfg(feature = "std")]
+        {
+            self.bounds_checker.get_all_supertypes(type_id)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.bounds_checker.get_all_supertypes(type_id)
+                .map(|vec| vec.iter().copied().collect())
+                .unwrap_or_else(|_| Vec::new())
+        }
     }
 
     pub fn get_all_subtypes(&self, type_id: TypeId) -> Vec<TypeId> {
-        self.bounds_checker.get_all_subtypes(type_id)
+        #[cfg(feature = "std")]
+        {
+            self.bounds_checker.get_all_subtypes(type_id)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.bounds_checker.get_all_subtypes(type_id)
+                .map(|vec| vec.iter().copied().collect())
+                .unwrap_or_else(|_| Vec::new())
+        }
     }
 
     #[cfg(feature = "std")]
@@ -286,7 +396,7 @@ impl GenerativeTypeRegistry {
             (
                 ResourceType::<ComponentProvider>::Handle(sub_h),
                 ResourceType::<ComponentProvider>::Handle(super_h),
-            ) => sub_h.type_name() == super_h.type_name(),
+            ) => sub_h == super_h,
             _ => false,
         }
     }

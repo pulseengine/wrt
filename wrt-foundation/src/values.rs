@@ -8,21 +8,12 @@
 //! This module provides datatypes for representing WebAssembly values at
 //! runtime.
 
-#[cfg(feature = "std")]
-// use std::format; // Removed
+// Always need alloc for Component Model types
 #[cfg(not(feature = "std"))]
-use alloc;
+extern crate alloc;
+
 #[cfg(not(feature = "std"))]
 use core::fmt;
-// use std::boxed::Box; // Temporarily commented to find usages
-// use std::vec::Vec; // Temporarily commented to find usages
-#[cfg(feature = "std")]
-// Conditional imports for different environments
-#[cfg(feature = "std")]
-use std;
-// Binary std/no_std choice
-#[cfg(feature = "std")]
-// use std::boxed::Box; // Temporarily commented to find usages
 #[cfg(feature = "std")]
 use std::fmt;
 
@@ -219,6 +210,29 @@ pub enum Value {
     StructRef(Option<StructRef<DefaultMemoryProvider>>),
     /// Array reference (WebAssembly 3.0 GC)
     ArrayRef(Option<ArrayRef<DefaultMemoryProvider>>),
+    /// Component Model extensions
+    Bool(bool),
+    S8(i8),
+    U8(u8),
+    S16(i16),
+    U16(u16),
+    S32(i32),
+    U32(u32),
+    S64(i64),
+    U64(u64),
+    Char(char),
+    String(alloc::string::String),
+    List(alloc::vec::Vec<Value>),
+    Tuple(alloc::vec::Vec<Value>),
+    Record(alloc::vec::Vec<(alloc::string::String, Value)>),
+    Variant(alloc::string::String, Option<alloc::boxed::Box<Value>>),
+    Enum(alloc::string::String),
+    Option(Option<alloc::boxed::Box<Value>>),
+    Result(core::result::Result<alloc::boxed::Box<Value>, alloc::boxed::Box<Value>>),
+    Flags(alloc::vec::Vec<alloc::string::String>),
+    Own(u32),
+    Borrow(u32),
+    Void,
 }
 
 // Manual PartialEq implementation for Value
@@ -350,6 +364,12 @@ impl Value {
             Self::StructRef(None) => ValueType::StructRef(0), // Default type index for null
             Self::ArrayRef(Some(a)) => ValueType::ArrayRef(a.type_index),
             Self::ArrayRef(None) => ValueType::ArrayRef(0), // Default type index for null
+            // Component Model types - these are not standard WebAssembly types
+            Self::Bool(_) | Self::S8(_) | Self::U8(_) | Self::S16(_) | Self::U16(_) |
+            Self::S32(_) | Self::U32(_) | Self::S64(_) | Self::U64(_) | Self::Char(_) |
+            Self::String(_) | Self::List(_) | Self::Tuple(_) | Self::Record(_) |
+            Self::Variant(_, _) | Self::Enum(_) | Self::Option(_) | Self::Result(_) |
+            Self::Flags(_) | Self::Own(_) | Self::Borrow(_) | Self::Void => ValueType::I32,
         }
     }
 
@@ -502,6 +522,74 @@ impl Value {
         }
     }
 
+    /// Attempts to extract a u64 value if this `Value` is a `U64`.
+    #[must_use]
+    pub const fn as_u64(&self) -> Option<u64> {
+        match self {
+            Self::U64(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract a char value if this `Value` is a `Char`.
+    #[must_use]
+    pub const fn as_char(&self) -> Option<char> {
+        match self {
+            Self::Char(c) => Some(*c),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract a string slice if this `Value` is a `String`.
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract a list reference if this `Value` is a `List`.
+    pub fn as_list(&self) -> Option<&alloc::vec::Vec<Value>> {
+        match self {
+            Self::List(list) => Some(list),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract a tuple reference if this `Value` is a `Tuple`.
+    pub fn as_tuple(&self) -> Option<&alloc::vec::Vec<Value>> {
+        match self {
+            Self::Tuple(tuple) => Some(tuple),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract a record reference if this `Value` is a `Record`.
+    pub fn as_record(&self) -> Option<&alloc::vec::Vec<(alloc::string::String, Value)>> {
+        match self {
+            Self::Record(record) => Some(record),
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract variant data if this `Value` is a `Variant`.
+    pub fn as_variant(&self) -> Option<(&str, Option<&Value>)> {
+        match self {
+            Self::Variant(name, val) => {
+                Some((name.as_str(), val.as_ref().map(|b| b.as_ref())))
+            },
+            _ => None,
+        }
+    }
+
+    /// Attempts to extract flags reference if this `Value` is `Flags`.
+    pub fn as_flags(&self) -> Option<&alloc::vec::Vec<alloc::string::String>> {
+        match self {
+            Self::Flags(flags) => Some(flags),
+            _ => None,
+        }
+    }
+
     /// Attempts to extract the bytes of a V128 value.
     pub fn as_v128(&self) -> wrt_error::Result<[u8; 16]> {
         match self {
@@ -584,6 +672,27 @@ impl Value {
             Value::StructRef(None) => writer.write_all(&0u32.to_le_bytes()),
             Value::ArrayRef(Some(a)) => writer.write_all(&a.type_index.to_le_bytes()),
             Value::ArrayRef(None) => writer.write_all(&0u32.to_le_bytes()),
+            // Component Model types - simplified serialization as i32
+            Value::Bool(b) => writer.write_all(&(*b as i32).to_le_bytes()),
+            Value::S8(v) => writer.write_all(&(*v as i32).to_le_bytes()),
+            Value::U8(v) => writer.write_all(&(*v as i32).to_le_bytes()),
+            Value::S16(v) => writer.write_all(&(*v as i32).to_le_bytes()),
+            Value::U16(v) => writer.write_all(&(*v as i32).to_le_bytes()),
+            Value::S32(v) => writer.write_all(&v.to_le_bytes()),
+            Value::U32(v) => writer.write_all(&v.to_le_bytes()),
+            Value::S64(v) => writer.write_all(&v.to_le_bytes()),
+            Value::U64(v) => writer.write_all(&v.to_le_bytes()),
+            Value::Char(c) => writer.write_all(&(*c as u32).to_le_bytes()),
+            Value::String(_) | Value::List(_) | Value::Tuple(_) | Value::Record(_) |
+            Value::Variant(_, _) | Value::Enum(_) | Value::Option(_) | Value::Result(_) |
+            Value::Flags(_) | Value::Void => {
+                // For complex types, write as 0 (handle would go here in full implementation)
+                writer.write_all(&0u32.to_le_bytes())
+            },
+            Value::Own(v) | Value::Borrow(v) => {
+                // Write handle value
+                writer.write_all(&v.to_le_bytes())
+            },
         }
     }
 
@@ -694,6 +803,38 @@ impl fmt::Display for Value {
             Value::StructRef(None) => write!(f, "structref:null"),
             Value::ArrayRef(Some(v)) => write!(f, "arrayref:type{}[{}]", v.type_index, v.len()),
             Value::ArrayRef(None) => write!(f, "arrayref:null"),
+            // Component Model types
+            Value::Bool(b) => write!(f, "bool:{b}"),
+            Value::S8(v) => write!(f, "s8:{v}"),
+            Value::U8(v) => write!(f, "u8:{v}"),
+            Value::S16(v) => write!(f, "s16:{v}"),
+            Value::U16(v) => write!(f, "u16:{v}"),
+            Value::S32(v) => write!(f, "s32:{v}"),
+            Value::U32(v) => write!(f, "u32:{v}"),
+            Value::S64(v) => write!(f, "s64:{v}"),
+            Value::U64(v) => write!(f, "u64:{v}"),
+            Value::Char(c) => write!(f, "char:{c}"),
+            Value::String(s) => write!(f, "string:{s}"),
+            Value::List(items) => write!(f, "list[{}]", items.len()),
+            Value::Tuple(items) => write!(f, "tuple[{}]", items.len()),
+            Value::Record(fields) => write!(f, "record[{}]", fields.len()),
+            Value::Variant(name, val) => match val {
+                Some(_) => write!(f, "variant:{name}(...)"),
+                None => write!(f, "variant:{name}"),
+            },
+            Value::Enum(name) => write!(f, "enum:{name}"),
+            Value::Option(val) => match val {
+                Some(_) => write!(f, "option:Some(...)"),
+                None => write!(f, "option:None"),
+            },
+            Value::Result(res) => match res {
+                Ok(_) => write!(f, "result:Ok(...)"),
+                Err(_) => write!(f, "result:Err(...)"),
+            },
+            Value::Flags(flags) => write!(f, "flags[{}]", flags.len()),
+            Value::Own(h) => write!(f, "own:{h}"),
+            Value::Borrow(h) => write!(f, "borrow:{h}"),
+            Value::Void => write!(f, "void"),
         }
     }
 }
@@ -841,6 +982,29 @@ impl Checksummable for Value {
             Value::I16x8(_) => 8u8,     // I16x8, distinct from V128 for checksum
             Value::StructRef(_) => 9u8, // Struct reference
             Value::ArrayRef(_) => 10u8, // Array reference
+            // Component Model types
+            Value::Bool(_) => 11u8,
+            Value::S8(_) => 12u8,
+            Value::U8(_) => 13u8,
+            Value::S16(_) => 14u8,
+            Value::U16(_) => 15u8,
+            Value::S32(_) => 16u8,
+            Value::U32(_) => 17u8,
+            Value::S64(_) => 18u8,
+            Value::U64(_) => 19u8,
+            Value::Char(_) => 20u8,
+            Value::String(_) => 21u8,
+            Value::List(_) => 22u8,
+            Value::Tuple(_) => 23u8,
+            Value::Record(_) => 24u8,
+            Value::Variant(_, _) => 25u8,
+            Value::Enum(_) => 26u8,
+            Value::Option(_) => 27u8,
+            Value::Result(_) => 28u8,
+            Value::Flags(_) => 29u8,
+            Value::Own(_) => 30u8,
+            Value::Borrow(_) => 31u8,
+            Value::Void => 32u8,
         };
         checksum.update(discriminant_byte);
 
@@ -855,6 +1019,54 @@ impl Checksummable for Value {
             Value::Ref(v) => v.update_checksum(checksum),
             Value::StructRef(v) => v.update_checksum(checksum),
             Value::ArrayRef(v) => v.update_checksum(checksum),
+            // Component Model types - simplified checksum updates
+            Value::Bool(v) => v.update_checksum(checksum),
+            Value::S8(v) => v.update_checksum(checksum),
+            Value::U8(v) => v.update_checksum(checksum),
+            Value::S16(v) => v.update_checksum(checksum),
+            Value::U16(v) => v.update_checksum(checksum),
+            Value::S32(v) => v.update_checksum(checksum),
+            Value::U32(v) => v.update_checksum(checksum),
+            Value::S64(v) => v.update_checksum(checksum),
+            Value::U64(v) => v.update_checksum(checksum),
+            Value::Char(v) => (*v as u32).update_checksum(checksum),
+            Value::String(s) => s.as_bytes().iter().for_each(|b| b.update_checksum(checksum)),
+            Value::List(items) | Value::Tuple(items) => {
+                items.len().update_checksum(checksum);
+                items.iter().for_each(|item| item.update_checksum(checksum));
+            },
+            Value::Record(fields) => {
+                fields.len().update_checksum(checksum);
+                fields.iter().for_each(|(k, v)| {
+                    k.as_bytes().iter().for_each(|b| b.update_checksum(checksum));
+                    v.update_checksum(checksum);
+                });
+            },
+            Value::Variant(name, val) => {
+                name.as_bytes().iter().for_each(|b| b.update_checksum(checksum));
+                if let Some(v) = val {
+                    v.update_checksum(checksum);
+                }
+            },
+            Value::Enum(name) => {
+                name.as_bytes().iter().for_each(|b| b.update_checksum(checksum));
+            },
+            Value::Option(val) => {
+                if let Some(v) = val {
+                    v.update_checksum(checksum);
+                }
+            },
+            Value::Result(res) => {
+                match res {
+                    Ok(v) | Err(v) => v.update_checksum(checksum),
+                }
+            },
+            Value::Flags(flags) => {
+                flags.len().update_checksum(checksum);
+                flags.iter().for_each(|f| f.as_bytes().iter().for_each(|b| b.update_checksum(checksum)));
+            },
+            Value::Own(h) | Value::Borrow(h) => h.update_checksum(checksum),
+            Value::Void => {},
         }
     }
 }
@@ -878,6 +1090,29 @@ impl ToBytes for Value {
             Value::I16x8(_) => 8u8,     // I16x8, serialized as V128
             Value::StructRef(_) => 9u8, // Struct reference
             Value::ArrayRef(_) => 10u8, // Array reference
+            // Component Model types use same discriminants as checksum
+            Value::Bool(_) => 11u8,
+            Value::S8(_) => 12u8,
+            Value::U8(_) => 13u8,
+            Value::S16(_) => 14u8,
+            Value::U16(_) => 15u8,
+            Value::S32(_) => 16u8,
+            Value::U32(_) => 17u8,
+            Value::S64(_) => 18u8,
+            Value::U64(_) => 19u8,
+            Value::Char(_) => 20u8,
+            Value::String(_) => 21u8,
+            Value::List(_) => 22u8,
+            Value::Tuple(_) => 23u8,
+            Value::Record(_) => 24u8,
+            Value::Variant(_, _) => 25u8,
+            Value::Enum(_) => 26u8,
+            Value::Option(_) => 27u8,
+            Value::Result(_) => 28u8,
+            Value::Flags(_) => 29u8,
+            Value::Own(_) => 30u8,
+            Value::Borrow(_) => 31u8,
+            Value::Void => 32u8,
         };
         writer.write_u8(discriminant)?;
 
@@ -917,6 +1152,25 @@ impl ToBytes for Value {
                     v.to_bytes_with_provider(writer, provider)?
                 }
             },
+            // Component Model types - simplified serialization
+            Value::Bool(v) => writer.write_u8(if *v { 1 } else { 0 })?,
+            Value::S8(v) => writer.write_i8(*v)?,
+            Value::U8(v) => writer.write_u8(*v)?,
+            Value::S16(v) => writer.write_i16_le(*v)?,
+            Value::U16(v) => writer.write_u16_le(*v)?,
+            Value::S32(v) => writer.write_i32_le(*v)?,
+            Value::U32(v) => writer.write_u32_le(*v)?,
+            Value::S64(v) => writer.write_i64_le(*v)?,
+            Value::U64(v) => writer.write_u64_le(*v)?,
+            Value::Char(v) => writer.write_u32_le(*v as u32)?,
+            Value::String(_) | Value::List(_) | Value::Tuple(_) | Value::Record(_) |
+            Value::Variant(_, _) | Value::Enum(_) | Value::Option(_) | Value::Result(_) |
+            Value::Flags(_) => {
+                // Complex types - not fully serializable in this simplified form
+                writer.write_u32_le(0)?
+            },
+            Value::Own(h) | Value::Borrow(h) => writer.write_u32_le(*h)?,
+            Value::Void => {},
         }
         Ok(())
     }

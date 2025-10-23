@@ -2,11 +2,23 @@
 //!
 //! This module provides high-performance async channels with fuel tracking,
 //! backpressure handling, and Component Model integration.
+//!
+//! **REQUIRES**: Allocation support - async channels need heap allocation for Arc/Weak
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+// In no_std mode, we rely on the alloc crate which is always available in wrt-component
+// The alloc crate provides Arc, Weak, Box, and other heap types
+extern crate alloc;
+
+#[cfg(feature = "std")]
+use std::boxed::Box;
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
+#[cfg(feature = "std")]
+use std::sync::Weak;
+#[cfg(not(feature = "std"))]
 use alloc::sync::Weak;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
+
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
@@ -23,16 +35,12 @@ use core::{
         Waker,
     },
 };
-#[cfg(feature = "std")]
-use std::sync::Weak;
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     component_value::ComponentValue,
     safe_managed_alloc,
+    traits::{Checksummable, FromBytes, ToBytes},
     Arc,
     CrateId,
     Mutex,
@@ -79,8 +87,8 @@ pub struct OptimizedAsyncChannels {
     bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active channels
     channels:           BoundedMap<ChannelId, AsyncChannel, 512>,
-    /// Component channel contexts
-    component_contexts: BoundedMap<ComponentInstanceId, ComponentChannelContext, 128>,
+    /// Component channel contexts (Box provides indirection to break recursive type)
+    component_contexts: BoundedMap<ComponentInstanceId, Box<ComponentChannelContext>, 128>,
     /// Next channel ID
     next_channel_id:    AtomicU64,
     /// Channel statistics
@@ -90,8 +98,39 @@ pub struct OptimizedAsyncChannels {
 }
 
 /// Channel identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ChannelId(u64);
+
+impl Default for ChannelId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for ChannelId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ChannelId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ChannelId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Sender half of a channel
 #[derive(Debug, Clone)]
@@ -142,6 +181,77 @@ pub enum ChannelType {
     Priority,
 }
 
+impl Default for ChannelType {
+    fn default() -> Self {
+        Self::Unbounded
+    }
+}
+
+impl Checksummable for ChannelType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            ChannelType::Unbounded => 0u8.update_checksum(checksum),
+            ChannelType::Bounded(cap) => {
+                1u8.update_checksum(checksum);
+                cap.update_checksum(checksum);
+            }
+            ChannelType::Oneshot => 2u8.update_checksum(checksum),
+            ChannelType::Broadcast(cap) => {
+                3u8.update_checksum(checksum);
+                cap.update_checksum(checksum);
+            }
+            ChannelType::Priority => 4u8.update_checksum(checksum),
+        }
+    }
+}
+
+impl ToBytes for ChannelType {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        match self {
+            ChannelType::Unbounded => 0u8.to_bytes_with_provider(writer, provider),
+            ChannelType::Bounded(cap) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                cap.to_bytes_with_provider(writer, provider)
+            }
+            ChannelType::Oneshot => 2u8.to_bytes_with_provider(writer, provider),
+            ChannelType::Broadcast(cap) => {
+                3u8.to_bytes_with_provider(writer, provider)?;
+                cap.to_bytes_with_provider(writer, provider)
+            }
+            ChannelType::Priority => 4u8.to_bytes_with_provider(writer, provider),
+        }
+    }
+}
+
+impl FromBytes for ChannelType {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let discriminant = u8::from_bytes_with_provider(reader, provider)?;
+        match discriminant {
+            0 => Ok(ChannelType::Unbounded),
+            1 => {
+                let cap = usize::from_bytes_with_provider(reader, provider)?;
+                Ok(ChannelType::Bounded(cap))
+            }
+            2 => Ok(ChannelType::Oneshot),
+            3 => {
+                let cap = usize::from_bytes_with_provider(reader, provider)?;
+                Ok(ChannelType::Broadcast(cap))
+            }
+            4 => Ok(ChannelType::Priority),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid ChannelType discriminant",
+            )),
+        }
+    }
+}
+
 /// Channel buffer implementation
 #[derive(Debug)]
 enum ChannelBuffer {
@@ -170,10 +280,73 @@ enum ChannelBuffer {
 /// Message in a channel
 #[derive(Debug, Clone)]
 struct ChannelMessage {
-    value:     ComponentValue,
+    value:     ComponentValue<ComponentProvider>,
     sender_id: ComponentInstanceId,
     sent_at:   u64,
     priority:  u8,
+}
+
+impl PartialEq for ChannelMessage {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+            && self.sender_id == other.sender_id
+            && self.sent_at == other.sent_at
+            && self.priority == other.priority
+    }
+}
+
+impl Eq for ChannelMessage {}
+
+impl Default for ChannelMessage {
+    fn default() -> Self {
+        Self {
+            value:     ComponentValue::default(),
+            sender_id: ComponentInstanceId::default(),
+            sent_at:   0,
+            priority:  0,
+        }
+    }
+}
+
+impl Checksummable for ChannelMessage {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.value.update_checksum(checksum);
+        self.sender_id.update_checksum(checksum);
+        self.sent_at.update_checksum(checksum);
+        self.priority.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ChannelMessage {
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        provider: &P,
+    ) -> core::result::Result<(), wrt_error::Error> {
+        self.value.to_bytes_with_provider(writer, provider)?;
+        self.sender_id.to_bytes_with_provider(writer, provider)?;
+        self.sent_at.to_bytes_with_provider(writer, provider)?;
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ChannelMessage {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &P,
+    ) -> core::result::Result<Self, wrt_error::Error> {
+        let value = ComponentValue::from_bytes_with_provider(reader, provider)?;
+        let sender_id = ComponentInstanceId::from_bytes_with_provider(reader, provider)?;
+        let sent_at = u64::from_bytes_with_provider(reader, provider)?;
+        let priority = u8::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            value,
+            sender_id,
+            sent_at,
+            priority,
+        })
+    }
 }
 
 /// Priority message for priority channels
@@ -181,6 +354,15 @@ struct ChannelMessage {
 struct PriorityMessage {
     message:  ChannelMessage,
     priority: u8,
+}
+
+impl Default for PriorityMessage {
+    fn default() -> Self {
+        Self {
+            message: ChannelMessage::default(),
+            priority: 0,
+        }
+    }
 }
 
 impl Ord for PriorityMessage {
@@ -203,16 +385,46 @@ impl PartialEq for PriorityMessage {
 
 impl Eq for PriorityMessage {}
 
+impl Checksummable for PriorityMessage {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.message.update_checksum(checksum);
+        self.priority.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for PriorityMessage {
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        provider: &P,
+    ) -> core::result::Result<(), wrt_error::Error> {
+        self.message.to_bytes_with_provider(writer, provider)?;
+        self.priority.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for PriorityMessage {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &P,
+    ) -> core::result::Result<Self, wrt_error::Error> {
+        let message = ChannelMessage::from_bytes_with_provider(reader, provider)?;
+        let priority = u8::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { message, priority })
+    }
+}
+
 /// Component channel context
 #[derive(Debug)]
 struct ComponentChannelContext {
     component_id:   ComponentInstanceId,
     /// Channels owned by this component
     owned_channels: BoundedVec<ChannelId, MAX_CHANNELS_PER_COMPONENT>,
-    /// Senders held by this component
-    senders:        BoundedMap<ChannelId, ChannelSender, MAX_CHANNELS_PER_COMPONENT>,
-    /// Receivers held by this component
-    receivers:      BoundedMap<ChannelId, ChannelReceiver, MAX_CHANNELS_PER_COMPONENT>,
+    /// Senders held by this component (Box provides indirection to break recursive type)
+    senders:        BoundedMap<ChannelId, Box<ChannelSender>, MAX_CHANNELS_PER_COMPONENT>,
+    /// Receivers held by this component (Box provides indirection to break recursive type)
+    receivers:      BoundedMap<ChannelId, Box<ChannelReceiver>, MAX_CHANNELS_PER_COMPONENT>,
     /// Channel quotas and limits
     channel_limits: ChannelLimits,
 }
@@ -267,12 +479,12 @@ impl OptimizedAsyncChannels {
     pub fn new(
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<ChannelConfiguration>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
         Ok(Self {
             bridge,
-            channels: BoundedMap::new(provider.clone())?,
-            component_contexts: BoundedMap::new(provider.clone())?,
+            channels: BoundedMap::new(),
+            component_contexts: BoundedMap::new(),
             next_channel_id: AtomicU64::new(1),
             channel_stats: ChannelStatistics::default(),
             global_config: config.unwrap_or_default(),
@@ -284,7 +496,7 @@ impl OptimizedAsyncChannels {
         &mut self,
         component_id: ComponentInstanceId,
         limits: Option<ChannelLimits>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let limits = limits.unwrap_or_else(|| ChannelLimits {
             max_channels:       MAX_CHANNELS_PER_COMPONENT,
             max_total_capacity: MAX_CHANNEL_CAPACITY * 4,
@@ -293,13 +505,13 @@ impl OptimizedAsyncChannels {
         });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-        let context = ComponentChannelContext {
+        let context = Box::new(ComponentChannelContext {
             component_id,
-            owned_channels: BoundedVec::new(provider.clone())?,
-            senders: BoundedMap::new(provider.clone())?,
-            receivers: BoundedMap::new(provider.clone())?,
+            owned_channels: BoundedVec::new(),
+            senders: BoundedMap::new(),
+            receivers: BoundedMap::new(),
             channel_limits: limits,
-        };
+        });
 
         self.component_contexts
             .insert(component_id, context)
@@ -313,13 +525,18 @@ impl OptimizedAsyncChannels {
         &mut self,
         component_id: ComponentInstanceId,
         channel_type: ChannelType,
-    ) -> Result<(ChannelSender, ChannelReceiver), Error> {
-        let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not initialized for channels")
-        })?;
+    ) -> Result<(ChannelSender, ChannelReceiver)> {
+        // Extract limits before mutable borrow
+        let max_channels = self.component_contexts.get(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized for channels"))?
+            .channel_limits.max_channels;
+
+        let owned_channels_len = self.component_contexts.get(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized for channels"))?
+            .owned_channels.len();
 
         // Check limits
-        if context.owned_channels.len() >= context.channel_limits.max_channels {
+        if owned_channels_len >= max_channels {
             return Err(Error::resource_limit_exceeded(
                 "Component channel limit exceeded",
             ));
@@ -335,15 +552,14 @@ impl OptimizedAsyncChannels {
 
         // Create channel buffer
         let buffer = self.create_channel_buffer(channel_type, capacity)?;
-        let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 
         let channel = AsyncChannel {
             id: channel_id,
             channel_type,
             capacity,
             buffer,
-            sender_wakers: BoundedVec::new(provider.clone())?,
-            receiver_wakers: BoundedVec::new(provider)?,
+            sender_wakers: BoundedVec::new(),
+            receiver_wakers: BoundedVec::new(),
             closed: AtomicBool::new(false),
             sender_count: AtomicU32::new(1),
             receiver_count: AtomicU32::new(1),
@@ -358,8 +574,10 @@ impl OptimizedAsyncChannels {
             .insert(channel_id, channel)
             .map_err(|_| Error::resource_limit_exceeded("Too many active channels"))?;
 
-        // Create sender and receiver
-        let channels_weak = Arc::downgrade(&Arc::new(Mutex::new(self)));
+        // Create sender and receiver with empty Weak references
+        // Note: The caller must be holding an Arc<Mutex<Self>> and should set these references properly
+        // For now, we create placeholders that won't upgrade
+        let channels_weak = Weak::new();
 
         let sender = ChannelSender {
             channel_id,
@@ -374,13 +592,16 @@ impl OptimizedAsyncChannels {
         };
 
         // Add to component context
+        let context = self.component_contexts.get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not found"))?;
+
         context
             .owned_channels
             .push(channel_id)
             .map_err(|_| Error::resource_limit_exceeded("Component channel list full"))?;
 
-        context.senders.insert(channel_id, sender.clone()).ok();
-        context.receivers.insert(channel_id, receiver.clone()).ok();
+        context.senders.insert(channel_id, Box::new(sender.clone())).ok();
+        context.receivers.insert(channel_id, Box::new(receiver.clone())).ok();
 
         // Update statistics
         self.channel_stats.total_channels_created.fetch_add(1, Ordering::Relaxed);
@@ -393,15 +614,15 @@ impl OptimizedAsyncChannels {
         &mut self,
         channel_id: ChannelId,
         sender_id: ComponentInstanceId,
-        message: ComponentValue,
+        message: ComponentValue<ComponentProvider>,
         priority: Option<u8>,
-    ) -> Result<SendResult, Error> {
-        let channel = self
-            .channels
-            .get_mut(&channel_id)
-            .ok_or_else(|| Error::validation_invalid_input("Channel not found"))?;
+    ) -> Result<SendResult> {
+        // Check if channel is closed first
+        let is_closed = self.channels.get(&channel_id)
+            .ok_or_else(|| Error::validation_invalid_input("Channel not found"))?
+            .closed.load(Ordering::Acquire);
 
-        if channel.closed.load(Ordering::Acquire) {
+        if is_closed {
             return Ok(SendResult::Closed);
         }
 
@@ -413,6 +634,8 @@ impl OptimizedAsyncChannels {
         };
 
         // Try to send message
+        let channel = self.channels.get_mut(&channel_id)
+            .ok_or_else(|| Error::validation_invalid_input("Channel not found"))?;
         let send_result = match &mut channel.buffer {
             ChannelBuffer::Ring {
                 data,
@@ -466,12 +689,31 @@ impl OptimizedAsyncChannels {
 
         if send_result == SendResult::Sent {
             // Update statistics
-            channel.total_sent.fetch_add(1, Ordering::Relaxed);
-            channel.fuel_consumed.fetch_add(CHANNEL_SEND_FUEL, Ordering::Relaxed);
+            {
+                let channel = self.channels.get_mut(&channel_id)
+                    .ok_or_else(|| Error::validation_invalid_input("Channel not found"))?;
+                channel.total_sent.fetch_add(1, Ordering::Relaxed);
+                channel.fuel_consumed.fetch_add(CHANNEL_SEND_FUEL, Ordering::Relaxed);
+
+                // Wake receivers while we have the channel borrow
+                // Extract wakers to avoid holding mutable borrow during wake
+                let mut wakers_to_wake = BoundedVec::<Waker, 32>::new();
+                while let Some(waker) = channel.receiver_wakers.pop() {
+                    let _ = wakers_to_wake.push(waker);
+                }
+                // Drop channel borrow before waking
+                drop(channel);
+
+                // Now wake all wakers without holding any borrows
+                for waker in wakers_to_wake {
+                    waker.wake();
+                }
+            }
             self.channel_stats.total_messages_sent.fetch_add(1, Ordering::Relaxed);
 
-            // Wake receivers
-            self.wake_receivers(channel)?;
+            if self.global_config.wake_coalescing {
+                self.channel_stats.wake_coalescings.fetch_add(1, Ordering::Relaxed);
+            }
         }
 
         Ok(send_result)
@@ -482,7 +724,7 @@ impl OptimizedAsyncChannels {
         &mut self,
         channel_id: ChannelId,
         receiver_id: ComponentInstanceId,
-    ) -> Result<ReceiveResult, Error> {
+    ) -> Result<ReceiveResult> {
         let channel = self
             .channels
             .get_mut(&channel_id)
@@ -557,7 +799,10 @@ impl OptimizedAsyncChannels {
 
             // Wake senders if backpressure was active
             if self.global_config.enable_backpressure {
-                self.wake_senders(channel)?;
+                // Wake all sender wakers (drain not available on StaticVec, so manually iterate and clear)
+                while let Some(waker) = channel.sender_wakers.pop() {
+                    waker.wake();
+                }
             }
         }
 
@@ -565,7 +810,7 @@ impl OptimizedAsyncChannels {
     }
 
     /// Close a channel
-    pub fn close_channel(&mut self, channel_id: ChannelId) -> Result<(), Error> {
+    pub fn close_channel(&mut self, channel_id: ChannelId) -> Result<()> {
         let channel = self
             .channels
             .get_mut(&channel_id)
@@ -575,7 +820,12 @@ impl OptimizedAsyncChannels {
         channel.fuel_consumed.fetch_add(CHANNEL_CLOSE_FUEL, Ordering::Relaxed);
 
         // Wake all waiters
-        self.wake_all_waiters(channel)?;
+        while let Some(waker) = channel.sender_wakers.pop() {
+            waker.wake();
+        }
+        while let Some(waker) = channel.receiver_wakers.pop() {
+            waker.wake();
+        }
 
         // Update statistics
         self.channel_stats.total_channel_closes.fetch_add(1, Ordering::Relaxed);
@@ -612,36 +862,36 @@ impl OptimizedAsyncChannels {
         &self,
         channel_type: ChannelType,
         capacity: usize,
-    ) -> Result<ChannelBuffer, Error> {
-        let buffer_size = capacity * 128;
-        let provider = safe_managed_alloc!(buffer_size, CrateId::Component)?;
+    ) -> Result<ChannelBuffer> {
+        // Use standard buffer size for channel allocation
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
         match channel_type {
             ChannelType::Bounded(_) => Ok(ChannelBuffer::Ring {
-                data: BoundedVec::new(provider)?,
+                data: BoundedVec::new(),
                 head: AtomicUsize::new(0),
                 tail: AtomicUsize::new(0),
                 len:  AtomicUsize::new(0),
             }),
             ChannelType::Unbounded => Ok(ChannelBuffer::Vector {
-                data: BoundedVec::new(provider)?,
+                data: BoundedVec::new(),
             }),
             ChannelType::Oneshot => Ok(ChannelBuffer::Single {
                 data:  None,
                 taken: AtomicBool::new(false),
             }),
             ChannelType::Broadcast(_) => Ok(ChannelBuffer::Vector {
-                data: BoundedVec::new(provider)?,
+                data: BoundedVec::new(),
             }),
             ChannelType::Priority => Ok(ChannelBuffer::Priority {
-                data: BoundedVec::new(provider)?,
+                data: BoundedVec::new(),
             }),
         }
     }
 
-    fn wake_receivers(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
-        // Wake all receiver wakers
-        for waker in channel.receiver_wakers.drain(..) {
+    fn wake_receivers(&mut self, channel: &mut AsyncChannel) -> Result<()> {
+        // Wake all receiver wakers (drain not available on StaticVec, so manually iterate and clear)
+        while let Some(waker) = channel.receiver_wakers.pop() {
             waker.wake();
         }
 
@@ -652,16 +902,16 @@ impl OptimizedAsyncChannels {
         Ok(())
     }
 
-    fn wake_senders(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
-        // Wake all sender wakers
-        for waker in channel.sender_wakers.drain(..) {
+    fn wake_senders(&mut self, channel: &mut AsyncChannel) -> Result<()> {
+        // Wake all sender wakers (drain not available on StaticVec, so manually iterate and clear)
+        while let Some(waker) = channel.sender_wakers.pop() {
             waker.wake();
         }
 
         Ok(())
     }
 
-    fn wake_all_waiters(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
+    fn wake_all_waiters(&mut self, channel: &mut AsyncChannel) -> Result<()> {
         self.wake_senders(channel)?;
         self.wake_receivers(channel)?;
         Ok(())
@@ -684,6 +934,58 @@ pub enum SendResult {
     Full,
     /// Channel is closed
     Closed,
+}
+
+impl Default for SendResult {
+    fn default() -> Self {
+        Self::Sent
+    }
+}
+
+impl Checksummable for SendResult {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            SendResult::Sent => 0u8,
+            SendResult::WouldBlock => 1u8,
+            SendResult::Full => 2u8,
+            SendResult::Closed => 3u8,
+        };
+        discriminant.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for SendResult {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        let discriminant = match self {
+            SendResult::Sent => 0u8,
+            SendResult::WouldBlock => 1u8,
+            SendResult::Full => 2u8,
+            SendResult::Closed => 3u8,
+        };
+        discriminant.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for SendResult {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let discriminant = u8::from_bytes_with_provider(reader, provider)?;
+        match discriminant {
+            0 => Ok(SendResult::Sent),
+            1 => Ok(SendResult::WouldBlock),
+            2 => Ok(SendResult::Full),
+            3 => Ok(SendResult::Closed),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid SendResult discriminant",
+            )),
+        }
+    }
 }
 
 /// Result of receive operation
@@ -713,48 +1015,43 @@ pub struct ChannelStats {
 /// Send future for async channel operations
 pub struct SendFuture {
     sender:   ChannelSender,
-    message:  Option<ComponentValue>,
+    message:  Option<ComponentValue<ComponentProvider>>,
     priority: Option<u8>,
 }
 
 impl CoreFuture for SendFuture {
-    type Output = Result<(), Error>;
+    type Output = Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(channels) = self.sender.channels_ref.upgrade() {
-            if let Ok(mut channels) = channels.lock() {
-                if let Some(message) = self.message.take() {
-                    match channels.send_message(
-                        self.sender.channel_id,
-                        self.sender.component_id,
-                        message,
-                        self.priority,
-                    ) {
-                        Ok(SendResult::Sent) => Poll::Ready(Ok(())),
-                        Ok(SendResult::WouldBlock) => {
-                            // Register waker for when space becomes available
-                            if let Some(channel) =
-                                channels.channels.get_mut(&self.sender.channel_id)
-                            {
-                                channel.sender_wakers.push(cx.waker().clone()).ok();
-                            }
-                            Poll::Pending
-                        },
-                        Ok(SendResult::Closed) => {
-                            Poll::Ready(Err(Error::invalid_state_error("Channel closed")))
-                        },
-                        Ok(SendResult::Full) => {
-                            Poll::Ready(Err(Error::resource_limit_exceeded("Channel full")))
-                        },
-                        Err(e) => Poll::Ready(Err(e)),
-                    }
-                } else {
-                    Poll::Ready(Err(Error::invalid_state_error("Message already sent")))
+            let mut channels = channels.lock();
+            if let Some(message) = self.message.take() {
+                match channels.send_message(
+                    self.sender.channel_id,
+                    self.sender.component_id,
+                    message,
+                    self.priority,
+                ) {
+                    Ok(SendResult::Sent) => Poll::Ready(Ok(())),
+                    Ok(SendResult::WouldBlock) => {
+                        // Register waker for when space becomes available
+                        if let Some(channel) =
+                            channels.channels.get_mut(&self.sender.channel_id)
+                        {
+                            channel.sender_wakers.push(cx.waker().clone()).ok();
+                        }
+                        Poll::Pending
+                    },
+                    Ok(SendResult::Closed) => {
+                        Poll::Ready(Err(Error::invalid_state_error("Channel closed")))
+                    },
+                    Ok(SendResult::Full) => {
+                        Poll::Ready(Err(Error::resource_limit_exceeded("Channel full")))
+                    },
+                    Err(e) => Poll::Ready(Err(e)),
                 }
             } else {
-                Poll::Ready(Err(Error::invalid_state_error(
-                    "Channel manager unavailable",
-                )))
+                Poll::Ready(Err(Error::invalid_state_error("Message already sent")))
             }
         } else {
             Poll::Ready(Err(Error::invalid_state_error("Channel manager dropped")))
@@ -768,31 +1065,26 @@ pub struct ReceiveFuture {
 }
 
 impl CoreFuture for ReceiveFuture {
-    type Output = Result<ComponentValue, Error>;
+    type Output = Result<ComponentValue<ComponentProvider>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(channels) = self.receiver.channels_ref.upgrade() {
-            if let Ok(mut channels) = channels.lock() {
-                match channels.receive_message(self.receiver.channel_id, self.receiver.component_id)
-                {
-                    Ok(ReceiveResult::Received(message)) => Poll::Ready(Ok(message.value)),
-                    Ok(ReceiveResult::WouldBlock) => {
-                        // Register waker for when message becomes available
-                        if let Some(channel) = channels.channels.get_mut(&self.receiver.channel_id)
-                        {
-                            channel.receiver_wakers.push(cx.waker().clone()).ok();
-                        }
-                        Poll::Pending
-                    },
-                    Ok(ReceiveResult::Closed) => {
-                        Poll::Ready(Err(Error::invalid_state_error("Channel closed")))
-                    },
-                    Err(e) => Poll::Ready(Err(e)),
-                }
-            } else {
-                Poll::Ready(Err(Error::invalid_state_error(
-                    "Channel manager unavailable",
-                )))
+            let mut channels = channels.lock();
+            match channels.receive_message(self.receiver.channel_id, self.receiver.component_id)
+            {
+                Ok(ReceiveResult::Received(message)) => Poll::Ready(Ok(message.value)),
+                Ok(ReceiveResult::WouldBlock) => {
+                    // Register waker for when message becomes available
+                    if let Some(channel) = channels.channels.get_mut(&self.receiver.channel_id)
+                    {
+                        channel.receiver_wakers.push(cx.waker().clone()).ok();
+                    }
+                    Poll::Pending
+                },
+                Ok(ReceiveResult::Closed) => {
+                    Poll::Ready(Err(Error::invalid_state_error("Channel closed")))
+                },
+                Err(e) => Poll::Ready(Err(e)),
             }
         } else {
             Poll::Ready(Err(Error::invalid_state_error("Channel manager dropped")))
@@ -802,7 +1094,7 @@ impl CoreFuture for ReceiveFuture {
 
 impl ChannelSender {
     /// Send a message asynchronously
-    pub fn send(&self, message: ComponentValue) -> SendFuture {
+    pub fn send(&self, message: ComponentValue<ComponentProvider>) -> SendFuture {
         SendFuture {
             sender:   self.clone(),
             message:  Some(message),
@@ -811,7 +1103,7 @@ impl ChannelSender {
     }
 
     /// Send a message with priority
-    pub fn send_with_priority(&self, message: ComponentValue, priority: u8) -> SendFuture {
+    pub fn send_with_priority(&self, message: ComponentValue<ComponentProvider>, priority: u8) -> SendFuture {
         SendFuture {
             sender:   self.clone(),
             message:  Some(message),

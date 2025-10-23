@@ -204,7 +204,7 @@ mod tests {
                         safety_harness: Arc::new(harness),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::High, // ASIL-D uses high priority
+                    192, // High priority // ASIL-D uses high priority
                 ).unwrap()
             };
             
@@ -329,7 +329,7 @@ mod tests {
                     safety_harness: Arc::new(harness),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::High, // Critical task gets high priority
+                192, // High priority // Critical task gets high priority
             ).unwrap()
         };
 
@@ -348,7 +348,7 @@ mod tests {
                     safety_harness: Arc::new(harness),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal, // Non-critical task gets normal priority
+                128, // Normal priority // Non-critical task gets normal priority
             ).unwrap()
         };
 
@@ -496,7 +496,7 @@ mod tests {
                         safety_harness: Arc::new(harness),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::Normal,
+                    128, // Normal priority
             })?;
             };
             
@@ -619,7 +619,7 @@ mod tests {
                     safety_harness: Arc::new(harness),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap()
         };
 
@@ -693,7 +693,7 @@ mod tests {
                     safety_harness: Arc::new(asil_d_harness),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::High,
+                192, // High priority
             ).unwrap()
         };
 
@@ -712,7 +712,7 @@ mod tests {
                     safety_harness: Arc::new(asil_a_harness),
                 },
                 ComponentAsyncTaskType::AsyncFunction,
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap()
         };
 

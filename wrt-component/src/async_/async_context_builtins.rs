@@ -26,7 +26,7 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     vec::Vec,
 };
 
@@ -36,6 +36,8 @@ use wrt_error::{
     Result,
 };
 use wrt_foundation::{
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     safe_memory::NoStdProvider,
     types::ValueType,
     // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
@@ -48,6 +50,9 @@ use wrt_foundation::{
 // TODO: Replace with proper atomic implementation
 #[cfg(not(feature = "std"))]
 use crate::prelude::Mutex as AtomicRefCell;
+#[cfg(feature = "std")]
+use std::cell::RefCell as AtomicRefCell;
+use crate::bounded_component_infra::ComponentProvider;
 use crate::prelude::WrtComponentValue;
 
 // Constants for no_std environments
@@ -65,7 +70,47 @@ pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg(not(any(feature = "std",)))]
-pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE, NoStdProvider<65536>>);
+pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE, NoStdProvider<512>>);
+
+impl Default for ContextKey {
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        return Self(String::new());
+        #[cfg(not(any(feature = "std",)))]
+        return Self(BoundedString::from_str_truncate("", NoStdProvider::default()).unwrap_or_else(|_| {
+            // Fallback: This should never happen, but we need to handle it gracefully
+            panic!("Failed to create empty BoundedString");
+        }));
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for ContextKey {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl wrt_runtime::ToBytes for ContextKey {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl wrt_runtime::FromBytes for ContextKey {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        #[cfg(feature = "std")]
+        return Ok(Self(String::from_bytes_with_provider(reader, provider)?));
+        #[cfg(not(any(feature = "std",)))]
+        return Ok(Self(BoundedString::from_bytes_with_provider(reader, provider)?));
+    }
+}
 
 impl ContextKey {
     #[cfg(feature = "std")]
@@ -75,7 +120,8 @@ impl ContextKey {
 
     #[cfg(not(any(feature = "std",)))]
     pub fn new(key: &str) -> Result<Self> {
-        let bounded_key = BoundedString::new_from_str(key)
+        let provider = safe_managed_alloc!(512, CrateId::Component)?;
+        let bounded_key = BoundedString::new_from_str(key, provider)
             .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self(bounded_key))
     }
@@ -84,7 +130,8 @@ impl ContextKey {
         #[cfg(feature = "std")]
         return &self.0;
         #[cfg(not(any(feature = "std",)))]
-        return self.0.as_str();
+        // Safe to unwrap: string was successfully created in `new()`
+        return self.0.as_str().unwrap();
     }
 }
 
@@ -92,16 +139,81 @@ impl ContextKey {
 #[derive(Debug, Clone)]
 pub enum ContextValue {
     /// Simple value types
-    Simple(WrtComponentValue),
+    Simple(WrtComponentValue<ComponentProvider>),
     /// Binary data (for serialized complex types)
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
     #[cfg(not(any(feature = "std",)))]
-    Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE, NoStdProvider<65536>>),
+    Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE, NoStdProvider<4096>>),
+}
+
+impl Default for ContextValue {
+    fn default() -> Self {
+        Self::Simple(WrtComponentValue::default())
+    }
+}
+
+impl PartialEq for ContextValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Simple(a), Self::Simple(b)) => a == b,
+            (Self::Binary(a), Self::Binary(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ContextValue {}
+
+impl wrt_foundation::traits::Checksummable for ContextValue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Simple(v) => v.update_checksum(checksum),
+            Self::Binary(b) => b.update_checksum(checksum),
+        }
+    }
+}
+
+impl wrt_runtime::ToBytes for ContextValue {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<()> {
+        match self {
+            Self::Simple(v) => {
+                0u8.to_bytes_with_provider(writer, provider)?;
+                v.to_bytes_with_provider(writer, provider)
+            }
+            Self::Binary(b) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                b.to_bytes_with_provider(writer, provider)
+            }
+        }
+    }
+}
+
+impl wrt_runtime::FromBytes for ContextValue {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let tag = u8::from_bytes_with_provider(reader, provider)?;
+        match tag {
+            0 => Ok(Self::Simple(WrtComponentValue::from_bytes_with_provider(reader, provider)?)),
+            1 => {
+                #[cfg(feature = "std")]
+                return Ok(Self::Binary(Vec::from_bytes_with_provider(reader, provider)?));
+                #[cfg(not(any(feature = "std",)))]
+                return Ok(Self::Binary(BoundedVec::from_bytes_with_provider(reader, provider)?));
+            }
+            _ => Err(Error::validation_error("Invalid context value discriminant")),
+        }
+    }
 }
 
 impl ContextValue {
-    pub fn from_component_value(value: WrtComponentValue) -> Self {
+    pub fn from_component_value(value: WrtComponentValue<ComponentProvider>) -> Self {
         Self::Simple(value)
     }
 
@@ -112,12 +224,13 @@ impl ContextValue {
 
     #[cfg(not(any(feature = "std",)))]
     pub fn from_binary(data: &[u8]) -> Result<Self> {
-        let bounded_data = BoundedVec::new_from_slice(data)
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        let bounded_data = BoundedVec::new_from_slice(provider, data)
             .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self::Binary(bounded_data))
     }
 
-    pub fn as_component_value(&self) -> Option<&WrtComponentValue> {
+    pub fn as_component_value(&self) -> Option<&WrtComponentValue<ComponentProvider>> {
         match self {
             Self::Simple(value) => Some(value),
             _ => None,
@@ -129,7 +242,8 @@ impl ContextValue {
             #[cfg(feature = "std")]
             Self::Binary(data) => Some(data),
             #[cfg(not(any(feature = "std",)))]
-            Self::Binary(data) => Some(data.as_slice()),
+            // Safe to unwrap: data was successfully stored in the context
+            Self::Binary(data) => Some(data.as_slice().unwrap()),
             _ => None,
         }
     }
@@ -141,7 +255,7 @@ pub struct AsyncContext {
     #[cfg(feature = "std")]
     data: BTreeMap<ContextKey, ContextValue>,
     #[cfg(not(any(feature = "std",)))]
-    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES, NoStdProvider<65536>>,
+    data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES, NoStdProvider<4096>>,
 }
 
 impl AsyncContext {
@@ -151,14 +265,14 @@ impl AsyncContext {
             data:                                    BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
             data:                                    {
-                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                let provider = safe_managed_alloc!(4096, CrateId::Component)?;
                 BoundedMap::new(provider)?
             },
         })
     }
 
-    pub fn get(&self, key: &ContextKey) -> Option<&ContextValue> {
-        self.data.get(key)
+    pub fn get(&self, key: &ContextKey) -> Option<ContextValue> {
+        self.data.get(key).ok().and_then(|opt| opt.as_ref().cloned())
     }
 
     pub fn set(&mut self, key: ContextKey, value: ContextValue) -> Result<()> {
@@ -177,11 +291,11 @@ impl AsyncContext {
     }
 
     pub fn remove(&mut self, key: &ContextKey) -> Option<ContextValue> {
-        self.data.remove(key)
+        self.data.remove(key).ok().flatten()
     }
 
     pub fn contains_key(&self, key: &ContextKey) -> bool {
-        self.data.contains_key(key)
+        self.data.contains_key(key).unwrap_or(false)
     }
 
     pub fn len(&self) -> usize {
@@ -199,7 +313,8 @@ impl AsyncContext {
 
 impl Default for AsyncContext {
     fn default() -> Self {
-        Self::new()
+        // Safe to unwrap: new() only fails on allocation errors which should be rare
+        Self::new().unwrap()
     }
 }
 
@@ -232,10 +347,8 @@ impl AsyncContextManager {
 
     #[cfg(not(feature = "std"))]
     pub fn context_get() -> Result<Option<AsyncContext>> {
-        let context_ref = GLOBAL_ASYNC_CONTEXT
-            .try_borrow()
-            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
-        Ok(context_ref.clone())
+        let context_ref = GLOBAL_ASYNC_CONTEXT.lock();
+        Ok((*context_ref).clone())
     }
 
     /// Set the current async context
@@ -253,9 +366,7 @@ impl AsyncContextManager {
 
     #[cfg(not(feature = "std"))]
     pub fn context_set(context: AsyncContext) -> Result<()> {
-        let mut context_ref = GLOBAL_ASYNC_CONTEXT
-            .try_borrow_mut()
-            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+        let mut context_ref = GLOBAL_ASYNC_CONTEXT.lock();
         *context_ref = Some(context);
         Ok(())
     }
@@ -284,16 +395,14 @@ impl AsyncContextManager {
 
     #[cfg(not(feature = "std"))]
     pub fn context_pop() -> Result<Option<AsyncContext>> {
-        let mut context_ref = GLOBAL_ASYNC_CONTEXT
-            .try_borrow_mut()
-            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+        let mut context_ref = GLOBAL_ASYNC_CONTEXT.lock();
         Ok(context_ref.take())
     }
 
     /// Get a value from the current context by key
     pub fn get_context_value(key: &ContextKey) -> Result<Option<ContextValue>> {
         let context = Self::context_get()?;
-        Ok(context.and_then(|ctx| ctx.get(key).cloned()))
+        Ok(context.and_then(|ctx| ctx.get(key)))
     }
 
     /// Set a value in the current context by key
@@ -330,7 +439,7 @@ pub mod canonical_builtins {
 
     /// `context.get` canonical built-in
     /// Returns the current async context as a component value
-    pub fn canon_context_get() -> Result<WrtComponentValue> {
+    pub fn canon_context_get() -> Result<WrtComponentValue<ComponentProvider>> {
         let context = AsyncContextManager::context_get()?;
         match context {
             Some(ctx) => {
@@ -344,11 +453,11 @@ pub mod canonical_builtins {
 
     /// `context.set` canonical built-in  
     /// Sets the current async context from a component value
-    pub fn canon_context_set(value: WrtComponentValue) -> Result<()> {
+    pub fn canon_context_set(value: WrtComponentValue<ComponentProvider>) -> Result<()> {
         match value {
             WrtComponentValue::Bool(true) => {
                 // Create a new empty context
-                let context = AsyncContext::new();
+                let context = AsyncContext::new()?;
                 AsyncContextManager::context_set(context)
             },
             WrtComponentValue::Bool(false) => {
@@ -367,7 +476,7 @@ pub mod canonical_builtins {
     /// Helper function to get a typed value from context
     pub fn get_typed_context_value<T>(key: &str, value_type: ValueType) -> Result<Option<T>>
     where
-        T: TryFrom<WrtComponentValue>,
+        T: TryFrom<WrtComponentValue<ComponentProvider>>,
         T::Error: Into<Error>,
     {
         #[cfg(feature = "std")]
@@ -390,7 +499,7 @@ pub mod canonical_builtins {
     /// Helper function to set a typed value in context
     pub fn set_typed_context_value<T>(key: &str, value: T) -> Result<()>
     where
-        T: Into<WrtComponentValue>,
+        T: Into<WrtComponentValue<ComponentProvider>>,
     {
         #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
@@ -419,7 +528,7 @@ impl AsyncContextScope {
 
     /// Enter a new empty async context scope
     pub fn enter_empty() -> Result<Self> {
-        Self::enter(AsyncContext::new())
+        Self::enter(AsyncContext::new()?)
     }
 }
 
@@ -447,7 +556,7 @@ mod tests {
     fn test_context_key_creation() {
         #[cfg(feature = "std")]
         {
-            let key = ContextKey::new("test-key".to_string());
+            let key = ContextKey::new("test-key".to_owned());
             assert_eq!(key.as_str(), "test-key");
         }
 
@@ -464,7 +573,7 @@ mod tests {
         assert!(value.as_component_value().is_some());
         assert_eq!(
             value.as_component_value().unwrap(),
-            &WrtComponentValue::Bool(true)
+            &WrtComponentValue<ComponentProvider>::Bool(true)
         );
     }
 
@@ -474,7 +583,7 @@ mod tests {
         assert!(context.is_empty());
 
         #[cfg(feature = "std")]
-        let key = ContextKey::new("test".to_string());
+        let key = ContextKey::new("test".to_owned());
         #[cfg(not(any(feature = "std",)))]
         let key = ContextKey::new("test").unwrap();
 
@@ -488,7 +597,7 @@ mod tests {
         let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
-            &WrtComponentValue::I32(42)
+            &WrtComponentValue<ComponentProvider>::I32(42)
         );
     }
 

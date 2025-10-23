@@ -58,18 +58,16 @@ use wrt_foundation::allocator::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
     safe_memory::NoStdProvider,
 };
 
 // Type aliases for no_std environment with proper generics
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<65536>>;
+type String = BoundedString<256, NoStdProvider<1024>>;
 #[cfg(not(feature = "std"))]
-type Vec<T> = BoundedVec<T, 256, NoStdProvider<65536>>;
+type Vec<T> = BoundedVec<T, 256>;
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]
@@ -81,9 +79,7 @@ use alloc::{
     vec,
 };
 
-// Type aliases for no_std
-#[cfg(not(feature = "std"))]
-type Arc<T> = wrt_foundation::SafeArc<T, NoStdProvider<65536>>;
+// Arc is already imported from prelude, no need for type alias
 
 use wrt_error::{
     codes,
@@ -98,7 +94,7 @@ use wrt_intercept::{
 };
 
 // Import our communication system components
-use crate::components::component_communication::{
+pub use crate::components::component_communication::{
     CallContext,
     CallRouter,
     CallRouterConfig,
@@ -367,10 +363,11 @@ impl ComponentCommunicationStrategy {
             let (component_part, function_part) = function_name.split_at(pos);
             let function_part = &function_part[2..]; // Skip "::"
 
+            let provider = NoStdProvider::<1024>::default();
             Some(CallRoutingInfo {
-                source_component: "unknown".to_string(), // Will be set by caller
-                target_component: component_part.to_string(),
-                function_name:    function_part.to_string(),
+                source_component: BoundedString::from_str("unknown", provider.clone()).unwrap_or_default(), // Will be set by caller
+                target_component: BoundedString::from_str(component_part, provider.clone()).unwrap_or_default(),
+                function_name:    BoundedString::from_str(function_part, provider).unwrap_or_default(),
                 call_context_id:  None,
             })
         } else {
@@ -381,7 +378,7 @@ impl ComponentCommunicationStrategy {
     /// Validate security policy for a call
     fn validate_security_policy(&self, routing_info: &CallRoutingInfo) -> Result<()> {
         if !self.config.enable_security {
-            return Ok();
+            return Ok(());
         }
 
         if let Some(policy) = self.security_policies.get(&routing_info.source_component) {
@@ -399,7 +396,16 @@ impl ComponentCommunicationStrategy {
                 && !policy
                     .allowed_functions
                     .iter()
-                    .any(|pattern| routing_info.function_name.contains(pattern))
+                    .any(|pattern| {
+                        #[cfg(feature = "std")]
+                        let pattern_str = pattern.as_str();
+                        #[cfg(not(feature = "std"))]
+                        let pattern_str = pattern.as_str().unwrap_or("");
+                        #[cfg(feature = "std")]
+                        return routing_info.function_name.contains(pattern_str);
+                        #[cfg(not(feature = "std"))]
+                        routing_info.function_name.as_str().map(|s| s.contains(pattern_str)).unwrap_or(false)
+                    })
             {
                 return Err(Error::security_access_denied(
                     "Function not allowed by security policy",
@@ -434,13 +440,26 @@ impl ComponentCommunicationStrategy {
             Ok(vec)
         };
         #[cfg(not(feature = "safety-critical"))]
-        let component_values: Result<Vec<WrtComponentValue>> =
-            args.iter().map(|val| self.convert_value_to_component_value(val)).collect();
+        let component_values: Result<Vec<WrtComponentValue<ComponentProvider>>> = {
+            let mut vec = Vec::new();
+            for val in args.iter() {
+                let converted = self.convert_value_to_component_value(val)?;
+                #[cfg(feature = "std")]
+                vec.push(converted);
+                #[cfg(not(feature = "std"))]
+                vec.push(converted).map_err(|_| {
+                    Error::runtime_execution_error(
+                        "Too many parameters for no_std mode (limit: 256)",
+                    )
+                })?;
+            }
+            Ok(vec)
+        };
 
         let component_values = component_values?;
 
         // Calculate marshaled size
-        let marshaled_size = self.calculate_marshaled_size(&component_values)?;
+        let marshaled_size = self.calculate_marshaled_size(component_values.as_slice())?;
 
         if marshaled_size > self.config.max_parameter_size {
             return Ok(ParameterMarshalingResult {
@@ -455,7 +474,7 @@ impl ComponentCommunicationStrategy {
                     conversions_performed: 0,
                 },
                 success: false,
-                error_message: Some("Parameter data too large".to_string()),
+                error_message: Some(BoundedString::from_str("Parameter data too large", NoStdProvider::<1024>::default()).unwrap_or_default()),
             });
         }
 
@@ -502,7 +521,7 @@ impl ComponentCommunicationStrategy {
     fn convert_value_to_component_value(
         &self,
         value: &wrt_foundation::values::Value,
-    ) -> Result<WrtComponentValue> {
+    ) -> Result<WrtComponentValue<ComponentProvider>> {
         match value {
             wrt_foundation::values::Value::I32(v) => Ok(WrtComponentValue::S32(*v)),
             wrt_foundation::values::Value::I64(v) => Ok(WrtComponentValue::S64(*v)),
@@ -515,7 +534,7 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Calculate marshaled size for component values
-    fn calculate_marshaled_size(&self, values: &[WrtComponentValue]) -> Result<u32> {
+    fn calculate_marshaled_size(&self, values: &[WrtComponentValue<ComponentProvider>]) -> Result<u32> {
         let mut total_size = 0u32;
 
         for value in values {
@@ -531,35 +550,59 @@ impl ComponentCommunicationStrategy {
                 | WrtComponentValue::F64(_) => 8,
                 WrtComponentValue::Char(_) => 4,
                 WrtComponentValue::String(s) => s.len() as u32 + 4, // String + length prefix
-                WrtComponentValue::List(items) => {
-                    4 + self.calculate_marshaled_size(items)? // Length prefix +
-                                                              // items
+                WrtComponentValue::List(_items) => {
+                    // List contains ValueRef, not ComponentValue directly
+                    // Cannot recursively calculate size without resolving refs
+                    16 // Placeholder size
                 },
-                WrtComponentValue::Record(fields) => self.calculate_marshaled_size(fields)?,
-                WrtComponentValue::Tuple(elements) => self.calculate_marshaled_size(elements)?,
-                WrtComponentValue::Variant { case: _, value } => {
-                    4 + if let Some(v) = value {
-                        self.calculate_marshaled_size(&[v.as_ref().clone()])?
+                WrtComponentValue::Record(_fields) => {
+                    // Record contains (name, ValueRef) pairs, not ComponentValue
+                    32 // Placeholder size
+                },
+                WrtComponentValue::Tuple(_elements) => {
+                    // Tuple contains ValueRef, not ComponentValue directly
+                    16 // Placeholder size
+                },
+                WrtComponentValue::Variant(_, value) => {
+                    4 + if value.is_some() {
+                        // Variant value is ValueRef, cannot calculate without resolving
+                        8 // Placeholder size for ValueRef
                     } else {
                         0
                     }
                 },
                 WrtComponentValue::Enum(_) => 4,
                 WrtComponentValue::Option(opt) => {
-                    1 + if let Some(v) = opt {
-                        self.calculate_marshaled_size(&[v.as_ref().clone()])?
+                    1 + if opt.is_some() {
+                        // Option value is ValueRef, cannot calculate without resolving
+                        8 // Placeholder size for ValueRef
                     } else {
                         0
                     }
                 },
-                WrtComponentValue::Result { ok, err: _ } => {
-                    1 + if let Some(v) = ok {
-                        self.calculate_marshaled_size(&[v.as_ref().clone()])?
-                    } else {
-                        0
+                WrtComponentValue::Result(result) => {
+                    1 + match result {
+                        Ok(v) | Err(v) => {
+                            // Result contains ValueRef directly, not Option<ValueRef>
+                            // ValueRef calculation not supported yet, return placeholder size
+                            8
+                        },
                     }
                 },
                 WrtComponentValue::Flags(_) => 4,
+                WrtComponentValue::Void => 0,
+                WrtComponentValue::Unit => 0,
+                WrtComponentValue::FixedList(items, _) => {
+                    // FixedList contains ValueRef, cannot calculate without resolving
+                    items.len() as u32 * 8 // Placeholder size per item
+                },
+                WrtComponentValue::ErrorContext(items) => {
+                    // ErrorContext contains ValueRef, cannot calculate without resolving
+                    items.len() as u32 * 8 // Placeholder size per item
+                },
+                WrtComponentValue::Own(_) => 4,
+                WrtComponentValue::Handle(_) => 4,
+                WrtComponentValue::Borrow(_) => 4,
             };
             total_size += size;
         }
@@ -568,18 +611,70 @@ impl ComponentCommunicationStrategy {
     }
 
     /// Serialize a component value to bytes
-    fn serialize_component_value(&self, value: &WrtComponentValue) -> Result<Vec<u8>> {
+    fn serialize_component_value(&self, value: &WrtComponentValue<ComponentProvider>) -> Result<Vec<u8>> {
         // Simplified serialization - would use proper canonical ABI in full
         // implementation
         match value {
-            WrtComponentValue::S32(v) => Ok(v.to_le_bytes().to_vec()),
-            WrtComponentValue::S64(v) => Ok(v.to_le_bytes().to_vec()),
-            WrtComponentValue::F32(v) => Ok(v.to_le_bytes().to_vec()),
-            WrtComponentValue::F64(v) => Ok(v.to_le_bytes().to_vec()),
+            WrtComponentValue::S32(v) => {
+                let bytes = v.to_le_bytes();
+                let mut vec = Vec::new();
+                for byte in bytes {
+                    #[cfg(not(feature = "std"))]
+                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    vec.push(byte);
+                }
+                Ok(vec)
+            },
+            WrtComponentValue::S64(v) => {
+                let bytes = v.to_le_bytes();
+                let mut vec = Vec::new();
+                for byte in bytes {
+                    #[cfg(not(feature = "std"))]
+                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    vec.push(byte);
+                }
+                Ok(vec)
+            },
+            WrtComponentValue::F32(v) => {
+                let bytes = v.to_bits().to_le_bytes();
+                let mut vec = Vec::new();
+                for byte in bytes {
+                    #[cfg(not(feature = "std"))]
+                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    vec.push(byte);
+                }
+                Ok(vec)
+            },
+            WrtComponentValue::F64(v) => {
+                let bytes = v.to_bits().to_le_bytes();
+                let mut vec = Vec::new();
+                for byte in bytes {
+                    #[cfg(not(feature = "std"))]
+                    vec.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    vec.push(byte);
+                }
+                Ok(vec)
+            },
             WrtComponentValue::String(s) => {
                 let mut bytes = Vec::new();
-                bytes.extend((s.len() as u32).to_le_bytes());
-                bytes.extend(s.as_bytes());
+                // Add length prefix
+                for byte in (s.len() as u32).to_le_bytes() {
+                    #[cfg(not(feature = "std"))]
+                    bytes.push(byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    bytes.push(byte);
+                }
+                // Add string bytes
+                for byte in s.as_bytes() {
+                    #[cfg(not(feature = "std"))]
+                    bytes.push(*byte).map_err(|_| Error::runtime_execution_error("Buffer capacity exceeded"))?;
+                    #[cfg(feature = "std")]
+                    bytes.push(*byte);
+                }
                 Ok(bytes)
             },
             #[cfg(feature = "safety-critical")]
@@ -591,7 +686,11 @@ impl ComponentCommunicationStrategy {
                 Ok(vec)
             },
             #[cfg(not(feature = "safety-critical"))]
-            _ => Ok(vec![0]), // Placeholder for other types
+            _ => {
+                let mut vec = Vec::new();
+                vec.push(0);
+                Ok(vec)
+            },
         }
     }
 }
@@ -621,7 +720,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
                 return Err(Error::runtime_execution_error(
                     marshaling_result
                         .error_message
-                        .unwrap_or("Parameter marshaling failed".to_string()),
+                        .unwrap_or(String::from("Parameter marshaling failed")),
                 ));
             }
 
@@ -684,7 +783,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Intercepts a lift operation in the canonical ABI
     fn intercept_lift(
         &self,
-        ty: &ValType<NoStdProvider<64>>,
+        ty: &ValType,
         addr: u32,
         memory_bytes: &[u8],
     ) -> Result<Option<Vec<u8>>> {
@@ -698,7 +797,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Intercepts a lower operation in the canonical ABI
     fn intercept_lower(
         &self,
-        value_type: &ValType<NoStdProvider<64>>,
+        value_type: &ValType,
         value_data: &[u8],
         addr: u32,
         memory_bytes: &mut [u8],
@@ -720,7 +819,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn intercept_function_call(
         &self,
         function_name: &str,
-        arg_types: &[ValType<NoStdProvider<64>>],
+        arg_types: &[ValType],
         arg_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         // Check if this is a cross-component call we should handle
@@ -741,7 +840,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn intercept_function_result(
         &self,
         function_name: &str,
-        result_types: &[ValType<NoStdProvider<64>>],
+        result_types: &[ValType],
         result_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         // Handle result marshaling for cross-component calls
@@ -785,7 +884,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn after_start(
         &self,
         component_name: &str,
-        result_types: &[ValType<NoStdProvider<64>>],
+        result_types: &[ValType],
         result_data: Option<&[u8]>,
     ) -> Result<Option<Vec<u8>>> {
         // Could implement component startup completion handling
@@ -803,8 +902,8 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
         &self,
         component_name: &str,
         func_name: &str,
-        args: &[ComponentValue<NoStdProvider<64>>],
-        results: &[ComponentValue<NoStdProvider<64>>],
+        args: &[ComponentValue],
+        results: &[ComponentValue],
     ) -> Result<Option<Vec<wrt_intercept::Modification>>> {
         // Could implement result post-processing for cross-component calls
         Ok(None)
@@ -823,7 +922,9 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<()> {
         // Simplified validation for no_std
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = source.to_string();
+            routing_info.source_component = String::from_str(source, NoStdProvider::<1024>::default()).map_err(|_| {
+                wrt_error::Error::validation_error("Source component name too long")
+            })?;
             self.validate_security_policy(&routing_info)?;
         }
         Ok(())
@@ -914,8 +1015,26 @@ pub fn create_default_security_policy() -> ComponentSecurityPolicy {
 /// Create a permissive security policy for testing
 pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
     ComponentSecurityPolicy {
-        allowed_targets:         vec!["*".to_string()],
-        allowed_functions:       vec!["*".to_string()],
+        #[cfg(feature = "std")]
+        allowed_targets:         vec![String::from("*")],
+        #[cfg(not(feature = "std"))]
+        allowed_targets:         {
+            let mut vec = Vec::new();
+            if let Ok(s) = BoundedString::from_str("*", NoStdProvider::<1024>::default()) {
+                let _ = vec.push(s);
+            }
+            vec
+        },
+        #[cfg(feature = "std")]
+        allowed_functions:       vec![String::from("*")],
+        #[cfg(not(feature = "std"))]
+        allowed_functions:       {
+            let mut vec = Vec::new();
+            if let Ok(s) = BoundedString::from_str("*", NoStdProvider::<1024>::default()) {
+                let _ = vec.push(s);
+            }
+            vec
+        },
         allow_resource_transfer: true,
         max_call_depth:          64,
         validate_parameters:     false,
@@ -950,19 +1069,19 @@ mod tests {
         let mut strategy = ComponentCommunicationStrategy::new();
 
         let policy = ComponentSecurityPolicy {
-            allowed_targets:         vec!["math_component".to_string()],
-            allowed_functions:       vec!["add".to_string(), "subtract".to_string()],
+            allowed_targets:         vec!["math_component".to_owned()],
+            allowed_functions:       vec!["add".to_owned(), "subtract".to_owned()],
             allow_resource_transfer: false,
             max_call_depth:          16,
             validate_parameters:     true,
         };
 
-        strategy.set_security_policy("calculator".to_string(), policy);
+        strategy.set_security_policy("calculator".to_owned(), policy);
 
         let routing_info = CallRoutingInfo {
-            source_component: "calculator".to_string(),
-            target_component: "math_component".to_string(),
-            function_name:    "add".to_string(),
+            source_component: "calculator".to_owned(),
+            target_component: "math_component".to_owned(),
+            function_name:    "add".to_owned(),
             call_context_id:  None,
         };
 
@@ -1007,7 +1126,7 @@ mod tests {
 
         let values = vec![
             WrtComponentValue::S32(42),
-            WrtComponentValue::String("hello".to_string()),
+            WrtComponentValue::String("hello".to_owned()),
             WrtComponentValue::Bool(true),
         ];
 
@@ -1020,11 +1139,11 @@ mod tests {
     fn test_instance_registration() {
         let mut strategy = ComponentCommunicationStrategy::new();
 
-        strategy.register_instance(1, "math_component".to_string()).unwrap();
+        strategy.register_instance(1, "math_component".to_owned()).unwrap();
         assert!(strategy.instance_registry.contains_key(&1));
         assert_eq!(
             strategy.instance_registry.get(&1),
-            Some(&"math_component".to_string())
+            Some(&"math_component".to_owned())
         );
     }
 

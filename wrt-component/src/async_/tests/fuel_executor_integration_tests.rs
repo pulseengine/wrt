@@ -67,7 +67,7 @@ mod tests {
             component_id,
             10,     // max concurrent tasks
             10000,  // fuel budget
-            Priority::Normal,
+            128, // Normal priority
         ).unwrap();
 
         // Spawn multiple async tasks
@@ -132,7 +132,8 @@ mod tests {
         
         // Create executor with self-reference
         let executor_arc = Arc::new(Mutex::new(executor;
-        if let Ok(mut exec) = executor_arc.lock() {
+        {
+            let mut exec = executor_arc.lock();
             exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
@@ -142,7 +143,7 @@ mod tests {
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 150, // Exceeds global limit
-                Priority::Normal,
+                128, // Normal priority
                 async { Ok(()) },
             )
         };
@@ -155,7 +156,7 @@ mod tests {
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 50,
-                Priority::Normal,
+                128, // Normal priority
                 async { Ok(()) },
             ).unwrap()
         };
@@ -214,7 +215,7 @@ mod tests {
                 component_id,
                 5,      // max concurrent tasks per component
                 10000,  // fuel budget per component
-                Priority::Normal,
+                128, // Normal priority
             ).unwrap();
         }
 
@@ -282,7 +283,7 @@ mod tests {
         let low_task = executor.spawn_task(
             ComponentInstanceId::new(1),
             1000,
-            Priority::Low,
+            64, // Low priority
             async move {
                 low_priority_completed.store(true, Ordering::Release;
                 Ok(())
@@ -292,7 +293,7 @@ mod tests {
         let high_task = executor.spawn_task(
             ComponentInstanceId::new(1),
             1000,
-            Priority::High,
+            192, // High priority
             async move {
                 high_clone.store(true, Ordering::Release;
                 Ok(())
@@ -321,7 +322,7 @@ mod tests {
             let task_id = executor.spawn_task(
                 ComponentInstanceId::new(1),
                 100,
-                Priority::Normal,
+                128, // Normal priority
                 async move { Ok(()) },
             ).unwrap();
             task_ids.push(task_id);

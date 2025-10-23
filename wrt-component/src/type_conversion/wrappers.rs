@@ -33,6 +33,15 @@
 //! let inner_type = wrapper.into_inner();
 //! ```
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    borrow::ToOwned,
+    string::{String, ToString},
+    vec::Vec,
+};
+
 // Additional imports
 use wrt_error::{
     Error,
@@ -42,11 +51,18 @@ use wrt_format::component::{
     ComponentTypeDefinition,
     ExternType as FormatExternType,
 };
-use wrt_foundation::component::{
-    ComponentType,
-    ExternType as TypesExternType,
-    InstanceType,
+use wrt_foundation::{
+    component::{
+        ComponentType,
+        ExternType as TypesExternType,
+        InstanceType,
+    },
+    safe_memory::NoStdProvider,
 };
+
+// For no_std, override prelude's bounded::BoundedVec with StaticVec
+#[cfg(not(feature = "std"))]
+use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use super::bidirectional::{
     format_to_runtime_extern_type,
@@ -55,11 +71,30 @@ use super::bidirectional::{
     IntoRuntimeType,
 };
 
+use crate::bounded_component_infra::ComponentProvider;
+
+/// Helper function to convert Namespace<P> to String
+fn namespace_to_string<P>(namespace: &wrt_foundation::component::Namespace<P>) -> Result<String>
+where
+    P: wrt_foundation::MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
+    let parts: Result<Vec<String>> = namespace
+        .elements
+        .iter()
+        .map(|elem| {
+            elem.as_str()
+                .map(|s| s.to_string())
+                .map_err(|_| Error::runtime_execution_error("Invalid namespace element"))
+        })
+        .collect();
+    Ok(parts?.join(":"))
+}
+
 /// Wrapper around wrt_foundation::component::ComponentType
 #[derive(Debug, Clone)]
 pub struct RuntimeComponentType {
     /// The wrapped component type
-    inner: ComponentType,
+    inner: ComponentType<NoStdProvider<4096>>,
 }
 
 /// Wrapper around wrt_format::component::ComponentTypeDefinition::Component
@@ -75,7 +110,7 @@ pub struct FormatComponentType {
 #[derive(Debug, Clone)]
 pub struct RuntimeInstanceType {
     /// The wrapped instance type
-    inner: InstanceType,
+    inner: InstanceType<NoStdProvider<4096>>,
 }
 
 /// Wrapper around wrt_format::component::ComponentTypeDefinition::Instance
@@ -87,30 +122,30 @@ pub struct FormatInstanceType {
 
 impl RuntimeComponentType {
     /// Create a new runtime component type wrapper
-    pub fn new(component_type: ComponentType) -> Self {
+    pub fn new(component_type: ComponentType<NoStdProvider<4096>>) -> Self {
         Self {
             inner: component_type,
         }
     }
 
     /// Get the inner component type
-    pub fn inner(&self) -> &ComponentType {
+    pub fn inner(&self) -> &ComponentType<NoStdProvider<4096>> {
         &self.inner
     }
 
     /// Consume the wrapper and return the inner component type
-    pub fn into_inner(self) -> ComponentType {
+    pub fn into_inner(self) -> ComponentType<NoStdProvider<4096>> {
         self.inner
     }
 }
 
-impl From<ComponentType> for RuntimeComponentType {
-    fn from(component_type: ComponentType) -> Self {
+impl From<ComponentType<NoStdProvider<4096>>> for RuntimeComponentType {
+    fn from(component_type: ComponentType<NoStdProvider<4096>>) -> Self {
         Self::new(component_type)
     }
 }
 
-impl From<RuntimeComponentType> for ComponentType {
+impl From<RuntimeComponentType> for ComponentType<NoStdProvider<4096>> {
     fn from(wrapper: RuntimeComponentType) -> Self {
         wrapper.into_inner()
     }
@@ -145,30 +180,30 @@ impl From<ComponentTypeDefinition> for FormatComponentType {
 
 impl RuntimeInstanceType {
     /// Create a new runtime instance type wrapper
-    pub fn new(instance_type: InstanceType) -> Self {
+    pub fn new(instance_type: InstanceType<NoStdProvider<4096>>) -> Self {
         Self {
             inner: instance_type,
         }
     }
 
     /// Get the inner instance type
-    pub fn inner(&self) -> &InstanceType {
+    pub fn inner(&self) -> &InstanceType<NoStdProvider<4096>> {
         &self.inner
     }
 
     /// Consume the wrapper and return the inner instance type
-    pub fn into_inner(self) -> InstanceType {
+    pub fn into_inner(self) -> InstanceType<NoStdProvider<4096>> {
         self.inner
     }
 }
 
-impl From<InstanceType> for RuntimeInstanceType {
-    fn from(instance_type: InstanceType) -> Self {
+impl From<InstanceType<NoStdProvider<4096>>> for RuntimeInstanceType {
+    fn from(instance_type: InstanceType<NoStdProvider<4096>>) -> Self {
         Self::new(instance_type)
     }
 }
 
-impl From<RuntimeInstanceType> for InstanceType {
+impl From<RuntimeInstanceType> for InstanceType<NoStdProvider<4096>> {
     fn from(wrapper: RuntimeInstanceType) -> Self {
         wrapper.into_inner()
     }
@@ -205,23 +240,30 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
     fn try_from(runtime_type: RuntimeComponentType) -> Result<Self> {
         let runtime_type = runtime_type.into_inner();
 
-        // Convert imports
-        let imports_result: core::result::Result<Vec<(String, String, FormatExternType)>> =
+        // Convert imports from Import<P> structs to tuples
+        let imports_result: Result<Vec<(String, String, FormatExternType)>> =
             runtime_type
                 .imports
                 .into_iter()
-                .map(|(namespace, name, extern_type)| {
-                    runtime_to_format_extern_type(&extern_type)
+                .map(|import| {
+                    let namespace = namespace_to_string(&import.key.namespace)?;
+                    let name = import.key.name.as_str()
+                        .map_err(|_| Error::runtime_execution_error("Invalid import name"))?
+                        .to_owned();
+                    runtime_to_format_extern_type(&import.ty)
                         .map(|format_type| (namespace, name, format_type))
                 })
                 .collect();
 
-        // Convert exports
-        let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
+        // Convert exports from Export<P> structs to tuples
+        let exports_result: Result<Vec<(String, FormatExternType)>> = runtime_type
             .exports
             .into_iter()
-            .map(|(name, extern_type)| {
-                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
+            .map(|export| {
+                let name = export.name.as_str()
+                    .map_err(|_| Error::runtime_execution_error("Invalid export name"))?
+                    .to_owned();
+                runtime_to_format_extern_type(&export.ty).map(|format_type| (name, format_type))
             })
             .collect();
 
@@ -236,33 +278,69 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
     type Error = Error;
 
     fn try_from(format_type: FormatComponentType) -> Result<Self> {
-        // Convert imports
-        let imports_result: core::result::Result<Vec<(String, String, TypesExternType)>> =
-            format_type
-                .imports
-                .into_iter()
-                .map(|(namespace, name, extern_type)| {
-                    format_to_runtime_extern_type(&extern_type)
-                        .map(|runtime_type| (namespace, name, runtime_type))
-                })
-                .collect();
+        // Get a provider for creating the bounded structures
+        #[cfg(feature = "std")]
+        let provider = ComponentProvider::default();
+        #[cfg(not(feature = "std"))]
+        let provider = {
+            use wrt_foundation::{safe_managed_alloc, CrateId};
+            safe_managed_alloc!(4096, CrateId::Component)?
+        };
 
-        // Convert exports
-        let exports_result: core::result::Result<Vec<(String, TypesExternType)>> = format_type
-            .exports
-            .into_iter()
-            .map(|(name, extern_type)| {
-                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
-            })
-            .collect();
+        // Convert imports from tuples to Import<P> structs
+        let mut import_vec: wrt_foundation::BoundedVec<
+            wrt_foundation::Import<ComponentProvider>,
+            128,
+            ComponentProvider,
+        > = wrt_foundation::BoundedVec::new(provider.clone())?;
+
+        for (namespace, name, extern_type) in format_type.imports {
+            let runtime_type = format_to_runtime_extern_type(&extern_type)?;
+            let namespace_obj = wrt_foundation::Namespace::from_str(&namespace, provider.clone())?;
+            let name_wasm = wrt_foundation::WasmName::from_str(&name, provider.clone())
+                .map_err(|_| Error::runtime_execution_error("Invalid import name"))?;
+            let import = wrt_foundation::Import {
+                key: wrt_foundation::ImportKey {
+                    namespace: namespace_obj,
+                    name: name_wasm,
+                },
+                ty: runtime_type,
+            };
+            import_vec.push(import)
+                .map_err(|_| Error::capacity_exceeded("Too many imports"))?;
+        }
+
+        // Convert exports from tuples to Export<P> structs
+        let mut export_vec: wrt_foundation::BoundedVec<
+            wrt_foundation::Export<ComponentProvider>,
+            128,
+            ComponentProvider,
+        > = wrt_foundation::BoundedVec::new(provider.clone())?;
+
+        for (name, extern_type) in format_type.exports {
+            let runtime_type = format_to_runtime_extern_type(&extern_type)?;
+            let name_wasm = wrt_foundation::WasmName::from_str(&name, provider.clone())
+                .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
+            let export = wrt_foundation::Export {
+                name: name_wasm,
+                ty: runtime_type,
+                desc: None,
+            };
+            export_vec.push(export)
+                .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
+        }
 
         // Create empty instances for now - can be enhanced in future
-        let instances = Vec::new();
+        let instances = wrt_foundation::BoundedVec::new(provider.clone())?;
 
         Ok(Self::new(ComponentType {
-            imports: imports_result?,
-            exports: exports_result?,
+            imports: import_vec,
+            exports: export_vec,
+            aliases: wrt_foundation::BoundedVec::new(provider.clone())?,
             instances,
+            core_instances: wrt_foundation::BoundedVec::new(provider.clone())?,
+            component_types: wrt_foundation::BoundedVec::new(provider.clone())?,
+            core_types: wrt_foundation::BoundedVec::new(provider.clone())?,
         }))
     }
 }
@@ -273,12 +351,15 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
     fn try_from(runtime_type: RuntimeInstanceType) -> Result<Self> {
         let runtime_type = runtime_type.into_inner();
 
-        // Convert exports
-        let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
+        // Convert exports from Export<P> structs to tuples
+        let exports_result: Result<Vec<(String, FormatExternType)>> = runtime_type
             .exports
             .into_iter()
-            .map(|(name, extern_type)| {
-                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
+            .map(|export| {
+                let name = export.name.as_str()
+                    .map_err(|_| Error::runtime_execution_error("Invalid export name"))?
+                    .to_owned();
+                runtime_to_format_extern_type(&export.ty).map(|format_type| (name, format_type))
             })
             .collect();
 
@@ -292,17 +373,37 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
     type Error = Error;
 
     fn try_from(format_type: FormatInstanceType) -> Result<Self> {
-        // Convert exports
-        let exports_result: core::result::Result<Vec<(String, TypesExternType)>> = format_type
-            .exports
-            .into_iter()
-            .map(|(name, extern_type)| {
-                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
-            })
-            .collect();
+        // Get a provider for creating the bounded structures
+        #[cfg(feature = "std")]
+        let provider = ComponentProvider::default();
+        #[cfg(not(feature = "std"))]
+        let provider = {
+            use wrt_foundation::{safe_managed_alloc, CrateId};
+            safe_managed_alloc!(4096, CrateId::Component)?
+        };
+
+        // Convert exports from tuples to Export<P> structs
+        let mut export_vec: wrt_foundation::BoundedVec<
+            wrt_foundation::Export<ComponentProvider>,
+            128,
+            ComponentProvider,
+        > = wrt_foundation::BoundedVec::new(provider.clone())?;
+
+        for (name, extern_type) in format_type.exports {
+            let runtime_type = format_to_runtime_extern_type(&extern_type)?;
+            let name_wasm = wrt_foundation::WasmName::from_str(&name, provider.clone())
+                .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
+            let export = wrt_foundation::Export {
+                name: name_wasm,
+                ty: runtime_type,
+                desc: None,
+            };
+            export_vec.push(export)
+                .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
+        }
 
         Ok(Self::new(InstanceType {
-            exports: exports_result?,
+            exports: export_vec,
         }))
     }
 }
@@ -484,7 +585,7 @@ mod tests {
                     typed_conversion.convert(from)
                 } else {
                     Err(TestConversionError {
-                        message: "Type casting failed".to_string(),
+                        message: "Type casting failed".to_owned(),
                     })
                 }
             } else {

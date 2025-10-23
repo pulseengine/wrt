@@ -28,10 +28,10 @@ use wrt_error::{
 use wrt_foundation::builtin::BuiltinType;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec as BoundedVec,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 #[cfg(not(feature = "std"))]
@@ -41,30 +41,89 @@ use crate::prelude::{
     WrtComponentValue,
     *,
 };
+use crate::bounded_component_infra::ComponentProvider;
 #[cfg(not(feature = "std"))]
 use crate::types::Value;
 
 // Define a unified BuiltinType for no_std
 #[cfg(not(feature = "std"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BuiltinType {
-    // Error built-ins
-    ErrorNew,
-    ErrorTrace,
-    // Resource built-ins
+    // Resource built-ins (always available)
     ResourceCreate,
     ResourceDrop,
     ResourceRep,
     ResourceGet,
-    // Threading built-ins
-    ThreadingSpawn,
-    ThreadingJoin,
-    ThreadingSync,
+    // Resource built-ins (async feature)
+    #[cfg(feature = "component-model-async")]
+    ResourceNew,
+    // Task built-ins
+    #[cfg(feature = "component-model-async")]
+    TaskYield,
+    #[cfg(feature = "component-model-async")]
+    TaskWait,
+    #[cfg(feature = "component-model-async")]
+    TaskReturn,
+    #[cfg(feature = "component-model-async")]
+    TaskPoll,
+    #[cfg(feature = "component-model-async")]
+    TaskBackpressure,
+    // Subtask built-ins
+    #[cfg(feature = "component-model-async")]
+    SubtaskDrop,
+    // Stream built-ins
+    #[cfg(feature = "component-model-async")]
+    StreamNew,
+    #[cfg(feature = "component-model-async")]
+    StreamRead,
+    #[cfg(feature = "component-model-async")]
+    StreamWrite,
+    #[cfg(feature = "component-model-async")]
+    StreamCancelRead,
+    #[cfg(feature = "component-model-async")]
+    StreamCancelWrite,
+    #[cfg(feature = "component-model-async")]
+    StreamCloseReadable,
+    #[cfg(feature = "component-model-async")]
+    StreamCloseWritable,
+    // Future built-ins
+    #[cfg(feature = "component-model-async")]
+    FutureNew,
+    #[cfg(feature = "component-model-async")]
+    FutureCancelRead,
+    #[cfg(feature = "component-model-async")]
+    FutureCancelWrite,
+    #[cfg(feature = "component-model-async")]
+    FutureCloseReadable,
+    #[cfg(feature = "component-model-async")]
+    FutureCloseWritable,
     // Async built-ins
+    #[cfg(feature = "component-model-async")]
     AsyncNew,
+    #[cfg(feature = "component-model-async")]
     AsyncGet,
+    #[cfg(feature = "component-model-async")]
     AsyncPoll,
+    #[cfg(feature = "component-model-async")]
     AsyncWait,
+    // Error Context built-ins
+    #[cfg(feature = "component-model-error-context")]
+    ErrorNew,
+    #[cfg(feature = "component-model-error-context")]
+    ErrorTrace,
+    #[cfg(feature = "component-model-error-context")]
+    ErrorContextNew,
+    #[cfg(feature = "component-model-error-context")]
+    ErrorContextDrop,
+    #[cfg(feature = "component-model-error-context")]
+    ErrorContextDebugMessage,
+    // Threading built-ins
+    #[cfg(feature = "component-model-threading")]
+    ThreadingSpawn,
+    #[cfg(feature = "component-model-threading")]
+    ThreadingJoin,
+    #[cfg(feature = "component-model-threading")]
+    ThreadingSync,
 }
 // Commented out until wrt_intercept is properly available
 // use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor,
@@ -74,27 +133,29 @@ pub enum BuiltinType {
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct InterceptContext {
-    component_name: BoundedString<128, NoStdProvider<65536>>,
+    component_name: BoundedString<128, NoStdProvider<512>>,
     builtin_type:   BuiltinType,
-    host_id:        BoundedString<128, NoStdProvider<65536>>,
+    host_id:        BoundedString<128, NoStdProvider<512>>,
 }
 
 #[cfg(not(feature = "std"))]
 impl InterceptContext {
-    pub fn new(component_name: &str, builtin_type: BuiltinType, host_id: &str) -> Self {
-        Self {
-            component_name: BoundedString::from_str(component_name).unwrap_or_default(),
+    pub fn new(component_name: &str, builtin_type: BuiltinType, host_id: &str) -> Result<Self> {
+        let provider1 = safe_managed_alloc!(512, CrateId::Component)?;
+        let provider2 = safe_managed_alloc!(512, CrateId::Component)?;
+        Ok(Self {
+            component_name: BoundedString::from_str(component_name, provider1).unwrap_or_default(),
             builtin_type,
-            host_id: BoundedString::from_str(host_id).unwrap_or_default(),
-        }
+            host_id: BoundedString::from_str(host_id, provider2).unwrap_or_default(),
+        })
     }
 }
 
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub enum BeforeBuiltinResult {
-    Continue(BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>),
-    Override(BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>),
+    Continue(BoundedVec<WrtComponentValue<ComponentProvider>, 16>),
+    Override(BoundedVec<WrtComponentValue<ComponentProvider>, 16>),
     Deny,
 }
 
@@ -103,7 +164,7 @@ pub trait BuiltinInterceptor {
     fn before_builtin(
         &self,
         context: &InterceptContext,
-        args: &[WrtComponentValue],
+        args: &[WrtComponentValue<ComponentProvider>],
     ) -> Result<BeforeBuiltinResult>;
 }
 
@@ -154,7 +215,7 @@ pub trait BuiltinHandler: Send + Sync {
     /// # Returns
     ///
     /// A `Result` containing the function results or an error
-    fn execute(&self, args: &[WrtComponentValue]) -> Result<Vec<WrtComponentValue>>;
+    fn execute(&self, args: &[WrtComponentValue<ComponentProvider>]) -> Result<Vec<WrtComponentValue<ComponentProvider>>>;
 
     /// Clone this handler
     ///
@@ -172,8 +233,8 @@ pub trait BuiltinHandler {
     /// Execute the built-in function with the given arguments (no_std version)
     fn execute(
         &self,
-        args: &[WrtComponentValue],
-    ) -> core::result::Result<BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>>;
+        args: &[WrtComponentValue<ComponentProvider>],
+    ) -> core::result::Result<BoundedVec<WrtComponentValue<ComponentProvider>, 16>, Error>;
 
     /// Clone this handler
     fn clone_handler(&self) -> Box<dyn BuiltinHandler>;
@@ -182,7 +243,7 @@ pub trait BuiltinHandler {
 /// Function executor type for threading built-ins
 #[cfg(feature = "component-model-threading")]
 pub type FunctionExecutor =
-    Arc<dyn Fn(u32, Vec<WrtComponentValue>) -> Result<Vec<WrtComponentValue>> + Send + Sync>;
+    Arc<dyn Fn(u32, Vec<WrtComponentValue<ComponentProvider>>) -> Result<Vec<WrtComponentValue<ComponentProvider>>> + Send + Sync>;
 
 /// Registry of built-in handlers
 ///
@@ -329,7 +390,7 @@ impl BuiltinRegistry {
         self.handlers.iter().any(|h| h.builtin_type() == builtin_type)
     }
 
-    /// Call a built-in function
+    /// Call a built-in function (std version)
     ///
     /// # Arguments
     ///
@@ -339,11 +400,12 @@ impl BuiltinRegistry {
     /// # Returns
     ///
     /// A `Result` containing the function results or an error
+    #[cfg(feature = "std")]
     pub fn call(
         &self,
         builtin_type: BuiltinType,
-        args: &[WrtComponentValue],
-    ) -> Result<Vec<WrtComponentValue>> {
+        args: &[WrtComponentValue<ComponentProvider>],
+    ) -> Result<Vec<WrtComponentValue<ComponentProvider>>> {
         // Find the handler for this built-in
         let handler = self
             .handlers
@@ -352,7 +414,37 @@ impl BuiltinRegistry {
             .ok_or_else(|| Error::component_not_found("Component not found"))?;
 
         // Create interception context
-        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
+        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id)?;
+
+        // No interceptor currently, just execute
+        handler.execute(args)
+    }
+
+    /// Call a built-in function (no_std version)
+    ///
+    /// # Arguments
+    ///
+    /// * `builtin_type` - The type of built-in to call
+    /// * `args` - The arguments to the function
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the function results or an error
+    #[cfg(not(feature = "std"))]
+    pub fn call(
+        &self,
+        builtin_type: BuiltinType,
+        args: &[WrtComponentValue<ComponentProvider>],
+    ) -> Result<BoundedVec<WrtComponentValue<ComponentProvider>, 16>> {
+        // Find the handler for this built-in
+        let handler = self
+            .handlers
+            .iter()
+            .find(|h| h.builtin_type() == builtin_type)
+            .ok_or_else(|| Error::component_not_found("Component not found"))?;
+
+        // Create interception context
+        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id)?;
 
         // No interceptor currently, just execute
         handler.execute(args)

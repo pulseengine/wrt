@@ -7,8 +7,11 @@
 use wrt_format::component::FormatValType;
 use wrt_foundation::{
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
+    traits::{Checksummable, FromBytes, ToBytes},
+    verification::Checksum,
 };
 
 use crate::{
@@ -46,7 +49,7 @@ impl MemoryLayout {
 }
 
 /// Calculate memory layout for a WebAssembly component model type
-pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
+pub fn calculate_layout(ty: &FormatValType) -> MemoryLayout {
     match ty {
         // Primitive types
         FormatValType::Bool => MemoryLayout::new(1, 1),
@@ -80,8 +83,8 @@ pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
         FormatValType::Option(inner) => calculate_option_layout(inner),
 
         // Results are variants with two cases (ok/err)
-        FormatValType::Result(ok_ty, err_ty) => {
-            calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref())
+        FormatValType::Result(result_ty) => {
+            calculate_result_layout(Some(result_ty.as_ref()), None)
         },
 
         // Flags need bit storage
@@ -96,7 +99,7 @@ pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
 }
 
 /// Calculate layout for a record type
-fn calculate_record_layout(fields: &[(String, FormatValType<ComponentProvider>)]) -> MemoryLayout {
+fn calculate_record_layout(fields: &[(String, FormatValType)]) -> MemoryLayout {
     let mut offset = 0;
     let mut max_alignment = 1;
 
@@ -118,7 +121,7 @@ fn calculate_record_layout(fields: &[(String, FormatValType<ComponentProvider>)]
 }
 
 /// Calculate layout for a tuple type
-fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryLayout {
+fn calculate_tuple_layout(types: &[FormatValType]) -> MemoryLayout {
     let mut offset = 0;
     let mut max_alignment = 1;
 
@@ -141,7 +144,7 @@ fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryL
 
 /// Calculate layout for a variant type
 fn calculate_variant_layout(
-    cases: &[(String, Option<FormatValType<ComponentProvider>>)],
+    cases: &[(String, Option<FormatValType>)],
 ) -> MemoryLayout {
     // Discriminant size based on number of cases
     let discriminant_size = discriminant_size(cases.len());
@@ -177,7 +180,7 @@ fn calculate_enum_layout(num_cases: usize) -> MemoryLayout {
 }
 
 /// Calculate layout for an option type
-fn calculate_option_layout(inner: &FormatValType<ComponentProvider>) -> MemoryLayout {
+fn calculate_option_layout(inner: &FormatValType) -> MemoryLayout {
     // Option is a variant with none (no payload) and some (with payload)
     let inner_layout = calculate_layout(inner);
 
@@ -192,8 +195,8 @@ fn calculate_option_layout(inner: &FormatValType<ComponentProvider>) -> MemoryLa
 
 /// Calculate layout for a result type
 fn calculate_result_layout(
-    ok_ty: Option<&FormatValType<ComponentProvider>>,
-    err_ty: Option<&FormatValType<ComponentProvider>>,
+    ok_ty: Option<&FormatValType>,
+    err_ty: Option<&FormatValType>,
 ) -> MemoryLayout {
     // Result is a variant with ok and err cases
     let mut max_payload_size = 0;
@@ -258,7 +261,7 @@ const fn align_to(value: usize, alignment: usize) -> usize {
 
 /// Calculate field offsets for a record or struct
 pub fn calculate_field_offsets(
-    fields: &[(String, FormatValType<ComponentProvider>)],
+    fields: &[(String, FormatValType)],
 ) -> Vec<(String, usize, MemoryLayout)> {
     let mut result = Vec::new();
     let mut offset = 0;
@@ -282,8 +285,8 @@ pub struct LayoutOptimizer;
 impl LayoutOptimizer {
     /// Reorder fields to minimize padding (largest alignment first)
     pub fn optimize_field_order(
-        fields: &[(String, FormatValType<ComponentProvider>)],
-    ) -> Vec<(String, FormatValType<ComponentProvider>)> {
+        fields: &[(String, FormatValType)],
+    ) -> Vec<(String, FormatValType)> {
         let mut fields_with_layout: Vec<_> = fields
             .iter()
             .map(|(name, ty)| {
@@ -312,7 +315,7 @@ impl LayoutOptimizer {
 pub struct CanonicalMemoryPool {
     /// Binary std/no_std choice
     #[cfg(not(any(feature = "std",)))]
-    pools:        [BoundedVec<MemoryBuffer, 16, NoStdProvider<65536>>; 4],
+    pools:        [BoundedVec<MemoryBuffer, 16>; 4],
     #[cfg(feature = "std")]
     pools:        [Vec<MemoryBuffer>; 4],
     /// Size classes: 64B, 256B, 1KB, 4KB
@@ -325,27 +328,109 @@ struct MemoryBuffer {
     in_use: bool,
 }
 
+impl Clone for MemoryBuffer {
+    fn clone(&self) -> Self {
+        Self {
+            data:   self.data.to_vec().into_boxed_slice(),
+            in_use: self.in_use,
+        }
+    }
+}
+
+impl Default for MemoryBuffer {
+    fn default() -> Self {
+        Self {
+            data:   Box::new([]),
+            in_use: false,
+        }
+    }
+}
+
+impl PartialEq for MemoryBuffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.data.as_ref() == other.data.as_ref() && self.in_use == other.in_use
+    }
+}
+
+impl Eq for MemoryBuffer {}
+
+impl Checksummable for MemoryBuffer {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Update checksum with the data buffer contents
+        self.data.as_ref().update_checksum(checksum);
+        // Include the in_use flag in the checksum
+        self.in_use.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for MemoryBuffer {
+    fn to_bytes_with_provider<P: MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        provider: &P,
+    ) -> core::result::Result<(), wrt_error::Error> {
+        // Write the length of the data buffer
+        (self.data.len() as u32).to_bytes_with_provider(writer, provider)?;
+        // Write the data buffer contents
+        writer.write_all(&self.data).map_err(|_| {
+            wrt_error::Error::foundation_memory_provider_failed("Failed to write MemoryBuffer data")
+        })?;
+        // Write the in_use flag
+        self.in_use.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for MemoryBuffer {
+    fn from_bytes_with_provider<P: MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &P,
+    ) -> core::result::Result<Self, wrt_error::Error> {
+        // Read the length of the data buffer
+        let len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        // Read the data buffer contents
+        #[cfg(feature = "std")]
+        let mut data = vec![0u8; len];
+        #[cfg(not(feature = "std"))]
+        let mut data = {
+            use alloc::vec;
+            vec![0u8; len]
+        };
+        reader.read_exact(&mut data).map_err(|_| {
+            wrt_error::Error::foundation_memory_provider_failed(
+                "Failed to read MemoryBuffer data",
+            )
+        })?;
+        // Read the in_use flag
+        let in_use = bool::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            data: data.into_boxed_slice(),
+            in_use,
+        })
+    }
+}
+
 impl CanonicalMemoryPool {
     /// Create a new memory pool
-    pub fn new() -> Result<Self, crate::ComponentError> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(not(any(feature = "std",)))]
             pools: [
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider)?
+                    BoundedVec::new().unwrap()
                 },
             ],
             #[cfg(feature = "std")]
@@ -446,9 +531,9 @@ mod tests {
     #[test]
     fn test_record_layout() {
         let fields = vec![
-            ("a".to_string(), FormatValType::U8),
-            ("b".to_string(), FormatValType::U32),
-            ("c".to_string(), FormatValType::U16),
+            ("a".to_owned(), FormatValType::U8),
+            ("b".to_owned(), FormatValType::U32),
+            ("c".to_owned(), FormatValType::U16),
         ];
 
         let layout = calculate_record_layout(&fields);
@@ -478,10 +563,10 @@ mod tests {
     #[test]
     fn test_layout_optimizer() {
         let fields = vec![
-            ("a".to_string(), FormatValType::U8),
-            ("b".to_string(), FormatValType::U64),
-            ("c".to_string(), FormatValType::U16),
-            ("d".to_string(), FormatValType::U32),
+            ("a".to_owned(), FormatValType::U8),
+            ("b".to_owned(), FormatValType::U64),
+            ("c".to_owned(), FormatValType::U16),
+            ("d".to_owned(), FormatValType::U32),
         ];
 
         let optimized = LayoutOptimizer::optimize_field_order(&fields);

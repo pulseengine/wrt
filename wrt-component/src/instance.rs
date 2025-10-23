@@ -71,28 +71,28 @@ mod tests {
 
         let func_value = FunctionValue {
             ty:          func_type.clone(),
-            export_name: "add".to_string(),
+            export_name: "add".to_owned(),
         };
 
-        let component_func_type = ExternType::Function {
+        let component_func_type = ExternType::Func {
             params:  vec![
-                ("a".to_string(), ValType::S32),
-                ("b".to_string(), ValType::S32),
+                ("a".to_owned(), ValType::S32),
+                ("b".to_owned(), ValType::S32),
             ],
             results: vec![ValType::S32],
         };
 
         let export = Export {
-            name:  "add".to_string(),
+            name:  "add".to_owned(),
             ty:    component_func_type.clone(),
             value: ExternValue::Function(func_value),
         };
 
         let instance_type = ComponentTypeDefinition::Instance {
-            exports: vec![("add".to_string(), component_func_type)],
+            exports: vec![("add".to_owned(), component_func_type)],
         };
 
-        let instance = InstanceValue::new("math".to_string(), instance_type, vec![export]);
+        let instance = InstanceValue::new("math".to_owned(), instance_type, vec![export]);
 
         assert_eq!(instance.name, "math");
         assert_eq!(instance.exports.len(), 1);

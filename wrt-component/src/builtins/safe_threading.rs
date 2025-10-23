@@ -26,10 +26,12 @@ use wrt_platform::{
         ThreadPriority,
         ThreadingLimits,
     },
-    wasm_thread_manager::{
-        WasmModuleInfo,
-        WasmThreadManager,
-    },
+};
+
+#[cfg(feature = "threading")]
+use wrt_platform::wasm_thread_manager::{
+    WasmModuleInfo,
+    WasmThreadManager,
 };
 
 use super::BuiltinHandler;
@@ -61,7 +63,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string()));
+            return Err(Error::runtime_execution_error("Error occurred".to_owned()));
         }
 
         // Extract function ID
@@ -137,7 +139,7 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("Error occurred".to_string()));
+            return Err(Error::runtime_execution_error("Error occurred".to_owned()));
         }
 
         // Extract thread ID
@@ -197,7 +199,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string()));
+            return Err(Error::runtime_execution_error("Error occurred".to_owned()));
         }
 
         // Extract operation type
@@ -213,7 +215,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
         match op_type {
             "is-running" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
+                    return Err(Error::runtime_execution_error("Error occurred".to_owned()));
                 }
 
                 let thread_id = match args[1] {
@@ -232,7 +234,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
             },
             "cancel" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
+                    return Err(Error::runtime_execution_error("Error occurred".to_owned()));
                 }
 
                 let thread_id = match args[1] {
@@ -358,7 +360,7 @@ mod tests {
     fn create_test_module() -> WasmModuleInfo {
         WasmModuleInfo {
             id:               1,
-            name:             "test_module".to_string(),
+            name:             "test_module".to_owned(),
             max_threads:      4,
             memory_limit:     64 * 1024 * 1024, // 64MB
             cpu_quota:        Duration::from_secs(60),
@@ -415,7 +417,7 @@ mod tests {
         let status_handler = &handlers[2];
 
         // Test stats operation
-        let args = vec![ComponentValue::String("stats".to_string())];
+        let args = vec![ComponentValue::String("stats".to_owned())];
         let result = status_handler.execute(&args);
         assert!(result.is_ok());
 

@@ -1,22 +1,31 @@
 //! Bounded Infrastructure for Decoder
 //!
-//! This module provides bounded alternatives for decoder collections
-//! to ensure static memory allocation throughout the decoder.
+//! This module provides static, inline-storage collections for the decoder
+//! to ensure compile-time memory allocation with zero runtime overhead.
+//!
+//! Migrated from Provider-based BoundedVec to heapless-inspired StaticVec.
 
-use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
-    budget_aware_provider::CrateId,
-    generic_memory_guard::MemoryGuard,
-    no_std_hashmap::BoundedHashMap,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
+use wrt_foundation::collections::{StaticVec, StaticMap};
+
+/// New static collections eliminate Provider abstraction
+/// All memory is inline with compile-time capacity enforcement
+
+// Re-export foundation types for simplified migration
+// These will be fully migrated later when wrt-foundation types are updated
+pub use wrt_foundation::types::{
+    FuncType,
+    Import,
+    ImportDesc,
+    TableType,
+    MemoryType,
+    GlobalType,
 };
+pub use wrt_foundation::bounded::WasmName;
+pub use wrt_foundation::safe_memory::NoStdProvider;
 
-/// Instead of a type alias, we'll use concrete allocation in factory functions
-/// This avoids the complex provider type system during migration
+// Temporary: Keep DecoderProvider alias for gradual migration
+// TODO: Remove once all wrt-foundation types are migrated to StaticVec
+pub type DecoderProvider = NoStdProvider<65536>;
 
 /// Maximum number of sections in a module
 pub const MAX_SECTIONS: usize = 32;
@@ -66,244 +75,161 @@ pub const MAX_FUNCTION_RESULTS: usize = 16;
 /// Maximum number of entries in name maps
 pub const MAX_NAME_MAP_ENTRIES: usize = 1024;
 
-// Type aliases using unified capability-based memory allocation
-// These provide consistent interfaces while using safe_managed_alloc internally
+// Type aliases using new static collections with inline storage
+// No Provider abstraction - all memory is inline at compile time
 
-/// Provider type for decoder operations
-pub type DecoderProvider = NoStdProvider<4096>;
+/// Section vector with static capacity
+pub type BoundedSectionVec<T> = StaticVec<T, MAX_SECTIONS>;
 
-/// Section vector with bounded capacity
-pub type BoundedSectionVec<T> = BoundedVec<T, MAX_SECTIONS, DecoderProvider>;
+/// Type vector with static capacity
+pub type BoundedTypeVec<T> = StaticVec<T, MAX_TYPES>;
 
-/// Type vector with bounded capacity  
-pub type BoundedTypeVec<T> = BoundedVec<T, MAX_TYPES, DecoderProvider>;
+/// Import vector with static capacity
+pub type BoundedImportVec<T> = StaticVec<T, MAX_IMPORTS>;
 
-/// Import vector with bounded capacity
-pub type BoundedImportVec<T> = BoundedVec<T, MAX_IMPORTS, DecoderProvider>;
+/// Export vector with static capacity
+pub type BoundedExportVec<T> = StaticVec<T, MAX_EXPORTS>;
 
-/// Export vector with bounded capacity
-pub type BoundedExportVec<T> = BoundedVec<T, MAX_EXPORTS, DecoderProvider>;
+/// Function vector with static capacity
+pub type BoundedFunctionVec<T> = StaticVec<T, MAX_FUNCTIONS>;
 
-/// Function vector with bounded capacity
-pub type BoundedFunctionVec<T> = BoundedVec<T, MAX_FUNCTIONS, DecoderProvider>;
+/// Table vector with static capacity
+pub type BoundedTableVec<T> = StaticVec<T, MAX_TABLE_ENTRIES>;
 
-/// Table vector with bounded capacity
-pub type BoundedTableVec<T> = BoundedVec<T, MAX_TABLE_ENTRIES, DecoderProvider>;
+/// Memory vector with static capacity
+pub type BoundedMemoryVec<T> = StaticVec<T, MAX_MEMORIES>;
 
-/// Memory vector with bounded capacity
-pub type BoundedMemoryVec<T> = BoundedVec<T, MAX_MEMORIES, DecoderProvider>;
+/// Global vector with static capacity
+pub type BoundedGlobalVec<T> = StaticVec<T, MAX_GLOBALS>;
 
-/// Global vector with bounded capacity
-pub type BoundedGlobalVec<T> = BoundedVec<T, MAX_GLOBALS, DecoderProvider>;
+/// Element vector with static capacity
+pub type BoundedElementVec<T> = StaticVec<T, MAX_ELEMENTS>;
 
-/// Element vector with bounded capacity
-pub type BoundedElementVec<T> = BoundedVec<T, MAX_ELEMENTS, DecoderProvider>;
+/// Data vector with static capacity
+pub type BoundedDataVec<T> = StaticVec<T, MAX_DATA_SEGMENTS>;
 
-/// Data vector with bounded capacity
-pub type BoundedDataVec<T> = BoundedVec<T, MAX_DATA_SEGMENTS, DecoderProvider>;
+/// Module vector with static capacity
+pub type BoundedModuleVec<T> = StaticVec<T, MAX_MODULES_PER_COMPONENT>;
 
-/// Module vector with bounded capacity
-pub type BoundedModuleVec<T> = BoundedVec<T, MAX_MODULES_PER_COMPONENT, DecoderProvider>;
+/// Name string with static capacity (simple string wrapper)
+/// TODO: Implement StaticString or use StaticVec<u8, MAX_NAME_LENGTH> directly
+pub type BoundedNameString = StaticVec<u8, MAX_NAME_LENGTH>;
 
-/// Name string with bounded capacity
-pub type BoundedNameString = BoundedString<MAX_NAME_LENGTH, DecoderProvider>;
+/// Name map with static capacity
+pub type BoundedNameMap<V> = StaticMap<BoundedNameString, V, MAX_NAME_MAP_ENTRIES>;
 
-/// Name map with bounded capacity
-pub type BoundedNameMap<V> =
-    BoundedHashMap<BoundedNameString, V, MAX_NAME_MAP_ENTRIES, DecoderProvider>;
+/// Custom data with static capacity
+pub type BoundedCustomData = StaticVec<u8, MAX_CUSTOM_SECTION_SIZE>;
 
-/// Custom data with bounded capacity
-pub type BoundedCustomData = BoundedVec<u8, MAX_CUSTOM_SECTION_SIZE, DecoderProvider>;
-
-/// Create a new bounded section vector using capability-based allocation
-pub fn new_section_vec<T>() -> wrt_error::Result<BoundedVec<T, MAX_SECTIONS, NoStdProvider<4096>>>
-where
-    T: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new section vector with inline storage
+pub fn new_section_vec<T>() -> BoundedSectionVec<T> {
+    StaticVec::new()
 }
 
-/// Create a new bounded type vector using capability-based allocation
-pub fn new_type_vec(
-) -> wrt_error::Result<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new type vector with inline storage
+/// Note: FuncType still needs Provider parameter until fully migrated
+pub fn new_type_vec() -> BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>> {
+    StaticVec::new()
 }
 
-/// Create a new bounded type vector (generic version) using capability-based
-/// allocation
-pub fn new_type_vec_generic<T>() -> wrt_error::Result<BoundedTypeVec<T>>
-where
-    T: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new type vector (generic version) with inline storage
+pub fn new_type_vec_generic<T>() -> BoundedTypeVec<T> {
+    StaticVec::new()
 }
 
-/// Create a new bounded import vector using capability-based allocation
-pub fn new_import_vec(
-) -> wrt_error::Result<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new import vector with inline storage
+/// Note: Import still needs Provider parameter until fully migrated
+pub fn new_import_vec() -> BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>> {
+    StaticVec::new()
 }
 
-/// Create a new bounded import vector (generic version) using capability-based
-/// allocation
-pub fn new_import_vec_generic<T>() -> wrt_error::Result<BoundedImportVec<T>>
-where
-    T: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new import vector (generic version) with inline storage
+pub fn new_import_vec_generic<T>() -> BoundedImportVec<T> {
+    StaticVec::new()
 }
 
-/// Create a new bounded export vector using capability-based allocation
-pub fn new_export_vec() -> wrt_error::Result<BoundedExportVec<wrt_format::module::Export>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new export vector with inline storage
+pub fn new_export_vec() -> BoundedExportVec<wrt_format::module::Export> {
+    StaticVec::new()
 }
 
-/// Create a new bounded export vector (generic version) using capability-based
-/// allocation
-pub fn new_export_vec_generic<T>() -> wrt_error::Result<BoundedExportVec<T>>
-where
-    T: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new export vector (generic version) with inline storage
+pub fn new_export_vec_generic<T>() -> BoundedExportVec<T> {
+    StaticVec::new()
 }
 
-/// Create a new bounded function vector using capability-based allocation
-pub fn new_function_vec() -> wrt_error::Result<BoundedFunctionVec<u32>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new function vector with inline storage
+pub fn new_function_vec() -> BoundedFunctionVec<u32> {
+    StaticVec::new()
 }
 
-/// Create a new bounded function vector (generic version) using
-/// capability-based allocation
-pub fn new_function_vec_generic<T>() -> wrt_error::Result<BoundedFunctionVec<T>>
-where
-    T: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new function vector (generic version) with inline storage
+pub fn new_function_vec_generic<T>() -> BoundedFunctionVec<T> {
+    StaticVec::new()
 }
 
-/// Create a new bounded name string using capability-based allocation
-pub fn new_name_string() -> wrt_error::Result<BoundedNameString> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedString::from_str("", provider)
-        .map_err(|_| wrt_error::Error::memory_error("Failed to create empty bounded string"))
+/// Create a new name string with inline storage
+pub fn new_name_string() -> BoundedNameString {
+    StaticVec::new()
 }
 
-/// Create a bounded name string from a str using capability-based allocation
+/// Create a name string from a str with inline storage
 pub fn bounded_name_from_str(s: &str) -> wrt_error::Result<BoundedNameString> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_error::Error::validation_error("String too long for bounded name"))
+    let mut name = StaticVec::new();
+    for byte in s.bytes() {
+        name.push(byte)?;
+    }
+    Ok(name)
 }
 
-/// Create a new bounded name map using capability-based allocation
-pub fn new_name_map<V>() -> wrt_error::Result<BoundedNameMap<V>>
-where
-    V: wrt_foundation::traits::Checksummable
-        + wrt_foundation::traits::ToBytes
-        + wrt_foundation::traits::FromBytes
-        + Default
-        + Clone
-        + PartialEq
-        + Eq,
-{
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedHashMap::new(provider)
+/// Create a new name map with inline storage
+pub fn new_name_map<V>() -> BoundedNameMap<V> {
+    StaticMap::new()
 }
 
 // Additional concrete vector factory functions
 
-/// Create a new bounded params vector (for function parameters)
-pub fn new_params_vec() -> wrt_error::Result<
-    BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>,
-> {
-    let provider = safe_managed_alloc!(2048, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new params vector (for function parameters) with inline storage
+pub fn new_params_vec() -> StaticVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS> {
+    StaticVec::new()
 }
 
-/// Create a new bounded results vector (for function results)
-pub fn new_results_vec() -> wrt_error::Result<
-    BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>,
-> {
-    let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new results vector (for function results) with inline storage
+pub fn new_results_vec() -> StaticVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS> {
+    StaticVec::new()
 }
 
-/// Create a new bounded table vector
-pub fn new_table_vec() -> wrt_error::Result<BoundedTableVec<wrt_foundation::types::TableType>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new table vector with inline storage
+pub fn new_table_vec() -> BoundedTableVec<wrt_foundation::types::TableType> {
+    StaticVec::new()
 }
 
-/// Create a new bounded memory vector
-pub fn new_memory_vec() -> wrt_error::Result<BoundedMemoryVec<wrt_foundation::types::MemoryType>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new memory vector with inline storage
+pub fn new_memory_vec() -> BoundedMemoryVec<wrt_foundation::types::MemoryType> {
+    StaticVec::new()
 }
 
-/// Create a new bounded global vector
-pub fn new_global_vec() -> wrt_error::Result<BoundedGlobalVec<wrt_foundation::types::GlobalType>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new global vector with inline storage
+pub fn new_global_vec() -> BoundedGlobalVec<wrt_foundation::types::GlobalType> {
+    StaticVec::new()
 }
 
-/// Create a new bounded element vector
-pub fn new_element_vec() -> wrt_error::Result<BoundedElementVec<wrt_format::module::Element>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new element vector with inline storage
+pub fn new_element_vec() -> BoundedElementVec<wrt_format::module::Element> {
+    StaticVec::new()
 }
 
-/// Create a new bounded data vector
-pub fn new_data_vec() -> wrt_error::Result<BoundedDataVec<wrt_format::module::Data>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new data vector with inline storage
+pub fn new_data_vec() -> BoundedDataVec<wrt_format::module::Data> {
+    StaticVec::new()
 }
 
-/// Create a new bounded code bodies vector
-pub fn new_code_bodies_vec() -> wrt_error::Result<BoundedFunctionVec<BoundedCustomData>> {
-    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedVec::new(provider)
+/// Create a new code bodies vector with inline storage
+pub fn new_code_bodies_vec() -> BoundedFunctionVec<BoundedCustomData> {
+    StaticVec::new()
 }
 
-// Component Model specific constants and types
+// Component Model specific constants
 
 /// Maximum number of modules in a component
 pub const MAX_MODULES_PER_COMPONENT: usize = 64;
@@ -317,10 +243,12 @@ pub const MAX_INSTANCES_PER_COMPONENT: usize = 128;
 /// Maximum number of aliases in a component
 pub const MAX_ALIASES_PER_COMPONENT: usize = 256;
 
-// Component-specific factory functions use direct allocation instead of type
-// aliases
-
-/// Create a decoder provider with the specified size  
+/// Create a decoder provider (temporary - for gradual migration)
+/// TODO: Remove once all code uses StaticVec instead of Provider-based collections
 pub fn create_decoder_provider<const N: usize>() -> wrt_error::Result<NoStdProvider<N>> {
+    use wrt_foundation::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+    };
     safe_managed_alloc!(N, CrateId::Decoder)
 }

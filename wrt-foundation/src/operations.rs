@@ -128,6 +128,8 @@ pub enum Type {
     StreamCreate,
     /// Future operations (compose, chain, select)
     FutureOperation,
+    /// Computation operation
+    Computation,
 }
 
 impl Type {
@@ -183,6 +185,7 @@ impl Type {
             Type::StreamOperation => 5,    // General stream operations
             Type::StreamCreate => 10,      // Stream creation
             Type::FutureOperation => 8,    // Future composition operations
+            Type::Computation => 2,        // Computation operation
         }
     }
 
@@ -240,6 +243,7 @@ impl Type {
             Type::StreamOperation | Type::StreamCreate | Type::FutureOperation => {
                 importance::MUTATION
             },
+            Type::Computation => importance::READ,
         }
     }
 
@@ -522,6 +526,9 @@ impl Counter {
             },
             Type::FutureOperation => {
                 self.other_ops.fetch_add(1, Ordering::Relaxed);
+            },
+            Type::Computation => {
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             },
         };
 

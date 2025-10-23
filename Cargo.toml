@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "wrt",
     "wrtd",
     "wrt-sync",
     "wrt-error",
@@ -38,7 +37,6 @@ wit-bindgen = "0.41.0"
 dagger-sdk = { version = "0.18.9", features = ["codegen"] }
 
 # Internal crate versions
-wrt = { path = "wrt", version = "0.2.0", default-features = false }
 wrt-error = { path = "wrt-error", version = "0.2.0", default-features = false }
 wrt-error-ng = { path = "wrt-error-ng", version = "0.2.0", default-features = false }
 wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }

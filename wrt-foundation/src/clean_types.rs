@@ -437,7 +437,7 @@ mod types {
     }
 
     /// Clean component type without provider parameters
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct ComponentType {
         /// Component imports
         pub imports:   Vec<(String, String, ExternType)>,
@@ -458,7 +458,7 @@ mod types {
     }
 
     /// External type for imports and exports
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ExternType {
         /// Function type
         Function(FuncType),
@@ -481,7 +481,7 @@ mod types {
     }
 
     /// Instance type definition
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct InstanceType {
         /// Instance exports
         pub exports: Vec<(String, ExternType)>,
@@ -496,7 +496,7 @@ mod types {
     }
 
     /// Component type definition
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct ComponentTypeDefinition {
         /// Type name
         pub name: String,

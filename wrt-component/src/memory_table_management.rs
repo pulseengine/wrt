@@ -12,11 +12,11 @@ use std::{fmt, mem, slice};
 use std::{boxed::Box, vec::Vec};
 
 #[cfg(feature = "std")]
-use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
+use wrt_foundation::{collections::StaticVec as BoundedVec, component_value::ComponentValue, prelude::*};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedVec,
+    collections::StaticVec as BoundedVec,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
@@ -29,8 +29,7 @@ use crate::{
     WrtResult,
 };
 
-/// Memory provider type for memory table management (64KB)
-type MemoryTableProvider = NoStdProvider<65536>;
+// Memory provider type removed - using capability-based allocation
 
 /// Maximum number of memories in no_std environments
 const MAX_MEMORIES: usize = 16;
@@ -50,13 +49,13 @@ pub struct ComponentMemoryManager {
     #[cfg(feature = "std")]
     memories: Vec<ComponentMemory>,
     #[cfg(not(any(feature = "std", )))]
-    memories: BoundedVec<ComponentMemory, MAX_MEMORIES, MemoryTableProvider>,
+    memories: BoundedVec<ComponentMemory, MAX_MEMORIES>,
 
     /// Memory sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<MemorySharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES, MemoryTableProvider>,
+    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES>,
 
     /// Binary std/no_std choice
     total_allocated: usize,
@@ -70,13 +69,13 @@ pub struct ComponentTableManager {
     #[cfg(feature = "std")]
     tables: Vec<ComponentTable>,
     #[cfg(not(any(feature = "std", )))]
-    tables: BoundedVec<ComponentTable, MAX_TABLES, MemoryTableProvider>,
+    tables: BoundedVec<ComponentTable, MAX_TABLES>,
 
     /// Table sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<TableSharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES, MemoryTableProvider>,
+    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES>,
 }
 
 /// Component memory instance
@@ -88,7 +87,7 @@ pub struct ComponentMemory {
     #[cfg(feature = "std")]
     pub data: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }, MemoryTableProvider>,
+    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }>,
     /// Memory limits
     pub limits: MemoryLimits,
     /// Shared flag
@@ -130,7 +129,7 @@ pub struct MemorySharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32, MemoryTableProvider>,
+    pub allowed_instances: BoundedVec<u32, 32>,
 }
 
 /// Table sharing policy
@@ -144,7 +143,7 @@ pub struct TableSharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32, MemoryTableProvider>,
+    pub allowed_instances: BoundedVec<u32, 32>,
 }
 
 /// Resource sharing mode
@@ -169,7 +168,7 @@ pub struct ComponentTable {
     #[cfg(feature = "std")]
     pub elements: Vec<TableElement>,
     #[cfg(not(any(feature = "std", )))]
-    pub elements: BoundedVec<TableElement, 65536, MemoryTableProvider>, // 64K elements max
+    pub elements: BoundedVec<TableElement, 65536>, // 64K elements max
     /// Element type
     pub element_type: CoreValType,
     /// Table limits
@@ -206,7 +205,7 @@ pub struct MemoryAccess {
     /// Bytes read/written
     pub bytes_accessed: usize,
     /// Error message if failed
-    pub error: Option<BoundedString<256, MemoryTableProvider>>,
+    pub error: Option<BoundedString<256, NoStdProvider<1024>>>,
 }
 
 impl ComponentMemoryManager {
@@ -218,14 +217,14 @@ impl ComponentMemoryManager {
             #[cfg(not(any(feature = "std", )))]
             memories: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create memory manager"))?
+                BoundedVec::new().map_err(|_| wrt_error::Error::resource_exhausted("Failed to create memory manager"))?
             },
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             sharing_policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create sharing policies"))?
+                BoundedVec::new().map_err(|_| wrt_error::Error::resource_exhausted("Failed to create sharing policies"))?
             },
             total_allocated: 0,
             max_memory: 256 * 1024 * 1024, // 256MB default
@@ -259,9 +258,7 @@ impl ComponentMemoryManager {
         #[cfg(not(any(feature = "std", )))]
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         #[cfg(not(any(feature = "std", )))]
-        let mut data = BoundedVec::new(provider).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Failed to allocate memory data")
-        })?;
+        let mut data = BoundedVec::new();
         #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..initial_size {
@@ -358,10 +355,11 @@ impl ComponentMemoryManager {
     ) -> WrtResult<MemoryAccess> {
         // Check permissions first
         if !self.check_write_permission(memory_id, instance_id)? {
+            let provider = safe_managed_alloc!(512, CrateId::Component)?;
             return Ok(MemoryAccess {
                 success: false,
                 bytes_accessed: 0,
-                error: Some(BoundedString::from_str("Write permission denied").unwrap_or_default()),
+                error: Some(BoundedString::from_str("Write permission denied", provider).unwrap_or_default()),
             };
         }
 
@@ -373,11 +371,12 @@ impl ComponentMemoryManager {
         // Check bounds
         let end_offset = offset as usize + data.len();
         if end_offset > memory.data.len() {
+            let provider = safe_managed_alloc!(512, CrateId::Component)?;
             return Ok(MemoryAccess {
                 success: false,
                 bytes_accessed: 0,
                 error: Some(
-                    BoundedString::from_str("Memory access out of bounds").unwrap_or_default(),
+                    BoundedString::from_str("Memory access out of bounds", provider).unwrap_or_default(),
                 ),
             };
         }
@@ -556,14 +555,14 @@ impl ComponentTableManager {
             #[cfg(not(any(feature = "std", )))]
             tables: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create table manager"))?
+                BoundedVec::new().map_err(|_| wrt_error::Error::resource_exhausted("Failed to create table manager"))?
             },
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             sharing_policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create sharing policies"))?
+                BoundedVec::new().map_err(|_| wrt_error::Error::resource_exhausted("Failed to create sharing policies"))?
             },
         })
     }
@@ -583,9 +582,7 @@ impl ComponentTableManager {
         #[cfg(not(any(feature = "std", )))]
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         #[cfg(not(any(feature = "std", )))]
-        let mut elements = BoundedVec::new(provider).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Failed to allocate table elements")
-        })?;
+        let mut elements = BoundedVec::new();
         #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..limits.min {

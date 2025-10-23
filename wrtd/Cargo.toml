@@ -23,7 +23,6 @@ wrt-foundation = { workspace = true, default-features = false, optional = true }
 wrt-panic = { workspace = true, default-features = false }
 
 # Only add core WRT libraries when actually needed
-wrt = { workspace = true, default-features = false, optional = true }
 wrt-runtime = { workspace = true, default-features = false, optional = true }
 wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-host = { workspace = true, default-features = false, optional = true }
@@ -49,7 +48,15 @@ std = [
 ]
 
 # Enable actual WRT execution (vs demo mode) - without wrt-component for now
-wrt-execution = ["std", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host"]
+wrt-execution = [
+    "std",
+    "dep:wrt-runtime",
+    "dep:wrt-platform",
+    "dep:wrt-host",
+    "wrt-runtime/std",
+    "wrt-platform/std",
+    "wrt-host/std"
+]
 
 # WASI support features
 wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2"]

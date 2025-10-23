@@ -125,6 +125,42 @@ impl Checksummable for &[u8] {
     }
 }
 
+// Implement ToBytes for &[u8] - byte slices can be written directly
+impl ToBytes for &[u8] {
+    fn serialized_size(&self) -> usize {
+        core::mem::size_of::<u32>() + self.len() // 4 bytes for length + data
+    }
+
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        // Write length as u32
+        (self.len() as u32).to_bytes_with_provider(writer, provider)?;
+        // Write the byte data
+        writer.write_all(self)
+    }
+}
+
+// Implement FromBytes for Vec<u8> - dynamic byte vectors
+#[cfg(feature = "std")]
+impl FromBytes for alloc::vec::Vec<u8> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        // Read length
+        let len = u32::from_bytes_with_provider(reader, provider)? as usize;
+
+        // Read bytes
+        let mut bytes = alloc::vec![0u8; len];
+        reader.read_exact(&mut bytes)?;
+
+        Ok(bytes)
+    }
+}
+
 /// A trait for sequentially writing bytes.
 /// Binary std/no_std choice
 pub trait BytesWriter {
@@ -149,6 +185,18 @@ pub trait BytesWriter {
 impl Checksummable for alloc::string::String {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         checksum.update_slice(self.as_bytes());
+    }
+}
+
+/// Trait for types that have a constant serialized size known at compile time
+/// This is used to avoid Default::default() calls that can cause recursion
+pub trait StaticSerializedSize {
+    /// The constant size in bytes required to serialize this type
+    const SERIALIZED_SIZE: usize;
+
+    /// Get the static serialized size
+    fn static_size() -> usize {
+        Self::SERIALIZED_SIZE
     }
 }
 
@@ -1128,6 +1176,28 @@ impl ToBytes for alloc::string::String {
         (bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
         writer.write_all(bytes).map_err(|_e| {
             WrtError::runtime_execution_error("Failed to write String data to stream")
+        })
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromBytes for alloc::string::String {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        // Read length
+        let len = u32::from_bytes_with_provider(reader, provider)? as usize;
+
+        // Read bytes
+        let mut bytes = alloc::vec![0u8; len];
+        reader.read_exact(&mut bytes).map_err(|_e| {
+            WrtError::runtime_execution_error("Failed to read string bytes from stream")
+        })?;
+
+        // Convert to String
+        alloc::string::String::from_utf8(bytes).map_err(|_e| {
+            WrtError::runtime_execution_error("Invalid UTF-8 in string")
         })
     }
 }

@@ -12,10 +12,8 @@ use core::{
 use std::thread;
 
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedVec,
-    },
+    BoundedVec,
+    bounded_collections::BoundedMap,
     component_value::ComponentValue,
 };
 use wrt_platform::{
@@ -30,8 +28,8 @@ use wrt_platform::{
 };
 
 use crate::{
-    canonical_options::CanonicalOptions,
-    execution::{
+    canonical_abi::canonical_options::CanonicalOptions,
+    execution_engine::{
         TimeBoundedConfig,
         TimeBoundedContext,
         TimeBoundedOutcome,
@@ -41,25 +39,27 @@ use crate::{
         CleanupTaskType,
         PostReturnRegistry,
     },
-    task_manager::{
-        TaskId,
-        TaskManager,
-        TaskState,
+    threading::{
+        task_manager::{
+            TaskId,
+            TaskManager,
+            TaskState,
+        },
+        thread_spawn::{
+            ComponentThreadManager,
+            ThreadConfiguration,
+            ThreadHandle,
+            ThreadId,
+            ThreadResult,
+            ThreadSpawnError,
+            ThreadSpawnErrorKind,
+            ThreadSpawnRequest,
+            ThreadSpawnResult,
+        },
     },
-    thread_spawn::{
-        ComponentThreadManager,
-        ThreadConfiguration,
-        ThreadHandle,
-        ThreadId,
-        ThreadResult,
-        ThreadSpawnError,
-        ThreadSpawnErrorKind,
-        ThreadSpawnRequest,
-        ThreadSpawnResult,
-    },
+    types::ValType,
     ComponentInstanceId,
     ResourceHandle,
-    ValType,
 };
 
 const MAX_FUEL_PER_THREAD: u64 = 1_000_000;
@@ -269,8 +269,8 @@ impl FuelTrackedThreadManager {
 
         Ok(Self {
             base_manager:         ComponentThreadManager::new()?,
-            thread_contexts:      BoundedMap::new(provider.clone())?,
-            time_bounds:          BoundedMap::new(provider.clone())?,
+            thread_contexts:      BoundedMap::new(),
+            time_bounds:          BoundedMap::new(),
             global_fuel_limit:    AtomicU64::new(u64::MAX),
             global_fuel_consumed: AtomicU64::new(0),
             fuel_enforcement:     AtomicBool::new(true),
@@ -299,7 +299,7 @@ impl FuelTrackedThreadManager {
             if global_consumed + initial_fuel > global_limit {
                 return Err(ThreadSpawnError {
                     kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-                    message: "Global fuel limit would be exceeded".to_string(),
+                    message: "Global fuel limit would be exceeded".to_owned(),
                 });
             }
         }
@@ -331,7 +331,7 @@ impl FuelTrackedThreadManager {
         self.thread_contexts.insert(handle.thread_id, fuel_context).map_err(|_| {
             ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Too many thread contexts".to_string(),
+                message: "Too many thread contexts".to_owned(),
             }
         })?;
 
@@ -339,7 +339,7 @@ impl FuelTrackedThreadManager {
             .insert(handle.thread_id, time_context)
             .map_err(|_| ThreadSpawnError {
                 kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Too many time bound contexts".to_string(),
+                message: "Too many time bound contexts".to_owned(),
             })?;
 
         // Update global fuel consumed

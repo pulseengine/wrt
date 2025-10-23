@@ -2,26 +2,22 @@
 //!
 //! This module provides bounded alternatives for component collections
 //! to ensure static memory allocation throughout the component model.
+//!
+//! Migrated to StaticVec - no Provider abstraction needed.
 
-use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
-    bounded_collections::BoundedMap,
-    budget_aware_provider::CrateId,
-    budget_provider::BudgetProvider,
-    capabilities::MemoryFactory,
-    managed_alloc,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
-    WrtResult,
-};
+use wrt_foundation::collections::{StaticVec, StaticMap};
+use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::prelude::*;
 
-/// Budget-aware memory provider for component model (128KB)
-pub type ComponentProvider = NoStdProvider<131072>;
+/// Default memory provider for component infrastructure (4KB buffer)
+pub type ComponentProvider = NoStdProvider<4096>;
+
+/// Memory provider for instantiation operations (64KB buffer for larger needs)
+pub type InstantiationProvider = NoStdProvider<65536>;
+
+/// Memory provider for buffer pool operations (64KB buffer)
+pub type BufferProvider = NoStdProvider<65536>;
 
 /// Maximum number of component instances
 pub const MAX_COMPONENT_INSTANCES: usize = 256;
@@ -75,235 +71,141 @@ pub const MAX_RESOURCE_TYPES: usize = 256;
 pub const MAX_POST_RETURN_CALLBACKS: usize = 64;
 
 /// Bounded vector for component instances
-pub type BoundedComponentVec<T> = BoundedVec<T, MAX_COMPONENT_INSTANCES, ComponentProvider>;
+pub type BoundedComponentVec<T> = StaticVec<T, MAX_COMPONENT_INSTANCES>;
 
 /// Bounded vector for exports
-pub type BoundedExportVec<T> = BoundedVec<T, MAX_COMPONENT_EXPORTS, ComponentProvider>;
+pub type BoundedExportVec<T> = StaticVec<T, MAX_COMPONENT_EXPORTS>;
 
 /// Bounded vector for imports
-pub type BoundedImportVec<T> = BoundedVec<T, MAX_COMPONENT_IMPORTS, ComponentProvider>;
+pub type BoundedImportVec<T> = StaticVec<T, MAX_COMPONENT_IMPORTS>;
 
 /// Bounded vector for resource handles
-pub type BoundedResourceVec<T> = BoundedVec<T, MAX_RESOURCE_HANDLES, ComponentProvider>;
+pub type BoundedResourceVec<T> = StaticVec<T, MAX_RESOURCE_HANDLES>;
 
 /// Bounded vector for resource borrows
-pub type BoundedBorrowVec<T> = BoundedVec<T, MAX_RESOURCE_BORROWS, ComponentProvider>;
+pub type BoundedBorrowVec<T> = StaticVec<T, MAX_RESOURCE_BORROWS>;
 
 /// Bounded stack for call frames
-pub type BoundedCallStack<T> = BoundedVec<T, MAX_CALL_STACK_DEPTH, ComponentProvider>;
+pub type BoundedCallStack<T> = StaticVec<T, MAX_CALL_STACK_DEPTH>;
 
 /// Bounded stack for operands
-pub type BoundedOperandStack<T> = BoundedVec<T, MAX_OPERAND_STACK_SIZE, ComponentProvider>;
+pub type BoundedOperandStack<T> = StaticVec<T, MAX_OPERAND_STACK_SIZE>;
 
 /// Bounded vector for locals
-pub type BoundedLocalsVec<T> = BoundedVec<T, MAX_LOCALS_COUNT, ComponentProvider>;
+pub type BoundedLocalsVec<T> = StaticVec<T, MAX_LOCALS_COUNT>;
 
 /// Bounded vector for memory instances
-pub type BoundedMemoryVec<T> = BoundedVec<T, MAX_MEMORY_INSTANCES, ComponentProvider>;
+pub type BoundedMemoryVec<T> = StaticVec<T, MAX_MEMORY_INSTANCES>;
 
 /// Bounded vector for table instances
-pub type BoundedTableVec<T> = BoundedVec<T, MAX_TABLE_INSTANCES, ComponentProvider>;
+pub type BoundedTableVec<T> = StaticVec<T, MAX_TABLE_INSTANCES>;
 
 /// Bounded vector for global instances
-pub type BoundedGlobalVec<T> = BoundedVec<T, MAX_GLOBAL_INSTANCES, ComponentProvider>;
+pub type BoundedGlobalVec<T> = StaticVec<T, MAX_GLOBAL_INSTANCES>;
 
 /// Bounded vector for host functions
-pub type BoundedHostFunctionVec<T> = BoundedVec<T, MAX_HOST_FUNCTIONS, ComponentProvider>;
+pub type BoundedHostFunctionVec<T> = StaticVec<T, MAX_HOST_FUNCTIONS>;
 
-/// Bounded string for component names
-pub type BoundedComponentName = BoundedString<MAX_COMPONENT_NAME_LEN, ComponentProvider>;
+/// Bounded string for component names (using StaticVec<u8, N>)
+pub type BoundedComponentName = StaticVec<u8, MAX_COMPONENT_NAME_LEN>;
 
-/// Bounded string for export/import names
-pub type BoundedExportName = BoundedString<MAX_EXPORT_NAME_LEN, ComponentProvider>;
+/// Bounded string for export/import names (using StaticVec<u8, N>)
+pub type BoundedExportName = StaticVec<u8, MAX_EXPORT_NAME_LEN>;
 
 /// Bounded map for exports
-#[cfg(not(feature = "std"))]
-pub type BoundedExportMap<V> =
-    BoundedMap<BoundedExportName, V, MAX_COMPONENT_EXPORTS, ComponentProvider>;
-
-#[cfg(feature = "std")]
-pub type BoundedExportMap<V> =
-    BoundedMap<BoundedExportName, V, MAX_COMPONENT_EXPORTS, ComponentProvider>;
+pub type BoundedExportMap<V> = StaticMap<BoundedExportName, V, MAX_COMPONENT_EXPORTS>;
 
 /// Bounded map for imports
-#[cfg(not(feature = "std"))]
-pub type BoundedImportMap<V> =
-    BoundedMap<BoundedExportName, V, MAX_COMPONENT_IMPORTS, ComponentProvider>;
-
-#[cfg(feature = "std")]
-pub type BoundedImportMap<V> =
-    BoundedMap<BoundedExportName, V, MAX_COMPONENT_IMPORTS, ComponentProvider>;
+pub type BoundedImportMap<V> = StaticMap<BoundedExportName, V, MAX_COMPONENT_IMPORTS>;
 
 /// Bounded map for type definitions
-#[cfg(not(feature = "std"))]
-pub type BoundedTypeMap<V> = BoundedMap<
-    u32, // Type index
-    V,
-    MAX_TYPE_DEFINITIONS,
-    ComponentProvider,
->;
-
-#[cfg(feature = "std")]
-pub type BoundedTypeMap<V> = BoundedMap<
-    u32, // Type index
-    V,
-    MAX_TYPE_DEFINITIONS,
-    ComponentProvider,
->;
+pub type BoundedTypeMap<V> = StaticMap<u32, V, MAX_TYPE_DEFINITIONS>;
 
 /// Bounded map for resource types
-#[cfg(not(feature = "std"))]
-pub type BoundedResourceTypeMap<V> = BoundedMap<
-    u32, // Resource type ID
-    V,
-    MAX_RESOURCE_TYPES,
-    ComponentProvider,
->;
-
-#[cfg(feature = "std")]
-pub type BoundedResourceTypeMap<V> = BoundedMap<
-    u32, // Resource type ID
-    V,
-    MAX_RESOURCE_TYPES,
-    ComponentProvider,
->;
+pub type BoundedResourceTypeMap<V> = StaticMap<u32, V, MAX_RESOURCE_TYPES>;
 
 /// Bounded vector for post-return callbacks
-pub type BoundedPostReturnVec<T> = BoundedVec<T, MAX_POST_RETURN_CALLBACKS, ComponentProvider>;
-
-/// Helper function to create a safe component provider using capability context
-fn create_safe_component_provider() -> WrtResult<ComponentProvider> {
-    MemoryFactory::create::<131072>(CrateId::Component)
-}
+pub type BoundedPostReturnVec<T> = StaticVec<T, MAX_POST_RETURN_CALLBACKS>;
 
 /// Create a new bounded component vector
-pub fn new_component_vec<T>() -> WrtResult<BoundedComponentVec<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_component_vec<T>() -> BoundedComponentVec<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded export vector
-pub fn new_export_vec<T>() -> WrtResult<BoundedExportVec<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_export_vec<T>() -> BoundedExportVec<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded import vector
-pub fn new_import_vec<T>() -> WrtResult<BoundedImportVec<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_import_vec<T>() -> BoundedImportVec<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded resource vector
-pub fn new_resource_vec<T>() -> WrtResult<BoundedResourceVec<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_resource_vec<T>() -> BoundedResourceVec<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded call stack
-pub fn new_call_stack<T>() -> WrtResult<BoundedCallStack<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_call_stack<T>() -> BoundedCallStack<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded operand stack
-pub fn new_operand_stack<T>() -> WrtResult<BoundedOperandStack<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_operand_stack<T>() -> BoundedOperandStack<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded locals vector
-pub fn new_locals_vec<T>() -> WrtResult<BoundedLocalsVec<T>> {
-    let provider = create_safe_component_provider()?;
-    BoundedVec::new(provider)
+pub fn new_locals_vec<T>() -> BoundedLocalsVec<T> {
+    StaticVec::new()
 }
 
 /// Create a new bounded component name
-pub fn new_component_name() -> WrtResult<BoundedComponentName> {
-    let provider = create_safe_component_provider()?;
-    Ok(BoundedString::new(provider))
+pub fn new_component_name() -> BoundedComponentName {
+    StaticVec::new()
 }
 
 /// Create a bounded component name from str
-pub fn bounded_component_name_from_str(s: &str) -> WrtResult<BoundedComponentName> {
-    let provider = create_safe_component_provider()?;
-    BoundedString::from_str(s, provider)
+pub fn bounded_component_name_from_str(s: &str) -> wrt_error::Result<BoundedComponentName> {
+    let mut name = StaticVec::new();
+    for byte in s.bytes() {
+        name.push(byte)?;
+    }
+    Ok(name)
 }
 
 /// Create a new bounded export name
-pub fn new_export_name() -> WrtResult<BoundedExportName> {
-    let provider = create_safe_component_provider()?;
-    Ok(BoundedString::new(provider))
+pub fn new_export_name() -> BoundedExportName {
+    StaticVec::new()
 }
 
 /// Create a bounded export name from str
-pub fn bounded_export_name_from_str(s: &str) -> WrtResult<BoundedExportName> {
-    let provider = create_safe_component_provider()?;
-    BoundedString::from_str(s, provider)
+pub fn bounded_export_name_from_str(s: &str) -> wrt_error::Result<BoundedExportName> {
+    let mut name = StaticVec::new();
+    for byte in s.bytes() {
+        name.push(byte)?;
+    }
+    Ok(name)
 }
 
 /// Create a new bounded export map
-#[cfg(not(feature = "std"))]
-pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>> {
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
-}
-
-#[cfg(feature = "std")]
-pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>>
-where
-    BoundedExportName: core::hash::Hash + Eq,
-    V: Default + Clone + PartialEq + Eq,
-{
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
+pub fn new_export_map<V>() -> BoundedExportMap<V> {
+    StaticMap::new()
 }
 
 /// Create a new bounded import map
-#[cfg(not(feature = "std"))]
-pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>> {
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
-}
-
-#[cfg(feature = "std")]
-pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>>
-where
-    BoundedExportName: core::hash::Hash + Eq,
-    V: Default + Clone + PartialEq + Eq,
-{
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
+pub fn new_import_map<V>() -> BoundedImportMap<V> {
+    StaticMap::new()
 }
 
 /// Create a new bounded type map
-#[cfg(not(feature = "std"))]
-pub fn new_type_map<V>() -> WrtResult<BoundedTypeMap<V>> {
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
-}
-
-#[cfg(feature = "std")]
-pub fn new_type_map<V>() -> WrtResult<BoundedTypeMap<V>>
-where
-    V: Default + Clone + PartialEq + Eq,
-{
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
+pub fn new_type_map<V>() -> BoundedTypeMap<V> {
+    StaticMap::new()
 }
 
 /// Create a new bounded resource type map
-#[cfg(not(feature = "std"))]
-pub fn new_resource_type_map<V>() -> WrtResult<BoundedResourceTypeMap<V>> {
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
-}
-
-#[cfg(feature = "std")]
-pub fn new_resource_type_map<V>() -> WrtResult<BoundedResourceTypeMap<V>>
-where
-    V: Default + Clone + PartialEq + Eq,
-{
-    let provider = create_safe_component_provider()?;
-    BoundedMap::new(provider)
+pub fn new_resource_type_map<V>() -> BoundedResourceTypeMap<V> {
+    StaticMap::new()
 }

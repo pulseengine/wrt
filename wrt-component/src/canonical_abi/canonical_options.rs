@@ -12,10 +12,9 @@ use std::sync::{
     RwLock,
 };
 
-use wrt_runtime::{
-    Instance,
-    Memory,
-};
+use wrt_runtime::Memory;
+// Instance is from wrt_format, not wrt_runtime
+use wrt_format::component::Instance;
 #[cfg(not(feature = "std"))]
 use wrt_sync::RwLock;
 
@@ -99,12 +98,14 @@ impl CanonicalOptions {
     /// Binary std/no_std choice
     pub fn with_realloc(mut self, func_index: u32, manager: Arc<RwLock<ReallocManager>>) -> Self {
         self.realloc = Some(func_index);
-        self.realloc_manager = Some(manager);
 
-        // Register with the manager
-        if let Ok(mut mgr) = manager.write() {
+        // Register with the manager before storing it
+        {
+            let mut mgr = manager.write();
             let _ = mgr.register_realloc(self.instance_id, func_index);
         }
+
+        self.realloc_manager = Some(manager);
 
         self
     }
@@ -166,12 +167,12 @@ impl<'a> CanonicalLiftContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
-            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+            let mut mgr = manager.write();
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::ResourceNotFound(0));
+            return Err(ComponentError::resource_not_found("Realloc manager not available"));
         };
 
         // Binary std/no_std choice
@@ -191,13 +192,15 @@ impl<'a> CanonicalLiftContext<'a> {
         len: usize,
     ) -> core::result::Result<Vec<u8>, ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::TypeMismatch);
+            return Err(ComponentError::runtime_type_mismatch("Invalid negative pointer for memory read"));
         }
 
-        let offset = ptr as usize;
+        let offset = ptr as u32;
+        let mut buffer = vec![0u8; len];
         self.memory
-            .read_slice(offset, len)
-            .map_err(|_| ComponentError::ResourceNotFound(ptr as u32))
+            .read(offset, &mut buffer)
+            .map_err(|_| ComponentError::resource_not_found("Memory read failed: invalid address"))?;
+        Ok(buffer)
     }
 
     /// Read a string from memory with the configured encoding
@@ -210,21 +213,21 @@ impl<'a> CanonicalLiftContext<'a> {
 
         match self.options.string_encoding {
             StringEncoding::Utf8 => {
-                String::from_utf8(bytes).map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf8(bytes).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-8 string encoding"))
             },
             StringEncoding::Utf16Le => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf16(&u16_values).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-16LE string encoding"))
             },
             StringEncoding::Utf16Be => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf16(&u16_values).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-16BE string encoding"))
             },
             StringEncoding::Latin1 => Ok(bytes.into_iter().map(|b| b as char).collect()),
         }
@@ -234,7 +237,7 @@ impl<'a> CanonicalLiftContext<'a> {
     pub fn cleanup(mut self) -> core::result::Result<(), ComponentError> {
         // Binary std/no_std choice
         if let Some(manager) = &self.options.realloc_manager {
-            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+            let mut mgr = manager.write();
 
             for alloc in self.allocations.drain(..) {
                 mgr.deallocate(self.options.instance_id, alloc.ptr, alloc.size, alloc.align)?;
@@ -278,12 +281,12 @@ impl<'a> CanonicalLowerContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
-            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+            let mut mgr = manager.write();
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::ResourceNotFound(0));
+            return Err(ComponentError::resource_not_found("Realloc manager not available"));
         };
 
         // Binary std/no_std choice
@@ -303,13 +306,13 @@ impl<'a> CanonicalLowerContext<'a> {
         data: &[u8],
     ) -> core::result::Result<(), ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::TypeMismatch);
+            return Err(ComponentError::runtime_type_mismatch("Invalid negative pointer for memory write"));
         }
 
         let offset = ptr as usize;
         self.memory
-            .write_slice(offset, data)
-            .map_err(|_| ComponentError::ResourceNotFound(ptr as u32))
+            .write(offset as u32, data)
+            .map_err(|_| ComponentError::resource_not_found("Memory write failed: invalid address"))
     }
 
     /// Write a string to memory with the configured encoding

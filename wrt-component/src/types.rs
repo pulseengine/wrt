@@ -8,10 +8,8 @@ use wrt_foundation::allocator::{
     WrtVec,
 };
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::BoundedString,
+    collections::StaticVec,
     traits::{
         Checksummable,
         FromBytes,
@@ -19,13 +17,19 @@ use wrt_foundation::{
     },
 };
 
+/// Type alias for backward compatibility - BoundedVec is now StaticVec
+type BoundedVec<T, const N: usize> = StaticVec<T, N>;
+
 #[cfg(feature = "component-model-async")]
 use crate::async_::async_types::{
     FutureHandle,
     StreamHandle,
 };
 use crate::{
-    components::component::Component,
+    components::{
+        component::Component,
+        component_instantiation::ComponentMemory,
+    },
     instantiation::{
         ModuleInstance,
         ResolvedExport,
@@ -41,13 +45,73 @@ use crate::{
 pub struct StreamHandle(pub u32);
 
 #[cfg(not(feature = "component-model-async"))]
+impl StreamHandle {
+    /// Create a new stream handle
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+#[cfg(not(feature = "component-model-async"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FutureHandle(pub u32);
+
+#[cfg(not(feature = "component-model-async"))]
+impl FutureHandle {
+    /// Create a new future handle
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
 
 // Fallback TaskId when threading features are not enabled
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TaskId(pub u32);
+
+#[cfg(not(feature = "component-model-threading"))]
+impl TaskId {
+    /// Create a new task identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+/// Metadata for component instance tracking
+#[derive(Debug, Clone)]
+pub struct ComponentMetadata {
+    /// Number of function calls made
+    pub function_calls: u64,
+    /// Creation timestamp (in microseconds since some epoch)
+    pub created_at: u64,
+    /// Last access timestamp (in microseconds)
+    pub last_accessed: u64,
+}
+
+impl Default for ComponentMetadata {
+    fn default() -> Self {
+        Self {
+            function_calls: 0,
+            created_at: 0,
+            last_accessed: 0,
+        }
+    }
+}
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
 ///
@@ -62,20 +126,35 @@ pub struct ComponentInstance {
     pub id:               u32,
     /// Reference to the component definition
     pub component:        Component,
+    /// Current instance state
+    pub state:            ComponentInstanceState,
+    /// Resource manager for this instance
+    pub resource_manager: Option<crate::resource_management::ResourceManager>,
+    /// Instance memory (if allocated)
+    pub memory:           Option<ComponentMemory>,
+    /// Instance metadata for tracking
+    pub metadata:         ComponentMetadata,
+    /// Function table for this instance
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub functions:        WrtVec<crate::components::component_instantiation::ComponentFunction, { CrateId::Component as u8 }, 128>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    pub functions:        Vec<crate::components::component_instantiation::ComponentFunction>,
+    #[cfg(not(any(feature = "std",)))]
+    pub functions:        BoundedVec<crate::components::component_instantiation::ComponentFunction, 128>,
     /// Resolved imports for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub imports:          WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub imports:          Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std",)))]
-    pub imports: BoundedVec<ResolvedImport, 256, crate::bounded_component_infra::ComponentProvider>,
+    pub imports: BoundedVec<ResolvedImport, 256>,
     /// Resolved exports from this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub exports:          WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports:          Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std",)))]
-    pub exports: BoundedVec<ResolvedExport, 256, crate::bounded_component_infra::ComponentProvider>,
+    pub exports: BoundedVec<ResolvedExport, 256>,
     /// Resource tables for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub resource_tables:  WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>,
@@ -83,7 +162,7 @@ pub struct ComponentInstance {
     pub resource_tables:  Vec<ResourceTable>,
     #[cfg(not(any(feature = "std",)))]
     pub resource_tables:
-        BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
+        BoundedVec<ResourceTable, 16>,
     /// Module instances embedded in this component
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub module_instances: WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>,
@@ -91,7 +170,22 @@ pub struct ComponentInstance {
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std",)))]
     pub module_instances:
-        BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
+        BoundedVec<ModuleInstance, 64>,
+}
+
+impl ComponentInstance {
+    /// Get a core WebAssembly module instance by index
+    ///
+    /// Returns the module instance at the given index, or None if the index is out of bounds.
+    ///
+    /// # Arguments
+    /// * `index` - The index of the module instance to retrieve
+    ///
+    /// # Returns
+    /// An optional reference to the module instance
+    pub fn get_core_module_instance(&self, index: usize) -> Option<&ModuleInstance> {
+        self.module_instances.get(index)
+    }
 }
 
 /// State of a component instance
@@ -116,7 +210,7 @@ impl Default for ComponentInstanceState {
 }
 
 /// Component model value type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValType {
     /// Boolean type
     Bool,
@@ -148,8 +242,8 @@ pub enum ValType {
     List(Box<ValType>),
     /// Record type with named fields
     Record(Record),
-    /// Tuple type with element types
-    Tuple(Tuple),
+    /// Tuple type with element types (boxed to break recursive cycle)
+    Tuple(Box<Tuple>),
     /// Variant type with alternatives
     Variant(Variant),
     /// Enum type with cases
@@ -171,88 +265,86 @@ pub enum ValType {
 }
 
 /// Record type definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Record {
     #[cfg(feature = "std")]
     pub fields: Vec<Field>,
     #[cfg(not(any(feature = "std",)))]
-    pub fields: BoundedVec<Field, 64, crate::bounded_component_infra::ComponentProvider>,
+    pub fields: BoundedVec<Field, 64>,
 }
 
 /// Field in a record
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Field {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std",)))]
-    pub name: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
-    pub ty:   ValType,
+    pub name: BoundedString<64, NoStdProvider<512>>,
+    pub ty:   Box<ValType>, // Boxed to break recursive type cycle
 }
 
 /// Tuple type definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tuple {
     #[cfg(feature = "std")]
     pub types: Vec<ValType>,
     #[cfg(not(any(feature = "std",)))]
-    pub types: BoundedVec<ValType, 32, crate::bounded_component_infra::ComponentProvider>,
+    pub types: BoundedVec<ValType, 32>,
 }
 
 /// Variant type definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Variant {
     #[cfg(feature = "std")]
     pub cases: Vec<Case>,
     #[cfg(not(any(feature = "std",)))]
-    pub cases: BoundedVec<Case, 64, crate::bounded_component_infra::ComponentProvider>,
+    pub cases: BoundedVec<Case, 64>,
 }
 
 /// Case in a variant
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Case {
     #[cfg(feature = "std")]
     pub name:    String,
     #[cfg(not(any(feature = "std",)))]
-    pub name:    BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
-    pub ty:      Option<ValType>,
+    pub name:    BoundedString<64, NoStdProvider<512>>,
+    pub ty:      Option<Box<ValType>>, // Boxed to break recursive cycle
     pub refines: Option<u32>,
 }
 
 /// Enum type definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Enum {
     #[cfg(feature = "std")]
     pub cases: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
     pub cases: BoundedVec<
-        BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+        BoundedString<64, NoStdProvider<512>>,
         64,
-        crate::bounded_component_infra::ComponentProvider,
     >,
 }
 
 /// Result type definition (renamed to avoid conflict with std::result::Result)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Result_ {
     pub ok:  Option<Box<ValType>>,
     pub err: Option<Box<ValType>>,
 }
 
 /// Flags type definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Flags {
     #[cfg(feature = "std")]
     pub labels: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
     pub labels: BoundedVec<
-        BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+        BoundedString<64, NoStdProvider<512>>,
         64,
-        crate::bounded_component_infra::ComponentProvider,
     >,
 }
 
 /// Component model value
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Boolean value
     Bool(bool),
@@ -279,22 +371,22 @@ pub enum Value {
     /// Character value
     Char(char),
     /// String value
-    String(BoundedString<1024, crate::bounded_component_infra::ComponentProvider>),
-    /// List value
+    String(BoundedString<1024, NoStdProvider<2048>>),
+    /// List value - Boxed to break recursive type cycle
     #[cfg(feature = "std")]
-    List(Vec<Value>),
+    List(Box<Vec<Value>>),
     #[cfg(not(any(feature = "std",)))]
-    List(BoundedVec<Value, 256, crate::bounded_component_infra::ComponentProvider>),
-    /// Record value
+    List(Box<BoundedVec<Value, 256>>),
+    /// Record value - Boxed to break recursive type cycle
     #[cfg(feature = "std")]
-    Record(Vec<Value>),
+    Record(Box<Vec<Value>>),
     #[cfg(not(any(feature = "std",)))]
-    Record(BoundedVec<Value, 64, crate::bounded_component_infra::ComponentProvider>),
-    /// Tuple value
+    Record(Box<BoundedVec<Value, 64>>),
+    /// Tuple value - Boxed to break recursive type cycle
     #[cfg(feature = "std")]
-    Tuple(Vec<Value>),
+    Tuple(Box<Vec<Value>>),
     #[cfg(not(any(feature = "std",)))]
-    Tuple(BoundedVec<Value, 32, crate::bounded_component_infra::ComponentProvider>),
+    Tuple(Box<BoundedVec<Value, 32>>),
     /// Variant value
     Variant {
         discriminant: u32,
@@ -342,7 +434,7 @@ impl wrt_foundation::traits::ToBytes for Value {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_foundation::traits::WriteStream;
 
         match self {
@@ -407,7 +499,7 @@ impl wrt_foundation::traits::FromBytes for Value {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_foundation::traits::ReadStream;
 
         let discriminant = reader.read_u8()?;
@@ -505,7 +597,11 @@ impl wrt_foundation::traits::Checksummable for Value {
             Value::F32(v) => checksum.update_slice(&v.to_bits().to_le_bytes()),
             Value::F64(v) => checksum.update_slice(&v.to_bits().to_le_bytes()),
             Value::Char(c) => checksum.update_slice(&(*c as u32).to_le_bytes()),
-            Value::String(s) => checksum.update_slice(s.as_bytes()),
+            Value::String(s) => {
+                if let Ok(bytes) = s.as_bytes() {
+                    checksum.update_slice(bytes.as_ref());
+                }
+            },
             _ => {}, // Skip complex types for now
         }
     }
@@ -515,13 +611,168 @@ impl wrt_foundation::traits::Checksummable for Value {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ComponentInstanceId(pub u32);
 
+impl ComponentInstanceId {
+    /// Create a new component instance identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+
+    /// Get the inner value as a reference
+    pub const fn as_u32(&self) -> u32 {
+        self.0
+    }
+
+    /// Get the ID value (alias for as_u32 for compatibility)
+    pub const fn id(&self) -> u32 {
+        self.0
+    }
+}
+
+impl Default for ComponentInstanceId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl From<ComponentInstanceId> for u64 {
+    fn from(id: ComponentInstanceId) -> Self {
+        id.0 as u64
+    }
+}
+
+impl Checksummable for ComponentInstanceId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentInstanceId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ComponentInstanceId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
 /// Type identifier for generative types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeId(pub u32);
 
+impl TypeId {
+    /// Create a new type identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+
+    /// Get the inner value as a reference
+    pub const fn as_u32(&self) -> u32 {
+        self.0
+    }
+}
+
+impl Default for TypeId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for TypeId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for TypeId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for TypeId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceId(pub u32);
+
+impl ResourceId {
+    /// Create a new resource identifier
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+
+    /// Get the inner value as a reference
+    pub const fn as_u32(&self) -> u32 {
+        self.0
+    }
+}
+
+impl Default for ResourceId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl Checksummable for ResourceId {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ResourceId {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ResourceId {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
 
 /// Component error types
 #[derive(Debug, Clone, PartialEq)]
@@ -546,6 +797,8 @@ pub enum ComponentError {
     ImportResolutionFailed,
     /// Export resolution failed
     ExportResolutionFailed,
+    /// Memory allocation failed
+    AllocationFailed,
 }
 
 impl fmt::Display for ComponentError {
@@ -575,6 +828,7 @@ impl fmt::Display for ComponentError {
             ComponentError::TypeMismatch => write!(f, "Type mismatch"),
             ComponentError::ImportResolutionFailed => write!(f, "Import resolution failed"),
             ComponentError::ExportResolutionFailed => write!(f, "Export resolution failed"),
+            ComponentError::AllocationFailed => write!(f, "Memory allocation failed"),
         }
     }
 }
@@ -640,6 +894,11 @@ impl From<ComponentError> for wrt_error::Error {
                 codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
                 "Component export resolution failed",
             ),
+            ComponentError::AllocationFailed => Self::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Component memory allocation failed",
+            ),
         }
     }
 }
@@ -654,7 +913,7 @@ use wrt_foundation::traits::{
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
-            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
                 // Simple stub implementation
                 0u32.update_checksum(checksum);
             }
@@ -665,7 +924,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -674,7 +933,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -694,10 +953,7 @@ impl Default for Record {
             #[cfg(feature = "std")]
             fields:                                    Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            fields:                                    BoundedVec::new(
-                crate::bounded_component_infra::ComponentProvider::default(),
-            )
-            .unwrap(),
+            fields:                                    BoundedVec::new(),
         }
     }
 }
@@ -708,8 +964,9 @@ impl Default for Field {
             #[cfg(feature = "std")]
             name: String::new(),
             #[cfg(not(any(feature = "std",)))]
-            name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
-            ty: ValType::default(),
+            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                .unwrap_or_else(|_| panic!("Failed to create default Field name")),
+            ty: Box::new(ValType::default()),
         }
     }
 }
@@ -720,10 +977,7 @@ impl Default for Tuple {
             #[cfg(feature = "std")]
             types:                                    Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            types:                                    BoundedVec::new(
-                crate::bounded_component_infra::ComponentProvider::default(),
-            )
-            .unwrap(),
+            types:                                    BoundedVec::new(),
         }
     }
 }
@@ -734,10 +988,7 @@ impl Default for Variant {
             #[cfg(feature = "std")]
             cases:                                    Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            cases:                                    BoundedVec::new(
-                crate::bounded_component_infra::ComponentProvider::default(),
-            )
-            .unwrap(),
+            cases:                                    BoundedVec::new(),
         }
     }
 }
@@ -748,7 +999,8 @@ impl Default for Case {
             #[cfg(feature = "std")]
             name: String::new(),
             #[cfg(not(any(feature = "std",)))]
-            name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
+            name: BoundedString::from_str_truncate("", NoStdProvider::default())
+                .unwrap_or_else(|_| panic!("Failed to create default Case name")),
             ty: None,
             refines: None,
         }

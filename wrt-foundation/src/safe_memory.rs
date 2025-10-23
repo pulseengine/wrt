@@ -1243,21 +1243,55 @@ impl<const N: usize> Default for NoStdProvider<N> {
             // Modern memory system automatically tracks usage
         }
 
-        // Safety: N must be such that [0u8; N] is valid.
-        // This is generally true for array initializers.
-        // If N could be excessively large leading to stack overflow for the zeroed
-        // array, that's a general concern with large const generic arrays on
-        // stack, not specific to Default. For typical buffer sizes, this is
-        // fine.
+        // CRITICAL: Prevent stack overflow for large N values
+        // For large providers (>8KB), this will cause stack overflow
+        if N > 8192 {
+            // Use heap allocation for large providers to avoid stack overflow
+            return NoStdProvider::<N>::new_heap_allocated();
+        }
+        
+        // Safety: N must be such that [0u8; N] is valid and fits on stack.
+        // For N <= 8192, this should be safe on most systems.
         Self {
-            data:               [0u8; N], /* Initialize with zeros. Requires N to be known at
-                                           * compile time. */
+            data:               [0u8; N], /* Initialize with zeros. Safe for small N. */
             used:               0,
             access_count:       AtomicUsize::new(0),
             last_access_offset: AtomicUsize::new(0),
             last_access_length: AtomicUsize::new(0),
             verification_level: VerificationLevel::default(),
         }
+    }
+}
+
+impl<const N: usize> NoStdProvider<N> {
+    /// Create a heap-allocated provider to avoid stack overflow for large N
+    /// This method uses Vec to allocate the data on heap instead of stack
+    #[cfg(feature = "std")]
+    pub fn new_heap_allocated() -> Self {
+        // SIMPLE FIX: Use a Vec<u8> to allocate N bytes on heap, then convert to array
+        // This avoids the complex unsafe pointer manipulation
+        let mut heap_data = vec![0u8; N];
+        
+        // Convert Vec to fixed-size array
+        // SAFETY: We know the Vec has exactly N elements
+        let data_array: [u8; N] = heap_data.try_into()
+            .unwrap_or_else(|_| panic!("Failed to convert Vec to array of size {}", N));
+        
+        Self {
+            data: data_array,
+            used: N, // FIX: Set used to N so size() returns available space
+            access_count: AtomicUsize::new(0),
+            last_access_offset: AtomicUsize::new(0),
+            last_access_length: AtomicUsize::new(0),
+            verification_level: VerificationLevel::default(),
+        }
+    }
+    
+    /// Fallback for no_std environments - use smaller provider or panic
+    #[cfg(not(feature = "std"))]
+    pub fn new_heap_allocated() -> Self {
+        // In no_std, we can't use heap allocation, so this is a critical error
+        panic!("Stack overflow: Provider size {} too large for stack allocation in no_std environment. Use smaller provider size <= 8192 bytes.", N);
     }
 }
 

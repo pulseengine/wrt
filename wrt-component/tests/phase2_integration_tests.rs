@@ -80,15 +80,15 @@ impl SimulatedAsyncWork {
     }
 
     fn high_priority_work(result: u32) -> Self {
-        Self::new(2, 50, result, Priority::High, false)
+        Self::new(2, 50, result, 192 /* High priority */, false)
     }
 
     fn normal_priority_work(result: u32) -> Self {
-        Self::new(5, 30, result, Priority::Normal, true)
+        Self::new(5, 30, result, 128 /* Normal priority */, true)
     }
 
     fn low_priority_work(result: u32) -> Self {
-        Self::new(10, 20, result, Priority::Low, true)
+        Self::new(10, 20, result, 64 /* Low priority */, true)
     }
 }
 
@@ -127,7 +127,7 @@ mod tests {
         protocol
             .register_blocking(
                 high_priority_task,
-                Priority::High,
+                192, // High priority
                 resource_id,
                 Some(low_priority_holder),
                 Some(Duration::from_millis(1000)),
@@ -136,8 +136,8 @@ mod tests {
 
         // Verify priority inheritance occurred
         let effective_priority =
-            protocol.get_effective_priority(low_priority_holder, Priority::Low);
-        assert_eq!(effective_priority, Priority::High);
+            protocol.get_effective_priority(low_priority_holder, 64 /* Low priority */);
+        assert_eq!(effective_priority, 192); // High priority
 
         let stats = protocol.get_statistics();
         assert_eq!(
@@ -172,10 +172,10 @@ mod tests {
                 true, // enable priority inheritance
                 TaskId::new(1),
                 ComponentInstanceId::new(1),
-                Priority::High, // sender
+                192, // High priority // sender
                 TaskId::new(2),
                 ComponentInstanceId::new(1),
-                Priority::Normal, // receiver
+                128, // Normal priority // receiver
             )
             .unwrap();
 
@@ -238,7 +238,7 @@ mod tests {
             .add_task(
                 TaskId::new(1),
                 ComponentInstanceId::new(1),
-                Priority::Low,
+                64, // Low priority
                 10000,
                 None,
                 true, // preemptible
@@ -249,7 +249,7 @@ mod tests {
             .add_task(
                 TaskId::new(2),
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 8000,
                 Some(Duration::from_millis(5000)), // deadline
                 true,
@@ -260,7 +260,7 @@ mod tests {
             .add_task(
                 TaskId::new(3),
                 ComponentInstanceId::new(1),
-                Priority::High,
+                192, // High priority
                 5000,
                 Some(Duration::from_millis(2000)), // tight deadline
                 false,                             // non-preemptible
@@ -346,10 +346,10 @@ mod tests {
                 true, // enable priority inheritance
                 TaskId::new(1),
                 ComponentInstanceId::new(1),
-                Priority::High, // producer
+                192, // High priority // producer
                 TaskId::new(2),
                 ComponentInstanceId::new(1),
-                Priority::Normal, // consumer
+                128, // Normal priority // consumer
             )
             .unwrap();
 
@@ -358,7 +358,7 @@ mod tests {
             .add_task(
                 TaskId::new(1), // Producer task
                 ComponentInstanceId::new(1),
-                Priority::High,
+                192, // High priority
                 15000,
                 Some(Duration::from_millis(3000)),
                 true,
@@ -369,7 +369,7 @@ mod tests {
             .add_task(
                 TaskId::new(2), // Consumer task
                 ComponentInstanceId::new(1),
-                Priority::Normal,
+                128, // Normal priority
                 10000,
                 Some(Duration::from_millis(5000)),
                 true,
@@ -380,7 +380,7 @@ mod tests {
             .add_task(
                 TaskId::new(3), // Background task
                 ComponentInstanceId::new(1),
-                Priority::Low,
+                64, // Low priority
                 20000,
                 None,
                 true,
@@ -531,7 +531,7 @@ mod tests {
             .add_task(
                 application_task,
                 ComponentInstanceId::new(2), // Different component for isolation
-                Priority::Normal,
+                128, // Normal priority
                 10000,
                 Some(Duration::from_millis(5000)),
                 true, // Preemptible
@@ -543,7 +543,7 @@ mod tests {
             .add_task(
                 maintenance_task,
                 ComponentInstanceId::new(3), // Separate component
-                Priority::Low,
+                64, // Low priority
                 15000,
                 None, // No deadline - best effort
                 true,
@@ -599,7 +599,7 @@ mod tests {
                 Priority::Critical,
                 application_task,
                 ComponentInstanceId::new(2),
-                Priority::Normal,
+                128, // Normal priority
             )
             .unwrap();
 
@@ -686,8 +686,8 @@ mod examples {
 
         // Priority inheritance automatically boosts low priority holder
         let effective_priority =
-            protocol.get_effective_priority(low_priority_holder, Priority::Low);
-        assert_eq!(effective_priority, Priority::High);
+            protocol.get_effective_priority(low_priority_holder, 64 /* Low priority */);
+        assert_eq!(effective_priority, 192); // High priority
 
         // When resource is released, original priorities are restored
         let next_holder = protocol.release_resource(resource_id, low_priority_holder)?;

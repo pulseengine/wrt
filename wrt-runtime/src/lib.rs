@@ -44,6 +44,8 @@ pub mod clean_runtime_tests;
 pub mod atomic_execution;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod atomic_runtime;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
@@ -54,6 +56,21 @@ pub mod format_bridge;
 pub mod func;
 pub mod global;
 pub mod memory;
+
+// WebAssembly bulk memory operations runtime
+pub mod bulk_memory;
+
+// WebAssembly 3.0 multi-memory runtime
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod multi_memory;
+
+// WebAssembly 3.0 shared memory runtime
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod shared_memory;
+
+// WebAssembly SIMD runtime
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod simd_runtime;
 
 // Simplified type system - CRITICAL COMPILATION FIX
 pub mod simple_types;

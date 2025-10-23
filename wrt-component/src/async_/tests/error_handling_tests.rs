@@ -268,7 +268,7 @@ mod tests {
                         error_harness: Arc::new(harness),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::Normal,
+                    128, // Normal priority
             })?;
             };
             
@@ -350,7 +350,7 @@ mod tests {
                         error_harness: Arc::new(harness),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::Normal,
+                    128, // Normal priority
                 ).unwrap()
             };
             
@@ -735,7 +735,7 @@ mod tests {
                         error_harness: Arc::new(harness),
                     },
                     ComponentAsyncTaskType::AsyncFunction,
-                    Priority::Normal,
+                    128, // Normal priority
                 ).unwrap()
             };
             
@@ -837,7 +837,7 @@ mod tests {
                                 error_harness: Arc::new(harness),
                             },
                             ComponentAsyncTaskType::AsyncFunction,
-                            Priority::Normal,
+                            128, // Normal priority
                         ).unwrap()
                     };
                     

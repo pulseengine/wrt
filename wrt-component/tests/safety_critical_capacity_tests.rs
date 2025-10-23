@@ -15,12 +15,10 @@ extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
+use wrt_foundation::collections::StaticMap as BoundedHashMap;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    collections::StaticVec as BoundedVec,
+    bounded::BoundedString,
     budget_aware_provider::CrateId,
     managed_alloc,
     WrtError,

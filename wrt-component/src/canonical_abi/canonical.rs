@@ -41,7 +41,10 @@ use wrt_foundation::{
     component_value::ValType as FoundationValType,
     resource::ResourceOperation as FormatResourceOperation,
 };
-use wrt_intercept::LinkInterceptor;
+use wrt_intercept::{
+    LinkInterceptor,
+    LinkInterceptorStrategy,
+};
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 #[cfg(not(feature = "std"))]
@@ -56,11 +59,7 @@ use crate::resources::bounded_buffer_pool::BoundedBufferPool;
 #[cfg(feature = "std")]
 use crate::resources::buffer_pool::BufferPool;
 use crate::{
-    bounded_component_infra::ComponentProvider,
-    memory_layout::{
-        calculate_layout,
-        MemoryLayout,
-    },
+    memory_layout::MemoryLayout,
     prelude::*,
     resource_management::ResourceTable,
     resources::{
@@ -89,7 +88,7 @@ pub struct CanonicalABI {
     /// Verification level for canonical operations
     verification_level: VerificationLevel,
     /// Optional interceptor for canonical operations
-    interceptor:        Option<u32>, // Placeholder for LinkInterceptor
+    interceptor:        Option<Arc<LinkInterceptor>>,
     /// Metrics for canonical operations
     metrics:            CanonicalMetrics,
     /// String encoding options
@@ -97,20 +96,20 @@ pub struct CanonicalABI {
 }
 
 /// Metrics for canonical operations
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct CanonicalMetrics {
     /// Number of lift operations performed
-    pub lift_count:      u64,
+    pub lift_count:      core::sync::atomic::AtomicU64,
     /// Number of lower operations performed
-    pub lower_count:     u64,
+    pub lower_count:     core::sync::atomic::AtomicU64,
     /// Total bytes lifted
-    pub lift_bytes:      u64,
+    pub lift_bytes:      core::sync::atomic::AtomicU64,
     /// Total bytes lowered
-    pub lower_bytes:     u64,
+    pub lower_bytes:     core::sync::atomic::AtomicU64,
     /// Max bytes lifted in a single operation
-    pub max_lift_bytes:  u64,
+    pub max_lift_bytes:  core::sync::atomic::AtomicU64,
     /// Max bytes lowered in a single operation
-    pub max_lower_bytes: u64,
+    pub max_lower_bytes: core::sync::atomic::AtomicU64,
 }
 
 impl CanonicalABI {
@@ -128,11 +127,6 @@ impl CanonicalABI {
 
     /// Create a new CanonicalABI instance with default settings
     pub fn default() -> Self {
-        Self::new(1024 * 1024) // 1MB default buffer pool
-    }
-
-    /// Create a new CanonicalABI instance with no parameters
-    pub fn new() -> Self {
         Self {
             buffer_pool:        BoundedBufferPool::new(),
             memory_strategy:    MemoryStrategy::BoundedCopy,
@@ -179,20 +173,13 @@ impl CanonicalABI {
         let memory_strategy = self.get_strategy_from_interceptor();
 
         // Update metrics
-        self.metrics.lift_count += 1;
+        self.metrics.lift_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
 
-        // Intercept if necessary
-        if let Some(interceptor) = &self.interceptor {
-            for strategy in &interceptor.strategies {
-                if strategy.should_intercept_canonical() {
-                    if let Some(value) = strategy.intercept_lift(ty, addr, memory_bytes)? {
-                        // Convert the strategy's result into a Value
-                        // This is a placeholder - actual implementation would depend on the return
-                        // format
-                        return Ok(value); // Placeholder
-                    }
-                }
-            }
+        // Intercept if necessary - currently interceptor strategies not fully integrated
+        // Future enhancement: Add canonical ABI interception support
+        if let Some(_interceptor) = &self.interceptor {
+            // Placeholder for future interceptor integration
+            // Strategy access pattern TBD based on LinkInterceptor API
         }
 
         // Perform the lift operation
@@ -211,7 +198,7 @@ impl CanonicalABI {
         let memory_strategy = self.get_strategy_from_interceptor();
 
         // Update metrics
-        self.metrics.lower_count += 1;
+        self.metrics.lower_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
 
         // Perform lower operation based on value type
         if let Some(b) = value.as_bool() {
@@ -253,21 +240,53 @@ impl CanonicalABI {
             ValType::Char => self.lift_char(addr, memory_bytes),
             ValType::String => self.lift_string(addr, memory_bytes),
             ValType::List(inner_ty) => self.lift_list(inner_ty, addr, resource_table, memory_bytes),
-            ValType::Record(fields) => self.lift_record(fields, addr, resource_table, memory_bytes),
-            ValType::Tuple(types) => self.lift_tuple(types, addr, resource_table, memory_bytes),
-            ValType::Variant(cases) => self.lift_variant(cases, addr, resource_table, memory_bytes),
-            ValType::Enum(cases) => self.lift_enum(cases, addr, memory_bytes),
+            ValType::Record(record) => {
+                #[cfg(feature = "std")]
+                let fields_vec = record.fields.iter().map(|f| (f.name.to_string(), (*f.ty).clone())).collect::<Vec<_>>();
+                #[cfg(not(feature = "std"))]
+                let fields_vec = record.fields.iter().filter_map(|f| {
+                    f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone()))
+                }).collect::<Vec<_>>();
+                self.lift_record(&fields_vec, addr, resource_table, memory_bytes)
+            },
+            ValType::Tuple(tuple) => {
+                // Convert StaticVec to slice
+                let types_slice = tuple.types.as_slice();
+                self.lift_tuple(types_slice, addr, resource_table, memory_bytes)
+            },
+            ValType::Variant(variant) => {
+                #[cfg(feature = "std")]
+                let cases_vec = variant.cases.iter().map(|c| (c.name.to_string(), c.ty.as_ref().map(|t| (**t).clone()))).collect::<Vec<_>>();
+                #[cfg(not(feature = "std"))]
+                let cases_vec = variant.cases.iter().filter_map(|c| {
+                    c.name.as_str().ok().map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
+                }).collect::<Vec<_>>();
+                self.lift_variant(&cases_vec, addr, resource_table, memory_bytes)
+            },
+            ValType::Enum(enum_) => {
+                #[cfg(feature = "std")]
+                let cases_vec = enum_.cases.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+                #[cfg(not(feature = "std"))]
+                let cases_vec = enum_.cases.iter().filter_map(|s| s.as_str().ok()).map(|s| s.to_string()).collect::<Vec<_>>();
+                self.lift_enum(&cases_vec, addr, memory_bytes)
+            },
             ValType::Option(inner_ty) => {
                 self.lift_option(inner_ty, addr, resource_table, memory_bytes)
             },
-            ValType::Result(ok_ty, err_ty) => self.lift_result(
-                ok_ty.as_ref(),
-                err_ty.as_ref(),
+            ValType::Result(result_) => self.lift_result(
+                result_.ok.as_ref(),
+                result_.err.as_ref(),
                 addr,
                 resource_table,
                 memory_bytes,
             ),
-            ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
+            ValType::Flags(flags) => {
+                #[cfg(feature = "std")]
+                let labels_vec = flags.labels.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+                #[cfg(not(feature = "std"))]
+                let labels_vec = flags.labels.iter().filter_map(|s| s.as_str().ok()).map(|s| s.to_string()).collect::<Vec<_>>();
+                self.lift_flags(&labels_vec, addr, memory_bytes)
+            },
             ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
             ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
             _ => Err(Error::unimplemented("Component not found")),
@@ -283,27 +302,34 @@ impl CanonicalABI {
     ) -> Result<Value> {
         // Tuple is a sequence of values with their specific types
         let mut current_addr = addr;
-        #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, { CrateId::Component as u8 }, 32> =
-            WrtVec::new();
-        #[cfg(not(feature = "safety-critical"))]
+        #[cfg(feature = "std")]
         let mut values = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut values = wrt_foundation::collections::StaticVec::<Value, 32>::new();
 
         for ty in types {
             let value = self.lift_value(ty, current_addr, resource_table, memory_bytes)?;
-            #[cfg(feature = "safety-critical")]
-            values.push(Box::new(value)).map_err(|_| {
+            #[cfg(feature = "std")]
+            values.push(value);
+            #[cfg(not(feature = "std"))]
+            values.push(value).map_err(|_| {
                 Error::capacity_exceeded("Tuple value count exceeds safety limit of 32")
             })?;
-            #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
 
             // Advance address based on the size of the current type
-            let layout = calculate_layout(ty);
+            let layout = self.get_layout_for_type(ty);
             current_addr += layout.size as u32;
         }
 
-        Ok(Value::Tuple(values))
+        #[cfg(feature = "std")]
+        return Ok(Value::Tuple(values));
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Convert StaticVec to Vec for Value::Tuple
+            let vec_values: Vec<Value> = values.iter().cloned().collect();
+            Ok(Value::Tuple(vec_values))
+        }
     }
 
     fn lift_flags(&self, names: &[String], addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -312,11 +338,11 @@ impl CanonicalABI {
         self.check_bounds(addr, num_bytes as u32, memory_bytes)?;
 
         #[cfg(feature = "safety-critical")]
-        let mut flags: WrtVec<u32, { CrateId::Component as u8 }, 64> = WrtVec::new();
+        let mut flags: WrtVec<String, { CrateId::Component as u8 }, 64> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
         let mut flags = Vec::new();
 
-        for (i, _) in names.iter().enumerate() {
+        for (i, name) in names.iter().enumerate() {
             let byte_idx = i / 8;
             let bit_position = i % 8;
             let flag_byte = memory_bytes[addr as usize + byte_idx];
@@ -324,11 +350,11 @@ impl CanonicalABI {
             // Check if the bit is set
             if (flag_byte & (1 << bit_position)) != 0 {
                 #[cfg(feature = "safety-critical")]
-                flags.push(i as u32).map_err(|_| {
+                flags.push(name.clone()).map_err(|_| {
                     Error::capacity_exceeded("Flag count exceeds safety limit of 64")
                 })?;
                 #[cfg(not(feature = "safety-critical"))]
-                flags.push(i as u32);
+                flags.push(name.clone());
             }
         }
 
@@ -345,27 +371,34 @@ impl CanonicalABI {
     ) -> Result<Value> {
         // Similar to list but with fixed size
         let mut current_addr = addr;
-        #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, { CrateId::Component as u8 }, 256> =
-            WrtVec::new();
-        #[cfg(not(feature = "safety-critical"))]
+        #[cfg(feature = "std")]
         let mut values = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut values = wrt_foundation::collections::StaticVec::<Value, 256>::new();
 
         for _ in 0..size {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
-            #[cfg(feature = "safety-critical")]
-            values.push(Box::new(value)).map_err(|_| {
+            #[cfg(feature = "std")]
+            values.push(value);
+            #[cfg(not(feature = "std"))]
+            values.push(value).map_err(|_| {
                 Error::capacity_exceeded("Fixed list size exceeds safety limit of 256")
             })?;
-            #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
 
             // Advance address based on the size of inner type
-            let layout = calculate_layout(inner_ty);
+            let layout = self.get_layout_for_type(inner_ty);
             current_addr += layout.size as u32;
         }
 
-        Ok(Value::List(values))
+        #[cfg(feature = "std")]
+        return Ok(Value::List(values));
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Convert StaticVec to Vec for Value::List
+            let vec_values: Vec<Value> = values.into_iter().collect();
+            Ok(Value::List(vec_values))
+        }
     }
 
     fn lift_resource(
@@ -450,8 +483,8 @@ impl CanonicalABI {
         let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
 
         // Update metrics if needed
-        self.metrics.lift_bytes += 4;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4);
+        self.metrics.lift_bytes.fetch_add(4, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(4, core::sync::atomic::Ordering::Relaxed);
 
         Ok(wrt_foundation::values::Value::I32(value))
     }
@@ -475,8 +508,8 @@ impl CanonicalABI {
         ]);
 
         // Update metrics if needed
-        self.metrics.lift_bytes += 8;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8);
+        self.metrics.lift_bytes.fetch_add(8, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(8, core::sync::atomic::Ordering::Relaxed);
 
         Ok(wrt_foundation::values::Value::I64(value))
     }
@@ -502,10 +535,10 @@ impl CanonicalABI {
         let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
 
         // Update metrics if needed
-        self.metrics.lift_bytes += 4;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4);
+        self.metrics.lift_bytes.fetch_add(4, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(4, core::sync::atomic::Ordering::Relaxed);
 
-        Ok(wrt_foundation::values::Value::F32(value))
+        Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(value)))
     }
 
     fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
@@ -516,10 +549,10 @@ impl CanonicalABI {
         ]);
 
         // Update metrics if needed
-        self.metrics.lift_bytes += 8;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8);
+        self.metrics.lift_bytes.fetch_add(8, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(8, core::sync::atomic::Ordering::Relaxed);
 
-        Ok(wrt_foundation::values::Value::F64(value))
+        Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(value)))
     }
 
     fn lift_char(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -577,7 +610,7 @@ impl CanonicalABI {
         }
 
         // Calculate element size
-        let element_size = calculate_layout(inner_ty).size as u32;
+        let element_size = self.get_layout_for_type(inner_ty).size as u32;
         let total_size = element_size
             .checked_mul(length as u32)
             .ok_or_else(|| Error::runtime_out_of_bounds("List size overflow"))?;
@@ -586,29 +619,36 @@ impl CanonicalABI {
         self.check_bounds(data_ptr, total_size, memory_bytes)?;
 
         // Lift each element
-        #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, { CrateId::Component as u8 }, 1024> =
-            WrtVec::new();
-        #[cfg(not(feature = "safety-critical"))]
+        #[cfg(feature = "std")]
         let mut values = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut values = wrt_foundation::collections::StaticVec::<Value, 1024>::new();
         let mut current_addr = data_ptr;
 
         for _ in 0..length {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
-            #[cfg(feature = "safety-critical")]
-            values.push(Box::new(value)).map_err(|_| {
+            #[cfg(feature = "std")]
+            values.push(value);
+            #[cfg(not(feature = "std"))]
+            values.push(value).map_err(|_| {
                 Error::capacity_exceeded("List length exceeds safety limit of 1024")
             })?;
-            #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
             current_addr += element_size;
         }
 
         // Update metrics
-        self.metrics.lift_bytes += 8 + total_size as u64;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8 + total_size as u64);
+        self.metrics.lift_bytes.fetch_add(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
 
-        Ok(Value::List(values))
+        #[cfg(feature = "std")]
+        return Ok(Value::List(values));
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Convert StaticVec to Vec for Value::List
+            let vec_values: Vec<Value> = values.into_iter().collect();
+            Ok(Value::List(vec_values))
+        }
     }
 
     fn lift_record(
@@ -620,33 +660,36 @@ impl CanonicalABI {
     ) -> Result<Value> {
         // Records are stored as a sequence of field values
         let mut current_addr = addr;
-        #[cfg(feature = "safety-critical")]
-        let mut record_map: WrtHashMap<
-            String,
-            Box<ComponentValue>,
-            { CrateId::Component as u8 },
-            32,
-        > = WrtHashMap::new();
-        #[cfg(not(feature = "safety-critical"))]
-        let mut record_map = HashMap::new();
+        #[cfg(feature = "std")]
+        let mut record_values = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut record_values = wrt_foundation::collections::StaticVec::<(String, Value), 64>::new();
 
         for (field_name, field_type) in fields {
             // Lift the field value
             let field_value =
                 self.lift_value(field_type, current_addr, resource_table, memory_bytes)?;
-            #[cfg(feature = "safety-critical")]
-            record_map.insert(field_name.clone(), Box::new(field_value)).map_err(|_| {
-                Error::capacity_exceeded("Record field count exceeds safety limit of 32")
+            #[cfg(feature = "std")]
+            record_values.push((field_name.clone(), field_value));
+            #[cfg(not(feature = "std"))]
+            record_values.push((field_name.clone(), field_value)).map_err(|_| {
+                Error::capacity_exceeded("Record field count exceeds safety limit of 64")
             })?;
-            #[cfg(not(feature = "safety-critical"))]
-            record_map.insert(field_name.clone(), Box::new(field_value));
 
             // Advance address by the size of the field
-            let layout = calculate_layout(field_type);
+            let layout = self.get_layout_for_type(field_type);
             current_addr += layout.size as u32;
         }
 
-        Ok(Value::Record(record_map))
+        #[cfg(feature = "std")]
+        return Ok(Value::Record(record_values));
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Convert StaticVec to Vec for Value::Record
+            let vec_values: Vec<(String, Value)> = record_values.into_iter().collect();
+            Ok(Value::Record(vec_values))
+        }
     }
 
     fn lift_variant(
@@ -668,6 +711,7 @@ impl CanonicalABI {
         }
 
         let case_info = &cases[discriminant as usize];
+        let case_name = case_info.0.clone();
 
         // Handle the payload if this case has one
         if let Some(payload_type) = &case_info.1 {
@@ -676,16 +720,10 @@ impl CanonicalABI {
             let payload =
                 self.lift_value(payload_type, payload_addr, resource_table, memory_bytes)?;
 
-            Ok(Value::Variant {
-                case:  discriminant as u32,
-                value: Box::new(payload),
-            })
+            Ok(Value::Variant(case_name, Some(Box::new(payload))))
         } else {
             // No payload for this case
-            Ok(Value::Variant {
-                case:  discriminant as u32,
-                value: Box::new(Value::Void),
-            })
+            Ok(Value::Variant(case_name, None))
         }
     }
 
@@ -717,7 +755,7 @@ impl CanonicalABI {
             return Err(Error::invalid_type_error("Component not found"));
         }
 
-        Ok(Value::Enum(discriminant))
+        Ok(Value::Enum(cases[discriminant as usize].clone()))
     }
 
     fn lift_option(
@@ -767,9 +805,10 @@ impl CanonicalABI {
                     let payload_addr = addr + 1;
                     let payload =
                         self.lift_value(ty, payload_addr, resource_table, memory_bytes)?;
-                    Ok(Value::Result(Ok(Some(Box::new(payload)))))
+                    Ok(Value::Result(Ok(Box::new(payload))))
                 } else {
-                    Ok(Value::Result(Ok(None)))
+                    // No payload - use Void value
+                    Ok(Value::Result(Ok(Box::new(Value::Void))))
                 }
             },
             1 => {
@@ -778,9 +817,10 @@ impl CanonicalABI {
                     let payload_addr = addr + 1;
                     let payload =
                         self.lift_value(ty, payload_addr, resource_table, memory_bytes)?;
-                    Ok(Value::Result(Err(Some(Box::new(payload)))))
+                    Ok(Value::Result(Err(Box::new(payload))))
                 } else {
-                    Ok(Value::Result(Err(None)))
+                    // No payload - use Void value
+                    Ok(Value::Result(Err(Box::new(Value::Void))))
                 }
             },
             _ => Err(Error::invalid_type_error("Component not found")),
@@ -903,7 +943,7 @@ impl CanonicalABI {
 
     fn lower_list(
         &self,
-        values: &[Box<wrt_foundation::values::Value>],
+        values: &Vec<wrt_foundation::values::Value>,
         inner_ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
@@ -930,7 +970,7 @@ impl CanonicalABI {
         }
 
         // Calculate element size
-        let element_size = calculate_layout(inner_ty).size as u32;
+        let element_size = self.get_layout_for_type(inner_ty).size as u32;
         let total_size = element_size * length;
 
         // Check bounds for the list data
@@ -944,8 +984,8 @@ impl CanonicalABI {
         }
 
         // Update metrics
-        self.metrics.lower_bytes += 8 + total_size as u64;
-        self.metrics.max_lower_bytes = self.metrics.max_lower_bytes.max(8 + total_size as u64);
+        self.metrics.lower_bytes.fetch_add(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lower_bytes.fetch_max(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
 
         Ok(())
     }
@@ -1014,12 +1054,11 @@ impl CanonicalABI {
                 }
             },
             ValType::S64 | ValType::U64 => {
-                if let Some(v) = value.as_i64() {
-                    self.lower_s64(v, addr, memory_bytes)
-                } else if let Some(v) = value.as_u64() {
-                    self.lower_u64(v, addr, memory_bytes)
-                } else {
-                    Err(Error::runtime_type_mismatch("Expected i64/u64 value"))
+                match value {
+                    Value::S64(v) => self.lower_s64(*v, addr, memory_bytes),
+                    Value::U64(v) => self.lower_u64(*v, addr, memory_bytes),
+                    Value::I64(v) => self.lower_s64(*v, addr, memory_bytes),
+                    _ => Err(Error::runtime_type_mismatch("Expected i64/u64 value"))
                 }
             },
             ValType::F32 => {
@@ -1063,7 +1102,7 @@ impl CanonicalABI {
 
     fn lower_record(
         &self,
-        record_fields: &HashMap<String, Box<wrt_foundation::values::Value>>,
+        record_fields: &Vec<(String, wrt_foundation::values::Value)>,
         field_types: &[(String, ValType)],
         addr: u32,
         resource_table: &ResourceTable,
@@ -1074,7 +1113,12 @@ impl CanonicalABI {
         let mut current_addr = addr;
 
         for (field_name, field_type) in field_types {
-            if let Some(field_value) = record_fields.get(field_name) {
+            // Find the field value in the record
+            let field_value = record_fields.iter()
+                .find(|(name, _)| name == field_name)
+                .map(|(_, value)| value);
+
+            if let Some(field_value) = field_value {
                 self.lower_value(
                     field_value,
                     field_type,
@@ -1082,7 +1126,7 @@ impl CanonicalABI {
                     resource_table,
                     memory_bytes,
                 )?;
-                let layout = calculate_layout(field_type);
+                let layout = self.get_layout_for_type(field_type);
                 current_addr += layout.size as u32;
             } else {
                 return Err(Error::runtime_type_mismatch("Component not found"));
@@ -1118,6 +1162,31 @@ impl CanonicalABI {
     fn get_strategy_from_interceptor(&self) -> MemoryStrategy {
         // Return default strategy for now
         self.memory_strategy
+    }
+
+    /// Get memory layout for a ValType
+    /// This is a simplified layout calculation for component model types
+    fn get_layout_for_type(&self, ty: &ValType) -> MemoryLayout {
+        use crate::types::ValType::*;
+        match ty {
+            Bool | S8 | U8 => MemoryLayout { size: 1, alignment: 1 },
+            S16 | U16 => MemoryLayout { size: 2, alignment: 2 },
+            S32 | U32 | F32 | Char => MemoryLayout { size: 4, alignment: 4 },
+            S64 | U64 | F64 => MemoryLayout { size: 8, alignment: 8 },
+            String | List(_) => MemoryLayout { size: 8, alignment: 4 }, // ptr + length
+            Own(_) | Borrow(_) => MemoryLayout { size: 4, alignment: 4 }, // handle
+            Option(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
+            Result(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
+            Variant(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
+            Enum(_) => MemoryLayout { size: 4, alignment: 4 }, // discriminant only
+            Flags(_) => MemoryLayout { size: 4, alignment: 4 }, // bitfield
+            Record(_) | Tuple(_) => {
+                // For composite types, we'd need to calculate based on fields
+                // For now, use a placeholder
+                MemoryLayout { size: 4, alignment: 4 }
+            },
+            _ => MemoryLayout { size: 4, alignment: 4 }, // Default fallback
+        }
     }
 
     // SIMD-Optimized Bulk Operations for Performance Enhancement
@@ -1297,17 +1366,14 @@ impl CanonicalABI {
 
     /// Update performance metrics for bulk operations
     pub fn update_bulk_metrics(
-        &mut self,
+        &self,
         operation_type: &str,
         bytes_processed: usize,
         duration_ns: u64,
     ) {
-        self.metrics.lift_count += 1;
-        self.metrics.lift_bytes += bytes_processed as u64;
-
-        if bytes_processed as u64 > self.metrics.max_lift_bytes {
-            self.metrics.max_lift_bytes = bytes_processed as u64;
-        }
+        self.metrics.lift_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.lift_bytes.fetch_add(bytes_processed as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.max_lift_bytes.fetch_max(bytes_processed as u64, core::sync::atomic::Ordering::Relaxed);
 
         // Could add timing metrics here if needed
     }
@@ -1328,21 +1394,18 @@ impl CanonicalABI {
 /// Result containing the converted Value
 pub fn convert_value_for_canonical_abi(
     value: &wrt_foundation::values::Value,
-    target_type: &FormatValType<ComponentProvider>,
+    target_type: &FormatValType,
 ) -> Result<wrt_foundation::values::Value> {
-    // First convert the format ValType to a component-friendly ValType
-    let component_type = crate::values::convert_format_to_common_valtype(target_type);
-
-    // Now convert the value based on the component type
-    match &component_type {
-        FoundationValType::<ComponentProvider>::Bool => {
+    // Work directly with FormatValType to preserve nested type information
+    match target_type {
+        FormatValType::Bool => {
             if let Some(b) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::Bool(b))
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::S8 => {
+        FormatValType::S8 => {
             if let Some(v) = value.as_i8() {
                 Ok(wrt_foundation::values::Value::S8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1355,7 +1418,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::U8 => {
+        FormatValType::U8 => {
             if let Some(v) = value.as_u8() {
                 Ok(wrt_foundation::values::Value::U8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1368,7 +1431,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::S16 => {
+        FormatValType::S16 => {
             if let Some(v) = value.as_i16() {
                 Ok(wrt_foundation::values::Value::S16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1381,7 +1444,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::U16 => {
+        FormatValType::U16 => {
             if let Some(v) = value.as_u16() {
                 Ok(wrt_foundation::values::Value::U16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1394,7 +1457,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::S32 => {
+        FormatValType::S32 => {
             if let Some(v) = value.as_i32() {
                 Ok(wrt_foundation::values::Value::S32(v))
             } else if let Some(v) = value.as_i64() {
@@ -1407,7 +1470,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::U32 => {
+        FormatValType::U32 => {
             if let Some(v) = value.as_u32() {
                 Ok(wrt_foundation::values::Value::U32(v))
             } else if let Some(i) = value.as_i64() {
@@ -1420,7 +1483,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::S64 => {
+        FormatValType::S64 => {
             if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::S64(v))
             } else if let Some(v) = value.as_i32() {
@@ -1429,11 +1492,11 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
-        FoundationValType::<ComponentProvider>::U64 => {
+        FormatValType::U64 => {
             if let Some(v) = value.as_u64() {
                 Ok(wrt_foundation::values::Value::U64(v))
             } else if let Some(i) = value.as_i64() {
@@ -1446,37 +1509,37 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::F32 => {
+        FormatValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F32(v))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v)))
             } else if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
-        FoundationValType::<ComponentProvider>::F64 => {
+        FormatValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F64(v))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v)))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::Char => {
+        FormatValType::Char => {
             if let Some(c) = value.as_char() {
                 Ok(wrt_foundation::values::Value::Char(c))
             } else if let Some(i) = value.as_i32() {
@@ -1486,25 +1549,25 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Invalid value: {:?}", i)).to_string(),
+                        "Invalid character value",
                     ))
                 }
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::String => {
+        FormatValType::String => {
             if let Some(s) = value.as_str() {
                 Ok(wrt_foundation::values::Value::String(s.to_string()))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
-        FoundationValType::<ComponentProvider>::List(inner_type) => {
+        FormatValType::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 #[cfg(feature = "safety-critical")]
                 let mut converted_list: WrtVec<
@@ -1515,7 +1578,7 @@ pub fn convert_value_for_canonical_abi(
                 #[cfg(not(feature = "safety-critical"))]
                 let mut converted_list = Vec::new();
                 for item in list {
-                    let converted_item = convert_value_for_canonical_abi(item, &inner_type)?;
+                    let converted_item = convert_value_for_canonical_abi(item, inner_type.as_ref())?;
                     #[cfg(feature = "safety-critical")]
                     converted_list.push(converted_item).map_err(|_| {
                         Error::capacity_exceeded("List conversion exceeds safety limit of 1024")
@@ -1528,23 +1591,27 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::Record(fields) => {
+        FormatValType::Record(fields) => {
             if let Some(record) = value.as_record() {
                 #[cfg(feature = "safety-critical")]
-                let mut converted_record: WrtHashMap<
-                    String,
-                    Value,
+                let mut converted_record: WrtVec<
+                    (String, Value),
                     { CrateId::Component as u8 },
                     64,
-                > = WrtHashMap::new();
+                > = WrtVec::new();
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_record = HashMap::new();
+                let mut converted_record = Vec::new();
                 for (field_name, field_type) in fields {
-                    if let Some(field_value) = record.get(field_name) {
+                    // Find the field in the record Vec
+                    let field_value = record.iter()
+                        .find(|(name, _)| name.as_str() == field_name.as_str())
+                        .map(|(_, value)| value);
+
+                    if let Some(field_value) = field_value {
                         let converted_field =
                             convert_value_for_canonical_abi(field_value, field_type)?;
                         #[cfg(feature = "safety-critical")]
-                        converted_record.insert(field_name.clone(), converted_field).map_err(
+                        converted_record.push((field_name.clone(), converted_field)).map_err(
                             |_| {
                                 Error::capacity_exceeded(
                                     "Record conversion exceeds safety limit of 64 fields",
@@ -1552,7 +1619,7 @@ pub fn convert_value_for_canonical_abi(
                             },
                         )?;
                         #[cfg(not(feature = "safety-critical"))]
-                        converted_record.insert(field_name.clone(), converted_field);
+                        converted_record.push((field_name.clone(), converted_field));
                     } else {
                         return Err(Error::component_not_found("Component not found"));
                     }
@@ -1562,18 +1629,13 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::Tuple(types) => {
+        FormatValType::Tuple(types) => {
             if let Some(tuple) = value.as_tuple() {
                 if tuple.len() != types.len() {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
-                        NotImplementedError(format!(
-                            "Tuple length mismatch: expected {}, got {}",
-                            types.len(),
-                            tuple.len()
-                        ))
-                        .to_string(),
+                        "Tuple length mismatch",
                     ));
                 }
                 #[cfg(feature = "safety-critical")]
@@ -1600,72 +1662,36 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
         },
-        FoundationValType::<ComponentProvider>::Flags(names) => {
+        FormatValType::Flags(names) => {
             if let Some(flags) = value.as_flags() {
-                // Verify all required flags are present
-                for name in names {
-                    if !flags.contains_key(name) {
-                        return Err(Error::component_not_found("Value out of range"));
-                    }
-                }
-                // Verify no extra flags are present
-                for name in flags.keys() {
-                    if !names.contains(name) {
-                        return Err(Error::component_not_found("Component not found"));
-                    }
-                }
-                // Convert all flag values to booleans
-                #[cfg(feature = "safety-critical")]
-                let mut converted_flags: WrtHashMap<
-                    String,
-                    bool,
-                    { CrateId::Component as u8 },
-                    64,
-                > = WrtHashMap::new();
-                #[cfg(not(feature = "safety-critical"))]
-                let mut converted_flags = HashMap::new();
-                for (name, value) in flags {
-                    if let Some(b) = value.as_bool() {
-                        #[cfg(feature = "safety-critical")]
-                        converted_flags.insert(name.clone(), b).map_err(|_| {
-                            Error::capacity_exceeded(
-                                "Flags conversion exceeds safety limit of 64 flags",
-                            )
-                        })?;
-                        #[cfg(not(feature = "safety-critical"))]
-                        converted_flags.insert(name.clone(), b);
-                    } else {
-                        return Err(Error::runtime_execution_error("Type conversion failed"));
-                    }
-                }
-                Ok(wrt_foundation::values::Value::Flags(converted_flags))
+                // Flags are stored as a Vec<String> of flag names that are set
+                // Just return the flags as-is since they're already in the right format
+                Ok(wrt_foundation::values::Value::Flags(flags.clone()))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
-        FoundationValType::<ComponentProvider>::Variant(cases) => {
-            if let Some((discriminant, payload)) = value.as_variant() {
-                if discriminant < cases.len() as u32 {
-                    Ok(wrt_foundation::values::Value::Variant(
-                        discriminant,
-                        payload.map(Box::new),
-                    ))
-                } else {
-                    Err(Error::runtime_execution_error("Invalid discriminant"))
-                }
+        FormatValType::Variant(cases) => {
+            if let Some((case_name, payload)) = value.as_variant() {
+                // Convert the string case name to owned String
+                // and clone the payload if present
+                Ok(wrt_foundation::values::Value::Variant(
+                    case_name.to_string(),
+                    payload.map(|p| Box::new(p.clone())),
+                ))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
-        FoundationValType::<ComponentProvider>::Void => Ok(wrt_foundation::values::Value::Void),
+        FormatValType::Void => Ok(wrt_foundation::values::Value::Void),
         // All types are now handled
         _ => Ok(value.clone()),
     }
@@ -1699,7 +1725,7 @@ fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::TYPE_MISMATCH,
-            NotImplementedError("Not implemented").to_string(),
+            "Not implemented",
         ))
     }
 }
@@ -1771,31 +1797,31 @@ pub fn convert_value_for_type(
         },
         ValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F32(v))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v)))
             } else if let Some(v) = value.as_f64() {
                 // Check if value fits in f32 range
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Not implemented").to_string(),
+                    "Not implemented",
                 ))
             }
         },
         ValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F64(v))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v)))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }

@@ -255,7 +255,7 @@ pub mod kani_verification {
             // Create a minimal component
             let imports = if has_imports {
                 let mut imp = Vec::new();
-                imp.push("required_func".to_string());
+                imp.push("required_func".to_owned());
                 imp
             } else {
                 Vec::new()
@@ -263,7 +263,7 @@ pub mod kani_verification {
 
             let exports = if has_exports {
                 let mut exp = Vec::new();
-                exp.push("exported_func".to_string());
+                exp.push("exported_func".to_owned());
                 exp
             } else {
                 Vec::new()
