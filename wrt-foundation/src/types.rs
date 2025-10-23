@@ -469,29 +469,25 @@ pub const MAX_FUNC_TYPE_RESULTS: usize = MAX_RESULTS_IN_FUNC_TYPE; // Use the ne
 ///
 /// It defines the parameter types and result types of a function.
 /// Binary std/no_std choice
+///
+/// **Migration Note:** Migrated from `BoundedVec<T, N, P>` to `StaticVec<T, N>` (Issue #118)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FuncType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
-    pub params:  BoundedVec<ValueType, MAX_PARAMS_IN_FUNC_TYPE, P>,
-    pub results: BoundedVec<ValueType, MAX_RESULTS_IN_FUNC_TYPE, P>,
+pub struct FuncType {
+    pub params:  StaticVec<ValueType, MAX_PARAMS_IN_FUNC_TYPE>,
+    pub results: StaticVec<ValueType, MAX_RESULTS_IN_FUNC_TYPE>,
 }
 
-impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FuncType<P> {
+impl FuncType {
     /// Creates a new `FuncType` with the given parameter and result types.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if creating the internal bounded vectors fails (e.g.,
-    /// due to provider issues).
     pub fn new(
-        provider: P,
         params_iter: impl IntoIterator<Item = ValueType>,
         results_iter: impl IntoIterator<Item = ValueType>,
     ) -> wrt_error::Result<Self> {
-        let mut params = BoundedVec::new(provider.clone()).map_err(Error::from)?;
+        let mut params = StaticVec::new();
         for vt in params_iter {
             params.push(vt).map_err(Error::from)?;
         }
-        let mut results = BoundedVec::new(provider).map_err(Error::from)?;
+        let mut results = StaticVec::new();
         for vt in results_iter {
             results.push(vt).map_err(Error::from)?;
         }
@@ -507,24 +503,16 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fu
     }
 }
 
-impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default
-    for FuncType<P>
-{
+impl Default for FuncType {
     fn default() -> Self {
-        let provider = P::default();
-        // This expect is problematic for safety if P::default() or BoundedVec::new can
-        // fail. For now, to proceed with compilation, but this needs review.
-        let params = BoundedVec::new(provider.clone())
-            .expect("Default provider should allow BoundedVec creation for FuncType params");
-        let results = BoundedVec::new(provider)
-            .expect("Default provider should allow BoundedVec creation for FuncType results");
-        Self { params, results }
+        Self {
+            params: StaticVec::new(),
+            results: StaticVec::new(),
+        }
     }
 }
 
-impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable
-    for FuncType<P>
-{
+impl Checksummable for FuncType {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update checksum with params
         checksum.update_slice(&(self.params.len() as u32).to_le_bytes());
@@ -539,9 +527,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
     }
 }
 
-impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes
-    for FuncType<PFunc>
-{
+impl ToBytes for FuncType {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -560,9 +546,7 @@ impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq
     }
 }
 
-impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes
-    for FuncType<PFunc>
-{
+impl FromBytes for FuncType {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
@@ -3216,7 +3200,7 @@ impl FromBytes for Tag {
 #[derive(Debug, Clone, PartialEq, Hash)] // Module itself cannot be Eq easily due to provider. P must be Eq for fields.
 pub struct Module<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
     /// Types section: A list of function types defined in the module.
-    pub types:           BoundedVec<FuncType<P>, MAX_TYPES_IN_MODULE, P>,
+    pub types:           BoundedVec<FuncType, MAX_TYPES_IN_MODULE, P>,
     /// Imports section: A list of imports declared by the module.
     pub imports:         BoundedVec<Import<P>, MAX_IMPORTS_IN_MODULE, P>,
     /// Functions section: A list of type indices for functions defined in the

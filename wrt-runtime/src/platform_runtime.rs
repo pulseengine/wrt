@@ -23,7 +23,7 @@ use alloc::{
 };
 // Import Box, Vec, and other types for allocating memory adapters
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     boxed::Box,
     vec,
     vec::Vec,

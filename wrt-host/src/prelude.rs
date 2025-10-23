@@ -120,25 +120,31 @@ pub use core::{
 };
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
-pub use std::{
+pub use alloc::{
     boxed::Box,
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    fmt::Write as FmtWrite,
-    format,
     string::{
         String,
         ToString,
     },
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
+
+#[cfg(feature = "std")]
+pub use core::fmt::Write as FmtWrite;
+
+#[cfg(feature = "std")]
+pub use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    format,
     sync::{
-        Arc,
         Mutex,
         RwLock,
     },
-    vec,
-    vec::Vec,
 };
 
 // Re-export from wrt-error

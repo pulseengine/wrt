@@ -10,7 +10,7 @@
 use alloc::boxed::Box;
 // Import Box for no_std compatibility
 #[cfg(feature = "std")]
-use std::boxed::Box;
+use alloc::boxed::Box;
 
 use wrt_error::{
     Error,

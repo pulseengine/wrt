@@ -15,7 +15,7 @@ use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::format;
 #[cfg(feature = "std")]
-use std::sync::Arc;
+use alloc::sync::Arc;
 
 use crate::{
     memory::Memory,

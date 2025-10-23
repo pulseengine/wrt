@@ -346,7 +346,7 @@ impl ModuleInstance {
     /// Check if debug information is available
     #[cfg(feature = "debug")]
     pub fn has_debug_info(&self) -> bool {
-        self.debug_info.as_ref().map_or(false, |di| di.has_debug_info())
+        self.debug_info.as_ref().is_some_and(|di| di.has_debug_info())
     }
 
     /// Get a function by index - alias for compatibility with tail_call.rs

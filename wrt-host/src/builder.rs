@@ -301,7 +301,7 @@ impl HostBuilder {
         {
             self.component_name = String::from(name);
         }
-        #[cfg(all(not(feature = "std")))]
+        #[cfg(not(feature = "std"))]
         {
             self.component_name = name.into();
         }
@@ -317,7 +317,7 @@ impl HostBuilder {
         {
             self.host_id = String::from(id);
         }
-        #[cfg(all(not(feature = "std")))]
+        #[cfg(not(feature = "std"))]
         {
             self.host_id = id.into();
         }

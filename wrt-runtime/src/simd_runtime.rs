@@ -810,7 +810,7 @@ fn execute_i8x16_abs(inputs: &[Value]) -> Result<Value> {
             // Handle overflow case for ASIL compliance
             0x80u8
         } else {
-            signed.abs() as u8
+            signed.unsigned_abs()
         };
     }
 
@@ -1031,7 +1031,7 @@ fn execute_i16x8_abs(inputs: &[Value]) -> Result<Value> {
             // Handle overflow case for ASIL compliance
             0x8000u16
         } else {
-            a_val.abs() as u16
+            a_val.unsigned_abs()
         };
         let res_bytes = res_val.to_le_bytes();
         result[i * 2] = res_bytes[0];
@@ -1204,7 +1204,7 @@ fn execute_i32x4_abs(inputs: &[Value]) -> Result<Value> {
             // Handle overflow case for ASIL compliance
             0x80000000u32
         } else {
-            a_val.abs() as u32
+            a_val.unsigned_abs()
         };
         let res_bytes = res_val.to_le_bytes();
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
@@ -1385,7 +1385,7 @@ fn execute_i64x2_abs(inputs: &[Value]) -> Result<Value> {
             // Handle overflow case for ASIL compliance
             0x8000000000000000u64
         } else {
-            a_val.abs() as u64
+            a_val.unsigned_abs()
         };
         let res_bytes = res_val.to_le_bytes();
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);

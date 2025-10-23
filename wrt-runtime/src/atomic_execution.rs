@@ -32,7 +32,7 @@ use core::sync::atomic::{
 };
 use core::time::Duration;
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     collections::BTreeMap,
     sync::Arc,
     vec::Vec,

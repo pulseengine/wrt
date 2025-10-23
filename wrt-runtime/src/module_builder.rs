@@ -17,7 +17,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::format;
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 use wrt_format::{
     DataSegment as WrtDataSegment,
@@ -55,7 +55,7 @@ use crate::{
 
 // String type for runtime - use std::string::String or BoundedString
 #[cfg(feature = "std")]
-type String = std::string::String;
+type String = alloc::string::String;
 #[cfg(not(feature = "std"))]
 type String =
     wrt_foundation::bounded::BoundedString<256, crate::bounded_runtime_infra::RuntimeProvider>;
