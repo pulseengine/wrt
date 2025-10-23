@@ -471,8 +471,10 @@ pub use crate::module::{
 // Temporary instruction type until unified enum is available
 /// Unified instruction type for WebAssembly operations
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum Instruction {
     /// No operation instruction
+    #[default]
     Nop, // Unit variant for default
     /// Arithmetic operation instruction
     Arithmetic(ArithmeticOp),
@@ -483,11 +485,6 @@ pub enum Instruction {
     // Add other variants as needed
 }
 
-impl Default for Instruction {
-    fn default() -> Self {
-        Instruction::Nop
-    }
-}
 
 // Implement required traits for Instruction
 impl wrt_foundation::traits::Checksummable for Instruction {

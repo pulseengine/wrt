@@ -527,7 +527,6 @@ impl CfiExecutionEngine {
     //         stackless_engine: Some(stackless_engine),
     //     }
     // }
-
     /// Execute WebAssembly instruction with CFI protection
     pub fn execute_instruction_with_cfi(
         &mut self,
@@ -983,7 +982,6 @@ impl CfiExecutionEngine {
     }
 
     /// Integration methods with the actual WRT execution engine
-
     fn perform_indirect_call(
         &mut self,
         type_idx: u32,

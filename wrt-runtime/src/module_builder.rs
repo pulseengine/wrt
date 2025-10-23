@@ -345,7 +345,7 @@ impl ModuleBuilder {
 
 /// Load a module from binary data using the module builder
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
-    #[cfg(all(feature = "decoder"))]
+    #[cfg(feature = "decoder")]
     {
         // Enter runtime scope to cover both decoding and conversion
         // This ensures decoder's Vec allocations remain valid during conversion to BoundedVec

@@ -178,7 +178,6 @@ pub const MAX_PAGES: u32 = 65536;
 /// The maximum memory size in bytes (4GB)
 // Unused constant
 // const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
-
 /// Convert MemoryType to CoreMemoryType
 fn to_core_memory_type(memory_type: &MemoryType) -> CoreMemoryType {
     CoreMemoryType {
@@ -1047,9 +1046,9 @@ impl Memory {
         // shared access. This needs to be resolved by either:
         // 1. Changing this method to take &mut self, or
         // 2. Using a different approach for thread-safe writes
-        return Err(Error::runtime_execution_error(
+        Err(Error::runtime_execution_error(
             "write_shared method needs API redesign for SafeMemoryHandler compatibility",
-        ));
+        ))
     }
 
     /// Gets a byte from memory
@@ -1226,7 +1225,6 @@ impl Memory {
     /// # Returns
     ///
     /// The result of the mutation function
-
     /// Register a pre-grow hook to be executed before memory grows
     ///
     /// This is used by SafeMemory to validate the memory state before growing
@@ -2189,7 +2187,7 @@ impl MemoryProvider for Memory {
         // Use default provider for static allocation
         use std::sync::LazyLock;
         static ALLOCATOR: LazyLock<LargeMemoryProvider> =
-            LazyLock::new(|| LargeMemoryProvider::default());
+            LazyLock::new(LargeMemoryProvider::default);
         &ALLOCATOR
     }
 

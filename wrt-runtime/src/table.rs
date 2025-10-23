@@ -355,11 +355,7 @@ impl Table {
         }
 
         if let Some(ref val) = value {
-            let val_matches = match (&val, &self.ty.element_type) {
-                (WrtValue::FuncRef(_), WrtRefType::Funcref) => true,
-                (WrtValue::ExternRef(_), WrtRefType::Externref) => true,
-                _ => false,
-            };
+            let val_matches = matches!((&val, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
             if !val_matches {
                 return Err(Error::validation_error(
                     "Element value type doesn't match table element type",
@@ -385,11 +381,7 @@ impl Table {
     ///
     /// Returns an error if the table cannot be grown
     pub fn grow(&mut self, delta: u32, init_value_from_arg: WrtValue) -> Result<u32> {
-        let init_val_matches = match (&init_value_from_arg, &self.ty.element_type) {
-            (WrtValue::FuncRef(_), WrtRefType::Funcref) => true,
-            (WrtValue::ExternRef(_), WrtRefType::Externref) => true,
-            _ => false,
-        };
+        let init_val_matches = matches!((&init_value_from_arg, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
         if !init_val_matches {
             return Err(Error::validation_error(
                 "Grow operation init value type doesn't match table element type",
@@ -473,11 +465,7 @@ impl Table {
         }
         for (i, val_opt) in init_data.iter().enumerate() {
             if let Some(val) = val_opt {
-                let val_matches = match (&val, &self.ty.element_type) {
-                    (WrtValue::FuncRef(_), WrtRefType::Funcref) => true,
-                    (WrtValue::ExternRef(_), WrtRefType::Externref) => true,
-                    _ => false,
-                };
+                let val_matches = matches!((&val, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
                 if !val_matches {
                     return Err(Error::validation_error("Table init value type mismatch"));
                 }

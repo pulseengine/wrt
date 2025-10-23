@@ -180,7 +180,6 @@ pub type SafetyCriticalRuntimeTypes = RuntimeTypes<32, 512, 16384, SafetyCritica
 
 /// Core runtime collection aliases using default capacities
 /// These provide consistent types across the entire runtime system.
-
 /// Vector for local variables in function execution
 pub type LocalsVec = BoundedVec<Value, 64, DefaultRuntimeProvider>;
 

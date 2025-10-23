@@ -454,12 +454,12 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.next_instance_idx += 1;
 
         // Store mapping
-        let handle = InstanceHandle::from_index(instance_idx as usize);
+        let handle = InstanceHandle::from_index(instance_idx);
         self.instances.insert(handle, instance)?;
 
         // Run start function if present
         if let Some(start_idx) = module.start {
-            self.inner.execute(instance_idx as usize, start_idx as usize, vec![])?;
+            self.inner.execute(instance_idx, start_idx as usize, vec![])?;
         }
 
         Ok(handle)

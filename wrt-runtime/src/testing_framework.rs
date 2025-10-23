@@ -4,8 +4,6 @@
 //! and engine functionality, including unit tests, integration tests,
 //! and performance benchmarks.
 
-#![cfg(feature = "std")]
-
 use std::{
     collections::HashMap,
     time::{

@@ -1645,7 +1645,7 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
+                name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1667,7 +1667,7 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
+                name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1689,7 +1689,7 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
+                name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1711,7 +1711,7 @@ impl Module {
         #[cfg(feature = "std")]
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &name,
+                name,
                 create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
@@ -1910,7 +1910,7 @@ impl Module {
         let import_struct = crate::module::Import::new(
             module_name,
             item_name,
-            ExternType::Memory(memory_type.clone()),
+            ExternType::Memory(memory_type),
             RuntimeImportDesc::Memory(memory_type),
         )?;
         #[cfg(feature = "std")]
@@ -2319,7 +2319,7 @@ impl Module {
         let runtime_export = crate::module::Export::new(name, kind, index)?;
         let provider = create_runtime_provider()?;
         let provider = create_runtime_provider()?;
-        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
+        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider)?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
     }
@@ -2521,10 +2521,10 @@ impl Module {
                     ExternType::Func(_func_type) => RuntimeImportDesc::Function(0), /* TODO: proper type index lookup */
                     ExternType::Table(table_type) => RuntimeImportDesc::Table(table_type.clone()),
                     ExternType::Memory(memory_type) => {
-                        RuntimeImportDesc::Memory(memory_type.clone())
+                        RuntimeImportDesc::Memory(*memory_type)
                     },
                     ExternType::Global(global_type) => {
-                        RuntimeImportDesc::Global(global_type.clone())
+                        RuntimeImportDesc::Global(*global_type)
                     },
                     ExternType::Tag(_) => RuntimeImportDesc::Function(0), /* Handle tag as function placeholder */
                     ExternType::Component(_) => RuntimeImportDesc::Function(0), /* Component imports not supported yet */
@@ -2591,7 +2591,7 @@ impl Module {
 
         // For now, we'll use the fallback decoder for full section parsing if needed
         // This ensures compatibility while leveraging the unified API for basic info
-        if module_info.function_types.len() > 0 {
+        if !module_info.function_types.is_empty() {
             // Fall back to full parsing for complex cases
             use wrt_decoder::decoder;
             let decoded_module = decoder::decode_module(binary)?;

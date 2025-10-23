@@ -158,18 +158,15 @@ impl FromBytes for RuntimeTableProvider {
 
 /// Runtime reference type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum RuntimeRefType {
     /// Function reference
+    #[default]
     FuncRef,
     /// External reference
     ExternRef,
 }
 
-impl Default for RuntimeRefType {
-    fn default() -> Self {
-        RuntimeRefType::FuncRef
-    }
-}
 
 impl Checksummable for RuntimeRefType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -932,6 +929,7 @@ pub struct FormatModuleRuntimeData {
 
 /// Format data extraction (received from wrt-format bridge)
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct FormatDataExtraction {
     /// Memory index for active segments
     pub memory_index:            Option<u32>,
@@ -943,25 +941,6 @@ pub struct FormatDataExtraction {
     pub requires_initialization: bool,
 }
 
-impl Default for FormatDataExtraction {
-    fn default() -> Self {
-        Self {
-            memory_index:            None,
-            offset_expr_bytes:       {
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                {
-                    Vec::new()
-                }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
-                {
-                    wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap_or_default()
-                }
-            },
-            data_size:               0,
-            requires_initialization: false,
-        }
-    }
-}
 
 impl Checksummable for FormatDataExtraction {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
