@@ -981,7 +981,7 @@ where
 }
 
 /// EMERGENCY FIX: Get item size without causing recursion
-#[allow(clippy::unused_type_parameters)]
+#[allow(clippy::extra_unused_type_parameters)]
 fn get_item_size_impl<T>() -> usize
 where
     T: crate::traits::ToBytes + crate::traits::FromBytes + Default,
