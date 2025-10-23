@@ -3829,65 +3829,12 @@ where
     }
 }
 
+// TODO(#118): Old impl block removed - these methods need to be reimplemented using StaticVec
+// The following methods were removed: from_str_truncate(with provider), from_str(with provider), new_from_str
+
 impl<const N_BYTES: usize>
     BoundedString<N_BYTES>
 {
-    /// Creates a new BoundedString from a string slice.
-    ///
-    /// The string is truncated if it's longer than `N_BYTES`.
-    /// Returns an error if the provider fails to initialize the internal
-    /// BoundedVec.
-    pub fn from_str_truncate(s: &str, provider: P) -> core::result::Result<Self, BoundedError> {
-        let mut bytes_vec = BoundedVec::<u8, N_BYTES, P>::new(provider)?;
-        let s_bytes = s.as_bytes();
-        let len_to_copy = core::cmp::min(s_bytes.len(), N_BYTES);
-
-        // Ensure that we are only copying valid UTF-8 characters even when truncating.
-        // Find the last UTF-8 character boundary before or at len_to_copy.
-        let mut actual_len_to_copy = len_to_copy;
-        while actual_len_to_copy > 0 && !s.is_char_boundary(actual_len_to_copy) {
-            actual_len_to_copy -= 1;
-        }
-
-        for i in 0..actual_len_to_copy {
-            bytes_vec.push(s_bytes[i])?;
-        }
-        Ok(Self { bytes: bytes_vec })
-    }
-
-    /// Creates a new BoundedString from a string slice.
-    ///
-    /// Returns an error if the string is too long or if UTF-8 validation fails.
-    pub fn from_str(s: &str, provider: P) -> core::result::Result<Self, SerializationError> {
-        let s_bytes = s.as_bytes();
-        if s_bytes.len() > N_BYTES {
-            return Err(SerializationError::Custom(
-                "String too long for BoundedString",
-            ));
-        }
-        // Basic UTF-8 validation can be done by str::from_utf8 on the slice to be
-        // stored. Since `s` is already a &str, it's valid UTF-8. We just need
-        // to ensure it fits.
-        let mut bytes_vec = BoundedVec::<u8, N_BYTES, P>::new(provider).map_err(|e| {
-            SerializationError::Custom("Failed to create BoundedVec for BoundedString")
-        })?;
-        for byte in s_bytes.iter() {
-            bytes_vec.push(*byte).map_err(|e| {
-                SerializationError::Custom("Failed to push byte to BoundedVec for BoundedString")
-            })?;
-        }
-        Ok(Self { bytes: bytes_vec })
-    }
-
-    /// Alias for `from_str` for API compatibility.
-    ///
-    /// Creates a new BoundedString from a string slice.
-    ///
-    /// Returns an error if the string is too long or if UTF-8 validation fails.
-    pub fn new_from_str(s: &str, provider: P) -> core::result::Result<Self, SerializationError> {
-        Self::from_str(s, provider)
-    }
-
     /// Returns the string as a slice.
     ///
     /// This will panic if the internal bytes are not valid UTF-8.
@@ -4026,50 +3973,12 @@ impl<const N_BYTES: usize>
         Ok(s.ends_with(suffix))
     }
 
-    /// Returns a substring of this string.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use wrt_foundation::bounded::BoundedString;
-    /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-    /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap();
-    /// let substring = s.substring(0, 5).unwrap();
-    /// assert_eq!(substring.as_str().unwrap(), "Hello";
-    /// ```
-    pub fn substring(&self, start: usize, end: usize) -> core::result::Result<Self, BoundedError>
-    where
-        P: Clone,
-    {
-        let s = self.as_str()?;
-
-        if start > end || end > s.len() {
-            return Err(BoundedError::runtime_execution_error("Invalid range"));
-        }
-
-        // Find valid character boundaries
-        let mut actual_start = start;
-        while actual_start < end && !s.is_char_boundary(actual_start) {
-            actual_start += 1;
-        }
-
-        let mut actual_end = end;
-        while actual_end > actual_start && !s.is_char_boundary(actual_end) {
-            actual_end -= 1;
-        }
-
-        // Handle edge case where no valid boundaries were found
-        if actual_start >= actual_end {
-            return Ok(Self {
-                bytes: BoundedVec::<u8, N_BYTES, P>::new(self.bytes.provider.clone())?,
-            });
-        }
-
-        let substr = &s[actual_start..actual_end];
-        Self::from_str_truncate(substr, self.bytes.provider.clone())
-    }
+    // TODO(#118): Re-implement substring() using StaticVec
+    // /// Returns a substring of this string.
+    // pub fn substring(&self, start: usize, end: usize) -> core::result::Result<Self, BoundedError> {
+    //     // Will be reimplemented using StaticVec
+    //     Err(BoundedError::runtime_execution_error("Not yet implemented"))
+    // }
 
     /// Appends a character to the end of the string.
     ///
@@ -4092,28 +4001,12 @@ impl<const N_BYTES: usize>
         self.push_str(s)
     }
 
-    /// Trims leading and trailing whitespace from the string.
-    ///
-    /// This returns a new `BoundedString` instance.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use wrt_foundation::bounded::BoundedString;
-    /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-    /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("  Hello  ", provider).unwrap();
-    /// let trimmed = s.trim().unwrap();
-    /// assert_eq!(trimmed.as_str().unwrap(), "Hello";
-    /// ```
-    pub fn trim(&self) -> core::result::Result<Self, BoundedError>
-    where
-        P: Clone,
-    {
-        let s = self.as_str()?;
-        Self::from_str_truncate(s.trim(), self.bytes.provider.clone())
-    }
+    // TODO(#118): Re-implement trim() using StaticVec
+    // /// Trims leading and trailing whitespace from the string.
+    // pub fn trim(&self) -> core::result::Result<Self, BoundedError> {
+    //     // Will be reimplemented using StaticVec
+    //     Err(BoundedError::runtime_execution_error("Not yet implemented"))
+    // }
 
     /// Converts all characters in the string to lowercase.
     ///

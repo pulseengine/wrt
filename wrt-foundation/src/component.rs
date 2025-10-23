@@ -1090,15 +1090,15 @@ where
 {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         let discriminant_byte = match self {
-            ComponentAlias<P>::InstanceExport(_) => 0u8,
-            ComponentAlias<P>::CoreInstanceExport(_) => 1u8,
-            ComponentAlias<P>::Outer(_) => 2u8,
+            ComponentAlias::InstanceExport(_) => 0u8,
+            ComponentAlias::CoreInstanceExport(_) => 1u8,
+            ComponentAlias::Outer(_) => 2u8,
         };
         discriminant_byte.update_checksum(checksum);
         match self {
-            ComponentAlias<P>::InstanceExport(e) => e.update_checksum(checksum),
-            ComponentAlias<P>::CoreInstanceExport(e) => e.update_checksum(checksum),
-            ComponentAlias<P>::Outer(e) => e.update_checksum(checksum),
+            ComponentAlias::InstanceExport(e) => e.update_checksum(checksum),
+            ComponentAlias::CoreInstanceExport(e) => e.update_checksum(checksum),
+            ComponentAlias::Outer(e) => e.update_checksum(checksum),
         }
     }
 }
@@ -1113,15 +1113,15 @@ where
         provider: &PStream,
     ) -> wrt_error::Result<()> {
         match self {
-            ComponentAlias<P>::InstanceExport(e) => {
+            ComponentAlias::InstanceExport(e) => {
                 writer.write_u8(0)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
-            ComponentAlias<P>::CoreInstanceExport(e) => {
+            ComponentAlias::CoreInstanceExport(e) => {
                 writer.write_u8(1)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
-            ComponentAlias<P>::Outer(e) => {
+            ComponentAlias::Outer(e) => {
                 writer.write_u8(2)?;
                 e.to_bytes_with_provider(writer, provider)?;
             },
@@ -1144,17 +1144,17 @@ where
             0 => {
                 let inner =
                     ComponentAliasInstanceExport::<P>::from_bytes_with_provider(reader, provider)?;
-                Ok(ComponentAlias<P>::InstanceExport(inner))
+                Ok(ComponentAlias::InstanceExport(inner))
             },
             1 => {
                 let inner = ComponentAliasCoreInstanceExport::<P>::from_bytes_with_provider(
                     reader, provider,
                 )?;
-                Ok(ComponentAlias<P>::CoreInstanceExport(inner))
+                Ok(ComponentAlias::CoreInstanceExport(inner))
             },
             2 => {
                 let inner = ComponentAliasOuter::from_bytes_with_provider(reader, provider)?;
-                Ok(ComponentAlias<P>::Outer(inner))
+                Ok(ComponentAlias::Outer(inner))
             },
             _ => Err(Error::runtime_execution_error(
                 "Invalid variant index for ComponentAlias<P>",
@@ -1489,11 +1489,81 @@ impl FromBytes for ComponentAliasOuter {
 }
 
 // ComponentInstantiationArg<P>
-impl_checksummable_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_tobytes_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(ComponentInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
+// Note: P is only in PhantomData, so these impls don't actually use P
+impl<P> Checksummable for ComponentInstantiationArg<P> {
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
+        self.name.update_checksum(checksum);
+        self.index.update_checksum(checksum);
+        self.kind.update_checksum(checksum);
+    }
+}
+
+impl<P> ToBytes for ComponentInstantiationArg<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        self.name.to_bytes_with_provider(writer, provider)?;
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.kind.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl<P> FromBytes for ComponentInstantiationArg<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let name = WasmName::<MAX_NAME_LEN>::from_bytes_with_provider(reader, provider)?;
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let kind = ExternKind::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            name,
+            index,
+            kind,
+            _phantom: core::marker::PhantomData,
+        })
+    }
+}
 
 // CoreInstantiationArg<P>
-impl_checksummable_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_tobytes_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name, index, kind);
-impl_frombytes_struct!(CoreInstantiationArg<P><P: MemoryProvider + Clone + Default + Eq + Debug>, name: WasmName<MAX_NAME_LEN>, index: u32, kind: ExternKind);
+// Note: P is only in PhantomData, so these impls don't actually use P
+impl<P> Checksummable for CoreInstantiationArg<P> {
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
+        self.name.update_checksum(checksum);
+        self.index.update_checksum(checksum);
+        self.kind.update_checksum(checksum);
+    }
+}
+
+impl<P> ToBytes for CoreInstantiationArg<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        self.name.to_bytes_with_provider(writer, provider)?;
+        self.index.to_bytes_with_provider(writer, provider)?;
+        self.kind.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl<P> FromBytes for CoreInstantiationArg<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let name = WasmName::<MAX_NAME_LEN>::from_bytes_with_provider(reader, provider)?;
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        let kind = ExternKind::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            name,
+            index,
+            kind,
+            _phantom: core::marker::PhantomData,
+        })
+    }
+}
