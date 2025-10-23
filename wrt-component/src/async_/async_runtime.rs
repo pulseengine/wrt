@@ -1216,6 +1216,12 @@ impl Default for RuntimeConfig {
     }
 }
 
+impl Default for RuntimeStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuntimeStats {
     /// Create new runtime statistics
     pub fn new() -> Self {

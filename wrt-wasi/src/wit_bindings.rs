@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 /// WASI filesystem types from WIT
 pub mod filesystem_types {
-    use super::*;
+    use super::MemoryProvider;
 
     /// File descriptor type
     pub type Descriptor = u32;
@@ -75,7 +75,7 @@ pub mod cli_types {
 
 /// WASI clocks types from WIT
 pub mod clocks_types {
-    use super::*;
+    
 
     /// Instant in time
     pub type Instant = u64;
@@ -95,7 +95,7 @@ pub mod clocks_types {
 
 /// WASI I/O types from WIT
 pub mod io_types {
-    use super::*;
+    
 
     /// Stream error
     #[derive(Debug, Clone, PartialEq)]
@@ -172,10 +172,11 @@ pub mod sockets_types {
 
 /// Convert WIT types to WRT component values
 pub mod conversions {
-    use super::*;
+    use super::{filesystem_types, Result, Error, ErrorCategory, codes};
     use crate::Value;
 
     /// Convert filesystem descriptor to Value
+    #[must_use] 
     pub fn descriptor_to_value(desc: filesystem_types::Descriptor) -> Value {
         Value::U32(desc)
     }
@@ -191,6 +192,7 @@ pub mod conversions {
     }
 
     /// Convert timestamp to Value
+    #[must_use] 
     pub fn timestamp_to_value(ts: filesystem_types::Timestamp) -> Value {
         Value::Record(vec![
             ("seconds".to_string(), Value::U64(ts.seconds)),
@@ -233,6 +235,7 @@ pub mod conversions {
     }
 
     /// Convert descriptor type to Value
+    #[must_use] 
     pub fn descriptor_type_to_value(dt: filesystem_types::DescriptorType) -> Value {
         Value::U8(match dt {
             filesystem_types::DescriptorType::RegularFile => 0,

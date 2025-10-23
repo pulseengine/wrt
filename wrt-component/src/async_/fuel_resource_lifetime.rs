@@ -60,13 +60,9 @@ const RESOURCE_TRANSFER_FUEL: u64 = 8;
 
 /// Resource handle type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ResourceHandle(pub u64);
 
-impl Default for ResourceHandle {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for ResourceHandle {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

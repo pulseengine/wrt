@@ -183,6 +183,7 @@ fn convert_from_component_values(
 }
 
 /// WebAssembly built-in function host implementation
+#[derive(Default)]
 pub struct BuiltinHost {
     /// Component name
     component_name:    HostString,
@@ -197,37 +198,6 @@ pub struct BuiltinHost {
     critical_builtins: CriticalBuiltinsMap,
 }
 
-impl Default for BuiltinHost {
-    fn default() -> Self {
-        #[cfg(not(feature = "std"))]
-        {
-            let string_provider = create_host_provider().expect("Failed to create host provider");
-            let map_provider = create_host_provider().expect("Failed to create host provider");
-
-            Self {
-                component_name:    HostString::from_str("")
-                    .expect("Failed to create empty string"),
-                host_id:           HostString::from_str("")
-                    .expect("Failed to create empty string"),
-                handlers:          HandlerMap::new(map_provider.clone())
-                    .expect("Failed to create HandlerMap"),
-                critical_builtins: CriticalBuiltinsMap::new(map_provider.clone())
-                    .expect("Failed to create CriticalBuiltinsMap"),
-            }
-        }
-
-        #[cfg(feature = "std")]
-        {
-            Self {
-                component_name:    HostString::default(),
-                host_id:           HostString::default(),
-                interceptor:       None,
-                handlers:          HandlerMap::new(),
-                critical_builtins: CriticalBuiltinsMap::new(),
-            }
-        }
-    }
-}
 
 impl BuiltinHost {
     /// Create a new built-in host

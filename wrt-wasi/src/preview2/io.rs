@@ -98,7 +98,7 @@ pub fn wasi_poll_one_off(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<
     let results = poll_pollables(&pollables)?;
 
     // Convert results to WASI format
-    let wasi_results: Vec<Value> = results.into_iter().map(|ready| Value::Bool(ready)).collect();
+    let wasi_results: Vec<Value> = results.into_iter().map(Value::Bool).collect();
 
     Ok(vec![Value::List(wasi_results)])
 }
@@ -130,7 +130,7 @@ fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
 
     match &args[index] {
         Value::U64(len) => Ok(*len),
-        Value::U32(len) => Ok(*len as u64),
+        Value::U32(len) => Ok(u64::from(*len)),
         _ => Err(Error::wasi_invalid_fd("Invalid read length type")),
     }
 }

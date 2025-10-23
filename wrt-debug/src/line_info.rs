@@ -143,6 +143,12 @@ pub struct LineNumberState {
     standard_opcode_lengths: [u8; 12],
 }
 
+impl Default for LineNumberState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LineNumberState {
     /// Create a new line number state machine
     pub fn new() -> Self {
@@ -193,7 +199,7 @@ impl LineNumberState {
 
         // Read version
         let version = cursor.read_u16()?;
-        if version < 2 || version > 5 {
+        if !(2..=5).contains(&version) {
             return Err(Error::parse_error("Unsupported DWARF line version"));
         }
 

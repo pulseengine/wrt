@@ -199,7 +199,7 @@ impl FuelAsyncBridge {
 
             // Add to scheduler - convert TaskId to u32
             self.scheduler.add_task(
-                task_id.0 as u32,
+                task_id.0,
                 component_id,
                 bridge_config.default_priority,
                 bridge_config.default_fuel_budget,
@@ -208,7 +208,7 @@ impl FuelAsyncBridge {
 
             // Create bridge context
             let bridge_context = AsyncBridgeContext {
-                task_id: task_id.0 as u32,
+                task_id: task_id.0,
                 component_id,
                 time_bounded_context: TimeBoundedContext::new(TimeBoundedConfig {
                     time_limit_ms: bridge_config.default_time_limit_ms,
@@ -221,11 +221,11 @@ impl FuelAsyncBridge {
             };
 
             self.active_bridges
-                .insert(task_id.0 as u32, bridge_context)
+                .insert(task_id.0, bridge_context)
                 .map_err(|_| Error::resource_limit_exceeded("Too many active async bridges"))?;
 
             // Run the async execution loop
-            self.run_async_execution_loop(task_id.0 as u32, time_context)
+            self.run_async_execution_loop(task_id.0, time_context)
         });
 
         match outcome {
@@ -279,7 +279,7 @@ impl FuelAsyncBridge {
             )?;
 
             self.scheduler.add_task(
-                task_id.0 as u32,
+                task_id.0,
                 component_id,
                 bridge_config.default_priority,
                 bridge_config.default_fuel_budget,
@@ -297,7 +297,7 @@ impl FuelAsyncBridge {
             match self.executor.get_task_status(task_id) {
                 Some(status) => match status.state {
                     AsyncTaskState::Completed => {
-                        results.push(Ok(self.get_task_result(task_id.0 as u32)?));
+                        results.push(Ok(self.get_task_result(task_id.0)?));
                     },
                     AsyncTaskState::Failed => {
                         results.push(Err(Error::runtime_execution_error("Async task failed")));
@@ -420,7 +420,7 @@ impl FuelAsyncBridge {
         const MAX_POLLS: usize = 1000; // Prevent infinite loops
 
         // Convert u32 TaskId to executor's TaskId struct
-        let executor_task_id = crate::async_::fuel_async_executor::TaskId::new(task_id as u32);
+        let executor_task_id = crate::async_::fuel_async_executor::TaskId::new(task_id);
 
         loop {
             // Check time bounds

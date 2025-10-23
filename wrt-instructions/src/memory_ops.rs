@@ -487,8 +487,7 @@ impl MemoryLoad {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
                 #[cfg(feature = "std")]
-                let byte = bytes
-                    .get(0)
+                let byte = bytes.first()
                     .copied()
                     .ok_or_else(|| Error::memory_error("Index out of bounds"))?;
                 #[cfg(not(any(feature = "std",)))]
@@ -502,8 +501,7 @@ impl MemoryLoad {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
                 #[cfg(feature = "std")]
-                let byte = bytes
-                    .get(0)
+                let byte = bytes.first()
                     .copied()
                     .ok_or_else(|| Error::memory_error("Index out of bounds"))?;
                 #[cfg(not(any(feature = "std",)))]
@@ -518,9 +516,9 @@ impl MemoryLoad {
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
-                    (i16::from_le_bytes([bytes[0], bytes[1]])) as i32
+                    i32::from(i16::from_le_bytes([bytes[0], bytes[1]]))
                 } else {
-                    (u16::from_le_bytes([bytes[0], bytes[1]])) as i32
+                    i32::from(u16::from_le_bytes([bytes[0], bytes[1]]))
                 };
                 #[cfg(not(any(feature = "std",)))]
                 let value = if self.signed {
@@ -547,9 +545,9 @@ impl MemoryLoad {
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
-                    (i16::from_le_bytes([bytes[0], bytes[1]])) as i64
+                    i64::from(i16::from_le_bytes([bytes[0], bytes[1]]))
                 } else {
-                    (u16::from_le_bytes([bytes[0], bytes[1]])) as i64
+                    i64::from(u16::from_le_bytes([bytes[0], bytes[1]]))
                 };
                 #[cfg(not(any(feature = "std",)))]
                 let value = if self.signed {
@@ -576,9 +574,9 @@ impl MemoryLoad {
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
-                    (i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
+                    i64::from(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
                 } else {
-                    (u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
+                    i64::from(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
                 };
                 #[cfg(not(any(feature = "std",)))]
                 let value = if self.signed {

@@ -334,7 +334,7 @@ impl CanonicalABI {
 
     fn lift_flags(&self, names: &[String], addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         // Flags are represented as bit flags in a sequence of bytes
-        let num_bytes = (names.len() + 7) / 8; // Number of bytes needed
+        let num_bytes = names.len().div_ceil(8); // Number of bytes needed
         self.check_bounds(addr, num_bytes as u32, memory_bytes)?;
 
         #[cfg(feature = "safety-critical")]

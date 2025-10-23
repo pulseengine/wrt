@@ -423,7 +423,7 @@ impl RuntimeInstance {
             }
 
             // Type check arguments
-            for (_i, (arg, param_type)) in args.iter().zip(func_value.ty.params.iter()).enumerate() {
+            for (arg, param_type) in args.iter().zip(func_value.ty.params.iter()) {
                 let arg_type = arg.value_type();
                 let expected_type = &param_type;
 
@@ -1330,15 +1330,14 @@ fn scan_functions_for_builtins(
     // Check for resource types which indicate built-in usage
     // Component types method doesn't exist - skip type checking for now
     // TODO: Implement proper type scanning when DecodedComponent API is available
-    if false {
-        if false {
+    if false
+        && false {
             // Resources typically require the ResourceCreate built-in
             requirements.add_requirement(BuiltinType::ResourceCreate);
             requirements.add_requirement(BuiltinType::ResourceDrop);
             requirements.add_requirement(BuiltinType::ResourceRep);
             requirements.add_requirement(BuiltinType::ResourceGet);
         }
-    }
 
     #[cfg(feature = "std")]
     // Check for async functions which require the AsyncWait built-in

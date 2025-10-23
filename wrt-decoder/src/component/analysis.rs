@@ -21,13 +21,13 @@ use crate::prelude::*;
 
 // Type aliases for clarity
 #[cfg(feature = "std")]
-type AnalysisString = std::string::String;
+type AnalysisString = alloc::string::String;
 #[cfg(not(feature = "std"))]
 type AnalysisString =
     wrt_foundation::BoundedString<256>;
 
 #[cfg(feature = "std")]
-type AnalysisVec<T> = std::vec::Vec<T>;
+type AnalysisVec<T> = alloc::vec::Vec<T>;
 #[cfg(not(feature = "std"))]
 type AnalysisVec<T> =
     wrt_foundation::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<4096>>;
@@ -49,8 +49,8 @@ impl<const N: usize> BoundedStringExt for wrt_foundation::BoundedString<N> {
 
 /// Extract embedded WebAssembly modules from a component binary
 #[cfg(feature = "std")]
-pub fn extract_embedded_modules(bytes: &[u8]) -> Result<std::vec::Vec<std::vec::Vec<u8>>> {
-    let mut modules = std::vec::Vec::new();
+pub fn extract_embedded_modules(bytes: &[u8]) -> Result<alloc::vec::Vec<alloc::vec::Vec<u8>>> {
+    let mut modules = alloc::vec::Vec::new();
     let mut offset = 8; // Skip magic and version
 
     // Parse sections
@@ -115,7 +115,7 @@ pub fn extract_embedded_modules(
 
 /// Extract a module from a core module section
 #[cfg(feature = "std")]
-fn extract_module_from_section(_section_bytes: &[u8]) -> Option<std::vec::Vec<u8>> {
+fn extract_module_from_section(_section_bytes: &[u8]) -> Option<alloc::vec::Vec<u8>> {
     // This is a simplified version - the real implementation would parse the
     // section structure to extract the module bytes
 
@@ -246,7 +246,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         let module_info = {
             #[cfg(feature = "std")]
             {
-                std::vec::Vec::new()
+                alloc::vec::Vec::new()
             }
             #[cfg(not(feature = "std"))]
             {
@@ -261,7 +261,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         let export_info = {
             #[cfg(feature = "std")]
             {
-                std::vec::Vec::new()
+                alloc::vec::Vec::new()
             }
             #[cfg(not(feature = "std"))]
             {
@@ -272,7 +272,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         let import_info = {
             #[cfg(feature = "std")]
             {
-                std::vec::Vec::new()
+                alloc::vec::Vec::new()
             }
             #[cfg(not(feature = "std"))]
             {

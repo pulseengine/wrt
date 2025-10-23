@@ -122,6 +122,7 @@ pub struct CallContextManager {
 
 /// Managed call context with full lifecycle tracking
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ManagedCallContext {
     /// Base call context
     pub context:          super::component_communication::CallContext,
@@ -651,6 +652,7 @@ pub struct TypeCheckResult {
 
 /// Size validation result
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct SizeValidationResult {
     /// Parameter index
     pub parameter_index: usize,
@@ -1637,17 +1639,6 @@ macro_rules! impl_basic_traits {
 }
 
 // Default implementations for complex types
-impl Default for ManagedCallContext {
-    fn default() -> Self {
-        Self {
-            context:          super::component_communication::CallContext::default(),
-            marshaling_state: MarshalingState::default(),
-            resource_state:   ResourceState::default(),
-            metrics:          CallMetrics::default(),
-            validation:       ValidationResults::default(),
-        }
-    }
-}
 
 impl PartialEq for ManagedCallContext {
     fn eq(&self, other: &Self) -> bool {
@@ -2031,16 +2022,6 @@ impl Default for TransferPermissionResult {
     }
 }
 
-impl Default for SizeValidationResult {
-    fn default() -> Self {
-        Self {
-            parameter_index: 0,
-            size:            0,
-            max_size:        0,
-            passed:          false,
-        }
-    }
-}
 
 impl PartialEq for SizeValidationResult {
     fn eq(&self, other: &Self) -> bool {

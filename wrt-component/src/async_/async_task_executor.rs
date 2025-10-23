@@ -77,6 +77,12 @@ pub struct ASILDTaskExecutor {
     formal_verification: bool,
 }
 
+impl Default for ASILDTaskExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ASILDTaskExecutor {
     pub fn new() -> Self {
         Self {
@@ -188,6 +194,12 @@ pub struct ASILCTaskExecutor {
     resource_isolation: bool,
     /// Maximum execution slice
     max_slice_duration: u64,
+}
+
+impl Default for ASILCTaskExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ASILCTaskExecutor {
@@ -302,6 +314,12 @@ pub struct ASILBTaskExecutor {
     resource_quota:         u64,
 }
 
+impl Default for ASILBTaskExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ASILBTaskExecutor {
     pub fn new() -> Self {
         Self {
@@ -397,6 +415,12 @@ pub struct ASILATaskExecutor {
     max_error_count: u32,
     /// Current error count
     error_count:     u32,
+}
+
+impl Default for ASILATaskExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ASILATaskExecutor {
@@ -522,6 +546,7 @@ impl ASILExecutorFactory {
 
 /// Configuration for ASIL executors
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ASILExecutorConfig {
     /// Maximum stack depth (ASIL-D)
     pub max_stack_depth:    Option<u32>,
@@ -533,16 +558,6 @@ pub struct ASILExecutorConfig {
     pub max_error_count:    Option<u32>,
 }
 
-impl Default for ASILExecutorConfig {
-    fn default() -> Self {
-        Self {
-            max_stack_depth:    None,
-            max_slice_duration: None,
-            resource_quota:     None,
-            max_error_count:    None,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

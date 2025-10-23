@@ -15,16 +15,12 @@ pub struct StringTable<'a> {
 /// A reference to a string in the debug string table
 /// Provides zero-copy access to string data
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct DebugString<'a> {
     data: &'a str,
 }
 
 // Implement required traits for BoundedVec compatibility
-impl<'a> Default for DebugString<'a> {
-    fn default() -> Self {
-        Self { data: "" }
-    }
-}
 
 impl<'a> wrt_foundation::traits::Checksummable for DebugString<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

@@ -99,13 +99,9 @@ pub struct OptimizedAsyncChannels {
 
 /// Channel identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct ChannelId(u64);
 
-impl Default for ChannelId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for ChannelId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -279,6 +275,7 @@ enum ChannelBuffer {
 
 /// Message in a channel
 #[derive(Debug, Clone)]
+#[derive(Default)]
 struct ChannelMessage {
     value:     ComponentValue<ComponentProvider>,
     sender_id: ComponentInstanceId,
@@ -297,16 +294,6 @@ impl PartialEq for ChannelMessage {
 
 impl Eq for ChannelMessage {}
 
-impl Default for ChannelMessage {
-    fn default() -> Self {
-        Self {
-            value:     ComponentValue::default(),
-            sender_id: ComponentInstanceId::default(),
-            sent_at:   0,
-            priority:  0,
-        }
-    }
-}
 
 impl Checksummable for ChannelMessage {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -351,19 +338,12 @@ impl FromBytes for ChannelMessage {
 
 /// Priority message for priority channels
 #[derive(Debug, Clone)]
+#[derive(Default)]
 struct PriorityMessage {
     message:  ChannelMessage,
     priority: u8,
 }
 
-impl Default for PriorityMessage {
-    fn default() -> Self {
-        Self {
-            message: ChannelMessage::default(),
-            priority: 0,
-        }
-    }
-}
 
 impl Ord for PriorityMessage {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
@@ -497,7 +477,7 @@ impl OptimizedAsyncChannels {
         component_id: ComponentInstanceId,
         limits: Option<ChannelLimits>,
     ) -> Result<()> {
-        let limits = limits.unwrap_or_else(|| ChannelLimits {
+        let limits = limits.unwrap_or(ChannelLimits {
             max_channels:       MAX_CHANNELS_PER_COMPONENT,
             max_total_capacity: MAX_CHANNEL_CAPACITY * 4,
             max_message_size:   1024 * 1024, // 1MB

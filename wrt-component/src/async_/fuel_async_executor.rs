@@ -2221,7 +2221,7 @@ impl FuelAsyncExecutor {
             // Extract task data before borrowing self
             let (should_check, fuel_exhausted, needs_preemption_check) = {
                 if let Some(task) = self.tasks.get(&task_id) {
-                    let should_check_fuel = self.should_check_fuel(&task);
+                    let should_check_fuel = self.should_check_fuel(task);
                     let fuel_exhausted = should_check_fuel
                         && (task.fuel_consumed.load(Ordering::Acquire) >= task.fuel_budget);
                     (
@@ -2263,9 +2263,7 @@ impl FuelAsyncExecutor {
                     Some(t) => t,
                     None => continue,
                 };
-                if let Err(e) = self.consume_task_fuel(task, ASYNC_TASK_POLL_FUEL) {
-                    return Err(e);
-                }
+                self.consume_task_fuel(task, ASYNC_TASK_POLL_FUEL)?
                 // task borrow is dropped here
             }
             fuel_consumed_this_batch += ASYNC_TASK_POLL_FUEL;
@@ -3368,9 +3366,9 @@ impl FuelAsyncExecutor {
         // the component layer.
 
         // For now, return an error indicating this path is not yet implemented
-        return Err(Error::runtime_execution_error(
+        Err(Error::runtime_execution_error(
             "Direct component instance execution not yet fully integrated - module instance type mismatch",
-        ));
+        ))
 
         // This is the intended code path once the type issue is resolved:
         // let _module_instance = match component_instance.get_core_module_instance(0) {
@@ -3759,7 +3757,7 @@ impl FuelAsyncExecutor {
             fuel_consumed: task.execution_context.context_fuel_consumed.load(Ordering::Acquire),
             has_yield_point: task.execution_context.last_yield_point.is_some(),
             has_component_instance: task.execution_context.component_instance.is_some(),
-            error_state: task.execution_context.error_state.clone(),
+            error_state: task.execution_context.error_state,
         })
     }
 

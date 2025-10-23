@@ -182,10 +182,8 @@ impl BoundedBufferPool {
 
     /// Reset the buffer pool, clearing all buffers
     pub fn reset(&mut self) {
-        for class in &mut self.size_classes {
-            if let Some(ref mut size_class) = class {
-                size_class.count = 0;
-            }
+        for ref mut size_class in self.size_classes.iter_mut().flatten() {
+            size_class.count = 0;
         }
     }
 
@@ -195,12 +193,10 @@ impl BoundedBufferPool {
         let mut total_capacity = 0;
         let mut size_count = 0;
 
-        for class in &self.size_classes {
-            if let Some(ref size_class) = class {
-                total_buffers += size_class.buffer_count();
-                total_capacity += size_class.total_capacity();
-                size_count += 1;
-            }
+        for size_class in self.size_classes.iter().flatten() {
+            total_buffers += size_class.buffer_count();
+            total_capacity += size_class.total_capacity();
+            size_count += 1;
         }
 
         BoundedBufferStats {

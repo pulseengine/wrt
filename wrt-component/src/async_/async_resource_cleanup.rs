@@ -396,7 +396,7 @@ impl AsyncResourceCleanupManager {
             #[cfg(not(any(feature = "std",)))]
             {
                 if results.len() < MAX_ASYNC_RESOURCES_PER_INSTANCE {
-                    let _ = results.push(result);
+                    results.push(result);
                 }
             }
         }

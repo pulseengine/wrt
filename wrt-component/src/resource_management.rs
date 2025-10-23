@@ -37,6 +37,7 @@ impl ResourceHandle {
 
 /// Resource type identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub struct ResourceTypeId(pub u32);
 
 impl ResourceTypeId {
@@ -499,11 +500,6 @@ impl Default for ResourceHandle {
     }
 }
 
-impl Default for ResourceTypeId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Default for ResourceData {
     fn default() -> Self {

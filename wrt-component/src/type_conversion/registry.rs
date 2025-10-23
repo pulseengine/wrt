@@ -203,6 +203,12 @@ pub struct TypeConversionRegistry {
     alloc_enabled: bool,
 }
 
+impl Default for TypeConversionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeConversionRegistry {
     /// Create a new, empty type conversion registry
     #[cfg(feature = "std")]

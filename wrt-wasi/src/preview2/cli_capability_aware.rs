@@ -14,7 +14,6 @@ use wrt_foundation::{
 };
 
 use crate::{
-    capabilities::WasiEnvironmentCapabilities,
     prelude::*,
     value_capability_aware::{
         CapabilityAwareValue,
@@ -122,20 +121,17 @@ pub fn wasi_get_initial_cwd_capability_aware(
     {
         use std::env;
 
-        match env::current_dir() {
-            Ok(cwd) => {
-                let cwd_string = cwd.to_string_lossy();
-                let cwd_value = CapabilityAwareValue::string_from_str(&cwd_string)?;
-                let cwd_boxed = WasiValueBox::new(cwd_value)?;
-                let cwd_option =
-                    CapabilityAwareValue::option_from_value(Some(cwd_boxed.into_inner()))?;
-                Ok(vec![cwd_option])
-            },
-            Err(_) => {
-                // Return None if current directory cannot be determined
-                let none_option = CapabilityAwareValue::option_from_value(None)?;
-                Ok(vec![none_option])
-            },
+        if let Ok(cwd) = env::current_dir() {
+            let cwd_string = cwd.to_string_lossy();
+            let cwd_value = CapabilityAwareValue::string_from_str(&cwd_string)?;
+            let cwd_boxed = WasiValueBox::new(cwd_value)?;
+            let cwd_option =
+                CapabilityAwareValue::option_from_value(Some(cwd_boxed.into_inner()))?;
+            Ok(vec![cwd_option])
+        } else {
+            // Return None if current directory cannot be determined
+            let none_option = CapabilityAwareValue::option_from_value(None)?;
+            Ok(vec![none_option])
         }
     }
 
@@ -147,7 +143,7 @@ pub fn wasi_get_initial_cwd_capability_aware(
     }
 }
 
-/// Convert CapabilityAwareValue back to legacy Value for bridge functions
+/// Convert `CapabilityAwareValue` back to legacy Value for bridge functions
 ///
 /// This implements basic conversion for the value types used by CLI functions.
 /// Complex nested types may lose some capability information.
@@ -169,7 +165,7 @@ fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Val
             let str_result = bounded_str.as_str();
             match str_result {
                 Ok(s) => Ok(Value::String(s.to_string())),
-                Err(_) => Ok(Value::String("".to_string())), // Fallback for invalid string
+                Err(_) => Ok(Value::String(String::new())), // Fallback for invalid string
             }
         },
         CapabilityAwareValue::List(bounded_vec) => {
@@ -199,7 +195,7 @@ fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Val
                 let converted_value = convert_capability_value_to_legacy(item.clone())?;
                 let key_str = match key.as_str() {
                     Ok(s) => s.to_string(),
-                    Err(_) => "".to_string(), // Fallback for invalid key
+                    Err(_) => String::new(), // Fallback for invalid key
                 };
                 legacy_record.push((key_str, converted_value));
             }

@@ -57,13 +57,9 @@ use crate::{
 
 /// Task handle for task cancellation operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub struct TaskHandle(pub u32);
 
-impl Default for TaskHandle {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for TaskHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -92,13 +88,9 @@ impl FromBytes for TaskHandle {
 
 /// Subtask handle for subtask cancellation operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub struct SubtaskHandle(pub u32);
 
-impl Default for SubtaskHandle {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for SubtaskHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {

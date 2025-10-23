@@ -356,10 +356,7 @@ impl<T> ErrorContextExt<T> for Result<T> {
     where
         F: FnOnce() -> String,
     {
-        self.map_err(|e| {
-            // Use the original error since we can't format with dynamic strings
-            e
-        })
+        self
     }
 }
 

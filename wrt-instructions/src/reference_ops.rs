@@ -88,7 +88,7 @@ impl RefIsNull {
                 return Err(Error::type_error("ref.is_null requires a reference type"));
             },
         };
-        Ok(Value::I32(if is_null { 1 } else { 0 }))
+        Ok(Value::I32(i32::from(is_null)))
     }
 }
 
@@ -208,7 +208,7 @@ impl RefEq {
             },
         };
 
-        Ok(Value::I32(if equal { 1 } else { 0 }))
+        Ok(Value::I32(i32::from(equal)))
     }
 }
 

@@ -30,9 +30,11 @@ use crate::{
 
 /// Represents a pure arithmetic operation for WebAssembly.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ArithmeticOp {
     // Integer operations (i32)
     /// Add two 32-bit integers
+    #[default]
     I32Add,
     /// Subtract one 32-bit integer from another
     I32Sub,
@@ -168,11 +170,6 @@ pub enum ArithmeticOp {
     F64Copysign,
 }
 
-impl Default for ArithmeticOp {
-    fn default() -> Self {
-        ArithmeticOp::I32Add
-    }
-}
 
 /// Execution context for arithmetic operations
 pub trait ArithmeticContext {

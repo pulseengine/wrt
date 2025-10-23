@@ -98,13 +98,9 @@ pub struct TimerIntegration {
 
 /// Timer identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct TimerId(u64);
 
-impl Default for TimerId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl Checksummable for TimerId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -282,6 +278,7 @@ impl FromBytes for TimerType {
 
 /// Timer queue entry
 #[derive(Debug, Clone)]
+#[derive(Default)]
 struct TimerEntry {
     timer_id:        TimerId,
     expiration_time: u64,
@@ -312,15 +309,6 @@ impl PartialEq for TimerEntry {
 
 impl Eq for TimerEntry {}
 
-impl Default for TimerEntry {
-    fn default() -> Self {
-        Self {
-            timer_id: TimerId::default(),
-            expiration_time: 0,
-            sequence: 0,
-        }
-    }
-}
 
 impl Checksummable for TimerEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -608,7 +596,7 @@ impl TimerIntegration {
         component_id: ComponentInstanceId,
         limits: Option<TimerLimits>,
     ) -> Result<()> {
-        let limits = limits.unwrap_or_else(|| TimerLimits {
+        let limits = limits.unwrap_or(TimerLimits {
             max_timers:               MAX_TIMERS_PER_COMPONENT,
             max_timeout_duration_ms:  self.timer_config.max_timer_duration_ms,
             max_interval_duration_ms: self.timer_config.max_timer_duration_ms,
@@ -802,8 +790,8 @@ impl TimerIntegration {
             }
 
             // Check rate limiting before getting mutable borrow
-            if self.timer_config.enable_rate_limiting {
-                if !self.check_rate_limit(component_id)? {
+            if self.timer_config.enable_rate_limiting
+                && !self.check_rate_limit(component_id)? {
                     // Rate limit exceeded, reschedule for later
                     let new_entry = TimerEntry {
                         timer_id,
@@ -813,7 +801,6 @@ impl TimerIntegration {
                     timers_to_reschedule.push(new_entry);
                     continue;
                 }
-            }
 
             // Now safely get mutable borrow
             if let Some(timer) = self.timers.get_mut(&timer_id) {
@@ -1064,19 +1051,17 @@ pub fn sleep(duration_ms: u64, timer_integration: Weak<Mutex<TimerIntegration>>)
 }
 
 /// Helper function to create a timeout future
-pub fn timeout<F>(
+pub async fn timeout<F>(
     future: F,
     duration_ms: u64,
     timer_integration: Weak<Mutex<TimerIntegration>>,
-) -> impl CoreFuture<Output = Result<F::Output>>
+) -> Result<F::Output>
 where
     F: CoreFuture,
 {
-    async move {
-        // In real implementation, would race future against timer
-        // For now, just return the future result
-        Ok(future.await)
-    }
+    // In real implementation, would race future against timer
+    // For now, just return the future result
+    Ok(future.await)
 }
 
 #[cfg(test)]

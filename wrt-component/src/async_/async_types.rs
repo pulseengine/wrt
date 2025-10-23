@@ -60,6 +60,7 @@ const MAX_WAITABLES: usize = 64;
 
 /// Handle to a stream
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct StreamHandle(pub u32);
 
 impl StreamHandle {
@@ -99,14 +100,10 @@ impl FromBytes for StreamHandle {
     }
 }
 
-impl Default for StreamHandle {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 /// Handle to a future
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default)]
 pub struct FutureHandle(pub u32);
 
 impl FutureHandle {
@@ -146,11 +143,6 @@ impl FromBytes for FutureHandle {
     }
 }
 
-impl Default for FutureHandle {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 /// Handle to an error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

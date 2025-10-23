@@ -1010,8 +1010,8 @@ impl Module {
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Converting {} types from wrt_module", wrt_module.types.len());
         for func_type in &wrt_module.types {
-            let param_types: Vec<_> = func_type.params.iter().copied().collect();
-            let result_types: Vec<_> = func_type.results.iter().copied().collect();
+            let param_types: Vec<_> = func_type.params.to_vec();
+            let result_types: Vec<_> = func_type.results.to_vec();
 
             let wrt_func_type = WrtFuncType::new(param_types, result_types)?;
             runtime_module.types.push(wrt_func_type)?;

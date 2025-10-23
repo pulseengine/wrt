@@ -8,7 +8,7 @@
 
 use core::str;
 #[cfg(feature = "std")]
-use std::string::String;
+use alloc::string::String;
 
 use wrt_error::{
     codes,
@@ -26,14 +26,14 @@ use crate::prelude::read_name;
 pub fn parse_utf8_string_inplace(
     bytes: &[u8],
     offset: usize,
-) -> Result<(std::string::String, usize)> {
+) -> Result<(alloc::string::String, usize)> {
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
     // Validate UTF-8 without creating intermediate Vec
     let string_str = str::from_utf8(name_bytes)
         .map_err(|_| Error::runtime_execution_error("Invalid UTF8 in string"))?;
 
-    Ok((std::string::String::from(string_str), new_offset))
+    Ok((alloc::string::String::from(string_str), new_offset))
 }
 
 #[cfg(not(feature = "std"))]

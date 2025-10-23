@@ -155,20 +155,20 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
         56
     }
 
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         writer.write_u64_le(self.call_count)?;
         writer.write_u64_le(self.success_count)?;
         writer.write_u64_le(self.error_count)?;
         writer.write_f64_le(self.total_time_ms)?;
-        writer.write_u8(if self.min_time_ms.is_some() { 1 } else { 0 })?;
+        writer.write_u8(u8::from(self.min_time_ms.is_some()))?;
         if let Some(min) = self.min_time_ms {
             writer.write_f64_le(min)?;
         }
-        writer.write_u8(if self.max_time_ms.is_some() { 1 } else { 0 })?;
+        writer.write_u8(u8::from(self.max_time_ms.is_some()))?;
         if let Some(max) = self.max_time_ms {
             writer.write_f64_le(max)?;
         }
@@ -179,8 +179,8 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
 
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::FromBytes for FunctionStats {
-    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<Self> {
         let call_count = reader.read_u64_le()?;
@@ -249,6 +249,7 @@ impl Default for StatisticsStrategy {
 #[cfg(feature = "std")]
 impl StatisticsStrategy {
     /// Create a new statistics strategy with default configuration
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config:    StatisticsConfig::default(),
@@ -258,6 +259,7 @@ impl StatisticsStrategy {
     }
 
     /// Create a new statistics strategy with custom configuration
+    #[must_use] 
     pub fn with_config(config: StatisticsConfig) -> Self {
         Self {
             config,
@@ -268,7 +270,7 @@ impl StatisticsStrategy {
 
     /// Helper function to generate a unique key for a function call
     fn function_key(source: &str, target: &str, function: &str) -> String {
-        format!("{}->{}::{}", source, target, function)
+        format!("{source}->{target}::{function}")
     }
 
     /// Get statistics for all functions

@@ -474,7 +474,7 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
             // Convert all result types to core ValueType
             let converted_results = results
                 .iter()
-                .map(|val_type| format_val_type_to_value_type(val_type))
+                .map(format_val_type_to_value_type)
                 .collect::<Result<Vec<_>>>()?;
 
             let _provider = P::default();
@@ -617,7 +617,7 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
             for (i, value_type) in func_type.params.iter().enumerate() {
-                match value_type_to_format_val_type(&value_type) {
+                match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
                         param_types.push((param_names[i].clone(), format_val_type))
                     },
@@ -628,7 +628,7 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             // Create result_types manually to handle errors gracefully
             let mut result_types = Vec::new();
             for value_type in &func_type.results {
-                match value_type_to_format_val_type(&value_type) {
+                match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
                     Err(e) => return Err(e),
                 }
@@ -1039,7 +1039,7 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
             for (i, value_type) in func_type.params.iter().enumerate() {
-                match value_type_to_format_val_type(&value_type) {
+                match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
                         param_types.push((param_names[i].clone(), format_val_type))
                     },
@@ -1050,7 +1050,7 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             // Create result_types manually to handle errors gracefully
             let mut result_types = Vec::new();
             for value_type in &func_type.results {
-                match value_type_to_format_val_type(&value_type) {
+                match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
                     Err(e) => return Err(e),
                 }

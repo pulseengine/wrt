@@ -317,6 +317,7 @@ pub struct WasiClockCapabilities {
 
 impl WasiClockCapabilities {
     /// Create minimal clock capabilities (monotonic only)
+    #[must_use] 
     pub fn minimal() -> Self {
         Self {
             realtime_access:        false,
@@ -327,6 +328,7 @@ impl WasiClockCapabilities {
     }
 
     /// Create monotonic-only clock capabilities
+    #[must_use] 
     pub fn monotonic_only() -> Self {
         Self {
             realtime_access:        false,
@@ -337,6 +339,7 @@ impl WasiClockCapabilities {
     }
 
     /// Create full clock access capabilities
+    #[must_use] 
     pub fn full_access() -> Self {
         Self {
             realtime_access:        true,
@@ -362,6 +365,7 @@ pub struct WasiIoCapabilities {
 
 impl WasiIoCapabilities {
     /// Create minimal I/O capabilities (no access)
+    #[must_use] 
     pub fn minimal() -> Self {
         Self {
             stdin_access:   false,
@@ -372,6 +376,7 @@ impl WasiIoCapabilities {
     }
 
     /// Create stdio-only I/O capabilities
+    #[must_use] 
     pub fn stdio_only() -> Self {
         Self {
             stdin_access:   true,
@@ -382,6 +387,7 @@ impl WasiIoCapabilities {
     }
 
     /// Create full I/O access capabilities
+    #[must_use] 
     pub fn full_access() -> Self {
         Self {
             stdin_access:   true,
@@ -403,6 +409,7 @@ pub struct WasiRandomCapabilities {
 
 impl WasiRandomCapabilities {
     /// Create minimal random capabilities (no access)
+    #[must_use] 
     pub fn minimal() -> Self {
         Self {
             secure_random: false,
@@ -411,6 +418,7 @@ impl WasiRandomCapabilities {
     }
 
     /// Create secure-only random capabilities
+    #[must_use] 
     pub fn secure_only() -> Self {
         Self {
             secure_random: true,
@@ -419,6 +427,7 @@ impl WasiRandomCapabilities {
     }
 
     /// Create full random access capabilities
+    #[must_use] 
     pub fn full_access() -> Self {
         Self {
             secure_random: true,

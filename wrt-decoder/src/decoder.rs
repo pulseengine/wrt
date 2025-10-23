@@ -10,7 +10,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 use wrt_format::module::Module as WrtModule;
 use wrt_foundation::safe_memory::NoStdProvider;

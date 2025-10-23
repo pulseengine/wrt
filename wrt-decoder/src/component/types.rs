@@ -323,19 +323,19 @@ pub trait ComponentAnalyzer {
 pub struct ExportInfo {
     /// Export name
     #[cfg(feature = "std")]
-    pub name: std::string::String,
+    pub name: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
 
     /// Type of export (function, memory, etc.)
     #[cfg(feature = "std")]
-    pub kind: std::string::String,
+    pub kind: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub kind: crate::prelude::DecoderString,
 
     /// Type information (as string)
     #[cfg(feature = "std")]
-    pub type_info: std::string::String,
+    pub type_info: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub type_info: crate::prelude::DecoderString,
 }
@@ -345,9 +345,9 @@ impl ExportInfo {
     pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
-            name:      std::string::String::new(),
-            kind:      std::string::String::new(),
-            type_info: std::string::String::new(),
+            name:      alloc::string::String::new(),
+            kind:      alloc::string::String::new(),
+            type_info: alloc::string::String::new(),
         });
 
         #[cfg(not(feature = "std"))]
@@ -369,9 +369,9 @@ impl Default for ExportInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
         return Self {
-            name:      std::string::String::new(),
-            kind:      std::string::String::new(),
-            type_info: std::string::String::new(),
+            name:      alloc::string::String::new(),
+            kind:      alloc::string::String::new(),
+            type_info: alloc::string::String::new(),
         };
 
         #[cfg(not(feature = "std"))]
@@ -392,25 +392,25 @@ impl Default for ExportInfo {
 pub struct ImportInfo {
     /// Import module
     #[cfg(feature = "std")]
-    pub module: std::string::String,
+    pub module: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub module: crate::prelude::DecoderString,
 
     /// Import name
     #[cfg(feature = "std")]
-    pub name: std::string::String,
+    pub name: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
 
     /// Type of import (function, memory, etc.)
     #[cfg(feature = "std")]
-    pub kind: std::string::String,
+    pub kind: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub kind: crate::prelude::DecoderString,
 
     /// Type information (as string)
     #[cfg(feature = "std")]
-    pub type_info: std::string::String,
+    pub type_info: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub type_info: crate::prelude::DecoderString,
 }
@@ -420,10 +420,10 @@ impl ImportInfo {
     pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
-            module:    std::string::String::new(),
-            name:      std::string::String::new(),
-            kind:      std::string::String::new(),
-            type_info: std::string::String::new(),
+            module:    alloc::string::String::new(),
+            name:      alloc::string::String::new(),
+            kind:      alloc::string::String::new(),
+            type_info: alloc::string::String::new(),
         });
 
         #[cfg(not(feature = "std"))]
@@ -446,10 +446,10 @@ impl Default for ImportInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
         return Self {
-            module:    std::string::String::new(),
-            name:      std::string::String::new(),
-            kind:      std::string::String::new(),
-            type_info: std::string::String::new(),
+            module:    alloc::string::String::new(),
+            name:      alloc::string::String::new(),
+            kind:      alloc::string::String::new(),
+            type_info: alloc::string::String::new(),
         };
 
         #[cfg(not(feature = "std"))]
@@ -471,19 +471,19 @@ impl Default for ImportInfo {
 pub struct ComponentMetadata {
     /// Component name or identifier
     #[cfg(feature = "std")]
-    pub name: std::string::String,
+    pub name: alloc::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
 
     /// Component version (if available)
     #[cfg(feature = "std")]
-    pub version: Option<std::string::String>,
+    pub version: Option<alloc::string::String>,
     #[cfg(not(feature = "std"))]
     pub version: Option<crate::prelude::DecoderString>,
 
     /// Custom sections contained in the component
     #[cfg(feature = "std")]
-    pub custom_sections: std::vec::Vec<std::string::String>,
+    pub custom_sections: alloc::vec::Vec<alloc::string::String>,
     #[cfg(not(feature = "std"))]
     pub custom_sections: crate::prelude::DecoderVec<crate::prelude::DecoderString>,
 }

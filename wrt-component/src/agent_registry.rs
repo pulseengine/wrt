@@ -63,6 +63,7 @@ pub struct AgentRegistry {
 
 /// Unique identifier for agents
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub struct AgentId(pub u32);
 
 /// Registry statistics
@@ -845,11 +846,6 @@ macro_rules! impl_basic_traits {
 }
 
 // Default implementations for complex types
-impl Default for AgentId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 #[cfg(not(feature = "std"))]
 impl Default for LegacyAgentType {

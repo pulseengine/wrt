@@ -220,6 +220,7 @@ pub enum LogLevel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct CapabilityGrant {
     pub capability: Capability,
     pub granted_to: ComponentInstanceId,
@@ -228,17 +229,6 @@ pub struct CapabilityGrant {
     pub revocable:  bool,
 }
 
-impl Default for CapabilityGrant {
-    fn default() -> Self {
-        Self {
-            capability: Capability::default(),
-            granted_to: ComponentInstanceId::default(),
-            granted_at: 0,
-            expires_at: None,
-            revocable: false,
-        }
-    }
-}
 
 impl Checksummable for CapabilityGrant {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

@@ -107,7 +107,7 @@ where
     /// Poll the stream for the next item
     pub fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
         // Consume fuel for polling
-        if let Err(_) = self.consume_fuel(STREAM_POLL_FUEL) {
+        if self.consume_fuel(STREAM_POLL_FUEL).is_err() {
             self.state = StreamState::Failed;
             return Poll::Ready(None);
         }
@@ -122,7 +122,7 @@ where
 
         // Check for buffered items
         if let Some(item) = self.buffer.pop() {
-            if let Err(_) = self.consume_fuel(STREAM_ITEM_FUEL) {
+            if self.consume_fuel(STREAM_ITEM_FUEL).is_err() {
                 self.state = StreamState::Failed;
                 return Poll::Ready(None);
             }

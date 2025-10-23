@@ -112,7 +112,7 @@ impl FirewallStrategy {
     /// Helper function to generate a unique key for a function call
     #[cfg(feature = "std")]
     fn function_key(source: &str, target: &str, function: &str) -> String {
-        format!("{}->{}::{}", source, target, function)
+        format!("{source}->{target}::{function}")
     }
 
     /// Check if a function call is allowed

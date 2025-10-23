@@ -595,9 +595,9 @@ impl GlobalCleanupManager {
 
         // Execute cleanup
         let errors = context.execute_cleanup(
-            &mut *self.resource_tracker.lock(),
-            &mut *self.stream_manager.lock(),
-            &mut *self.handle_manager.lock(),
+            &mut self.resource_tracker.lock(),
+            &mut self.stream_manager.lock(),
+            &mut self.handle_manager.lock(),
         )?;
 
         // Update stats

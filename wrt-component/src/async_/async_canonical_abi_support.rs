@@ -131,13 +131,9 @@ pub struct AsyncCanonicalAbiSupport {
 
 /// Async ABI operation identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Default)]
 pub struct AsyncAbiOperationId(u64);
 
-impl Default for AsyncAbiOperationId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl wrt_foundation::traits::Checksummable for AsyncAbiOperationId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

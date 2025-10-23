@@ -29,6 +29,12 @@ pub struct StackTrace<'a> {
     frame_count: usize,
 }
 
+impl<'a> Default for StackTrace<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {

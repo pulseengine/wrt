@@ -135,16 +135,13 @@ impl wrt_foundation::traits::FromBytes for TypeBound {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum BoundKind {
+    #[default]
     Eq,
     Sub,
 }
 
-impl Default for BoundKind {
-    fn default() -> Self {
-        BoundKind::Eq
-    }
-}
 
 #[derive(Debug)]
 pub struct GenerativeTypeRegistry {

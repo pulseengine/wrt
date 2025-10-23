@@ -48,22 +48,22 @@ impl<P: MemoryProvider> MemoryPool<P> {
     pub fn new(provider: P) -> Self {
         Self {
             #[cfg(feature = "std")]
-            instruction_pools: std::vec::Vec::with_capacity(0),
+            instruction_pools: alloc::vec::Vec::with_capacity(0),
             #[cfg(feature = "std")]
-            string_pools: std::vec::Vec::with_capacity(0),
+            string_pools: alloc::vec::Vec::with_capacity(0),
             provider,
         }
     }
 
     /// Get a reusable vector for instructions
     #[cfg(feature = "std")]
-    pub fn get_instruction_vector(&mut self) -> std::vec::Vec<u8> {
-        self.instruction_pools.pop().unwrap_or_else(|| std::vec::Vec::with_capacity(0))
+    pub fn get_instruction_vector(&mut self) -> alloc::vec::Vec<u8> {
+        self.instruction_pools.pop().unwrap_or_else(|| alloc::vec::Vec::with_capacity(0))
     }
 
     /// Return a vector to the instruction pool
     #[cfg(feature = "std")]
-    pub fn return_instruction_vector(&mut self, mut vec: std::vec::Vec<u8>) {
+    pub fn return_instruction_vector(&mut self, mut vec: alloc::vec::Vec<u8>) {
         vec.clear();
         if vec.capacity() <= 1024 {
             // Don't pool overly large vectors
@@ -73,13 +73,13 @@ impl<P: MemoryProvider> MemoryPool<P> {
 
     /// Get a reusable vector for string operations
     #[cfg(feature = "std")]
-    pub fn get_string_buffer(&mut self) -> std::vec::Vec<u8> {
-        self.string_pools.pop().unwrap_or_else(std::vec::Vec::new)
+    pub fn get_string_buffer(&mut self) -> alloc::vec::Vec<u8> {
+        self.string_pools.pop().unwrap_or_default()
     }
 
     /// Return a vector to the string pool
     #[cfg(feature = "std")]
-    pub fn return_string_buffer(&mut self, mut vec: std::vec::Vec<u8>) {
+    pub fn return_string_buffer(&mut self, mut vec: alloc::vec::Vec<u8>) {
         vec.clear();
         if vec.capacity() <= 256 {
             // Don't pool overly large vectors
@@ -205,7 +205,7 @@ impl ModuleArena {
             buffer: {
                 #[cfg(feature = "std")]
                 {
-                    std::vec::Vec::with_capacity(capacity)
+                    alloc::vec::Vec::with_capacity(capacity)
                 }
                 #[cfg(not(feature = "std"))]
                 {

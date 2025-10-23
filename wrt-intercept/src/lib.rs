@@ -553,8 +553,9 @@ impl LinkInterceptor {
     /// * `Option<&dyn LinkInterceptorStrategy>` - The first strategy, or None
     ///   if none exists
     #[cfg(feature = "std")]
+    #[must_use] 
     pub fn get_strategy(&self) -> Option<&dyn LinkInterceptorStrategy> {
-        self.strategies.first().map(|s| s.as_ref())
+        self.strategies.first().map(std::convert::AsRef::as_ref)
     }
 
     /// Processes results after interception
@@ -643,7 +644,7 @@ impl LinkInterceptor {
                         ));
                     }
 
-                    modified_data.splice(start..start, data.iter().cloned());
+                    modified_data.splice(start..start, data.iter().copied());
                 },
                 Modification::Remove { offset, length } => {
                     let start = *offset;
@@ -682,8 +683,10 @@ pub struct InterceptionResult {
 
 /// Modification to apply to serialized data
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum Modification {
     /// No modification (default)
+    #[default]
     None,
     /// Replace data at an offset
     Replace {
@@ -724,11 +727,6 @@ pub enum Modification {
     },
 }
 
-impl Default for Modification {
-    fn default() -> Self {
-        Modification::None
-    }
-}
 
 // Implement required traits for BoundedVec compatibility
 impl wrt_foundation::traits::Checksummable for Modification {
@@ -786,9 +784,9 @@ impl wrt_foundation::traits::ToBytes for Modification {
         }
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_error::Result<()> {
         match self {
@@ -832,8 +830,8 @@ impl wrt_foundation::traits::ToBytes for Modification {
 }
 
 impl wrt_foundation::traits::FromBytes for Modification {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_error::Result<Self> {
         use wrt_error::Error;

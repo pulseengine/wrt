@@ -232,8 +232,10 @@ pub struct ExecutionContext {
 
 /// Unified execution state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum UnifiedExecutionState {
     /// Ready to execute
+    #[default]
     Ready,
     /// Currently executing
     Running,
@@ -251,8 +253,10 @@ pub enum UnifiedExecutionState {
 
 /// Execution mode determines which capabilities are active
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ExecutionMode {
     /// Synchronous component execution
+    #[default]
     Synchronous,
     /// Asynchronous component execution
     #[cfg(feature = "async")]
@@ -780,7 +784,7 @@ impl UnifiedExecutionAgent {
         self.statistics.instructions_executed += 1;
 
         // Convert result back
-        Ok(result.into())
+        Ok(result)
     }
 
     /// Execute stackless function call
@@ -987,22 +991,12 @@ impl Default for AgentConfiguration {
             execution_mode:    ExecutionMode::Synchronous,
             bounded_execution: false,
             initial_fuel:      None,
-            runtime_config:    RuntimeBridgeConfig::default(),
+            runtime_config:    RuntimeBridgeConfig,
         }
     }
 }
 
-impl Default for UnifiedExecutionState {
-    fn default() -> Self {
-        UnifiedExecutionState::Ready
-    }
-}
 
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        ExecutionMode::Synchronous
-    }
-}
 
 impl fmt::Display for UnifiedExecutionState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

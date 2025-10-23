@@ -274,7 +274,7 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
             // Example validation (could be more complex in real implementation)
             // For demonstration, we make sure it's a valid ASCII value if it's a printable
             // character
-            if byte >= 32 && byte < 127 {
+            if (32..127).contains(&byte) {
                 // Valid ASCII printable character
                 destination[i] = byte;
             } else if byte < 32 || byte == 127 {

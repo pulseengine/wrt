@@ -664,7 +664,7 @@ impl DecoderStringExt for String {
         reader
             .read_exact(&mut string_bytes)
             .map_err(|_| wrt_error::Error::parse_error("Failed to read string bytes"))?;
-        std::string::String::from_utf8(string_bytes)
+        alloc::string::String::from_utf8(string_bytes)
             .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8 string"))
     }
 

@@ -214,7 +214,7 @@ impl ComponentAsyncBridge {
         };
 
         // Update tracking - convert executor TaskId to u32 for mapping
-        let executor_task_id_u32 = executor_task_id.into_inner() as u32;
+        let executor_task_id_u32 = executor_task_id.into_inner();
         self.task_mapping
             .insert(component_task_id, executor_task_id_u32)
             .map_err(|_| Error::resource_limit_exceeded("Task mapping table full"))?;
@@ -241,7 +241,7 @@ impl ComponentAsyncBridge {
         for (comp_task_id, exec_task_id) in self.task_mapping.iter() {
             let exec = self.executor.lock();
             // Convert u32 back to executor TaskId
-            let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(*exec_task_id as u32);
+            let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(*exec_task_id);
             if let Some(status) = exec.get_task_status(exec_task_id_full) {
                 match status.state {
                     AsyncTaskState::Completed => {
@@ -279,7 +279,7 @@ impl ComponentAsyncBridge {
         if let Some(exec_task_id) = self.task_mapping.get(&task_id) {
             let exec = self.executor.lock();
             // Convert u32 back to executor TaskId
-            let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(*exec_task_id as u32);
+            let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(*exec_task_id);
             if let Some(status) = exec.get_task_status(exec_task_id_full) {
                 Ok(status.state == AsyncTaskState::Ready)
             } else {
@@ -338,7 +338,7 @@ impl ComponentAsyncBridge {
                 // Return unused fuel
                 let exec = self.executor.lock();
                 // Convert u32 back to executor TaskId
-                let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(exec_task_id as u32);
+                let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(exec_task_id);
                 if let Some(status) = exec.get_task_status(exec_task_id_full) {
                     let unused_fuel = status.fuel_budget - status.fuel_consumed;
                     if unused_fuel > 0 {

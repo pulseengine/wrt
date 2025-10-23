@@ -33,7 +33,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     boxed::Box,
     vec::Vec,
 };
@@ -311,12 +311,12 @@ mod placeholder_types {
         ) -> wrt_error::Result<Self> {
             Ok(Self {
                 namespace:   {
-                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
-                    s
+                    
+                    <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?
                 },
                 name:        {
-                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
-                    s
+                    
+                    <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?
                 },
                 extern_type: ExternType::from_bytes_with_provider(reader, provider)?,
             })
@@ -354,8 +354,8 @@ mod placeholder_types {
         ) -> wrt_error::Result<Self> {
             Ok(Self {
                 name:        {
-                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
-                    s
+                    
+                    <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?
                 },
                 extern_type: ExternType::from_bytes_with_provider(reader, provider)?,
             })
@@ -393,8 +393,8 @@ mod placeholder_types {
         ) -> wrt_error::Result<Self> {
             Ok(Self {
                 name:     {
-                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
-                    s
+                    
+                    <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?
                 },
                 val_type: FormatValType::from_bytes_with_provider(reader, provider)?,
             })
@@ -875,7 +875,7 @@ impl<'a> StreamingTypeParser<'a> {
             let val_type = self.parse_value_type()?;
             let param = FunctionParam {
                 name,
-                val_type: val_type.into(),
+                val_type,
             };
             #[cfg(not(feature = "std"))]
             params
@@ -973,7 +973,7 @@ impl<'a> StreamingTypeParser<'a> {
                     let val_type = self.parse_value_type()?;
                     let param = FunctionParam {
                         name,
-                        val_type: val_type.into(),
+                        val_type,
                     };
                     #[cfg(not(feature = "std"))]
                     params.push(param).map_err(|_| {
@@ -1089,7 +1089,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_fields = DecoderVec::new();
-                return Ok(FormatValType::Record(empty_fields));
+                Ok(FormatValType::Record(empty_fields))
             },
             0x71 => {
                 // Variant type - simplified for streaming
@@ -1117,7 +1117,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_cases = DecoderVec::new();
-                return Ok(FormatValType::Variant(empty_cases));
+                Ok(FormatValType::Variant(empty_cases))
             },
             0x70 => {
                 // List type
@@ -1153,7 +1153,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_elements = DecoderVec::new();
-                return Ok(FormatValType::Tuple(empty_elements));
+                Ok(FormatValType::Tuple(empty_elements))
             },
             0x6E => {
                 // Own resource
@@ -1205,7 +1205,7 @@ impl<'a> StreamingTypeParser<'a> {
 
         // Convert to bounded string
         // Convert bytes to string first
-        let string_str = core::str::from_utf8(&string)
+        let string_str = core::str::from_utf8(string)
             .map_err(|_| Error::parse_error("Invalid UTF-8 in string"))?;
 
         #[cfg(not(feature = "std"))]
@@ -1264,8 +1264,7 @@ impl ComponentTypeSection {
     /// Get a type by index (ASIL-safe)
     pub fn get_type(&self, index: usize) -> wrt_error::Result<ComponentType> {
         self.types
-            .get(index)
-            .map(|t| t.clone())
+            .get(index).cloned()
             .ok_or_else(|| wrt_error::Error::parse_error("Component type index out of bounds"))
     }
 

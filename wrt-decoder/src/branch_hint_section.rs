@@ -132,7 +132,6 @@ impl FromBytes for BranchHintValue {
                 wrt_error::codes::INVALID_VALUE_TYPE,
                 "Invalid branch hint byte",
             )
-            .into()
         })
     }
 }

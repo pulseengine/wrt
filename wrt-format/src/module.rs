@@ -1751,25 +1751,13 @@ impl Module {
     /// Convert data segments to pure format representation (removes runtime
     /// concerns)
     pub fn data_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureDataSegment> {
-        self.data
-            .iter()
-            .map(|data| {
-                // Direct conversion since Data is already PureDataSegment
-                data.clone()
-            })
-            .collect()
+        self.data.to_vec()
     }
 
     /// Convert element segments to pure format representation (removes runtime
     /// concerns)
     pub fn elements_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureElementSegment> {
-        self.elements
-            .iter()
-            .map(|element| {
-                // Direct conversion since Element is already PureElementSegment
-                element.clone()
-            })
-            .collect()
+        self.elements.to_vec()
     }
 }
 

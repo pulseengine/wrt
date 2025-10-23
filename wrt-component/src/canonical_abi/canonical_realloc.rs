@@ -83,6 +83,7 @@ struct Allocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 struct ReallocFunction {
     /// Function index in the component
     func_index:     u32,
@@ -600,14 +601,6 @@ impl InstanceAllocations {
     }
 }
 
-impl Default for ReallocFunction {
-    fn default() -> Self {
-        Self {
-            func_index:     0,
-            func_available: false,
-        }
-    }
-}
 
 // Apply macro to types that need traits
 impl_basic_traits!(Allocation, Allocation::default());

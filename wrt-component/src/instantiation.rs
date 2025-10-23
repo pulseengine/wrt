@@ -516,9 +516,9 @@ impl Component {
                 }
             },
             imports: resolved_imports,
-            exports: exports,
-            resource_tables: resource_tables,
-            module_instances: module_instances,
+            exports,
+            resource_tables,
+            module_instances,
         };
 
         Ok(instance)
@@ -546,7 +546,7 @@ impl Component {
         {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
-            if self.imports.len() > 0 && imports.imports.len() == 0 {
+            if !self.imports.is_empty() && imports.imports.is_empty() {
                 return Err(wrt_error::Error::validation_invalid_input(
                     "Missing required imports",
                 ));
@@ -601,8 +601,8 @@ impl Component {
         // Check basic type equality for now
         // In a full implementation, this would check subtyping rules
         // Check if both are unit types (empty imports/exports/etc)
-        if expected.imports.len() == 0 && expected.exports.len() == 0 &&
-           actual.imports.len() == 0 && actual.exports.len() == 0 {
+        if expected.imports.is_empty() && expected.exports.is_empty() &&
+           actual.imports.is_empty() && actual.exports.is_empty() {
             return true;
         }
         // For other types, check structural equality
@@ -613,7 +613,7 @@ impl Component {
     fn is_value_compatible(&self, expected: &WrtComponentType<ComponentProvider>, actual: &WrtComponentValue<ComponentProvider>) -> bool {
         // Basic type compatibility check
         // Check if expected is unit type and actual is Unit value
-        if expected.imports.len() == 0 && expected.exports.len() == 0 &&
+        if expected.imports.is_empty() && expected.exports.is_empty() &&
            matches!(actual, WrtComponentValue::Unit) {
             return true;
         }

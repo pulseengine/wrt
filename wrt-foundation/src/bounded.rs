@@ -3606,7 +3606,7 @@ impl<const N_BYTES: usize> Ord for BoundedString<N_BYTES> {
                 for i in 0..min_len {
                     match (self.bytes.get(i), other.bytes.get(i)) {
                         (Some(a), Some(b)) => {
-                            let cmp = a.cmp(&b);
+                            let cmp = a.cmp(b);
                             if cmp != core::cmp::Ordering::Equal {
                                 return cmp;
                             }
@@ -3712,7 +3712,7 @@ impl<const N_BYTES: usize> WasmName<N_BYTES> {
     /// Creates a `WasmName` from a string slice.
     ///
     /// Returns an error if the string exceeds `N_BYTES`.
-    pub fn from_str(s: &str) -> core::result::Result<Self, SerializationError> {
+    pub fn try_from_str(s: &str) -> core::result::Result<Self, SerializationError> {
         if s.len() > N_BYTES {
             return Err(SerializationError::Custom("String too long for WasmName"));
         }
@@ -3860,7 +3860,7 @@ impl<const N_BYTES: usize>
     ///
     /// # Errors
     /// Returns an error if the string is too long or allocation fails.
-    pub fn from_str(s: &str) -> core::result::Result<Self, SerializationError> {
+    pub fn try_from_str(s: &str) -> core::result::Result<Self, SerializationError> {
         if s.len() > N_BYTES {
             return Err(SerializationError::Custom("String too long for BoundedString"));
         }

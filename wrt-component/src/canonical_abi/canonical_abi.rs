@@ -88,8 +88,10 @@ const PAGE_SIZE: usize = 65536;
 
 /// Component model value types as defined in the Canonical ABI
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ComponentType {
     /// Boolean type
+    #[default]
     Bool,
     /// Signed 8-bit integer
     S8,
@@ -398,7 +400,7 @@ impl CanonicalABI {
             ComponentType::Flags(flags) => {
                 // Each flag is 1 bit, round up to byte boundary
                 let bit_count = flags.len();
-                let byte_count = (bit_count + 7) / 8;
+                let byte_count = bit_count.div_ceil(8);
                 Ok(byte_count as u32)
             },
         }
@@ -785,7 +787,7 @@ impl CanonicalABI {
         flags: &[String],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let byte_count = (flags.len() + 7) / 8;
+        let byte_count = flags.len().div_ceil(8);
         let bytes = memory.read_bytes(offset, byte_count as u32)?;
 
         let mut active_flags = Vec::new();
@@ -1162,7 +1164,7 @@ impl CanonicalABI {
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
             _ => {
-                return Err(Error::validation_error(
+                Err(Error::validation_error(
                     "Error occurred: Invalid discriminant size calculated",
                 ))
             },
@@ -1241,7 +1243,7 @@ impl CanonicalABI {
         offset: u32,
     ) -> Result<()> {
         // Calculate the number of bytes needed for all flags
-        let num_bytes = (flag_definitions.len() + 7) / 8;
+        let num_bytes = flag_definitions.len().div_ceil(8);
 
         // Create bit array
         let mut flag_bytes = vec![0u8; num_bytes];
@@ -1354,7 +1356,7 @@ impl CanonicalABI {
             },
             ComponentValue::Enum(_) => MemoryLayout::new(4, 4), // 4-byte discriminant
             ComponentValue::Flags(flags) => {
-                let num_bytes = (flags.len() + 7) / 8;
+                let num_bytes = flags.len().div_ceil(8);
                 let alignment = if num_bytes <= 1 {
                     1
                 } else if num_bytes <= 2 {
@@ -1595,11 +1597,6 @@ impl FromBytes for ComponentType {
 }
 
 // Implement Default for ComponentType
-impl Default for ComponentType {
-    fn default() -> Self {
-        ComponentType::Bool
-    }
-}
 
 // Implement traits for ComponentValue
 impl Checksummable for ComponentValue {

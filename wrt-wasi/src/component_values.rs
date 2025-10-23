@@ -3,7 +3,6 @@
 //! This module provides a temporary implementation of component model values
 //! until proper support is added to wrt-foundation.
 
-use crate::prelude::*;
 
 /// Component model value representation
 #[derive(Debug, Clone, PartialEq)]

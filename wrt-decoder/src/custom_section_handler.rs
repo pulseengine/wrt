@@ -14,7 +14,7 @@ use alloc::{
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     string::String,
     vec::Vec,
 };
@@ -117,8 +117,8 @@ impl CustomSectionHandler {
                 CustomSection::ResourceLimits(resource_limits)
             },
             "name" => {
-                let name_section = parse_name_section(data)?;
-                name_section
+                
+                parse_name_section(data)?
             },
             _ => {
                 // Unknown section - preserve raw data

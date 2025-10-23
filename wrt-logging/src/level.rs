@@ -30,8 +30,8 @@ pub struct ParseLogLevelError {
 }
 
 #[cfg(feature = "std")]
-impl std::fmt::Display for ParseLogLevelError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for ParseLogLevelError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Invalid log level: {}", self.message)
     }
 }
@@ -50,7 +50,7 @@ impl std::error::Error for ParseLogLevelError {}
 impl FromStr for LogLevel {
     type Err = ParseLogLevelError;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "trace" => Ok(Self::Trace),
             "debug" => Ok(Self::Debug),

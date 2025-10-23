@@ -50,12 +50,12 @@ use crate::{
 };
 // Type aliases to make Vec/String usage explicit
 #[cfg(feature = "std")]
-type SectionVec<T> = std::vec::Vec<T>;
+type SectionVec<T> = alloc::vec::Vec<T>;
 #[cfg(not(feature = "std"))]
 type SectionVec<T> = wrt_foundation::BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>;
 
 #[cfg(feature = "std")]
-type SectionString = std::string::String;
+type SectionString = alloc::string::String;
 #[cfg(not(feature = "std"))]
 type SectionString = wrt_foundation::BoundedString<256>;
 

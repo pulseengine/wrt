@@ -633,7 +633,7 @@ impl BlastZoneManager {
         #[cfg(not(any(feature = "std",)))]
         {
             for policy in &self.policies {
-                if self.policy_matches(&policy, source_zone, target_zone) {
+                if self.policy_matches(policy, source_zone, target_zone) {
                     return policy.allowed;
                 }
             }

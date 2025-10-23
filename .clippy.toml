@@ -4,7 +4,7 @@
 missing-docs-in-crate-items = true
 
 # MSRV (Minimum Supported Rust Version)
-msrv = "1.75.0"
+msrv = "1.85.0"
 
 # Cognitive complexity threshold
 cognitive-complexity-threshold = 30

@@ -25,7 +25,8 @@ resolver = "2"  # Use edition 2021 resolver
 
 [workspace.package]
 authors = ["The WRT Project Developers"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 license = "MIT"
 repository = "https://github.com/pulseengine/wrt" # Updated repository URL
 version = "0.2.0" # Updated to 0.2.0 for consistency

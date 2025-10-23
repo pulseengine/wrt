@@ -39,7 +39,7 @@ pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)
     // Convert the bytes to a string
     let name = match core::str::from_utf8(name_bytes) {
         #[cfg(feature = "std")]
-        Ok(s) => std::string::ToString::to_string(s),
+        Ok(s) => alloc::string::ToString::to_string(s),
         #[cfg(not(feature = "std"))]
         Ok(s) => {
             use wrt_foundation::BoundedString;

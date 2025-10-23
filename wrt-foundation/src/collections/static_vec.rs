@@ -294,7 +294,6 @@ impl<T, const N: usize> StaticVec<T, N> {
     /// # Ok::<(), wrt_error::Error>(())
     /// ```
     #[inline]
-    #[must_use]
     pub fn map_err<E, F>(self, _f: F) -> core::result::Result<Self, E>
     where
         F: FnOnce() -> E,
@@ -316,7 +315,6 @@ impl<T, const N: usize> StaticVec<T, N> {
     /// assert!(result.is_ok());
     /// ```
     #[inline]
-    #[must_use]
     pub fn ok_or<E>(self, _err: E) -> core::result::Result<Self, E> {
         Ok(self)
     }
