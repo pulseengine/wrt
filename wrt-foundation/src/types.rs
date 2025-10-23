@@ -557,19 +557,15 @@ impl FromBytes for FuncType {
                 "Invalid function type prefix - expected 0x60",
             ));
         }
-        // PFunc must be Default + Clone for BoundedVec::from_bytes_with_provider
-        // if BoundedVec needs to create its own provider. Here, we pass
-        // stream_provider.
-        let params =
-            BoundedVec::<ValueType, MAX_FUNC_TYPE_PARAMS, PFunc>::from_bytes_with_provider(
-                reader,
-                stream_provider,
-            )?;
-        let results =
-            BoundedVec::<ValueType, MAX_FUNC_TYPE_RESULTS, PFunc>::from_bytes_with_provider(
-                reader,
-                stream_provider,
-            )?;
+        // Migrated to StaticVec - no provider needed
+        let params = StaticVec::<ValueType, MAX_PARAMS_IN_FUNC_TYPE>::from_bytes_with_provider(
+            reader,
+            stream_provider,
+        )?;
+        let results = StaticVec::<ValueType, MAX_RESULTS_IN_FUNC_TYPE>::from_bytes_with_provider(
+            reader,
+            stream_provider,
+        )?;
 
         Ok(FuncType { params, results })
     }
