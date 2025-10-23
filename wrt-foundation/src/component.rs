@@ -115,7 +115,7 @@ where
     pub instances:       BoundedVec<ComponentInstance<P>, MAX_COMPONENT_INSTANCES, P>,
     pub core_instances:  BoundedVec<CoreInstance<P>, MAX_CORE_INSTANCES, P>,
     pub component_types: BoundedVec<TypeRef, MAX_COMPONENT_TYPES, P>,
-    pub core_types:      BoundedVec<CoreType<P>, MAX_CORE_TYPES, P>,
+    pub core_types:      BoundedVec<CoreType, MAX_CORE_TYPES, P>,
 }
 
 impl<P> ComponentType<P>
@@ -212,11 +212,11 @@ pub enum ExternType<P>
 where
     P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
 {
-    Func(FuncType<P>),
+    Func(FuncType),
     Table(TableType),
     Memory(MemoryType),
     Global(GlobalType),
-    Tag(FuncType<P>),
+    Tag(FuncType),
     Component(ComponentType<P>),
     Instance(InstanceType<P>),
     CoreModule(TypeRef),
@@ -409,18 +409,17 @@ where
 }
 
 /// Represents a core type definition (func, table, memory, global, tag).
+///
+/// **Migration Note:** Removed MemoryProvider generic parameter P (Issue #118)
 #[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
-pub enum CoreType<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+pub enum CoreType {
     #[default]
     Unknown,
-    Func(FuncType<P>),
+    Func(FuncType),
     Table(TableType),
     Memory(MemoryType),
     Global(GlobalType),
-    Tag(FuncType<P>),
+    Tag(FuncType),
 }
 
 /// General kind of an external item for instantiation arguments.
@@ -962,7 +961,7 @@ where
     ) -> wrt_error::Result<Self> {
         let variant_tag = reader.read_u8()?;
         match variant_tag {
-            0 => Ok(Self::Func(FuncType::<P>::from_bytes_with_provider(
+            0 => Ok(Self::Func(FuncType::from_bytes_with_provider(
                 reader, provider,
             )?)),
             1 => Ok(Self::Table(TableType::from_bytes_with_provider(
@@ -974,9 +973,9 @@ where
             3 => Ok(Self::Global(GlobalType::from_bytes_with_provider(
                 reader, provider,
             )?)),
-            4 => Ok(Self::Tag(FuncType::<P>::from_bytes_with_provider(
+            4 => Ok(Self::Tag(FuncType::from_bytes_with_provider(
                 reader, provider,
-            )?)), // Was FuncType<P>
+            )?)),
             5 => Ok(Self::Component(ComponentType::<P>::from_bytes_with_provider(
                 reader, provider,
             )?)),
@@ -1276,7 +1275,7 @@ impl_frombytes_struct!(ComponentType<P: MemoryProvider + Clone + Default + Eq + 
     instances: BoundedVec<ComponentInstance<P>, MAX_COMPONENT_INSTANCES, P>,
     core_instances: BoundedVec<CoreInstance<P>, MAX_CORE_INSTANCES, P>,
     component_types: BoundedVec<TypeRef, MAX_COMPONENT_TYPES, P>,
-    core_types: BoundedVec<CoreType<P>, MAX_CORE_TYPES, P>
+    core_types: BoundedVec<CoreType, MAX_CORE_TYPES, P>
 );
 
 // CoreInstanceKind<P>
@@ -1365,11 +1364,8 @@ impl_checksummable_struct!(CoreInstance<P: MemoryProvider + Clone + Default + Eq
 impl_tobytes_struct!(CoreInstance<P: MemoryProvider + Clone + Default + Eq + Debug>, kind);
 impl_frombytes_struct!(CoreInstance<P: MemoryProvider + Clone + Default + Eq + Debug>, kind: CoreInstanceKind<P>);
 
-// CoreType<P>
-impl<P> Checksummable for CoreType<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+// CoreType (no generic parameter after migration)
+impl Checksummable for CoreType {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         let discriminant_byte = match self {
             CoreType::Unknown => 0u8,
@@ -1393,10 +1389,7 @@ where
     }
 }
 
-impl<P> ToBytes for CoreType<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+impl ToBytes for CoreType {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -1432,10 +1425,7 @@ where
     }
 }
 
-impl<P> FromBytes for CoreType<P>
-where
-    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
-{
+impl FromBytes for CoreType {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &PStream,
@@ -1444,7 +1434,7 @@ where
         match discriminant {
             0 => Ok(CoreType::Unknown),
             1 => {
-                let ft = FuncType::<P>::from_bytes_with_provider(reader, provider)?;
+                let ft = FuncType::from_bytes_with_provider(reader, provider)?;
                 Ok(CoreType::Func(ft))
             },
             2 => {
@@ -1460,7 +1450,7 @@ where
                 Ok(CoreType::Global(gt))
             },
             5 => {
-                let tag_ft = FuncType::<P>::from_bytes_with_provider(reader, provider)?;
+                let tag_ft = FuncType::from_bytes_with_provider(reader, provider)?;
                 Ok(CoreType::Tag(tag_ft))
             },
             _ => Err(SerializationError::InvalidFormat.into()),
