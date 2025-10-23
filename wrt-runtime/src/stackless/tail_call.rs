@@ -26,7 +26,7 @@ use crate::{
         frame::StacklessFrame,
     },
 };
-type WrtFuncType = wrt_foundation::types::FuncType<RuntimeProvider>;
+type WrtFuncType = wrt_foundation::types::FuncType;
 
 #[cfg(feature = "std")]
 use alloc::vec::Vec;

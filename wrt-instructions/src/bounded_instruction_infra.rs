@@ -9,8 +9,8 @@ use wrt_foundation::{
         BoundedVec,
     },
     safe_memory::NoStdProvider,
-    wrt_error::Result,
 };
+use wrt_error::Result;
 
 /// Budget-aware memory provider for instructions (32KB)
 pub type InstructionProvider = NoStdProvider<32768>;
@@ -62,7 +62,7 @@ pub type BoundedControlFrameVec<T> = BoundedVec<T, MAX_CONTROL_FRAMES, Instructi
 pub type BoundedCfgEdgeVec<T> = BoundedVec<T, MAX_CFG_EDGES, InstructionProvider>;
 
 /// Bounded string for labels
-pub type BoundedLabelString = BoundedString<MAX_LABEL_LENGTH, InstructionProvider>;
+pub type BoundedLabelString = BoundedString<MAX_LABEL_LENGTH>;
 
 /// Create a new bounded instruction vector
 pub fn new_instruction_vec<T>() -> wrt_error::Result<BoundedInstructionVec<T>>
@@ -162,12 +162,10 @@ where
 
 /// Create a new bounded label string
 pub fn new_label_string() -> wrt_error::Result<BoundedLabelString> {
-    let provider = InstructionProvider::default();
-    Ok(BoundedString::from_str_truncate("", provider)?)
+    Ok(BoundedString::from_str_truncate("")?)
 }
 
 /// Create a bounded label string from str
 pub fn bounded_label_from_str(s: &str) -> wrt_error::Result<BoundedLabelString> {
-    let provider = InstructionProvider::default();
-    Ok(BoundedString::from_str(s, provider)?)
+    Ok(BoundedString::from_str(s)?)
 }

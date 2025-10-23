@@ -193,7 +193,7 @@ pub type TableDataVec =
 pub type RuntimeString = String;
 /// Runtime string type for `no_std` environments
 #[cfg(not(feature = "std"))]
-pub type RuntimeString = wrt_foundation::BoundedString<MAX_STRING_LENGTH, RuntimeProvider>;
+pub type RuntimeString = wrt_foundation::BoundedString<MAX_STRING_LENGTH>;
 
 // Maps for runtime state
 /// Function map type for std environments

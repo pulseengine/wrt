@@ -234,9 +234,7 @@ where
                 linear_memory: None,
                 state: ComponentExecutionState::Failed(
                     RuntimeString::from_str_truncate(
-                        "Failed to create component",
-                        create_runtime_provider()
-                            .unwrap_or_else(|_| DefaultRuntimeProvider::default()),
+                        "Failed to create component"
                     )
                     .unwrap_or_else(|_| RuntimeString::default()),
                 ), // Mark as failed state

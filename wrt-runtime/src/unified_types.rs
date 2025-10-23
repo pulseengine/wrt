@@ -338,8 +338,8 @@ pub mod compat {
     /// Default + Clone + `PartialEq` + Eq
     pub type Vec<T> = BoundedVec<T, 1024, DefaultRuntimeProvider>;
 
-    /// Legacy string type for backward compatibility  
-    pub type String = BoundedString<1024, DefaultRuntimeProvider>;
+    /// Legacy string type for backward compatibility
+    pub type String = BoundedString<1024>;
 
     /// Legacy small vector type for backward compatibility
     /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` +

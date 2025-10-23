@@ -522,7 +522,7 @@ impl CapabilityAwareEngine {
         &self,
         _instance_handle: InstanceHandle,
         _func_name: &str,
-    ) -> Result<Option<wrt_foundation::types::FuncType<BaseRuntimeProvider>>> {
+    ) -> Result<Option<wrt_foundation::types::FuncType>> {
         // TODO: Fix type system inconsistency between BaseRuntimeProvider and actual
         // module provider
         Ok(None)

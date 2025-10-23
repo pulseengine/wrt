@@ -17,10 +17,7 @@ use crate::prelude::RuntimeFuncType;
 #[derive(Debug, Clone)]
 pub struct Function {
     /// Function type signature
-    #[cfg(feature = "std")]
     pub func_type:      RuntimeFuncType,
-    #[cfg(not(feature = "std"))]
-    pub func_type:      RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Function body (placeholder)
     pub body: wrt_foundation::bounded::BoundedVec<
         u8,
@@ -45,7 +42,7 @@ impl Function {
 
     #[cfg(not(feature = "std"))]
     pub fn new(
-        func_type: RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
+        func_type: RuntimeFuncType,
     ) -> Result<Self, wrt_error::Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
         Ok(Self {
@@ -71,7 +68,7 @@ impl Function {
 
     #[cfg(not(feature = "std"))]
     pub fn new_with_index(
-        func_type: RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
+        func_type: RuntimeFuncType,
         index: u32,
     ) -> Result<Self, wrt_error::Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
