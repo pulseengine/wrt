@@ -9,7 +9,7 @@ use wrt_foundation::{
         BoundedVec,
     },
     safe_memory::NoStdProvider,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Budget-aware memory provider for instructions (32KB)
@@ -65,7 +65,7 @@ pub type BoundedCfgEdgeVec<T> = BoundedVec<T, MAX_CFG_EDGES, InstructionProvider
 pub type BoundedLabelString = BoundedString<MAX_LABEL_LENGTH, InstructionProvider>;
 
 /// Create a new bounded instruction vector
-pub fn new_instruction_vec<T>() -> WrtResult<BoundedInstructionVec<T>>
+pub fn new_instruction_vec<T>() -> wrt_error::Result<BoundedInstructionVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -80,13 +80,13 @@ where
 }
 
 /// Create a new bounded branch table targets vector
-pub fn new_br_table_targets() -> WrtResult<BoundedBrTableTargets> {
+pub fn new_br_table_targets() -> wrt_error::Result<BoundedBrTableTargets> {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded basic block vector
-pub fn new_basic_block_vec<T>() -> WrtResult<BoundedBasicBlockVec<T>>
+pub fn new_basic_block_vec<T>() -> wrt_error::Result<BoundedBasicBlockVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -101,7 +101,7 @@ where
 }
 
 /// Create a new bounded local variable vector
-pub fn new_local_vec<T>() -> WrtResult<BoundedLocalVec<T>>
+pub fn new_local_vec<T>() -> wrt_error::Result<BoundedLocalVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -116,7 +116,7 @@ where
 }
 
 /// Create a new bounded stack vector
-pub fn new_stack_vec<T>() -> WrtResult<BoundedStackVec<T>>
+pub fn new_stack_vec<T>() -> wrt_error::Result<BoundedStackVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -131,7 +131,7 @@ where
 }
 
 /// Create a new bounded control frame vector
-pub fn new_control_frame_vec<T>() -> WrtResult<BoundedControlFrameVec<T>>
+pub fn new_control_frame_vec<T>() -> wrt_error::Result<BoundedControlFrameVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -146,7 +146,7 @@ where
 }
 
 /// Create a new bounded CFG edge vector
-pub fn new_cfg_edge_vec<T>() -> WrtResult<BoundedCfgEdgeVec<T>>
+pub fn new_cfg_edge_vec<T>() -> wrt_error::Result<BoundedCfgEdgeVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -161,13 +161,13 @@ where
 }
 
 /// Create a new bounded label string
-pub fn new_label_string() -> WrtResult<BoundedLabelString> {
+pub fn new_label_string() -> wrt_error::Result<BoundedLabelString> {
     let provider = InstructionProvider::default();
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded label string from str
-pub fn bounded_label_from_str(s: &str) -> WrtResult<BoundedLabelString> {
+pub fn bounded_label_from_str(s: &str) -> wrt_error::Result<BoundedLabelString> {
     let provider = InstructionProvider::default();
     Ok(BoundedString::from_str(s, provider)?)
 }
