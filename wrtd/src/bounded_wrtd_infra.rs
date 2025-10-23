@@ -104,28 +104,28 @@ pub type BoundedHealthCheckVec<T> = BoundedVec<T, MAX_HEALTH_CHECKS, WrtdProvide
 pub type BoundedEnvVarVec<T> = BoundedVec<T, MAX_ENV_VARS, WrtdProvider>;
 
 /// Bounded string for service names
-pub type BoundedServiceName = BoundedString<MAX_SERVICE_NAME_LEN, WrtdProvider>;
+pub type BoundedServiceName = BoundedString<MAX_SERVICE_NAME_LEN>;
 
 /// Bounded string for configuration keys
-pub type BoundedConfigKey = BoundedString<MAX_CONFIG_KEY_LEN, WrtdProvider>;
+pub type BoundedConfigKey = BoundedString<MAX_CONFIG_KEY_LEN>;
 
 /// Bounded string for configuration values
-pub type BoundedConfigValue = BoundedString<MAX_CONFIG_VALUE_LEN, WrtdProvider>;
+pub type BoundedConfigValue = BoundedString<MAX_CONFIG_VALUE_LEN>;
 
 /// Bounded string for log messages
-pub type BoundedLogMessage = BoundedString<MAX_LOG_MESSAGE_LEN, WrtdProvider>;
+pub type BoundedLogMessage = BoundedString<MAX_LOG_MESSAGE_LEN>;
 
 /// Bounded string for process commands
-pub type BoundedProcessCommand = BoundedString<MAX_PROCESS_COMMAND_LEN, WrtdProvider>;
+pub type BoundedProcessCommand = BoundedString<MAX_PROCESS_COMMAND_LEN>;
 
 /// Bounded string for connection IDs
-pub type BoundedConnectionId = BoundedString<MAX_CONNECTION_ID_LEN, WrtdProvider>;
+pub type BoundedConnectionId = BoundedString<MAX_CONNECTION_ID_LEN>;
 
 /// Bounded string for environment variable names
-pub type BoundedEnvVarName = BoundedString<MAX_ENV_VAR_NAME_LEN, WrtdProvider>;
+pub type BoundedEnvVarName = BoundedString<MAX_ENV_VAR_NAME_LEN>;
 
 /// Bounded string for environment variable values
-pub type BoundedEnvVarValue = BoundedString<MAX_ENV_VAR_VALUE_LEN, WrtdProvider>;
+pub type BoundedEnvVarValue = BoundedString<MAX_ENV_VAR_VALUE_LEN>;
 
 /// Bounded map for daemon services
 pub type BoundedServiceMap<V> =
@@ -198,80 +198,72 @@ where
 
 /// Create a new bounded service name
 pub fn new_service_name() -> WrtResult<BoundedServiceName> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_error::Error::runtime_execution_error(
-            "
-        ))
+    BoundedString::from_str("").map_err(|_| {
+        wrt_error::Error::runtime_execution_error("Failed to create service name")
+    })
 }
 
 /// Create a bounded service name from str
 pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            ",
+    BoundedString::from_str(s).map_err(|_| {
+        wrt_error::Error::new(
+            wrt_error::ErrorCategory::Resource,
+            1001, // ALLOCATION_FAILED
+            "Service name too long",
         )
     })
 }
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_error::Error::runtime_execution_error(
-            "
-        ))
+    BoundedString::from_str("").map_err(|_| {
+        wrt_error::Error::runtime_execution_error("Failed to create config key")
+    })
 }
 
 /// Create a bounded configuration key from str
 pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            ",
+    BoundedString::from_str(s).map_err(|_| {
+        wrt_error::Error::new(
+            wrt_error::ErrorCategory::Resource,
+            1001, // ALLOCATION_FAILED
+            "Config key too long",
         )
     })
 }
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_error::Error::runtime_execution_error(
-            "
-        ))
+    BoundedString::from_str("").map_err(|_| {
+        wrt_error::Error::runtime_execution_error("Failed to create config value")
+    })
 }
 
 /// Create a bounded configuration value from str
 pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            ",
+    BoundedString::from_str(s).map_err(|_| {
+        wrt_error::Error::new(
+            wrt_error::ErrorCategory::Resource,
+            1001, // ALLOCATION_FAILED
+            "Config value too long",
         )
     })
 }
 
 /// Create a new bounded log message
 pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_error::Error::runtime_execution_error(
-            "
-        ))
+    BoundedString::from_str("").map_err(|_| {
+        wrt_error::Error::runtime_execution_error("Failed to create log message")
+    })
 }
 
 /// Create a bounded log message from str
 pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
-    let provider = create_wrtd_provider()?;
-    BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            ",
+    BoundedString::from_str(s).map_err(|_| {
+        wrt_error::Error::new(
+            wrt_error::ErrorCategory::Resource,
+            1001, // ALLOCATION_FAILED
+            "Log message too long",
         )
     })
 }
