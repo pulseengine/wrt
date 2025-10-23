@@ -41,10 +41,10 @@ pub type ValueStackVec = BoundedVec<Value, 1024, RuntimeProvider>;
 pub type MemoryBuffer = BoundedVec<u8, 65536, RuntimeProvider>;
 
 /// String for runtime identifiers and names
-pub type RuntimeString = BoundedString<256, RuntimeProvider>;
+pub type RuntimeString = BoundedString<256>;
 
 /// String for component and module names
-pub type ComponentName = BoundedString<64, RuntimeProvider>;
+pub type ComponentName = BoundedString<64>;
 
 /// Vector for function parameters
 pub type ParameterVec = BoundedVec<Value, 16, RuntimeProvider>;
@@ -117,7 +117,7 @@ pub mod compat {
     pub type LargeVec<T> = BoundedVec<T, 65536, RuntimeProvider>;
 
     /// Compatibility string type
-    pub type String = BoundedString<256, RuntimeProvider>;
+    pub type String = BoundedString<256>;
 }
 
 #[cfg(test)]

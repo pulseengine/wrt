@@ -220,7 +220,7 @@ where
 #[cfg(not(feature = "std"))]
 pub type DecoderVec<T> = BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>;
 #[cfg(not(feature = "std"))]
-pub type DecoderString = BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
+pub type DecoderString = BoundedString<256>;
 
 // Factory function for creating providers using capability system
 #[cfg(not(feature = "std"))]
@@ -256,7 +256,7 @@ pub trait ToString {
 impl ToString for &str {
     fn to_string(&self) -> DecoderString {
         if let Ok(provider) = create_decoder_provider::<4096>() {
-            DecoderString::from_str(self, provider).unwrap_or_default()
+            DecoderString::from_str(self).unwrap_or_default()
         } else {
             DecoderString::default()
         }
@@ -690,10 +690,7 @@ impl DecoderStringExt for String {
 }
 
 #[cfg(not(feature = "std"))]
-impl<const N: usize, P> DecoderStringExt for BoundedString<N, P>
-where
-    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
-{
+impl<const N: usize> DecoderStringExt for BoundedString<N> {
     fn from_bytes_with_provider<
         'a,
         P2: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
@@ -719,9 +716,8 @@ where
             .map_err(|_| wrt_error::Error::parse_error("Failed to get buffer slice"))?;
         let s = core::str::from_utf8(slice)
             .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8"))?;
-        // Convert from P2 provider to P provider type
-        let p_provider = P::default();
-        Ok(Self::from_str(s, p_provider)?)
+        // BoundedString no longer needs provider after StaticVec migration
+        Ok(Self::from_str(s)?)
     }
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

@@ -223,13 +223,13 @@ pub type BoundedFrameLocalsVec<T> = BoundedVec<T, MAX_FRAME_LOCALS, RuntimeProvi
 pub type BoundedBlockContextVec<T> = BoundedVec<T, MAX_BLOCK_CONTEXT_DEPTH, RuntimeProvider>;
 
 /// Bounded string for module names
-pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN, RuntimeProvider>;
+pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN>;
 
 /// Bounded string for function names
-pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN, RuntimeProvider>;
+pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN>;
 
 /// Bounded string for import/export names
-pub type BoundedImportExportName = BoundedString<MAX_IMPORT_EXPORT_NAME_LEN, RuntimeProvider>;
+pub type BoundedImportExportName = BoundedString<MAX_IMPORT_EXPORT_NAME_LEN>;
 
 /// Bounded map for atomic operations
 pub type BoundedAtomicOpMap<V> = BoundedMap<
@@ -342,29 +342,25 @@ where
 
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
-    let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_name_from_str(s: &str) -> WrtResult<BoundedModuleName> {
-    let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider)
+    BoundedString::from_str(s)
         .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
-    let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider)
+    BoundedString::from_str("")
         .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
-    let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider)
+    BoundedString::from_str(s)
         .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 

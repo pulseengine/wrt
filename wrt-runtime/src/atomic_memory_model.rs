@@ -58,7 +58,7 @@ type SyncViolationVec =
     wrt_foundation::bounded::BoundedVec<SyncViolationReport, 64, AtomicProvider1K>;
 type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 16, AtomicProvider1K>;
 type ResourceVec = wrt_foundation::bounded::BoundedVec<usize, 16, AtomicProvider1K>;
-type ViolationString = wrt_foundation::bounded::BoundedString<64, AtomicProvider1K>;
+type ViolationString = wrt_foundation::bounded::BoundedString<64>;
 type OperationTypeVec = wrt_foundation::bounded::BoundedVec<ViolationString, 16, AtomicProvider1K>;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]

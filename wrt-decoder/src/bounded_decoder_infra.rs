@@ -127,7 +127,7 @@ pub fn new_section_vec<T>() -> BoundedSectionVec<T> {
 
 /// Create a new type vector with inline storage
 /// Note: FuncType still needs Provider parameter until fully migrated
-pub fn new_type_vec() -> BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>> {
+pub fn new_type_vec() -> BoundedTypeVec<wrt_foundation::types::FuncType> {
     StaticVec::new()
 }
 

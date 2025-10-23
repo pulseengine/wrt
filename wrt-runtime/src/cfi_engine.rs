@@ -1129,10 +1129,7 @@ pub enum CfiExecutionResult {
 #[derive(Debug, Clone)]
 pub struct CfiCheck {
     /// Check type
-    pub check_type: wrt_foundation::bounded::BoundedString<
-        64,
-        wrt_foundation::safe_memory::NoStdProvider<1024>,
-    >,
+    pub check_type: wrt_foundation::bounded::BoundedString<64>,
     /// Location of check
     pub location:   usize,
 }
@@ -1145,7 +1142,7 @@ impl CfiCheck {
             wrt_foundation::budget_aware_provider::CrateId::Runtime
         )?;
         let bounded_check_type =
-            wrt_foundation::bounded::BoundedString::from_str_truncate(check_type, provider)?;
+            wrt_foundation::bounded::BoundedString::from_str_truncate(check_type)?;
         Ok(Self {
             check_type: bounded_check_type,
             location,

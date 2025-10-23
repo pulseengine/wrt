@@ -186,7 +186,7 @@ impl TomlResourceLimits {
                     if asil_level.len() > MAX_ASIL_STRING_LEN {
                         return Err(Error::parse_error("ASIL level exceeds max length"));
                     }
-                    section = section.with_qualification(hash, asil_level, provider)?;
+                    section = section.with_qualification(hash, asil_level)?;
                 }
             }
         }

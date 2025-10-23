@@ -136,7 +136,7 @@ impl WasiCapabilities {
 pub struct WasiFileSystemCapabilities {
     /// Allowed filesystem paths (bounded for safety)
     allowed_paths: BoundedVec<
-        BoundedString<MAX_PATH_LENGTH, PathProvider>,
+        BoundedString<MAX_PATH_LENGTH>,
         MAX_FILESYSTEM_PATHS,
         PathProvider,
     >,
@@ -190,7 +190,7 @@ impl WasiFileSystemCapabilities {
     /// Add an allowed filesystem path
     pub fn add_allowed_path(&mut self, path: &str) -> Result<()> {
         let provider = create_provider()?;
-        let bounded_path = BoundedString::<256, _>::from_str(path, provider)
+        let bounded_path = BoundedString::<256>::from_str(path)
             .map_err(|_| Error::runtime_execution_error("Path too long"))?;
 
         self.allowed_paths.push(bounded_path).map_err(|_| {
@@ -230,7 +230,7 @@ pub struct WasiEnvironmentCapabilities {
     pub environ_access: bool,
     /// Specific environment variables that are allowed
     allowed_env_vars:
-        BoundedVec<BoundedString<MAX_ENV_VAR_LENGTH, EnvProvider>, MAX_ENV_VARS, EnvProvider>,
+        BoundedVec<BoundedString<MAX_ENV_VAR_LENGTH>, MAX_ENV_VARS, EnvProvider>,
 }
 
 impl WasiEnvironmentCapabilities {
@@ -267,7 +267,7 @@ impl WasiEnvironmentCapabilities {
     /// Add an allowed environment variable
     pub fn add_allowed_var(&mut self, var_name: &str) -> Result<()> {
         let provider = create_provider()?;
-        let bounded_var = BoundedString::<128, _>::from_str(var_name, provider)
+        let bounded_var = BoundedString::<128>::from_str(var_name)
             .map_err(|_| Error::runtime_execution_error("Path too long"))?;
 
         self.allowed_env_vars.push(bounded_var).map_err(|_| {

@@ -24,7 +24,7 @@ use crate::prelude::*;
 type AnalysisString = std::string::String;
 #[cfg(not(feature = "std"))]
 type AnalysisString =
-    wrt_foundation::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<4096>>;
+    wrt_foundation::BoundedString<256>;
 
 #[cfg(feature = "std")]
 type AnalysisVec<T> = std::vec::Vec<T>;
@@ -39,9 +39,7 @@ pub trait BoundedStringExt {
 }
 
 #[cfg(not(feature = "std"))]
-impl<const N: usize, P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq>
-    BoundedStringExt for wrt_foundation::BoundedString<N, P>
-{
+impl<const N: usize> BoundedStringExt for wrt_foundation::BoundedString<N> {
     fn as_bytes(&self) -> &[u8] {
         // This is a workaround - BoundedString doesn't have direct byte access
         // We'll return an empty slice for now and implement properly later

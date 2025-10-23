@@ -70,7 +70,7 @@ use wrt_foundation::collections::StaticVec;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Section {
     /// Type section containing function signatures
-    Type(BoundedTypeVec<WrtFuncType<DecoderProvider>>),
+    Type(BoundedTypeVec<WrtFuncType>),
     /// Import section
     Import(BoundedImportVec<WrtImport<DecoderProvider>>),
     /// Function section (function indices)
@@ -95,7 +95,7 @@ pub enum Section {
     DataCount(u32),
     /// Custom section
     Custom {
-        name: WasmString<DecoderProvider>,
+        name: WasmString,
         data: BoundedCustomData,
     },
     /// Empty section (default)
@@ -249,7 +249,7 @@ pub mod parsers {
     /// Parse a type section with bounded memory
     pub fn parse_type_section(
         bytes: &[u8],
-    ) -> Result<BoundedTypeVec<WrtFuncType<DecoderProvider>>> {
+    ) -> Result<BoundedTypeVec<WrtFuncType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_TYPES as u32, "type count")?;
@@ -318,10 +318,8 @@ pub mod parsers {
                     .map_err(|_| Error::memory_error("Too many results in function type"))?;
             }
 
-            // Create FuncType using Provider-based constructor (use DecoderProvider size)
-            let provider = safe_managed_alloc!(65536, CrateId::Decoder)?;
+            // Create FuncType (no longer needs provider after StaticVec migration)
             let func_type = WrtFuncType::new(
-                provider,
                 params.iter().copied(),
                 results.iter().copied(),
             )?;
@@ -433,9 +431,9 @@ pub mod parsers {
                 .map_err(|_| Error::parse_error("Invalid module string"))?;
             let field_str =
                 field_string.as_str().map_err(|_| Error::parse_error("Invalid field string"))?;
-            let module_name = WasmName::from_str(module_str, provider.clone())
+            let module_name = WasmName::from_str(module_str)
                 .map_err(|_| Error::memory_error("Module name too long"))?;
-            let item_name = WasmName::from_str(field_str, provider.clone())
+            let item_name = WasmName::from_str(field_str)
                 .map_err(|_| Error::memory_error("Item name too long"))?;
 
             let wrt_import = WrtImport {
@@ -580,7 +578,7 @@ pub mod parsers {
             let name_str = name_string
                 .as_str()
                 .map_err(|_| Error::parse_error("Invalid export name string"))?;
-            let export_name = WasmString::from_str(name_str, string_provider)
+            let export_name = WasmString::from_str(name_str)
                 .map_err(|_| Error::memory_error("Export name too long"))?;
 
             let export = WrtExport {

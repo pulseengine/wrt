@@ -55,7 +55,7 @@ pub struct CoreModuleInstantiation {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeInstantiateArg {
     /// Name of the argument
-    pub name:         BoundedString<256, InstantiationProvider>,
+    pub name:         BoundedString<256>,
     /// Runtime reference to the provided value
     pub runtime_ref:  RuntimeReference,
     /// Validation state
@@ -66,7 +66,7 @@ pub struct RuntimeInstantiateArg {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeCoreInstantiateArg {
     /// Name of the argument
-    pub name:                 BoundedString<256, InstantiationProvider>,
+    pub name:                 BoundedString<256>,
     /// Runtime instance index that provides the value
     pub runtime_instance_idx: u32,
     /// Validation state
@@ -151,7 +151,7 @@ impl ComponentInstantiation {
     /// Add instantiation argument
     pub fn add_arg(
         &mut self,
-        name: BoundedString<256, InstantiationProvider>,
+        name: BoundedString<256>,
         runtime_ref: RuntimeReference,
     ) -> Result<()> {
         let arg = RuntimeInstantiateArg {
@@ -199,7 +199,7 @@ impl CoreModuleInstantiation {
     /// Add core instantiation argument
     pub fn add_core_arg(
         &mut self,
-        name: BoundedString<256, InstantiationProvider>,
+        name: BoundedString<256>,
         runtime_instance_idx: u32,
     ) -> Result<()> {
         let arg = RuntimeCoreInstantiateArg {

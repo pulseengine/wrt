@@ -39,7 +39,7 @@ type HashMap<K, V> = BoundedMap<K, V, 16, NoStdProvider<4096>>; // 16 concurrent
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type Vec<T> = BoundedVec<T, 256, NoStdProvider<4096>>; // 256 operands max
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type String = BoundedString<256, NoStdProvider<512>>; // 256 byte strings
+type String = BoundedString<256>; // 256 byte strings
 
 // Simple Arc substitute for no_std - just owns the value directly
 #[cfg(not(any(feature = "std", feature = "alloc")))]
