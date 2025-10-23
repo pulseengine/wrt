@@ -370,10 +370,16 @@ pub trait LinkInterceptorStrategy: Send + Sync {
 #[cfg(not(feature = "std"))]
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
+    ///
+    /// # Errors
+    /// Returns error if interception fails
     fn before_call(&self, source: &str, target: &str, function: &str, args: &[Value])
         -> Result<()>;
 
     /// Called after a function call completes
+    ///
+    /// # Errors
+    /// Returns error if interception fails
     fn after_call(
         &self,
         source: &str,
@@ -399,6 +405,9 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     }
 
     /// Intercepts a resource operation
+    ///
+    /// # Errors
+    /// Returns error if resource interception fails
     fn intercept_resource_operation(
         &self,
         _handle: u32,

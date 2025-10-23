@@ -50,6 +50,9 @@ pub type BoundedExecutingMap = BoundedMap<
 pub type BoundedResultVec<T> = BoundedVec<T, 256, InterceptProvider>;
 
 /// Create a new bounded stats map
+///
+/// # Errors
+/// Returns error if provider allocation fails
 pub fn new_stats_map() -> Result<BoundedStatsMap, wrt_error::Error> {
     // For safety-critical code that forbids unsafe, use direct provider creation
     let provider = InterceptProvider::default();
@@ -57,6 +60,9 @@ pub fn new_stats_map() -> Result<BoundedStatsMap, wrt_error::Error> {
 }
 
 /// Create a new bounded executing map
+///
+/// # Errors
+/// Returns error if provider allocation fails
 pub fn new_executing_map() -> Result<BoundedExecutingMap, wrt_error::Error> {
     // For safety-critical code that forbids unsafe, use direct provider creation
     let provider = InterceptProvider::default();
@@ -64,6 +70,9 @@ pub fn new_executing_map() -> Result<BoundedExecutingMap, wrt_error::Error> {
 }
 
 /// Create a new bounded result vector
+///
+/// # Errors
+/// Returns error if provider allocation fails
 pub fn new_result_vec<T>() -> Result<BoundedResultVec<T>, wrt_error::Error>
 where
     T: wrt_foundation::traits::Checksummable
