@@ -68,6 +68,10 @@ pub mod multi_memory;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod shared_memory;
 
+// WebAssembly SIMD runtime
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod simd_runtime;
+
 // Simplified type system - CRITICAL COMPILATION FIX
 pub mod simple_types;
 pub mod unified_types;
