@@ -197,14 +197,14 @@ where
 
 /// Create a new bounded service name
 pub fn new_service_name() -> wrt_error::Result<BoundedServiceName> {
-    BoundedString::from_str("").map_err(|_| {
+    BoundedString::try_from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create service name")
     })
 }
 
 /// Create a bounded service name from str
 pub fn bounded_service_name_from_str(s: &str) -> wrt_error::Result<BoundedServiceName> {
-    BoundedString::from_str(s).map_err(|_| {
+    BoundedString::try_from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
             1001, // ALLOCATION_FAILED
@@ -215,14 +215,14 @@ pub fn bounded_service_name_from_str(s: &str) -> wrt_error::Result<BoundedServic
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> wrt_error::Result<BoundedConfigKey> {
-    BoundedString::from_str("").map_err(|_| {
+    BoundedString::try_from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create config key")
     })
 }
 
 /// Create a bounded configuration key from str
 pub fn bounded_config_key_from_str(s: &str) -> wrt_error::Result<BoundedConfigKey> {
-    BoundedString::from_str(s).map_err(|_| {
+    BoundedString::try_from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
             1001, // ALLOCATION_FAILED
@@ -233,14 +233,14 @@ pub fn bounded_config_key_from_str(s: &str) -> wrt_error::Result<BoundedConfigKe
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> wrt_error::Result<BoundedConfigValue> {
-    BoundedString::from_str("").map_err(|_| {
+    BoundedString::try_from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create config value")
     })
 }
 
 /// Create a bounded configuration value from str
 pub fn bounded_config_value_from_str(s: &str) -> wrt_error::Result<BoundedConfigValue> {
-    BoundedString::from_str(s).map_err(|_| {
+    BoundedString::try_from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
             1001, // ALLOCATION_FAILED
@@ -251,14 +251,14 @@ pub fn bounded_config_value_from_str(s: &str) -> wrt_error::Result<BoundedConfig
 
 /// Create a new bounded log message
 pub fn new_log_message() -> wrt_error::Result<BoundedLogMessage> {
-    BoundedString::from_str("").map_err(|_| {
+    BoundedString::try_from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create log message")
     })
 }
 
 /// Create a bounded log message from str
 pub fn bounded_log_message_from_str(s: &str) -> wrt_error::Result<BoundedLogMessage> {
-    BoundedString::from_str(s).map_err(|_| {
+    BoundedString::try_from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
             1001, // ALLOCATION_FAILED
