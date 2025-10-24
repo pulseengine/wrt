@@ -573,7 +573,7 @@ mod tests {
         assert!(value.as_component_value().is_some());
         assert_eq!(
             value.as_component_value().unwrap(),
-            &WrtComponentValue<ComponentProvider>::Bool(true)
+            &WrtComponentValue::<ComponentProvider>::Bool(true)
         );
     }
 
@@ -597,7 +597,7 @@ mod tests {
         let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
-            &WrtComponentValue<ComponentProvider>::I32(42)
+            &WrtComponentValue::<ComponentProvider>::I32(42)
         );
     }
 

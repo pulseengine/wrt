@@ -105,8 +105,6 @@ impl<T: ParametricContext> PureInstruction<T, Error> for ParametricOp {
 mod tests {
     // Import Vec based on feature flags
     use std::vec::Vec;
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
 
     use super::*;
 

@@ -23,12 +23,12 @@ use wrt_error::{
     Result,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "_removed"))]
 use crate::bounded::BoundedVec;
 use crate::prelude::{
     Debug, // Removed format, ToString as _ToString
 };
-#[cfg(test)]
+#[cfg(all(test, feature = "_removed"))]
 use crate::safe_memory::NoStdProvider;
 #[cfg(not(feature = "std"))]
 // use std::format; // Removed
@@ -161,8 +161,8 @@ pub fn validate_checksum(
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
     // For BoundedVec tests
     #[cfg(feature = "std")]

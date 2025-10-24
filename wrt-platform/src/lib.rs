@@ -20,7 +20,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)] // Rule: Enforce no_std when std feature is not enabled
 #![cfg_attr(
-    all(not(feature = "std"), not(feature = "enable-panic-handler")),
+    all(not(feature = "std"), not(feature = "enable-panic-handler"), not(test)),
     no_main
 )]
 #![deny(missing_docs)] // Rule 9: Require documentation.

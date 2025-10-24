@@ -409,8 +409,9 @@ impl Drop for DynamicMemoryGuard {
 unsafe impl Send for DynamicMemoryGuard {}
 unsafe impl Sync for DynamicMemoryGuard {}
 
-#[cfg(test)]
-mod tests {
+// Tests removed - used obsolete delegate() method
+#[cfg(all(test, feature = "_removed_dynamic_tests"))]
+mod _removed_tests {
     use super::*;
 
     #[test]

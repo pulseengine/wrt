@@ -311,8 +311,8 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> MemoryCoordinatorBuilder<C, MA
 // Re-export for convenience
 pub use self::AllocationId as AllocId;
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

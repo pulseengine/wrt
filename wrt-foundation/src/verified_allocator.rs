@@ -546,6 +546,7 @@ pub mod properties {
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)] // Tests need unsafe for GlobalAlloc operations
 mod tests {
     use super::*;
 

@@ -1050,7 +1050,7 @@ impl_basic_traits!(ResolvedImport, ResolvedImport::default());
 
 // Tests moved from component_instantiation_tests.rs
 #[cfg(test)]
-mod tests {
+mod additional_component_tests {
     use wrt_error::ErrorCategory;
 
     use super::*;

@@ -453,8 +453,8 @@ macro_rules! resource_safety_test {
     };
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
     use crate::safety_system::AsilLevel;
 

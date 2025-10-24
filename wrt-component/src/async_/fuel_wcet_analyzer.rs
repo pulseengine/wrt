@@ -995,8 +995,8 @@ mod tests {
             .analyze_task_wcet(task_id, component_id, Some(WcetAnalysisMethod::Static))
             .unwrap();
 
-        assert_eq!(result.method, WcetAnalysisMethod::Static;
-        assert!(result.wcet_fuel > 500)); // Should include safety margin
+        assert_eq!(result.method, WcetAnalysisMethod::Static);
+        assert!(result.wcet_fuel > 500); // Should include safety margin
         assert_eq!(result.sample_count, 0); // No samples in static analysis
     }
 

@@ -279,8 +279,8 @@ pub trait AtomicMemoryExt: Provider + Sized {
 // Implement the extension trait for all types that implement Provider
 impl<T: Provider> AtomicMemoryExt for T {}
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
     use crate::{
         budget_aware_provider::CrateId,

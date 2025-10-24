@@ -141,11 +141,8 @@ mod tests {
                 safe_managed_alloc,
             };
 
-            // Create a provider for testing
-            let provider = safe_managed_alloc!(512, CrateId::Runtime)?;
-
             // Test basic creation
-            let op = LogOperation::new(LogLevel::Info, "test message", provider.clone()).unwrap();
+            let op = LogOperation::new(LogLevel::Info, "test message").unwrap();
             assert_eq!(op.level, LogLevel::Info);
             assert_eq!(op.message.as_str().unwrap(), "test message");
             assert!(op.component_id.is_none());
@@ -155,7 +152,6 @@ mod tests {
                 LogLevel::Debug,
                 "test message",
                 "component-1",
-                provider.clone(),
             )
             .unwrap();
             assert_eq!(op.level, LogLevel::Debug);

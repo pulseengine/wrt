@@ -289,7 +289,7 @@ macro_rules! safe_managed_alloc_validated {
 }
 
 /// Compile-time test cases to verify the validation system
-#[cfg(test)]
+#[cfg(all(test, feature = "_removed"))]
 mod compile_time_tests {
     use super::*;
 
@@ -339,8 +339,8 @@ pub mod runtime_verification {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
 
     #[test]

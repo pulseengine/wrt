@@ -829,7 +829,7 @@ mod tests {
         };
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let handler = SafeMemoryHandler::new(provider)?;
+        let handler = SafeMemoryHandler::new(provider);
 
         // Test to_vec on empty handler
         let data = handler.to_vec()?;
