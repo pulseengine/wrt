@@ -623,7 +623,7 @@ impl Table {
     /// A string containing the statistics
     pub fn safety_stats(&self) -> wrt_foundation::bounded::BoundedString<256> {
         let stats_text = "Table Safety Stats: [Runtime table]";
-        wrt_foundation::bounded::BoundedString::from_str(stats_text)
+        wrt_foundation::bounded::BoundedString::try_from_str(stats_text)
             .unwrap_or_default()
     }
 }

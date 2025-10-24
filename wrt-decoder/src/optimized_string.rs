@@ -60,7 +60,7 @@ pub fn parse_utf8_string_inplace(
         CrateId,
     };
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    let bounded_string = wrt_foundation::BoundedString::from_str(string_str)
+    let bounded_string = wrt_foundation::BoundedString::try_from_str(string_str)
         .map_err(|_| Error::runtime_execution_error("Failed to create bounded string"))?;
     Ok((bounded_string, new_offset))
 }

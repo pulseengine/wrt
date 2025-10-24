@@ -135,7 +135,7 @@ impl FunctionReference {
         module_index: u32,
         function_index: u32,
     ) -> Result<Self> {
-        let bounded_name = BoundedString::from_str(name)
+        let bounded_name = BoundedString::try_from_str(name)
             .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         Ok(Self {
             name: bounded_name,

@@ -431,9 +431,9 @@ pub mod parsers {
                 .map_err(|_| Error::parse_error("Invalid module string"))?;
             let field_str =
                 field_string.as_str().map_err(|_| Error::parse_error("Invalid field string"))?;
-            let module_name = WasmName::from_str(module_str)
+            let module_name = WasmName::try_from_str(module_str)
                 .map_err(|_| Error::memory_error("Module name too long"))?;
-            let item_name = WasmName::from_str(field_str)
+            let item_name = WasmName::try_from_str(field_str)
                 .map_err(|_| Error::memory_error("Item name too long"))?;
 
             let wrt_import = WrtImport {

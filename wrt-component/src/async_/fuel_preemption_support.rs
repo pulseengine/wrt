@@ -355,7 +355,7 @@ impl FuelPreemptionManager {
         // Find nearest safe preemption point with checkpoint
         if let Some(points) = self.preemption_points.get(&task_id) {
             for point in points.iter().rev() {
-                if let Some(ref checkpoint) = point.checkpoint_data {
+                if let Some(checkpoint) = point.checkpoint_data {
                     return Ok(Some(checkpoint.clone()));
                 }
             }

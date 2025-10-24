@@ -439,7 +439,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         if let Ok(provider) = crate::prelude::create_decoder_provider::<4096>() {
                             if let Ok(name_str) = core::str::from_utf8(name_bytes) {
                                 if let Ok(name) =
-                                    wrt_foundation::BoundedString::from_str(name_str)
+                                    wrt_foundation::BoundedString::try_from_str(name_str)
                                 {
                                     name_section.component_name = Some(name);
                                 }
@@ -1029,7 +1029,7 @@ mod tests {
         {
             if let Ok(provider) = crate::prelude::create_decoder_provider::<4096>() {
                 if let Ok(name) =
-                    wrt_foundation::BoundedString::from_str("test_component")
+                    wrt_foundation::BoundedString::try_from_str("test_component")
                 {
                     name_section.component_name = Some(name);
                 }

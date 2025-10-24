@@ -287,7 +287,7 @@ impl StartFunctionValidator {
                 ValidationState::Skipped => summary.skipped += 1,
             }
 
-            if let Some(ref result) = validation.execution_result {
+            if let Some(result) = validation.execution_result {
                 summary.total_execution_time_ms += result.execution_time_ms;
                 summary.total_memory_usage += result.memory_usage;
             }
@@ -434,7 +434,7 @@ impl StartFunctionValidator {
         let mut arguments = BoundedVec::new();
 
         for param in descriptor.parameters.iter() {
-            let value = if let Some(ref default) = param.default_value {
+            let value = if let Some(default) = param.default_value {
                 default.clone()
             } else if param.required {
                 return Err(StartFunctionError {

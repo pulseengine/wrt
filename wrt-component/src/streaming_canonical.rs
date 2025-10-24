@@ -390,7 +390,7 @@ impl StreamingCanonicalAbi {
                             let string_bytes = &context.buffer[4..4 + len];
                             let string_content = core::str::from_utf8(string_bytes)
                                 .map_err(|_| Error::parse_error("Invalid UTF-8"))?;
-                            Value::String(BoundedString::from_str(string_content).unwrap_or_default())
+                            Value::String(BoundedString::try_from_str(string_content).unwrap_or_default())
                         } else {
                             return Ok((Vec::new(), 0)); // Need more data
                         }

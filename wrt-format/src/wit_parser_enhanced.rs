@@ -179,7 +179,7 @@ impl Lexer {
                     Some('\\') => result.push('\\'),
                     Some('"') => result.push('"'),
                     _ => return Err(WitParseError::InvalidSyntax(
-                        WitBoundedString::from_str("Invalid escape sequence", NoStdProvider::default()).unwrap()
+                        WitBoundedString::try_from_str("Invalid escape sequence", NoStdProvider::default()).unwrap()
                     )),
                 }
                 self.advance);
@@ -190,7 +190,7 @@ impl Lexer {
         }
         
         Err(WitParseError::InvalidSyntax(
-            WitBoundedString::from_str("Unterminated string literal", NoStdProvider::default()).unwrap()
+            WitBoundedString::try_from_str("Unterminated string literal", NoStdProvider::default()).unwrap()
         ))
     }
     
@@ -329,7 +329,7 @@ impl Lexer {
             }
             Some(ch) => {
                 Err(WitParseError::InvalidSyntax(
-                    WitBoundedString::from_str(&format!("Unexpected character: {}", ch), NoStdProvider::default()).unwrap()
+                    WitBoundedString::try_from_str(&format!("Unexpected character: {}", ch), NoStdProvider::default()).unwrap()
                 ))
             }
         }
@@ -404,7 +404,7 @@ impl EnhancedWitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        WitBoundedString::from_str("Expected top-level declaration", self.provider.clone()).unwrap()
+                        WitBoundedString::try_from_str("Expected top-level declaration", self.provider.clone()).unwrap()
                     ;
                 }
             }
@@ -443,7 +443,7 @@ impl EnhancedWitParser {
             Ok(())
         } else {
             Err(WitParseError::InvalidSyntax(
-                WitBoundedString::from_str(&format!("Expected {:?}, found {:?}", expected, self.current_token), self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str(&format!("Expected {:?}, found {:?}", expected, self.current_token), self.provider.clone()).unwrap()
             ))
         }
     }
@@ -482,12 +482,12 @@ impl EnhancedWitParser {
             let end = self.lexer.current_position);
             
             Ok(Identifier {
-                name: WitBoundedString::from_str(&name_str, self.provider.clone()).unwrap(),
+                name: WitBoundedString::try_from_str(&name_str, self.provider.clone()).unwrap(),
                 span: SourceSpan::new(start, end, self.lexer.file_id),
             };
         } else {
             Err(WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Expected identifier", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Expected identifier", self.provider.clone()).unwrap()
             ))
         }
     }
@@ -524,15 +524,15 @@ impl EnhancedWitParser {
             let parts: Vec<&str> = v.split('.').collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    WitBoundedString::from_str("Invalid version format", self.provider.clone()).unwrap()
+                    WitBoundedString::try_from_str("Invalid version format", self.provider.clone()).unwrap()
                 ;
             }
             
             let major = parts[0].parse().map_err(|_| WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Invalid major version", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Invalid major version", self.provider.clone()).unwrap()
             ))?;
             let minor = parts[1].parse().map_err(|_| WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Invalid minor version", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Invalid minor version", self.provider.clone()).unwrap()
             ))?;
             
             let (patch_str, pre) = if let Some(dash_pos) = parts[2].find('-') {
@@ -543,7 +543,7 @@ impl EnhancedWitParser {
             };
             
             let patch = patch_str.parse().map_err(|_| WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Invalid patch version", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Invalid patch version", self.provider.clone()).unwrap()
             ))?;
             
             self.advance()?;
@@ -558,7 +558,7 @@ impl EnhancedWitParser {
             };
         } else {
             Err(WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Expected version", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Expected version", self.provider.clone()).unwrap()
             ))
         }
     }
@@ -1137,7 +1137,7 @@ impl EnhancedWitParser {
                 }
             }
             _ => Err(WitParseError::InvalidSyntax(
-                WitBoundedString::from_str("Expected type expression", self.provider.clone()).unwrap()
+                WitBoundedString::try_from_str("Expected type expression", self.provider.clone()).unwrap()
             ))
         }
     }
@@ -1176,7 +1176,7 @@ impl EnhancedWitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        WitBoundedString::from_str("Expected interface item", self.provider.clone()).unwrap()
+                        WitBoundedString::try_from_str("Expected interface item", self.provider.clone()).unwrap()
                     ;
                 }
             }
@@ -1341,7 +1341,7 @@ impl EnhancedWitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        WitBoundedString::from_str("Expected world item", self.provider.clone()).unwrap()
+                        WitBoundedString::try_from_str("Expected world item", self.provider.clone()).unwrap()
                     ;
                 }
             }

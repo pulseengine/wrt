@@ -341,11 +341,11 @@ pub mod parsers {
         )?;
 
         for format_import in format_imports {
-            let module_name = wrt_foundation::bounded::WasmName::from_str(&format_import.module)
+            let module_name = wrt_foundation::bounded::WasmName::try_from_str(&format_import.module)
             .map_err(|_| Error::parse_error("Module name too long for bounded string"))?;
 
             let item_name =
-                wrt_foundation::bounded::WasmName::from_str(&format_import.name)
+                wrt_foundation::bounded::WasmName::try_from_str(&format_import.name)
                     .map_err(|_| Error::parse_error("Item name too long for bounded string"))?;
 
             let wrt_desc = match format_import.desc {

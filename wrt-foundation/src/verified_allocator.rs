@@ -430,7 +430,8 @@ unsafe impl GlobalAlloc for VerifiedAllocator {
             ) {
                 Ok(_) => {
                     // Success - return pointer
-                    let ptr = self.heap_start().add(aligned);
+                    // SAFETY: Edition 2024 requires explicit unsafe blocks in unsafe functions
+                    let ptr = unsafe { self.heap_start().add(aligned) };
 
                     #[cfg(debug_assertions)]
                     self.check_invariants();
@@ -469,12 +470,14 @@ pub mod global_allocators {
     unsafe impl GlobalAlloc for TestAllocator {
         #[allow(unsafe_code)]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            CRATE_ALLOCATORS[0].alloc(layout) // Use Foundation allocator
+            // SAFETY: Edition 2024 requires explicit unsafe blocks in unsafe functions
+            unsafe { CRATE_ALLOCATORS[0].alloc(layout) } // Use Foundation allocator
         }
 
         #[allow(unsafe_code)]
         unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-            CRATE_ALLOCATORS[0].dealloc(ptr, layout)
+            // SAFETY: Edition 2024 requires explicit unsafe blocks in unsafe functions
+            unsafe { CRATE_ALLOCATORS[0].dealloc(ptr, layout) }
         }
     }
     

@@ -217,7 +217,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     pub fn parse_world(&mut self, source: &str) -> Result<WitWorld<P>, WitParseError<P>> {
         let mut world = WitWorld {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::try_from_str("", self.provider.clone()).unwrap_or_default(),
             imports: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             exports: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
@@ -262,7 +262,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     pub fn parse_interface(&mut self, source: &str) -> Result<WitInterface<P>, WitParseError<P>> {
         let mut interface = WitInterface {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::try_from_str("", self.provider.clone()).unwrap_or_default(),
             functions: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
         };
@@ -306,14 +306,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
-                BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Invalid import syntax", self.provider.clone()).unwrap()
             ;
         }
 
         #[cfg(feature = "std")]
-        let name = BoundedString::from_str(parts[1], self.provider.clone())
+        let name = BoundedString::try_from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
-                BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
         #[cfg(feature = "std")]
@@ -326,7 +326,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             }
             _ => {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Unsupported import type", self.provider.clone()).unwrap()
                 ;
             }
         };
@@ -336,7 +336,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         
         #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
-            BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
+            BoundedString::try_from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
     }
 
@@ -346,14 +346,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
-                BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Invalid export syntax", self.provider.clone()).unwrap()
             ;
         }
 
         #[cfg(feature = "std")]
-        let name = BoundedString::from_str(parts[1], self.provider.clone())
+        let name = BoundedString::try_from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
-                BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
         #[cfg(feature = "std")]
@@ -366,7 +366,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             }
             _ => {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Unsupported export type", self.provider.clone()).unwrap()
                 ;
             }
         };
@@ -376,13 +376,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         
         #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
-            BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
+            BoundedString::try_from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
     }
 
     fn parse_function(&mut self, line: &str) -> Result<WitFunction<P>, WitParseError<P>> {
         let mut function = WitFunction {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::try_from_str("", self.provider.clone()).unwrap_or_default(),
             params: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             results: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             is_async: line.contains("async"),
@@ -394,9 +394,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
-                function.name = BoundedString::from_str(name, self.provider.clone())
+                function.name = BoundedString::try_from_str(name, self.provider.clone())
                     .map_err(|_| WitParseError::InvalidIdentifier(
-                        BoundedString::from_str(name, self.provider.clone()).unwrap_or_default()
+                        BoundedString::try_from_str(name, self.provider.clone()).unwrap_or_default()
                     ))?;
             }
         }
@@ -410,14 +410,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
-                BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Invalid type definition", self.provider.clone()).unwrap()
             ;
         }
 
         #[cfg(feature = "std")]
-        let name = BoundedString::from_str(parts[1], self.provider.clone())
+        let name = BoundedString::try_from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
-                BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
         #[cfg(feature = "std")]
@@ -437,7 +437,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         
         #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
-            BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
+            BoundedString::try_from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
     }
 
@@ -478,9 +478,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
                         let inner_type = self.parse_type(inner)?;
                         Ok(WitType::Future(Box::new(inner_type)))
                     } else {
-                        let name = BoundedString::from_str(type_str, self.provider.clone())
+                        let name = BoundedString::try_from_str(type_str, self.provider.clone())
                             .map_err(|_| WitParseError::InvalidIdentifier(
-                                BoundedString::from_str(type_str, self.provider.clone()).unwrap_or_default()
+                                BoundedString::try_from_str(type_str, self.provider.clone()).unwrap_or_default()
                             ))?;
                         Ok(WitType::Named(name))
                     }
@@ -488,9 +488,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
                 
                 #[cfg(not(any(feature = "std", )))]
                 {
-                    let name = BoundedString::from_str(type_str, self.provider.clone())
+                    let name = BoundedString::try_from_str(type_str, self.provider.clone())
                         .map_err(|_| WitParseError::InvalidIdentifier(
-                            BoundedString::from_str(type_str, self.provider.clone()).unwrap_or_default()
+                            BoundedString::try_from_str(type_str, self.provider.clone()).unwrap_or_default()
                         ))?;
                     Ok(WitType::Named(name))
                 }
@@ -501,17 +501,17 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
     fn extract_identifier(&self, line: &str, prefix: &str) -> Result<BoundedString<64, P>, WitParseError<P>> {
         let remaining = line.strip_prefix(prefix)
             .ok_or_else(|| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Missing prefix", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Missing prefix", self.provider.clone()).unwrap()
             ))?;
         
         let identifier = remaining.split_whitespace().next()
             .ok_or_else(|| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Missing identifier", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Missing identifier", self.provider.clone()).unwrap()
             ))?;
 
-        BoundedString::from_str(identifier, self.provider.clone())
+        BoundedString::try_from_str(identifier, self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
-                BoundedString::from_str(identifier, self.provider.clone()).unwrap_or_default()
+                BoundedString::try_from_str(identifier, self.provider.clone()).unwrap_or_default()
             ))
     }
 

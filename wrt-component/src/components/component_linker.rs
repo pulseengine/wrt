@@ -227,13 +227,13 @@ impl Default for ComponentMetadata {
                 .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata author"));
 
             Self {
-                name:        BoundedString::from_str("")
+                name:        BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata name")),
-                version:     BoundedString::from_str("1.0.0")
+                version:     BoundedString::try_from_str("1.0.0")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata version")),
-                description: BoundedString::from_str("")
+                description: BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata description")),
-                author:      BoundedString::from_str("")
+                author:      BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata author")),
                 compiled_at: 0,
             }
@@ -1097,7 +1097,7 @@ impl Default for GraphNode {
                 .unwrap_or_else(|_| panic!("Failed to allocate memory for GraphNode::default"));
 
             Self {
-                component_id: BoundedString::from_str("")
+                component_id: BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create GraphNode component_id")),
                 index:        0,
                 dependencies: Vec::new(),

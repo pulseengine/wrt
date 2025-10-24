@@ -359,7 +359,7 @@ impl ComponentMemoryManager {
             return Ok(MemoryAccess {
                 success: false,
                 bytes_accessed: 0,
-                error: Some(BoundedString::from_str("Write permission denied").unwrap_or_default()),
+                error: Some(BoundedString::try_from_str("Write permission denied").unwrap_or_default()),
             };
         }
 
@@ -376,7 +376,7 @@ impl ComponentMemoryManager {
                 success: false,
                 bytes_accessed: 0,
                 error: Some(
-                    BoundedString::from_str("Memory access out of bounds").unwrap_or_default(),
+                    BoundedString::try_from_str("Memory access out of bounds").unwrap_or_default(),
                 ),
             };
         }

@@ -43,7 +43,7 @@ pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)
         #[cfg(not(feature = "std"))]
         Ok(s) => {
             use wrt_foundation::BoundedString;
-            BoundedString::from_str(s)
+            BoundedString::try_from_str(s)
                 .map_err(|_| Error::parse_error("String too long for bounded storage"))?
         },
         Err(_) => return Err(Error::parse_error("Invalid UTF-8 in name")),

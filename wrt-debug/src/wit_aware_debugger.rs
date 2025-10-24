@@ -450,7 +450,7 @@ impl WitAwareDebugger for WitDebugger {
                     name:            metadata.name.clone(),
                     kind:            match metadata.kind {
                         WitTypeKind::Primitive => crate::wit_source_map::WitTypeKind::Primitive(
-                            BoundedString::from_str("primitive", provider).unwrap(),
+                            BoundedString::try_from_str("primitive", provider).unwrap(),
                         ),
                         WitTypeKind::Record => crate::wit_source_map::WitTypeKind::Record(0),
                         WitTypeKind::Variant => crate::wit_source_map::WitTypeKind::Variant(0),
@@ -535,7 +535,7 @@ mod tests {
         let provider = guard.provider().clone();
 
         let metadata = ComponentMetadata {
-            name:         BoundedString::from_str("test-component", provider).unwrap(),
+            name:         BoundedString::try_from_str("test-component", provider).unwrap(),
             source_span:  SourceSpan::new(0, 100, 0),
             binary_start: 1000,
             binary_end:   2000,
@@ -559,7 +559,7 @@ mod tests {
         let provider = guard.provider().clone();
 
         let metadata = FunctionMetadata {
-            name:          BoundedString::from_str("test-function", provider).unwrap(),
+            name:          BoundedString::try_from_str("test-function", provider).unwrap(),
             source_span:   SourceSpan::new(10, 50, 0),
             binary_offset: 1200,
             param_types:   Vec::new(),

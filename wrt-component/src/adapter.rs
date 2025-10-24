@@ -345,7 +345,7 @@ impl CoreModuleAdapter {
                     },
                     export_name: {
                         let _provider = safe_managed_alloc!(512, CrateId::Component)?;
-                        BoundedString::from_str(&format!("func_{}", func_adapter.core_index))?
+                        BoundedString::try_from_str(&format!("func_{}", func_adapter.core_index))?
                     },
                 }),
                 kind: ExportKind::Function { function_index: func_adapter.core_index },
@@ -776,7 +776,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-            let name = BoundedString::from_str("test_module").unwrap();
+            let name = BoundedString::try_from_str("test_module").unwrap();
             let adapter = CoreModuleAdapter::new(name).unwrap();
             assert_eq!(adapter.name.as_str(), "test_module");
             assert_eq!(adapter.functions.len(), 0);

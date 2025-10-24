@@ -228,7 +228,7 @@ fn test_no_dynamic_allocation_in_critical_path() {
     let vec: BoundedVec<u32, 100, TestProvider> = BoundedVec::new(provider.clone()).unwrap();
     let map: BoundedMap<u32, u32, 50, TestProvider> = BoundedMap::new(provider.clone()).unwrap();
     let string: BoundedString<128, TestProvider> =
-        BoundedString::from_str("test", provider).unwrap();
+        BoundedString::try_from_str("test", provider).unwrap();
 
     // Verify static allocation
     assert_eq!(vec.capacity(), 100);

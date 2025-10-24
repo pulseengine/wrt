@@ -235,7 +235,7 @@ impl ComponentThreadManager {
     pub fn spawn_thread(&mut self, request: ThreadSpawnRequest) -> ThreadSpawnResult<ThreadHandle> {
         self.validate_spawn_request(&request)?;
 
-        if let Some(ref virt_manager) = self.virt_manager {
+        if let Some(virt_manager) = self.virt_manager {
             self.check_threading_capability(&request, virt_manager)?;
         }
 
@@ -424,7 +424,7 @@ impl ComponentThreadManager {
 
         let mut builder = thread::Builder::new();
 
-        if let Some(ref name) = request.configuration.name {
+        if let Some(name) = request.configuration.name {
             builder = builder.name(name.clone());
         }
 

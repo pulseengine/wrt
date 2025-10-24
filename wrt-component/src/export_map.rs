@@ -69,26 +69,26 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
 
     /// Add an export to the map
     pub fn add(&mut self, name: &str, export: Arc<Export>) -> Result<()> {
-        let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
+        let bounded_name = BoundedString::try_from_str(name, self.exports.provider().clone())?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
 
     /// Get an export by name
     pub fn get(&self, name: &str) -> Result<Option<Arc<Export>>> {
-        let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
+        let bounded_name = BoundedString::try_from_str(name, self.exports.provider().clone())?;
         Ok(self.exports.get(&bounded_name).cloned())
     }
 
     /// Remove an export by name
     pub fn remove(&mut self, name: &str) -> Result<Option<Arc<Export>>> {
-        let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
+        let bounded_name = BoundedString::try_from_str(name, self.exports.provider().clone())?;
         Ok(self.exports.remove(&bounded_name))
     }
 
     /// Check if an export exists by name
     pub fn contains(&self, name: &str) -> bool {
-        if let Ok(bounded_name) = BoundedString::from_str(name, self.exports.provider().clone()) {
+        if let Ok(bounded_name) = BoundedString::try_from_str(name, self.exports.provider().clone()) {
             self.exports.contains_key(&bounded_name)
         } else {
             false

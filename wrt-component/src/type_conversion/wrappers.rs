@@ -297,7 +297,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
         for (namespace, name, extern_type) in format_type.imports {
             let runtime_type = format_to_runtime_extern_type(&extern_type)?;
             let namespace_obj = wrt_foundation::Namespace::from_str(&namespace, provider.clone())?;
-            let name_wasm = wrt_foundation::WasmName::from_str(&name)
+            let name_wasm = wrt_foundation::WasmName::try_from_str(&name)
                 .map_err(|_| Error::runtime_execution_error("Invalid import name"))?;
             let import = wrt_foundation::Import {
                 key: wrt_foundation::ImportKey {
@@ -319,7 +319,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
 
         for (name, extern_type) in format_type.exports {
             let runtime_type = format_to_runtime_extern_type(&extern_type)?;
-            let name_wasm = wrt_foundation::WasmName::from_str(&name)
+            let name_wasm = wrt_foundation::WasmName::try_from_str(&name)
                 .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
             let export = wrt_foundation::Export {
                 name: name_wasm,
@@ -391,7 +391,7 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
 
         for (name, extern_type) in format_type.exports {
             let runtime_type = format_to_runtime_extern_type(&extern_type)?;
-            let name_wasm = wrt_foundation::WasmName::from_str(&name)
+            let name_wasm = wrt_foundation::WasmName::try_from_str(&name)
                 .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
             let export = wrt_foundation::Export {
                 name: name_wasm,

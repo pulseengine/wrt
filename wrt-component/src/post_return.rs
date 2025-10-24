@@ -1333,7 +1333,7 @@ pub mod helpers {
         use wrt_foundation::safe_memory::NoStdProvider;
 
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {
+        let cleanup_id = BoundedString::try_from_str(cleanup_id).map_err(|_| {
             Error::runtime_execution_error("Failed to create cleanup task ID as bounded string")
         })?;
 

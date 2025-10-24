@@ -415,7 +415,7 @@ impl FuelTrackedThreadManager {
         self.time_bounds.remove(&thread_id);
 
         // Update global fuel consumed (return unused fuel)
-        if let Some(ref status) = fuel_status {
+        if let Some(status) = fuel_status {
             if self.fuel_enforcement.load(Ordering::Acquire) {
                 self.global_fuel_consumed.fetch_sub(status.remaining_fuel, Ordering::AcqRel);
             }

@@ -282,7 +282,7 @@ impl WasiResourceManager {
         readable: bool,
         writable: bool,
     ) -> Result<WasiHandle> {
-        let path_string = BoundedString::from_str(path)
+        let path_string = BoundedString::try_from_str(path)
             .map_err(|_| Error::runtime_execution_error("Path string too long"))?;
 
         let resource_type = WasiResourceType::FileDescriptor {
@@ -303,7 +303,7 @@ impl WasiResourceManager {
 
     /// Create a directory handle resource
     pub fn create_directory_handle(&mut self, path: &str) -> Result<WasiHandle> {
-        let path_string = BoundedString::from_str(path).map_err(|_| {
+        let path_string = BoundedString::try_from_str(path).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
@@ -325,7 +325,7 @@ impl WasiResourceManager {
 
     /// Create an input stream resource
     pub fn create_input_stream(&mut self, name: &str) -> Result<WasiHandle> {
-        let name_string = BoundedString::from_str(name)
+        let name_string = BoundedString::try_from_str(name)
             .map_err(|_| Error::runtime_execution_error("Stream name too long"))?;
 
         let resource_type = WasiResourceType::InputStream {
@@ -345,7 +345,7 @@ impl WasiResourceManager {
 
     /// Create an output stream resource
     pub fn create_output_stream(&mut self, name: &str) -> Result<WasiHandle> {
-        let name_string = BoundedString::from_str(name).map_err(|_| {
+        let name_string = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,

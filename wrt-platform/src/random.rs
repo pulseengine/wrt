@@ -102,7 +102,8 @@ impl PlatformRandom {
     fn macos_random(buffer: &mut [u8]) -> Result<()> {
         use std::os::raw::c_void;
 
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn getentropy(buf: *mut c_void, buflen: usize) -> i32;
         }
 

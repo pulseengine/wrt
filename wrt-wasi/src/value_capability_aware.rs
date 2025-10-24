@@ -125,7 +125,7 @@ impl CapabilityAwareValue {
     /// Create a capability-aware string value
     pub fn string_from_str(s: &str) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
-        let bounded_string = WasiBoundedString::from_str(s)?;
+        let bounded_string = WasiBoundedString::try_from_str(s)?;
         Ok(CapabilityAwareValue::String(bounded_string))
     }
 
@@ -151,7 +151,7 @@ impl CapabilityAwareValue {
         let mut bounded_vec = WasiBoundedVec::new(provider.clone())?;
 
         for (key, value) in pairs {
-            let bounded_key = WasiBoundedString::from_str(&key)?;
+            let bounded_key = WasiBoundedString::try_from_str(&key)?;
             bounded_vec.push((bounded_key, value))?;
         }
 
@@ -224,7 +224,7 @@ impl CapabilityAwareValue {
     pub fn as_bounded_string(&self) -> Result<WasiBoundedString> {
         if let CapabilityAwareValue::String(s) = self { Ok(s.clone()) } else {
             let provider = create_wasi_value_provider()?;
-            Ok(WasiBoundedString::from_str("")?)
+            Ok(WasiBoundedString::try_from_str("")?)
         }
     }
 

@@ -65,7 +65,7 @@ pub fn build_record<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
 
     for (name, val_type) in fields {
         // Convert String to WasmName
-        let wasm_name = WasmName::from_str(&name)?;
+        let wasm_name = WasmName::try_from_str(&name)?;
 
         // Store the ValType and get a reference
         let type_ref = type_store.store_type(val_type);
@@ -88,7 +88,7 @@ pub fn build_variant<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     let mut bounded_cases = BoundedVec::new(provider.clone())?;
 
     for (name, maybe_val_type) in cases {
-        let wasm_name = WasmName::from_str(&name)?;
+        let wasm_name = WasmName::try_from_str(&name)?;
         let maybe_type_ref = maybe_val_type.map(|vt| type_store.store_type(vt));
 
         bounded_cases
@@ -125,7 +125,7 @@ pub fn build_flags<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     let mut bounded_names = BoundedVec::new(provider.clone())?;
 
     for name in names {
-        let wasm_name = WasmName::from_str(&name)?;
+        let wasm_name = WasmName::try_from_str(&name)?;
         bounded_names
             .push(wasm_name)
             .map_err(|_| Error::memory_error("Failed to push to bounded flags"))?;
@@ -142,7 +142,7 @@ pub fn build_enum<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     let mut bounded_names = BoundedVec::new(provider.clone())?;
 
     for name in names {
-        let wasm_name = WasmName::from_str(&name)?;
+        let wasm_name = WasmName::try_from_str(&name)?;
         bounded_names
             .push(wasm_name)
             .map_err(|_| Error::memory_error("Failed to push to bounded enum"))?;

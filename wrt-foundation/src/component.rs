@@ -198,7 +198,7 @@ where
         let mut elements = BoundedVec::new(provider.clone())?;
         for part in s.split(':') {
             if !part.is_empty() {
-                let name_element = WasmName::from_str(part)?;
+                let name_element = WasmName::try_from_str(part)?;
                 elements.push(name_element)?;
             }
         }

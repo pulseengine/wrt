@@ -193,7 +193,7 @@ impl MemoryCapabilityContext {
         // Always use static array logic for ASIL-A compliance
         for (key, value) in self.capabilities.iter() {
             if *key == Some(crate_id) {
-                if let Some(ref cap) = value {
+                if let Some(cap) = value {
                     return Ok(cap.as_ref());
                 }
             }

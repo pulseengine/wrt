@@ -97,7 +97,7 @@ impl Resource {
     pub fn new_with_name(type_idx: u32, data_ptr: usize, name: &str) -> Self {
         let mut resource = Self::new(type_idx, data_ptr);
         if let Ok(provider) = safe_managed_alloc!(512, CrateId::Component) {
-            resource.name = BoundedString::from_str(name).ok();
+            resource.name = BoundedString::try_from_str(name).ok();
         }
         resource
     }

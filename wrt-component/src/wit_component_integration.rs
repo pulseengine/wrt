@@ -565,7 +565,7 @@ impl ComponentLowering {
             }
             ComponentType::Variant(variant) => {
                 for case in &variant.cases {
-                    if let Some(ref case_type) = case.case_type {
+                    if let Some(case_type) = case.case_type {
                         Self::validate_component_type(case_type, context)?;
                     }
                 }

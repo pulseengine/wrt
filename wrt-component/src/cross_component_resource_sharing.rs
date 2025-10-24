@@ -815,7 +815,7 @@ impl CrossComponentResourceSharingManager {
                 }
             },
             PolicyRule::RequiredCapabilities { capabilities } => {
-                if let Some(ref virt_manager) = self.virt_manager {
+                if let Some(virt_manager) = self.virt_manager {
                     for capability in capabilities.iter() {
                         if !virt_manager.check_capability(target, capability) {
                             #[cfg(feature = "std")]

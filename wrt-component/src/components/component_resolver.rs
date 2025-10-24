@@ -411,7 +411,7 @@ mod tests {
         let mut resolver = ComponentResolver::new().unwrap();
         let instance_id = ComponentInstanceId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-        let import_name = BoundedString::from_str("test_import").unwrap();
+        let import_name = BoundedString::try_from_str("test_import").unwrap();
 
         let import_value = ImportValue::Value {
             val_type: ValType::U32,
@@ -430,12 +430,12 @@ mod tests {
         let mut resolver = ComponentResolver::new().unwrap();
         let instance_id = ComponentInstanceId(1);
         let provider1 = safe_managed_alloc!(512, CrateId::Component).unwrap();
-        let export_name = BoundedString::from_str("test_export").unwrap();
+        let export_name = BoundedString::try_from_str("test_export").unwrap();
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let export_value = ExportValue::Value {
             val_type: ValType::String,
-            value:    WrtComponentValue::String(BoundedString::from_str("hello").unwrap()),
+            value:    WrtComponentValue::String(BoundedString::try_from_str("hello").unwrap()),
         };
 
         let result = resolver.resolve_export(instance_id, export_name.clone(), export_value);
@@ -452,7 +452,7 @@ mod tests {
         // Create matching import and export
         let provider1 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let import = ResolvedImport {
-            name:     BoundedString::from_str("test").unwrap(),
+            name:     BoundedString::try_from_str("test").unwrap(),
             value:    ImportValue::Value {
                 val_type: ValType::U32,
                 value:    WrtComponentValue::U32(0),
@@ -462,7 +462,7 @@ mod tests {
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let export = ResolvedExport {
-            name:     BoundedString::from_str("test").unwrap(),
+            name:     BoundedString::try_from_str("test").unwrap(),
             value:    ExportValue::Value {
                 val_type: ValType::U32,
                 value:    WrtComponentValue::U32(42),

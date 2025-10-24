@@ -349,7 +349,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
         for (name_str, val) in flags {
             let name =
-                WasmName::from_str(name_str.as_ref()).map_err(|_e| {
+                WasmName::try_from_str(name_str.as_ref()).map_err(|_e| {
                     Error::runtime_execution_error("Failed to create WasmName from string")
                 })?;
             flag_values.push((name, val)).map_err(|_e| {
@@ -371,7 +371,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     where
         P: Clone,
     {
-        let name = WasmName::from_str(case.as_ref())
+        let name = WasmName::try_from_str(case.as_ref())
             .map_err(|_e| Error::runtime_execution_error("Failed to create enum case name"))?;
         let comp_val = ComponentValue::<P>::Enum(name);
         let new_ref = self.add_value(comp_val)?;

@@ -347,13 +347,13 @@ impl WitLanguageServer {
                 .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
                 let hover_text = match node_info {
                     NodeInfo::Function(name) => {
-                        BoundedString::from_str(&format!("Function: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Function: {}", name), provider).ok()
                     },
                     NodeInfo::Type(name) => {
-                        BoundedString::from_str(&format!("Type: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Type: {}", name), provider).ok()
                     },
                     NodeInfo::Interface(name) => {
-                        BoundedString::from_str(&format!("Interface: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Interface: {}", name), provider).ok()
                     },
                     _ => None,
                 };
@@ -397,7 +397,7 @@ impl WitLanguageServer {
         ];
 
         for (keyword, kind) in keywords {
-            if let Ok(label) = BoundedString::from_str(keyword, provider.clone()) {
+            if let Ok(label) = BoundedString::try_from_str(keyword, provider.clone()) {
                 items.push(CompletionItem {
                     label,
                     kind,
@@ -415,12 +415,12 @@ impl WitLanguageServer {
         ];
 
         for type_name in primitive_types {
-            if let Ok(label) = BoundedString::from_str(type_name, provider.clone()) {
+            if let Ok(label) = BoundedString::try_from_str(type_name, provider.clone()) {
                 items.push(CompletionItem {
                     label,
                     kind: CompletionItemKind::Type,
                     detail: Some(
-                        BoundedString::from_str("Primitive type", provider.clone()).unwrap(),
+                        BoundedString::try_from_str("Primitive type", provider.clone()).unwrap(),
                     ),
                     documentation: None,
                     insert_text: None,
@@ -510,7 +510,7 @@ impl WitLanguageServer {
 
         // Extract package symbol
         if let Some(ref package) = ast.package {
-            if let Ok(name) = BoundedString::from_str("package", provider.clone()) {
+            if let Ok(name) = BoundedString::try_from_str("package", provider.clone()) {
                 symbols.push(DocumentSymbol {
                     name,
                     kind: SymbolKind::Package,

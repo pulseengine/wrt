@@ -648,7 +648,7 @@ impl AsyncExecutionEngine {
         // Push call frame
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str(name).map_err(|_| {
+            function:      BoundedString::try_from_str(name).map_err(|_| {
                 Error::runtime_execution_error("Failed to create function name BoundedString")
             })?,
             return_ip:     0,
@@ -700,7 +700,7 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("stream.read").map_err(|_| {
+            function:      BoundedString::try_from_str("stream.read").map_err(|_| {
                 Error::runtime_execution_error("Failed to create stream.read BoundedString")
             })?,
             return_ip:     0,
@@ -759,7 +759,7 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("future.get").map_err(|_| {
+            function:      BoundedString::try_from_str("future.get").map_err(|_| {
                 Error::runtime_execution_error("Failed to create future.get BoundedString")
             })?,
             return_ip:     0,
@@ -813,7 +813,7 @@ impl AsyncExecutionEngine {
         // Wait for multiple operations
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("wait.multiple").map_err(|_| {
+            function:      BoundedString::try_from_str("wait.multiple").map_err(|_| {
                 Error::runtime_execution_error("Failed to create wait.multiple BoundedString")
             })?,
             return_ip:     0,
@@ -842,7 +842,7 @@ impl AsyncExecutionEngine {
         // Create subtask operation
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let subtask_op = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str(function).map_err(|_| {
+            name: BoundedString::try_from_str(function).map_err(|_| {
                 Error::runtime_execution_error("Failed to create subtask function name BoundedString")
             })?,
             args: {
@@ -1045,7 +1045,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str("test_function").unwrap(),
+            name: BoundedString::try_from_str("test_function").unwrap(),
             args: {
                 #[cfg(feature = "std")]
                 {
@@ -1075,7 +1075,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::FunctionCall {
-            name: BoundedString::from_str("test_function").unwrap(),
+            name: BoundedString::try_from_str("test_function").unwrap(),
             args: {
                 #[cfg(feature = "std")]
                 {
@@ -1125,7 +1125,7 @@ mod tests {
         let task_id = TaskId(1);
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let operation = AsyncExecutionOperation::SpawnSubtask {
-            function: BoundedString::from_str("child_function").unwrap(),
+            function: BoundedString::try_from_str("child_function").unwrap(),
             args:     {
                 #[cfg(feature = "std")]
                 {
@@ -1157,7 +1157,7 @@ mod tests {
 
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::from_str("test").unwrap(),
+            function:      BoundedString::try_from_str("test").unwrap(),
             return_ip:     100,
             stack_pointer: 200,
             async_state:   FrameAsyncState::Sync,

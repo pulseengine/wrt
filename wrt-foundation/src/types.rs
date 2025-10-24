@@ -2520,7 +2520,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
         desc: ImportDesc<P>,
     ) -> Result<Self> {
         let module_name =
-            WasmName::from_str(module_name_str).map_err(|e| match e {
+            WasmName::try_from_str(module_name_str).map_err(|e| match e {
                 SerializationError::Custom(_) => {
                     Error::runtime_execution_error("Custom serialization error in module name")
                 },
@@ -2530,7 +2530,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
                     "Invalid module name serialization",
                 ),
             })?;
-        let item_name = WasmName::from_str(item_name_str).map_err(|e| match e {
+        let item_name = WasmName::try_from_str(item_name_str).map_err(|e| match e {
             SerializationError::Custom(_) => {
                 Error::runtime_execution_error("Custom serialization error in export item name")
             },

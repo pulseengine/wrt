@@ -91,7 +91,7 @@ pub mod rust_async_bridge {
 
             match future.state {
                 FutureState::Ready => {
-                    if let Some(ref value) = future.value {
+                    if let Some(value) = future.value {
                         Poll::Ready(Ok(value.clone()))
                     } else {
                         Poll::Ready(Err(String::from("Future ready but no value")))
@@ -144,10 +144,10 @@ pub mod component_async {
         use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
         // Use a stack-allocated provider for error strings
         let provider1 = NoStdProvider::<1024>::default();
-        BoundedString::from_str(msg)
+        BoundedString::try_from_str(msg)
             .unwrap_or_else(|_| {
                 let provider2 = NoStdProvider::<1024>::default();
-                BoundedString::from_str("Error").unwrap()
+                BoundedString::try_from_str("Error").unwrap()
             })
     }
 
@@ -192,7 +192,7 @@ pub mod component_async {
     {
         match future.state {
             FutureState::Ready => {
-                if let Some(ref value) = future.value {
+                if let Some(value) = future.value {
                     PollResult::Ready(value.clone())
                 } else {
                     PollResult::Error(error_string("Future ready but no value"))

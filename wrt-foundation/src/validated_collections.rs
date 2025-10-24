@@ -233,7 +233,7 @@ impl<const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedString<CAPACITY, 
         }
         
         // Create the underlying string
-        let inner = BoundedString::from_str(s, provider)?;
+        let inner = BoundedString::try_from_str(s, provider)?;
         
         Ok(Self {
             inner,

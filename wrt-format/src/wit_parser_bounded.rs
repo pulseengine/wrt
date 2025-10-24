@@ -371,7 +371,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                 eprintln!("[DEBUG] read_word: extracted word '{}'", word_str);
 
                 // Use the simple array-based approach
-                match SimpleBoundedString::from_str(word_str) {
+                match SimpleBoundedString::try_from_str(word_str) {
                     Some(bounded_name) => {
                         #[cfg(all(test, feature = "std"))]
                         eprintln!("[DEBUG] read_word: successfully created SimpleBoundedString");

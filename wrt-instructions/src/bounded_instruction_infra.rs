@@ -167,5 +167,5 @@ pub fn new_label_string() -> wrt_error::Result<BoundedLabelString> {
 
 /// Create a bounded label string from str
 pub fn bounded_label_from_str(s: &str) -> wrt_error::Result<BoundedLabelString> {
-    Ok(BoundedString::from_str(s)?)
+    Ok(BoundedString::try_from_str(s)?)
 }

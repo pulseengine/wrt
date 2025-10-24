@@ -325,7 +325,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
 
     /// Sets the name for the import from a string.
     pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
-        let name = WasmName::from_str(name_str)?;
+        let name = WasmName::try_from_str(name_str)?;
         self.name = Some(name);
         Ok(self)
     }
@@ -396,7 +396,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
 
     /// Sets the name for the export from a string.
     pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
-        let name = WasmName::from_str(name_str)?;
+        let name = WasmName::try_from_str(name_str)?;
         self.name = Some(name);
         Ok(self)
     }
@@ -415,7 +415,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
 
     /// Sets the description for the export from a string.
     pub fn with_description_str(mut self, desc_str: &str) -> wrt_error::Result<Self> {
-        let desc = WasmName::from_str(desc_str)?;
+        let desc = WasmName::try_from_str(desc_str)?;
         self.desc = Some(desc);
         Ok(self)
     }
@@ -473,7 +473,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
 
     /// Adds an element to the namespace from a string.
     pub fn with_element_str(mut self, element_str: &str) -> wrt_error::Result<Self> {
-        let element = WasmName::from_str(element_str)?;
+        let element = WasmName::try_from_str(element_str)?;
         self.elements.push(element)?;
         Ok(self)
     }
@@ -583,7 +583,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
                     let field_str = field.as_str().map_err(Error::from)?;
                     let converted_field = BoundedString::<
                         { crate::resource::MAX_RESOURCE_FIELD_NAME_LEN },
-                    >::from_str(field_str)
+                    >::try_from_str(field_str)
                     .map_err(Error::from)?;
                     fields.push(converted_field)?;
                 }
@@ -648,7 +648,7 @@ mod tests {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test record resource type
-        let field_name = BoundedString::from_str("field")?;
+        let field_name = BoundedString::try_from_str("field")?;
         let mut field_names = BoundedVec::new(provider.clone())?;
         field_names.push(field_name)?;
 

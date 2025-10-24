@@ -722,7 +722,7 @@ impl ResourceMetadata {
     /// Create new resource metadata
     pub fn new(name: &str) -> Result<Self> {
         Ok(Self {
-            name: BoundedString::from_str(name).unwrap_or_default(),
+            name: BoundedString::try_from_str(name).unwrap_or_default(),
             size_bytes: 0,
             #[cfg(feature = "std")]
             tags: Vec::new(),
@@ -744,7 +744,7 @@ impl ResourceMetadata {
     /// Add a tag to the metadata
     pub fn add_tag(&mut self, tag: &str) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_tag = BoundedString::from_str(tag).map_err(|_| {
+        let bounded_tag = BoundedString::try_from_str(tag).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         
@@ -759,7 +759,7 @@ impl ResourceMetadata {
     /// Add a property to the metadata
     pub fn add_property(&mut self, key: &str, value: Value) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_key = BoundedString::from_str(key).map_err(|_| {
+        let bounded_key = BoundedString::try_from_str(key).map_err(|_| {
             Error::runtime_execution_error("Error occurred")
         })?;
         

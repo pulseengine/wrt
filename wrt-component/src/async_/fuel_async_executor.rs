@@ -2208,7 +2208,7 @@ impl FuelAsyncExecutor {
         let mut fuel_consumed_this_batch = 0u64;
 
         // Process wake coalescing if available
-        if let Some(ref coalescer) = self.wake_coalescer {
+        if let Some(coalescer) = self.wake_coalescer {
             // Convert StaticVec<TaskId, 128> to StaticVec<u32, 128> for process_wakes
             // Note: wake_coalescer expects u32 task IDs, not TaskId struct
             // This is a temporary solution until the type system is unified
@@ -2420,7 +2420,7 @@ impl FuelAsyncExecutor {
             if let Some(task) = self.tasks.get_mut(&task_id) {
                 task.state = AsyncTaskState::Ready;
                 // Use wake coalescer if available
-                if let Some(ref coalescer) = self.wake_coalescer {
+                if let Some(coalescer) = self.wake_coalescer {
                     coalescer.add_wake(task_id)?;
                 } else {
                     self.ready_queue
@@ -3322,7 +3322,7 @@ impl FuelAsyncExecutor {
         // Get function to execute from execution context
         // Clone yield point to avoid borrow conflict
         let yield_point_clone = task.execution_context.last_yield_point.clone();
-        let execution_result = if let Some(ref yield_point) = yield_point_clone {
+        let execution_result = if let Some(yield_point) = yield_point_clone {
             // Resume from yield point
             self.resume_from_yield_point(&mut engine, task, yield_point, max_instructions_per_step)
         } else {
