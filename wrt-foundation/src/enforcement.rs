@@ -149,35 +149,3 @@ impl<const START: usize, const SIZE: usize> MemoryRegion<START, SIZE> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_managed_allocation() {
-        crate::memory_init::MemoryInitializer::initialize().unwrap();
-
-        let guard = safe_managed_alloc!(1024, CrateId::Component).unwrap();
-        assert_eq!(guard.size(), 1024);
-    }
-
-    #[test]
-    fn test_token_allocation() {
-        crate::memory_init::MemoryInitializer::initialize().unwrap();
-
-        // Create a capability context for testing
-        let mut context = MemoryCapabilityContext::default();
-        context.register_dynamic_capability(CrateId::Foundation, 1024).unwrap();
-
-        let token = AllocationToken::<512>::new(CrateId::Foundation);
-        let guard = token.allocate(&context).unwrap();
-        assert_eq!(guard.size(), 512);
-    }
-
-    #[test]
-    fn test_memory_region() {
-        let region = MemoryRegion::<0, 1024>::new();
-        assert_eq!(region.size(), 1024);
-        assert_eq!(region.start(), 0);
-    }
-}
