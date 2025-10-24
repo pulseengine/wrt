@@ -10,7 +10,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::BoundedCapacity,
     BoundedString,
     BoundedVec,
 };

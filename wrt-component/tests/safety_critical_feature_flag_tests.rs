@@ -20,7 +20,6 @@ use wrt_foundation::{
     managed_alloc,
     safe_managed_alloc,
     WrtError,
-    WrtResult,
 };
 
 #[cfg(test)]
@@ -182,8 +181,8 @@ mod feature_flag_tests {
     /// Test that safety-critical APIs are consistent
     #[test]
     fn test_api_consistency() {
-        // All factory functions should return WrtResult
-        fn assert_returns_result<T>(_: WrtResult<T>) {}
+        // All factory functions should return wrt_error::Result
+        fn assert_returns_result<T>(_: wrt_error::Result<T>) {}
 
         assert_returns_result(new_component_vec::<u32>());
         assert_returns_result(new_export_vec::<u32>());

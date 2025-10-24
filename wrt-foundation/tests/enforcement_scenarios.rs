@@ -18,15 +18,14 @@ mod enforcement_scenario_tests {
         memory_system_initializer,
         safe_managed_alloc,
         safe_memory::SafeMemoryHandler,
-        WrtResult,
     };
 
-    fn setup() -> WrtResult<()> {
+    fn setup() -> wrt_error::Result<()> {
         memory_system_initializer::presets::test()
     }
 
     #[test]
-    fn test_nested_allocation_tracking() -> WrtResult<()> {
+    fn test_nested_allocation_tracking() -> wrt_error::Result<()> {
         setup()?;
 
         // Test that nested allocations are properly tracked
@@ -49,7 +48,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_transfer_between_crates() -> WrtResult<()> {
+    fn test_transfer_between_crates() -> wrt_error::Result<()> {
         setup()?;
 
         // Test that memory cannot be "transferred" between crates
@@ -77,7 +76,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_safe_memory_handler_integration() -> WrtResult<()> {
+    fn test_safe_memory_handler_integration() -> wrt_error::Result<()> {
         setup()?;
 
         // Test that SafeMemoryHandler works with BudgetProvider
@@ -103,7 +102,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_allocation_failure_cleanup() -> WrtResult<()> {
+    fn test_allocation_failure_cleanup() -> wrt_error::Result<()> {
         setup()?;
 
         // Get a small budget
@@ -137,7 +136,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_zero_size_allocations() -> WrtResult<()> {
+    fn test_zero_size_allocations() -> wrt_error::Result<()> {
         setup()?;
 
         // Test handling of zero-size types
@@ -159,7 +158,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_reallocation_tracking() -> WrtResult<()> {
+    fn test_reallocation_tracking() -> wrt_error::Result<()> {
         setup()?;
 
         // Test that reallocations are properly tracked
@@ -185,7 +184,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_enforcement_with_generics() -> WrtResult<()> {
+    fn test_enforcement_with_generics() -> wrt_error::Result<()> {
         setup()?;
 
         use wrt_foundation::{
@@ -201,11 +200,10 @@ mod enforcement_scenario_tests {
             memory_system_initializer,
             safe_managed_alloc,
             safe_memory::SafeMemoryHandler,
-            WrtResult,
         };
 
         // Generic function that only accepts budget providers
-        fn process_with_provider<const N: usize, P>(provider: P) -> WrtResult<usize>
+        fn process_with_provider<const N: usize, P>(provider: P) -> wrt_error::Result<usize>
         where
             P: BudgetProviderOnly + wrt_foundation::safe_memory::Provider,
         {
@@ -226,7 +224,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_compile_time_size_validation() -> WrtResult<()> {
+    fn test_compile_time_size_validation() -> wrt_error::Result<()> {
         setup()?;
 
         // Test compile-time size constraints
@@ -253,7 +251,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_shared_pool_isolation() -> WrtResult<()> {
+    fn test_shared_pool_isolation() -> wrt_error::Result<()> {
         setup()?;
 
         // Shared pool should be isolated from crate budgets
@@ -288,7 +286,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_migration_helper_warnings() -> WrtResult<()> {
+    fn test_migration_helper_warnings() -> wrt_error::Result<()> {
         setup()?;
 
         // Using migration helpers should work but be tracked
@@ -311,7 +309,7 @@ mod enforcement_scenario_tests {
     }
 
     #[test]
-    fn test_dynamic_reallocation() -> WrtResult<()> {
+    fn test_dynamic_reallocation() -> wrt_error::Result<()> {
         setup()?;
 
         // Test dynamic budget reallocation

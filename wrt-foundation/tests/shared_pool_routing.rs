@@ -16,10 +16,9 @@ mod shared_pool_routing_tests {
         },
         budget_provider::BudgetProvider,
         memory_system_initializer,
-        WrtResult,
     };
 
-    fn setup_with_small_shared_pool() -> WrtResult<()> {
+    fn setup_with_small_shared_pool() -> wrt_error::Result<()> {
         // Initialize with limited total budget to test routing
         memory_system_initializer::initialize_global_memory_system(
             wrt_foundation::safety_system::SafetyLevel::Standard,
@@ -30,7 +29,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_automatic_small_allocation_routing() -> WrtResult<()> {
+    fn test_automatic_small_allocation_routing() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Check the routing threshold
@@ -57,7 +56,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_shared_pool_size_buckets() -> WrtResult<()> {
+    fn test_shared_pool_size_buckets() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Test different size buckets
@@ -90,7 +89,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_shared_pool_fallback_to_crate_budget() -> WrtResult<()> {
+    fn test_shared_pool_fallback_to_crate_budget() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Exhaust the shared pool
@@ -120,7 +119,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_emergency_borrowing() -> WrtResult<()> {
+    fn test_emergency_borrowing() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Initialize dynamic budgets with emergency borrowing enabled
@@ -160,7 +159,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_shared_pool_cross_crate_sharing() -> WrtResult<()> {
+    fn test_shared_pool_cross_crate_sharing() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Multiple crates using shared pool
@@ -188,7 +187,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_auto_routing_configuration() -> WrtResult<()> {
+    fn test_auto_routing_configuration() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Test enabling/disabling auto-routing
@@ -209,7 +208,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_shared_pool_statistics() -> WrtResult<()> {
+    fn test_shared_pool_statistics() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Get initial stats
@@ -230,7 +229,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_size_specific_macros() -> WrtResult<()> {
+    fn test_size_specific_macros() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Test size-specific convenience macros
@@ -256,7 +255,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_smart_allocation_patterns() -> WrtResult<()> {
+    fn test_smart_allocation_patterns() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Test different allocation patterns
@@ -286,7 +285,7 @@ mod shared_pool_routing_tests {
     }
 
     #[test]
-    fn test_optimization_recommendations() -> WrtResult<()> {
+    fn test_optimization_recommendations() -> wrt_error::Result<()> {
         setup_with_small_shared_pool()?;
 
         // Create usage patterns that would trigger recommendations

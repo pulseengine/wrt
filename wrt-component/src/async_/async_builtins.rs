@@ -36,7 +36,6 @@ use wrt_foundation::{
     verification::Checksum,
     values::Value,
     MemoryProvider,
-    WrtResult,
 };
 
 #[cfg(not(feature = "std"))]
@@ -72,7 +71,7 @@ impl ToBytes for TaskHandle {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -81,7 +80,7 @@ impl FromBytes for TaskHandle {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -103,7 +102,7 @@ impl ToBytes for SubtaskHandle {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -112,7 +111,7 @@ impl FromBytes for SubtaskHandle {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -229,7 +228,7 @@ impl ToBytes for TaskInfo {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.handle.to_bytes_with_provider(writer, provider)?;
         // Add other fields as needed
         Ok(())
@@ -240,7 +239,7 @@ impl FromBytes for TaskInfo {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let handle = TaskHandle::from_bytes_with_provider(reader, provider)?;
         Ok(Self {
             handle,
@@ -285,7 +284,7 @@ impl ToBytes for SubtaskInfo {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.handle.to_bytes_with_provider(writer, provider)?;
         self.parent_task.to_bytes_with_provider(writer, provider)?;
         Ok(())
@@ -296,7 +295,7 @@ impl FromBytes for SubtaskInfo {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let handle = SubtaskHandle::from_bytes_with_provider(reader, provider)?;
         let parent_task = TaskHandle::from_bytes_with_provider(reader, provider)?;
         Ok(Self {

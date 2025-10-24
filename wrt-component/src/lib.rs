@@ -175,9 +175,6 @@ pub use types::{
     ComponentInstanceState,
 };
 
-// Type alias for convenience
-pub type WrtResult<T> = wrt_error::Result<T>;
-
 // Debug printing macro for both std and no_std environments
 #[cfg(feature = "std")]
 macro_rules! debug_println {

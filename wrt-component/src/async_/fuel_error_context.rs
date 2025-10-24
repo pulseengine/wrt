@@ -93,7 +93,7 @@ impl ToBytes for ErrorContext {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.component_id.to_bytes_with_provider(writer, provider)?;
         self.fuel_consumed.to_bytes_with_provider(writer, provider)?;
         Ok(())
@@ -104,7 +104,7 @@ impl FromBytes for ErrorContext {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         _reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self::default())
     }
 }

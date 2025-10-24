@@ -19,14 +19,13 @@ use wrt_foundation::{
         ToBytes,
     },
     CrateId,
-    WrtResult,
 };
 
 /// Budget-aware memory provider for WRTD daemon (64KB)
 pub type WrtdProvider = CapabilityAwareProvider<NoStdProvider<32768>>;
 
 /// Helper function to create a capability-aware provider for WRTD
-fn create_wrtd_provider() -> WrtResult<WrtdProvider> {
+fn create_wrtd_provider() -> wrt_error::Result<WrtdProvider> {
     let context = capability_context!(dynamic(CrateId::Platform, 32768))?;
     safe_capability_alloc!(context, CrateId::Platform, 32768)
 }
@@ -152,7 +151,7 @@ pub type BoundedEnvMap =
     BoundedHashMap<BoundedEnvVarName, BoundedEnvVarValue, MAX_ENV_VARS, WrtdProvider>;
 
 /// Create a new bounded daemon service vector
-pub fn new_daemon_service_vec<T>() -> WrtResult<BoundedDaemonServiceVec<T>>
+pub fn new_daemon_service_vec<T>() -> wrt_error::Result<BoundedDaemonServiceVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -161,7 +160,7 @@ where
 }
 
 /// Create a new bounded connection vector
-pub fn new_connection_vec<T>() -> WrtResult<BoundedConnectionVec<T>>
+pub fn new_connection_vec<T>() -> wrt_error::Result<BoundedConnectionVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -170,7 +169,7 @@ where
 }
 
 /// Create a new bounded service config vector
-pub fn new_service_config_vec<T>() -> WrtResult<BoundedServiceConfigVec<T>>
+pub fn new_service_config_vec<T>() -> wrt_error::Result<BoundedServiceConfigVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -179,7 +178,7 @@ where
 }
 
 /// Create a new bounded process vector
-pub fn new_process_vec<T>() -> WrtResult<BoundedProcessVec<T>>
+pub fn new_process_vec<T>() -> wrt_error::Result<BoundedProcessVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -188,7 +187,7 @@ where
 }
 
 /// Create a new bounded log entry vector
-pub fn new_log_entry_vec<T>() -> WrtResult<BoundedLogEntryVec<T>>
+pub fn new_log_entry_vec<T>() -> wrt_error::Result<BoundedLogEntryVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -197,14 +196,14 @@ where
 }
 
 /// Create a new bounded service name
-pub fn new_service_name() -> WrtResult<BoundedServiceName> {
+pub fn new_service_name() -> wrt_error::Result<BoundedServiceName> {
     BoundedString::from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create service name")
     })
 }
 
 /// Create a bounded service name from str
-pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
+pub fn bounded_service_name_from_str(s: &str) -> wrt_error::Result<BoundedServiceName> {
     BoundedString::from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
@@ -215,14 +214,14 @@ pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
 }
 
 /// Create a new bounded configuration key
-pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
+pub fn new_config_key() -> wrt_error::Result<BoundedConfigKey> {
     BoundedString::from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create config key")
     })
 }
 
 /// Create a bounded configuration key from str
-pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
+pub fn bounded_config_key_from_str(s: &str) -> wrt_error::Result<BoundedConfigKey> {
     BoundedString::from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
@@ -233,14 +232,14 @@ pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
 }
 
 /// Create a new bounded configuration value
-pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
+pub fn new_config_value() -> wrt_error::Result<BoundedConfigValue> {
     BoundedString::from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create config value")
     })
 }
 
 /// Create a bounded configuration value from str
-pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
+pub fn bounded_config_value_from_str(s: &str) -> wrt_error::Result<BoundedConfigValue> {
     BoundedString::from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
@@ -251,14 +250,14 @@ pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
 }
 
 /// Create a new bounded log message
-pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
+pub fn new_log_message() -> wrt_error::Result<BoundedLogMessage> {
     BoundedString::from_str("").map_err(|_| {
         wrt_error::Error::runtime_execution_error("Failed to create log message")
     })
 }
 
 /// Create a bounded log message from str
-pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
+pub fn bounded_log_message_from_str(s: &str) -> wrt_error::Result<BoundedLogMessage> {
     BoundedString::from_str(s).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
@@ -269,7 +268,7 @@ pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
 }
 
 /// Create a new bounded service map
-pub fn new_service_map<V>() -> WrtResult<BoundedServiceMap<V>>
+pub fn new_service_map<V>() -> wrt_error::Result<BoundedServiceMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -278,7 +277,7 @@ where
 }
 
 /// Create a new bounded connection map
-pub fn new_connection_map<V>() -> WrtResult<BoundedConnectionMap<V>>
+pub fn new_connection_map<V>() -> wrt_error::Result<BoundedConnectionMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -287,13 +286,13 @@ where
 }
 
 /// Create a new bounded configuration map
-pub fn new_config_map() -> WrtResult<BoundedConfigMap> {
+pub fn new_config_map() -> wrt_error::Result<BoundedConfigMap> {
     let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded process map
-pub fn new_process_map<V>() -> WrtResult<BoundedProcessMap<V>>
+pub fn new_process_map<V>() -> wrt_error::Result<BoundedProcessMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -302,7 +301,7 @@ where
 }
 
 /// Create a new bounded environment map
-pub fn new_env_map() -> WrtResult<BoundedEnvMap> {
+pub fn new_env_map() -> wrt_error::Result<BoundedEnvMap> {
     let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }

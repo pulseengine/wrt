@@ -20,7 +20,6 @@ use std::{
     mem,
 };
 
-use wrt_error::Result as WrtResult;
 #[cfg(feature = "std")]
 use wrt_foundation::{
     collections::StaticVec as BoundedVec,
@@ -86,7 +85,7 @@ impl ToBytes for StreamHandle {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -95,7 +94,7 @@ impl FromBytes for StreamHandle {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -129,7 +128,7 @@ impl ToBytes for FutureHandle {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -138,7 +137,7 @@ impl FromBytes for FutureHandle {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -287,7 +286,7 @@ impl ToBytes for StackFrame {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         self.function.to_bytes_with_provider(writer, provider)?;
         #[cfg(not(any(feature = "std",)))]
@@ -302,7 +301,7 @@ impl FromBytes for StackFrame {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         let function = String::from_bytes_with_provider(reader, provider)?;
         #[cfg(not(any(feature = "std",)))]
@@ -396,7 +395,7 @@ impl ToBytes for Waitable {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             Self::StreamReadable(h) => {
                 0u8.to_bytes_with_provider(writer, provider)?;
@@ -422,7 +421,7 @@ impl FromBytes for Waitable {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let tag = u8::from_bytes_with_provider(reader, provider)?;
         let value = u32::from_bytes_with_provider(reader, provider)?;
         match tag {
@@ -452,7 +451,7 @@ where
     T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
 {
     /// Create a new stream
-    pub fn new(handle: StreamHandle, element_type: ValType) -> WrtResult<Self> {
+    pub fn new(handle: StreamHandle, element_type: ValType) -> wrt_error::Result<Self> {
         Ok(Self {
             handle,
             element_type,
@@ -544,7 +543,7 @@ where
     }
 
     /// Set the future value
-    pub fn set_value(&mut self, value: T) -> WrtResult<()> {
+    pub fn set_value(&mut self, value: T) -> wrt_error::Result<()> {
         if self.state != FutureState::Pending {
             return Err(wrt_error::Error::runtime_execution_error(
                 "Future already completed",
@@ -596,7 +595,7 @@ impl ErrorContext {
     pub fn new(
         handle: ErrorContextHandle,
         message: BoundedString<1024>,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             handle,
             message,
@@ -628,7 +627,7 @@ impl ErrorContext {
 
 impl DebugInfo {
     /// Create new debug info
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             source_component: None,
             error_code: None,
@@ -654,7 +653,7 @@ impl DebugInfo {
         &mut self,
         key: BoundedString<64>,
         value: ComponentValue,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.properties
             .push((key, value))
             .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to add property"))
@@ -663,7 +662,7 @@ impl DebugInfo {
 
 impl WaitableSet {
     /// Create a new waitable set
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             waitables: Vec::new(),
@@ -677,7 +676,7 @@ impl WaitableSet {
     }
 
     /// Add a waitable to the set
-    pub fn add(&mut self, waitable: Waitable) -> WrtResult<u32> {
+    pub fn add(&mut self, waitable: Waitable) -> wrt_error::Result<u32> {
         let index = self.waitables.len();
         if index >= 64 {
             return Err(wrt_error::Error::runtime_execution_error(

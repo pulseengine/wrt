@@ -20,7 +20,6 @@ use wrt_foundation::{
         CapacityError, // , CHECKSUM_SIZE
     },
     safe_memory::MemoryProvider,
-    WrtResult,
 };
 // Imports presumably used by TestValue impls (Checksummable, ToBytes, FromBytes) which are not
 // std-gated

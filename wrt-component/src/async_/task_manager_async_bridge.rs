@@ -190,7 +190,7 @@ impl wrt_runtime::ToBytes for ComponentAsyncTask {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.component_task_id.to_bytes_with_provider(writer, provider)?;
         self.executor_task_id.to_bytes_with_provider(writer, provider)?;
@@ -209,7 +209,7 @@ impl wrt_runtime::FromBytes for ComponentAsyncTask {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             component_task_id: u32::from_bytes_with_provider(reader, provider)?,
@@ -264,7 +264,7 @@ impl wrt_runtime::ToBytes for ComponentAsyncTaskType {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         let discriminant = match self {
             ComponentAsyncTaskType::AsyncFunction => 0u8,
@@ -282,7 +282,7 @@ impl wrt_runtime::FromBytes for ComponentAsyncTaskType {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         let discriminant = u8::from_bytes_with_provider(reader, provider)?;
         match discriminant {
@@ -351,7 +351,7 @@ impl wrt_runtime::ToBytes for ComponentAsyncContext {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.component_id.to_bytes_with_provider(writer, provider)?;
         self.active_tasks.to_bytes_with_provider(writer, provider)?;
@@ -367,7 +367,7 @@ impl wrt_runtime::FromBytes for ComponentAsyncContext {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
@@ -415,7 +415,7 @@ impl wrt_runtime::ToBytes for ComponentAsyncState {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         let discriminant = match self {
             ComponentAsyncState::Active => 0u8,
@@ -432,7 +432,7 @@ impl wrt_runtime::FromBytes for ComponentAsyncState {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         let discriminant = u8::from_bytes_with_provider(reader, provider)?;
         match discriminant {
@@ -472,7 +472,7 @@ impl wrt_runtime::ToBytes for ComponentResourceLimits {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.max_concurrent_tasks.to_bytes_with_provider(writer, provider)?;
         self.max_futures.to_bytes_with_provider(writer, provider)?;
@@ -487,7 +487,7 @@ impl wrt_runtime::FromBytes for ComponentResourceLimits {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             max_concurrent_tasks: usize::from_bytes_with_provider(reader, provider)?,

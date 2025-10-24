@@ -208,11 +208,9 @@ use crate::{
     },
 };
 
-// Legacy type alias for backward compatibility
-#[deprecated(since = "0.1.0", note = "Use wrt_error::Result instead")]
-type WrtResult<T> = wrt_error::Result<T>; // Renamed Hasher to CoreHasher to avoid conflict if P also brings a Hasher
-                                          // use std::collections::hash_map::RandomState; // For a default hasher -
-                                          // BoundedHashMap not found, this is likely unused for no_std
+// WrtResult type alias has been removed - use wrt_error::Result<T> directly
+// use std::collections::hash_map::RandomState; // For a default hasher -
+// BoundedHashMap not found, this is likely unused for no_std
 
 /// Error indicating a collection has reached its capacity limit
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

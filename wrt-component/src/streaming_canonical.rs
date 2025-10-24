@@ -34,7 +34,6 @@ use crate::{
     async_types::{Stream, StreamHandle, StreamState, AsyncReadResult},
     canonical_options::CanonicalOptions,
     types::{ValType, Value},
-    WrtResult,
 };
 
 use wrt_error::{Error, ErrorCategory, Result};

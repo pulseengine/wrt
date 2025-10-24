@@ -7,7 +7,6 @@ use wrt_foundation::{
     memory_sizing::LargeProvider,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    BoundedCapacity,
 };
 
 /// Parameter and type information support

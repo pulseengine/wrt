@@ -286,7 +286,7 @@ impl ToBytes for super::component::Component {
         &self,
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -295,7 +295,7 @@ impl FromBytes for super::component::Component {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         _reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         // Return a minimal default component
         Ok(super::component::Component::new(super::component::WrtComponentType::default()))
     }

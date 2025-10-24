@@ -82,7 +82,6 @@ use crate::{
         ValType,
         Value,
     },
-    WrtResult,
 };
 
 /// Maximum number of concurrent tasks in no_std environments
@@ -255,7 +254,7 @@ impl wrt_runtime::ToBytes for StreamEntry {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.handle.to_bytes_with_provider(writer, provider)
     }
 }
@@ -264,7 +263,7 @@ impl wrt_runtime::FromBytes for StreamEntry {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             handle: StreamHandle::from_bytes_with_provider(reader, provider)?,
             stream: Stream::default(),
@@ -332,7 +331,7 @@ impl wrt_runtime::ToBytes for FutureEntry {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.handle.to_bytes_with_provider(writer, provider)
     }
 }
@@ -341,7 +340,7 @@ impl wrt_runtime::FromBytes for FutureEntry {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             handle: FutureHandle::from_bytes_with_provider(reader, provider)?,
             future: Future::default(),
@@ -402,7 +401,7 @@ impl wrt_runtime::ToBytes for ScheduledTask {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.task_id.to_bytes_with_provider(writer, provider)?;
         self.priority.to_bytes_with_provider(writer, provider)?;
         self.estimated_time_us.to_bytes_with_provider(writer, provider)
@@ -413,7 +412,7 @@ impl wrt_runtime::FromBytes for ScheduledTask {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             task_id: TaskId::from_bytes_with_provider(reader, provider)?,
             priority: u8::from_bytes_with_provider(reader, provider)?,
@@ -470,7 +469,7 @@ impl wrt_runtime::ToBytes for WaitingTask {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.task_id.to_bytes_with_provider(writer, provider)?;
         self.timeout_us.to_bytes_with_provider(writer, provider)
     }
@@ -480,7 +479,7 @@ impl wrt_runtime::FromBytes for WaitingTask {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             task_id: TaskId::from_bytes_with_provider(reader, provider)?,
             wait_condition: WaitCondition::Timer(0),
@@ -589,7 +588,7 @@ impl wrt_runtime::ToBytes for ReactorEvent {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.id.to_bytes_with_provider(writer, provider)?;
         self.data.to_bytes_with_provider(writer, provider)
     }
@@ -599,7 +598,7 @@ impl wrt_runtime::FromBytes for ReactorEvent {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             id: u32::from_bytes_with_provider(reader, provider)?,
             event_type: ReactorEventType::StreamReady(StreamHandle::default()),

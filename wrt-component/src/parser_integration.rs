@@ -30,7 +30,6 @@ use crate::{
     execution_engine::ComponentExecutionEngine,
     instantiation::{ImportValues, InstantiationContext},
     types::{ComponentInstance, ValType, Value},
-    WrtResult,
 };
 
 /// Maximum number of parsed sections in no_std environments
@@ -265,7 +264,7 @@ impl ComponentLoader {
     }
 
     /// Parse component binary data
-    pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
+    pub fn parse_component(&self, binary_data: &[u8]) -> wrt_error::Result<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
             return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size"));
@@ -297,7 +296,7 @@ impl ComponentLoader {
     }
 
     /// Parse component sections from binary data
-    fn parse_sections(&self, _binary_data: &[u8], parsed: &mut ParsedComponent) -> WrtResult<()> {
+    fn parse_sections(&self, _binary_data: &[u8], parsed: &mut ParsedComponent) -> wrt_error::Result<()> {
         // Simplified section parsing - in reality would parse actual WASM component format
 
         // Add a default type - need to provide a memory provider for ComponentType::Unit
@@ -341,7 +340,7 @@ impl ComponentLoader {
     }
 
     /// Validate parsed component
-    fn validate_component(&self, parsed: &ParsedComponent) -> WrtResult<()> {
+    fn validate_component(&self, parsed: &ParsedComponent) -> wrt_error::Result<()> {
         if self.validation_level == ValidationLevel::Basic {
             // Basic validation - check we have at least some content
             if parsed.types.is_empty() {
@@ -357,7 +356,7 @@ impl ComponentLoader {
     }
 
     /// Validate type consistency
-    fn validate_type_consistency(&self, _parsed: &ParsedComponent) -> WrtResult<()> {
+    fn validate_type_consistency(&self, _parsed: &ParsedComponent) -> wrt_error::Result<()> {
         // In a full implementation, would validate:
         // - All type references are valid
         // - Function signatures are consistent
@@ -366,7 +365,7 @@ impl ComponentLoader {
     }
 
     /// Validate import/export consistency
-    fn validate_import_export_consistency(&self, _parsed: &ParsedComponent) -> WrtResult<()> {
+    fn validate_import_export_consistency(&self, _parsed: &ParsedComponent) -> wrt_error::Result<()> {
         // In a full implementation, would validate:
         // - All import types are resolvable
         // - Export types match internal definitions
@@ -375,7 +374,7 @@ impl ComponentLoader {
     }
 
     /// Convert parsed component to runtime component
-    pub fn to_runtime_component(&self, _parsed: &ParsedComponent) -> WrtResult<Component> {
+    pub fn to_runtime_component(&self, _parsed: &ParsedComponent) -> wrt_error::Result<Component> {
         // TODO: This method is incomplete - Component struct doesn't have these helper methods
         // Component construction needs to be refactored to use direct field access
         // or builder pattern
@@ -407,7 +406,7 @@ impl ComponentLoader {
 
     /// Convert parsed import to runtime import
     #[allow(dead_code)]
-    fn convert_import(&self, _component: &mut Component, import: &ParsedImport) -> WrtResult<()> {
+    fn convert_import(&self, _component: &mut Component, import: &ParsedImport) -> wrt_error::Result<()> {
         // TODO: Component doesn't have these helper methods - needs refactoring
         match &import.import_type {
             ImportKind::Function { type_index: _ } => {
@@ -428,7 +427,7 @@ impl ComponentLoader {
 
     /// Convert parsed export to runtime export
     #[allow(dead_code)]
-    fn convert_export(&self, _component: &mut Component, export: &ParsedExport) -> WrtResult<()> {
+    fn convert_export(&self, _component: &mut Component, export: &ParsedExport) -> wrt_error::Result<()> {
         // TODO: Component doesn't have these helper methods - needs refactoring
         match &export.export_kind {
             ExportKind::Function { function_index: _ } => {
@@ -448,7 +447,7 @@ impl ComponentLoader {
     }
 
     /// Create module adapter from parsed module
-    fn create_module_adapter(&self, module: &ParsedModule) -> WrtResult<CoreModuleAdapter> {
+    fn create_module_adapter(&self, module: &ParsedModule) -> wrt_error::Result<CoreModuleAdapter> {
         #[cfg(feature = "std")]
         let name = "Component not found";
         #[cfg(not(any(feature = "std", )))]
@@ -473,7 +472,7 @@ impl ComponentLoader {
         binary_data: &[u8],
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<ComponentInstance> {
+    ) -> wrt_error::Result<ComponentInstance> {
         // Enter component scope for Vec allocations during parsing
         #[cfg(feature = "std")]
         let _scope = wrt_foundation::capabilities::MemoryFactory::enter_module_scope(
@@ -494,7 +493,7 @@ impl ComponentLoader {
 
 impl ParsedComponent {
     /// Create a new empty parsed component
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             types: Vec::new(),
@@ -542,7 +541,7 @@ impl ParsedComponent {
     }
 
     /// Add a type to the component
-    pub fn add_type(&mut self, component_type: wrt_foundation::ComponentType<NoStdProvider<1024>>) -> WrtResult<()> {
+    pub fn add_type(&mut self, component_type: wrt_foundation::ComponentType<NoStdProvider<1024>>) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.types.push(component_type);
@@ -557,7 +556,7 @@ impl ParsedComponent {
     }
 
     /// Add an import to the component
-    pub fn add_import(&mut self, import: ParsedImport) -> WrtResult<()> {
+    pub fn add_import(&mut self, import: ParsedImport) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.imports.push(import);
@@ -572,7 +571,7 @@ impl ParsedComponent {
     }
 
     /// Add an export to the component
-    pub fn add_export(&mut self, export: ParsedExport) -> WrtResult<()> {
+    pub fn add_export(&mut self, export: ParsedExport) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.exports.push(export);

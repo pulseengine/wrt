@@ -27,10 +27,10 @@ pub enum AsilLevel {
 }
 
 // Aliases for compatibility
-pub const AsilA: AsilLevel = AsilLevel::ASIL_A;
-pub const AsilB: AsilLevel = AsilLevel::ASIL_B;
-pub const AsilC: AsilLevel = AsilLevel::ASIL_C;
-pub const AsilD: AsilLevel = AsilLevel::ASIL_D;
+pub const ASIL_A: AsilLevel = AsilLevel::ASIL_A;
+pub const ASIL_B: AsilLevel = AsilLevel::ASIL_B;
+pub const ASIL_C: AsilLevel = AsilLevel::ASIL_C;
+pub const ASIL_D: AsilLevel = AsilLevel::ASIL_D;
 
 #[derive(Debug, Clone)]
 pub struct SafetyContext {

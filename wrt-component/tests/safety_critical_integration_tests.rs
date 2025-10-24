@@ -49,7 +49,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     managed_alloc,
     WrtError,
-    WrtResult,
 };
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
@@ -276,7 +275,7 @@ mod integration_tests {
     /// Test error propagation through component layers
     #[test]
     fn test_error_propagation_integration() {
-        fn create_component_stack(depth: usize) -> WrtResult<BoundedComponentVec<MockComponent>> {
+        fn create_component_stack(depth: usize) -> wrt_error::Result<BoundedComponentVec<MockComponent>> {
             let mut components = new_component_vec()?;
 
             for i in 0..depth {
@@ -336,14 +335,14 @@ mod integration_tests {
         }
 
         impl TestStrategy {
-            fn allocate(&self, size: usize) -> WrtResult<u32> {
+            fn allocate(&self, size: usize) -> wrt_error::Result<u32> {
                 let mut allocs = self.allocations.lock().unwrap();
                 let handle = allocs.len() as u32;
                 allocs.try_push(size as u32)?;
                 Ok(handle)
             }
 
-            fn deallocate(&self, handle: u32) -> WrtResult<()> {
+            fn deallocate(&self, handle: u32) -> wrt_error::Result<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
                     Ok(())
@@ -352,7 +351,7 @@ mod integration_tests {
                 }
             }
 
-            fn verify(&self, handle: u32) -> WrtResult<()> {
+            fn verify(&self, handle: u32) -> wrt_error::Result<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
                     Ok(())
@@ -420,11 +419,11 @@ impl ComponentLinker {
         }
     }
 
-    fn register_component(&mut self, component: MockComponent) -> WrtResult<()> {
+    fn register_component(&mut self, component: MockComponent) -> wrt_error::Result<()> {
         self.components.try_push(component)
     }
 
-    fn link(&mut self, provider_id: u32, consumer_id: u32) -> WrtResult<()> {
+    fn link(&mut self, provider_id: u32, consumer_id: u32) -> wrt_error::Result<()> {
         // Use a combined key for the link
         let key = (provider_id << 16) | consumer_id;
         self.links.try_insert(key, true)?;
@@ -462,7 +461,7 @@ impl CrossComponentCallManager {
         }
     }
 
-    fn register_component(&self, component: MockComponent) -> WrtResult<()> {
+    fn register_component(&self, component: MockComponent) -> wrt_error::Result<()> {
         let mut components = self.components.lock().unwrap();
         components.try_push(component)
     }
@@ -473,7 +472,7 @@ impl CrossComponentCallManager {
         callee_id: u32,
         function: &str,
         args: &[u8],
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let mut stack = self.call_stack.lock().unwrap();
 
         let frame = CallFrame {

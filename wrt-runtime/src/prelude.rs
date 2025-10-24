@@ -290,7 +290,6 @@ pub use wrt_format::component::Component as FormatComponent;
 #[cfg(feature = "std")]
 pub use wrt_format::{
     module::{
-        Data as FormatData,
         Element as FormatElement,
         Export as FormatExport,
         ExportKind as FormatExportKind,
@@ -301,6 +300,7 @@ pub use wrt_format::{
         Memory as FormatMemory,
         Table as FormatTable,
     },
+    pure_format_types::PureDataSegment as FormatData,
     section::CustomSection as FormatCustomSection,
 };
 // Clean core WebAssembly types (for runtime use)

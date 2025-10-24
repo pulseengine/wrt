@@ -24,10 +24,9 @@ mod visualization_integration_tests {
             VisualizationFormat,
         },
         memory_system_initializer,
-        WrtResult,
     };
 
-    fn setup_test_environment() -> WrtResult<()> {
+    fn setup_test_environment() -> wrt_error::Result<()> {
         memory_system_initializer::initialize_global_memory_system(
             wrt_foundation::safety_system::SafetyLevel::Standard,
             wrt_foundation::global_memory_config::MemoryEnforcementLevel::Strict,
@@ -36,7 +35,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_ascii_visualization_generation() -> WrtResult<()> {
+    fn test_ascii_visualization_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create some memory usage
@@ -60,7 +59,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_json_visualization_generation() -> WrtResult<()> {
+    fn test_json_visualization_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create some memory usage
@@ -89,7 +88,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_csv_visualization_generation() -> WrtResult<()> {
+    fn test_csv_visualization_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create memory usage in multiple crates
@@ -118,7 +117,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_html_visualization_generation() -> WrtResult<()> {
+    fn test_html_visualization_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create some allocation pattern
@@ -148,7 +147,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_markdown_visualization_generation() -> WrtResult<()> {
+    fn test_markdown_visualization_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create diverse memory usage
@@ -179,7 +178,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_debug_dump_generation() -> WrtResult<()> {
+    fn test_debug_dump_generation() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create complex memory usage scenario
@@ -212,7 +211,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_quick_functions() -> WrtResult<()> {
+    fn test_quick_functions() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create some memory usage
@@ -238,7 +237,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_visualization_with_different_configurations() -> WrtResult<()> {
+    fn test_visualization_with_different_configurations() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create memory usage
@@ -287,7 +286,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_memory_snapshot_comparison() -> WrtResult<()> {
+    fn test_memory_snapshot_comparison() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Capture initial snapshot
@@ -316,7 +315,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_visualization_under_memory_pressure() -> WrtResult<()> {
+    fn test_visualization_under_memory_pressure() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Create high memory usage to test visualization under pressure
@@ -355,7 +354,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_monitoring_macros_integration() -> WrtResult<()> {
+    fn test_monitoring_macros_integration() -> wrt_error::Result<()> {
         setup_test_environment()?;
 
         // Test monitor_operation! macro
@@ -383,7 +382,7 @@ mod visualization_integration_tests {
     }
 
     #[test]
-    fn test_error_handling_in_visualization() -> WrtResult<()> {
+    fn test_error_handling_in_visualization() -> wrt_error::Result<()> {
         // Test without initializing memory system
         // This should handle errors gracefully
 

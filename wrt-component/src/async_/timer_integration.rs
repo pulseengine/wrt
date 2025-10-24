@@ -113,7 +113,7 @@ impl ToBytes for TimerId {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -122,7 +122,7 @@ impl FromBytes for TimerId {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -206,7 +206,7 @@ impl ToBytes for TimerType {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             TimerType::Oneshot => 0u8.to_bytes_with_provider(writer, provider),
             TimerType::Interval(dur) => {
@@ -241,7 +241,7 @@ impl FromBytes for TimerType {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = u8::from_bytes_with_provider(reader, provider)?;
         match discriminant {
             0 => Ok(TimerType::Oneshot),
@@ -374,7 +374,7 @@ impl wrt_foundation::traits::ToBytes for ComponentTimerContext {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.component_id.to_bytes_with_provider(writer, provider)?;
         self.owned_timers.to_bytes_with_provider(writer, provider)?;
@@ -389,7 +389,7 @@ impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
@@ -425,7 +425,7 @@ impl wrt_foundation::traits::ToBytes for TimerLimits {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.max_timers.to_bytes_with_provider(writer, provider)?;
         self.max_timeout_duration_ms.to_bytes_with_provider(writer, provider)?;
@@ -439,7 +439,7 @@ impl wrt_foundation::traits::FromBytes for TimerLimits {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             max_timers: usize::from_bytes_with_provider(reader, provider)?,
@@ -511,7 +511,7 @@ impl wrt_foundation::traits::ToBytes for RateLimitState {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
         self.fires_this_period.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
         self.period_start.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
@@ -525,7 +525,7 @@ impl wrt_foundation::traits::FromBytes for RateLimitState {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
             fires_this_period: AtomicU32::new(u32::from_bytes_with_provider(reader, provider)?),

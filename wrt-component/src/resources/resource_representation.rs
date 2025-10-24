@@ -21,7 +21,6 @@ use crate::{
     borrowed_handles::{OwnHandle, BorrowHandle, HandleLifetimeTracker},
     resource_lifecycle_management::{ResourceId, ComponentId, ResourceType},
     types::{ValType, Value},
-    WrtResult,
 };
 
 use wrt_error::{Error, ErrorCategory, Result};
@@ -256,7 +255,7 @@ pub enum ConnectionState {
 
 impl ResourceRepresentationManager {
     /// Create new resource representation manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             representations: HashMap::new(),
@@ -274,7 +273,7 @@ impl ResourceRepresentationManager {
     }
     
     /// Create with common built-in representations
-    pub fn with_builtin_representations() -> WrtResult<Self> {
+    pub fn with_builtin_representations() -> wrt_error::Result<Self> {
         let mut manager = Self::new()?;
         
         // Register built-in representations
@@ -587,7 +586,7 @@ impl ResourceRepresentationManager {
 
 impl FileHandleRepresentation {
     /// Create new file handle representation
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             file_descriptors: HashMap::new(),
@@ -677,7 +676,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
 
 impl MemoryBufferRepresentation {
     /// Create new memory buffer representation
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             buffers: HashMap::new(),
@@ -787,7 +786,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
 
 impl NetworkConnectionRepresentation {
     /// Create new network connection representation
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             connections: HashMap::new(),

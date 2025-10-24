@@ -141,7 +141,7 @@ impl IncrementalParser {
         self.source.clear();
         self.total_length = 0;
 
-        let provider = wrt_foundation::safe_managed_alloc!(
+        let _provider = wrt_foundation::safe_managed_alloc!(
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;

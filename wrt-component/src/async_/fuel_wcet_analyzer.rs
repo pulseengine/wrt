@@ -88,7 +88,7 @@ impl ToBytes for WcetAnalysisMethod {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let discriminant = match self {
             WcetAnalysisMethod::Static => 0u8,
             WcetAnalysisMethod::MeasurementBased => 1u8,
@@ -103,7 +103,7 @@ impl FromBytes for WcetAnalysisMethod {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = u8::from_bytes_with_provider(reader, provider)?;
         match discriminant {
             0 => Ok(WcetAnalysisMethod::Static),
@@ -187,7 +187,7 @@ impl ToBytes for ControlFlowPath {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.path_id.to_bytes_with_provider(writer, provider)?;
         self.basic_blocks.to_bytes_with_provider(writer, provider)?;
         self.estimated_fuel.to_bytes_with_provider(writer, provider)?;
@@ -202,7 +202,7 @@ impl FromBytes for ControlFlowPath {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             path_id:          u32::from_bytes_with_provider(reader, provider)?,
             basic_blocks:     BoundedVec::from_bytes_with_provider(reader, provider)?,
@@ -241,7 +241,7 @@ impl ToBytes for ExecutionSample {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.fuel_consumed.to_bytes_with_provider(writer, provider)?;
         self.timestamp.to_bytes_with_provider(writer, provider)?;
         self.input_hash.to_bytes_with_provider(writer, provider)?;
@@ -254,7 +254,7 @@ impl FromBytes for ExecutionSample {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             fuel_consumed: u64::from_bytes_with_provider(reader, provider)?,
             timestamp: u64::from_bytes_with_provider(reader, provider)?,
@@ -328,7 +328,7 @@ impl ToBytes for WcetAnalysisResult {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.task_id.to_bytes_with_provider(writer, provider)?;
         self.method.to_bytes_with_provider(writer, provider)?;
         self.wcet_fuel.to_bytes_with_provider(writer, provider)?;
@@ -347,7 +347,7 @@ impl FromBytes for WcetAnalysisResult {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             task_id:          u32::from_bytes_with_provider(reader, provider)?,
             method:           WcetAnalysisMethod::from_bytes_with_provider(reader, provider)?,

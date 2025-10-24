@@ -98,7 +98,6 @@ use crate::{
         ResourceLifecycleManager,
         RuntimeBridgeConfig,
     },
-    WrtResult,
 };
 
 // Temporary module alias for canonical_abi types
@@ -135,7 +134,7 @@ pub struct CallFrame {
 
 impl CallFrame {
     /// Create a new call frame
-    pub fn new(instance_id: u32, function_index: u32) -> WrtResult<Self> {
+    pub fn new(instance_id: u32, function_index: u32) -> wrt_error::Result<Self> {
         Ok(Self {
             instance_id,
             function_index,
@@ -148,7 +147,7 @@ impl CallFrame {
     }
 
     /// Push a local variable
-    pub fn push_local(&mut self, value: Value) -> WrtResult<()> {
+    pub fn push_local(&mut self, value: Value) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.locals.push(value);
@@ -164,14 +163,14 @@ impl CallFrame {
     }
 
     /// Get a local variable by index
-    pub fn get_local(&self, index: usize) -> WrtResult<&Value> {
+    pub fn get_local(&self, index: usize) -> wrt_error::Result<&Value> {
         self.locals
             .get(index)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
     }
 
     /// Set a local variable by index
-    pub fn set_local(&mut self, index: usize, value: Value) -> WrtResult<()> {
+    pub fn set_local(&mut self, index: usize, value: Value) -> wrt_error::Result<()> {
         if index < self.locals.len() {
             self.locals[index] = value;
             Ok(())
@@ -184,7 +183,7 @@ impl CallFrame {
 /// Host function callback trait
 pub trait HostFunction {
     /// Call the host function with the given arguments
-    fn call(&mut self, args: &[Value]) -> WrtResult<Value>;
+    fn call(&mut self, args: &[Value]) -> wrt_error::Result<Value>;
 
     /// Get the function signature
     fn signature(&self) -> &ComponentType;
@@ -211,7 +210,7 @@ pub struct ComponentExecutionEngine {
     #[cfg(feature = "std")]
     host_functions: Vec<Box<dyn HostFunction>>,
     #[cfg(not(any(feature = "std",)))]
-    host_functions: BoundedVec<fn(&[Value]) -> WrtResult<Value>, 64>,
+    host_functions: BoundedVec<fn(&[Value]) -> wrt_error::Result<Value>, 64>,
 
     /// Current component instance
     current_instance: Option<u32>,
@@ -263,7 +262,7 @@ impl fmt::Display for ExecutionState {
 
 impl ComponentExecutionEngine {
     /// Create a new component execution engine
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
@@ -283,7 +282,7 @@ impl ComponentExecutionEngine {
 
     /// Create a new component execution engine with custom runtime bridge
     /// configuration
-    pub fn with_runtime_config(bridge_config: RuntimeBridgeConfig) -> WrtResult<Self> {
+    pub fn with_runtime_config(bridge_config: RuntimeBridgeConfig) -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
@@ -303,7 +302,7 @@ impl ComponentExecutionEngine {
 
     /// Register a host function
     #[cfg(feature = "std")]
-    pub fn register_host_function(&mut self, func: Box<dyn HostFunction>) -> WrtResult<u32> {
+    pub fn register_host_function(&mut self, func: Box<dyn HostFunction>) -> wrt_error::Result<u32> {
         let index = self.host_functions.len() as u32;
         self.host_functions.push(func);
         Ok(index)
@@ -313,8 +312,8 @@ impl ComponentExecutionEngine {
     #[cfg(not(any(feature = "std",)))]
     pub fn register_host_function(
         &mut self,
-        func: fn(&[Value]) -> WrtResult<Value>,
-    ) -> WrtResult<u32> {
+        func: fn(&[Value]) -> wrt_error::Result<Value>,
+    ) -> wrt_error::Result<u32> {
         let index = self.host_functions.len() as u32;
         self.host_functions
             .push(func)
@@ -328,7 +327,7 @@ impl ComponentExecutionEngine {
         instance_id: u32,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         self.state = ExecutionState::Running;
         self.current_instance = Some(instance_id);
 
@@ -380,7 +379,7 @@ impl ComponentExecutionEngine {
         &mut self,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         // Get current instance ID
         let instance_id = self
             .current_instance
@@ -411,7 +410,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Call a host function
-    pub fn call_host_function(&mut self, index: u32, args: &[Value]) -> WrtResult<Value> {
+    pub fn call_host_function(&mut self, index: u32, args: &[Value]) -> wrt_error::Result<Value> {
         #[cfg(feature = "std")]
         {
             if let Some(func) = self.host_functions.get_mut(index as usize) {
@@ -450,22 +449,22 @@ impl ComponentExecutionEngine {
         &mut self,
         type_id: u32,
         data: ComponentValue<ComponentProvider>,
-    ) -> WrtResult<ResourceHandle> {
+    ) -> wrt_error::Result<ResourceHandle> {
         self.resource_manager.create_resource(type_id, data)
     }
 
     /// Drop a resource
-    pub fn drop_resource(&mut self, handle: ResourceHandle) -> WrtResult<()> {
+    pub fn drop_resource(&mut self, handle: ResourceHandle) -> wrt_error::Result<()> {
         self.resource_manager.drop_resource(handle)
     }
 
     /// Borrow a resource
-    pub fn borrow_resource(&mut self, handle: ResourceHandle) -> WrtResult<&ComponentValue<ComponentProvider>> {
+    pub fn borrow_resource(&mut self, handle: ResourceHandle) -> wrt_error::Result<&ComponentValue<ComponentProvider>> {
         self.resource_manager.borrow_resource(handle)
     }
 
     /// Transfer resource ownership
-    pub fn transfer_resource(&mut self, handle: ResourceHandle, new_owner: u32) -> WrtResult<()> {
+    pub fn transfer_resource(&mut self, handle: ResourceHandle, new_owner: u32) -> wrt_error::Result<()> {
         self.resource_manager.transfer_ownership(handle, new_owner)
     }
 
@@ -520,7 +519,7 @@ impl ComponentExecutionEngine {
     fn convert_values_to_component(
         &self,
         values: &[Value],
-    ) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
+    ) -> wrt_error::Result<Vec<crate::canonical_abi::ComponentValue>> {
         let mut component_values = Vec::new();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
@@ -534,7 +533,7 @@ impl ComponentExecutionEngine {
     fn convert_values_to_component(
         &self,
         values: &[Value],
-    ) -> WrtResult<Vec<ComponentValue<ComponentProvider>>> {
+    ) -> wrt_error::Result<Vec<ComponentValue<ComponentProvider>>> {
         let mut component_values = Vec::new();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
@@ -547,7 +546,7 @@ impl ComponentExecutionEngine {
     fn convert_value_to_component(
         &self,
         value: &Value,
-    ) -> WrtResult<ComponentValue<ComponentProvider>> {
+    ) -> wrt_error::Result<ComponentValue<ComponentProvider>> {
         match value {
             Value::Bool(b) => Ok(ComponentValue::Bool(*b)),
             Value::U8(v) => Ok(ComponentValue::U8(*v)),
@@ -581,7 +580,7 @@ impl ComponentExecutionEngine {
     fn convert_component_value_to_value(
         &self,
         component_value: &ComponentValue<ComponentProvider>,
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         match component_value {
             ComponentValue::Bool(b) => Ok(Value::Bool(*b)),
             ComponentValue::U8(v) => Ok(Value::U8(*v)),
@@ -624,7 +623,7 @@ impl ComponentExecutionEngine {
         module_name: &str,
         function_count: u32,
         memory_size: u32,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         let module_name_string = {
             #[cfg(feature = "std")]
             {
@@ -654,7 +653,7 @@ impl ComponentExecutionEngine {
 
     /// Register a host function with the runtime bridge
     #[cfg(feature = "std")]
-    pub fn register_runtime_host_function<F>(&mut self, name: &str, func: F) -> WrtResult<usize>
+    pub fn register_runtime_host_function<F>(&mut self, name: &str, func: F) -> wrt_error::Result<usize>
     where
         F: Fn(
                 &[crate::canonical_abi::ComponentValue],
@@ -687,7 +686,7 @@ impl ComponentExecutionEngine {
             &[ComponentValue<ComponentProvider>],
         )
             -> core::result::Result<ComponentValue<ComponentProvider>, wrt_error::Error>,
-    ) -> WrtResult<usize> {
+    ) -> wrt_error::Result<usize> {
         use crate::canonical_abi::ComponentType;
 
         let provider = safe_managed_alloc!(512, CrateId::Component)
@@ -850,7 +849,7 @@ mod tests {
     fn test_host_function_registration_nostd() {
         let mut engine = ComponentExecutionEngine::new().unwrap();
 
-        fn test_func(_args: &[Value]) -> WrtResult<Value> {
+        fn test_func(_args: &[Value]) -> wrt_error::Result<Value> {
             Ok(Value::U32(42))
         }
 

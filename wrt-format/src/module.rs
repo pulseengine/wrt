@@ -283,6 +283,7 @@ pub enum DataMode {
 }
 
 /// Migration functions for data segments
+#[allow(deprecated)]
 impl DataMode {
     /// Convert to pure format representation
     pub fn to_pure_mode(
@@ -302,6 +303,7 @@ impl DataMode {
 
 /// WebAssembly data segment - Pure No_std Version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Data<
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -317,6 +319,7 @@ pub struct Data<
 }
 
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Data<P> {
     fn default() -> Self {
         Self {
@@ -331,6 +334,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 }
 
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl Default for Data {
     fn default() -> Self {
         Self {
@@ -344,6 +348,7 @@ impl Default for Data {
 
 // Implement Checksummable for Data - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     wrt_foundation::traits::Checksummable for Data<P>
 {
@@ -357,6 +362,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl wrt_foundation::traits::Checksummable for Data {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum);
@@ -368,6 +374,7 @@ impl wrt_foundation::traits::Checksummable for Data {
 
 // Implement ToBytes for Data - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     wrt_foundation::traits::ToBytes for Data<P>
 {
@@ -393,6 +400,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl wrt_foundation::traits::ToBytes for Data {
     fn serialized_size(&self) -> usize {
         1 + // mode discriminant
@@ -419,6 +427,7 @@ impl wrt_foundation::traits::ToBytes for Data {
 
 // Implement FromBytes for Data - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     wrt_foundation::traits::FromBytes for Data<P>
 {
@@ -455,6 +464,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl wrt_foundation::traits::FromBytes for Data {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -498,6 +508,7 @@ impl wrt_foundation::traits::FromBytes for Data {
 }
 
 // Implement Checksummable for DataMode
+#[allow(deprecated)]
 impl wrt_foundation::traits::Checksummable for DataMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         checksum.update_slice(&[*self as u8]);
@@ -505,6 +516,7 @@ impl wrt_foundation::traits::Checksummable for DataMode {
 }
 
 // Implement ToBytes for DataMode
+#[allow(deprecated)]
 impl wrt_foundation::traits::ToBytes for DataMode {
     fn serialized_size(&self) -> usize {
         1 // Just the discriminant byte
@@ -521,6 +533,7 @@ impl wrt_foundation::traits::ToBytes for DataMode {
 }
 
 // Implement FromBytes for DataMode
+#[allow(deprecated)]
 impl wrt_foundation::traits::FromBytes for DataMode {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -542,6 +555,7 @@ impl wrt_foundation::traits::FromBytes for DataMode {
 /// WebAssembly data segment - With Allocation (DEPRECATED: Use
 /// pure_format_types::PureDataSegment)
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 #[derive(Debug, Clone)]
 #[deprecated(note = "Use pure_format_types::PureDataSegment for clean separation")]
 pub struct Data {
@@ -557,6 +571,7 @@ pub struct Data {
 
 /// Migration functions for Data (std version)
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl Data {
     /// Convert to pure format representation (runtime concerns removed)
     pub fn to_pure_segment(&self) -> crate::pure_format_types::PureDataSegment {
@@ -859,6 +874,7 @@ impl Default for ElementMode {
 
 // Implement Checksummable for ElementMode - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     wrt_foundation::traits::Checksummable for ElementMode<P>
 {
@@ -884,6 +900,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl wrt_foundation::traits::Checksummable for ElementMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
@@ -907,6 +924,7 @@ impl wrt_foundation::traits::Checksummable for ElementMode {
 
 // Implement ToBytes for ElementMode - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     wrt_foundation::traits::ToBytes for ElementMode<P>
 {
@@ -946,6 +964,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
 // Implement FromBytes for ElementMode - no_std version
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 impl wrt_foundation::traits::FromBytes for ElementMode {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -995,6 +1014,7 @@ pub enum ElementMode {
 
 /// Migration functions for ElementMode (std version)
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl ElementMode {
     /// Convert to pure format representation (runtime concerns removed)
     pub fn to_pure_mode(&self) -> crate::pure_format_types::PureElementMode {
@@ -1121,7 +1141,9 @@ pub struct Element {
     /// Initialization items for the segment.
     pub init:         ElementInit,
     /// The mode of the element segment.
-    pub mode:         ElementMode,
+    pub mode:         crate::pure_format_types::PureElementMode,
+    /// Offset expression bytes (for active segments)
+    pub offset_expr:  Vec<u8>,
 }
 
 #[cfg(feature = "std")]
@@ -1130,7 +1152,8 @@ impl Default for Element {
         Self {
             element_type: RefType::Funcref,
             init:         ElementInit::default(),
-            mode:         ElementMode::default(),
+            mode:         crate::pure_format_types::PureElementMode::default(),
+            offset_expr:  Vec::new(),
         }
     }
 }

@@ -52,7 +52,6 @@ use wrt_foundation::{
         AsilLevel,
         SafetyLevel,
     },
-    WrtResult,
 };
 
 // Mock resource handle for testing cross-crate resource management
@@ -64,7 +63,7 @@ struct ResourceHandle {
 }
 
 impl ResourceHandle {
-    fn new(id: u32, crate_id: CrateId, size: usize) -> WrtResult<Self> {
+    fn new(id: u32, crate_id: CrateId, size: usize) -> wrt_error::Result<Self> {
         // Use safe_managed_alloc! for capability-based allocation
         let _provider = safe_managed_alloc!(4096, crate_id)?;
         Ok(Self {
@@ -74,7 +73,7 @@ impl ResourceHandle {
         })
     }
 
-    fn transfer_to(&mut self, new_crate: CrateId) -> WrtResult<()> {
+    fn transfer_to(&mut self, new_crate: CrateId) -> wrt_error::Result<()> {
         // This should fail - resources can't be transferred between crates
         if self.crate_id != new_crate {
             return Err(WrtError::memory_error(
@@ -101,7 +100,7 @@ impl TestMemoryStrategy {
         }
     }
 
-    fn allocate(&self, size: usize) -> WrtResult<usize> {
+    fn allocate(&self, size: usize) -> wrt_error::Result<usize> {
         let id = self.allocation_count.fetch_add(1, Ordering::SeqCst);
         let mut allocs = self.allocations.lock().unwrap();
         allocs.insert(id, vec![0u8; size]);
@@ -109,7 +108,7 @@ impl TestMemoryStrategy {
         Ok(id)
     }
 
-    fn deallocate(&self, id: usize) -> WrtResult<()> {
+    fn deallocate(&self, id: usize) -> wrt_error::Result<()> {
         let mut allocs = self.allocations.lock().unwrap();
         if let Some(data) = allocs.remove(&id) {
             self.total_bytes.fetch_sub(data.len(), Ordering::SeqCst);
@@ -183,7 +182,7 @@ mod component_interaction_tests {
     }
 
     impl ComponentInstance {
-        fn new(id: u32, crate_id: CrateId) -> WrtResult<Self> {
+        fn new(id: u32, crate_id: CrateId) -> wrt_error::Result<Self> {
             Ok(Self {
                 id,
                 imports: Vec::new(),
@@ -192,7 +191,7 @@ mod component_interaction_tests {
             })
         }
 
-        fn add_import(&mut self, from_crate: CrateId) -> WrtResult<()> {
+        fn add_import(&mut self, from_crate: CrateId) -> wrt_error::Result<()> {
             // Verify budget is available in source crate
             let stats = BudgetAwareProviderFactory::get_crate_stats(from_crate)?;
             let usage = stats.allocated_bytes;
@@ -248,7 +247,7 @@ mod component_interaction_tests {
 mod error_propagation_tests {
     use super::*;
 
-    fn allocate_until_exhausted(crate_id: CrateId) -> WrtResult<Vec<BudgetProvider<1024>>> {
+    fn allocate_until_exhausted(crate_id: CrateId) -> wrt_error::Result<Vec<BudgetProvider<1024>>> {
         let mut providers = Vec::new();
         loop {
             match BudgetProvider::<1024>::new(crate_id) {
@@ -297,7 +296,7 @@ mod error_propagation_tests {
         let _ = memory_system_initializer::presets::development();
 
         // Function that propagates errors across crates
-        fn cross_crate_operation() -> WrtResult<()> {
+        fn cross_crate_operation() -> wrt_error::Result<()> {
             let runtime_provider = BudgetProvider::<512>::new(CrateId::Runtime)?;
             let component_provider = BudgetProvider::<512>::new(CrateId::Component)?;
 
@@ -691,7 +690,7 @@ mod external_integration_tests {
     use super::*;
 
     // Simulate WASI memory allocation
-    fn wasi_malloc(size: usize, crate_id: CrateId) -> WrtResult<*mut u8> {
+    fn wasi_malloc(size: usize, crate_id: CrateId) -> wrt_error::Result<*mut u8> {
         // In real WASI, this would use linear memory
         // Here we simulate with budget tracking
         let provider = BudgetProvider::<4096>::new(crate_id)?;
@@ -723,7 +722,7 @@ mod external_integration_tests {
         let _ = memory_system_initializer::presets::development();
 
         // Simulate host function that allocates memory
-        fn host_function_with_allocation() -> WrtResult<Vec<u8>> {
+        fn host_function_with_allocation() -> wrt_error::Result<Vec<u8>> {
             let _provider = BudgetProvider::<2048>::new(CrateId::Host)?;
             let mut buffer = vec![0u8; 1024];
 

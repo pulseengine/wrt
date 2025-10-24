@@ -11,7 +11,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     memory_init::MemoryInitializer,
     safe_managed_alloc,
-    WrtResult,
 };
 
 use crate::resources::resource_table::ResourceTable;
@@ -28,7 +27,7 @@ use crate::resources::resource_table::ResourceTable;
 /// - ✅ Compile-time size enforcement
 /// - ✅ Automatic cleanup via RAII
 /// - ✅ Component isolation through budget tracking
-pub fn create_budget_aware_resource_table() -> WrtResult<ResourceTable> {
+pub fn create_budget_aware_resource_table() -> wrt_error::Result<ResourceTable> {
     // Ensure memory system is initialized
     MemoryInitializer::initialize()?;
 
@@ -65,7 +64,7 @@ impl BudgetAwareResourceTablePool {
     /// 1. The table allocation is tracked by the budget system
     /// 2. Component isolation is maintained
     /// 3. Resource limits are enforced
-    pub fn create_table(&mut self) -> WrtResult<ResourceTable> {
+    pub fn create_table(&mut self) -> wrt_error::Result<ResourceTable> {
         if self.active_tables >= self.max_tables {
             return Err(wrt_foundation::wrt_error::Error::resource_exhausted(
                 "Resource table limit exceeded",
@@ -114,7 +113,7 @@ pub struct ResourceTableUsageStats {
 ///
 /// This function verifies that ResourceTable integration with the budget system
 /// is working correctly for ASIL-D compliance.
-pub fn verify_budget_integration() -> WrtResult<bool> {
+pub fn verify_budget_integration() -> wrt_error::Result<bool> {
     // Initialize memory system
     MemoryInitializer::initialize()?;
 

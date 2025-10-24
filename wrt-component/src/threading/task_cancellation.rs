@@ -57,7 +57,6 @@ use crate::{
         TaskState,
     },
     types::Value,
-    WrtResult,
 };
 
 /// Maximum number of cancellation handlers in no_std

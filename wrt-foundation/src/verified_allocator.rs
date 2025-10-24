@@ -131,7 +131,7 @@ impl VerifiedAllocator {
     /// - self.enabled
     /// - size > 0
     /// - self.allocated() + size <= self.total_budget
-    pub fn allocate(&self, size: usize) -> Result<VerifiedAllocation> {
+    pub fn allocate(&self, size: usize) -> Result<VerifiedAllocation<'_>> {
         // Check preconditions
         if !self.enabled.load(Ordering::Acquire) {
             return Err(Error::runtime_error("Allocator is disabled"));
@@ -226,7 +226,7 @@ impl VerifiedAllocator {
     /// # Returns
     /// * `Ok(ScopeGuard)` - RAII guard that exits scope on drop
     /// * `Err` - If scope stack is full or parameters invalid
-    pub fn enter_scope(&self, crate_id: CrateId, budget: usize) -> Result<ScopeGuard> {
+    pub fn enter_scope(&self, crate_id: CrateId, budget: usize) -> Result<ScopeGuard<'_>> {
         if budget == 0 {
             return Err(Error::validation_invalid_parameter("Scope budget cannot be zero"));
         }

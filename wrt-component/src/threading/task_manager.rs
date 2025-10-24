@@ -47,7 +47,6 @@ use crate::{
         ValType,
         Value,
     },
-    WrtResult,
 };
 
 /// Maximum number of tasks in no_std environments
@@ -233,7 +232,7 @@ pub enum TaskResult {
 
 impl TaskManager {
     /// Create a new task manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             tasks: BTreeMap::new(),
@@ -269,7 +268,7 @@ impl TaskManager {
         task_type: TaskType,
         component_instance: u32,
         function_index: Option<u32>,
-    ) -> WrtResult<TaskId> {
+    ) -> wrt_error::Result<TaskId> {
         // Check task limit
         if self.tasks.len() >= self.max_concurrent_tasks {
             return Err(Error::runtime_execution_error("Error occurred"));
@@ -383,7 +382,7 @@ impl TaskManager {
     }
 
     /// Make a task ready to run
-    pub fn make_ready(&mut self, task_id: TaskId) -> WrtResult<()> {
+    pub fn make_ready(&mut self, task_id: TaskId) -> wrt_error::Result<()> {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state == TaskState::Starting || task.state == TaskState::Waiting {
                 task.state = TaskState::Ready;
@@ -430,7 +429,7 @@ impl TaskManager {
     }
 
     /// Switch to a task (make it current)
-    pub fn switch_to_task(&mut self, task_id: TaskId) -> WrtResult<()> {
+    pub fn switch_to_task(&mut self, task_id: TaskId) -> wrt_error::Result<()> {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state == TaskState::Ready {
                 task.state = TaskState::Running;
@@ -449,7 +448,7 @@ impl TaskManager {
     }
 
     /// Complete current task with return values
-    pub fn task_return(&mut self, values: Vec<Value>) -> WrtResult<()> {
+    pub fn task_return(&mut self, values: Vec<Value>) -> wrt_error::Result<()> {
         if let Some(task_id) = self.current_task {
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Completed;
@@ -488,7 +487,7 @@ impl TaskManager {
     }
 
     /// Wait for waitables
-    pub fn task_wait(&mut self, waitables: WaitableSet) -> WrtResult<u32> {
+    pub fn task_wait(&mut self, waitables: WaitableSet) -> wrt_error::Result<u32> {
         if let Some(task_id) = self.current_task {
             // Check if any waitables are immediately ready
             if let Some(ready_index) = waitables.first_ready() {
@@ -510,12 +509,12 @@ impl TaskManager {
     }
 
     /// Poll waitables without blocking
-    pub fn task_poll(&self, waitables: &WaitableSet) -> WrtResult<Option<u32>> {
+    pub fn task_poll(&self, waitables: &WaitableSet) -> wrt_error::Result<Option<u32>> {
         Ok(waitables.first_ready())
     }
 
     /// Yield current task voluntarily
-    pub fn task_yield(&mut self) -> WrtResult<()> {
+    pub fn task_yield(&mut self) -> wrt_error::Result<()> {
         if let Some(task_id) = self.current_task {
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Ready;
@@ -545,7 +544,7 @@ impl TaskManager {
     }
 
     /// Cancel a task
-    pub fn task_cancel(&mut self, task_id: TaskId) -> WrtResult<()> {
+    pub fn task_cancel(&mut self, task_id: TaskId) -> wrt_error::Result<()> {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state != TaskState::Completed && task.state != TaskState::Failed {
                 task.state = TaskState::Cancelled;
@@ -569,13 +568,13 @@ impl TaskManager {
     }
 
     /// Handle backpressure for a task
-    pub fn task_backpressure(&mut self) -> WrtResult<()> {
+    pub fn task_backpressure(&mut self) -> wrt_error::Result<()> {
         // Simple backpressure: yield current task
         self.task_yield()
     }
 
     /// Update waitable states and wake waiting tasks
-    pub fn update_waitables(&mut self) -> WrtResult<()> {
+    pub fn update_waitables(&mut self) -> wrt_error::Result<()> {
         let mut tasks_to_wake = Vec::new();
 
         // Check all waiting tasks
@@ -613,7 +612,7 @@ impl TaskManager {
     }
 
     /// Clean up resources owned by a task
-    fn cleanup_task_resources(&mut self, task_id: TaskId) -> WrtResult<()> {
+    fn cleanup_task_resources(&mut self, task_id: TaskId) -> wrt_error::Result<()> {
         if let Some(task) = self.get_task(task_id) {
             // Drop borrowed resources
             for handle in &task.borrowed_handles {

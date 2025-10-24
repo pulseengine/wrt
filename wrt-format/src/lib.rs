@@ -128,6 +128,7 @@ pub type ModuleGlobals<P> = BoundedVec<crate::module::Global<P>, MAX_MODULE_GLOB
 #[cfg(not(any(feature = "std")))]
 pub type ModuleElements<P> = BoundedVec<crate::module::Element<P>, MAX_MODULE_ELEMENTS, P>;
 #[cfg(not(any(feature = "std")))]
+#[allow(deprecated)]
 pub type ModuleData<P> = BoundedVec<crate::module::Data<P>, MAX_MODULE_DATA, P>;
 #[cfg(not(any(feature = "std")))]
 pub type ModuleCustomSections<P> = BoundedVec<crate::section::CustomSection, 64, P>;
@@ -387,6 +388,7 @@ pub use error::{
     wrt_validation_error as validation_error,
 };
 // Note: Data, DataMode, ElementMode are deprecated - use pure_format_types instead
+#[allow(deprecated)]
 #[deprecated(note = "Use pure_format_types::PureDataSegment for clean separation")]
 pub use module::Data;
 pub use module::{
@@ -408,6 +410,7 @@ pub use pure_format_types::{
 pub type DataSegment = pure_format_types::PureDataSegment;
 pub type ElementSegment = pure_format_types::PureElementSegment;
 // Legacy aliases (deprecated)
+#[allow(deprecated)]
 #[deprecated(note = "Use pure_format_types::PureDataSegment directly")]
 pub type LegacyDataSegment = module::Data;
 #[deprecated(note = "Use pure_format_types::PureElementSegment directly")]
@@ -544,7 +547,7 @@ pub mod no_std_demo {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;
-        let wasm_str = WasmString::from_str("hello")
+        let wasm_str = WasmString::try_from_str("hello")
             .map_err(|_| wrt_foundation::bounded::CapacityError)?;
         assert_eq!(wasm_str.as_str().unwrap(), "hello");
         Ok(())

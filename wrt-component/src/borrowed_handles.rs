@@ -22,7 +22,6 @@ use crate::{
     task_manager::TaskId,
     resource_lifecycle_management::{ResourceId, ComponentId},
     types::Value,
-    WrtResult,
 };
 
 use wrt_error::{Error, ErrorCategory, Result};
