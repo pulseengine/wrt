@@ -95,7 +95,7 @@ impl wrt_runtime::ToBytes for ContextKey {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -104,7 +104,7 @@ impl wrt_runtime::FromBytes for ContextKey {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self(String::from_bytes_with_provider(reader, provider)?));
         #[cfg(not(any(feature = "std",)))]
@@ -179,7 +179,7 @@ impl wrt_runtime::ToBytes for ContextValue {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             Self::Simple(v) => {
                 0u8.to_bytes_with_provider(writer, provider)?;
@@ -197,7 +197,7 @@ impl wrt_runtime::FromBytes for ContextValue {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let tag = u8::from_bytes_with_provider(reader, provider)?;
         match tag {
             0 => Ok(Self::Simple(WrtComponentValue::from_bytes_with_provider(reader, provider)?)),

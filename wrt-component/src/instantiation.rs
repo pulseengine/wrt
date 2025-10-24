@@ -60,7 +60,6 @@ use crate::{
         ValType,
         Value,
     },
-    WrtResult,
 };
 
 /// Maximum number of imports in no_std environments
@@ -148,9 +147,9 @@ pub struct FunctionImport {
     pub signature:      WrtComponentType<ComponentProvider>,
     /// Function implementation
     #[cfg(feature = "std")]
-    pub implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
+    pub implementation: Box<dyn Fn(&[Value]) -> wrt_error::Result<Value>>,
     #[cfg(not(any(feature = "std",)))]
-    pub implementation: fn(&[Value]) -> WrtResult<Value>,
+    pub implementation: fn(&[Value]) -> wrt_error::Result<Value>,
 }
 
 /// Instance import descriptor
@@ -321,7 +320,7 @@ pub struct ImportValues {
 
 impl ImportValues {
     /// Create new import values
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(all(feature = "std", feature = "safety-critical"))]
             imports: WrtHashMap::new(),
@@ -337,7 +336,7 @@ impl ImportValues {
 
     /// Add an import value
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
+    pub fn add(&mut self, name: String, value: ImportValue) -> wrt_error::Result<()> {
         self.imports
             .insert(name, value)
             .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports (limit: 256)"))?;
@@ -346,7 +345,7 @@ impl ImportValues {
 
     /// Add an import value
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
+    pub fn add(&mut self, name: String, value: ImportValue) -> wrt_error::Result<()> {
         self.imports.insert(name, value);
         Ok(())
     }
@@ -357,7 +356,7 @@ impl ImportValues {
         &mut self,
         name: BoundedString<64>,
         value: ImportValue,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.imports
             .push((name, value))
             .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports"))
@@ -416,7 +415,7 @@ pub struct InstantiationContext {
 
 impl InstantiationContext {
     /// Create a new instantiation context
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             canonical_abi:    CanonicalABI::new(64),
             resource_manager: ResourceLifecycleManager::new(),
@@ -453,7 +452,7 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<ComponentInstance> {
+    ) -> wrt_error::Result<ComponentInstance> {
         // Generate unique instance ID
         let instance_id = context.next_instance_id();
 
@@ -525,7 +524,7 @@ impl Component {
     }
 
     /// Validate that provided imports match component requirements
-    fn validate_imports(&self, imports: &ImportValues) -> WrtResult<()> {
+    fn validate_imports(&self, imports: &ImportValues) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             for import in &self.imports {
@@ -557,7 +556,7 @@ impl Component {
     }
 
     /// Validate that an import value matches the expected type
-    fn validate_import_type(&self, import: &Import, value: &ImportValue) -> WrtResult<()> {
+    fn validate_import_type(&self, import: &Import, value: &ImportValue) -> wrt_error::Result<()> {
         match (&import.import_type, value) {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
@@ -625,7 +624,7 @@ impl Component {
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     fn create_resource_tables(
         &self,
-    ) -> WrtResult<WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>> {
+    ) -> wrt_error::Result<WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>> {
         let mut tables = WrtVec::new();
 
         // Create resource tables based on component types
@@ -643,7 +642,7 @@ impl Component {
 
     /// Create resource tables for the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
+    fn create_resource_tables(&self) -> wrt_error::Result<Vec<ResourceTable>> {
         let mut tables = Vec::new();
 
         // Create resource tables based on component types
@@ -660,7 +659,7 @@ impl Component {
     #[cfg(not(any(feature = "std",)))]
     fn create_resource_tables(
         &self,
-    ) -> WrtResult<StaticVec<ResourceTable, 16>>
+    ) -> wrt_error::Result<StaticVec<ResourceTable, 16>>
     {
         use wrt_foundation::collections::StaticVec;
 
@@ -683,7 +682,7 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>> {
+    ) -> wrt_error::Result<WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>> {
         let mut resolved = WrtVec::new();
 
         for import in &self.imports {
@@ -704,7 +703,7 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<Vec<ResolvedImport>> {
+    ) -> wrt_error::Result<Vec<ResolvedImport>> {
         let mut resolved = Vec::new();
 
         for import in &self.imports {
@@ -722,7 +721,7 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedImport, 256>> {
+    ) -> wrt_error::Result<BoundedVec<ResolvedImport, 256>> {
         let mut resolved = BoundedVec::new();
 
         for import in &self.imports {
@@ -750,7 +749,7 @@ impl Component {
         import: &Import,
         value: &ImportValue,
         context: &mut InstantiationContext,
-    ) -> WrtResult<ResolvedImport> {
+    ) -> wrt_error::Result<ResolvedImport> {
         match value {
             ImportValue::Function(func) => {
                 // Register the function with the execution engine
@@ -783,7 +782,7 @@ impl Component {
         &self,
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>> {
+    ) -> wrt_error::Result<WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>> {
         let mut instances = WrtVec::new();
 
         // Initialize each embedded module
@@ -806,7 +805,7 @@ impl Component {
         &self,
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
-    ) -> WrtResult<Vec<ModuleInstance>> {
+    ) -> wrt_error::Result<Vec<ModuleInstance>> {
         let mut instances = Vec::new();
 
         // Initialize each embedded module
@@ -826,7 +825,7 @@ impl Component {
         &self,
         resolved_imports: &BoundedVec<ResolvedImport, 256>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ModuleInstance, 64>> {
+    ) -> wrt_error::Result<BoundedVec<ModuleInstance, 64>> {
         let mut instances = BoundedVec::new();
 
         // Initialize each embedded module
@@ -848,7 +847,7 @@ impl Component {
         &self,
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>> {
+    ) -> wrt_error::Result<WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>> {
         let mut exports = WrtVec::new();
 
         for export in &self.exports {
@@ -909,7 +908,7 @@ impl Component {
         &self,
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
-    ) -> WrtResult<Vec<ResolvedExport>> {
+    ) -> wrt_error::Result<Vec<ResolvedExport>> {
         let mut exports = Vec::new();
 
         for export in &self.exports {
@@ -967,7 +966,7 @@ impl Component {
         &self,
         module_instances: &BoundedVec<ModuleInstance, 64>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedExport, 256>> {
+    ) -> wrt_error::Result<BoundedVec<ResolvedExport, 256>> {
         let mut exports = BoundedVec::new();
 
         for export in &self.exports {
@@ -1199,12 +1198,12 @@ impl FromBytes for ModuleInstance {
 #[cfg(feature = "std")]
 struct HostFunctionWrapper {
     signature:      WrtComponentType,
-    implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
+    implementation: Box<dyn Fn(&[Value]) -> wrt_error::Result<Value>>,
 }
 
 #[cfg(feature = "std")]
 impl crate::execution_engine::HostFunction for HostFunctionWrapper {
-    fn call(&mut self, args: &[Value]) -> WrtResult<Value> {
+    fn call(&mut self, args: &[Value]) -> wrt_error::Result<Value> {
         (self.implementation)(args)
     }
 
@@ -1314,7 +1313,7 @@ mod tests {
     // Test registering a host function
     // #[cfg(not(feature = "std"))]
     // {
-    // fn test_host_func(_args: &[Value]) -> WrtResult<Value> {
+    // fn test_host_func(_args: &[Value]) -> wrt_error::Result<Value> {
     // Ok(Value::Bool(true)
     // }
     //
@@ -1330,7 +1329,7 @@ mod tests {
     //
     // struct TestHostFunc;
     // impl HostFunction for TestHostFunc {
-    // fn call(&mut self, _args: &[Value]) -> WrtResult<Value> {
+    // fn call(&mut self, _args: &[Value]) -> wrt_error::Result<Value> {
     // Ok(Value::Bool(true)
     // }
     //

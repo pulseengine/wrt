@@ -147,7 +147,7 @@ impl FromBytes for TypeRelation {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let sub_type = TypeId::from_bytes_with_provider(reader, provider)?;
         let super_type = TypeId::from_bytes_with_provider(reader, provider)?;
         let kind_byte = u8::from_bytes_with_provider(reader, provider)?;
@@ -187,7 +187,7 @@ impl ToBytes for RelationResult {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let byte = match self {
             RelationResult::Satisfied => 0u8,
             RelationResult::Violated => 1u8,
@@ -201,7 +201,7 @@ impl FromBytes for RelationResult {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let byte = u8::from_bytes_with_provider(reader, provider)?;
         Ok(match byte {
             0 => RelationResult::Satisfied,

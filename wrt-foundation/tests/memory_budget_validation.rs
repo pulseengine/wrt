@@ -16,11 +16,10 @@ mod memory_budget_tests {
         },
         memory_system_initializer,
         platform_discovery::PlatformDiscovery,
-        WrtResult,
     };
 
     #[test]
-    fn test_memory_budget_initialization() -> WrtResult<()> {
+    fn test_memory_budget_initialization() -> wrt_error::Result<()> {
         // Initialize memory system
         let config = memory_system_initializer::presets::production()?;
 
@@ -33,7 +32,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_platform_specific_budgets() -> WrtResult<()> {
+    fn test_platform_specific_budgets() -> wrt_error::Result<()> {
         // Test different platform configurations
         let platforms = ["embedded", "iot", "desktop"];
 
@@ -63,7 +62,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_crate_budget_allocation() -> WrtResult<()> {
+    fn test_crate_budget_allocation() -> wrt_error::Result<()> {
         let _ = memory_system_initializer::presets::production()?;
 
         // Test that each crate can allocate within its budget
@@ -93,7 +92,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_memory_health_monitoring() -> WrtResult<()> {
+    fn test_memory_health_monitoring() -> wrt_error::Result<()> {
         let _ = memory_system_initializer::presets::production()?;
 
         // Enable memory analysis
@@ -119,7 +118,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_memory_budget_enforcement() -> WrtResult<()> {
+    fn test_memory_budget_enforcement() -> wrt_error::Result<()> {
         let _ = memory_system_initializer::presets::production()?;
 
         // Get budget analysis
@@ -147,7 +146,7 @@ mod memory_budget_tests {
 
     #[test]
     #[cfg(feature = "std")]
-    fn test_memory_report_generation() -> WrtResult<()> {
+    fn test_memory_report_generation() -> wrt_error::Result<()> {
         use wrt_foundation::memory_analysis::{
             MemoryReportBuilder,
             ReportFormat,
@@ -172,7 +171,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_ci_memory_thresholds() -> WrtResult<()> {
+    fn test_ci_memory_thresholds() -> wrt_error::Result<()> {
         let _ = memory_system_initializer::presets::production()?;
 
         // Simulate CI threshold checks
@@ -204,7 +203,7 @@ mod memory_budget_tests {
     }
 
     #[test]
-    fn test_platform_optimizations_applied() -> WrtResult<()> {
+    fn test_platform_optimizations_applied() -> wrt_error::Result<()> {
         use wrt_foundation::platform_optimizations::PlatformOptimizations;
 
         let _ = memory_system_initializer::presets::production()?;

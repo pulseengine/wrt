@@ -56,7 +56,6 @@ use crate::{
         ComponentInstance,
         Value,
     },
-    WrtResult,
 };
 
 /// Maximum number of quota nodes in no_std environments
@@ -427,7 +426,7 @@ impl QuotaNode {
 
 impl DynamicQuotaManager {
     /// Create a new dynamic quota manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             nodes: HashMap::new(),
@@ -459,14 +458,14 @@ impl DynamicQuotaManager {
     }
 
     /// Create a new quota manager with resource manager integration
-    pub fn with_resource_manager(resource_manager: ResourceManager) -> WrtResult<Self> {
+    pub fn with_resource_manager(resource_manager: ResourceManager) -> wrt_error::Result<Self> {
         let mut manager = Self::new()?;
         manager.resource_manager = Some(resource_manager);
         Ok(manager)
     }
 
     /// Create a new quota manager with blast zone integration
-    pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> WrtResult<Self> {
+    pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> wrt_error::Result<Self> {
         let mut manager = Self::new()?;
         manager.blast_zone_manager = Some(blast_zone_manager);
         Ok(manager)
@@ -485,7 +484,7 @@ impl DynamicQuotaManager {
         parent_id: Option<u32>,
         resource_type: ResourceType,
         max_quota: u64,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
 
@@ -513,7 +512,7 @@ impl DynamicQuotaManager {
     }
 
     /// Request quota allocation
-    pub fn request_quota(&mut self, request: &QuotaRequest) -> WrtResult<QuotaResponse> {
+    pub fn request_quota(&mut self, request: &QuotaRequest) -> wrt_error::Result<QuotaResponse> {
         // Find the appropriate quota node
         let node_id = self.find_quota_node(
             request.entity_id,
@@ -584,7 +583,7 @@ impl DynamicQuotaManager {
     }
 
     /// Release quota allocation
-    pub fn release_quota(&mut self, reservation_id: u32) -> WrtResult<()> {
+    pub fn release_quota(&mut self, reservation_id: u32) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             if let Some((node_id, amount)) = self.reservations.remove(&reservation_id) {
@@ -618,7 +617,7 @@ impl DynamicQuotaManager {
     }
 
     /// Update quota based on system conditions
-    pub fn update_quotas(&mut self, system_load: f64, available_resources: u64) -> WrtResult<()> {
+    pub fn update_quotas(&mut self, system_load: f64, available_resources: u64) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             for node in self.nodes.values_mut() {
@@ -658,7 +657,7 @@ impl DynamicQuotaManager {
         entity_id: u32,
         entity_type: QuotaNodeType,
         resource_type: ResourceType,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         #[cfg(feature = "std")]
         {
             for (node_id, node) in &self.nodes {
@@ -688,7 +687,7 @@ impl DynamicQuotaManager {
     }
 
     /// Check hierarchical quota constraints
-    fn check_hierarchical_quota(&self, node_id: u32, amount: u64) -> WrtResult<bool> {
+    fn check_hierarchical_quota(&self, node_id: u32, amount: u64) -> wrt_error::Result<bool> {
         let mut current_id = Some(node_id);
 
         while let Some(id) = current_id {
@@ -712,7 +711,7 @@ impl DynamicQuotaManager {
         node_id: u32,
         amount: u64,
         timestamp: u64,
-    ) -> WrtResult<bool> {
+    ) -> wrt_error::Result<bool> {
         let mut current_id = Some(node_id);
         #[cfg(feature = "std")]
         let mut allocated_nodes = Vec::new();
@@ -783,7 +782,7 @@ impl DynamicQuotaManager {
         node_id: u32,
         amount: u64,
         timestamp: u64,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let mut current_id = Some(node_id);
 
         while let Some(id) = current_id {

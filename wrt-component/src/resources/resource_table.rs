@@ -23,7 +23,6 @@ use wrt_foundation::{
         ResourceOperation,
     },
     safe_managed_alloc,
-    WrtResult,
 };
 use wrt_intercept::{
     builtins::InterceptContext as InterceptionContext,
@@ -357,7 +356,7 @@ impl ResourceTable {
     /// - Uses bounded collections with compile-time size limits
     /// - Integrates with budget enforcement system
     /// - Prevents runtime allocation failures
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         #[cfg(not(feature = "std"))]
         let memory_guard = wrt_foundation::safety_aware_alloc!(131072, CrateId::Component)?; // 128KB for resource table
 
@@ -394,12 +393,12 @@ impl ResourceTable {
     ///
     /// This function ensures all resource table allocations are tracked
     /// by the budget enforcement system.
-    pub fn new_budget_aware() -> WrtResult<Self> {
+    pub fn new_budget_aware() -> wrt_error::Result<Self> {
         Self::new()
     }
 
     /// Create a new resource table with optimized size-class buffer pool
-    pub fn new_with_optimized_memory() -> WrtResult<Self> {
+    pub fn new_with_optimized_memory() -> wrt_error::Result<Self> {
         #[cfg(not(feature = "std"))]
         let memory_guard = wrt_foundation::safety_aware_alloc!(131072, CrateId::Component)?; // 128KB for resource table
 

@@ -469,7 +469,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
         let str_content = core::str::from_utf8(str_bytes)
             .map_err(|_| Error::validation_parse_error("Invalid UTF-8 string"))?;
 
-        WasmString::from_str(str_content)
+        WasmString::try_from_str(str_content)
             .map_err(|_| Error::memory_error("String too large"))
     }
 

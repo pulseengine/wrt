@@ -7,7 +7,6 @@ use crate::prelude::*;
 
 /// WASI filesystem types from WIT
 pub mod filesystem_types {
-    use super::MemoryProvider;
 
     /// File descriptor type
     pub type Descriptor = u32;

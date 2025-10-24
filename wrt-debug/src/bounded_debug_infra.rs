@@ -68,7 +68,7 @@ pub type DebugProvider = NoStdProvider<DEBUG_PROVIDER_SIZE>;
 
 /// Create a debug-specific string type
 pub fn create_debug_string(s: &str) -> Result<BoundedString<MAX_FILE_PATH_LEN>> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     BoundedString::try_from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
@@ -186,32 +186,32 @@ where
 
 /// Create a new bounded file path
 pub fn new_file_path() -> Result<BoundedFilePath> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create file path"))
 }
 
 /// Create a bounded file path from str
 pub fn bounded_file_path_from_str(s: &str) -> Result<BoundedFilePath> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create file path from str"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> Result<BoundedFunctionName> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create function name"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> Result<BoundedFunctionName> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create function name from str"))
 }
@@ -308,16 +308,16 @@ where
 
 /// Create a new bounded diagnostic message
 pub fn new_diagnostic_message() -> Result<BoundedDiagnosticMessage> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create diagnostic message"))
 }
 
 /// Create a bounded diagnostic message from str
 pub fn bounded_diagnostic_from_str(s: &str) -> Result<BoundedDiagnosticMessage> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str(s).map_err(|_e| {
         wrt_error::Error::memory_error("Failed to create diagnostic message from str")
     })
@@ -343,8 +343,8 @@ where
 
 /// Create a new bounded debug string
 pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str("")
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
@@ -353,8 +353,8 @@ pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
 pub fn bounded_debug_string_from_str(
     s: &str,
 ) -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
-    let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    let provider = guard.clone();
+    let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+    let _provider = _guard.clone();
     BoundedString::try_from_str(s)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string from str"))
 }

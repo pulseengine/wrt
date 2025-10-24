@@ -193,7 +193,7 @@ impl ToBytes for Capability {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             Self::Random => 0u8.to_bytes_with_provider(writer, provider),
             _ => 1u8.to_bytes_with_provider(writer, provider),
@@ -205,7 +205,7 @@ impl FromBytes for Capability {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         _reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self::default())
     }
 }
@@ -250,7 +250,7 @@ impl ToBytes for CapabilityGrant {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.capability.to_bytes_with_provider(writer, provider)?;
         self.granted_to.to_bytes_with_provider(writer, provider)?;
         self.granted_at.to_bytes_with_provider(writer, provider)?;
@@ -272,7 +272,7 @@ impl FromBytes for CapabilityGrant {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let capability = Capability::from_bytes_with_provider(reader, provider)?;
         let granted_to = ComponentInstanceId::from_bytes_with_provider(reader, provider)?;
         let granted_at = u64::from_bytes_with_provider(reader, provider)?;
@@ -507,7 +507,7 @@ impl ToBytes for IsolationLevel {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let val = match self {
             Self::None => 0u8,
             Self::Basic => 1u8,
@@ -522,7 +522,7 @@ impl FromBytes for IsolationLevel {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let val = u8::from_bytes_with_provider(reader, provider)?;
         Ok(match val {
             0 => Self::None,
@@ -573,7 +573,7 @@ impl ToBytes for ResourceLimits {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.max_memory.to_bytes_with_provider(writer, provider)?;
         self.max_cpu_time_ms.to_bytes_with_provider(writer, provider)?;
         self.max_file_handles.to_bytes_with_provider(writer, provider)?;
@@ -588,7 +588,7 @@ impl FromBytes for ResourceLimits {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             max_memory: usize::from_bytes_with_provider(reader, provider)?,
             max_cpu_time_ms: u64::from_bytes_with_provider(reader, provider)?,
@@ -676,7 +676,7 @@ impl ToBytes for ResourceUsage {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.memory_used.to_bytes_with_provider(writer, provider)?;
         self.cpu_time_used_ms.to_bytes_with_provider(writer, provider)?;
         self.file_handles_used.to_bytes_with_provider(writer, provider)?;
@@ -691,7 +691,7 @@ impl FromBytes for ResourceUsage {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             memory_used: usize::from_bytes_with_provider(reader, provider)?,
             cpu_time_used_ms: u64::from_bytes_with_provider(reader, provider)?,

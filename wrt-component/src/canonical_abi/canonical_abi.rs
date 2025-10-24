@@ -1580,7 +1580,7 @@ impl ToBytes for ComponentType {
         &self,
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         // Simplified implementation
         Ok(())
     }
@@ -1590,7 +1590,7 @@ impl FromBytes for ComponentType {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         _reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         // Return a default type
         Ok(ComponentType::Bool)
     }
@@ -1632,7 +1632,7 @@ impl ToBytes for ComponentValue {
         &self,
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         // Simplified implementation
         Ok(())
     }
@@ -1642,7 +1642,7 @@ impl FromBytes for ComponentValue {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         _reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         // Return a default value
         Ok(ComponentValue::Bool(false))
     }

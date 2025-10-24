@@ -219,7 +219,7 @@ pub fn new_element_vec() -> BoundedElementVec<wrt_format::module::Element> {
 }
 
 /// Create a new data vector with inline storage
-pub fn new_data_vec() -> BoundedDataVec<wrt_format::module::Data> {
+pub fn new_data_vec() -> BoundedDataVec<wrt_format::pure_format_types::PureDataSegment> {
     StaticVec::new()
 }
 

@@ -37,7 +37,6 @@ use crate::{
         ComponentInstance,
         Value,
     },
-    WrtResult,
 };
 
 // Placeholder types for missing imports
@@ -284,7 +283,7 @@ impl BlastZoneConfig {
 
 impl BlastZone {
     /// Create a new blast zone from configuration
-    pub fn new(config: BlastZoneConfig) -> WrtResult<Self> {
+    pub fn new(config: BlastZoneConfig) -> wrt_error::Result<Self> {
         Ok(Self {
             config,
             health: ZoneHealth::Healthy,
@@ -302,7 +301,7 @@ impl BlastZone {
     }
 
     /// Add a component to this blast zone
-    pub fn add_component(&mut self, component_id: u32) -> WrtResult<()> {
+    pub fn add_component(&mut self, component_id: u32) -> wrt_error::Result<()> {
         if self.components.len() >= self.config.max_components {
             return Err(wrt_error::Error::resource_exhausted(
                 "Blast zone at capacity",
@@ -365,7 +364,7 @@ impl BlastZone {
     }
 
     /// Attempt recovery of this blast zone
-    pub fn attempt_recovery(&mut self) -> WrtResult<bool> {
+    pub fn attempt_recovery(&mut self) -> wrt_error::Result<bool> {
         self.recovery_attempts += 1;
         self.health = ZoneHealth::Recovering;
 
@@ -406,7 +405,7 @@ impl BlastZone {
         &mut self,
         memory_delta: isize,
         resource_delta: i32,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         // Update memory usage
         if memory_delta < 0 {
             let decrease = (-memory_delta) as usize;
@@ -474,7 +473,7 @@ impl BlastZone {
 
 impl BlastZoneManager {
     /// Create a new blast zone manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             zones: HashMap::new(),
@@ -498,7 +497,7 @@ impl BlastZoneManager {
     }
 
     /// Create a new blast zone
-    pub fn create_zone(&mut self, config: BlastZoneConfig) -> WrtResult<u32> {
+    pub fn create_zone(&mut self, config: BlastZoneConfig) -> wrt_error::Result<u32> {
         let zone_id = config.zone_id;
         let zone = BlastZone::new(config)?;
 
@@ -517,7 +516,7 @@ impl BlastZoneManager {
     }
 
     /// Assign a component to a blast zone
-    pub fn assign_component(&mut self, component_id: u32, zone_id: u32) -> WrtResult<()> {
+    pub fn assign_component(&mut self, component_id: u32, zone_id: u32) -> wrt_error::Result<()> {
         // Find and update the zone
         #[cfg(feature = "std")]
         {
@@ -557,7 +556,7 @@ impl BlastZoneManager {
         component_id: u32,
         reason: &str,
         timestamp: u64,
-    ) -> WrtResult<ContainmentPolicy> {
+    ) -> wrt_error::Result<ContainmentPolicy> {
         self.global_failure_count += 1;
 
         // Find the zone containing this component
@@ -661,7 +660,7 @@ impl BlastZoneManager {
     }
 
     /// Add an isolation policy
-    pub fn add_policy(&mut self, policy: IsolationPolicy) -> WrtResult<()> {
+    pub fn add_policy(&mut self, policy: IsolationPolicy) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.policies.push(policy);
@@ -693,7 +692,7 @@ impl BlastZoneManager {
     }
 
     /// Attempt recovery of a failed zone
-    pub fn recover_zone(&mut self, zone_id: u32) -> WrtResult<bool> {
+    pub fn recover_zone(&mut self, zone_id: u32) -> wrt_error::Result<bool> {
         #[cfg(feature = "std")]
         {
             let zone = self

@@ -40,7 +40,6 @@ use crate::{
         ValType,
         Value,
     },
-    WrtResult,
 };
 
 /// Maximum number of call targets in no_std environments
@@ -274,7 +273,7 @@ pub struct TransferredResource {
 #[derive(Debug, Clone)]
 pub struct CrossCallResult {
     /// Function call result
-    pub result:                WrtResult<Value>,
+    pub result:                wrt_error::Result<Value>,
     /// Resources that were transferred
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
@@ -299,7 +298,7 @@ pub struct CallStatistics {
 
 impl CrossComponentCallManager {
     /// Create a new cross-component call manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             targets: Vec::new(),
@@ -348,7 +347,7 @@ impl CrossComponentCallManager {
     }
 
     /// Register a call target
-    pub fn register_target(&mut self, target: CallTarget) -> WrtResult<u32> {
+    pub fn register_target(&mut self, target: CallTarget) -> wrt_error::Result<u32> {
         let target_id = self.targets.len() as u32;
 
         #[cfg(feature = "std")]
@@ -372,7 +371,7 @@ impl CrossComponentCallManager {
         target_id: u32,
         args: &[Value],
         engine: &mut ComponentExecutionEngine,
-    ) -> WrtResult<CrossCallResult> {
+    ) -> wrt_error::Result<CrossCallResult> {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
             return Err(wrt_error::Error::resource_exhausted(
@@ -506,7 +505,7 @@ impl CrossComponentCallManager {
         args: &[Value],
         target: &CallTarget,
         caller_instance: u32,
-    ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
+    ) -> wrt_error::Result<(Vec<Value>, Vec<TransferredResource>)> {
         let mut prepared_args = Vec::new();
         let mut transferred_resources = Vec::new();
 
@@ -546,7 +545,7 @@ impl CrossComponentCallManager {
         args: &[Value],
         target: &CallTarget,
         caller_instance: u32,
-    ) -> WrtResult<(BoundedVec<Value, 32>, BoundedVec<TransferredResource, 32>)> {
+    ) -> wrt_error::Result<(BoundedVec<Value, 32>, BoundedVec<TransferredResource, 32>)> {
         let mut prepared_args = BoundedVec::new();
         let mut transferred_resources = BoundedVec::new();
 
@@ -589,7 +588,7 @@ impl CrossComponentCallManager {
         from_instance: u32,
         to_instance: u32,
         transfer_type: ResourceTransferPolicy,
-    ) -> WrtResult<TransferredResource> {
+    ) -> wrt_error::Result<TransferredResource> {
         match transfer_type {
             ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error(
                 "Resource transfer not allowed",
@@ -625,7 +624,7 @@ impl CrossComponentCallManager {
     }
 
     /// Finalize resource transfers after successful call
-    fn finalize_resource_transfers(&mut self, transfers: &[TransferredResource]) -> WrtResult<()> {
+    fn finalize_resource_transfers(&mut self, transfers: &[TransferredResource]) -> wrt_error::Result<()> {
         for transfer in transfers {
             match transfer.transfer_type {
                 ResourceTransferPolicy::Transfer => {
@@ -646,7 +645,7 @@ impl CrossComponentCallManager {
     }
 
     /// Restore resources after failed call
-    fn restore_resources(&mut self, transfers: &[TransferredResource]) -> WrtResult<()> {
+    fn restore_resources(&mut self, transfers: &[TransferredResource]) -> wrt_error::Result<()> {
         for transfer in transfers {
             match transfer.transfer_type {
                 ResourceTransferPolicy::Transfer => {
@@ -781,7 +780,7 @@ impl CrossComponentCallManager {
         source_component: u32,
         target_component: u32,
         transfer_type: ResourceTransferType,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let transfer = PendingTransfer {
             resource_handle,
             source_component,
@@ -804,7 +803,7 @@ impl CrossComponentCallManager {
     }
 
     /// Process batch resource transfers for optimization
-    fn flush_pending_transfers(&mut self) -> WrtResult<()> {
+    fn flush_pending_transfers(&mut self) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             if self.pending_transfers.is_empty() {
@@ -877,7 +876,7 @@ impl CrossComponentCallManager {
         signature: FunctionSignature,
         abi_adapter: Option<AbiAdapter>,
         resource_requirements: ResourceRequirements,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let cached_target = CachedCallTarget {
             function_index,
             signature,

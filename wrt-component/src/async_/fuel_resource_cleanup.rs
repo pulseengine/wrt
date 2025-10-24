@@ -94,7 +94,7 @@ impl ToBytes for CleanupAction {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             Self::DropResource(h) => { 0u8.to_bytes_with_provider(writer, provider)?; h.0.to_bytes_with_provider(writer, provider) },
             Self::CloseStream(s) => { 1u8.to_bytes_with_provider(writer, provider)?; s.to_bytes_with_provider(writer, provider) },
@@ -120,7 +120,7 @@ impl FromBytes for CleanupAction {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self::CloseStream(0))
     }
 }
@@ -175,7 +175,7 @@ impl ToBytes for CleanupCallback {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.action.to_bytes_with_provider(writer, provider)?;
         self.priority.to_bytes_with_provider(writer, provider)?;
         self.fuel_cost.to_bytes_with_provider(writer, provider)?;
@@ -187,7 +187,7 @@ impl FromBytes for CleanupCallback {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             action: CleanupAction::from_bytes_with_provider(reader, provider)?,
             priority: u32::from_bytes_with_provider(reader, provider)?,

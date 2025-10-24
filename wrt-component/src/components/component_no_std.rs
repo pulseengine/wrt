@@ -81,7 +81,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -90,7 +90,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -1338,7 +1338,7 @@ macro_rules! impl_basic_traits {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -1347,7 +1347,7 @@ macro_rules! impl_basic_traits {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }
@@ -1439,7 +1439,7 @@ impl ToBytes for ExtComponentTypeDefinition {
         &self,
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -1448,7 +1448,7 @@ impl FromBytes for ExtComponentTypeDefinition {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         _reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(ExtComponentTypeDefinition::default())
     }
 }
@@ -1464,7 +1464,7 @@ impl ToBytes for ExtExternType {
         &self,
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -1473,7 +1473,7 @@ impl FromBytes for ExtExternType {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         _reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(ExtExternType::default())
     }
 }

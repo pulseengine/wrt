@@ -283,7 +283,7 @@ impl UnifiedExecutionAgent {
         &mut self,
         type_id: u32,
         data: wrt_foundation::component_value::ComponentValue,
-    ) -> wrt_component::WrtResult<wrt_component::ResourceHandle> {
+    ) -> wrt_component::wrt_error::Result<wrt_component::ResourceHandle> {
         // Delegate to resource manager
         self.core_state.resource_manager.create_resource(type_id, data)
     }
@@ -291,7 +291,7 @@ impl UnifiedExecutionAgent {
     fn drop_resource(
         &mut self,
         handle: wrt_component::ResourceHandle,
-    ) -> wrt_component::WrtResult<()> {
+    ) -> wrt_component::wrt_error::Result<()> {
         self.core_state.resource_manager.drop_resource(handle)
     }
 }

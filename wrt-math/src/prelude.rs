@@ -65,7 +65,7 @@ pub use core::{
 };
 
 // Re-export relevant error types or result aliases if any specific to math ops
-// For now, users will use wrt_error::Result directly or via wrt_foundation::WrtResult
+// For now, users will use wrt_error::Result directly
 
 // Re-export fundamental math operations if desired for a flat import structure
 // Example (if ops module contains public functions like i32_add):

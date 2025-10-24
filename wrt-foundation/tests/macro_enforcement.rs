@@ -21,15 +21,14 @@ mod macro_enforcement_tests {
         },
         memory_system_initializer,
         safe_managed_alloc,
-        WrtResult,
     };
 
-    fn setup() -> WrtResult<()> {
+    fn setup() -> wrt_error::Result<()> {
         memory_system_initializer::presets::test()
     }
 
     #[test]
-    fn test_safe_provider_macro() -> WrtResult<()> {
+    fn test_safe_provider_macro() -> wrt_error::Result<()> {
         setup()?;
 
         // Test standard sizes
@@ -54,7 +53,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_budget_collection_macro() -> WrtResult<()> {
+    fn test_budget_collection_macro() -> wrt_error::Result<()> {
         setup()?;
 
         // Test vector creation
@@ -73,7 +72,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_constrained_provider_macro() -> WrtResult<()> {
+    fn test_constrained_provider_macro() -> wrt_error::Result<()> {
         setup()?;
 
         // Test max constraint
@@ -96,7 +95,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_static_assert_macro() -> WrtResult<()> {
+    fn test_static_assert_macro() -> wrt_error::Result<()> {
         setup()?;
 
         // These compile because assertions are true
@@ -111,7 +110,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_assert_budget_limit_macro() -> WrtResult<()> {
+    fn test_assert_budget_limit_macro() -> wrt_error::Result<()> {
         setup()?;
 
         // Test platform limits
@@ -128,7 +127,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_type_constraint_enforcement() -> WrtResult<()> {
+    fn test_type_constraint_enforcement() -> wrt_error::Result<()> {
         setup()?;
 
         // Function that only accepts BudgetProvider
@@ -150,7 +149,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_provider_constraint_trait() -> WrtResult<()> {
+    fn test_provider_constraint_trait() -> wrt_error::Result<()> {
         setup()?;
 
         // Function with provider constraint
@@ -170,12 +169,12 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_macro_in_generic_context() -> WrtResult<()> {
+    fn test_macro_in_generic_context() -> wrt_error::Result<()> {
         setup()?;
 
         // Generic function using our macros
         fn create_collection<T: Default + Clone>(
-        ) -> WrtResult<BoundedVec<T, 100, BudgetProvider<4096>>> {
+        ) -> wrt_error::Result<BoundedVec<T, 100, BudgetProvider<4096>>> {
             let provider = wrt_foundation::safe_provider!(4096, CrateId::Foundation)?;
             BoundedVec::new(provider)
         }
@@ -187,7 +186,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_macro_error_handling() -> WrtResult<()> {
+    fn test_macro_error_handling() -> wrt_error::Result<()> {
         setup()?;
 
         // Exhaust a crate's budget
@@ -211,7 +210,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_nostd_provider_deprecation() -> WrtResult<()> {
+    fn test_nostd_provider_deprecation() -> wrt_error::Result<()> {
         setup()?;
 
         // This should compile but with deprecation warning
@@ -232,7 +231,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_macro_composability() -> WrtResult<()> {
+    fn test_macro_composability() -> wrt_error::Result<()> {
         setup()?;
 
         // Macros should work together
@@ -252,7 +251,7 @@ mod macro_enforcement_tests {
     }
 
     #[test]
-    fn test_enforcement_in_const_context() -> WrtResult<()> {
+    fn test_enforcement_in_const_context() -> wrt_error::Result<()> {
         setup()?;
 
         // Our enforcement should work in const contexts

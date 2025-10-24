@@ -24,7 +24,6 @@ use wrt_foundation::{
 use crate::{
     async_types::{StreamHandle, FutureHandle},
     types::{ValType, Value},
-    WrtResult,
 };
 
 use wrt_error::{Error, ErrorCategory, Result};

@@ -62,7 +62,7 @@ impl wrt_foundation::traits::ToBytes for GenerativeResourceType {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.base_type.to_bytes_with_provider(writer, provider)?;
         self.instance_id.0.to_bytes_with_provider(writer, provider)?;
         self.unique_type_id.0.to_bytes_with_provider(writer, provider)?;
@@ -74,7 +74,7 @@ impl wrt_foundation::traits::FromBytes for GenerativeResourceType {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             base_type: ResourceType::from_bytes_with_provider(reader, provider)?,
             instance_id: ComponentInstanceId(u32::from_bytes_with_provider(reader, provider)?),
@@ -107,7 +107,7 @@ impl wrt_foundation::traits::ToBytes for TypeBound {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.type_id.0.to_bytes_with_provider(writer, provider)?;
         match self.bound_kind {
             BoundKind::Eq => 0u8.to_bytes_with_provider(writer, provider)?,
@@ -121,7 +121,7 @@ impl wrt_foundation::traits::FromBytes for TypeBound {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let type_id = TypeId(u32::from_bytes_with_provider(reader, provider)?);
         let bound_kind_byte = u8::from_bytes_with_provider(reader, provider)?;
         let bound_kind = match bound_kind_byte {

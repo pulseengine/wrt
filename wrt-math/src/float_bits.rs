@@ -24,7 +24,7 @@ use wrt_error::{
     codes,
     Error,
     ErrorCategory,
-    Result as WrtResult,
+    Result,
 }; /* Changed ErrorKind to
     * ErrorCategory, Added
     * Error */
@@ -118,7 +118,7 @@ impl Hash for FloatBits64 {
 }
 
 impl LittleEndian for FloatBits32 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
+    fn from_le_bytes(bytes: &[u8]) -> wrt_error::Result<Self> {
         if bytes.len() != 4 {
             return Err(Error::runtime_execution_error(
                 "Invalid byte length for f32",
@@ -135,13 +135,13 @@ impl LittleEndian for FloatBits32 {
     }
 
     #[cfg(feature = "std")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
+    fn to_le_bytes(&self) -> wrt_error::Result<Vec<u8>> {
         Ok(self.0.to_le_bytes().to_vec())
     }
 }
 
 impl LittleEndian for FloatBits64 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
+    fn from_le_bytes(bytes: &[u8]) -> wrt_error::Result<Self> {
         if bytes.len() != 8 {
             return Err(Error::runtime_execution_error(
                 "Invalid byte length for f64",
@@ -158,7 +158,7 @@ impl LittleEndian for FloatBits64 {
     }
 
     #[cfg(feature = "std")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
+    fn to_le_bytes(&self) -> wrt_error::Result<Vec<u8>> {
         Ok(self.0.to_le_bytes().to_vec())
     }
 }

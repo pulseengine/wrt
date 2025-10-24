@@ -33,7 +33,6 @@ use wrt_foundation::{
         BoundedVec,
     },
     WrtError,
-    WrtResult,
 };
 
 #[cfg(test)]
@@ -312,7 +311,7 @@ mod error_handling_tests {
     /// Test error propagation through layers
     #[test]
     fn test_error_propagation() {
-        fn allocate_nested() -> WrtResult<BoundedComponentVec<BoundedExportVec<u32>>> {
+        fn allocate_nested() -> wrt_error::Result<BoundedComponentVec<BoundedExportVec<u32>>> {
             let mut outer = new_component_vec()?;
 
             // Try to allocate nested vectors
@@ -346,16 +345,16 @@ mod error_handling_tests {
         // This test verifies the API design
         // All operations that can fail should return Result<T, E>
 
-        let vec_result: WrtResult<_> = new_component_vec::<u32>();
+        let vec_result: wrt_error::Result<_> = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
-        let map_result: WrtResult<_> = new_export_map::<u32>();
+        let map_result: wrt_error::Result<_> = new_export_map::<u32>();
         assert!(map_result.is_ok());
 
-        let string_result: WrtResult<_> = new_component_name();
+        let string_result: wrt_error::Result<_> = new_component_name();
         assert!(string_result.is_ok());
 
-        let bounded_string_result: WrtResult<_> = bounded_component_name_from_str("test");
+        let bounded_string_result: wrt_error::Result<_> = bounded_component_name_from_str("test");
         assert!(bounded_string_result.is_ok());
 
         // All constructors return Result, enabling proper error handling
@@ -401,7 +400,7 @@ mod no_std_error_tests {
         let _ = format!("{:?}", error);
 
         // Result type should work
-        let result: WrtResult<()> = Err(WrtError::OutOfMemory);
+        let result: wrt_error::Result<()> = Err(WrtError::OutOfMemory);
         assert!(result.is_err());
     }
 }

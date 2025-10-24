@@ -35,7 +35,7 @@ use wrt_foundation::{
     verification::Checksum,
     wrt_provider,
     CrateId,
-    Result as WrtResult,
+    Result,
 };
 
 use crate::{
@@ -316,7 +316,7 @@ impl<'a> MemoryProfiler<'a> {
         size: usize,
         alloc_type: AllocationType,
         tag: &str,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         if !Self::is_allocation_tracking_enabled() {
             return Ok(0);
         }
@@ -346,7 +346,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Track a deallocation
-    pub fn track_deallocation(&mut self, alloc_id: u32) -> WrtResult<()> {
+    pub fn track_deallocation(&mut self, alloc_id: u32) -> wrt_error::Result<()> {
         if !Self::is_allocation_tracking_enabled() {
             return Ok();
         }
@@ -371,7 +371,7 @@ impl<'a> MemoryProfiler<'a> {
         access_type: AccessType,
         size: usize,
         crate_id: CrateId,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         if !Self::is_profiling_enabled() {
             return Ok();
         }
@@ -405,7 +405,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Complete profiling and record sample
-    pub fn complete_profiling(&mut self, handle: ProfilingHandle) -> WrtResult<()> {
+    pub fn complete_profiling(&mut self, handle: ProfilingHandle) -> wrt_error::Result<()> {
         if !Self::is_profiling_enabled() {
             return Ok();
         }
@@ -434,7 +434,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Detect potential memory leaks
-    pub fn detect_leaks(&self) -> WrtResult<BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>> {
+    pub fn detect_leaks(&self) -> wrt_error::Result<BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>> {
         let mut leaks =
             BoundedVec::new(wrt_provider!({ 16 * 256 }, CrateId::Debug).unwrap_or_default())?;
         let current_time = self.get_relative_timestamp();
@@ -491,7 +491,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Generate memory profiling report
-    pub fn generate_profile_report(&self) -> WrtResult<ProfileReport> {
+    pub fn generate_profile_report(&self) -> wrt_error::Result<ProfileReport> {
         // Create bounded maps for stats
         #[cfg(feature = "std")]
         let mut crate_stats = BTreeMap::new();
@@ -540,13 +540,13 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Check if allocation has been accessed recently
-    fn no_recent_access(&self, alloc_id: u32, threshold: u64) -> WrtResult<bool> {
+    fn no_recent_access(&self, alloc_id: u32, threshold: u64) -> wrt_error::Result<bool> {
         // Simplified implementation - in production, would track actual access patterns
         Ok(true)
     }
 
     /// Analyze access patterns
-    fn analyze_access_patterns(&self) -> WrtResult<AccessPatternSummary> {
+    fn analyze_access_patterns(&self) -> wrt_error::Result<AccessPatternSummary> {
         let mut read_count = 0;
         let mut write_count = 0;
         let mut sequential_count = 0;
@@ -595,7 +595,7 @@ impl<'a> MemoryProfiler<'a> {
     /// Detect memory hotspots
     fn detect_memory_hotspots(
         &self,
-    ) -> WrtResult<BoundedVec<MemoryHotspot, 8, NoStdProvider<{ 8 * 32 }>>> {
+    ) -> wrt_error::Result<BoundedVec<MemoryHotspot, 8, NoStdProvider<{ 8 * 32 }>>> {
         let mut hotspots =
             BoundedVec::new(wrt_provider!({ 8 * 32 }, CrateId::Debug).unwrap_or_default())?;
 
@@ -645,7 +645,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Analyze performance metrics
-    fn analyze_performance(&self) -> WrtResult<PerformanceAnalysis> {
+    fn analyze_performance(&self) -> wrt_error::Result<PerformanceAnalysis> {
         let mut total_duration = 0u64;
         let mut total_allocations = 0usize;
         let mut total_deallocations = 0usize;
@@ -710,7 +710,7 @@ impl<'a> MemoryProfiler<'a> {
     /// Capture simplified call stack
     fn capture_call_stack(
         &self,
-    ) -> WrtResult<BoundedVec<u64, MAX_CALL_STACK_DEPTH, NoStdProvider<{ MAX_CALL_STACK_DEPTH * 8 }>>>
+    ) -> wrt_error::Result<BoundedVec<u64, MAX_CALL_STACK_DEPTH, NoStdProvider<{ MAX_CALL_STACK_DEPTH * 8 }>>>
     {
         // In a real implementation, this would use platform-specific
         // stack unwinding. For now, return a dummy stack.
@@ -736,7 +736,7 @@ impl<'a> MemoryProfiler<'a> {
     }
 
     /// Evict oldest inactive allocation
-    fn evict_oldest_inactive(&mut self) -> WrtResult<()> {
+    fn evict_oldest_inactive(&mut self) -> wrt_error::Result<()> {
         let mut oldest_idx = None;
         let mut oldest_time = u64::MAX;
 
@@ -852,7 +852,7 @@ use core::sync::atomic::AtomicPtr;
 static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut);
 
 /// Initialize the memory profiler (ASIL-D safe)
-pub fn init_profiler() -> WrtResult<()> {
+pub fn init_profiler() -> wrt_error::Result<()> {
     #[cfg(feature = "std")]
     {
         MEMORY_PROFILER.get_or_init(|| Mutex::new(MemoryProfiler::new()));
@@ -868,9 +868,9 @@ pub fn init_profiler() -> WrtResult<()> {
 }
 
 /// Get mutable reference to profiler (ASIL-D safe)
-pub fn with_profiler<F, R>(f: F) -> WrtResult<R>
+pub fn with_profiler<F, R>(f: F) -> wrt_error::Result<R>
 where
-    F: FnOnce(&mut MemoryProfiler<'static>) -> WrtResult<R>,
+    F: FnOnce(&mut MemoryProfiler<'static>) -> wrt_error::Result<R>,
 {
     // ASIL-D safe: Use safe lock access without unsafe
     #[cfg(feature = "std")]

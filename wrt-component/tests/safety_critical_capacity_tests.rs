@@ -22,7 +22,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     managed_alloc,
     WrtError,
-    WrtResult,
 };
 
 #[cfg(test)]
@@ -275,14 +274,14 @@ mod capacity_limit_tests {
     /// Test post-return callback limits
     #[test]
     fn test_post_return_callback_limits() {
-        type Callback = fn() -> WrtResult<()>;
+        type Callback = fn() -> wrt_error::Result<()>;
 
         let vec_result = new_post_return_vec::<Callback>();
         assert!(vec_result.is_ok());
 
         let mut vec = vec_result.unwrap();
 
-        fn dummy_callback() -> WrtResult<()> {
+        fn dummy_callback() -> wrt_error::Result<()> {
             Ok(())
         }
 

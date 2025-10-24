@@ -50,7 +50,6 @@
 
 use crate::{
     prelude::{
-        BoundedCapacity,
         Debug,
         Error,
         PartialEq,

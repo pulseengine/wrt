@@ -180,8 +180,7 @@ pub use bounded_slice::{
 /// **DEPRECATED**: Use `wrt_error::Result<T>` directly instead.
 /// This type alias is maintained for backward compatibility but will be
 /// removed.
-#[deprecated(since = "0.1.0", note = "Use `wrt_error::Result<T>` directly instead")]
-pub type WrtResult<T> = wrt_error::Result<T>;
+// WrtResult type alias has been removed - use wrt_error::Result<T> directly
 
 // Core modules - always available in all configurations
 /// Atomic memory operations with integrated checksumming

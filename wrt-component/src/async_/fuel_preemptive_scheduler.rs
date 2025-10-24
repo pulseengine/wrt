@@ -147,7 +147,7 @@ impl wrt_foundation::traits::ToBytes for TaskPriorityQueue {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.priority.to_bytes_with_provider(writer, provider)?;
         self.tasks.to_bytes_with_provider(writer, provider)
     }
@@ -157,7 +157,7 @@ impl wrt_foundation::traits::FromBytes for TaskPriorityQueue {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             priority: Priority::from_bytes_with_provider(reader, provider)?,
             tasks: BoundedVec::from_bytes_with_provider(reader, provider)?,
@@ -246,7 +246,7 @@ impl wrt_foundation::traits::ToBytes for PreemptiveTaskInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.task_id.to_bytes_with_provider(writer, provider)?;
         self.component_id.to_bytes_with_provider(writer, provider)?;
         self.base_priority.to_bytes_with_provider(writer, provider)?;
@@ -260,7 +260,7 @@ impl wrt_foundation::traits::FromBytes for PreemptiveTaskInfo {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             task_id: TaskId::from_bytes_with_provider(reader, provider)?,
             component_id: ComponentInstanceId::from_bytes_with_provider(reader, provider)?,

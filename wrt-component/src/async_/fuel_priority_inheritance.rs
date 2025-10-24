@@ -94,7 +94,7 @@ impl wrt_foundation::traits::ToBytes for ResourceId {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, provider)
     }
 }
@@ -103,7 +103,7 @@ impl wrt_foundation::traits::FromBytes for ResourceId {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self(u64::from_bytes_with_provider(reader, provider)?))
     }
 }
@@ -180,7 +180,7 @@ impl wrt_foundation::traits::ToBytes for InheritanceChain {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.resource_id.to_bytes_with_provider(writer, provider)?;
         self.holder.to_bytes_with_provider(writer, provider)?;
         self.inherited_priority.to_bytes_with_provider(writer, provider)?;
@@ -192,7 +192,7 @@ impl wrt_foundation::traits::FromBytes for InheritanceChain {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             resource_id: ResourceId::from_bytes_with_provider(reader, provider)?,
             holder: TaskId::from_bytes_with_provider(reader, provider)?,
@@ -275,7 +275,7 @@ impl wrt_foundation::traits::ToBytes for PriorityDonation {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.recipient.to_bytes_with_provider(writer, provider)?;
         self.donor.to_bytes_with_provider(writer, provider)?;
         self.donated_priority.to_bytes_with_provider(writer, provider)?;
@@ -288,7 +288,7 @@ impl wrt_foundation::traits::FromBytes for PriorityDonation {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             recipient: TaskId::from_bytes_with_provider(reader, provider)?,
             donor: TaskId::from_bytes_with_provider(reader, provider)?,
@@ -371,7 +371,7 @@ impl wrt_foundation::traits::ToBytes for BlockingInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.blocked_task.to_bytes_with_provider(writer, provider)?;
         self.blocked_on_resource.to_bytes_with_provider(writer, provider)?;
         self.blocked_by_task.to_bytes_with_provider(writer, provider)?;
@@ -383,7 +383,7 @@ impl wrt_foundation::traits::FromBytes for BlockingInfo {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             blocked_task: TaskId::from_bytes_with_provider(reader, provider)?,
             blocked_on_resource: ResourceId::from_bytes_with_provider(reader, provider)?,

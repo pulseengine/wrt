@@ -44,7 +44,6 @@ use alloc::{
 use wrt_error::{
     Error,
     ErrorCategory,
-    Result as WrtResult,
     Result,
 };
 use wrt_foundation::{

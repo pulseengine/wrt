@@ -65,10 +65,10 @@ impl RuntimeModuleData {
         
         // Extract active data segments
         for (idx, data) in module.data.iter().enumerate() {
-            if let wrt_format::module::DataMode::Active { memory_index, offset_expr } = &data.mode {
+            if let wrt_format::pure_format_types::PureDataMode::Active { memory_index, .. } = &data.mode {
                 runtime_data.active_data_segments.push(ActiveDataSegment {
                     memory_index: *memory_index,
-                    offset_expr: offset_expr.to_vec(),
+                    offset_expr: data.offset.to_vec(),
                     data_index: idx as u32,
                 };
             }
@@ -76,10 +76,10 @@ impl RuntimeModuleData {
         
         // Extract active element segments
         for (idx, elem) in module.elements.iter().enumerate() {
-            if let wrt_format::module::ElementMode::Active { table_index, offset_expr } = &elem.mode {
+            if let wrt_format::pure_format_types::PureElementMode::Active { table_index, .. } = &elem.mode {
                 runtime_data.active_element_segments.push(ActiveElementSegment {
                     table_index: *table_index,
-                    offset_expr: offset_expr.to_vec(),
+                    offset_expr: elem.offset_expr.to_vec(),
                     element_index: idx as u32,
                 };
             }

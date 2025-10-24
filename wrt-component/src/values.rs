@@ -1167,7 +1167,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
 pub fn core_to_component_value(
     value: &Value,
     ty: &WrtFormatValType,
-) -> crate::WrtResult<ComponentComponentValue> {
+) -> wrt_error::Result<ComponentComponentValue> {
     use crate::type_conversion::{
         core_value_to_types_componentvalue,
         format_valtype_to_types_valtype,
@@ -1217,7 +1217,7 @@ pub fn core_to_component_value(
     }
 }
 
-pub fn component_to_core_value(value: &ComponentComponentValue) -> crate::WrtResult<Value> {
+pub fn component_to_core_value(value: &ComponentComponentValue) -> wrt_error::Result<Value> {
     use crate::type_conversion::types_componentvalue_to_core_value;
 
     // Use the centralized conversion function

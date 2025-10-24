@@ -25,7 +25,6 @@ use wrt_foundation::{
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     WrtError,
-    WrtResult,
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
@@ -40,7 +39,6 @@ use wrt_foundation::{
         managed_alloc,
         safe_memory::NoStdProvider,
         WrtError,
-        WrtResult,
     },
 };
 

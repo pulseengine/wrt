@@ -113,18 +113,19 @@ mod foundation_stubs {
         Memory,
     }
 
-    pub type WrtResult<T> = Result<T, Error>;
+    /// Result type alias for synchronization operations using the local Error enum.
+    pub type SyncResult<T> = Result<T, Error>;
 }
 
 // Re-export foundation stubs for public use
 pub use foundation_stubs::{
     AsilLevel,
     SafetyContext,
+    SyncResult,
 };
 
 use foundation_stubs::{
     Error,
-    WrtResult,
 };
 
 /// Safety-aware mutex that integrates with ASIL safety contexts
@@ -178,7 +179,7 @@ impl<T> SafeMutex<T> {
     /// # Errors
     ///
     /// Returns an error if safety verification fails.
-    pub fn lock(&self) -> WrtResult<SafeMutexGuard<'_, T>> {
+    pub fn lock(&self) -> SyncResult<SafeMutexGuard<'_, T>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
             let _ = self.safety_context.record_violation();
@@ -220,7 +221,7 @@ impl<T> SafeMutex<T> {
     /// # Returns
     ///
     /// Some(guard) if the lock was acquired, None if it was already locked.
-    pub fn try_lock(&self) -> WrtResult<Option<SafeMutexGuard<'_, T>>> {
+    pub fn try_lock(&self) -> SyncResult<Option<SafeMutexGuard<'_, T>>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
             let _ = self.safety_context.record_violation();
@@ -337,7 +338,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     /// A tuple of (sender, receiver) handles.
     pub fn create_channel(
         safety_context: SafetyContext,
-    ) -> WrtResult<(BoundedSender<T, CAPACITY>, BoundedReceiver<T, CAPACITY>)> {
+    ) -> SyncResult<(BoundedSender<T, CAPACITY>, BoundedReceiver<T, CAPACITY>)> {
         if CAPACITY == 0 {
             return Err(Error::Capacity);
         }
@@ -361,7 +362,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     }
 
     /// Send a message through the channel (simplified implementation)
-    fn send_impl(&self, _item: T) -> WrtResult<()> {
+    fn send_impl(&self, _item: T) -> SyncResult<()> {
         // Verify channel safety before sending
         if !self.verify_channel_safety() {
             return Err(Error::Safety);
@@ -372,7 +373,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     }
 
     /// Receive a message from the channel (simplified implementation)
-    fn recv_impl(&self) -> WrtResult<Option<T>> {
+    fn recv_impl(&self) -> SyncResult<Option<T>> {
         // Verify channel safety before receiving
         if !self.verify_channel_safety() {
             return Err(Error::Safety);
@@ -413,24 +414,24 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
 
 impl<T, const CAPACITY: usize> BoundedSender<T, CAPACITY> {
     /// Send a message through the channel
-    pub fn send(&self, item: T) -> WrtResult<()> {
+    pub fn send(&self, item: T) -> SyncResult<()> {
         unsafe { (*self.channel).send_impl(item) }
     }
 
     /// Try to send a message without blocking
-    pub fn try_send(&self, item: T) -> WrtResult<()> {
+    pub fn try_send(&self, item: T) -> SyncResult<()> {
         self.send(item) // Same as send for now, could be enhanced
     }
 }
 
 impl<T, const CAPACITY: usize> BoundedReceiver<T, CAPACITY> {
     /// Receive a message from the channel
-    pub fn recv(&self) -> WrtResult<Option<T>> {
+    pub fn recv(&self) -> SyncResult<Option<T>> {
         unsafe { (*self.channel).recv_impl() }
     }
 
     /// Try to receive a message without blocking
-    pub fn try_recv(&self) -> WrtResult<Option<T>> {
+    pub fn try_recv(&self) -> SyncResult<Option<T>> {
         self.recv() // Same as recv for now, could be enhanced
     }
 }
@@ -470,7 +471,7 @@ impl SafeAtomicCounter {
     /// # Returns
     ///
     /// The new counter value, or an error if the increment would exceed bounds.
-    pub fn increment(&self) -> WrtResult<usize> {
+    pub fn increment(&self) -> SyncResult<usize> {
         let current = self.value.load(Ordering::Relaxed);
 
         if current >= self.max_value {
@@ -501,7 +502,7 @@ impl SafeAtomicCounter {
     /// # Returns
     ///
     /// The new counter value, or an error if the counter is already zero.
-    pub fn decrement(&self) -> WrtResult<usize> {
+    pub fn decrement(&self) -> SyncResult<usize> {
         let current = self.value.load(Ordering::Relaxed);
 
         if current == 0 {
@@ -535,7 +536,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_safe_mutex_basic() -> WrtResult<()> {
+    fn test_safe_mutex_basic() -> SyncResult<()> {
         let safety_ctx = SafetyContext::new(AsilLevel::AsilB);
         let mutex = SafeMutex::new(42, safety_ctx);
 
@@ -552,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_mutex_try_lock() -> WrtResult<()> {
+    fn test_safe_mutex_try_lock() -> SyncResult<()> {
         let safety_ctx = SafetyContext::new(AsilLevel::AsilC);
         let mutex = SafeMutex::new(42, safety_ctx);
 
@@ -569,7 +570,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bounded_channel() -> WrtResult<()> {
+    fn test_bounded_channel() -> SyncResult<()> {
         let safety_ctx = SafetyContext::new(AsilLevel::AsilA);
         let (sender, receiver) = BoundedChannel::<i32, 4>::create_channel(safety_ctx)?;
 
@@ -586,7 +587,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_atomic_counter() -> WrtResult<()> {
+    fn test_safe_atomic_counter() -> SyncResult<()> {
         let safety_ctx = SafetyContext::new(AsilLevel::AsilB);
         let counter = SafeAtomicCounter::new(10, safety_ctx);
 

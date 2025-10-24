@@ -29,10 +29,9 @@ use wrt_foundation::{
         VisualizationFormat,
     },
     memory_system_initializer,
-    WrtResult,
 };
 
-fn main() -> WrtResult<()> {
+fn main() -> wrt_error::Result<()> {
     println!("🚀 WRT Budget Visualization Demo");
     println!("=================================\n");
 
@@ -96,7 +95,7 @@ fn main() -> WrtResult<()> {
     Ok(())
 }
 
-fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>> {
+fn simulate_foundation_startup() -> wrt_error::Result<Vec<BudgetProvider<{ 64 * 1024 }>>> {
     let mut providers = Vec::new();
 
     // Simulate core foundation allocations
@@ -114,7 +113,7 @@ fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>
     Ok(providers)
 }
 
-fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> {
+fn simulate_runtime_loading() -> wrt_error::Result<Vec<BudgetProvider<{ 256 * 1024 }>>> {
     let mut providers = Vec::new();
 
     // Simulate runtime module loading
@@ -132,7 +131,7 @@ fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> 
     Ok(providers)
 }
 
-fn simulate_component_instantiation() -> WrtResult<Vec<Box<dyn core::any::Any>>> {
+fn simulate_component_instantiation() -> wrt_error::Result<Vec<Box<dyn core::any::Any>>> {
     let mut allocations: Vec<Box<dyn core::any::Any>> = Vec::new();
 
     // Simulate component type definitions
@@ -155,7 +154,7 @@ fn simulate_component_instantiation() -> WrtResult<Vec<Box<dyn core::any::Any>>>
     Ok(allocations)
 }
 
-fn demonstrate_visualization_formats() -> WrtResult<()> {
+fn demonstrate_visualization_formats() -> wrt_error::Result<()> {
     println!("🎨 Demonstrating Different Visualization Formats");
     println!("================================================\n");
 
@@ -205,7 +204,7 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
     Ok(())
 }
 
-fn demonstrate_monitoring_macros() -> WrtResult<()> {
+fn demonstrate_monitoring_macros() -> wrt_error::Result<()> {
     println!("🔍 Demonstrating Monitoring Macros");
     println!("===================================\n");
 
@@ -243,7 +242,7 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
     Ok(())
 }
 
-fn simulate_memory_pressure() -> WrtResult<()> {
+fn simulate_memory_pressure() -> wrt_error::Result<()> {
     let mut pressure_allocations = Vec::new();
 
     // Try to allocate large chunks until we hit limits
@@ -268,7 +267,7 @@ fn simulate_memory_pressure() -> WrtResult<()> {
 }
 
 #[cfg(feature = "std")]
-fn save_reports_example() -> WrtResult<()> {
+fn save_reports_example() -> wrt_error::Result<()> {
     use std::fs;
 
     println!("💾 Saving visualization reports...");
@@ -288,7 +287,7 @@ fn save_reports_example() -> WrtResult<()> {
 
 // Include the save_reports_example in main if desired
 #[allow(dead_code)]
-fn extended_demo() -> WrtResult<()> {
+fn extended_demo() -> wrt_error::Result<()> {
     #[cfg(feature = "std")]
     save_reports_example()?;
     Ok(())

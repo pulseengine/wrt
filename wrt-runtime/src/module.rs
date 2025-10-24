@@ -2019,7 +2019,7 @@ impl Module {
 
         // Extract table index from mode if available
         let table_idx = match &element.mode {
-            wrt_format::module::ElementMode::Active { table_index, .. } => Some(*table_index),
+            wrt_format::pure_format_types::PureElementMode::Active { table_index, .. } => Some(*table_index),
             _ => None,
         };
 
@@ -2080,13 +2080,13 @@ impl Module {
     }
 
     /// Add a data segment to the module
-    pub fn add_data(&mut self, data: wrt_format::module::Data) -> Result<()> {
+    pub fn add_data(&mut self, data: wrt_format::pure_format_types::PureDataSegment) -> Result<()> {
         // Convert format data to runtime data
         let provider = create_runtime_provider()?;
         let mut init_4096 = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
-        // Copy data from the format's init (Vec<u8> in std mode)
-        for byte in &data.init {
+        // Copy data from the format's data_bytes (Vec<u8> in std mode)
+        for byte in &data.data_bytes {
             init_4096.push(*byte)?;
         }
 

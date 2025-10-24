@@ -14,7 +14,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    WrtResult,
 };
 
 /// Budget-aware memory provider for logging (32KB)
@@ -45,13 +44,13 @@ pub type BoundedLogMessage = BoundedString<MAX_LOG_MESSAGE_LEN>;
 pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN>;
 
 /// Create a new bounded log entry vector
-pub fn new_log_entry_vec() -> WrtResult<BoundedLogEntryVec> {
+pub fn new_log_entry_vec() -> wrt_error::Result<BoundedLogEntryVec> {
     let provider = safe_managed_alloc!(8192, CrateId::Logging)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded logger vector
-pub fn new_logger_vec<T>() -> WrtResult<BoundedLoggerVec<T>>
+pub fn new_logger_vec<T>() -> wrt_error::Result<BoundedLoggerVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes

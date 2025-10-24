@@ -447,7 +447,7 @@ macro_rules! impl_basic_traits_tuple {
                 &self,
                 writer: &mut WriteStream<'a>,
                 provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 self.0.to_bytes_with_provider(writer, provider)
             }
         }
@@ -456,7 +456,7 @@ macro_rules! impl_basic_traits_tuple {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 reader: &mut ReadStream<'a>,
                 provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
             }
         }
@@ -478,7 +478,7 @@ macro_rules! impl_basic_traits_enum {
                 &self,
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<()> {
+            ) -> wrt_error::Result<()> {
                 Ok(())
             }
         }
@@ -487,7 +487,7 @@ macro_rules! impl_basic_traits_enum {
             fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                 _reader: &mut ReadStream<'a>,
                 _provider: &PStream,
-            ) -> wrt_foundation::WrtResult<Self> {
+            ) -> wrt_error::Result<Self> {
                 Ok($default_val)
             }
         }

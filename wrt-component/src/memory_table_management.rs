@@ -26,7 +26,6 @@ use wrt_foundation::{
 use crate::{
     adapter::CoreValType,
     types::{ValType, Value},
-    WrtResult,
 };
 
 // Memory provider type removed - using capability-based allocation
@@ -210,7 +209,7 @@ pub struct MemoryAccess {
 
 impl ComponentMemoryManager {
     /// Create a new memory manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             memories: Vec::new(),
@@ -242,7 +241,7 @@ impl ComponentMemoryManager {
         limits: MemoryLimits,
         shared: bool,
         owner: Option<u32>,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         let memory_id = self.memories.len() as u32;
 
         // Check memory limits
@@ -311,7 +310,7 @@ impl ComponentMemoryManager {
         offset: u32,
         size: u32,
         instance_id: Option<u32>,
-    ) -> WrtResult<Vec<u8>> {
+    ) -> wrt_error::Result<Vec<u8>> {
         let memory = self
             .get_memory(memory_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -352,7 +351,7 @@ impl ComponentMemoryManager {
         offset: u32,
         data: &[u8],
         instance_id: Option<u32>,
-    ) -> WrtResult<MemoryAccess> {
+    ) -> wrt_error::Result<MemoryAccess> {
         // Check permissions first
         if !self.check_write_permission(memory_id, instance_id)? {
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
@@ -395,7 +394,7 @@ impl ComponentMemoryManager {
         memory_id: u32,
         pages: u32,
         instance_id: Option<u32>,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         let memory = self
             .get_memory_mut(memory_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -446,7 +445,7 @@ impl ComponentMemoryManager {
     }
 
     /// Check read permission
-    fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
+    fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> wrt_error::Result<bool> {
         let memory = self
             .get_memory(memory_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -472,7 +471,7 @@ impl ComponentMemoryManager {
     }
 
     /// Check write permission
-    fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
+    fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> wrt_error::Result<bool> {
         let memory = self
             .get_memory(memory_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -512,7 +511,7 @@ impl ComponentMemoryManager {
         &self,
         allowed_instances: &[u32],
         instance_id: Option<u32>,
-    ) -> WrtResult<bool> {
+    ) -> wrt_error::Result<bool> {
         match instance_id {
             Some(id) => Ok(allowed_instances.contains(&id)),
             None => Ok(false),
@@ -520,7 +519,7 @@ impl ComponentMemoryManager {
     }
 
     /// Set memory sharing policy
-    pub fn set_sharing_policy(&mut self, policy: MemorySharingPolicy) -> WrtResult<()> {
+    pub fn set_sharing_policy(&mut self, policy: MemorySharingPolicy) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
@@ -548,7 +547,7 @@ impl ComponentMemoryManager {
 
 impl ComponentTableManager {
     /// Create a new table manager
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             tables: Vec::new(),
@@ -573,7 +572,7 @@ impl ComponentTableManager {
         element_type: CoreValType,
         limits: TableLimits,
         owner: Option<u32>,
-    ) -> WrtResult<u32> {
+    ) -> wrt_error::Result<u32> {
         let table_id = self.tables.len() as u32;
 
         // Create table elements
@@ -621,7 +620,7 @@ impl ComponentTableManager {
     }
 
     /// Get table element
-    pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
+    pub fn get_element(&self, table_id: u32, index: u32) -> wrt_error::Result<&TableElement> {
         let table = self
             .get_table(table_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -639,7 +638,7 @@ impl ComponentTableManager {
         table_id: u32,
         index: u32,
         element: TableElement,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let table = self
             .get_table_mut(table_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -655,7 +654,7 @@ impl ComponentTableManager {
     }
 
     /// Grow table
-    pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
+    pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> wrt_error::Result<u32> {
         let table = self
             .get_table_mut(table_id)
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
@@ -691,7 +690,7 @@ impl ComponentTableManager {
     }
 
     /// Set table sharing policy
-    pub fn set_sharing_policy(&mut self, policy: TableSharingPolicy) -> WrtResult<()> {
+    pub fn set_sharing_policy(&mut self, policy: TableSharingPolicy) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);

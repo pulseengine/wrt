@@ -21,7 +21,6 @@ use wrt_foundation::{
         Provider,
     },
     verification::VerificationLevel,
-    WrtResult,
 };
 
 /// Stack allocation threshold - use platform allocator for sizes above this
@@ -38,7 +37,7 @@ pub enum SmartRuntimeProvider {
 
 impl SmartRuntimeProvider {
     /// Create a new runtime provider with appropriate allocation strategy
-    pub fn new(size: usize, crate_id: CrateId) -> WrtResult<Self> {
+    pub fn new(size: usize, crate_id: CrateId) -> wrt_error::Result<Self> {
         if size <= STACK_ALLOCATION_THRESHOLD {
             // Use stack allocation for small sizes
             let base_provider = NoStdProvider::<4096>::default();
@@ -66,6 +65,6 @@ impl SmartRuntimeProvider {
 // trait directly The actual Provider implementations are in the wrapped types
 
 /// Create a runtime provider that uses appropriate allocation strategy
-pub fn create_smart_runtime_provider(size: usize) -> WrtResult<SmartRuntimeProvider> {
+pub fn create_smart_runtime_provider(size: usize) -> wrt_error::Result<SmartRuntimeProvider> {
     SmartRuntimeProvider::new(size, CrateId::Runtime)
 }

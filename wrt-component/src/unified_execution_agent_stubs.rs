@@ -10,7 +10,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
-    WrtResult,
 };
 
 // Import BoundedVec only for std - no_std uses StaticVec alias above
@@ -62,17 +61,17 @@ impl ResourceLifecycleManager {
         &mut self,
         _type_id: u32,
         _data: WrtComponentValue<ComponentProvider>,
-    ) -> WrtResult<ResourceHandle> {
+    ) -> wrt_error::Result<ResourceHandle> {
         let handle = ResourceHandle(self.next_handle);
         self.next_handle += 1;
         Ok(handle)
     }
 
-    pub fn drop_resource(&mut self, _handle: ResourceHandle) -> WrtResult<()> {
+    pub fn drop_resource(&mut self, _handle: ResourceHandle) -> wrt_error::Result<()> {
         Ok(())
     }
 
-    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue<ComponentProvider>> {
+    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> wrt_error::Result<&WrtComponentValue<ComponentProvider>> {
         // Return a dummy value - in real implementation this would be tracked
         static DUMMY: WrtComponentValue<ComponentProvider> = WrtComponentValue::Bool(false);
         Ok(&DUMMY)
@@ -82,7 +81,7 @@ impl ResourceLifecycleManager {
         &mut self,
         _handle: ResourceHandle,
         _new_owner: u32,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -415,7 +414,7 @@ pub mod cfi_stubs {
     }
 
     impl CfiExecutionContext {
-        pub fn new() -> WrtResult<Self> {
+        pub fn new() -> wrt_error::Result<Self> {
             Ok(Self {
                 current_function:         0,
                 current_instruction:      0,

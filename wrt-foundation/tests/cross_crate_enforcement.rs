@@ -23,10 +23,9 @@ mod cross_crate_enforcement_tests {
             RuntimeMonitor,
         },
         safe_memory::SafeMemoryHandler,
-        WrtResult,
     };
 
-    fn setup_strict_enforcement() -> WrtResult<()> {
+    fn setup_strict_enforcement() -> wrt_error::Result<()> {
         // Initialize with strict enforcement
         memory_system_initializer::initialize_global_memory_system(
             wrt_foundation::safety_system::SafetyLevel::SafetyCritical,
@@ -46,7 +45,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_runtime_decoder_interaction() -> WrtResult<()> {
+    fn test_runtime_decoder_interaction() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate Runtime creating instruction buffer
@@ -81,7 +80,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_component_format_interaction() -> WrtResult<()> {
+    fn test_component_format_interaction() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate Component model types
@@ -119,7 +118,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_platform_host_interaction() -> WrtResult<()> {
+    fn test_platform_host_interaction() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate Platform memory mapping
@@ -151,7 +150,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_debug_logging_interaction() -> WrtResult<()> {
+    fn test_debug_logging_interaction() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate Debug trace buffer
@@ -186,7 +185,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_math_sync_interaction() -> WrtResult<()> {
+    fn test_math_sync_interaction() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate Math computation buffers
@@ -218,7 +217,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_enforcement_under_pressure() -> WrtResult<()> {
+    fn test_enforcement_under_pressure() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Try to allocate significant portions from multiple crates
@@ -265,7 +264,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_panic_handler_minimal_allocation() -> WrtResult<()> {
+    fn test_panic_handler_minimal_allocation() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Panic handler should work with minimal allocation
@@ -283,7 +282,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_intercept_minimal_overhead() -> WrtResult<()> {
+    fn test_intercept_minimal_overhead() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Intercept should have minimal memory overhead
@@ -303,7 +302,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_instructions_efficient_storage() -> WrtResult<()> {
+    fn test_instructions_efficient_storage() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Instructions crate should efficiently store bytecode
@@ -324,7 +323,7 @@ mod cross_crate_enforcement_tests {
     }
 
     #[test]
-    fn test_full_system_stress() -> WrtResult<()> {
+    fn test_full_system_stress() -> wrt_error::Result<()> {
         setup_strict_enforcement()?;
 
         // Simulate realistic full system usage

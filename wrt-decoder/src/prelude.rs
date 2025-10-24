@@ -97,7 +97,6 @@ pub use wrt_format::{
     },
     // Module types
     module::{
-        Data,
         Element,
         Export,
         ExportKind,
@@ -128,6 +127,14 @@ pub use wrt_format::{
         MemoryIndexType,
     },
 };
+
+// Re-export pure types with shorter names for backward compatibility
+pub use wrt_format::pure_format_types::{
+    PureDataSegment as Data,
+    PureDataMode as DataMode,
+    PureElementMode as ElementMode,
+};
+
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 // pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};

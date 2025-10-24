@@ -43,7 +43,6 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     managed_alloc,
     WrtError,
-    WrtResult,
 };
 #[cfg(not(feature = "std"))]
 use wrt_platform::threading::{

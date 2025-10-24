@@ -34,7 +34,6 @@ use wrt_foundation::{
     prelude::*,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    WrtResult,
 };
 
 // Import BoundedVec only for std - no_std uses StaticVec alias above
@@ -557,7 +556,7 @@ pub struct AsyncExecutionResult {
 
 impl UnifiedExecutionAgent {
     /// Create a new unified execution agent
-    pub fn new(config: AgentConfiguration) -> WrtResult<Self> {
+    pub fn new(config: AgentConfiguration) -> wrt_error::Result<Self> {
         Ok(Self {
             core_state: CoreExecutionState {
                 #[cfg(feature = "std")]
@@ -632,13 +631,13 @@ impl UnifiedExecutionAgent {
     }
 
     /// Create agent with default configuration
-    pub fn new_default() -> WrtResult<Self> {
+    pub fn new_default() -> wrt_error::Result<Self> {
         Self::new(AgentConfiguration::default())
     }
 
     /// Create agent for async execution
     #[cfg(feature = "async")]
-    pub fn new_async() -> WrtResult<Self> {
+    pub fn new_async() -> wrt_error::Result<Self> {
         Self::new(AgentConfiguration {
             execution_mode: ExecutionMode::Asynchronous,
             ..AgentConfiguration::default()
@@ -647,7 +646,7 @@ impl UnifiedExecutionAgent {
 
     /// Create agent for CFI-protected execution
     #[cfg(feature = "cfi")]
-    pub fn new_cfi_protected() -> WrtResult<Self> {
+    pub fn new_cfi_protected() -> wrt_error::Result<Self> {
         Self::new(AgentConfiguration {
             execution_mode: ExecutionMode::CfiProtected,
             ..AgentConfiguration::default()
@@ -655,7 +654,7 @@ impl UnifiedExecutionAgent {
     }
 
     /// Create agent for stackless execution
-    pub fn new_stackless() -> WrtResult<Self> {
+    pub fn new_stackless() -> wrt_error::Result<Self> {
         Self::new(AgentConfiguration {
             execution_mode: ExecutionMode::Stackless,
             ..AgentConfiguration::default()
@@ -663,7 +662,7 @@ impl UnifiedExecutionAgent {
     }
 
     /// Create agent with hybrid capabilities
-    pub fn new_hybrid(flags: HybridModeFlags) -> WrtResult<Self> {
+    pub fn new_hybrid(flags: HybridModeFlags) -> wrt_error::Result<Self> {
         Self::new(AgentConfiguration {
             execution_mode: ExecutionMode::Hybrid(flags),
             ..AgentConfiguration::default()
@@ -676,7 +675,7 @@ impl UnifiedExecutionAgent {
         instance_id: u32,
         function_index: u32,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         self.core_state.state = UnifiedExecutionState::Running;
         self.statistics.function_calls += 1;
 
@@ -734,7 +733,7 @@ impl UnifiedExecutionAgent {
         &mut self,
         frame: UnifiedCallFrame,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         // Push frame to call stack
         #[cfg(feature = "std")]
         {
@@ -792,7 +791,7 @@ impl UnifiedExecutionAgent {
         &mut self,
         frame: UnifiedCallFrame,
         _args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         // Update stackless state
         self.stackless_state.func_idx = frame.function_index;
         self.stackless_state.pc = 0;
@@ -807,7 +806,7 @@ impl UnifiedExecutionAgent {
 
     /// Execute async function call
     #[cfg(feature = "async")]
-    fn execute_async_call(&mut self, frame: UnifiedCallFrame, args: &[Value]) -> WrtResult<Value> {
+    fn execute_async_call(&mut self, frame: UnifiedCallFrame, args: &[Value]) -> wrt_error::Result<Value> {
         // Create async execution
         let execution_id = self.async_state.next_execution_id;
         self.async_state.next_execution_id += 1;
@@ -880,7 +879,7 @@ impl UnifiedExecutionAgent {
         &mut self,
         frame: UnifiedCallFrame,
         args: &[Value],
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         // Update CFI context
         self.cfi_state.cfi_context.current_function = frame.function_index;
 
@@ -901,7 +900,7 @@ impl UnifiedExecutionAgent {
         frame: UnifiedCallFrame,
         args: &[Value],
         flags: HybridModeFlags,
-    ) -> WrtResult<Value> {
+    ) -> wrt_error::Result<Value> {
         // Apply capabilities based on flags
         if flags.cfi_enabled {
             #[cfg(feature = "cfi")]
@@ -959,7 +958,7 @@ impl UnifiedExecutionAgent {
 
     /// Convert values to component values
     #[cfg(feature = "std")]
-    fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<WrtComponentValue<ComponentProvider>>> {
+    fn convert_values_to_component(&self, values: &[Value]) -> wrt_error::Result<Vec<WrtComponentValue<ComponentProvider>>> {
         let mut component_values = Vec::new();
         for value in values {
             component_values.push(value.clone().into());
@@ -971,7 +970,7 @@ impl UnifiedExecutionAgent {
     fn convert_values_to_component(
         &self,
         values: &[Value],
-    ) -> WrtResult<BoundedVec<Value, 16>> {
+    ) -> wrt_error::Result<BoundedVec<Value, 16>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut component_values = BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create component values"))?;
         for value in values.iter().take(16) {

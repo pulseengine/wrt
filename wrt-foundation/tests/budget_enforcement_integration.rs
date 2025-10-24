@@ -29,11 +29,10 @@ mod budget_enforcement_integration_tests {
         safe_managed_alloc,
         safe_memory::NoStdProvider,
         WrtError,
-        WrtResult,
     };
 
     // Helper to initialize test environment
-    fn init_test_env() -> WrtResult<()> {
+    fn init_test_env() -> wrt_error::Result<()> {
         // Initialize memory system with strict enforcement
         let _ = memory_system_initializer::initialize_global_memory_system(
             wrt_foundation::safety_system::SafetyLevel::Standard,
@@ -56,7 +55,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_budget_provider_enforcement() -> WrtResult<()> {
+    fn test_budget_provider_enforcement() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Test 1: Budget provider should track allocations
@@ -85,7 +84,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_cross_crate_budget_isolation() -> WrtResult<()> {
+    fn test_cross_crate_budget_isolation() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Each crate should have its own budget
@@ -129,7 +128,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_budget_exhaustion_handling() -> WrtResult<()> {
+    fn test_budget_exhaustion_handling() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Get current budget for a crate
@@ -175,7 +174,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_migration_provider_tracking() -> WrtResult<()> {
+    fn test_migration_provider_tracking() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Migration providers should still be tracked
@@ -192,7 +191,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_shared_pool_enforcement() -> WrtResult<()> {
+    fn test_shared_pool_enforcement() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Test shared pool allocations
@@ -225,7 +224,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_runtime_monitoring_alerts() -> WrtResult<()> {
+    fn test_runtime_monitoring_alerts() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Allocate significant memory to trigger alerts
@@ -265,7 +264,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_type_safety_enforcement() -> WrtResult<()> {
+    fn test_type_safety_enforcement() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // This test verifies that our type system prevents misuse
@@ -290,7 +289,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_memory_analysis_integration() -> WrtResult<()> {
+    fn test_memory_analysis_integration() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Perform various allocations
@@ -319,7 +318,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_platform_aware_budgets() -> WrtResult<()> {
+    fn test_platform_aware_budgets() -> wrt_error::Result<()> {
         use wrt_foundation::{
             bounded::{
                 BoundedMap,
@@ -342,7 +341,6 @@ mod budget_enforcement_integration_tests {
             safe_managed_alloc,
             safe_memory::NoStdProvider,
             WrtError,
-            WrtResult,
         };
 
         // Test with different simulated platforms
@@ -395,7 +393,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_enforcement_prevents_bypass() -> WrtResult<()> {
+    fn test_enforcement_prevents_bypass() -> wrt_error::Result<()> {
         init_test_env()?;
 
         // Test that various bypass attempts are caught
@@ -430,7 +428,7 @@ mod budget_enforcement_integration_tests {
     }
 
     #[test]
-    fn test_concurrent_allocation_safety() -> WrtResult<()> {
+    fn test_concurrent_allocation_safety() -> wrt_error::Result<()> {
         init_test_env()?;
 
         use std::{

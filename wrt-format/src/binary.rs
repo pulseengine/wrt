@@ -1876,7 +1876,7 @@ pub mod with_alloc {
         })?;
         offset = next_offset;
 
-        let (element_type, init, mode): (RefType, ElementInit, crate::module::ElementMode);
+        let (element_type, init, mode, stored_offset_expr): (RefType, ElementInit, PureElementMode, Vec<u8>);
 
         match prefix_val {
             0x00 => {
@@ -1909,10 +1909,11 @@ pub mod with_alloc {
 
                 element_type = RefType::Funcref;
                 init = ElementInit::FuncIndices(func_indices);
-                mode = crate::module::ElementMode::Active {
+                mode = PureElementMode::Active {
                     table_index: table_idx,
-                    offset_expr,
+                    offset_expr_len: offset_expr.len() as u32,
                 };
+                stored_offset_expr = offset_expr;
             },
             0x01 => {
                 // Passive: elemkind vec(expr) end
@@ -1948,7 +1949,8 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Passive;
+                mode = PureElementMode::Passive;
+                stored_offset_expr = Vec::new();
             },
             0x02 => {
                 // Active with tableidx: tableidx expr elemkind vec(expr) end
@@ -1999,10 +2001,11 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Active {
+                mode = PureElementMode::Active {
                     table_index: table_idx,
-                    offset_expr,
+                    offset_expr_len: offset_expr.len() as u32,
                 };
+                stored_offset_expr = offset_expr;
             },
             0x03 => {
                 // Declared: elemkind vec(expr) end
@@ -2038,7 +2041,8 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Declared;
+                mode = PureElementMode::Declared;
+                stored_offset_expr = Vec::new();
             },
             0x04 => {
                 // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
@@ -2071,10 +2075,11 @@ pub mod with_alloc {
 
                 element_type = RefType::Funcref;
                 init = ElementInit::FuncIndices(func_indices);
-                mode = crate::module::ElementMode::Active {
+                mode = PureElementMode::Active {
                     table_index: table_idx,
-                    offset_expr,
+                    offset_expr_len: offset_expr.len() as u32,
                 };
+                stored_offset_expr = offset_expr;
             },
             0x05 => {
                 // Passive: reftype vec(expr) end
@@ -2111,7 +2116,8 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Passive;
+                mode = PureElementMode::Passive;
+                stored_offset_expr = Vec::new();
             },
             0x06 => {
                 // Active with tableidx: tableidx expr reftype vec(expr) end
@@ -2163,10 +2169,11 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Active {
+                mode = PureElementMode::Active {
                     table_index: table_idx,
-                    offset_expr,
+                    offset_expr_len: offset_expr.len() as u32,
                 };
+                stored_offset_expr = offset_expr;
             },
             0x07 => {
                 // Declared: reftype vec(expr) end
@@ -2203,7 +2210,8 @@ pub mod with_alloc {
                 offset += 1; // Consume END
 
                 init = ElementInit::Expressions(exprs_vec);
-                mode = crate::module::ElementMode::Declared;
+                mode = PureElementMode::Declared;
+                stored_offset_expr = Vec::new();
             },
             _ => {
                 return Err(crate::error::parse_error_dynamic(format!(
@@ -2219,6 +2227,7 @@ pub mod with_alloc {
                 mode,
                 element_type,
                 init,
+                offset_expr: stored_offset_expr,
             },
             offset,
         ))
