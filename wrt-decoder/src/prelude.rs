@@ -262,11 +262,7 @@ pub trait ToString {
 #[cfg(not(feature = "std"))]
 impl ToString for &str {
     fn to_string(&self) -> DecoderString {
-        if let Ok(provider) = create_decoder_provider::<4096>() {
-            DecoderString::from_str(self).unwrap_or_default()
-        } else {
-            DecoderString::default()
-        }
+        DecoderString::from_str_truncate(self).unwrap_or_default()
     }
 }
 
@@ -724,7 +720,7 @@ impl<const N: usize> DecoderStringExt for BoundedString<N> {
         let s = core::str::from_utf8(slice)
             .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8"))?;
         // BoundedString no longer needs provider after StaticVec migration
-        Ok(Self::from_str(s)?)
+        Ok(Self::try_from_str(s).map_err(|_| wrt_error::Error::parse_error("String too long"))?)
     }
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
