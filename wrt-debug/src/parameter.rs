@@ -449,6 +449,14 @@ impl<'a> InlinedFunctions<'a> {
 mod tests {
     use super::*;
 
+    #[cfg(all(not(feature = "std"), any(feature = "alloc", test)))]
+    extern crate alloc;
+
+    #[cfg(feature = "std")]
+    use std::{string::String, vec::Vec};
+    #[cfg(not(feature = "std"))]
+    use alloc::{string::String, vec::Vec};
+
     #[test]
     fn test_basic_type_parsing() {
         assert_eq!(BasicType::from_encoding(0x02, 1), BasicType::Bool);

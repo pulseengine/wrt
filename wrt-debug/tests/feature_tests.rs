@@ -20,7 +20,7 @@ const TEST_MODULE: &[u8] = &[
 #[test]
 fn test_no_features_basic_functionality() {
     // Test basic functionality that should work with no features
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
 
     // Section registration should always work
     debug_info.add_section(".debug_line", 100, 50);
@@ -41,7 +41,7 @@ fn test_no_features_basic_functionality() {
 #[cfg(feature = "line-info")]
 #[test]
 fn test_line_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
     debug_info.add_section(".debug_line", 100, 50);
 
     // Line info queries should be available
@@ -58,7 +58,7 @@ fn test_line_info_feature() {
 #[cfg(feature = "debug-info")]
 #[test]
 fn test_debug_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
     debug_info.add_section(".debug_info", 200, 100);
     debug_info.add_section(".debug_abbrev", 300, 30);
 
@@ -75,7 +75,7 @@ fn test_debug_info_feature() {
 #[cfg(feature = "function-info")]
 #[test]
 fn test_function_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
     debug_info.add_section(".debug_info", 200, 100);
     debug_info.add_section(".debug_abbrev", 300, 30);
 
@@ -151,7 +151,7 @@ fn test_cursor_functionality() {
 #[test]
 fn test_memory_efficiency() {
     // Test that debug info struct is reasonably sized
-    let debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
     let size = core::mem::size_of_val(&debug_info);
 
     // Should be reasonably small (adjust based on features)
@@ -167,7 +167,7 @@ fn test_memory_efficiency() {
 
 #[test]
 fn test_error_handling() {
-    let mut debug_info = DwarfDebugInfo::new(&[]);
+    let mut debug_info = DwarfDebugInfo::new(&[]).unwrap();
 
     // Should handle empty module gracefully
     debug_info.add_section(".debug_line", 0, 0);
@@ -183,7 +183,7 @@ fn test_error_handling() {
 
 #[test]
 fn test_section_management() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE).unwrap();
 
     // Test various section types
     debug_info.add_section(".debug_line", 100, 50);

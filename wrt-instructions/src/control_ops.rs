@@ -63,6 +63,8 @@ use crate::{
     prelude::{
         str,
         BlockType,
+        BoundedCapacity,
+        BoundedVec,
         Debug,
         Error,
         PartialEq,

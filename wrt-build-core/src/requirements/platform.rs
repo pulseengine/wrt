@@ -38,10 +38,15 @@ use crate::{
 /// Platform limits discovered from the system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComprehensivePlatformLimits {
+    /// Maximum total memory available in bytes.
     pub max_total_memory:       usize,
+    /// Maximum WebAssembly linear memory in bytes.
     pub max_wasm_linear_memory: usize,
+    /// Maximum stack size in bytes.
     pub max_stack_bytes:        usize,
+    /// Maximum number of component instances.
     pub max_components:         usize,
+    /// Platform identifier.
     pub platform_id:            PlatformId,
 }
 
@@ -60,14 +65,23 @@ impl Default for ComprehensivePlatformLimits {
 /// Platform identification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlatformId {
+    /// Linux operating system.
     Linux,
+    /// QNX real-time operating system.
     QNX,
+    /// macOS operating system.
     MacOS,
+    /// Windows operating system.
     Windows,
+    /// VxWorks real-time operating system.
     VxWorks,
+    /// Zephyr embedded operating system.
     Zephyr,
+    /// Tock embedded operating system.
     Tock,
+    /// Generic embedded platform.
     Embedded,
+    /// Unknown platform.
     Unknown,
 }
 
@@ -853,41 +867,62 @@ struct AsilPlatformRequirements {
 /// Platform verification result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformVerificationResult {
+    /// ASIL level being verified.
     pub asil_level:        AsilLevel,
+    /// Platform resource limits discovered.
     pub platform_limits:   ComprehensivePlatformLimits,
+    /// List of platform violations found.
     pub violations:        Vec<PlatformViolation>,
+    /// Compliance score for this platform.
     pub compliance_score:  f64,
+    /// Whether the platform is compliant.
     pub is_compliant:      bool,
+    /// Container runtime detected.
     pub container_runtime: ContainerRuntime,
+    /// Platform identifier.
     pub platform_id:       PlatformId,
 }
 
 /// Platform violation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformViolation {
+    /// Type of platform violation.
     pub violation_type: PlatformViolationType,
+    /// Severity level of the violation.
     pub severity:       ViolationSeverity,
+    /// Human-readable description of the violation.
     pub description:    String,
+    /// Current platform value.
     pub current_value:  usize,
+    /// Required value for compliance.
     pub required_value: usize,
 }
 
 /// Types of platform violations
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlatformViolationType {
+    /// Platform has insufficient memory resources.
     InsufficientMemory,
+    /// Platform has insufficient component capacity.
     InsufficientComponents,
+    /// Platform uses an unsupported container runtime.
     UnsupportedContainerRuntime,
+    /// Platform is not supported.
     UnsupportedPlatform,
+    /// Platform configuration is invalid.
     InvalidConfiguration,
 }
 
 /// Violation severity
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ViolationSeverity {
+    /// Low severity violation.
     Low,
+    /// Medium severity violation.
     Medium,
+    /// High severity violation.
     High,
+    /// Critical severity violation requiring immediate attention.
     Critical,
 }
 

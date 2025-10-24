@@ -553,5 +553,7 @@ impl Default for StacklessEngine {
 
 // Additional types that might be needed - using simple type aliases to avoid
 // conflicts
+/// Type alias for callback registry (placeholder implementation).
 pub type StacklessCallbackRegistry = ();
+/// Type alias for execution stack (placeholder implementation).
 pub type StacklessStack = ();

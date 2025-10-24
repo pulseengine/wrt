@@ -227,6 +227,14 @@ mod tests {
     use super::*;
     use crate::strings::StringTable;
 
+    #[cfg(all(not(feature = "std"), any(feature = "alloc", test)))]
+    extern crate alloc;
+
+    #[cfg(feature = "std")]
+    use std::string::String;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::String;
+
     #[test]
     fn test_file_table() {
         // Create mock string data

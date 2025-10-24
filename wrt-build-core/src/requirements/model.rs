@@ -22,10 +22,12 @@ use crate::config::AsilLevel;
 pub struct RequirementId(String);
 
 impl RequirementId {
+    /// Create a new requirement identifier.
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }
 
+    /// Get the identifier as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }

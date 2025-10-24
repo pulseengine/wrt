@@ -234,6 +234,14 @@ fn format_hex_u32(mut n: u32, buf: &mut [u8]) -> &str {
 mod tests {
     use super::*;
 
+    #[cfg(all(not(feature = "std"), any(feature = "alloc", test)))]
+    extern crate alloc;
+
+    #[cfg(feature = "std")]
+    use std::string::String;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::String;
+
     #[test]
     fn test_stack_trace_display() {
         let mut trace = StackTrace::new();
@@ -241,9 +249,12 @@ mod tests {
         // Add a frame with no debug info
         let frame1 = StackFrame {
             pc:        0x1000,
+            #[cfg(feature = "debug-info")]
             function:  None,
             line_info: None,
             depth:     0,
+            #[cfg(not(feature = "debug-info"))]
+            _phantom:  core::marker::PhantomData,
         };
 
         trace.push_frame(frame1).unwrap();

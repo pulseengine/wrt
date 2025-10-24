@@ -725,9 +725,13 @@ impl Default for DocumentationVerificationFramework {
 /// Configuration for documentation verification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationVerificationConfig {
+    /// Minimum compliance percentage required for certification.
     pub min_certification_compliance:      f64,
+    /// Enable validation of cross-references between documents.
     pub enable_cross_reference_validation: bool,
+    /// Enable checking of API documentation completeness.
     pub enable_api_documentation_check:    bool,
+    /// Enable validation of code examples in documentation.
     pub enable_example_validation:         bool,
 }
 
@@ -745,33 +749,51 @@ impl Default for DocumentationVerificationConfig {
 /// Documentation standards for a specific ASIL level
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationStandards {
+    /// Minimum character length for requirement descriptions.
     pub min_description_length:         usize,
+    /// Whether implementation documentation is required.
     pub requires_implementation_docs:   bool,
+    /// Whether test documentation is required.
     pub requires_test_docs:             bool,
+    /// Whether verification documentation is required.
     pub requires_verification_document: bool,
+    /// Maximum number of violations allowed.
     pub max_allowed_violations:         usize,
+    /// Required compliance score to pass.
     pub required_compliance_score:      f64,
 }
 
 /// Result of documentation verification
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DocumentationVerificationResult {
+    /// Total number of requirements analyzed.
     pub total_requirements:     usize,
+    /// Number of requirements with compliant documentation.
     pub compliant_requirements: usize,
+    /// Overall compliance percentage.
     pub compliance_percentage:  f64,
+    /// List of documentation violations found.
     pub violations:             Vec<DocumentationViolation>,
+    /// Detailed analysis results for each requirement.
     pub analysis_results:       Vec<DocumentationAnalysis>,
+    /// Whether the documentation is ready for certification.
     pub is_certification_ready: bool,
 }
 
 /// Analysis of documentation for a single requirement
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationAnalysis {
+    /// Unique identifier of the requirement being analyzed.
     pub requirement_id:     RequirementId,
+    /// ASIL level of the requirement.
     pub asil_level:         AsilLevel,
+    /// List of documentation violations found.
     pub violations:         Vec<DocumentationViolation>,
+    /// Compliance score for this requirement.
     pub compliance_score:   f64,
+    /// Documentation standards required for this ASIL level.
     pub required_standards: DocumentationStandards,
+    /// Locations where documentation was analyzed.
     pub analyzed_locations: Vec<DocumentationLocation>,
 }
 
@@ -786,24 +808,38 @@ impl DocumentationAnalysis {
 /// A documentation violation that needs to be addressed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationViolation {
+    /// Unique identifier of the requirement with the violation.
     pub requirement_id: RequirementId,
+    /// Type of documentation violation.
     pub violation_type: DocumentationViolationType,
+    /// Severity level of the violation.
     pub severity:       DocumentationViolationSeverity,
+    /// Human-readable description of the violation.
     pub description:    String,
+    /// Location where the violation was found.
     pub location:       DocumentationLocation,
 }
 
 /// Types of documentation violations
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DocumentationViolationType {
+    /// Requirement lacks a description.
     MissingDescription,
+    /// Description lacks sufficient detail.
     InsufficientDetail,
+    /// Implementation code is missing.
     MissingImplementation,
+    /// Implementation exists but is not documented.
     UndocumentedImplementation,
+    /// Test documentation is missing.
     MissingTestDocumentation,
+    /// Verification document is missing.
     MissingVerificationDocument,
+    /// Cross-references between documents are inconsistent.
     InconsistentCrossReferences,
+    /// Code examples are missing.
     MissingExamples,
+    /// Documentation is outdated.
     OutdatedDocumentation,
 }
 
@@ -838,10 +874,15 @@ impl fmt::Display for DocumentationViolationType {
 /// Severity levels for documentation violations
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DocumentationViolationSeverity {
+    /// Informational severity.
     Info,
+    /// Low severity violation.
     Low,
+    /// Medium severity violation.
     Medium,
+    /// High severity violation.
     High,
+    /// Critical severity violation requiring immediate attention.
     Critical,
 }
 
@@ -860,11 +901,17 @@ impl fmt::Display for DocumentationViolationSeverity {
 /// Location where documentation issue was found
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DocumentationLocation {
+    /// Issue found in requirement documentation.
     Requirement,
+    /// Issue found in implementation documentation.
     Implementation,
+    /// Issue found in test documentation.
     Test,
+    /// Issue found in verification documentation.
     Verification,
+    /// Issue found in API documentation.
     Api,
+    /// Issue found in example documentation.
     Example,
 }
 
@@ -884,12 +931,19 @@ impl fmt::Display for DocumentationLocation {
 /// Comprehensive documentation report
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DocumentationReport {
+    /// Overall compliance percentage across all requirements.
     pub overall_compliance:  f64,
+    /// Total number of requirements analyzed.
     pub total_requirements:  usize,
+    /// Total number of violations found.
     pub total_violations:    usize,
+    /// Number of critical violations found.
     pub critical_violations: usize,
+    /// Compliance percentage by ASIL level.
     pub asil_compliance:     HashMap<AsilLevel, f64>,
+    /// List of recommendations for improving documentation.
     pub recommendations:     Vec<String>,
+    /// Summary of analysis for each requirement.
     pub analysis_summary:    Vec<DocumentationAnalysis>,
 }
 

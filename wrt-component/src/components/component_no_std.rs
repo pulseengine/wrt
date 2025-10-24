@@ -670,6 +670,9 @@ pub struct RuntimeInstance {
     verification_level: VerificationLevel,
 }
 
+/// Type alias for component instance compatibility
+pub type ComponentInstance = RuntimeInstance;
+
 impl RuntimeInstance {
     /// Creates a new runtime instance
     pub fn new() -> Result<Self> {

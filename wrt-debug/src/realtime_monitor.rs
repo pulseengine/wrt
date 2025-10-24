@@ -512,7 +512,6 @@ pub fn get_current_sample() -> Result<MemorySample> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_system_initializer;
 
     #[test]
     fn test_monitor_config_default() {
@@ -524,8 +523,6 @@ mod tests {
 
     #[test]
     fn test_sample_collection() {
-        let _ = wrt_foundation::memory_system_initializer::presets::test();
-
         let sample = RealtimeMonitor::collect_sample(0);
         assert!(sample.is_ok());
 

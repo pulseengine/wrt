@@ -112,38 +112,56 @@ pub trait SharedMemoryProvider {
 pub enum SharedMemoryOperation {
     /// Initialize shared memory instance
     Initialize {
+        /// Memory type specification.
         memory_type:  MemoryType,
+        /// Optional initial data to populate the memory.
         initial_data: Option<Vec<u8>>,
     },
     /// Load from shared memory with atomic semantics
     AtomicLoad {
+        /// Index of the memory to load from.
         memory_index: u32,
+        /// Address to load from.
         address:      u32,
+        /// Memory ordering for the atomic load.
         ordering:     MemoryOrdering,
     },
     /// Store to shared memory with atomic semantics
     AtomicStore {
+        /// Index of the memory to store to.
         memory_index: u32,
+        /// Address to store to.
         address:      u32,
+        /// Value to store.
         value:        Value,
+        /// Memory ordering for the atomic store.
         ordering:     MemoryOrdering,
     },
     /// Wait on shared memory location
     AtomicWait {
+        /// Index of the memory to wait on.
         memory_index: u32,
+        /// Address to wait on.
         address:      u32,
+        /// Expected value at the address.
         expected:     Value,
+        /// Optional timeout duration.
         timeout:      Option<Duration>,
     },
     /// Notify threads waiting on shared memory location
     AtomicNotify {
+        /// Index of the memory.
         memory_index: u32,
+        /// Address to notify on.
         address:      u32,
+        /// Number of threads to wake.
         count:        u32,
     },
     /// Grow shared memory
     Grow {
+        /// Index of the memory to grow.
         memory_index: u32,
+        /// Number of pages to grow by.
         delta_pages:  u32,
     },
 }
@@ -151,12 +169,16 @@ pub enum SharedMemoryOperation {
 /// Atomic execution statistics
 #[derive(Debug, Clone)]
 pub struct AtomicExecutionStats {
+    /// Total number of atomic operations performed.
     pub total_operations: u64,
+    /// Number of atomic wait operations performed.
     pub wait_operations:  u64,
+    /// Number of atomic notify operations performed.
     pub notify_operations: u64,
 }
 
 impl AtomicExecutionStats {
+    /// Creates a new atomic execution statistics instance with all counters initialized to zero.
     fn new() -> Self {
         Self {
             total_operations: 0,
@@ -169,14 +191,20 @@ impl AtomicExecutionStats {
 /// Safe atomic memory context for atomic operations
 #[derive(Debug)]
 pub struct SafeAtomicMemoryContext {
+    /// Base pointer to the memory region.
     memory_base: *mut u8,
+    /// Size of the memory region in bytes.
     memory_size: usize,
+    /// Thread manager for coordinating thread access.
     thread_manager: ThreadManager,
+    /// Capability context for memory access control.
     capability_context: wrt_foundation::capabilities::MemoryCapabilityContext,
+    /// Statistics for atomic operations.
     pub stats: AtomicExecutionStats,
 }
 
 impl SafeAtomicMemoryContext {
+    /// Creates a new safe atomic memory context.
     pub fn new(
         memory_base: *mut u8,
         memory_size: usize,
@@ -192,6 +220,7 @@ impl SafeAtomicMemoryContext {
         })
     }
 
+    /// Executes an atomic operation on the memory.
     pub fn execute_atomic(&mut self, thread_id: ThreadId, atomic_op: wrt_instructions::atomic_ops::AtomicOp) -> Result<Vec<u64>> {
         // Placeholder implementation - real implementation would execute the atomic operation
         self.stats.total_operations += 1;
@@ -201,20 +230,20 @@ impl SafeAtomicMemoryContext {
 
 /// Thread-safe shared memory instance
 pub struct SharedMemoryInstance {
-    /// Memory type specification
+    /// Memory type specification.
     pub memory_type: MemoryType,
-    /// Underlying memory implementation
+    /// Underlying memory implementation.
     memory:          Arc<WrtRwLock<Box<dyn MemoryOperations + Send + Sync>>>,
-    /// Shared memory manager for access control
+    /// Shared memory manager for access control.
     manager:         Arc<WrtMutex<SharedMemoryManager>>,
-    /// Atomic context for atomic operations
+    /// Atomic context for atomic operations.
     atomic_context:  Arc<WrtMutex<SafeAtomicMemoryContext>>,
-    /// Access statistics
+    /// Access statistics.
     pub stats:       Arc<WrtMutex<SharedMemoryStats>>,
 }
 
 impl SharedMemoryInstance {
-    /// Create new shared memory instance
+    /// Creates a new shared memory instance.
     pub fn new(
         memory_type: MemoryType,
         memory: Box<dyn MemoryOperations + Send + Sync>,
@@ -253,7 +282,7 @@ impl SharedMemoryInstance {
         })
     }
 
-    /// Execute atomic operation on shared memory
+    /// Executes an atomic operation on shared memory.
     pub fn execute_atomic_operation(
         &self,
         thread_id: ThreadId,
@@ -381,7 +410,7 @@ impl SharedMemoryInstance {
         }
     }
 
-    /// Validate atomic access to shared memory
+    /// Validates atomic access to shared memory.
     fn validate_atomic_access(&self, thread_id: ThreadId, address: u64) -> Result<()> {
         let manager = self.manager.lock();
 
@@ -398,13 +427,13 @@ impl SharedMemoryInstance {
         Ok(())
     }
 
-    /// Get shared memory statistics
+    /// Gets shared memory statistics.
     pub fn get_stats(&self) -> Result<SharedMemoryStats> {
         let stats = self.stats.lock();
         Ok(stats.clone())
     }
 
-    /// Get atomic execution statistics
+    /// Gets atomic execution statistics.
     pub fn get_atomic_stats(&self) -> Result<AtomicExecutionStats> {
         let atomic_context = self.atomic_context.lock();
         Ok(atomic_context.stats.clone())
@@ -413,21 +442,22 @@ impl SharedMemoryInstance {
 
 /// Shared memory context managing multiple shared memory instances
 pub struct SharedMemoryContext {
-    /// Shared memory instances indexed by memory index
+    /// Shared memory instances indexed by memory index.
     #[cfg(feature = "std")]
     memories: HashMap<u32, Arc<SharedMemoryInstance>>,
+    /// Shared memory instances indexed by memory index in no_std mode.
     #[cfg(not(feature = "std"))]
     memories: [(u32, Option<Arc<SharedMemoryInstance>>); MAX_SHARED_MEMORIES],
 
-    /// Thread-safe counter for memory allocation
+    /// Thread-safe counter for memory allocation.
     memory_counter: SafeAtomicCounter,
 
-    /// Global shared memory statistics
+    /// Global shared memory statistics.
     pub global_stats: Arc<WrtMutex<SharedMemoryStats>>,
 }
 
 impl SharedMemoryContext {
-    /// Create new shared memory context
+    /// Creates a new shared memory context.
     pub fn new() -> Self {
         let safety_context = SafetyContext::new(AsilLevel::QM);
 
@@ -446,7 +476,7 @@ impl SharedMemoryContext {
         }
     }
 
-    /// Register a shared memory instance
+    /// Registers a shared memory instance.
     pub fn register_shared_memory(&mut self, memory: Arc<SharedMemoryInstance>) -> Result<u32> {
         let memory_index = self.memory_counter.increment()
             .map_err(|_| Error::memory_error("Failed to allocate memory index"))? as u32;
@@ -479,7 +509,7 @@ impl SharedMemoryContext {
         Ok(memory_index)
     }
 
-    /// Get shared memory instance by index
+    /// Gets shared memory instance by index.
     pub fn get_shared_memory(&self, memory_index: u32) -> Result<Arc<SharedMemoryInstance>> {
         #[cfg(feature = "std")]
         {
@@ -500,7 +530,7 @@ impl SharedMemoryContext {
         }
     }
 
-    /// Execute shared memory operation
+    /// Executes a shared memory operation.
     pub fn execute_operation(
         &self,
         thread_id: ThreadId,
@@ -519,7 +549,7 @@ impl SharedMemoryContext {
         memory.execute_atomic_operation(thread_id, operation)
     }
 
-    /// Get global shared memory statistics
+    /// Gets global shared memory statistics.
     pub fn get_global_stats(&self) -> Result<SharedMemoryStats> {
         let stats = self.global_stats.lock();
         Ok(stats.clone())
@@ -532,7 +562,7 @@ impl Default for SharedMemoryContext {
     }
 }
 
-/// Default shared memory provider implementation for all ASIL levels
+/// Default shared memory provider implementation for all ASIL levels.
 pub struct ASILCompliantSharedMemoryProvider;
 
 impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
@@ -570,7 +600,7 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
 // Convenience Functions for Common Shared Memory Operations
 // ================================================================================================
 
-/// High-level shared memory creation
+/// Creates a new shared memory instance with the specified parameters.
 pub fn create_shared_memory(
     memory_type: MemoryType,
     initial_data: Option<Vec<u8>>,
@@ -601,7 +631,7 @@ pub fn create_shared_memory(
     Ok(Arc::new(shared_memory))
 }
 
-/// High-level atomic i32 compare-and-swap on shared memory
+/// Performs an atomic i32 compare-and-swap operation on shared memory.
 pub fn shared_memory_compare_and_swap(
     memory: &SharedMemoryInstance,
     thread_id: ThreadId,
@@ -625,7 +655,7 @@ pub fn shared_memory_compare_and_swap(
     }
 }
 
-/// High-level shared memory wait operation
+/// Performs a wait operation on shared memory at the specified address.
 pub fn shared_memory_wait(
     memory: &SharedMemoryInstance,
     thread_id: ThreadId,
@@ -647,7 +677,7 @@ pub fn shared_memory_wait(
     }
 }
 
-/// High-level shared memory notify operation
+/// Notifies threads waiting on shared memory at the specified address.
 pub fn shared_memory_notify(
     memory: &SharedMemoryInstance,
     thread_id: ThreadId,

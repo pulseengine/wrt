@@ -21,33 +21,51 @@ use wrt_foundation::values::Value;
 /// Test execution statistics
 #[derive(Debug, Default, Clone)]
 pub struct TestStatistics {
+    /// Total number of tests executed.
     pub total_tests:         usize,
+    /// Number of tests that passed.
     pub passed:              usize,
+    /// Number of tests that failed.
     pub failed:              usize,
+    /// Number of tests that were skipped.
     pub skipped:             usize,
+    /// Total duration of all tests.
     pub total_duration:      Duration,
+    /// Average duration per test.
     pub average_duration:    Duration,
+    /// Aggregated performance metrics.
     pub performance_metrics: PerformanceMetrics,
 }
 
 /// Performance benchmarking metrics
 #[derive(Debug, Default, Clone)]
 pub struct PerformanceMetrics {
+    /// Number of instructions executed per second.
     pub instructions_per_second:   f64,
+    /// Current memory usage in kilobytes.
     pub memory_usage_kb:           usize,
+    /// Maximum memory usage observed in kilobytes.
     pub max_memory_usage_kb:       usize,
+    /// Function call overhead in nanoseconds.
     pub function_call_overhead_ns: u64,
+    /// Module loading time in milliseconds.
     pub module_load_time_ms:       u64,
 }
 
 /// Test case definition
 #[derive(Debug, Clone)]
 pub struct TestCase {
+    /// Test case name.
     pub name:            String,
+    /// Detailed description of the test.
     pub description:     String,
+    /// WebAssembly binary to execute.
     pub wasm_binary:     Vec<u8>,
+    /// Type of test being performed.
     pub test_type:       TestType,
+    /// Expected outcome of the test.
     pub expected_result: ExpectedResult,
+    /// Optional timeout duration.
     pub timeout:         Option<Duration>,
 }
 
@@ -82,51 +100,70 @@ pub enum ExpectedResult {
 /// Performance test thresholds
 #[derive(Debug, Clone)]
 pub struct PerformanceThreshold {
+    /// Maximum allowed execution time in milliseconds.
     pub max_execution_time_ms:       u64,
+    /// Maximum allowed memory usage in kilobytes.
     pub max_memory_usage_kb:         usize,
+    /// Minimum required instructions per second.
     pub min_instructions_per_second: f64,
 }
 
 /// Comprehensive testing framework
 pub struct TestingFramework {
-    /// Test cases registry
+    /// Test cases registry.
     test_cases: Vec<TestCase>,
-    /// Test results
+    /// Test results mapped by test name.
     results:    HashMap<String, TestResult>,
-    /// Global statistics
+    /// Global statistics for all tests.
     statistics: TestStatistics,
-    /// Framework configuration
+    /// Framework configuration settings.
     config:     TestConfig,
 }
 
 /// Individual test result
 #[derive(Debug, Clone)]
 pub struct TestResult {
+    /// Name of the test that was executed.
     pub test_name:        String,
+    /// Final status of the test execution.
     pub status:           TestStatus,
+    /// Duration of the test execution.
     pub duration:         Duration,
+    /// Actual values returned by the test, if any.
     pub actual_result:    Option<Vec<Value>>,
+    /// Error message if the test failed or errored.
     pub error_message:    Option<String>,
+    /// Performance metrics collected during execution.
     pub performance_data: Option<PerformanceMetrics>,
 }
 
 /// Test execution status
 #[derive(Debug, Clone, PartialEq)]
 pub enum TestStatus {
+    /// Test passed successfully.
     Passed,
+    /// Test failed with assertion or comparison failure.
     Failed,
+    /// Test was skipped.
     Skipped,
+    /// Test exceeded the timeout limit.
     Timeout,
+    /// Test encountered an error during execution.
     Error,
 }
 
 /// Testing framework configuration
 #[derive(Debug, Clone)]
 pub struct TestConfig {
+    /// Whether to execute tests in parallel.
     pub parallel_execution:           bool,
+    /// Default timeout for tests that don't specify one.
     pub default_timeout:              Duration,
+    /// Number of warmup runs before performance measurements.
     pub performance_warmup_runs:      usize,
+    /// Number of runs to perform for performance measurements.
     pub performance_measurement_runs: usize,
+    /// Whether to enable detailed logging during test execution.
     pub detailed_logging:             bool,
 }
 
@@ -143,7 +180,7 @@ impl Default for TestConfig {
 }
 
 impl TestingFramework {
-    /// Create a new testing framework
+    /// Create a new testing framework.
     pub fn new() -> Self {
         Self {
             test_cases: Vec::new(),
@@ -153,7 +190,7 @@ impl TestingFramework {
         }
     }
 
-    /// Print test execution summary
+    /// Print test execution summary.
     fn print_summary(&self) {
         println!("\n📊 Test Execution Summary:");
         println!("========================");
@@ -171,7 +208,7 @@ impl TestingFramework {
         );
     }
 
-    /// Get test statistics
+    /// Get test statistics.
     pub fn get_statistics(&self) -> &TestStatistics {
         &self.statistics
     }
@@ -183,8 +220,9 @@ impl Default for TestingFramework {
     }
 }
 
-/// Helper function to create basic WASM test cases
-/// Note: Uses hardcoded WASM bytecode since wat crate is not available
+/// Helper function to create basic WASM test cases.
+///
+/// Note: Uses hardcoded WASM bytecode since wat crate is not available.
 pub fn create_basic_test_suite() -> Vec<TestCase> {
     vec![
         TestCase {
