@@ -20,17 +20,17 @@ pub type LargeVec<T> = Vec<T>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsilLevel {
     QM = 0,
-    ASIL_A = 1,
-    ASIL_B = 2,
-    ASIL_C = 3,
-    ASIL_D = 4,
+    AsilA = 1,
+    AsilB = 2,
+    AsilC = 3,
+    AsilD = 4,
 }
 
 // Aliases for compatibility
-pub const ASIL_A: AsilLevel = AsilLevel::ASIL_A;
-pub const ASIL_B: AsilLevel = AsilLevel::ASIL_B;
-pub const ASIL_C: AsilLevel = AsilLevel::ASIL_C;
-pub const ASIL_D: AsilLevel = AsilLevel::ASIL_D;
+pub const ASIL_A: AsilLevel = AsilLevel::AsilA;
+pub const ASIL_B: AsilLevel = AsilLevel::AsilB;
+pub const ASIL_C: AsilLevel = AsilLevel::AsilC;
+pub const ASIL_D: AsilLevel = AsilLevel::AsilD;
 
 #[derive(Debug, Clone)]
 pub struct SafetyContext {

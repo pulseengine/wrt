@@ -124,7 +124,7 @@ impl Default for CapabilityAwareValue {
 impl CapabilityAwareValue {
     /// Create a capability-aware string value
     pub fn string_from_str(s: &str) -> Result<Self> {
-        let provider = create_wasi_value_provider()?;
+        let _provider = create_wasi_value_provider()?;
         let bounded_string = WasiBoundedString::try_from_str(s)?;
         Ok(CapabilityAwareValue::String(bounded_string))
     }
@@ -223,7 +223,7 @@ impl CapabilityAwareValue {
     /// Extract a string from the value, returning bounded string if possible
     pub fn as_bounded_string(&self) -> Result<WasiBoundedString> {
         if let CapabilityAwareValue::String(s) = self { Ok(s.clone()) } else {
-            let provider = create_wasi_value_provider()?;
+            let _provider = create_wasi_value_provider()?;
             Ok(WasiBoundedString::try_from_str("")?)
         }
     }

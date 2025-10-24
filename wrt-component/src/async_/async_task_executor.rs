@@ -495,10 +495,10 @@ impl ASILExecutorFactory {
     pub fn create_executor(asil_mode: ASILExecutionMode) -> Box<dyn AsyncTaskExecutor> {
         match asil_mode {
             ASILExecutionMode::QM => Box::new(ASILATaskExecutor::new()),
-            ASILExecutionMode::ASIL_A => Box::new(ASILATaskExecutor::new()),
-            ASILExecutionMode::ASIL_B => Box::new(ASILBTaskExecutor::new()),
-            ASILExecutionMode::ASIL_C => Box::new(ASILCTaskExecutor::new()),
-            ASILExecutionMode::ASIL_D => Box::new(ASILDTaskExecutor::new()),
+            ASILExecutionMode::AsilA => Box::new(ASILATaskExecutor::new()),
+            ASILExecutionMode::AsilB => Box::new(ASILBTaskExecutor::new()),
+            ASILExecutionMode::AsilC => Box::new(ASILCTaskExecutor::new()),
+            ASILExecutionMode::AsilD => Box::new(ASILDTaskExecutor::new()),
             ASILExecutionMode::D { .. } => Box::new(ASILDTaskExecutor::new()),
             ASILExecutionMode::C { .. } => Box::new(ASILCTaskExecutor::new()),
             ASILExecutionMode::B { .. } => Box::new(ASILBTaskExecutor::new()),
@@ -512,28 +512,28 @@ impl ASILExecutorFactory {
         config: ASILExecutorConfig,
     ) -> Box<dyn AsyncTaskExecutor> {
         match asil_mode {
-            ASILExecutionMode::ASIL_D | ASILExecutionMode::D { .. } => {
+            ASILExecutionMode::AsilD | ASILExecutionMode::D { .. } => {
                 let mut executor = ASILDTaskExecutor::new();
                 if let Some(max_stack) = config.max_stack_depth {
                     executor.max_stack_depth = max_stack;
                 }
                 Box::new(executor)
             },
-            ASILExecutionMode::ASIL_C | ASILExecutionMode::C { .. } => {
+            ASILExecutionMode::AsilC | ASILExecutionMode::C { .. } => {
                 let mut executor = ASILCTaskExecutor::new();
                 if let Some(max_slice) = config.max_slice_duration {
                     executor.max_slice_duration = max_slice;
                 }
                 Box::new(executor)
             },
-            ASILExecutionMode::ASIL_B | ASILExecutionMode::B { .. } => {
+            ASILExecutionMode::AsilB | ASILExecutionMode::B { .. } => {
                 let mut executor = ASILBTaskExecutor::new();
                 if let Some(quota) = config.resource_quota {
                     executor.resource_quota = quota;
                 }
                 Box::new(executor)
             },
-            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A | ASILExecutionMode::A { .. } => {
+            ASILExecutionMode::QM | ASILExecutionMode::AsilA | ASILExecutionMode::A { .. } => {
                 let mut executor = ASILATaskExecutor::new();
                 if let Some(max_errors) = config.max_error_count {
                     executor.max_error_count = max_errors;

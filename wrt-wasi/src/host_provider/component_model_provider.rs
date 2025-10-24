@@ -80,7 +80,7 @@ fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<Foun
             crate::Value::F64(v) => converted.push(wrt_foundation::values::Value::F64(
                 wrt_foundation::values::FloatBits64::from_float(v),
             )),
-            crate::Value::List(list) => {
+            crate::Value::List(_list) => {
                 // For lists, we'll need to convert to an appropriate foundation type
                 // This is a simplification - real implementation would need proper list support
                 return Err(Error::wasi_invalid_argument(

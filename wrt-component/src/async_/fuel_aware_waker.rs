@@ -159,19 +159,19 @@ impl WakerData {
                 // QM: Basic wake
                 self.wake_basic();
             },
-            ASILExecutionMode::ASIL_A => {
+            ASILExecutionMode::AsilA => {
                 // ASIL-A: Basic wake with error detection
                 self.wake_basic();
             },
-            ASILExecutionMode::ASIL_B => {
+            ASILExecutionMode::AsilB => {
                 // ASIL-B: Wake with resource limit checks
                 self.wake_with_resource_limits();
             },
-            ASILExecutionMode::ASIL_C => {
+            ASILExecutionMode::AsilC => {
                 // ASIL-C: Wake with temporal isolation guarantees
                 self.wake_with_temporal_isolation();
             },
-            ASILExecutionMode::ASIL_D => {
+            ASILExecutionMode::AsilD => {
                 // ASIL-D: Deterministic wake with strict ordering
                 self.wake_deterministic();
             },
@@ -219,10 +219,10 @@ impl WakerData {
             // ASIL-specific fuel costs
             let wake_fuel = match self.asil_mode {
                 ASILExecutionMode::QM => WAKE_OPERATION_FUEL,
-                ASILExecutionMode::ASIL_A => WAKE_OPERATION_FUEL,
-                ASILExecutionMode::ASIL_B => WAKE_OPERATION_FUEL + 2,
-                ASILExecutionMode::ASIL_C => WAKE_OPERATION_FUEL + 3,
-                ASILExecutionMode::ASIL_D => WAKE_OPERATION_FUEL * 2, // Higher cost for deterministic
+                ASILExecutionMode::AsilA => WAKE_OPERATION_FUEL,
+                ASILExecutionMode::AsilB => WAKE_OPERATION_FUEL + 2,
+                ASILExecutionMode::AsilC => WAKE_OPERATION_FUEL + 3,
+                ASILExecutionMode::AsilD => WAKE_OPERATION_FUEL * 2, // Higher cost for deterministic
                 ASILExecutionMode::D { .. } => WAKE_OPERATION_FUEL * 2, // Higher cost for deterministic
                 ASILExecutionMode::C { .. } => WAKE_OPERATION_FUEL + 3,
                 ASILExecutionMode::B { .. } => WAKE_OPERATION_FUEL + 2,

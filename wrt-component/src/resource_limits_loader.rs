@@ -187,10 +187,10 @@ fn convert_to_asil_config(
     // Determine ASIL mode from qualification info or use default
     let asil_mode = if let Some(asil_level) = limits.qualified_asil_level() {
         match asil_level {
-            "ASIL-D" => ASILExecutionMode::ASIL_D,
-            "ASIL-C" => ASILExecutionMode::ASIL_C,
-            "ASIL-B" => ASILExecutionMode::ASIL_B,
-            "ASIL-A" => ASILExecutionMode::ASIL_A,
+            "ASIL-D" => ASILExecutionMode::AsilD,
+            "ASIL-C" => ASILExecutionMode::AsilC,
+            "ASIL-B" => ASILExecutionMode::AsilB,
+            "ASIL-A" => ASILExecutionMode::AsilA,
             "QM" => ASILExecutionMode::QM,
             _ => default_mode,
         }

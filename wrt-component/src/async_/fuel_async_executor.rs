@@ -547,13 +547,13 @@ pub enum ASILExecutionMode {
     /// Quality Management (no safety requirements)
     QM,
     /// ASIL-A: Basic safety requirements (unit variant)
-    ASIL_A,
+    AsilA,
     /// ASIL-B: Bounded resource usage (unit variant)
-    ASIL_B,
+    AsilB,
     /// ASIL-C: Freedom from interference (unit variant)
-    ASIL_C,
+    AsilC,
     /// ASIL-D: Highest safety integrity (unit variant)
-    ASIL_D,
+    AsilD,
     /// ASIL-A: Basic safety requirements
     A {
         /// Enable basic error detection
@@ -704,7 +704,7 @@ impl ASILExecutionConfig {
     /// level
     pub fn validate_for_asil(&self) -> Result<()> {
         match self.mode {
-            ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+            ASILExecutionMode::D { .. } | ASILExecutionMode::AsilD => {
                 // ASIL-D requires all limits to be specified
                 if self.limits.max_fuel_per_step.is_none()
                     || self.limits.max_memory_usage.is_none()
@@ -717,7 +717,7 @@ impl ASILExecutionConfig {
                     ));
                 }
             },
-            ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
+            ASILExecutionMode::C { .. } | ASILExecutionMode::AsilC => {
                 // ASIL-C requires memory and call depth limits
                 if self.limits.max_memory_usage.is_none() || self.limits.max_call_depth.is_none() {
                     return Err(Error::configuration_error(
@@ -804,7 +804,7 @@ impl ExecutionLimitsConfig {
             max_tasks,
             max_yields,
         ) = match mode {
-            ASILExecutionMode::ASIL_D => (
+            ASILExecutionMode::AsilD => (
                 Some(100),
                 Some(32 * 1024),
                 Some(8),
@@ -828,7 +828,7 @@ impl ExecutionLimitsConfig {
                 Some(4),
                 Some(2),
             ),
-            ASILExecutionMode::ASIL_C => (
+            ASILExecutionMode::AsilC => (
                 Some(1000),
                 Some(64 * 1024),
                 Some(16),
@@ -850,7 +850,7 @@ impl ExecutionLimitsConfig {
                 Some(16),
                 Some(8),
             ),
-            ASILExecutionMode::ASIL_B => (
+            ASILExecutionMode::AsilB => (
                 Some(5000),
                 Some(128 * 1024),
                 Some(32),
@@ -875,7 +875,7 @@ impl ExecutionLimitsConfig {
                 Some(64),
                 Some(32),
             ),
-            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A => (
+            ASILExecutionMode::QM | ASILExecutionMode::AsilA => (
                 Some(10000),
                 Some(256 * 1024),
                 Some(64),
@@ -1604,7 +1604,7 @@ impl FuelMonitor {
 
         // Check ASIL-specific thresholds and generate alerts if needed
         match asil_mode {
-            ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+            ASILExecutionMode::D { .. } | ASILExecutionMode::AsilD => {
                 if amount > self.asil_thresholds.asil_d_task_limit {
                     let mut alerts = self.active_alerts.lock();
                     if alerts.len() < 32 {
@@ -1623,7 +1623,7 @@ impl FuelMonitor {
                     ));
                 }
             },
-            ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
+            ASILExecutionMode::C { .. } | ASILExecutionMode::AsilC => {
                 if total_consumed > self.asil_thresholds.asil_c_component_limit {
                     let mut alerts = self.active_alerts.lock();
                     if alerts.len() < 32 {
@@ -1639,7 +1639,7 @@ impl FuelMonitor {
                     }
                 }
             },
-            ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => {
+            ASILExecutionMode::B { .. } | ASILExecutionMode::AsilB => {
                 if amount > self.asil_thresholds.asil_b_slice_limit {
                     let mut alerts = self.active_alerts.lock();
                     if alerts.len() < 32 {
@@ -1655,7 +1655,7 @@ impl FuelMonitor {
                     }
                 }
             },
-            ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => {
+            ASILExecutionMode::A { .. } | ASILExecutionMode::AsilA => {
                 if total_consumed > self.asil_thresholds.asil_a_warning_threshold {
                     let mut alerts = self.active_alerts.lock();
                     if alerts.len() < 32 {
@@ -1904,25 +1904,25 @@ impl FuelAsyncExecutor {
 
         // Check ASIL-specific enforcement
         match task.execution_context.asil_config.mode {
-            ASILExecutionMode::ASIL_D | ASILExecutionMode::D { .. } => self.enforce_asil_d_policy(
+            ASILExecutionMode::AsilD | ASILExecutionMode::D { .. } => self.enforce_asil_d_policy(
                 task,
                 fuel_to_consume,
                 remaining_fuel,
                 &policy.asil_policies.asil_d,
             ),
-            ASILExecutionMode::ASIL_C | ASILExecutionMode::C { .. } => self.enforce_asil_c_policy(
+            ASILExecutionMode::AsilC | ASILExecutionMode::C { .. } => self.enforce_asil_c_policy(
                 task,
                 fuel_to_consume,
                 remaining_fuel,
                 &policy.asil_policies.asil_c,
             ),
-            ASILExecutionMode::ASIL_B | ASILExecutionMode::B { .. } => self.enforce_asil_b_policy(
+            ASILExecutionMode::AsilB | ASILExecutionMode::B { .. } => self.enforce_asil_b_policy(
                 task,
                 fuel_to_consume,
                 remaining_fuel,
                 &policy.asil_policies.asil_b,
             ),
-            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A | ASILExecutionMode::A { .. } => self
+            ASILExecutionMode::QM | ASILExecutionMode::AsilA | ASILExecutionMode::A { .. } => self
                 .enforce_asil_a_policy(
                     task,
                     fuel_to_consume,
@@ -2721,10 +2721,10 @@ impl FuelAsyncExecutor {
 
             let can_continue = task.execution_context.can_continue_execution()?;
             let asil_key = match task.execution_context.asil_config.mode {
-                ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => 0,
-                ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => 1,
-                ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => 2,
-                ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => 3,
+                ASILExecutionMode::D { .. } | ASILExecutionMode::AsilD => 0,
+                ASILExecutionMode::C { .. } | ASILExecutionMode::AsilC => 1,
+                ASILExecutionMode::B { .. } | ASILExecutionMode::AsilB => 2,
+                ASILExecutionMode::A { .. } | ASILExecutionMode::AsilA => 3,
                 ASILExecutionMode::QM => 4,
             };
             let step_fuel = task.execution_context.asil_config.limits.get_fuel_limit();
@@ -2808,7 +2808,7 @@ impl FuelAsyncExecutor {
 
         // Execute based on ASIL mode constraints
         let execution_result = match task.execution_context.asil_config.mode {
-            ASILExecutionMode::ASIL_D => {
+            ASILExecutionMode::AsilD => {
                 // ASIL-D requires deterministic execution (unit variant defaults)
                 self.execute_deterministic_step(task, component_instance)
             },
@@ -2819,7 +2819,7 @@ impl FuelAsyncExecutor {
                 // ASIL-D requires deterministic execution
                 self.execute_deterministic_step(task, component_instance)
             },
-            ASILExecutionMode::ASIL_C => {
+            ASILExecutionMode::AsilC => {
                 // ASIL-C requires isolation enforcement (unit variant defaults)
                 self.execute_isolated_step(task, component_instance)
             },
@@ -2830,7 +2830,7 @@ impl FuelAsyncExecutor {
                 // ASIL-C requires isolation enforcement
                 self.execute_isolated_step(task, component_instance)
             },
-            ASILExecutionMode::ASIL_B => {
+            ASILExecutionMode::AsilB => {
                 // ASIL-B requires resource limit enforcement (unit variant defaults)
                 self.execute_resource_limited_step(task, component_instance)
             },
@@ -2841,7 +2841,7 @@ impl FuelAsyncExecutor {
                 // ASIL-B requires resource limit enforcement
                 self.execute_resource_limited_step(task, component_instance)
             },
-            ASILExecutionMode::QM | ASILExecutionMode::ASIL_A => {
+            ASILExecutionMode::QM | ASILExecutionMode::AsilA => {
                 // QM and ASIL-A have basic execution requirements
                 self.execute_basic_step(task, component_instance)
             },
@@ -3297,16 +3297,16 @@ impl FuelAsyncExecutor {
 
         // Set verification level to match task's ASIL mode
         let verification_level = match task.execution_context.asil_config.mode {
-            ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+            ASILExecutionMode::D { .. } | ASILExecutionMode::AsilD => {
                 wrt_foundation::verification::VerificationLevel::Full
             },
-            ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
+            ASILExecutionMode::C { .. } | ASILExecutionMode::AsilC => {
                 wrt_foundation::verification::VerificationLevel::Standard
             },
-            ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => {
+            ASILExecutionMode::B { .. } | ASILExecutionMode::AsilB => {
                 wrt_foundation::verification::VerificationLevel::Basic
             },
-            ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => {
+            ASILExecutionMode::A { .. } | ASILExecutionMode::AsilA => {
                 wrt_foundation::verification::VerificationLevel::Off
             },
             ASILExecutionMode::QM => wrt_foundation::verification::VerificationLevel::Off,
@@ -3793,19 +3793,19 @@ impl FuelAsyncExecutor {
             if let Some(task) = self.tasks.get(&task_id) {
                 // Get debt policy based on ASIL mode
                 let policy = match task.execution_context.asil_config.mode {
-                    ASILExecutionMode::D { .. } | ASILExecutionMode::ASIL_D => {
+                    ASILExecutionMode::D { .. } | ASILExecutionMode::AsilD => {
                         DebtPolicy::NeverAllow
                     },
-                    ASILExecutionMode::C { .. } | ASILExecutionMode::ASIL_C => {
+                    ASILExecutionMode::C { .. } | ASILExecutionMode::AsilC => {
                         DebtPolicy::LimitedDebt { max_debt: 1000 }
                     },
-                    ASILExecutionMode::B { .. } | ASILExecutionMode::ASIL_B => {
+                    ASILExecutionMode::B { .. } | ASILExecutionMode::AsilB => {
                         DebtPolicy::ModerateDebt {
                             max_debt: 5000,
                             interest_rate: 0.05,
                         }
                     },
-                    ASILExecutionMode::A { .. } | ASILExecutionMode::ASIL_A => {
+                    ASILExecutionMode::A { .. } | ASILExecutionMode::AsilA => {
                         DebtPolicy::FlexibleDebt {
                             soft_limit: 10000,
                             hard_limit: 20000,
@@ -3847,17 +3847,17 @@ impl FuelAsyncExecutor {
                 hard_limit: 20000,
                 interest_rate: 0.10,
             },
-            ASILExecutionMode::ASIL_A => DebtPolicy::FlexibleDebt {
+            ASILExecutionMode::AsilA => DebtPolicy::FlexibleDebt {
                 soft_limit: 10000,
                 hard_limit: 20000,
                 interest_rate: 0.10,
             },
-            ASILExecutionMode::ASIL_B => DebtPolicy::ModerateDebt {
+            ASILExecutionMode::AsilB => DebtPolicy::ModerateDebt {
                 max_debt: 5000,
                 interest_rate: 0.05,
             },
-            ASILExecutionMode::ASIL_C => DebtPolicy::LimitedDebt { max_debt: 1000 },
-            ASILExecutionMode::ASIL_D => DebtPolicy::NeverAllow,
+            ASILExecutionMode::AsilC => DebtPolicy::LimitedDebt { max_debt: 1000 },
+            ASILExecutionMode::AsilD => DebtPolicy::NeverAllow,
             ASILExecutionMode::D { .. } => DebtPolicy::NeverAllow,
             ASILExecutionMode::C { .. } => DebtPolicy::LimitedDebt { max_debt: 1000 },
             ASILExecutionMode::B { .. } => DebtPolicy::ModerateDebt {
@@ -3935,10 +3935,10 @@ impl FuelAsyncExecutor {
                 // Repay debt with interest
                 let interest_rate = match task.execution_context.asil_config.mode {
                     ASILExecutionMode::QM => 0.10,       // 10% interest for QM
-                    ASILExecutionMode::ASIL_A => 0.10,   // 10% interest for ASIL-A
-                    ASILExecutionMode::ASIL_B => 0.05,   // 5% interest for ASIL-B
-                    ASILExecutionMode::ASIL_C => 0.02,   // 2% interest for ASIL-C
-                    ASILExecutionMode::ASIL_D => 0.0, // No interest for ASIL-D (shouldn't have debt)
+                    ASILExecutionMode::AsilA => 0.10,   // 10% interest for ASIL-A
+                    ASILExecutionMode::AsilB => 0.05,   // 5% interest for ASIL-B
+                    ASILExecutionMode::AsilC => 0.02,   // 2% interest for ASIL-C
+                    ASILExecutionMode::AsilD => 0.0, // No interest for ASIL-D (shouldn't have debt)
                     ASILExecutionMode::D { .. } => 0.0, // No interest for ASIL-D (shouldn't have debt)
                     ASILExecutionMode::C { .. } => 0.02, // 2% interest for ASIL-C
                     ASILExecutionMode::B { .. } => 0.05, // 5% interest for ASIL-B

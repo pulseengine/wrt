@@ -262,7 +262,7 @@ impl TypeBoundsChecker {
             BoundKind::Sub => self.check_subtype(type1, type2),
         };
 
-        self.cached_relations.insert(cache_key, result.clone());
+        let _ = self.cached_relations.insert(cache_key, result.clone());
         result
     }
 
@@ -345,7 +345,7 @@ impl TypeBoundsChecker {
                             };
 
                             if !self.relation_exists(&new_relation) {
-                                new_relations.push(new_relation);
+                                let _ = new_relations.push(new_relation);
                             }
                         }
                     }

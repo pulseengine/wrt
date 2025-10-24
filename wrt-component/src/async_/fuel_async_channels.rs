@@ -532,23 +532,7 @@ impl<T> FuelAsyncChannelManager<T> {
         self.global_stats.total_channels_created.fetch_add(1, Ordering::AcqRel);
         self.global_stats.active_channels.fetch_add(1, Ordering::AcqRel);
 
-        let sender = FuelAsyncSender {
-            channel_id,
-            channel_manager: todo!("Fix architecture: self cannot be moved into Arc"),
-            sender_task,
-            sender_component,
-            sender_priority,
-        };
-
-        let receiver = FuelAsyncReceiver {
-            channel_id,
-            channel_manager: todo!("Fix architecture: self cannot be moved into Arc"),
-            receiver_task,
-            receiver_component,
-            receiver_priority,
-        };
-
-        Ok((sender, receiver))
+        todo!("Fix architecture: self cannot be moved into Arc for FuelAsyncSender and FuelAsyncReceiver")
     }
 
     /// Close a channel

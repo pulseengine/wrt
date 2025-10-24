@@ -742,7 +742,7 @@ impl DynamicQuotaManager {
                         if !node.can_allocate(amount) {
                             return Ok(false);
                         }
-                        allocated_nodes.push(id);
+                        let _ = allocated_nodes.push(id);
                         current_id = node.parent_id;
                         found = true;
                         break;

@@ -298,7 +298,7 @@ impl ComponentLinker {
         };
 
         // Add to components map
-        self.components.insert(id.clone(), definition);
+        let _ = self.components.insert(id.clone(), definition);
 
         // Update dependency graph
         self.link_graph.add_component(id)?;
@@ -470,7 +470,7 @@ impl ComponentLinker {
         instance.state = crate::types::ComponentInstanceState::Running;
 
         // Add to instances map
-        self.instances.insert(instance_id, instance);
+        let _ = self.instances.insert(instance_id, instance);
 
         // Update statistics
         self.stats.instances_created += 1;
@@ -488,7 +488,7 @@ impl ComponentLinker {
         // Instantiate components in dependency order
         for component_id in sorted_components {
             let instance_id = self.instantiate(&component_id, None)?;
-            instance_ids.push(instance_id);
+            let _ = instance_ids.push(instance_id);
         }
 
         Ok(instance_ids)
@@ -656,7 +656,7 @@ impl ComponentLinker {
 
         for import in imports {
             let resolution = self.resolve_single_import(component_id, import)?;
-            resolved.push(resolution);
+            let _ = resolved.push(resolution);
         }
 
         self.stats.links_resolved += resolved.len() as u32;
@@ -755,7 +755,7 @@ impl LinkGraph {
             dependents: Vec::new(),
         };
 
-        self.nodes.push(node);
+        let _ = self.nodes.push(node);
         Ok(())
     }
 
@@ -866,7 +866,7 @@ impl LinkGraph {
 
         temp_visited[node_index] = false;
         visited[node_index] = true;
-        result.push(self.nodes[node_index].component_id.clone());
+        let _ = result.push(self.nodes[node_index].component_id.clone());
 
         Ok(())
     }
