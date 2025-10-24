@@ -251,9 +251,9 @@ pub trait ToString {
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl ToString for &str {
     fn to_string(&self) -> RuntimeString {
-        RuntimeString::from_str(self).unwrap_or_else(|_| {
+        RuntimeString::try_from_str(self).unwrap_or_else(|_| {
             // If conversion fails, create empty string
-            RuntimeString::from_str("").unwrap()
+            RuntimeString::try_from_str("").unwrap()
         })
     }
 }
@@ -362,6 +362,7 @@ pub use wrt_foundation::{
     Value as CleanValue,
 };
 
+/// Core function type from wrt_foundation.
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type CoreFuncType = wrt_foundation::types::FuncType;
 

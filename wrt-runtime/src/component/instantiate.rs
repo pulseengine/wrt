@@ -272,12 +272,16 @@ impl wrt_foundation::traits::FromBytes for CoreModuleInstance {
 pub enum LinkingError {
     /// Import not found
     ImportNotFound {
+        /// Module name.
         module: ComponentString,
+        /// Import name.
         name:   ComponentString,
     },
     /// Type mismatch during linking
     TypeMismatch {
+        /// Expected type.
         expected: ComponentString,
+        /// Actual type.
         actual:   ComponentString,
     },
     /// Circular dependency detected

@@ -116,6 +116,9 @@ pub use wrt_error::{
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
     bounded::BoundedStack,
+    // Memory allocation macros
+    safe_managed_alloc,
+    CrateId,
     // SafeMemory types
     safe_memory::{
         NoStdMemoryProvider,

@@ -816,32 +816,49 @@ impl SafetyVerificationFramework {
 /// Result of compliance verification for a specific ASIL level
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceVerificationResult {
+    /// Target ASIL level being verified.
     pub target_asil:                  AsilLevel,
+    /// Total number of requirements for this ASIL level.
     pub total_requirements:           usize,
+    /// Number of requirements that passed verification.
     pub verified_requirements:        usize,
+    /// Percentage of requirements that are compliant.
     pub compliance_percentage:        f64,
+    /// List of compliance violations found.
     pub violations:                   Vec<ComplianceViolation>,
+    /// Count of requirements missing implementation.
     pub missing_implementation_count: usize,
+    /// Count of requirements missing tests.
     pub missing_testing_count:        usize,
+    /// Whether the verification passed all compliance checks.
     pub is_compliant:                 bool,
 }
 
 /// A compliance violation that needs to be addressed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceViolation {
+    /// Unique identifier of the requirement that was violated.
     pub requirement_id: RequirementId,
+    /// Type of violation that occurred.
     pub violation_type: ViolationType,
+    /// Human-readable description of the violation.
     pub description:    String,
+    /// Severity level of this violation.
     pub severity:       ViolationSeverity,
 }
 
 /// Types of compliance violations
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ViolationType {
+    /// Requirement lacks implementation code.
     MissingImplementation,
+    /// Requirement has insufficient test coverage.
     InsufficientTesting,
+    /// Verification checks did not pass.
     FailedVerification,
+    /// Requirement lacks required documentation.
     MissingDocumentation,
+    /// Requirement assigned incorrect ASIL level.
     IncorrectASILLevel,
 }
 
@@ -860,10 +877,15 @@ impl fmt::Display for ViolationType {
 /// Severity levels for violations
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ViolationSeverity {
+    /// Informational severity.
     Info,
+    /// Low severity violation.
     Low,
+    /// Medium severity violation.
     Medium,
+    /// High severity violation.
     High,
+    /// Critical severity violation requiring immediate attention.
     Critical,
 }
 
@@ -882,20 +904,30 @@ impl fmt::Display for ViolationSeverity {
 /// Test execution result with ASIL metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
+    /// Name of the test that was executed.
     pub test_name:             String,
+    /// Whether the test passed.
     pub passed:                bool,
+    /// Execution time in milliseconds.
     pub execution_time_ms:     u64,
+    /// List of requirements verified by this test.
     pub verified_requirements: Vec<RequirementId>,
+    /// Type of coverage achieved by this test.
     pub coverage_type:         TestCoverageType,
+    /// Reason for failure if test did not pass.
     pub failure_reason:        String,
+    /// ASIL level of this test.
     pub asil_level:            AsilLevel,
 }
 
 /// Type of test coverage achieved
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TestCoverageType {
+    /// Basic test coverage with minimal testing.
     Basic,
+    /// Comprehensive test coverage with thorough testing.
     Comprehensive,
+    /// Complete test coverage with exhaustive testing.
     Complete,
 }
 
@@ -912,13 +944,18 @@ impl fmt::Display for TestCoverageType {
 /// Code coverage data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoverageData {
+    /// Percentage of lines covered by tests.
     pub line_coverage:     f64,
+    /// Percentage of branches covered by tests.
     pub branch_coverage:   f64,
+    /// Percentage of functions covered by tests.
     pub function_coverage: f64,
+    /// Coverage data for individual files.
     pub file_coverages:    Vec<FileCoverage>,
 }
 
 impl CoverageData {
+    /// Create new coverage data with zero coverage.
     pub fn new() -> Self {
         Self {
             line_coverage:     0.0,
@@ -928,6 +965,7 @@ impl CoverageData {
         }
     }
 
+    /// Calculate overall coverage as average of line, branch, and function coverage.
     pub fn overall_coverage(&self) -> f64 {
         (self.line_coverage + self.branch_coverage + self.function_coverage) / 3.0
     }
@@ -942,62 +980,94 @@ impl Default for CoverageData {
 /// Coverage data for a specific file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileCoverage {
+    /// Path to the source file.
     pub file_path:         String,
+    /// Percentage of lines covered in this file.
     pub line_coverage:     f64,
+    /// Percentage of branches covered in this file.
     pub branch_coverage:   f64,
+    /// Percentage of functions covered in this file.
     pub function_coverage: f64,
 }
 
 /// Platform verification result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformVerification {
+    /// Name of the platform being verified.
     pub platform_name:       String,
+    /// Whether platform verification passed.
     pub verification_passed: bool,
+    /// List of features that passed verification.
     pub verified_features:   Vec<String>,
+    /// List of features that failed verification.
     pub failed_features:     Vec<String>,
+    /// ASIL compliance level achieved.
     pub asil_compliance:     AsilLevel,
 }
 
 /// Comprehensive safety report
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SafetyReport {
+    /// Overall compliance percentage across all ASIL levels.
     pub overall_compliance:      f64,
+    /// Compliance percentage by ASIL level.
     pub asil_compliance:         HashMap<AsilLevel, f64>,
+    /// Summary of test execution results.
     pub test_summary:            TestSummary,
+    /// Summary of platform verification results.
     pub platform_summary:        PlatformSummary,
+    /// Code coverage data.
     pub coverage_data:           CoverageData,
+    /// Number of requirements not yet verified.
     pub unverified_requirements: usize,
+    /// List of critical compliance violations.
     pub critical_violations:     Vec<ComplianceViolation>,
+    /// List of recommendations for improving safety compliance.
     pub recommendations:         Vec<String>,
 }
 
 /// Test execution summary
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TestSummary {
+    /// Total number of tests executed.
     pub total_tests:         usize,
+    /// Number of tests that passed.
     pub passed_tests:        usize,
+    /// Number of tests that failed.
     pub failed_tests:        usize,
+    /// Overall test coverage percentage.
     pub coverage_percentage: f64,
 }
 
 /// Platform verification summary
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformSummary {
+    /// Number of platforms that passed verification.
     pub verified_platforms: usize,
+    /// Total number of platforms verified.
     pub total_platforms:    usize,
+    /// Detailed verification results for each platform.
     pub platform_results:   Vec<PlatformVerification>,
 }
 
 /// Certification readiness assessment
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CertificationReadiness {
+    /// ASIL level being assessed for certification.
     pub asil_level:            AsilLevel,
+    /// Whether the system is ready for certification.
     pub is_ready:              bool,
+    /// Current compliance percentage.
     pub compliance_percentage: f64,
+    /// Required compliance percentage for certification.
     pub required_compliance:   f64,
+    /// Current code coverage percentage.
     pub coverage_percentage:   f64,
+    /// Required coverage percentage for certification.
     pub required_coverage:     f64,
+    /// List of issues blocking certification.
     pub blocking_issues:       Vec<String>,
+    /// Recommendations for achieving certification readiness.
     pub recommendations:       Vec<String>,
 }
 

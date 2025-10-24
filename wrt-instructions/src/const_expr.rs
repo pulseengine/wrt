@@ -25,6 +25,7 @@ use wrt_math;
 
 use crate::{
     prelude::{
+        BoundedVec,
         Debug,
         PartialEq,
     },

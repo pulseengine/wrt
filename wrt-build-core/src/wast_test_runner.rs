@@ -32,15 +32,22 @@ use crate::wast_execution::{
 /// Statistics for WAST test execution
 #[derive(Debug, Default)]
 pub struct WastTestStats {
+    /// Total number of test files processed.
     pub total_files:      usize,
+    /// Total number of test directives executed.
     pub total_directives: usize,
+    /// Number of tests that passed.
     pub passed:           usize,
+    /// Number of tests that failed.
     pub failed:           usize,
+    /// Number of tests that were skipped.
     pub skipped:          usize,
+    /// List of error messages encountered.
     pub errors:           Vec<String>,
 }
 
 impl WastTestStats {
+    /// Calculate test success rate as a percentage.
     pub fn success_rate(&self) -> f64 {
         if self.total_directives == 0 {
             0.0

@@ -2806,6 +2806,7 @@ impl MemoryGuard {
     }
 }
 
+/// Wrapper for shared memory instances.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryWrapper(pub Arc<Memory>);
 

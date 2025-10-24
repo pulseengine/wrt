@@ -60,17 +60,26 @@ type String = alloc::string::String;
 type String =
     wrt_foundation::bounded::BoundedString<256>;
 
-// Define trait locally if not available from wrt_decoder
+/// Trait for building WebAssembly runtime modules from decoder output.
 pub trait RuntimeModuleBuilder {
+    /// The type of module that this builder produces.
     type Module;
 
+    /// Creates a new module builder.
     fn new() -> Self;
+    /// Sets the module name.
     fn set_name(&mut self, name: String);
+    /// Sets the start function index.
     fn set_start(&mut self, start_func: u32);
+    /// Adds a function type to the module.
     fn add_type(&mut self, func_type: FuncType) -> Result<u32>;
+    /// Adds a function type to the module (alias for add_type).
     fn add_function_type(&mut self, func_type: FuncType) -> Result<u32>;
+    /// Adds an import to the module.
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
+    /// Adds a function declaration to the module.
     fn add_function(&mut self, type_idx: u32) -> Result<u32>;
+    /// Adds a function body with bytecode to the module.
     fn add_function_body(
         &mut self,
         func_idx: u32,
@@ -81,31 +90,39 @@ pub trait RuntimeModuleBuilder {
             crate::bounded_runtime_infra::RuntimeProvider,
         >,
     ) -> Result<()>;
+    /// Adds a memory declaration to the module.
     fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<u32>;
+    /// Adds a table declaration to the module.
     fn add_table(&mut self, table_type: WrtTableType) -> Result<u32>;
+    /// Adds a global variable to the module.
     fn add_global(&mut self, global_type: WrtGlobalType) -> Result<u32>;
+    /// Adds an export to the module.
     fn add_export(&mut self, export: WrtExport) -> Result<()>;
+    /// Adds an element segment to the module.
     fn add_element(&mut self, element: WrtElementSegment) -> Result<u32>;
+    /// Adds a data segment to the module.
     fn add_data(&mut self, data: WrtDataSegment) -> Result<u32>;
+    /// Adds a custom section to the module.
     fn add_custom_section(
         &mut self,
         section: WrtCustomSection<crate::bounded_runtime_infra::RuntimeProvider>,
     ) -> Result<()>;
+    /// Builds and returns the completed module.
     fn build(self) -> Result<Self::Module>;
 }
 
 /// Builder for runtime modules
 pub struct ModuleBuilder {
-    /// Module being built
+    /// Module being built.
     module:              Module,
-    /// Keep track of imported functions to correctly index defined functions
+    /// Keep track of imported functions to correctly index defined functions.
     imported_func_count: u32,
 }
 
 impl RuntimeModuleBuilder for ModuleBuilder {
     type Module = Module;
 
-    /// Create a new module builder
+    /// Creates a new module builder.
     fn new() -> Self {
         Self {
             module:              Module::new().unwrap_or_else(|e| {
@@ -232,7 +249,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
     // All trait methods implemented above with stub implementations
 }
 
-/// Parse local variable declarations from function body bytecode
+/// Parses local variable declarations from function body bytecode.
 fn parse_locals_from_body(
     bytecode: &[u8],
 ) -> Result<
@@ -295,7 +312,7 @@ fn parse_locals_from_body(
     Ok(locals)
 }
 
-/// Read LEB128 u32 from bytecode
+/// Reads a LEB128-encoded u32 value from bytecode at the specified offset.
 fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
     let mut result = 0u32;
     let mut shift = 0;
@@ -327,7 +344,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
 }
 
 impl ModuleBuilder {
-    /// Create a new module builder with an existing binary
+    /// Creates a new module builder with an existing binary.
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn with_binary(_binary: Vec<u8>) -> Result<Self> {
         Ok(Self {
@@ -336,14 +353,14 @@ impl ModuleBuilder {
         })
     }
 
-    /// Set the binary representation of the module
+    /// Sets the binary representation of the module.
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary(&mut self, _binary: Vec<u8>) -> Result<()> {
         Ok(())
     }
 }
 
-/// Load a module from binary data using the module builder
+/// Loads a module from binary data using the module builder.
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
     #[cfg(feature = "decoder")]
     {

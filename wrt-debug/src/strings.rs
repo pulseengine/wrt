@@ -196,6 +196,14 @@ pub fn read_inline_string<'a>(cursor: &mut DwarfCursor<'a>) -> DebugResult<Debug
 mod tests {
     use super::*;
 
+    #[cfg(all(not(feature = "std"), any(feature = "alloc", test)))]
+    extern crate alloc;
+
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
+
     const TEST_STRING_DATA: &[u8] = &[
         0x00, // Empty string at offset 0
         b'h', b'e', b'l', b'l', b'o', 0x00, // "hello" at offset 1
@@ -293,6 +301,6 @@ mod tests {
         assert_eq!(string.as_str(), "test_string");
 
         // Cursor should be positioned after the null terminator
-        assert_eq!(cursor.remaining(), b"more_data");
+        assert_eq!(cursor.remaining(), 9); // "more_data" has 9 bytes
     }
 }

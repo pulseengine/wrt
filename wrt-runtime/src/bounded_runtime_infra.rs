@@ -29,9 +29,10 @@ use wrt_foundation::{
     },
 };
 
-// Memory size for runtime provider (4KB to avoid stack overflow)
-// Previously was 131072 (128KB) which caused stack overflow
-// 4096 was too small for runtime providers - increased to 32KB
+/// Memory size for runtime provider (32KB).
+///
+/// Previously was 131072 (128KB) which caused stack overflow.
+/// 4096 was too small for runtime providers - increased to 32KB.
 pub const RUNTIME_MEMORY_SIZE: usize = 32768;
 
 // Stack allocation threshold - use platform allocator for sizes above this

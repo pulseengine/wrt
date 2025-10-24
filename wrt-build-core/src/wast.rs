@@ -147,8 +147,11 @@ pub struct WastConfig {
 /// Report output formats
 #[derive(Debug, Clone)]
 pub enum ReportFormat {
+    /// Human-readable text format.
     Human,
+    /// JSON format for machine parsing.
     Json,
+    /// Markdown format for documentation.
     Markdown,
 }
 
@@ -196,8 +199,11 @@ pub struct WastDirectiveInfo {
 /// Result of a test execution
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TestResult {
+    /// Test passed successfully.
     Passed,
+    /// Test failed.
     Failed,
+    /// Test was skipped.
     Skipped,
 }
 

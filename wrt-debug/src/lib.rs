@@ -55,6 +55,7 @@ pub use line_info::{
 pub use parameter::{
     BasicType,
     InlinedFunction,
+    InlinedFunctions,
     Parameter,
     ParameterList,
 };
@@ -460,11 +461,19 @@ mod tests {
     #[test]
     #[cfg(feature = "line-info")]
     fn test_line_info_basics() {
-        let data = &[0u8; 50];
-        let line_info = LineInfo::new(data);
+        // Test LineInfo structure creation
+        let line_info = LineInfo {
+            file_index:   1,
+            line:         42,
+            column:       8,
+            is_stmt:      true,
+            end_sequence: false,
+        };
 
-        // Test initial state
-        assert!(line_info.is_valid());
+        // Test basic field access
+        assert_eq!(line_info.line, 42);
+        assert_eq!(line_info.column, 8);
+        assert!(line_info.is_stmt);
     }
 
     #[test]

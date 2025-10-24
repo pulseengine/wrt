@@ -57,7 +57,7 @@ mod complete_debug_tests {
 
     #[test]
     fn test_inline_function_detection() {
-        let mut inlined = wrt_debug::parameter::InlinedFunctions::new();
+        let mut inlined = wrt_debug::InlinedFunctions::new();
 
         // Add an inlined function
         let func = InlinedFunction {
@@ -208,7 +208,7 @@ mod complete_debug_tests {
     #[test]
     fn test_comprehensive_function_info() {
         // Test the complete FunctionInfo structure
-        use wrt_debug::parameter::*;
+        use wrt_debug::*;
 
         // Create a parameter list
         let mut params = ParameterList::new();
@@ -244,7 +244,7 @@ mod complete_debug_tests {
     #[test]
     fn test_inline_function_depth() {
         // Test nested inline functions
-        let mut inlined = wrt_debug::parameter::InlinedFunctions::new();
+        let mut inlined = wrt_debug::InlinedFunctions::new();
 
         // Add multiple levels of inlining
         let func1 = InlinedFunction {

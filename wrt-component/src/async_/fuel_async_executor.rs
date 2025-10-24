@@ -2881,8 +2881,10 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with ASIL-D constraints from configuration
-        // Note: wrt-runtime defaults to std features, so new() returns Self directly
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // Fuel tracking is done at the task level via task.fuel_consumed
@@ -2919,8 +2921,10 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with isolation constraints from configuration
-        // Note: wrt-runtime defaults to std features, so new() returns Self directly
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // Set fuel limit from configuration
@@ -2968,8 +2972,10 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with resource limits
-        // Note: wrt-runtime defaults to std features, so new() returns Self directly
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // engine.set_fuel(Some(400)); // Bounded fuel for ASIL-B - Not supported
 
@@ -2994,8 +3000,10 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with relaxed constraints
-        // Note: wrt-runtime defaults to std features, so new() returns Self directly
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
         // Note: StacklessEngine is a simple engine without fuel/constraint management
         // engine.set_fuel(Some(1000)); // More fuel for ASIL-A - Not supported
 
@@ -3277,8 +3285,10 @@ impl FuelAsyncExecutor {
         _waker_context: &mut Context<'_>,
     ) -> Result<ExecutionStepResult> {
         // Create a StacklessEngine for WebAssembly execution
-        // Note: wrt-runtime defaults to std features, so new() returns Self directly
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new()?;
 
         // Set fuel limit based on task's remaining fuel budget
         let consumed = task.fuel_consumed.load(Ordering::Acquire);

@@ -106,51 +106,80 @@ pub trait MultiMemoryProvider {
 pub enum MultiMemoryOperation {
     /// Load from specific memory instance
     Load {
+        /// Index of the memory to load from.
         memory_index: u32,
+        /// The load operation to perform.
         load_op:      MultiMemoryLoad,
+        /// Address to load from.
         address:      Value,
     },
     /// Store to specific memory instance
     Store {
+        /// Index of the memory to store to.
         memory_index: u32,
+        /// The store operation to perform.
         store_op:     MultiMemoryStore,
+        /// Address to store to.
         address:      Value,
+        /// Value to store.
         value:        Value,
     },
     /// Fill memory region
     Fill {
+        /// Index of the memory to fill.
         memory_index: u32,
+        /// Destination address.
         dest:         Value,
+        /// Byte value to fill with.
         value:        Value,
+        /// Number of bytes to fill.
         size:         Value,
     },
     /// Copy within same memory
     Copy {
+        /// Index of the memory to copy within.
         memory_index: u32,
+        /// Destination address.
         dest:         Value,
+        /// Source address.
         src:          Value,
+        /// Number of bytes to copy.
         size:         Value,
     },
     /// Initialize memory from data segment
     Init {
+        /// Index of the memory to initialize.
         memory_index: u32,
+        /// Index of the data segment.
         data_index:   u32,
+        /// Destination address.
         dest:         Value,
+        /// Source offset in data segment.
         src:          Value,
+        /// Number of bytes to copy.
         size:         Value,
     },
     /// Cross-memory copy operation
     CrossCopy {
+        /// The cross-copy operation definition.
         cross_copy_op: MultiMemoryCrossCopy,
+        /// Destination address.
         dest_addr:     Value,
+        /// Source address.
         src_addr:      Value,
+        /// Number of bytes to copy.
         size:          Value,
     },
     /// Get memory size
-    Size { size_op: MultiMemorySize },
+    Size {
+        /// The size operation definition.
+        size_op: MultiMemorySize
+    },
     /// Grow memory
     Grow {
+        /// The grow operation definition.
         grow_op:     MultiMemoryGrow,
+        /// Number of pages to grow by.
         delta_pages: Value,
     },
 }
@@ -158,13 +187,13 @@ pub enum MultiMemoryOperation {
 /// Multi-memory instance wrapper
 #[derive(Debug)]
 pub struct MultiMemoryInstance {
-    /// Memory index within the module
+    /// Memory index within the module.
     pub memory_index: u32,
-    /// Memory type specification
+    /// Memory type specification.
     pub memory_type:  MemoryType,
-    /// Underlying memory implementation
+    /// Underlying memory implementation.
     memory:           Arc<WrtMutex<Memory>>,
-    /// Access statistics
+    /// Access statistics.
     pub stats:        Arc<WrtMutex<MultiMemoryStats>>,
 }
 
@@ -291,19 +320,20 @@ impl MultiMemoryInstance {
 /// Multi-memory context managing multiple memory instances
 #[derive(Debug)]
 pub struct MultiMemoryContext {
-    /// Memory instances indexed by memory index
+    /// Memory instances indexed by memory index.
     #[cfg(feature = "std")]
     memories: HashMap<u32, Arc<MultiMemoryInstance>>,
+    /// Memory instances indexed by memory index in no_std mode.
     #[cfg(not(feature = "std"))]
     memories: [(u32, Option<Arc<MultiMemoryInstance>>); MAX_MEMORIES],
 
-    /// Thread-safe counter for memory allocation
+    /// Thread-safe counter for memory allocation.
     memory_counter: SafeAtomicCounter,
 
-    /// Global multi-memory statistics
+    /// Global multi-memory statistics.
     pub global_stats: Arc<WrtMutex<MultiMemoryStats>>,
 
-    /// Dummy data segments for operations
+    /// Dummy data segments for operations.
     data_segments: DummyDataSegments,
 }
 
@@ -476,12 +506,13 @@ impl MultiMemoryContext {
         }
     }
 
-    /// Get list of all memory indices
+    /// Get list of all memory indices.
     #[cfg(feature = "std")]
     pub fn get_memory_indices(&self) -> Vec<u32> {
         self.memories.keys().copied().collect()
     }
 
+    /// Get list of all memory indices in no_std mode.
     #[cfg(not(feature = "std"))]
     pub fn get_memory_indices(
         &self,
@@ -523,7 +554,7 @@ impl Default for MultiMemoryContext {
     }
 }
 
-/// Default multi-memory provider implementation for all ASIL levels
+/// Default multi-memory provider implementation for all ASIL levels.
 pub struct ASILCompliantMultiMemoryProvider;
 
 impl MultiMemoryProvider for ASILCompliantMultiMemoryProvider {
@@ -556,6 +587,7 @@ impl MultiMemoryProvider for ASILCompliantMultiMemoryProvider {
 }
 
 impl ASILCompliantMultiMemoryProvider {
+    /// Validates that a multi-memory operation is within bounds and safe to execute.
     fn validate_operation(&self, operation: &MultiMemoryOperation) -> Result<()> {
         match operation {
             MultiMemoryOperation::Load { memory_index, .. }
@@ -594,16 +626,24 @@ impl ASILCompliantMultiMemoryProvider {
 /// Statistics for multi-memory usage
 #[derive(Debug, Clone)]
 pub struct MultiMemoryStats {
+    /// Number of registered memory instances.
     pub registered_memories:     u64,
+    /// Number of load operations performed.
     pub load_operations:         u64,
+    /// Number of store operations performed.
     pub store_operations:        u64,
+    /// Number of bulk operations performed.
     pub bulk_operations:         u64,
+    /// Number of cross-memory operations performed.
     pub cross_memory_operations: u64,
+    /// Number of grow operations performed.
     pub grow_operations:         u64,
+    /// Number of access violations detected.
     pub access_violations:       u64,
 }
 
 impl MultiMemoryStats {
+    /// Creates a new statistics instance with all counters initialized to zero.
     fn new() -> Self {
         Self {
             registered_memories:     0,
@@ -616,14 +656,17 @@ impl MultiMemoryStats {
         }
     }
 
+    /// Records a cross-memory operation in the statistics.
     pub fn record_cross_memory_operation(&mut self) {
         self.cross_memory_operations += 1;
     }
 
+    /// Records an access violation in the statistics.
     pub fn record_access_violation(&mut self) {
         self.access_violations += 1;
     }
 
+    /// Calculates the throughput as operations per registered memory.
     pub fn throughput(&self) -> f64 {
         if self.registered_memories == 0 {
             0.0
@@ -634,7 +677,7 @@ impl MultiMemoryStats {
     }
 }
 
-// Dummy data segments implementation
+/// Dummy data segments implementation for testing.
 #[derive(Debug)]
 pub struct DummyDataSegments;
 
@@ -661,6 +704,7 @@ impl DataSegmentOperations for DummyDataSegments {
 // Convenience Functions
 // ================================================================================================
 
+/// Creates a new memory instance and registers it with the given context.
 pub fn create_and_register_memory(
     context: &mut MultiMemoryContext,
     memory_index: u32,
@@ -671,6 +715,7 @@ pub fn create_and_register_memory(
     Ok(memory)
 }
 
+/// Loads a 32-bit integer value from the specified memory at the given address.
 pub fn load_i32_from_memory(
     context: &MultiMemoryContext,
     memory_index: u32,
@@ -690,6 +735,7 @@ pub fn load_i32_from_memory(
     }
 }
 
+/// Stores a 32-bit integer value to the specified memory at the given address.
 pub fn store_i32_to_memory(
     context: &MultiMemoryContext,
     memory_index: u32,
@@ -708,6 +754,7 @@ pub fn store_i32_to_memory(
     Ok(())
 }
 
+/// Copies data between two different memory instances.
 pub fn copy_between_memories(
     context: &MultiMemoryContext,
     dest_memory: u32,
@@ -728,6 +775,7 @@ pub fn copy_between_memories(
     Ok(())
 }
 
+/// Grows the specified memory by the given number of pages, returning the previous size.
 pub fn grow_memory(
     context: &MultiMemoryContext,
     memory_index: u32,

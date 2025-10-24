@@ -164,6 +164,7 @@ impl<Provider> UnifiedComponentInstance<Provider>
 where
     Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
 {
+    /// Creates a new default instance of UnifiedComponentInstance.
     pub fn new_default() -> Result<Self> {
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .map_err(|_e| Error::runtime_execution_error("Failed to create memory adapter"))?;

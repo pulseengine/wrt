@@ -72,40 +72,58 @@ pub enum WasiResourceType {
     Null,
     /// File descriptor
     FileDescriptor {
+        /// Path to the file being accessed.
         #[cfg(feature = "std")]
         path:     BoundedString<256>,
+        /// Path to the file being accessed.
         #[cfg(not(feature = "std"))]
         path:     BoundedString<256>,
+        /// Whether the file descriptor allows read operations.
         readable: bool,
+        /// Whether the file descriptor allows write operations.
         writable: bool,
     },
     /// Directory handle
     DirectoryHandle {
+        /// Path to the directory being accessed.
         #[cfg(feature = "std")]
         path: BoundedString<256>,
+        /// Path to the directory being accessed.
         #[cfg(not(feature = "std"))]
         path: BoundedString<256>,
     },
     /// Input stream
     InputStream {
+        /// Name identifier for the input stream.
         #[cfg(feature = "std")]
         name:     BoundedString<64>,
+        /// Name identifier for the input stream.
         #[cfg(not(feature = "std"))]
         name:     BoundedString<64>,
+        /// Current position in the stream for read operations.
         position: u64,
     },
     /// Output stream
     OutputStream {
+        /// Name identifier for the output stream.
         #[cfg(feature = "std")]
         name:     BoundedString<64>,
+        /// Name identifier for the output stream.
         #[cfg(not(feature = "std"))]
         name:     BoundedString<64>,
+        /// Current position in the stream for write operations.
         position: u64,
     },
     /// Clock handle
-    ClockHandle { clock_type: WasiClockType },
+    ClockHandle {
+        /// Type of clock being accessed.
+        clock_type: WasiClockType
+    },
     /// Random generator handle
-    RandomHandle { secure: bool },
+    RandomHandle {
+        /// Whether to use a cryptographically secure random generator.
+        secure: bool
+    },
 }
 
 /// WASI clock types

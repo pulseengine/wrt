@@ -248,10 +248,15 @@ impl RuntimeEngine for crate::stackless::StacklessEngine {
 /// Engine execution statistics
 #[derive(Debug, Default, Clone)]
 pub struct EngineStatistics {
+    /// Number of modules loaded.
     pub modules_loaded:          u32,
+    /// Number of functions executed.
     pub functions_executed:      u64,
+    /// Total execution time in milliseconds.
     pub total_execution_time_ms: u64,
+    /// Current memory usage in bytes.
     pub memory_used:             usize,
+    /// Maximum memory usage observed in bytes.
     pub max_memory_used:         usize,
 }
 
