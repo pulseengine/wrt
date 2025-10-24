@@ -150,7 +150,7 @@ pub struct PreemptionPoint {
 
 /// State checkpoint for resumption
 #[derive(Debug, Clone)]
-struct StateCheckpoint {
+pub struct StateCheckpoint {
     /// Saved fuel state
     fuel_state: u64,
     /// Task-specific state

@@ -16,10 +16,9 @@ members = [
     "wrt-intercept",
     "wrt-platform",
     "wrt-panic",
-    "wrt-tests/integration", 
-    "wrt-build-core", 
-    "cargo-wrt", 
-    "wrt-dagger"]
+    "wrt-tests/integration",
+    "wrt-build-core",
+    "cargo-wrt"]
 exclude = ["examples/wasi-nn/inference_module"]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -35,7 +34,6 @@ version = "0.2.0" # Updated to 0.2.0 for consistency
 [workspace.dependencies]
 anyhow = "1.0"
 wit-bindgen = "0.41.0"
-dagger-sdk = { version = "0.18.9", features = ["codegen"] }
 
 # Internal crate versions
 wrt-error = { path = "wrt-error", version = "0.2.0", default-features = false }

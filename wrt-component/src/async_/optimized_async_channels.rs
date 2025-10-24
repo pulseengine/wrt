@@ -276,7 +276,7 @@ enum ChannelBuffer {
 /// Message in a channel
 #[derive(Debug, Clone)]
 #[derive(Default)]
-struct ChannelMessage {
+pub struct ChannelMessage {
     value:     ComponentValue<ComponentProvider>,
     sender_id: ComponentInstanceId,
     sent_at:   u64,
@@ -411,7 +411,7 @@ struct ComponentChannelContext {
 
 /// Channel limits per component
 #[derive(Debug, Clone)]
-struct ChannelLimits {
+pub struct ChannelLimits {
     max_channels:       usize,
     max_total_capacity: usize,
     max_message_size:   usize,
@@ -682,7 +682,7 @@ impl OptimizedAsyncChannels {
                     let _ = wakers_to_wake.push(waker);
                 }
                 // Drop channel borrow before waking
-                drop(channel);
+                let _ = channel;
 
                 // Now wake all wakers without holding any borrows
                 for waker in wakers_to_wake {

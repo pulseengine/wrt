@@ -39,7 +39,7 @@ fn make_string(s: &str) -> Result<WasiHostString> {
 
 /// Convert foundation Value types to `value_compat` Value types
 #[cfg(feature = "std")]
-fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<crate::Value>> {
+fn _convert_foundation_values_to_compat(args: _FoundationValueVec) -> Result<Vec<crate::Value>> {
     let mut converted = Vec::new();
     for arg in args {
         match arg {
@@ -59,7 +59,7 @@ fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<c
 
 /// Convert `value_compat` Value types back to foundation Value types
 #[cfg(feature = "std")]
-fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<FoundationValueVec> {
+fn _convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<_FoundationValueVec> {
     let mut converted = Vec::new();
     for value in values {
         match value {
@@ -185,9 +185,9 @@ impl wrt_foundation::traits::FromBytes for ValType {
 #[derive(Debug)]
 pub struct ComponentModelProvider {
     /// WASI capabilities for this provider
-    capabilities:     WasiCapabilities,
+    capabilities:      WasiCapabilities,
     /// Resource manager for WASI handles
-    resource_manager: WasiResourceManager,
+    _resource_manager: WasiResourceManager,
     /// Cached host functions
     #[cfg(feature = "std")]
     cached_functions: Option<Vec<HostFunction>>,
@@ -216,7 +216,7 @@ fn empty_type_vec() -> wrt_error::Result<impl Iterator<Item = ValType>> {
 
 // Type alias for Value vectors from foundation
 #[cfg(feature = "std")]
-type FoundationValueVec = Vec<wrt_foundation::values::Value>;
+type _FoundationValueVec = Vec<wrt_foundation::values::Value>;
 
 // Simplified no_std types - just use placeholder
 #[cfg(not(feature = "std"))]
@@ -271,7 +271,7 @@ impl ComponentModelProvider {
 
         Ok(Self {
             capabilities,
-            resource_manager,
+            _resource_manager: resource_manager,
             cached_functions,
         })
     }
@@ -279,6 +279,11 @@ impl ComponentModelProvider {
     /// Get the current safety level for this provider
     pub fn safety_level(&self) -> &'static str {
         wasi_safety_level()
+    }
+
+    /// Get the capabilities for this provider
+    pub fn capabilities(&self) -> &WasiCapabilities {
+        &self.capabilities
     }
 
     /// Register all WASI functions with a callback registry

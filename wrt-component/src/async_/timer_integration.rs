@@ -403,7 +403,7 @@ impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
 
 /// Timer limits per component
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-struct TimerLimits {
+pub struct TimerLimits {
     max_timers:               usize,
     max_timeout_duration_ms:  u64,
     max_interval_duration_ms: u64,

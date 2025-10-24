@@ -92,7 +92,7 @@ struct ReallocFunction {
 }
 
 #[derive(Debug, Default, Clone)]
-struct AllocationMetrics {
+pub struct AllocationMetrics {
     /// Binary std/no_std choice
     total_allocations:       u64,
     /// Binary std/no_std choice

@@ -35,7 +35,7 @@ pub trait LoggingExt {
 // For pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Function type for handling log operations (no dynamic dispatch in `no_std`)
-pub type LogHandler<P> = fn(LogOperation<P>);
+pub type LogHandler = fn(LogOperation);
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Extension trait for `CallbackRegistry` to add logging-specific methods
@@ -43,14 +43,10 @@ pub type LogHandler<P> = fn(LogOperation<P>);
 pub trait LoggingExt {
     /// Register a simple log handler function (`no_std` only supports function
     /// pointers)
-    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+    fn register_log_handler(&mut self, handler: LogHandler);
 
     /// Handle a log operation
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+    fn handle_log(&self, operation: LogOperation) -> wrt_error::Result<()>;
 
     /// Check if a log handler is registered
     fn has_log_handler(&self) -> bool;
@@ -80,10 +76,7 @@ impl LoggingExt for CallbackRegistry {
 // Implementation for pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl LoggingExt for CallbackRegistry {
-    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
-    {
+    fn register_log_handler(&mut self, handler: LogHandler) {
         // In no_std mode, we can't store dynamic handlers
         // This is a limitation - only one handler per type can be stored
         let _ = handler; // Acknowledge the parameter
@@ -91,10 +84,7 @@ impl LoggingExt for CallbackRegistry {
                          // complex design
     }
 
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
-    {
+    fn handle_log(&self, operation: LogOperation) -> wrt_error::Result<()> {
         // In no_std mode, we can't dynamically dispatch to handlers
         let _ = operation; // Acknowledge the parameter
                            // Default no-op implementation for no_std

@@ -23,9 +23,10 @@ use wrt_foundation::{
 };
 use wrt_math;
 
+#[cfg(not(feature = "std"))]
+use crate::prelude::BoundedVec;
 use crate::{
     prelude::{
-        BoundedVec,
         Debug,
         PartialEq,
     },

@@ -13,6 +13,7 @@ use wrt_foundation::component_value::{
 };
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
+#[allow(unused_imports)] // Used in feature-gated code
 use wrt_error::Error;
 
 use crate::prelude::{

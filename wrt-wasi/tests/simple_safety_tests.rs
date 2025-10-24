@@ -12,7 +12,6 @@ use wrt_foundation::{
 use wrt_wasi::{
     wasi_max_allocation_size,
     wasi_safety_level,
-    WASI_CRATE_ID,
 };
 
 #[test]
