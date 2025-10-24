@@ -5,8 +5,7 @@
 //! 2. Working with basic async/await patterns
 //! 3. Integration patterns for async code
 
-#![cfg(feature = "async-api")]
-
+#[cfg(feature = "async-api")]
 use core::{
     future::Future,
     marker::Unpin,
@@ -17,6 +16,7 @@ use core::{
     },
 };
 
+#[cfg(feature = "async-api")]
 use wrt_foundation::{
     is_using_fallback,
     with_async,
@@ -24,22 +24,25 @@ use wrt_foundation::{
     ExecutorError,
 };
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "async-api", feature = "std"))]
 extern crate alloc;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "async-api", feature = "std"))]
 use std::boxed::Box;
 
 /// Simple async function for testing
+#[cfg(feature = "async-api")]
 async fn hello_async() -> &'static str {
     "Hello from simple async!"
 }
 
 /// Example future that is immediately ready
+#[cfg(feature = "async-api")]
 #[derive(Debug)]
 struct ReadyFuture {
     value: &'static str,
 }
 
+#[cfg(feature = "async-api")]
 impl Future for ReadyFuture {
     type Output = &'static str;
 
@@ -48,8 +51,10 @@ impl Future for ReadyFuture {
     }
 }
 
+#[cfg(feature = "async-api")]
 impl Unpin for ReadyFuture {}
 
+#[cfg(feature = "async-api")]
 fn main() {
     println!("=== Simple Async Executor Example ===\n");
 
