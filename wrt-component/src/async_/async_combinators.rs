@@ -733,7 +733,7 @@ impl AsyncCombinators {
                 CombinatorType::Race { .. } => {
                     self.combinator_stats.completed_races.fetch_add(1, Ordering::Relaxed);
                 },
-                CombinatorType::Timeout { ref timed_out, .. } => {
+                CombinatorType::Timeout { timed_out, .. } => {
                     if timed_out.load(Ordering::Acquire) {
                         self.combinator_stats.timed_out_operations.fetch_add(1, Ordering::Relaxed);
                     }

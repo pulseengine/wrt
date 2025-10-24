@@ -1229,7 +1229,7 @@ impl ParameterMarshaler {
                 },
                 ComponentValue::Result(result) => {
                     1 + match result {
-                        Ok(Some(ref v)) | Err(Some(ref v)) => {
+                        Ok(Some(v)) | Err(Some(v)) => {
                             // Success flag + optional value
                             self.calculate_parameter_size(&[v.as_ref().clone()])?
                         },

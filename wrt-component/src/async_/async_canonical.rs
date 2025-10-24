@@ -490,7 +490,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             if s.buffer.is_empty() {
                                 if s.writable_closed {
                                     Ok(AsyncReadResult::Closed)
@@ -529,7 +529,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             if s.writable_closed {
                                 return Err(wrt_error::Error::runtime_execution_error(
                                     "Stream is closed",
@@ -565,7 +565,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             s.close_readable();
                             Ok(())
                         },
@@ -591,7 +591,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             s.close_writable();
                             Ok(())
                         },
@@ -617,7 +617,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             s.close_readable();
                             Ok(())
                         },
@@ -643,7 +643,7 @@ impl AsyncCanonicalAbi {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
                     return match stream {
-                        StreamValueEnum::Values(ref mut s) => {
+                        StreamValueEnum::Values(s) => {
                             s.close_writable();
                             Ok(())
                         },
@@ -692,7 +692,7 @@ impl AsyncCanonicalAbi {
             for (handle, future) in &mut self.futures {
                 if *handle == future_handle {
                     return match future {
-                        FutureValueEnum::Value(ref mut f) => match f.state {
+                        FutureValueEnum::Value(f) => match f.state {
                             FutureState::Ready => {
                                 if let Some(value) = f.value.take() {
                                     Ok(AsyncReadResult::Values(vec![value]))
@@ -731,7 +731,7 @@ impl AsyncCanonicalAbi {
             for (handle, future) in &mut self.futures {
                 if *handle == future_handle {
                     return match future {
-                        FutureValueEnum::Value(ref mut f) => f.set_value(value.clone()),
+                        FutureValueEnum::Value(f) => f.set_value(value.clone()),
                     };
                 }
             }

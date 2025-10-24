@@ -136,7 +136,7 @@ impl KaniVerifier {
         let start_time = Instant::now();
         let mut package_results = Vec::new();
 
-        if let Some(package) = self.config.package {
+        if let Some(ref package) = self.config.package {
             // Verify specific package
             let result = self.run_kani_package(package)?;
             package_results.push(result);
@@ -227,7 +227,7 @@ impl KaniVerifier {
         let mut args = vec!["kani".to_string(), "-p".to_string(), package.to_string()];
         args.push("--tests".to_string());
 
-        if let Some(harness) = self.config.harness {
+        if let Some(ref harness) = self.config.harness {
             args.extend_from_slice(&["--harness".to_string(), harness.clone()]);
         }
 
@@ -529,7 +529,7 @@ impl KaniVerifier {
 
         println!();
         println!("Report: {}", results.report_file.display());
-        if let Some(coverage) = results.coverage_report {
+        if let Some(ref coverage) = results.coverage_report {
             println!("Coverage analysis completed");
         }
     }

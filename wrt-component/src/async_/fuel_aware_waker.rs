@@ -345,29 +345,29 @@ mod unsafe_waker {
     use super::*;
 
     /// Raw waker clone implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_clone(data: *const ()) -> RawWaker {
+    pub unsafe fn waker_clone(data: *const ()) -> RawWaker { unsafe {
         let waker_data = &*(data as *const WakerData);
         let cloned = Box::new(waker_data.clone_data());
         RawWaker::new(Box::into_raw(cloned) as *const (), &WAKER_VTABLE)
-    }
+    }}
 
     /// Raw waker wake implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_wake(data: *const ()) {
+    pub unsafe fn waker_wake(data: *const ()) { unsafe {
         let waker_data = Box::from_raw(data as *mut WakerData);
         waker_data.wake();
-    }
+    }}
 
     /// Raw waker wake by ref implementation (unsafe - only for non-ASIL-D
     /// builds)
-    pub unsafe fn waker_wake_by_ref(data: *const ()) {
+    pub unsafe fn waker_wake_by_ref(data: *const ()) { unsafe {
         let waker_data = &*(data as *const WakerData);
         waker_data.wake();
-    }
+    }}
 
     /// Raw waker drop implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_drop(data: *const ()) {
+    pub unsafe fn waker_drop(data: *const ()) { unsafe {
         drop(Box::from_raw(data as *mut WakerData));
-    }
+    }}
 }
 
 #[cfg(feature = "asil-d")]

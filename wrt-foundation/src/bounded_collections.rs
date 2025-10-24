@@ -1009,15 +1009,15 @@ where
 
             // Deserialize the item
             let mut read_stream = ReadStream::new(slice_view);
-            let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+            
+
+            T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 .map_err(|_| {
                     BoundedError::new(
                         BoundedErrorKind::ConversionError,
                         "Failed to deserialize from bytes",
                     )
-                })?;
-
-            item
+                })?
         };
 
         // Update deque state
@@ -1063,15 +1063,15 @@ where
 
             // Deserialize the item
             let mut read_stream = ReadStream::new(slice_view);
-            let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+            
+
+            T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 .map_err(|_| {
                     BoundedError::new(
                         BoundedErrorKind::ConversionError,
                         "Failed to deserialize from bytes",
                     )
-                })?;
-
-            item
+                })?
         };
 
         // Update deque state

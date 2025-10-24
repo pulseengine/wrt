@@ -752,7 +752,7 @@ mod tests {
         // Convert to ComponentValue
         let component_value: ComponentValue = list.clone().into();
         match component_value {
-            ComponentValue::List(ref list_elements) => {
+            ComponentValue::List(list_elements) => {
                 assert_eq!(list_elements.len(), 3;
                 assert_eq!(list_elements[0], ComponentValue::I32(1;
             }

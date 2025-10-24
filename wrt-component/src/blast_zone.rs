@@ -737,8 +737,8 @@ impl BlastZoneManager {
 
     /// Check if a policy matches the interaction
     fn policy_matches(&self, policy: &IsolationPolicy, source_zone: u32, target_zone: u32) -> bool {
-        let source_matches = policy.source_zone.map_or(true, |z| z == source_zone);
-        let target_matches = policy.target_zone.map_or(true, |z| z == target_zone);
+        let source_matches = policy.source_zone.is_none_or(|z| z == source_zone);
+        let target_matches = policy.target_zone.is_none_or(|z| z == target_zone);
         source_matches && target_matches
     }
 }

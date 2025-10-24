@@ -184,7 +184,7 @@ pub mod xtask_port {
                 cmd.arg("--document-private-items");
             }
 
-            if let Some(out_dir) = output_dir {
+            if let Some(ref out_dir) = output_dir {
                 cmd.arg("--target-dir").arg(out_dir);
             }
 

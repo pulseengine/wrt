@@ -459,11 +459,11 @@ impl WastTestRunner {
     ) -> Result<WastDirectiveInfo> {
         eprintln!("DEBUG: execute_directive - Entry");
         match directive {
-            WastDirective::Module(ref mut wast_module) => {
+            WastDirective::Module(wast_module) => {
                 eprintln!("DEBUG: execute_directive - Module directive");
                 // Handle QuoteWat to extract actual Module
                 match wast_module {
-                    wast::QuoteWat::Wat(wast::Wat::Module(ref mut module)) => {
+                    wast::QuoteWat::Wat(wast::Wat::Module(module)) => {
                         eprintln!("DEBUG: execute_directive - Calling handle_module_directive");
                         self.handle_module_directive(module, file_path)
                     },

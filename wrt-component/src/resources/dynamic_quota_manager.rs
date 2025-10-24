@@ -550,7 +550,7 @@ impl DynamicQuotaManager {
             }
 
             // Integrate with memory provider if available
-            if let Some(provider) = self.memory_provider {
+            if let Some(ref provider) = self.memory_provider {
                 // Check if memory provider has enough capacity
                 if provider.capacity() < request.amount as usize {
                     // Rollback allocation

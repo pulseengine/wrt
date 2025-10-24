@@ -461,7 +461,7 @@ impl FuelPreemptiveScheduler {
         let current_time = self.current_fuel_time.load(Ordering::Acquire);
 
         // Check if current task should be preempted
-        if let Some(current) = self.current_task {
+        if let Some(ref current) = self.current_task {
             if self.should_preempt_current_task(current, current_time)? {
                 self.preempt_current_task(current_time)?;
             } else {
@@ -512,7 +512,7 @@ impl FuelPreemptiveScheduler {
                 AsyncTaskState::Waiting => {
                     // Task is blocked, remove from ready queues
                     self.remove_task_from_priority_queues(task_id)?;
-                    if let Some(current) = self.current_task {
+                    if let Some(ref current) = self.current_task {
                         if current.task_id == task_id {
                             self.current_task = None;
                         }
@@ -809,7 +809,7 @@ impl FuelPreemptiveScheduler {
         self.task_info.remove(&task_id);
         self.remove_task_from_priority_queues(task_id)?;
 
-        if let Some(current) = self.current_task {
+        if let Some(ref current) = self.current_task {
             if current.task_id == task_id {
                 self.current_task = None;
             }
