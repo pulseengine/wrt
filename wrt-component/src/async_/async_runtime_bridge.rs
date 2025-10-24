@@ -192,7 +192,7 @@ pub mod component_async {
     {
         match future.state {
             FutureState::Ready => {
-                if let Some(value) = future.value {
+                if let Some(ref value) = future.value {
                     PollResult::Ready(value.clone())
                 } else {
                     PollResult::Error(error_string("Future ready but no value"))
@@ -313,10 +313,10 @@ mod tests {
 
         // Poll values manually
         let result1 = poll_stream(&mut wasm_stream, &mut task_manager);
-        assert!(matches!(result1, StreamPollResult::Item(ref s) if s == "Hello"));
+        assert!(matches!(result1, StreamPollResult::Item(s) if s == "Hello"));
 
         let result2 = poll_stream(&mut wasm_stream, &mut task_manager);
-        assert!(matches!(result2, StreamPollResult::Item(ref s) if s == "World"));
+        assert!(matches!(result2, StreamPollResult::Item(s) if s == "World"));
 
         // Now empty
         let result3 = poll_stream(&mut wasm_stream, &mut task_manager);

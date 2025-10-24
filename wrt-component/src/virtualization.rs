@@ -992,7 +992,7 @@ impl VirtualizationManager {
                 message: String::from("Component not found"),
             }))?;
 
-        if let Some(capability) = import.capability_required {
+        if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
                     kind:    VirtualizationErrorKind::CapabilityDenied,

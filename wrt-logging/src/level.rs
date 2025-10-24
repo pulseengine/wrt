@@ -44,7 +44,7 @@ impl core::fmt::Display for ParseLogLevelError {
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for ParseLogLevelError {}
+impl core::error::Error for ParseLogLevelError {}
 
 #[cfg(feature = "std")]
 impl FromStr for LogLevel {

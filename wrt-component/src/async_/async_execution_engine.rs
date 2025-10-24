@@ -466,7 +466,7 @@ impl AsyncExecutionEngine {
         // Execute based on operation type
         let operation = self.executions[execution_index].operation.clone();
         let step_result = match operation {
-            AsyncExecutionOperation::FunctionCall { ref name, ref args } => {
+            AsyncExecutionOperation::FunctionCall { name, ref args } => {
                 let name_str = name.as_str().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert function name to string")
                 })?;

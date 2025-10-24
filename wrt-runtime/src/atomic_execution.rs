@@ -541,10 +541,10 @@ impl AtomicMemoryContext {
     /// - Alignment requirements are checked by caller for multi-byte types
     /// - The atomic types ensure thread-safe access
     #[inline]
-    unsafe fn get_atomic_ref<T>(&self, addr: usize) -> &T {
+    unsafe fn get_atomic_ref<T>(&self, addr: usize) -> &T { unsafe {
         let ptr = self.memory_base.add(addr) as *const T;
         &*ptr
-    }
+    }}
 
     fn atomic_load_u8(&self, addr: usize, ordering: MemoryOrdering) -> Result<u8> {
         // SAFETY: Bounds checked, using helper function

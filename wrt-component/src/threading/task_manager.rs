@@ -583,7 +583,7 @@ impl TaskManager {
         {
             for (task_id, task) in &mut self.tasks {
                 if task.state == TaskState::Waiting {
-                    if let Some(ref mut waitables) = task.waiting_on {
+                    if let Some(waitables) = task.waiting_on {
                         if waitables.has_ready() {
                             tasks_to_wake.push(*task_id);
                         }
@@ -595,7 +595,7 @@ impl TaskManager {
         {
             for (task_id, task) in &mut self.tasks {
                 if task.state == TaskState::Waiting {
-                    if let Some(ref mut waitables) = task.waiting_on {
+                    if let Some(waitables) = task.waiting_on {
                         if waitables.has_ready() {
                             tasks_to_wake.push(*task_id);
                         }

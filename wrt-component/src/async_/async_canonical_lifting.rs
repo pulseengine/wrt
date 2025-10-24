@@ -540,7 +540,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         let discriminant = self.decode_u32()?;
 
         if let Some(case) = cases.get(discriminant as usize) {
-            let value = if let Some(val_type) = case.ty {
+            let value = if let Some(ref val_type) = case.ty {
                 Some(Box::new(self.decode_value(val_type, options)?))
             } else {
                 None
