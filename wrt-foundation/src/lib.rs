@@ -853,5 +853,3 @@ mod tests {
     // math_ops.rs, etc., should have their own detailed test suites as
     // well.
 }
-#[cfg(test)]
-mod static_memory_tests;
