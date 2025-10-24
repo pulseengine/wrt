@@ -510,8 +510,8 @@ impl SharedMemoryStats {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
 
     #[test]

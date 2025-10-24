@@ -406,6 +406,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 mod tests {
     use std::thread;
 

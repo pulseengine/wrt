@@ -612,8 +612,6 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
     use std::{
         vec,
         vec::Vec,
@@ -859,7 +857,7 @@ mod tests {
         context.push_control_value(Value::I32(1)).unwrap(); // True condition
         ControlOp::BrIf(2).execute(&mut context).unwrap();
         assert!(context.branched.is_some());
-        assert_eq!(context.branched.unwrap().label_idx, 2;
+        assert_eq!(context.branched.unwrap().label_idx, 2);
 
         // Reset branched flag
         context.branched = None;
@@ -867,7 +865,7 @@ mod tests {
         // Test br_if instruction with false condition
         context.push_control_value(Value::I32(0)).unwrap(); // False condition
         ControlOp::BrIf(3).execute(&mut context).unwrap();
-        assert!(context.branched.is_none())); // Should not branch
+        assert!(context.branched.is_none()); // Should not branch
     }
 
     #[test]

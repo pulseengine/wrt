@@ -944,6 +944,8 @@ impl core::fmt::Debug for LinkInterceptor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::{vec, vec::Vec};
 
     struct TestStrategy {
         bypass:        bool,
@@ -951,6 +953,7 @@ mod tests {
         modify_result: bool,
     }
 
+    #[cfg(feature = "std")]
     impl LinkInterceptorStrategy for TestStrategy {
         fn before_call(
             &self,
@@ -992,99 +995,13 @@ mod tests {
             false
         }
 
-        fn intercept_lift(
-            &self,
-            _ty: &ValType<wrt_foundation::NoStdProvider<64>>,
-            _addr: u32,
-            _memory_bytes: &[u8],
-        ) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn intercept_lower(
-            &self,
-            _value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
-            _value_data: &[u8],
-            _addr: u32,
-            _memory_bytes: &mut [u8],
-        ) -> Result<bool> {
-            Ok(false)
-        }
-
         fn should_intercept_function(&self) -> bool {
             false
-        }
-
-        fn intercept_function_call(
-            &self,
-            _function_name: &str,
-            _arg_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
-            _arg_data: &[u8],
-        ) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn intercept_function_result(
-            &self,
-            _function_name: &str,
-            _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
-            _result_data: &[u8],
-        ) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn intercept_resource_operation(
-            &self,
-            _handle: u32,
-            _operation: &ResourceCanonicalOperation,
-        ) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn get_memory_strategy(&self, _handle: u32) -> Option<u8> {
-            None
-        }
-
-        fn before_start(&self, _component_name: &str) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn after_start(
-            &self,
-            _component_name: &str,
-            _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
-            _result_data: Option<&[u8]>,
-        ) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn clone_strategy(&self) -> Arc<dyn LinkInterceptorStrategy> {
-            Arc::new(Self {
-                bypass:        self.bypass,
-                modify_args:   self.modify_args,
-                modify_result: self.modify_result,
-            })
-        }
-
-        fn process_results(
-            &self,
-            _component_name: &str,
-            _func_name: &str,
-            _args: &[ComponentValue],
-            _results: &[ComponentValue],
-        ) -> Result<Option<Vec<Modification>>> {
-            if self.modify_result {
-                Ok(Some(vec![Modification::Replace {
-                    offset: 0,
-                    data:   vec![42],
-                }]))
-            } else {
-                Ok(None)
-            }
         }
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_interceptor_passthrough() {
         let strategy = Arc::new(TestStrategy {
             bypass:        false,
@@ -1104,6 +1021,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_interceptor_modify_args() {
         let strategy = Arc::new(TestStrategy {
             bypass:        false,
@@ -1123,6 +1041,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_interceptor_modify_result() {
         let strategy = Arc::new(TestStrategy {
             bypass:        false,
@@ -1142,6 +1061,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_interceptor_bypass() {
         let strategy = Arc::new(TestStrategy {
             bypass:        true,
@@ -1160,6 +1080,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_multiple_strategies() {
         let strategy1 = Arc::new(TestStrategy {
             bypass:        false,

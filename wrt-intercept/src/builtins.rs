@@ -350,17 +350,14 @@ mod tests {
     #[test]
     fn test_intercept_context() {
         #[cfg(feature = "std")]
-        let context =
-            InterceptContext::new("test-component", BuiltinType::ResourceCreate, "test-host");
-
-        #[cfg(feature = "std")]
-        assert_eq!(context.component_name, "test-component");
-        assert_eq!(context.builtin_type, BuiltinType::ResourceCreate);
-        #[cfg(feature = "std")]
-        assert_eq!(context.host_id, "test-host");
-
-        #[cfg(feature = "std")]
         {
+            let context =
+                InterceptContext::new("test-component", BuiltinType::ResourceCreate, "test-host");
+
+            assert_eq!(context.component_name, "test-component");
+            assert_eq!(context.builtin_type, BuiltinType::ResourceCreate);
+            assert_eq!(context.host_id, "test-host");
+
             let mut context = context;
             context.add_data("test-key", Value::I32(42));
             assert_eq!(context.get_data("test-key"), Some(&Value::I32(42)));

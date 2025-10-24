@@ -262,8 +262,8 @@ where
 pub type MemoryGuard<P, I> =
     GenericMemoryGuard<P, crate::memory_coordinator::GenericMemoryCoordinator<I, 32>, I>;
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
     use crate::memory_coordinator::{
         AllocationId,

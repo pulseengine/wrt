@@ -157,6 +157,7 @@ mod tests {
 mod no_std_alloc_tests {
     use core::cell::RefCell;
     use std::vec::Vec;
+    use alloc::string::ToString;
 
     use super::*;
     use crate::level::LogLevel;

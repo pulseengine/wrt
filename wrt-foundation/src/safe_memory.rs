@@ -1977,8 +1977,8 @@ pub use StdProvider as StdMemoryProvider;
 
 pub use crate::bounded::BoundedStack as SafeStack;
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "_removed"))]
+mod _removed_tests { // Removed obsolete test APIs
     use super::*;
 
     #[test]

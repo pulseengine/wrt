@@ -1985,7 +1985,7 @@ mod tests {
     fn test_software_cfi_config_default() {
         let config = SoftwareCfiConfig::default();
         assert!(config.shadow_stack_enabled);
-        assert_eq!(config.max_shadow_stack_depth, 1024;
+        assert_eq!(config.max_shadow_stack_depth, 1024);
         assert!(config.landing_pad_simulation);
         assert!(!config.temporal_validation)); // Off by default due to cost
     }
