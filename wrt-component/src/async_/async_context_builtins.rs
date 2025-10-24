@@ -121,7 +121,7 @@ impl ContextKey {
     #[cfg(not(any(feature = "std",)))]
     pub fn new(key: &str) -> Result<Self> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_key = BoundedString::from_str(key)
+        let bounded_key = BoundedString::try_from_str(key)
             .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         Ok(Self(bounded_key))
     }

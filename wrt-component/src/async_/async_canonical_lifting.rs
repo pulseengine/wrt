@@ -505,7 +505,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         let _ptr = self.decode_u32()?;
         // In real implementation, would read from linear memory
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-        BoundedString::from_str("decoded_string").map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
+        BoundedString::try_from_str("decoded_string").map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
     }
 
     fn decode_list(
@@ -540,7 +540,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         let discriminant = self.decode_u32()?;
 
         if let Some(case) = cases.get(discriminant as usize) {
-            let value = if let Some(ref val_type) = case.ty {
+            let value = if let Some(val_type) = case.ty {
                 Some(Box::new(self.decode_value(val_type, options)?))
             } else {
                 None

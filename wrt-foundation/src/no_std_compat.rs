@@ -53,7 +53,7 @@ macro_rules! bounded_vec {
 macro_rules! bounded_format {
     // Just a literal string
     ($provider:expr, $lit:literal) => {{
-        $crate::bounded::BoundedString::from_str($lit, $provider)
+        $crate::bounded::BoundedString::try_from_str($lit, $provider)
             .expect("Failed to create BoundedString")
     }};
     
@@ -61,7 +61,7 @@ macro_rules! bounded_format {
     ($provider:expr, $fmt:literal, $($arg:expr),*) => {{
         // Binary std/no_std choice
         // Return a placeholder message
-        $crate::bounded::BoundedString::from_str(
+        $crate::bounded::BoundedString::try_from_str(
             "[formatting not available in no_std]", 
             $provider
         ).expect("Failed to create BoundedString")
@@ -89,7 +89,7 @@ pub fn create_bounded_string() -> wrt_error::Result<BoundedString<256, NoStdProv
 
 /// Helper to create `BoundedString` from `&str`
 pub fn create_bounded_string_from(s: &str) -> wrt_error::Result<BoundedString<256, NoStdProvider<256>>> {
-    BoundedString::from_str(s, NoStdProvider::default()).map_err(|e| {
+    BoundedString::try_from_str(s, NoStdProvider::default()).map_err(|e| {
         crate::Error::new(
             crate::ErrorCategory::Parse,
             crate::codes::SERIALIZATION_ERROR,

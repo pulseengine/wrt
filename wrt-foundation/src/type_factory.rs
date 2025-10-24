@@ -145,7 +145,7 @@ mod factory {
             &self,
             s: &str,
         ) -> Result<BoundedString<N>> {
-            BoundedString::from_str(s)
+            BoundedString::try_from_str(s)
                 .map_err(|_| Error::memory_error("String too long for bounded string"))
         }
 
@@ -215,7 +215,7 @@ mod factory {
             &self,
             s: &str,
         ) -> Result<BoundedString<N>> {
-            BoundedString::from_str(s)
+            BoundedString::try_from_str(s)
                 .map_err(|_| Error::memory_error("String too long for bounded string"))
         }
 

@@ -1141,7 +1141,7 @@ impl TaskScheduler {
                     priority:          0, // Default priority
                     estimated_time_us: 1000,
                     task_fn:           TaskFunction::Custom {
-                        name:        BoundedString::from_str("timeout").unwrap_or_default(),
+                        name:        BoundedString::try_from_str("timeout").unwrap_or_default(),
                         placeholder: 0,
                     },
                 };
@@ -1301,7 +1301,7 @@ mod tests {
 
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let task_fn = TaskFunction::Custom {
-            name:        BoundedString::from_str("test").unwrap(),
+            name:        BoundedString::try_from_str("test").unwrap(),
             placeholder: 42,
         };
 
@@ -1341,7 +1341,7 @@ mod tests {
             priority:          0,
             estimated_time_us: 1000,
             task_fn:           TaskFunction::Custom {
-                name:        BoundedString::from_str("test").unwrap(),
+                name:        BoundedString::try_from_str("test").unwrap(),
                 placeholder: 0,
             },
         };

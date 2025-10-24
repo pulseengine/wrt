@@ -187,7 +187,7 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
                 BoundedString::from_str_truncate(content).map_err(Error::from)
             },
             (Some(content), false) => {
-                BoundedString::from_str(content).map_err(Error::from)
+                BoundedString::try_from_str(content).map_err(Error::from)
             },
             (None, _) => BoundedString::from_str_truncate("").map_err(Error::from),
         }
@@ -200,7 +200,7 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
                 WasmName::from_str_truncate(content).map_err(Error::from)
             },
             (Some(content), false) => {
-                WasmName::from_str(content).map_err(Error::from)
+                WasmName::try_from_str(content).map_err(Error::from)
             },
             (None, _) => WasmName::new().map_err(Error::from),
         }
@@ -353,7 +353,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     #[cfg(not(feature = "std"))]
     /// Configures this as a Record resource type with the given field name.
     pub fn as_record<S: AsRef<str>>(mut self, field_name: S) -> Result<Self> {
-        let field = BoundedString::from_str(field_name.as_ref())?;
+        let field = BoundedString::try_from_str(field_name.as_ref())?;
         self.variant = Some(ResourceTypeVariant::Record(field));
         Ok(self)
     }
@@ -389,7 +389,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
             ResourceTypeVariant::Record(fields) => {
                 let mut bounded_fields = BoundedVec::new(self.provider.clone())?;
                 for name in fields {
-                    let bounded_name = BoundedString::from_str(&name)?;
+                    let bounded_name = BoundedString::try_from_str(&name)?;
                     bounded_fields.push(bounded_name)?;
                 }
                 Ok(ResourceType::Record(bounded_fields))

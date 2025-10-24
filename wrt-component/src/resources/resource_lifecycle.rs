@@ -235,7 +235,7 @@ impl ResourceLifecycleManager {
                 use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
                 let provider = safe_managed_alloc!(512, CrateId::Component)
                     .map_err(|_| Error::resource_error("Failed to allocate memory for resource name"))?;
-                BoundedString::from_str(name)
+                BoundedString::try_from_str(name)
                     .map_err(|_| Error::resource_error("Resource type name too long"))?
             },
             destructor,

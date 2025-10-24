@@ -988,7 +988,7 @@ impl Component {
                         #[cfg(not(feature = "std"))]
                         name:        {
                             let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                            BoundedString::from_str(&export.name)?
+                            BoundedString::try_from_str(&export.name)?
                         },
                         value:       export_val.clone(),
                         export_type: export_val,
@@ -1002,7 +1002,7 @@ impl Component {
                         #[cfg(not(feature = "std"))]
                         name:        {
                             let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                            BoundedString::from_str(&export.name)?
+                            BoundedString::try_from_str(&export.name)?
                         },
                         value:       export_val.clone(),
                         export_type: export_val,
@@ -1016,7 +1016,7 @@ impl Component {
                         #[cfg(not(feature = "std"))]
                         name:        {
                             let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                            BoundedString::from_str(&export.name)?
+                            BoundedString::try_from_str(&export.name)?
                         },
                         value:       export_val.clone(),
                         export_type: export_val,
@@ -1030,7 +1030,7 @@ impl Component {
                         #[cfg(not(feature = "std"))]
                         name:        {
                             let name_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                            BoundedString::from_str(&export.name)?
+                            BoundedString::try_from_str(&export.name)?
                         },
                         value:       export_val.clone(),
                         export_type: export_val,
@@ -1239,7 +1239,7 @@ mod tests {
                 implementation: |_args| Ok(Value::U32(42)),
             };
             let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-            let name = BoundedString::from_str("test_func").unwrap();
+            let name = BoundedString::try_from_str("test_func").unwrap();
             imports.add(name, ImportValue::Function(func)).unwrap();
             assert!(imports.get("test_func").is_some());
             assert!(imports.get("unknown").is_none());
@@ -1281,7 +1281,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
-            let name = BoundedString::from_str("test_value").unwrap();
+            let name = BoundedString::try_from_str("test_value").unwrap();
             let result = imports.add(name, value_import);
             assert!(result.is_ok());
 

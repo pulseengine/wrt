@@ -179,7 +179,7 @@ impl From<WrtComponentValue<ComponentProvider>> for Value {
             WrtComponentValue::String(s) => {
                 let provider = safe_managed_alloc!(2048, CrateId::Component)
                     .unwrap_or_else(|_| NoStdProvider::default());
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(&s)
+                let bounded_str = wrt_foundation::bounded::BoundedString::try_from_str(&s)
                     .unwrap_or_else(|_| panic!("Failed to convert string"));
                 Value::String(bounded_str)
             },
@@ -187,7 +187,7 @@ impl From<WrtComponentValue<ComponentProvider>> for Value {
             WrtComponentValue::String(s) => {
                 let _provider = safe_managed_alloc!(2048, CrateId::Component)
                     .unwrap_or_else(|_| NoStdProvider::default());
-                let bounded_str = wrt_foundation::bounded::BoundedString::from_str(s.as_str())
+                let bounded_str = wrt_foundation::bounded::BoundedString::try_from_str(s.as_str())
                     .unwrap_or_else(|_| panic!("Failed to convert string"));
                 Value::String(bounded_str)
             },

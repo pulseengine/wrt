@@ -339,7 +339,7 @@ impl CancellationToken {
         }
 
         // Check parent
-        if let Some(ref parent_weak) = self.inner.parent {
+        if let Some(parent_weak) = self.inner.parent {
             if let Some(parent) = parent_weak.upgrade() {
                 return parent.is_cancelled.load(Ordering::Acquire);
             }
@@ -641,7 +641,7 @@ impl SubtaskManager {
         let mut results = Vec::new();
 
         for subtask in &self.subtasks {
-            if let Some(ref result) = subtask.result {
+            if let Some(result) = subtask.result {
                 results.push(result.clone());
             }
         }
@@ -658,7 +658,7 @@ impl SubtaskManager {
                 subtask.state,
                 SubtaskState::Completed | SubtaskState::Failed | SubtaskState::Cancelled
             ) {
-                if let Some(ref result) = subtask.result {
+                if let Some(result) = subtask.result {
                     return Ok(Some((subtask.execution_id, result.clone())));
                 }
             }

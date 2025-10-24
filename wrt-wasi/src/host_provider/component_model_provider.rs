@@ -33,7 +33,7 @@ type WasiHostString = BoundedString<256, wrt_foundation::safe_memory::NoStdProvi
 #[cfg(not(feature = "std"))]
 fn make_string(s: &str) -> Result<WasiHostString> {
     let provider = safe_managed_alloc!(1024, CrateId::Wasi)?;
-    BoundedString::from_str(s, provider)
+    BoundedString::try_from_str(s, provider)
         .map_err(|_| Error::wasi_invalid_argument("Failed to create bounded string"))
 }
 

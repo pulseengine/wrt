@@ -346,9 +346,9 @@ impl WitSourceMap {
 
         let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
         let message =
-            BoundedString::from_str(&format!("Runtime error: {}", error), provider.clone())
+            BoundedString::try_from_str(&format!("Runtime error: {}", error), provider.clone())
                 .unwrap_or_else(|_| {
-                    BoundedString::from_str("Runtime error (message too long)", provider.clone())
+                    BoundedString::try_from_str("Runtime error (message too long)", provider.clone())
                         .unwrap()
                 });
 
@@ -402,12 +402,12 @@ impl WitSourceFile {
     #[cfg(feature = "wit-integration")]
     pub fn new(path: &str, content: &str) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
-        let path_bounded = BoundedString::from_str(path, provider.clone())
+        let path_bounded = BoundedString::try_from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;
 
         let mut lines = Vec::new();
         for line in content.lines() {
-            let line_bounded = BoundedString::from_str(line, provider.clone())
+            let line_bounded = BoundedString::try_from_str(line, provider.clone())
                 .map_err(|_| Error::parse_error("Line too long"))?;
             lines.push(line_bounded);
         }

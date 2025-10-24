@@ -158,7 +158,7 @@ pub fn new_module_name() -> Result<BoundedModuleName> {
 /// Create a bounded module name from str
 pub fn bounded_module_from_str(s: &str) -> Result<BoundedModuleName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str(s)?)
+    Ok(BoundedString::try_from_str(s)?)
 }
 
 /// Create a new bounded field name
@@ -170,7 +170,7 @@ pub fn new_field_name() -> Result<BoundedFieldName> {
 /// Create a bounded field name from str
 pub fn bounded_field_from_str(s: &str) -> Result<BoundedFieldName> {
     let provider = FormatProvider::default();
-    Ok(BoundedString::from_str(s)?)
+    Ok(BoundedString::try_from_str(s)?)
 }
 
 /// Create a new bounded interface map

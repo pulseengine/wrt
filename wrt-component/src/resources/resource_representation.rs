@@ -300,7 +300,7 @@ impl ResourceRepresentationManager {
         {
             // Convert to concrete representation for no_std
             let concrete = ConcreteResourceRepresentation {
-                type_name: BoundedString::from_str(representation.type_name()).unwrap_or_default(),
+                type_name: BoundedString::try_from_str(representation.type_name()).unwrap_or_default(),
                 size: representation.representation_size(),
                 valid_handles: StaticVec::new(),
                 handle_values: StaticVec::new(),
@@ -466,7 +466,7 @@ impl ResourceRepresentationManager {
         mutable: bool,
     ) -> Result<()> {
         let metadata = ResourceMetadata {
-            type_name: BoundedString::from_str(&"Component not found").unwrap_or_default(),
+            type_name: BoundedString::try_from_str(&"Component not found").unwrap_or_default(),
             created_at: self.get_current_time(),
             last_accessed: self.get_current_time(),
             access_count: 0,

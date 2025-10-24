@@ -828,7 +828,7 @@ mod tests {
         assert!(!future.is_readable());
 
         future
-            .set_value(Value::String(BoundedString::from_str("hello").unwrap()))
+            .set_value(Value::String(BoundedString::try_from_str("hello").unwrap()))
             .unwrap();
         assert!(future.is_readable());
         assert!(!future.is_writable());
@@ -851,7 +851,7 @@ mod tests {
         #[cfg(not(any(feature = "std",)))]
         let error = ErrorContext::new(
             ErrorContextHandle(1),
-            BoundedString::from_str("Test error").unwrap(),
+            BoundedString::try_from_str("Test error").unwrap(),
         )
         .unwrap();
 

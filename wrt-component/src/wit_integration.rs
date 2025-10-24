@@ -116,7 +116,7 @@ impl WitComponentBuilder {
         let provider = safe_managed_alloc!(512, CrateId::Component)
             .map_err(|_| ComponentError::TypeMismatch)?;
         let name =
-            BoundedString::from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
+            BoundedString::try_from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
 
         self.wit_type_mappings.insert(name, component_type_id;
         Ok(())
@@ -379,7 +379,7 @@ mod tests {
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         assert!(builder
             .wit_type_mappings
-            .contains_key(&BoundedString::from_str("my-type").unwrap());
+            .contains_key(&BoundedString::try_from_str("my-type").unwrap());
     }
 
     #[test]

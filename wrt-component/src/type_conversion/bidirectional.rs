@@ -1251,7 +1251,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (name, extern_type) in exports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name)
+                let name_wasm = wrt_foundation::WasmName::try_from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
                 let export = wrt_foundation::Export {
                     name: name_wasm,
@@ -1282,7 +1282,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             for (namespace, name, extern_type) in imports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
                 let namespace_obj = wrt_foundation::Namespace::from_str(namespace, P::default())?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name)
+                let name_wasm = wrt_foundation::WasmName::try_from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid import name"))?;
                 let import = wrt_foundation::Import {
                     key: wrt_foundation::ImportKey {
@@ -1304,7 +1304,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
 
             for (name, extern_type) in exports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let name_wasm = wrt_foundation::WasmName::from_str(name)
+                let name_wasm = wrt_foundation::WasmName::try_from_str(name)
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
                 let export = wrt_foundation::Export {
                     name: name_wasm,

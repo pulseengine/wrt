@@ -2665,7 +2665,7 @@ impl wrt_foundation::traits::FromBytes for Module {
             reader.read_exact(&mut name_bytes[..name_len as usize])?;
             let name_str = core::str::from_utf8(&name_bytes[..name_len as usize])
                 .map_err(|_| wrt_error::Error::runtime_error("Invalid module name UTF-8"))?;
-            Some(wrt_foundation::bounded::BoundedString::from_str(
+            Some(wrt_foundation::bounded::BoundedString::try_from_str(
                 name_str
             )?)
         } else {

@@ -312,7 +312,7 @@ impl ComponentLoader {
         let import_name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("default")
+            BoundedString::try_from_str("default")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string"))?
         };
 
@@ -328,7 +328,7 @@ impl ComponentLoader {
         let export_name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("main")
+            BoundedString::try_from_str("main")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string"))?
         };
 
@@ -455,7 +455,7 @@ impl ComponentLoader {
         let name = {
             let provider = safe_managed_alloc!(512, CrateId::Component)
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::from_str("module")
+            BoundedString::try_from_str("module")
                 .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?
         };
 

@@ -144,9 +144,9 @@ impl InterceptContext {
         let provider1 = safe_managed_alloc!(512, CrateId::Component)?;
         let provider2 = safe_managed_alloc!(512, CrateId::Component)?;
         Ok(Self {
-            component_name: BoundedString::from_str(component_name).unwrap_or_default(),
+            component_name: BoundedString::try_from_str(component_name).unwrap_or_default(),
             builtin_type,
-            host_id: BoundedString::from_str(host_id).unwrap_or_default(),
+            host_id: BoundedString::try_from_str(host_id).unwrap_or_default(),
         })
     }
 }

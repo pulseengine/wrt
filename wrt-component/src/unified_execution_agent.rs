@@ -694,7 +694,7 @@ impl UnifiedExecutionAgent {
         let frame = UnifiedCallFrame {
             instance_id,
             function_index,
-            function_name: BoundedString::from_str("function").unwrap_or_default(),
+            function_name: BoundedString::try_from_str("function").unwrap_or_default(),
             #[cfg(feature = "std")]
             locals: args.to_vec(),
             #[cfg(not(feature = "std"))]
@@ -754,7 +754,7 @@ impl UnifiedExecutionAgent {
         #[cfg(not(feature = "std"))]
         let function_name: BoundedString<64> = {
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
-            BoundedString::from_str("Component operation result").unwrap_or_default()
+            BoundedString::try_from_str("Component operation result").unwrap_or_default()
         };
 
         // TODO: Implement proper value conversion and component function execution

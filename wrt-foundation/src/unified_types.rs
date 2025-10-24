@@ -151,7 +151,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
 
     fn create_runtime_string() -> wrt_error::Result<BoundedString<MEDIUM, DefaultNoStdProvider>> {
         let provider = DefaultNoStdProvider::default());
-        BoundedString::from_str("", provider).map_err(|_| Error::runtime_execution_error("Failed to create runtime string"))
+        BoundedString::try_from_str("", provider).map_err(|_| Error::runtime_execution_error("Failed to create runtime string"))
     }
 }
 

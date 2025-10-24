@@ -175,7 +175,7 @@ impl MemoryValue {
     pub fn new_with_name(ty: MemoryType, name: &str) -> Result<Self> {
         let memory = BoundedVec::new();
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let debug_name = Some(BoundedString::from_str(name).map_err(|_| {
+        let debug_name = Some(BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -328,7 +328,7 @@ impl MemoryValue {
     /// Sets a debug name for this memory
     pub fn set_debug_name(&mut self, name: &str) {
         if let Ok(provider) = safe_managed_alloc!(512, CrateId::Component) {
-            if let Ok(bounded_name) = BoundedString::from_str(name) {
+            if let Ok(bounded_name) = BoundedString::try_from_str(name) {
                 self.debug_name = Some(bounded_name);
             }
         }
@@ -429,7 +429,7 @@ impl WrtComponentType {
     pub fn add_import(&mut self, namespace: &str, name: &str, ty: ExternType) -> Result<()> {
         // Create bounded strings
         let provider1 = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_namespace = BoundedString::from_str(namespace).map_err(|_| {
+        let bounded_namespace = BoundedString::try_from_str(namespace).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -438,7 +438,7 @@ impl WrtComponentType {
         })?;
 
         let provider2 = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
+        let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -462,7 +462,7 @@ impl WrtComponentType {
     pub fn add_export(&mut self, name: &str, ty: ExternType) -> Result<()> {
         // Create bounded string
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
+        let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -691,7 +691,7 @@ impl RuntimeInstance {
     pub fn register_function(&mut self, name: &str, function: ExternValue) -> Result<()> {
         if let ExternValue::Function(_) = &function {
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
-            let bounded_name = BoundedString::from_str(name).map_err(|_| {
+            let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
                 Error::new(
                     ErrorCategory::Parameter,
                     codes::VALIDATION_ERROR,
@@ -720,7 +720,7 @@ impl RuntimeInstance {
     /// Register an exported memory
     pub fn register_memory(&mut self, name: &str, memory: MemoryValue) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
+        let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -929,7 +929,7 @@ impl Component {
     /// Link a component with a namespace
     pub fn link_component(&mut self, name: &str, component_id: usize) -> Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
+        let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
                 ErrorCategory::Parameter,
                 codes::VALIDATION_ERROR,
@@ -1374,7 +1374,7 @@ impl Default for FunctionValue {
             .expect("Failed to allocate memory for FunctionValue::default");
         Self {
             ty:          FuncType::default(),
-            export_name: BoundedString::from_str("")
+            export_name: BoundedString::try_from_str("")
                 .expect("Failed to create BoundedString for FunctionValue::default"),
         }
     }

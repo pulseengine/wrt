@@ -607,7 +607,7 @@ impl Memory {
     pub fn new_with_name(ty: CoreMemoryType, name: &str) -> Result<Self> {
         let mut memory = Self::new(ty)?;
         memory.debug_name = Some(
-            wrt_foundation::bounded::BoundedString::from_str(name)
+            wrt_foundation::bounded::BoundedString::try_from_str(name)
                 .map_err(|_| Error::memory_error("Debug name too long"))?,
         );
         Ok(memory)
@@ -616,7 +616,7 @@ impl Memory {
     /// Sets a debug name for this memory instance
     pub fn set_debug_name(&mut self, name: &str) {
         self.debug_name = Some(
-            wrt_foundation::bounded::BoundedString::from_str(name)
+            wrt_foundation::bounded::BoundedString::try_from_str(name)
                 .unwrap_or_else(|_| {
                     // If name is too long, truncate it
                     wrt_foundation::bounded::BoundedString::from_str_truncate(name)

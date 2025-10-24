@@ -90,7 +90,8 @@ impl PlatformTime {
     /// macOS implementation using mach_absolute_time
     #[cfg(all(feature = "std", target_os = "macos"))]
     fn macos_monotonic_ns() -> u64 {
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn mach_absolute_time() -> u64;
             fn mach_timebase_info(info: *mut MachTimebaseInfo) -> i32;
         }

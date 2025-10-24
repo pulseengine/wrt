@@ -159,13 +159,13 @@ impl WitParser {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid import syntax", self.provider.clone()).unwrap()
                 ));
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let item_type = parts[2];
@@ -176,7 +176,7 @@ impl WitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
+                        BoundedString::try_from_str("Unsupported import type", self.provider.clone()).unwrap()
                     ));
                 }
             };
@@ -188,7 +188,7 @@ impl WitParser {
         {
             // Parse import statement using no_std compatible approach
             let mut parts = BoundedVec::new(self.provider.clone()).map_err(|_| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Failed to create parts vector", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Failed to create parts vector", self.provider.clone()).unwrap()
             ))?;
             
             // Split whitespace manually for no_std
@@ -201,7 +201,7 @@ impl WitParser {
                         if let Ok(part) = core::str::from_utf8(&bytes[start..i]) {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
-                                    BoundedString::from_str("Too many import parts", self.provider.clone()).unwrap()
+                                    BoundedString::try_from_str("Too many import parts", self.provider.clone()).unwrap()
                                 ));
                             }
                         }
@@ -219,13 +219,13 @@ impl WitParser {
             
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid import syntax", self.provider.clone()).unwrap()
                 ));
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let item_type = parts[2];
@@ -236,7 +236,7 @@ impl WitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
+                        BoundedString::try_from_str("Unsupported import type", self.provider.clone()).unwrap()
                     ));
                 }
             };
@@ -251,13 +251,13 @@ impl WitParser {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid export syntax", self.provider.clone()).unwrap()
                 ));
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let item_type = parts[2];
@@ -268,7 +268,7 @@ impl WitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
+                        BoundedString::try_from_str("Unsupported export type", self.provider.clone()).unwrap()
                     ));
                 }
             };
@@ -280,7 +280,7 @@ impl WitParser {
         {
             // Parse export statement using no_std compatible approach
             let mut parts = BoundedVec::new(self.provider.clone()).map_err(|_| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Failed to create parts vector", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Failed to create parts vector", self.provider.clone()).unwrap()
             ))?;
             
             // Split whitespace manually for no_std
@@ -293,7 +293,7 @@ impl WitParser {
                         if let Ok(part) = core::str::from_utf8(&bytes[start..i]) {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
-                                    BoundedString::from_str("Too many export parts", self.provider.clone()).unwrap()
+                                    BoundedString::try_from_str("Too many export parts", self.provider.clone()).unwrap()
                                 ;
                             }
                         }
@@ -311,13 +311,13 @@ impl WitParser {
             
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid export syntax", self.provider.clone()).unwrap()
                 ;
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let item_type = parts[2];
@@ -328,7 +328,7 @@ impl WitParser {
                 }
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
-                        BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
+                        BoundedString::try_from_str("Unsupported export type", self.provider.clone()).unwrap()
                     ;
                 }
             };
@@ -339,7 +339,7 @@ impl WitParser {
 
     fn parse_function(&mut self, line: &str) -> Result<WitFunction, WitParseError> {
         let mut function = WitFunction {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::try_from_str("", self.provider.clone()).unwrap_or_default(),
             params: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             results: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
             is_async: line.contains("async"),
@@ -351,9 +351,9 @@ impl WitParser {
             let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
-                function.name = BoundedString::from_str(name, self.provider.clone())
+                function.name = BoundedString::try_from_str(name, self.provider.clone())
                     .map_err(|_| WitParseError::InvalidIdentifier(
-                        BoundedString::from_str(name, self.provider.clone()).unwrap_or_default()
+                        BoundedString::try_from_str(name, self.provider.clone()).unwrap_or_default()
                     ))?;
             }
         }
@@ -367,13 +367,13 @@ impl WitParser {
             let parts: Vec<&str> = line.splitn(3, ' ').collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid type definition", self.provider.clone()).unwrap()
                 ;
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let type_str = parts[2];
@@ -392,7 +392,7 @@ impl WitParser {
         {
             // Parse type definition using no_std compatible approach
             let mut parts = BoundedVec::new(self.provider.clone()).map_err(|_| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Failed to create parts vector", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Failed to create parts vector", self.provider.clone()).unwrap()
             ))?;
             
             // Split by space for type definition (e.g., "type name value")
@@ -406,7 +406,7 @@ impl WitParser {
                         if let Ok(part) = core::str::from_utf8(&bytes[start..i]) {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
-                                    BoundedString::from_str("Too many type def parts", self.provider.clone()).unwrap()
+                                    BoundedString::try_from_str("Too many type def parts", self.provider.clone()).unwrap()
                                 ;
                             }
                             part_count += 1;
@@ -425,13 +425,13 @@ impl WitParser {
             
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
-                    BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
+                    BoundedString::try_from_str("Invalid type definition", self.provider.clone()).unwrap()
                 ;
             }
 
-            let name = BoundedString::from_str(parts[1], self.provider.clone())
+            let name = BoundedString::try_from_str(parts[1], self.provider.clone())
                 .map_err(|_| WitParseError::InvalidIdentifier(
-                    BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
+                    BoundedString::try_from_str(parts[1], self.provider.clone()).unwrap_or_default()
                 ))?;
 
             let type_str = parts[2];
@@ -484,9 +484,9 @@ impl WitParser {
                         let inner_type = self.parse_type(inner)?;
                         Ok(WitType::Future(Box::new(inner_type)))
                     } else {
-                        let name = BoundedString::from_str(type_str, self.provider.clone())
+                        let name = BoundedString::try_from_str(type_str, self.provider.clone())
                             .map_err(|_| WitParseError::InvalidIdentifier(
-                                BoundedString::from_str(type_str, self.provider.clone()).unwrap_or_default()
+                                BoundedString::try_from_str(type_str, self.provider.clone()).unwrap_or_default()
                             ))?;
                         Ok(WitType::Named(name))
                     }
@@ -523,9 +523,9 @@ impl WitParser {
                     }
                     // Handle named types
                     else {
-                        let name = BoundedString::from_str(type_str, self.provider.clone())
+                        let name = BoundedString::try_from_str(type_str, self.provider.clone())
                             .map_err(|_| WitParseError::InvalidIdentifier(
-                                BoundedString::from_str(type_str, self.provider.clone()).unwrap_or_default()
+                                BoundedString::try_from_str(type_str, self.provider.clone()).unwrap_or_default()
                             ))?;
                         Ok(WitType::Named(name))
                     }
@@ -537,17 +537,17 @@ impl WitParser {
     fn extract_identifier(&self, line: &str, prefix: &str) -> Result<WitBoundedString, WitParseError> {
         let remaining = line.strip_prefix(prefix)
             .ok_or_else(|| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Missing prefix", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Missing prefix", self.provider.clone()).unwrap()
             ))?;
         
         let identifier = remaining.split_whitespace().next()
             .ok_or_else(|| WitParseError::InvalidSyntax(
-                BoundedString::from_str("Missing identifier", self.provider.clone()).unwrap()
+                BoundedString::try_from_str("Missing identifier", self.provider.clone()).unwrap()
             ))?;
 
-        BoundedString::from_str(identifier, self.provider.clone())
+        BoundedString::try_from_str(identifier, self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
-                BoundedString::from_str(identifier, self.provider.clone()).unwrap_or_default()
+                BoundedString::try_from_str(identifier, self.provider.clone()).unwrap_or_default()
             ))
     }
 

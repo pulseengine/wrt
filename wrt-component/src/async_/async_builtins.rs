@@ -581,7 +581,7 @@ impl TaskRegistry {
             for (task_handle, task_info) in &mut self.tasks {
                 if *task_handle == handle {
                     let provider = safe_managed_alloc!(512, CrateId::Component)?;
-                    let key_bounded = BoundedString::from_str(key).map_err(|_| {
+                    let key_bounded = BoundedString::try_from_str(key).map_err(|_| {
                         Error::runtime_execution_error(
                             "Failed to create bounded string for task context key",
                         )

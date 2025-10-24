@@ -147,7 +147,7 @@ impl IncrementalParser {
         )?;
 
         for line in content.lines() {
-            let bounded_line = BoundedString::from_str(line)
+            let bounded_line = BoundedString::try_from_str(line)
                 .map_err(|_| Error::parse_error("Line too long"))?;
             self.source.push(bounded_line);
             self.total_length += line.len() as u32 + 1; // +1 for newline

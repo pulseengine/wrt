@@ -749,7 +749,7 @@ impl AsyncCanonicalAbi {
         #[cfg(not(any(feature = "std",)))]
         let error_context = {
             let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-            ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default())?
+            ErrorContext::new(handle, BoundedString::try_from_str(message).unwrap_or_default())?
         };
 
         #[cfg(feature = "std")]
@@ -1200,7 +1200,7 @@ mod tests {
         assert!(matches!(result, AsyncReadResult::Blocked));
 
         // Write value
-        let value = Value::String(BoundedString::from_str("hello").unwrap());
+        let value = Value::String(BoundedString::try_from_str("hello").unwrap());
         abi.future_write(future_handle, &value).unwrap();
 
         // Should be ready now

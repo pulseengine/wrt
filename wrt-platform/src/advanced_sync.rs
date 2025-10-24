@@ -226,11 +226,18 @@ impl LockFreeAllocator {
         // Initialize free list
         let mut current = pool as *mut FreeBlock;
         for i in 0..total_blocks - 1 {
-            let next = pool.add((i + 1) * block_size) as *mut FreeBlock;
-            (*current).next = next;
-            current = next;
+            // SAFETY: Edition 2024 requires explicit unsafe blocks in unsafe functions.
+            // We're within bounds (i < total_blocks-1) and pool is properly aligned.
+            unsafe {
+                let next = pool.add((i + 1) * block_size) as *mut FreeBlock;
+                (*current).next = next;
+                current = next;
+            }
         }
-        (*current).next = core::ptr::null_mut();
+        // SAFETY: current points to the last block, safe to write null terminator
+        unsafe {
+            (*current).next = core::ptr::null_mut();
+        }
 
         Ok(Self {
             free_list: AtomicPtr::new(pool as *mut FreeBlock),
@@ -278,7 +285,11 @@ impl LockFreeAllocator {
 
         loop {
             let head = self.free_list.load(Ordering::Acquire);
-            (*block).next = head;
+            // SAFETY: Edition 2024 requires explicit unsafe blocks in unsafe functions.
+            // block is a valid FreeBlock pointer from a previous allocation.
+            unsafe {
+                (*block).next = head;
+            }
 
             // Try to atomically update free list head
             match self.free_list.compare_exchange_weak(

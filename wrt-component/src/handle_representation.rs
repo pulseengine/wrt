@@ -678,7 +678,7 @@ impl HandleRepresentationManager {
         self.check_access_policies(component_id, handle, operation)?;
 
         // Check virtualization capabilities if enabled
-        if let Some(ref virt_manager) = self.virt_manager {
+        if let Some(virt_manager) = self.virt_manager {
             self.check_virtualization_capabilities(component_id, operation, virt_manager)?;
         }
 

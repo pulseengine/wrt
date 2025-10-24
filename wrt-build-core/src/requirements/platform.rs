@@ -422,7 +422,7 @@ impl PlatformVerificationEngine {
             "platform-verification".to_string(),
         );
 
-        if let Some(ref limits) = self.verified_limits {
+        if let Some(limits) = self.verified_limits {
             diagnostics.add_diagnostic(
                 Diagnostic::new(
                     "platform-verification".to_string(),
@@ -634,7 +634,7 @@ impl PlatformVerificationEngine {
         limits: &mut ComprehensivePlatformLimits,
         diagnostics: &mut DiagnosticCollection,
     ) -> BuildResult<()> {
-        if let Some(ref config_path) = self.config.sources.config_file {
+        if let Some(config_path) = self.config.sources.config_file {
             let full_path = self.workspace_root.join(config_path);
             if full_path.exists() {
                 let config_content = fs::read_to_string(&full_path).map_err(|e| {

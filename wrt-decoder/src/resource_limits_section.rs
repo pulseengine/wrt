@@ -332,7 +332,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         max_instructions_per_step: u32,
         max_execution_slice_ms: u32,
     ) -> Result<Self, Error> {
-        let asil_level = BoundedString::from_str("ASIL-D ")
+        let asil_level = BoundedString::try_from_str("ASIL-D ")
             .map_err(|_| Error::parse_error("Failed to create ASIL-D string "))?;
 
         Ok(Self {
@@ -367,7 +367,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         }
 
         // Create bounded string for resource type name
-        let resource_name = BoundedString::from_str(resource_type)
+        let resource_name = BoundedString::try_from_str(resource_type)
             .map_err(|_| Error::parse_error("Failed to create resource name "))?;
 
         self.resource_type_limits
@@ -387,7 +387,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             return Err(Error::parse_error("Invalid parameter "));
         }
 
-        let bounded_asil_level = BoundedString::from_str(asil_level)
+        let bounded_asil_level = BoundedString::try_from_str(asil_level)
             .map_err(|_| Error::parse_error("Failed to create bounded string for ASIL level "))?;
 
         self.qualification_hash = Some(hash);
@@ -642,7 +642,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             let (limits, new_offset) = Self::decode_resource_type_limit(data, offset)?;
             offset = new_offset;
 
-            let name = BoundedString::from_str(&name_str).map_err(|_| {
+            let name = BoundedString::try_from_str(&name_str).map_err(|_| {
                 Error::parse_error("Failed to create bounded string during decode ")
             })?;
 
@@ -675,7 +675,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         let qualified_asil_level = if offset < data.len() && data[offset] == 1 {
             offset += 1;
             let (asil_level_str, _) = Self::decode_string(data, offset)?;
-            let asil_level = BoundedString::from_str(&asil_level_str).map_err(|_| {
+            let asil_level = BoundedString::try_from_str(&asil_level_str).map_err(|_| {
                 Error::parse_error("Failed to create bounded string for ASIL level during decode")
             })?;
             Some(asil_level)
@@ -1038,7 +1038,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             ]);
             offset += 8;
 
-            let name = BoundedString::from_str(&name_str).map_err(|_| {
+            let name = BoundedString::try_from_str(&name_str).map_err(|_| {
                 Error::parse_error(
                     "Failed to create bounded string for custom limit name during decode",
                 )
@@ -1153,7 +1153,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
             ));
         }
 
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
+        let bounded_name = BoundedString::try_from_str(name).map_err(|_| {
             Error::parse_error("Failed to create bounded string for custom limit name")
         })?;
 

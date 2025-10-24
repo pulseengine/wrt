@@ -325,9 +325,9 @@ impl ComponentCommunicationStrategy {
 
             let provider = NoStdProvider::<1024>::default();
             Some(CallRoutingInfo {
-                source_component: BoundedString::from_str("unknown").unwrap_or_default(), // Will be set by caller
-                target_component: BoundedString::from_str(component_part).unwrap_or_default(),
-                function_name: BoundedString::from_str(function_part).unwrap_or_default(),
+                source_component: BoundedString::try_from_str("unknown").unwrap_or_default(), // Will be set by caller
+                target_component: BoundedString::try_from_str(component_part).unwrap_or_default(),
+                function_name: BoundedString::try_from_str(function_part).unwrap_or_default(),
                 call_context_id: None,
             })
         } else {
@@ -436,7 +436,7 @@ impl ComponentCommunicationStrategy {
                 },
                 success: false,
                 error_message: Some(
-                    BoundedString::from_str("Parameter data too large").unwrap_or_default(),
+                    BoundedString::try_from_str("Parameter data too large").unwrap_or_default(),
                 ),
             });
         }
@@ -935,7 +935,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_targets: {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::from_str("*") {
+            if let Ok(s) = BoundedString::try_from_str("*") {
                 let _ = vec.push(s);
             }
             vec
@@ -945,7 +945,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_functions: {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::from_str("*") {
+            if let Ok(s) = BoundedString::try_from_str("*") {
                 let _ = vec.push(s);
             }
             vec

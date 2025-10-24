@@ -1292,7 +1292,7 @@ mod std_parsing {
                     for field in fields {
                         let bounded_string = BoundedString::<
                             MAX_RESOURCE_FIELD_NAME_LEN
-                        >::from_str(&field)
+                        >::try_from_str(&field)
                         .map_err(|_| {
                             Error::runtime_execution_error("Failed to create bounded string")
                         })?;

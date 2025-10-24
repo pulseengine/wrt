@@ -209,7 +209,7 @@ impl BoundedBufferPool {
     /// Find a size class that can accommodate a buffer of the given size
     fn find_size_class(&self, size: usize) -> Option<usize> {
         for (i, class) in self.size_classes.iter().enumerate() {
-            if let Some(ref size_class) = class {
+            if let Some(size_class) = class {
                 if size_class.size >= size {
                     return Some(i);
                 }

@@ -171,11 +171,12 @@ impl<T> WrtOnce<T> {
         // `MaybeUninit::assume_init_ref` is the correct way to get a reference
         // from an initialized `MaybeUninit`.
         // # Safety
-        // This `unsafe` block accesses the `UnsafeCell<MaybeUninit<T>>` and calls
+        // Edition 2024 requires explicit unsafe blocks in unsafe functions.
+        // This block accesses the `UnsafeCell<MaybeUninit<T>>` and calls
         // `assume_init_ref()`. This is safe because the method contract of
         // `get_unchecked` (an `unsafe fn`) requires the caller to guarantee
         // that the data has been initialized.
-        (*self.data.get()).assume_init_ref()
+        unsafe { (*self.data.get()).assume_init_ref() }
     }
 }
 

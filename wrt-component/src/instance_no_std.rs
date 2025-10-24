@@ -94,7 +94,7 @@ impl InstanceValue {
     /// Creates a new instance value
     pub fn new(name: &str, ty: ComponentTypeDefinition, exports: &[Export]) -> Result<Self> {
         let name_provider = safe_managed_alloc!(512, CrateId::Component)?;
-        let bounded_name = BoundedString::from_str(name)
+        let bounded_name = BoundedString::try_from_str(name)
             .map_err(|_| Error::parameter_validation_error("Instance name too long"))?;
 
         let provider = safe_managed_alloc!(16384, CrateId::Component)?;
