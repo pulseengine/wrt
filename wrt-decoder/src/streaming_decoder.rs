@@ -301,10 +301,10 @@ impl<'a> StreamingDecoder<'a> {
             }
             #[cfg(not(feature = "std"))]
             {
-                use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId, BoundedString};
+                use wrt_foundation::BoundedString;
 
-                let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
-                let name = BoundedString::<1024>::from_str(export_name_str)?;
+                let name = BoundedString::<1024>::try_from_str(export_name_str)
+                    .map_err(|_| wrt_error::Error::parse_error("Export name too long"))?;
 
                 self.module.exports.push(wrt_format::module::Export {
                     name,

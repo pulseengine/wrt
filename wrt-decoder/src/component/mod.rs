@@ -184,8 +184,7 @@ mod no_std_utils {
             .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
 
         // Create the properly sized bounded string for the return type
-        let provider = wrt_foundation::safe_managed_alloc!(512, wrt_foundation::CrateId::Decoder)?;
-        let name_string = BoundedString::<256>::from_str(name_str)
+        let name_string = BoundedString::<256>::try_from_str(name_str)
             .map_err(|_| Error::parse_error("Failed to create bounded string for name"))?;
 
         Ok((name_string, length + 1))

@@ -1209,11 +1209,8 @@ impl<'a> StreamingTypeParser<'a> {
             .map_err(|_| Error::parse_error("Invalid UTF-8 in string"))?;
 
         #[cfg(not(feature = "std"))]
-        let bounded_string = {
-            let provider = create_decoder_provider::<4096>()?;
-            DecoderString::from_str(string_str)
-                .map_err(|_| Error::runtime_execution_error("Streaming type parser error "))?
-        };
+        let bounded_string = DecoderString::try_from_str(string_str)
+            .map_err(|_| Error::runtime_execution_error("Streaming type parser error "))?;
         #[cfg(feature = "std")]
         let bounded_string = DecoderString::from(string_str);
 

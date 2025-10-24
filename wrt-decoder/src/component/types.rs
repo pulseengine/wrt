@@ -352,14 +352,13 @@ impl ExportInfo {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
             Ok(Self {
-                name:      crate::prelude::DecoderString::from_str("")?,
-                kind:      crate::prelude::DecoderString::from_str("")?,
-                type_info: crate::prelude::DecoderString::from_str("")?,
+                name:      crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
+                kind:      crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
+                type_info: crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
             })
         }
     }
@@ -428,15 +427,15 @@ impl ImportInfo {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
             Ok(Self {
-                module:    crate::prelude::DecoderString::from_str("")?,
-                name:      crate::prelude::DecoderString::from_str("")?,
-                kind:      crate::prelude::DecoderString::from_str("")?,
-                type_info: crate::prelude::DecoderString::from_str("")?,
+                module:    crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
+                name:      crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
+                kind:      crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
+                type_info: crate::prelude::DecoderString::try_from_str("")
+                    .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
             })
         }
     }

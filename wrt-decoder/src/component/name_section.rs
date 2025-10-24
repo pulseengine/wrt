@@ -645,7 +645,7 @@ pub fn generate_component_name_section(
         };
 
         for (sort, name_map) in &name_section.sort_names {
-            let sort_bytes = generate_sort(sort)?;
+            let sort_bytes = generate_sort(&sort)?;
             #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&sort_bytes);
             #[cfg(not(feature = "std"))]
@@ -655,7 +655,7 @@ pub fn generate_component_name_section(
                 }
             }
 
-            let name_map_bytes = generate_name_map(name_map)?;
+            let name_map_bytes = generate_name_map(&name_map)?;
             #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&name_map_bytes);
             #[cfg(not(feature = "std"))]

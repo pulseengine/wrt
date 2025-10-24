@@ -578,7 +578,7 @@ pub mod parsers {
             let name_str = name_string
                 .as_str()
                 .map_err(|_| Error::parse_error("Invalid export name string"))?;
-            let export_name = WasmString::from_str(name_str)
+            let export_name = WasmString::try_from_str(name_str)
                 .map_err(|_| Error::memory_error("Export name too long"))?;
 
             let export = WrtExport {
