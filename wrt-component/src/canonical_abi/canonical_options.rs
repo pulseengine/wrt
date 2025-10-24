@@ -75,7 +75,7 @@ pub struct CanonicalLowerContext<'a> {
 }
 
 #[derive(Debug)]
-struct TempAllocation {
+pub struct TempAllocation {
     ptr:   i32,
     size:  i32,
     align: i32,

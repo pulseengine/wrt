@@ -151,7 +151,7 @@ pub struct WasiResourceManager {
     /// Next available handle ID
     next_handle: WasiHandle,
     /// Memory provider for allocations
-    provider:    WasiProvider,
+    _provider:   WasiProvider,
 }
 
 /// WASI resource wrapper using WRT Resource<P> pattern
@@ -212,7 +212,7 @@ impl WasiResourceManager {
         Ok(Self {
             resources,
             next_handle: 1, // Start at 1, reserve 0 for invalid handle
-            provider,
+            _provider: provider,
         })
     }
 

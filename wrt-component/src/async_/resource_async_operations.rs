@@ -525,7 +525,7 @@ impl FromBytes for BorrowInfo {
 
 /// Resource limits per component
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-struct ResourceLimits {
+pub struct ResourceLimits {
     max_owned_resources:       usize,
     max_borrowed_resources:    usize,
     max_concurrent_operations: usize,
@@ -571,7 +571,7 @@ impl FromBytes for ResourceLimits {
 
 /// Async resource configuration
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct AsyncResourceConfig {
+pub struct AsyncResourceConfig {
     enable_async_creation: bool,
     enable_async_methods:  bool,
     enable_async_drop:     bool,

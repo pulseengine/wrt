@@ -59,12 +59,15 @@
 use wrt_error::Result;
 use wrt_foundation::Value;
 
+#[cfg(not(feature = "std"))]
+use crate::prelude::{
+    BoundedCapacity,
+    BoundedVec,
+};
 use crate::{
     prelude::{
         str,
         BlockType,
-        BoundedCapacity,
-        BoundedVec,
         Debug,
         Error,
         PartialEq,

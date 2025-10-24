@@ -448,7 +448,7 @@ impl wrt_runtime::FromBytes for ComponentAsyncState {
 
 /// Resource limits for component async operations
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-struct ComponentResourceLimits {
+pub struct ComponentResourceLimits {
     max_concurrent_tasks: usize,
     max_futures:          usize,
     max_streams:          usize,

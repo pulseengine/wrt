@@ -14,7 +14,6 @@ use wrt_foundation::{
 use wrt_wasi::{
     wasi_max_allocation_size,
     wasi_safety_level,
-    WasiCapabilities,
     WasiHostProvider,
     WasiProviderBuilder,
     WASI_CRATE_ID,
@@ -125,7 +124,7 @@ fn test_safety_level_override() {
     let provider_minimal =
         WasiProviderBuilder::new().with_safety_level("maximum-safety").build().unwrap();
 
-    let caps_minimal = provider_minimal.capabilities;
+    let caps_minimal = provider_minimal.capabilities();
     assert!(!caps_minimal.filesystem.read_access);
 
     let provider_sandbox = WasiProviderBuilder::new()
@@ -133,7 +132,7 @@ fn test_safety_level_override() {
         .build()
         .unwrap();
 
-    let caps_sandbox = provider_sandbox.capabilities;
+    let caps_sandbox = provider_sandbox.capabilities();
     assert!(caps_sandbox.filesystem.read_access);
     assert!(!caps_sandbox.filesystem.write_access);
 }

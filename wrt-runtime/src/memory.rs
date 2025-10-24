@@ -1186,11 +1186,11 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the slice is out of bounds
-    pub fn get_safe_slice(
-        &self,
+    pub fn get_safe_slice<'a>(
+        &'a self,
         addr: u32,
         len: usize,
-    ) -> Result<wrt_foundation::safe_memory::SafeSlice> {
+    ) -> Result<wrt_foundation::safe_memory::SafeSlice<'a>> {
         if !self.verify_bounds(addr, len as u32) {
             return Err(Error::validation_error(
                 "Memory access out of bounds for safe slice",
@@ -2043,7 +2043,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the memory is corrupted or integrity checks fail
-    pub fn as_safe_slice(&self) -> Result<wrt_foundation::safe_memory::SafeSlice> {
+    pub fn as_safe_slice<'a>(&'a self) -> Result<wrt_foundation::safe_memory::SafeSlice<'a>> {
         self.data.get_slice(0, self.size_in_bytes())
     }
 

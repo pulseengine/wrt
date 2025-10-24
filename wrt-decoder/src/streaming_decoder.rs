@@ -193,7 +193,7 @@ impl<'a> StreamingDecoder<'a> {
                 code: alloc::vec::Vec::new(),
             };
 
-            self.module.functions.push(func);
+            let _ = self.module.functions.push(func);
         }
 
         Ok(())
@@ -306,7 +306,7 @@ impl<'a> StreamingDecoder<'a> {
                 let name = BoundedString::<1024>::try_from_str(export_name_str)
                     .map_err(|_| wrt_error::Error::parse_error("Export name too long"))?;
 
-                self.module.exports.push(wrt_format::module::Export {
+                let _ = self.module.exports.push(wrt_format::module::Export {
                     name,
                     kind,
                     index,

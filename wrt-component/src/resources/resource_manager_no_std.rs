@@ -263,7 +263,7 @@ impl ResourceManager {
     }
 
     /// Create a new resource arena that uses this manager's resource table
-    pub fn create_arena(&self) -> Result<ResourceArena> {
+    pub fn create_arena<'a>(&'a self) -> Result<ResourceArena<'a>> {
         ResourceArena::new(&self.table)
     }
 

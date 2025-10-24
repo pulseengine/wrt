@@ -2,6 +2,7 @@
 // This verifies our code is syntactically correct
 
 // Mock the dependencies that are failing
+#[allow(dead_code)]
 mod mock_deps {
     pub type NoStdProvider = ();
 
@@ -57,9 +58,10 @@ mod mock_deps {
 }
 
 // Include our runtime modules with mocked dependencies
+#[allow(dead_code)]
 #[path = "src/runtime_api.rs"]
 mod runtime_api_test {
-    use super::mock_deps::*;
+
 
     // Mock BasicType
     #[derive(Debug, Clone, PartialEq, Eq)]

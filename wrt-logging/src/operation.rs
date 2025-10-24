@@ -29,14 +29,13 @@ pub struct LogOperation {
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
-pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>>
-{
+pub struct LogOperation {
     /// Log level
     pub level:        LogLevel,
     /// Log message
-    pub message:      wrt_foundation::BoundedString<256, P>,
+    pub message:      wrt_foundation::BoundedString<256>,
     /// Component ID (optional)
-    pub component_id: Option<wrt_foundation::BoundedString<64, P>>,
+    pub component_id: Option<wrt_foundation::BoundedString<64>>,
 }
 
 // Binary std/no_std choice
@@ -68,10 +67,11 @@ impl LogOperation {
 
 // Implementation for pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOperation<P> {
+impl LogOperation {
     /// Create a new log operation
-    pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_error::Result<Self> {
-        let bounded_message = wrt_foundation::BoundedString::try_from_str(message, provider)?;
+    pub fn new(level: LogLevel, message: &str) -> wrt_error::Result<Self> {
+        let bounded_message = wrt_foundation::BoundedString::try_from_str(message)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Log message too long"))?;
         Ok(Self {
             level,
             message: bounded_message,
@@ -84,10 +84,11 @@ impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOp
         level: LogLevel,
         message: &str,
         component_id: &str,
-        provider: P,
     ) -> wrt_error::Result<Self> {
-        let bounded_message = wrt_foundation::BoundedString::try_from_str(message, provider.clone())?;
-        let bounded_component_id = wrt_foundation::BoundedString::try_from_str(component_id, provider)?;
+        let bounded_message = wrt_foundation::BoundedString::try_from_str(message)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Log message too long"))?;
+        let bounded_component_id = wrt_foundation::BoundedString::try_from_str(component_id)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Component ID too long"))?;
         Ok(Self {
             level,
             message: bounded_message,

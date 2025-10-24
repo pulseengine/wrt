@@ -45,8 +45,6 @@ use wrt_foundation::{
 use crate::error::parse_error;
 #[cfg(feature = "std")]
 use crate::module::{
-    Data,
-    DataMode,
     Element,
     ElementInit,
     Module,
@@ -2235,106 +2233,7 @@ pub mod with_alloc {
 
     /// Parses a data segment from the binary format.
     #[cfg(feature = "std")]
-    pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(Data, usize)> {
-        if offset >= bytes.len() {
-            return Err(Error::parse_error(
-                "Unexpected end of bytes when parsing data segment prefix",
-            ));
-        }
-
-        let prefix = bytes[offset];
-        offset += 1;
-
-        match prefix {
-            0x00 => {
-                // Active data segment for memory 0
-                let memory_idx = 0; // Implicit memory index 0
-                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
-                offset += bytes_read_offset;
-
-                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-                offset += bytes_read_count;
-
-                if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::parse_error(
-                        "Data segment init bytes extend beyond data",
-                    ));
-                }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-                offset += init_byte_count as usize;
-
-                Ok((
-                    Data {
-                        mode: DataMode::Active,
-                        memory_idx,
-                        offset: offset_expr,
-                        init: init_data,
-                    },
-                    offset,
-                ))
-            },
-            0x01 => {
-                // Passive data segment
-                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-                offset += bytes_read_count;
-
-                if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::parse_error(
-                        "Passive data segment init bytes extend beyond data",
-                    ));
-                }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-                offset += init_byte_count as usize;
-
-                Ok((
-                    Data {
-                        mode:       DataMode::Passive,
-                        memory_idx: 0, // Not applicable for passive, conventionally 0
-                        offset:     Vec::new(), // Not applicable for passive
-                        init:       init_data,
-                    },
-                    offset,
-                ))
-            },
-            0x02 => {
-                // Active data segment with explicit memory index
-                let (memory_idx, bytes_read_mem_idx) = read_leb128_u32(bytes, offset)?;
-                offset += bytes_read_mem_idx;
-
-                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
-                offset += bytes_read_offset;
-
-                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-                offset += bytes_read_count;
-
-                if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::parse_error(
-                        "Data segment init bytes extend beyond data",
-                    ));
-                }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-                offset += init_byte_count as usize;
-
-                Ok((
-                    Data {
-                        mode: DataMode::Active,
-                        memory_idx,
-                        offset: offset_expr,
-                        init: init_data,
-                    },
-                    offset,
-                ))
-            },
-            _ => Err(crate::error::parse_error_dynamic(format!(
-                "Unsupported data segment prefix: 0x{:02X}",
-                prefix
-            ))),
-        }
-    }
-
-    /// Parses a data segment into pure format type (recommended)
-    #[cfg(feature = "std")]
-    pub fn parse_data_pure(bytes: &[u8], mut offset: usize) -> Result<(PureDataSegment, usize)> {
+    pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(PureDataSegment, usize)> {
         if offset >= bytes.len() {
             return Err(Error::parse_error(
                 "Unexpected end of bytes when parsing data segment prefix",
@@ -2390,7 +2289,7 @@ pub mod with_alloc {
                 Ok((
                     PureDataSegment {
                         mode:              PureDataMode::Passive,
-                        offset_expr_bytes: Vec::new(),
+                        offset_expr_bytes: Vec::new(), // Not applicable for passive
                         data_bytes:        init_data,
                     },
                     offset,
@@ -3228,7 +3127,7 @@ mod tests {
 
     // Re-export pure parsing functions for std builds
     pub use super::{
-        parse_data_pure,
+        parse_data,
         parse_element_segment_pure,
     };
 }

@@ -683,30 +683,46 @@ mod tests {
     }
 }
 
-// Global allocator for no_std builds - panic on allocation attempts
-// This catches inadvertent allocation attempts in no_std mode
+// Global allocator for no_std builds
+// Returns null on all allocation attempts to catch inadvertent allocations
 #[cfg(all(not(feature = "std"), not(test)))]
 #[global_allocator]
-static GLOBAL: PanicAllocator = PanicAllocator;
+static GLOBAL: NoAllocator = NoAllocator;
 
 #[cfg(all(not(feature = "std"), not(test)))]
-struct PanicAllocator;
+struct NoAllocator;
 
 #[cfg(all(not(feature = "std"), not(test)))]
-unsafe impl core::alloc::GlobalAlloc for PanicAllocator {
-    #[allow(clippy::panic)] // Intentional panic to prevent allocation in no_std
+unsafe impl core::alloc::GlobalAlloc for NoAllocator {
     unsafe fn alloc(&self, _layout: core::alloc::Layout) -> *mut u8 {
-        panic!("Attempted allocation in no_std mode")
+        // Return null to indicate allocation failure
+        // This ensures any allocation attempts fail gracefully
+        core::ptr::null_mut()
     }
 
-    #[allow(clippy::panic)] // Intentional panic to prevent deallocation in no_std
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
-        panic!("Attempted deallocation in no_std mode")
+        // No-op deallocation since we never actually allocate
     }
 }
 
-// Panic handler for no_std builds
-// Note: wrt-platform does NOT provide a panic handler to avoid conflicts.
-// The main wrt crate provides the panic handler when needed.
-// Applications can provide their own panic handler by enabling the
-// "disable-panic-handler" feature on the main wrt crate.
+// Panic handler for no_std builds without explicit panic handler feature
+// This minimal panic handler is only enabled when building no_std without
+// a panic handler feature, to allow the library to compile standalone
+#[cfg(all(
+    not(feature = "std"),
+    not(test),
+    not(any(
+        feature = "enable-panic-handler",
+        feature = "dev-panic-handler",
+        feature = "asil-b-panic-handler",
+        feature = "asil-d-panic-handler"
+    ))
+))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    // Minimal panic handler that just loops forever
+    // In production, use one of the panic handler features instead
+    loop {
+        core::hint::spin_loop();
+    }
+}
