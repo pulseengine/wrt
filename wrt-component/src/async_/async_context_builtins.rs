@@ -307,7 +307,7 @@ impl AsyncContext {
     }
 
     pub fn clear(&mut self) {
-        self.data.clear();
+        let _ = self.data.clear();
     }
 }
 

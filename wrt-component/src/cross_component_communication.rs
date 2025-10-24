@@ -461,7 +461,7 @@ impl ComponentCommunicationStrategy {
             }
             #[cfg(not(feature = "safety-critical"))]
             {
-                marshaled_data.extend(value_bytes);
+                let _ = marshaled_data.extend(value_bytes);
             }
         }
 
@@ -665,7 +665,7 @@ impl ComponentCommunicationStrategy {
             #[cfg(not(feature = "safety-critical"))]
             _ => {
                 let mut vec = Vec::new();
-                vec.push(0);
+                let _ = vec.push(0);
                 Ok(vec)
             },
         }

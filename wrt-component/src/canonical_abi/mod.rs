@@ -19,7 +19,13 @@ pub use canonical_abi::{
     ComponentValue,
 };
 pub use canonical_options::*;
-pub use canonical_realloc::*;
+pub use canonical_realloc::{
+    CanonicalOptionsWithRealloc,
+    MemoryLayout,
+    ReallocFn,
+    ReallocManager,
+    StringEncoding,
+};
 pub use post_return::*;
 
 // Placeholder types for async canonical ABI support

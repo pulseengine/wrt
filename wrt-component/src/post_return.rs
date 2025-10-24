@@ -707,8 +707,6 @@ impl PostReturnRegistry {
 
             return Err(Error::runtime_execution_error("Component instance not found for cleanup task scheduling"));
         }
-
-        Ok(())
     }
 
     /// Execute post-return cleanup for an instance

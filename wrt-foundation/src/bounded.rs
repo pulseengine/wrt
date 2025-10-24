@@ -3240,7 +3240,7 @@ where
             if let Ok(item) = self.vec.get(self.range.end + i) {
                 // Explicitly ignore set result - drain operation is best-effort
                 #[allow(clippy::let_underscore_must_use)]
-                let _ = self.vec.set(self.range.start + i, item);
+                let _result = self.vec.set(self.range.start + i, item);
             }
         }
 
