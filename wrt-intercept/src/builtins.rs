@@ -6,7 +6,6 @@
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-use wrt_error::Error;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::{
     ComponentValue,
@@ -14,6 +13,7 @@ use wrt_foundation::component_value::{
 };
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
+use wrt_error::Error;
 
 use crate::prelude::{
     str,
