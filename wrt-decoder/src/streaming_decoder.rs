@@ -142,18 +142,87 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process type section
     fn process_type_section(&mut self, data: &[u8]) -> Result<()> {
+        use wrt_format::binary::read_leb128_u32;
+        use wrt_foundation::types::ValueType;
+
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        #[allow(unused_assignments)]
-        {
-            offset += bytes_read;
-        }
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG process_type_section: count={}, data.len()={}", count, data.len());
 
         // Process each type one at a time
-        for _ in 0..count {
-            // Skip the actual type parsing for now - would parse function type
-            // here and add to module.types
+        for i in 0..count {
+            // Check for function type marker (0x60)
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of type section"));
+            }
+
+            let type_marker = data[offset];
+            offset += 1;
+
+            if type_marker != 0x60 {
+                return Err(Error::parse_error("Invalid function type marker"));
+            }
+
+            // Parse parameter types
+            let (param_count, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            #[cfg(feature = "std")]
+            let mut params = Vec::new();
+            #[cfg(not(feature = "std"))]
+            let mut params = alloc::vec::Vec::new();
+
+            for _ in 0..param_count {
+                if offset >= data.len() {
+                    return Err(Error::parse_error("Unexpected end of parameter types"));
+                }
+                let param_type = ValueType::from_binary(data[offset])?;
+                offset += 1;
+                params.push(param_type);
+            }
+
+            // Parse result types
+            let (result_count, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            #[cfg(feature = "std")]
+            let mut results = Vec::new();
+            #[cfg(not(feature = "std"))]
+            let mut results = alloc::vec::Vec::new();
+
+            for _ in 0..result_count {
+                if offset >= data.len() {
+                    return Err(Error::parse_error("Unexpected end of result types"));
+                }
+                let result_type = ValueType::from_binary(data[offset])?;
+                offset += 1;
+                results.push(result_type);
+            }
+
+            // Create function type and add to module
+            #[cfg(feature = "std")]
+            {
+                use wrt_foundation::CleanCoreFuncType;
+                let func_type = CleanCoreFuncType { params, results };
+                self.module.types.push(func_type);
+            }
+
+            #[cfg(not(feature = "std"))]
+            {
+                use wrt_foundation::types::FuncType;
+                let func_type = FuncType::new(params.into_iter(), results.into_iter())?;
+                let _ = self.module.types.push(func_type);
+            }
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG process_type_section: parsed type #{}", i);
         }
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG process_type_section: module.types.len()={}", self.module.types.len());
 
         Ok(())
     }
@@ -243,22 +312,33 @@ impl<'a> StreamingDecoder<'a> {
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
-        for _ in 0..count {
+        #[cfg(feature = "std")]
+        {
+            eprintln!("DEBUG process_export_section: count={}, initial_offset={}, data.len()={}", count, offset, data.len());
+            eprintln!("DEBUG first 20 bytes: {:02x?}", &data[..20.min(data.len())]);
+        }
+
+        for i in 0..count {
             // Parse export name - use validate_utf8_name for std builds to avoid
             // BoundedString issues
             #[cfg(feature = "std")]
             {
-                eprintln!("DEBUG export: before validate_utf8_name, offset={}", offset);
+                eprintln!("DEBUG export #{}: before validate_utf8_name, offset={}", i, offset);
             }
             let (export_name_str, new_offset) = validate_utf8_name(data, offset)?;
             #[cfg(feature = "std")]
             {
                 eprintln!(
-                    "DEBUG export: after validate_utf8_name, new_offset={}",
-                    new_offset
+                    "DEBUG export #{}: after validate_utf8_name, name='{}', new_offset={}",
+                    i, export_name_str, new_offset
                 );
             }
             offset = new_offset;
+
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG export #{}: after name, offset now = {}", i, offset);
+            }
 
             if offset >= data.len() {
                 return Err(Error::parse_error("Unexpected end of export kind"));
@@ -270,7 +350,7 @@ impl<'a> StreamingDecoder<'a> {
 
             #[cfg(feature = "std")]
             {
-                eprintln!("DEBUG: export kind_byte = 0x{:02x}", kind_byte);
+                eprintln!("DEBUG export #{}: after kind, offset now = {}, kind_byte = 0x{:02x}", i, offset, kind_byte);
             }
             let kind = match kind_byte {
                 0x00 => wrt_format::module::ExportKind::Function,
@@ -287,8 +367,13 @@ impl<'a> StreamingDecoder<'a> {
             };
 
             // Parse export index
-            let (index, new_offset) = read_leb128_u32(data, offset)?;
-            offset = new_offset;
+            let (index, bytes_consumed) = read_leb128_u32(data, offset)?;
+            offset += bytes_consumed;
+
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG export #{}: after index, offset now = {}, index={}", i, offset, index);
+            }
 
             // Add export to module
             #[cfg(feature = "std")]

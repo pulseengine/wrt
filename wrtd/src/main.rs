@@ -103,10 +103,10 @@ use wrt_wasi::{
 pub struct WrtdConfig {
     /// Maximum fuel (execution steps) allowed
     pub max_fuel: u64,
-    /// Maximum memory usage in bytes  
+    /// Maximum memory usage in bytes
     pub max_memory: usize,
     /// Function to execute
-    pub function_name: Option<&'static str>,
+    pub function_name: Option<String>,
     /// Module data (for no_std mode)
     pub module_data: Option<&'static [u8]>,
     /// Module path (for std mode)
@@ -579,7 +579,7 @@ impl WrtdEngine {
             })?;
 
             // Execute function
-            let function_name = self.config.function_name.unwrap_or("start");
+            let function_name = self.config.function_name.as_deref().unwrap_or("start");
             let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
 
             // Check if function exists before execution
@@ -594,7 +594,10 @@ impl WrtdEngine {
 
             engine
                 .execute(instance, function_name, &[])
-                .map_err(|_e| Error::runtime_execution_error("Function execution failed"))?;
+                .map_err(|e| {
+                    eprintln!("DEBUG: execute error: {:?}", e);
+                    Error::runtime_execution_error("Function execution failed")
+                })?;
 
             self.stats.modules_executed += 1;
         }
@@ -969,10 +972,7 @@ fn main() -> Result<()> {
     // Create configuration from arguments
     let mut config = WrtdConfig::default();
     config.module_path = args.module_path;
-    if let Some(_function_name) = args.function_name {
-        // For now, we'll just use "start" as default since we need static lifetime
-        config.function_name = Some("start");
-    }
+    config.function_name = args.function_name;
 
     if let Some(fuel) = args.max_fuel {
         config.max_fuel = fuel;
