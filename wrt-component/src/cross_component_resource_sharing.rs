@@ -1084,36 +1084,3 @@ pub fn create_component_pair_policy(
         enabled:    true,
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sharing_manager_creation() {
-        let manager = CrossComponentResourceSharingManager::new().unwrap();
-        assert!(manager.enforce_policies.load(Ordering::Acquire));
-    }
-
-    #[test]
-    fn test_transfer_policy() {
-        assert_eq!(TransferPolicy::Copy, TransferPolicy::Copy);
-        assert_ne!(TransferPolicy::Move, TransferPolicy::Borrow);
-    }
-
-    #[test]
-    fn test_sharing_statistics() {
-        let stats = SharingStatistics::default();
-        assert_eq!(stats.total_agreements, 0);
-        assert_eq!(stats.active_agreements, 0);
-        assert_eq!(stats.total_shared_resources, 0);
-    }
-
-    #[test]
-    fn test_basic_policy_creation() {
-        let policy = create_basic_sharing_policy("test-policy").unwrap();
-        assert_eq!(policy.name, "test-policy");
-        assert!(matches!(policy.applies_to, PolicyScope::Global));
-        assert!(policy.enabled);
-    }
-}

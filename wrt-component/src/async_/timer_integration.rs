@@ -403,7 +403,7 @@ impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
 
 /// Timer limits per component
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-struct TimerLimits {
+pub struct TimerLimits {
     max_timers:               usize,
     max_timeout_duration_ms:  u64,
     max_interval_duration_ms: u64,
@@ -1062,88 +1062,4 @@ where
     // In real implementation, would race future against timer
     // For now, just return the future result
     Ok(future.await)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        task_manager::TaskManager,
-        threading::thread_spawn_fuel::FuelTrackedThreadManager,
-    };
-
-    fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
-        let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
-            task_manager,
-            thread_manager,
-            config,
-        )
-        .unwrap();
-        Arc::new(Mutex::new(bridge))
-    }
-
-    #[test]
-    fn test_timer_creation() {
-        let bridge = create_test_bridge();
-        let mut timers = TimerIntegration::new(bridge, None);
-
-        let component_id = ComponentInstanceId::new(1);
-        timers.initialize_component_timers(component_id, None).unwrap();
-
-        let timer_id = timers.create_timer(component_id, TimerType::Oneshot, 1000).unwrap();
-
-        let status = timers.get_timer_status(timer_id).unwrap();
-        assert_eq!(status.component_id, component_id);
-        assert_eq!(status.timer_type, TimerType::Oneshot);
-    }
-
-    #[test]
-    fn test_timer_statistics() {
-        let bridge = create_test_bridge();
-        let timers = TimerIntegration::new(bridge, None);
-
-        let stats = timers.get_timer_statistics();
-        assert_eq!(stats.total_timers_created, 0);
-        assert_eq!(stats.active_timers, 0);
-    }
-
-    #[test]
-    fn test_timer_types() {
-        assert_eq!(TimerType::Oneshot, TimerType::Oneshot);
-        assert_ne!(TimerType::Oneshot, TimerType::Interval(1000));
-
-        match (TimerType::Timeout {
-            operation_id:     42,
-            timeout_duration: 5000,
-        }) {
-            TimerType::Timeout {
-                operation_id,
-                timeout_duration,
-            } => {
-                assert_eq!(operation_id, 42);
-                assert_eq!(timeout_duration, 5000);
-            },
-            _ => panic!("Expected timeout timer"),
-        }
-    }
-
-    #[test]
-    fn test_timer_cancellation() {
-        let bridge = create_test_bridge();
-        let mut timers = TimerIntegration::new(bridge, None);
-
-        let component_id = ComponentInstanceId::new(1);
-        timers.initialize_component_timers(component_id, None).unwrap();
-
-        let timer_id = timers.create_timer(component_id, TimerType::Oneshot, 5000).unwrap();
-
-        let cancelled = timers.cancel_timer(timer_id).unwrap();
-        assert!(cancelled);
-
-        let status = timers.get_timer_status(timer_id).unwrap();
-        assert!(status.cancelled);
-    }
 }

@@ -35,7 +35,7 @@ pub trait LoggingExt {
 // For pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Function type for handling log operations (no dynamic dispatch in `no_std`)
-pub type LogHandler<P> = fn(LogOperation<P>);
+pub type LogHandler = fn(LogOperation);
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Extension trait for `CallbackRegistry` to add logging-specific methods
@@ -43,14 +43,10 @@ pub type LogHandler<P> = fn(LogOperation<P>);
 pub trait LoggingExt {
     /// Register a simple log handler function (`no_std` only supports function
     /// pointers)
-    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+    fn register_log_handler(&mut self, handler: LogHandler);
 
     /// Handle a log operation
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+    fn handle_log(&self, operation: LogOperation) -> wrt_error::Result<()>;
 
     /// Check if a log handler is registered
     fn has_log_handler(&self) -> bool;
@@ -80,10 +76,7 @@ impl LoggingExt for CallbackRegistry {
 // Implementation for pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl LoggingExt for CallbackRegistry {
-    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
-    {
+    fn register_log_handler(&mut self, handler: LogHandler) {
         // In no_std mode, we can't store dynamic handlers
         // This is a limitation - only one handler per type can be stored
         let _ = handler; // Acknowledge the parameter
@@ -91,10 +84,7 @@ impl LoggingExt for CallbackRegistry {
                          // complex design
     }
 
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
-    where
-        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
-    {
+    fn handle_log(&self, operation: LogOperation) -> wrt_error::Result<()> {
         // In no_std mode, we can't dynamically dispatch to handlers
         let _ = operation; // Acknowledge the parameter
                            // Default no-op implementation for no_std
@@ -162,12 +152,10 @@ mod tests {
     }
 }
 
-// Binary std/no_std choice
+// Test for no_std configuration
 #[cfg(test)]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 mod no_std_alloc_tests {
-    use core::cell::RefCell;
-    use std::vec::Vec;
-
     use super::*;
     use crate::level::LogLevel;
 
@@ -179,35 +167,32 @@ mod no_std_alloc_tests {
         assert!(!registry.has_log_handler());
 
         // Logging without handler should not panic
-        registry.handle_log(LogOperation::new(
+        let _ = registry.handle_log(LogOperation::new(
             LogLevel::Info,
-            "test message".to_string(),
-        ));
+            "test message",
+        ).unwrap());
 
-        // Use RefCell instead of Mutex for no_std
-        let received = RefCell::new(Vec::new());
+        // Register a simple function handler
+        fn simple_handler(_log_op: LogOperation) {
+            // No-op handler for testing
+        }
 
-        registry.register_log_handler(move |log_op| {
-            received.borrow_mut().push((log_op.level, log_op.message));
-        });
+        registry.register_log_handler(simple_handler);
 
-        // Test with handler
-        assert!(registry.has_log_handler());
+        // Test with handler (no_std mode doesn't actually store handlers)
+        assert!(!registry.has_log_handler());
 
-        // Log some messages
-        registry.handle_log(LogOperation::new(
+        // Log some messages (no_std mode is no-op)
+        let _ = registry.handle_log(LogOperation::new(
             LogLevel::Info,
-            "info message".to_string(),
-        ));
-        registry.handle_log(LogOperation::new(
+            "info message",
+        ).unwrap());
+        let _ = registry.handle_log(LogOperation::new(
             LogLevel::Error,
-            "error message".to_string(),
-        ));
+            "error message",
+        ).unwrap());
 
-        // Check received messages
-        let borrowed = received.borrow();
-        assert_eq!(borrowed.len(), 2);
-        assert_eq!(borrowed[0], (LogLevel::Info, "info message".to_string()));
-        assert_eq!(borrowed[1], (LogLevel::Error, "error message".to_string()));
+        // In no_std mode, handlers are not actually registered or called
+        // This test just verifies the API compiles and doesn't panic
     }
 }

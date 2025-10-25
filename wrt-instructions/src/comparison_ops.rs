@@ -517,6 +517,7 @@ impl Validate for ComparisonOp {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use crate::prelude::{FloatBits32, FloatBits64};
 
     // Mock context for testing comparison operations
     struct MockComparisonContext {

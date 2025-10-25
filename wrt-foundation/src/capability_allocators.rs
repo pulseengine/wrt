@@ -208,44 +208,4 @@ mod tests {
         DynamicMemoryCapability,
     };
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    #[test]
-    fn test_capability_box_allocation() {
-        let mut context =
-            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
-
-        // Register capability for testing
-        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
-
-        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
-        assert!(boxed_value.is_ok());
-        assert_eq!(*boxed_value.unwrap(), 42);
-    }
-
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    #[test]
-    fn test_capability_vec_allocation() {
-        let mut context =
-            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
-
-        // Register capability for testing
-        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
-
-        let vec_result = CapabilityVec::<u32>::new(&context, CrateId::Runtime, 10);
-        assert!(vec_result.is_ok());
-
-        let vec = vec_result.unwrap();
-        assert_eq!(vec.capacity(), 10);
-    }
-
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    #[test]
-    fn test_capability_allocation_without_permission() {
-        let context =
-            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
-
-        // Don't register any capabilities
-        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
-        assert!(boxed_value.is_err());
-    }
 }

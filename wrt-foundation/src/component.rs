@@ -1087,14 +1087,20 @@ where
             ComponentAlias::InstanceExport(_) => 0u8,
             ComponentAlias::CoreInstanceExport(_) => 1u8,
             ComponentAlias::Outer(_) => 2u8,
-            ComponentAlias::_Phantom(_) => unreachable!("_Phantom should never be instantiated"),
+            ComponentAlias::_Phantom(_) => {
+                // Safety: _Phantom variant should never be constructed
+                panic!("_Phantom variant should never be instantiated")
+            },
         };
         discriminant_byte.update_checksum(checksum);
         match self {
             ComponentAlias::InstanceExport(e) => e.update_checksum(checksum),
             ComponentAlias::CoreInstanceExport(e) => e.update_checksum(checksum),
             ComponentAlias::Outer(e) => e.update_checksum(checksum),
-            ComponentAlias::_Phantom(_) => unreachable!("_Phantom should never be instantiated"),
+            ComponentAlias::_Phantom(_) => {
+                // Safety: _Phantom variant should never be constructed
+                panic!("_Phantom variant should never be instantiated")
+            },
         }
     }
 }
@@ -1123,7 +1129,7 @@ where
             },
             ComponentAlias::_Phantom(_) => {
                 // PhantomData variant should never be instantiated
-                unreachable!("PhantomData variant should never be serialized")
+panic!("PhantomData variant should never be serialized")
             },
         }
         Ok(())

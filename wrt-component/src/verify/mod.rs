@@ -288,3 +288,4 @@ pub mod kani_verification {
 // Expose verification module in docs but not for normal compilation
 #[cfg(any(doc, kani))]
 pub use kani_verification::*;
+    }

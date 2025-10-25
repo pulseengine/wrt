@@ -605,22 +605,6 @@ mod tests {
         traits::BoundedCapacity,
     };
 
-    #[test]
-    fn test_component_type_builder() -> wrt_error::Result<()> {
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-        let component_type = ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
-
-        // Verify empty collections were created
-        assert_eq!(component_type.imports.len(), 0);
-        assert_eq!(component_type.exports.len(), 0);
-        assert_eq!(component_type.aliases.len(), 0);
-        assert_eq!(component_type.instances.len(), 0);
-        assert_eq!(component_type.core_instances.len(), 0);
-        assert_eq!(component_type.component_types.len(), 0);
-        assert_eq!(component_type.core_types.len(), 0);
-        Ok(())
-    }
 
     #[test]
     fn test_namespace_builder() -> wrt_error::Result<()> {

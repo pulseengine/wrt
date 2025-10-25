@@ -29,14 +29,13 @@ pub struct LogOperation {
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
-pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>>
-{
+pub struct LogOperation {
     /// Log level
     pub level:        LogLevel,
     /// Log message
-    pub message:      wrt_foundation::BoundedString<256, P>,
+    pub message:      wrt_foundation::BoundedString<256>,
     /// Component ID (optional)
-    pub component_id: Option<wrt_foundation::BoundedString<64, P>>,
+    pub component_id: Option<wrt_foundation::BoundedString<64>>,
 }
 
 // Binary std/no_std choice
@@ -68,10 +67,11 @@ impl LogOperation {
 
 // Implementation for pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOperation<P> {
+impl LogOperation {
     /// Create a new log operation
-    pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_error::Result<Self> {
-        let bounded_message = wrt_foundation::BoundedString::try_from_str(message, provider)?;
+    pub fn new(level: LogLevel, message: &str) -> wrt_error::Result<Self> {
+        let bounded_message = wrt_foundation::BoundedString::try_from_str(message)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Log message too long"))?;
         Ok(Self {
             level,
             message: bounded_message,
@@ -84,10 +84,11 @@ impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOp
         level: LogLevel,
         message: &str,
         component_id: &str,
-        provider: P,
     ) -> wrt_error::Result<Self> {
-        let bounded_message = wrt_foundation::BoundedString::try_from_str(message, provider.clone())?;
-        let bounded_component_id = wrt_foundation::BoundedString::try_from_str(component_id, provider)?;
+        let bounded_message = wrt_foundation::BoundedString::try_from_str(message)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Log message too long"))?;
+        let bounded_component_id = wrt_foundation::BoundedString::try_from_str(component_id)
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Component ID too long"))?;
         Ok(Self {
             level,
             message: bounded_message,
@@ -107,7 +108,7 @@ mod tests {
     use crate::level::LogLevel;
 
     #[test]
-    fn test_log_operation_creation() -> wrt_foundation::Result<()> {
+    fn test_log_operation_creation() -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             // Test basic creation
@@ -140,11 +141,8 @@ mod tests {
                 safe_managed_alloc,
             };
 
-            // Create a provider for testing
-            let provider = safe_managed_alloc!(512, CrateId::Runtime)?;
-
             // Test basic creation
-            let op = LogOperation::new(LogLevel::Info, "test message", provider.clone()).unwrap();
+            let op = LogOperation::new(LogLevel::Info, "test message").unwrap();
             assert_eq!(op.level, LogLevel::Info);
             assert_eq!(op.message.as_str().unwrap(), "test message");
             assert!(op.component_id.is_none());
@@ -154,7 +152,6 @@ mod tests {
                 LogLevel::Debug,
                 "test message",
                 "component-1",
-                provider.clone(),
             )
             .unwrap();
             assert_eq!(op.level, LogLevel::Debug);

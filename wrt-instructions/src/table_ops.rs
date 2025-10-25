@@ -831,11 +831,6 @@ mod tests {
         vec,
         vec::Vec,
     };
-    #[cfg(feature = "std")]
-    use std::{
-        vec,
-        vec::Vec,
-    };
 
     use wrt_foundation::values::{
         ExternRef,

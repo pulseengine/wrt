@@ -441,39 +441,3 @@ impl<T> Future for ComponentFuture<T> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use core::future::ready;
-
-    use super::*;
-
-    #[test]
-    fn test_fuel_select() {
-        // Test select combinator
-        let future1 = ready(42);
-        let future2 = ready(43);
-        let select = FuelSelect::new(future1, future2, 100, VerificationLevel::Basic);
-
-        // Would need executor to test fully
-    }
-
-    #[test]
-    fn test_fuel_chain() {
-        // Test chain combinator
-        let future1 = ready(42);
-        let chain = FuelChain::new(future1, |x| ready(x * 2), 100, VerificationLevel::Basic);
-
-        // Would need executor to test fully
-    }
-
-    #[test]
-    fn test_fuel_join() {
-        // Test join combinator
-        let future1 = ready(42);
-        let future2 = ready("hello");
-        let join = FuelJoin::new(future1, future2, 100, VerificationLevel::Basic);
-
-        // Would need executor to test fully
-    }
-}

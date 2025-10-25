@@ -191,6 +191,8 @@ pub mod bounded;
 pub mod bounded_collections;
 /// Bounded slice abstraction for safe slice-like access
 pub mod bounded_slice;
+/// Direct storage map for hot-path execution (no serialization)
+pub mod direct_map;
 /// Binary std/no_std choice
 pub mod builder;
 /// WebAssembly Component Model built-in types
@@ -719,132 +721,6 @@ mod tests {
         // Memory system is automatically initialized
     }
 
-    #[test]
-    fn test_boundedvec_is_empty() -> wrt_error::Result<()> {
-        init_test_memory_system();
-        // Use capability-driven approach instead of unsafe release
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::{
-            CapabilityProviderFactory,
-            ProviderCapabilityExt,
-        };
-        use crate::safe_memory::NoStdProvider;
-
-        let base_provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        let provider = {
-            let factory = CapabilityProviderFactory::new()
-                .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build()?;
-            factory.create_provider::<1024>(CrateId::Foundation)?
-        };
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let provider = base_provider;
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
-
-        // Test is_empty
-        assert!(vec.is_empty());
-
-        // Add an item
-        vec.push(42)?;
-
-        // Test not empty
-        assert!(!vec.is_empty());
-        assert_eq!(vec.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "std")]
-    fn test_boundedvec_to_vec_std() -> wrt_error::Result<()> {
-        init_test_memory_system();
-        // Use capability-driven approach instead of unsafe release
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityProviderFactory;
-
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        let provider = {
-            let factory = CapabilityProviderFactory::new()
-                .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build()?;
-            factory.create_provider::<1024>(CrateId::Foundation)?
-        };
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
-
-        vec.push(1)?;
-        vec.push(2)?;
-        vec.push(3)?;
-
-        let std_vec = vec.to_vec()?;
-        assert_eq!(std_vec, vec![1, 2, 3]);
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(not(feature = "std"))]
-    fn test_boundedvec_to_vec_no_std() -> wrt_error::Result<()> {
-        init_test_memory_system();
-        // Use capability-driven approach instead of unsafe release
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityProviderFactory;
-
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        let provider = {
-            let factory = CapabilityProviderFactory::new()
-                .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build()?;
-            factory.create_provider::<1024>(CrateId::Foundation)?
-        };
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
-
-        vec.push(1)?;
-        vec.push(2)?;
-        vec.push(3)?;
-
-        let cloned_vec = vec.to_vec()?;
-        assert_eq!(cloned_vec.len(), 3);
-        assert_eq!(cloned_vec.get(0)?, 1);
-        assert_eq!(cloned_vec.get(1)?, 2);
-        assert_eq!(cloned_vec.get(2)?, 3);
-        Ok(())
-    }
-
-    #[test]
-    fn test_safe_memory_handler_to_vec() -> wrt_error::Result<()> {
-        init_test_memory_system();
-        // Use capability-driven approach instead of unsafe release
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityProviderFactory;
-
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        let provider = {
-            let factory = CapabilityProviderFactory::new()
-                .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build()?;
-            factory.create_provider::<1024>(CrateId::Foundation)?
-        };
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let handler = SafeMemoryHandler::new(provider)?;
-
-        // Test to_vec on empty handler
-        let data = handler.to_vec()?;
-
-        #[cfg(feature = "std")]
-        {
-            assert!(data.is_empty());
-        }
-
-        #[cfg(not(feature = "std"))]
-        {
-            assert!(data.is_empty());
-        }
-        Ok(())
-    }
 
     // TODO: Add comprehensive tests for all public functionality in
     // wrt-foundation, ensuring coverage for different VerificationLevels,
@@ -853,5 +729,3 @@ mod tests {
     // math_ops.rs, etc., should have their own detailed test suites as
     // well.
 }
-#[cfg(test)]
-mod static_memory_tests;

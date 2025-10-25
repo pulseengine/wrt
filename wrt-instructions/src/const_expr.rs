@@ -23,9 +23,10 @@ use wrt_foundation::{
 };
 use wrt_math;
 
+#[cfg(not(feature = "std"))]
+use crate::prelude::BoundedVec;
 use crate::{
     prelude::{
-        BoundedVec,
         Debug,
         PartialEq,
     },
@@ -435,11 +436,6 @@ impl Default for ConstExprSequence {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    use std::{
-        vec,
-        vec::Vec,
-    };
-    #[cfg(feature = "std")]
     use std::{
         vec,
         vec::Vec,

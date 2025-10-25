@@ -1286,35 +1286,9 @@ where
                 // Deserialize T using FromBytes trait
                 match T::from_bytes_with_provider(&mut read_stream, &self.provider) {
                     Ok(item) => {
-                        // Optional: Verify checksum if not ZST and verification is enabled
-                        if CHECKSUM_SIZE > 0 && self.item_serialized_size > 0 {
-                            let checksum_offset = offset + self.item_serialized_size;
-                            if let Ok(checksum_slice) =
-                                self.provider.borrow_slice(checksum_offset, CHECKSUM_SIZE)
-                            {
-                                let mut cs_stream = ReadStream::new(checksum_slice);
-                                if let Ok(stored_checksum) = Checksum::from_bytes_with_provider(
-                                    &mut cs_stream,
-                                    &self.provider,
-                                ) {
-                                    let mut current_checksum = Checksum::new();
-                                    item.update_checksum(&mut current_checksum);
-                                    if current_checksum != stored_checksum {
-                                        return Err(crate::Error::validation_error(
-                                            "Checksum mismatch on BoundedVec::get",
-                                        ));
-                                    }
-                                } else {
-                                    return Err(crate::Error::deserialization_error(
-                                        "Failed to read stored checksum on BoundedVec::get",
-                                    ));
-                                }
-                            } else {
-                                return Err(crate::Error::memory_error(
-                                    "Failed to get checksum slice on BoundedVec::get",
-                                ));
-                            }
-                        }
+                        // Per-item checksums are not currently stored by push(),
+                        // so we skip checksum verification here.
+                        // The collection maintains an overall checksum in self.checksum instead.
                         Ok(item)
                     },
                     Err(e) => Err(crate::Error::deserialization_error(

@@ -314,10 +314,26 @@ impl StacklessEngine {
             .functions
             .get(func_idx)
             .map_err(|_| wrt_error::Error::runtime_function_not_found("Failed to get function"))?;
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG StacklessEngine: func.type_idx={}, module.types.len()={}", func.type_idx, module.types.len());
+
+        // In std mode, types is Vec so use simple indexing
+        #[cfg(feature = "std")]
         let func_type = module
             .types
             .get(func.type_idx as usize)
-            .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;
+            .ok_or_else(|| wrt_error::Error::runtime_error("Function type index out of bounds"))?;
+
+        // In no_std mode, types is BoundedVec so use .get() method
+        #[cfg(not(feature = "std"))]
+        let func_type = module
+            .types
+            .get(func.type_idx as usize)
+            .map_err(|e| {
+                eprintln!("DEBUG StacklessEngine: Failed to get type at index {}: {:?}", func.type_idx, e);
+                wrt_error::Error::runtime_error("Failed to get function type")
+            })?;
 
         // For demonstration, we'll simulate successful execution
         // In a real implementation, this would:
@@ -363,6 +379,9 @@ impl StacklessEngine {
         func_idx: usize,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG StacklessEngine::execute: instance_id={}, func_idx={}", instance_id, func_idx);
+
         let instance = self
             .instances
             .get(&instance_id)?
@@ -383,7 +402,20 @@ impl StacklessEngine {
             .functions
             .get(func_idx)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function"))?;
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG execute: func.type_idx={}, module.types.len()={}", func.type_idx, module.types.len());
+
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
         let func_type = module
+            .types
+            .get(func.type_idx as usize)
+            .ok_or_else(|| wrt_error::Error::runtime_error("Failed to get function type"))?;
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
+        let func_type = &module
             .types
             .get(func.type_idx as usize)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;
@@ -452,7 +484,16 @@ impl StacklessEngine {
             .functions
             .get(func_idx)
             .map_err(|_| wrt_error::Error::runtime_function_not_found("Failed to get function"))?;
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
         let func_type = module
+            .types
+            .get(func.type_idx as usize)
+            .ok_or_else(|| wrt_error::Error::runtime_error("Failed to get function type"))?;
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
+        let func_type = &module
             .types
             .get(func.type_idx as usize)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to get function type"))?;

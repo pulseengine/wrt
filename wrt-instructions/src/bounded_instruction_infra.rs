@@ -10,7 +10,6 @@ use wrt_foundation::{
     },
     safe_memory::NoStdProvider,
 };
-use wrt_error::Result;
 
 /// Budget-aware memory provider for instructions (32KB)
 pub type InstructionProvider = NoStdProvider<32768>;

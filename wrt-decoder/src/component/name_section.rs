@@ -558,7 +558,7 @@ pub fn generate_component_name_section(
     // Component name
     if let Some(name) = &name_section.component_name {
         // Name type
-        data.push(COMPONENT_NAME_COMPONENT);
+        let _ = data.push(COMPONENT_NAME_COMPONENT);
 
         // Generate data for name
         #[cfg(feature = "std")]
@@ -625,7 +625,7 @@ pub fn generate_component_name_section(
 
     if !sort_names_empty {
         // Name type
-        data.push(COMPONENT_NAME_SORT);
+        let _ = data.push(COMPONENT_NAME_SORT);
 
         // Generate data for sorts
         #[cfg(feature = "std")]
@@ -698,7 +698,7 @@ pub fn generate_component_name_section(
 
     if !import_names_empty {
         // Name type
-        data.push(COMPONENT_NAME_IMPORT);
+        let _ = data.push(COMPONENT_NAME_IMPORT);
 
         // Generate data for import names
         let subsection_data = generate_name_map(&name_section.import_names)?;
@@ -735,7 +735,7 @@ pub fn generate_component_name_section(
 
     if !export_names_empty {
         // Name type
-        data.push(COMPONENT_NAME_EXPORT);
+        let _ = data.push(COMPONENT_NAME_EXPORT);
 
         // Generate data for export names
         let subsection_data = generate_name_map(&name_section.export_names)?;
@@ -772,7 +772,7 @@ pub fn generate_component_name_section(
 
     if !canonical_names_empty {
         // Name type
-        data.push(COMPONENT_NAME_CANONICAL);
+        let _ = data.push(COMPONENT_NAME_CANONICAL);
 
         // Generate data for canonical names
         let subsection_data = generate_name_map(&name_section.canonical_names)?;
@@ -809,7 +809,7 @@ pub fn generate_component_name_section(
 
     if !type_names_empty {
         // Name type
-        data.push(COMPONENT_NAME_TYPE);
+        let _ = data.push(COMPONENT_NAME_TYPE);
 
         // Generate data for type names
         let subsection_data = generate_name_map(&name_section.type_names)?;
@@ -1037,7 +1037,7 @@ mod tests {
         }
 
         let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let parsed = parse_component_name_section(bytes.as_slice()).unwrap();
 
         #[cfg(feature = "std")]
         assert_eq!(parsed.component_name, Some("test_component".to_string()));
@@ -1085,23 +1085,23 @@ mod tests {
         }
 
         let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let parsed = parse_component_name_section(bytes.as_slice()).unwrap();
 
         assert_eq!(parsed.sort_names.len(), 1);
-        assert!(matches!(parsed.sort_names[0].0, SortIdentifier::Function));
-        assert_eq!(parsed.sort_names[0].1.entries.len(), 2);
-        assert_eq!(parsed.sort_names[0].1.entries[0].index, 0);
+        assert!(matches!(parsed.sort_names.get(0).unwrap().0, SortIdentifier::Function));
+        assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.len(), 2);
+        assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().index, 0);
         #[cfg(feature = "std")]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
         }
     }
 }

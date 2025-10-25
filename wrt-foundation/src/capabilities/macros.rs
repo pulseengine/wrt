@@ -273,13 +273,13 @@ mod tests {
         budget_aware_provider::CrateId,
         capabilities::DynamicMemoryCapability,
         safe_managed_alloc,
-        safe_memory::NoStdProvider,
+        safe_memory::{NoStdProvider, Provider},
         verification::VerificationLevel,
     };
 
     #[test]
     fn test_capability_context_macro() {
-        let result = capability_context!(dynamic(CrateId::Foundation, 1024));
+        let result: Result<_, wrt_error::Error> = capability_context!(dynamic(CrateId::Foundation, 1024));
         assert!(result.is_ok());
 
         let context = result.unwrap();

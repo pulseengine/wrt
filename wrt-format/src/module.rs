@@ -866,6 +866,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 }
 
 #[cfg(feature = "std")]
+#[allow(deprecated)]
 impl Default for ElementMode {
     fn default() -> Self {
         Self::Passive

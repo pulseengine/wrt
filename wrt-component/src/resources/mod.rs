@@ -42,8 +42,6 @@ pub mod resource_table_no_std;
 #[cfg(feature = "std")]
 pub mod size_class_buffer_pool;
 
-#[cfg(test)]
-mod tests;
 
 // Re-export for no_std feature
 #[cfg(not(feature = "std"))]

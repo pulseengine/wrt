@@ -13,6 +13,7 @@ use wrt_foundation::component_value::{
 };
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
+#[allow(unused_imports)] // Used in feature-gated code
 use wrt_error::Error;
 
 use crate::prelude::{
@@ -349,17 +350,14 @@ mod tests {
     #[test]
     fn test_intercept_context() {
         #[cfg(feature = "std")]
-        let context =
-            InterceptContext::new("test-component", BuiltinType::ResourceCreate, "test-host");
-
-        #[cfg(feature = "std")]
-        assert_eq!(context.component_name, "test-component");
-        assert_eq!(context.builtin_type, BuiltinType::ResourceCreate);
-        #[cfg(feature = "std")]
-        assert_eq!(context.host_id, "test-host");
-
-        #[cfg(feature = "std")]
         {
+            let context =
+                InterceptContext::new("test-component", BuiltinType::ResourceCreate, "test-host");
+
+            assert_eq!(context.component_name, "test-component");
+            assert_eq!(context.builtin_type, BuiltinType::ResourceCreate);
+            assert_eq!(context.host_id, "test-host");
+
             let mut context = context;
             context.add_data("test-key", Value::I32(42));
             assert_eq!(context.get_data("test-key"), Some(&Value::I32(42)));
@@ -373,8 +371,8 @@ mod tests {
         let values = vec![
             ComponentValue::S32(123),
             ComponentValue::S64(456),
-            ComponentValue::F32(1.23),
-            ComponentValue::F64(4.56),
+            ComponentValue::F32(wrt_foundation::FloatBits32::from_float(1.23)),
+            ComponentValue::F64(wrt_foundation::FloatBits64::from_float(4.56)),
         ];
 
         let serialized_bytes = BuiltinSerialization::serialize(&values).unwrap();
@@ -391,14 +389,14 @@ mod tests {
         if let (ComponentValue::F32(a), ComponentValue::F32(b)) =
             (&deserialized_values[2], &values[2])
         {
-            assert!((a - b).abs() < f32::EPSILON);
+            assert!((a.to_f32() - b.to_f32()).abs() < f32::EPSILON);
         } else {
             panic!("Expected F32 values");
         }
         if let (ComponentValue::F64(a), ComponentValue::F64(b)) =
             (&deserialized_values[3], &values[3])
         {
-            assert!((a - b).abs() < f64::EPSILON);
+            assert!((a.to_f64() - b.to_f64()).abs() < f64::EPSILON);
         } else {
             panic!("Expected F64 values");
         }

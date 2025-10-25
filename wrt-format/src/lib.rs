@@ -305,7 +305,7 @@ mod ast_simple_tests;
 // Pure format parsing functions (recommended)
 #[cfg(feature = "std")]
 pub use binary::with_alloc::{
-    parse_data_pure,
+    parse_data,
     parse_element_segment_pure,
 };
 #[cfg(feature = "std")]
@@ -543,7 +543,7 @@ pub mod no_std_demo {
 
     /// Example showing bounded string working
     pub fn demo_bounded_string() -> Result<()> {
-        let provider = wrt_foundation::safe_managed_alloc!(
+        let _provider = wrt_foundation::safe_managed_alloc!(
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;

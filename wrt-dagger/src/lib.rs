@@ -92,7 +92,7 @@ impl Default for ContainerConfig {
 
 /// Dagger pipeline for WRT builds
 pub struct DaggerPipeline {
-    config: ContainerConfig,
+    _config: ContainerConfig,
     // Note: dagger_sdk::Query field removed due to API changes
     // Will be re-added when Dagger SDK API stabilizes
 }
@@ -107,12 +107,12 @@ impl DaggerPipeline {
             eprintln!(
                 "⚠️  Dagger SDK integration disabled due to API changes. Using local fallback."
             );
-            Ok(Self { config })
+            Ok(Self { _config: config })
         }
 
         #[cfg(not(feature = "dagger"))]
         {
-            Ok(Self { config })
+            Ok(Self { _config: config })
         }
     }
 

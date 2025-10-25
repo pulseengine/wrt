@@ -35,7 +35,7 @@ mod tests {
 
     /// Create a component binary with a custom section
     fn create_component_with_custom_section() -> Vec<u8> {
-        let binary = create_minimal_component_binary();
+        let mut binary = create_minimal_component_binary();
 
         // Add custom section
         binary.push(0); // Custom section ID
@@ -83,18 +83,6 @@ mod tests {
     }
 
     // Basic parser functionality tests
-
-    #[test]
-    fn test_parser_creation() {
-        let parser = ComponentBinaryParser::new();
-        assert_eq!(parser.validation_level, ValidationLevel::Standard);
-
-        let minimal_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal);
-        assert_eq!(minimal_parser.validation_level, ValidationLevel::Minimal);
-
-        let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
-        assert_eq!(strict_parser.validation_level, ValidationLevel::Strict);
-    }
 
     #[test]
     fn test_parse_minimal_valid_component() {
@@ -194,10 +182,10 @@ mod tests {
     fn test_validation_levels() {
         let binary = create_minimal_component_binary();
 
-        // Test minimal validation
-        let mut minimal_parser =
-            ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal);
-        let result1 = minimal_parser.parse(&binary);
+        // Test basic validation
+        let mut basic_parser =
+            ComponentBinaryParser::with_validation_level(ValidationLevel::Basic);
+        let result1 = basic_parser.parse(&binary);
         assert!(result1.is_ok());
 
         // Test standard validation
@@ -208,7 +196,7 @@ mod tests {
 
         // Test strict validation
         let mut strict_parser =
-            ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
+            ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
         let result3 = strict_parser.parse(&binary);
         assert!(result3.is_ok());
     }
@@ -224,13 +212,13 @@ mod tests {
         assert!(result1.is_ok());
 
         // Test parsing with different validation levels
-        let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal);
+        let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Basic);
         assert!(result2.is_ok());
 
         let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Standard);
         assert!(result3.is_ok());
 
-        let result4 = parse_component_binary_with_validation(&binary, ValidationLevel::Strict);
+        let result4 = parse_component_binary_with_validation(&binary, ValidationLevel::Full);
         assert!(result4.is_ok());
     }
 

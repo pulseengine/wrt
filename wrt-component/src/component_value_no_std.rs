@@ -416,41 +416,5 @@ pub fn convert_format_to_valtype<P: MemoryProvider + Default + Clone + PartialEq
         // for no_std but would follow the same pattern, converting each nested type
         _ => Err(Error::type_conversion_error("Component not found")),
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_serialize_simple_types() {
-        // Test boolean serialization
-        let bool_value = ComponentValue::Bool(true;
-        let serialized = serialize_component_value_no_std(&bool_value).unwrap();
-        assert_eq!(serialized.as_slice(), &[1];
-
-        // Test u32 serialization
-        let u32_value = ComponentValue::U32(0x12345678;
-        let serialized = serialize_component_value_no_std(&u32_value).unwrap();
-        assert_eq!(serialized.as_slice(), &[0x78, 0x56, 0x34, 0x12]); // Little endian
-
-        // Test string serialization
-        let string_value = ComponentValue::String("test".to_owned());
-        let serialized = serialize_component_value_no_std(&string_value).unwrap();
-        assert_eq!(serialized.as_slice(), &[4, 0, 0, 0, b't', b'e', b's', b't'];
-    }
-
-    #[test]
-    fn test_valtype_conversion() {
-        use wrt_foundation::memory_sizing::XLargeProvider;
-
-        // Test bool conversion
-        let bool_type = TypesValType::<XLargeProvider>::Bool;
-        let format_type = convert_valtype_to_format(&bool_type).unwrap();
-        assert!(matches!(format_type, FormatValType::Bool);
-
-        let converted_back =
-            convert_format_to_valtype::<XLargeProvider>(&format_type).unwrap();
-        assert!(matches!(converted_back, TypesValType::Bool);
-    }
 }

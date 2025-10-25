@@ -1281,7 +1281,6 @@ mod tests {
         let limits = ResourceLimitsSection::new(provider.clone())?.with_qualification(
             hash,
             &asil_d_str,
-            provider,
         )?;
 
         assert!(limits.is_qualified());

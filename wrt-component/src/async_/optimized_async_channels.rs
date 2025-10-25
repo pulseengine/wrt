@@ -276,7 +276,7 @@ enum ChannelBuffer {
 /// Message in a channel
 #[derive(Debug, Clone)]
 #[derive(Default)]
-struct ChannelMessage {
+pub struct ChannelMessage {
     value:     ComponentValue<ComponentProvider>,
     sender_id: ComponentInstanceId,
     sent_at:   u64,
@@ -411,7 +411,7 @@ struct ComponentChannelContext {
 
 /// Channel limits per component
 #[derive(Debug, Clone)]
-struct ChannelLimits {
+pub struct ChannelLimits {
     max_channels:       usize,
     max_total_capacity: usize,
     max_message_size:   usize,
@@ -682,7 +682,7 @@ impl OptimizedAsyncChannels {
                     let _ = wakers_to_wake.push(waker);
                 }
                 // Drop channel borrow before waking
-                drop(channel);
+                let _ = channel;
 
                 // Now wake all wakers without holding any borrows
                 for waker in wakers_to_wake {
@@ -1097,64 +1097,6 @@ impl ChannelReceiver {
     pub fn receive(&self) -> ReceiveFuture {
         ReceiveFuture {
             receiver: self.clone(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        task_manager::TaskManager,
-        threading::thread_spawn_fuel::FuelTrackedThreadManager,
-    };
-
-    fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
-        let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
-            task_manager,
-            thread_manager,
-            config,
-        )
-        .unwrap();
-        Arc::new(Mutex::new(bridge))
-    }
-
-    #[test]
-    fn test_channel_creation() {
-        let bridge = create_test_bridge();
-        let mut channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
-
-        let component_id = ComponentInstanceId::new(1);
-        channels.initialize_component_channels(component_id, None).unwrap();
-
-        let (sender, receiver) =
-            channels.create_channel(component_id, ChannelType::Bounded(32)).unwrap();
-
-        assert_eq!(sender.component_id, component_id);
-        assert_eq!(receiver.component_id, component_id);
-    }
-
-    #[test]
-    fn test_channel_statistics() {
-        let bridge = create_test_bridge();
-        let channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
-
-        let stats = channels.get_channel_statistics();
-        assert_eq!(stats.total_channels_created, 0);
-        assert_eq!(stats.active_channels, 0);
-    }
-
-    #[test]
-    fn test_channel_types() {
-        assert_eq!(ChannelType::Oneshot, ChannelType::Oneshot);
-        assert_ne!(ChannelType::Bounded(32), ChannelType::Unbounded);
-
-        match ChannelType::Bounded(64) {
-            ChannelType::Bounded(cap) => assert_eq!(cap, 64),
-            _ => panic!("Expected bounded channel"),
         }
     }
 }

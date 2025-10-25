@@ -90,18 +90,7 @@ pub mod memory_limits;
 use wrt_host::CallbackRegistry;
 // Enhanced host function registry
 #[cfg(feature = "wrt-execution")]
-use wrt_host::{
-    builder::HostBuilder,
-    BuiltinHost,
-    CallbackRegistry,
-    // HostFunction, // Use wrt_runtime::HostFunction instead
-};
-// Platform abstraction layer
-#[cfg(feature = "wrt-execution")]
-use wrt_platform::{
-    // memory::PlatformMemory, // Not available
-    time::PlatformTime,
-};
+use wrt_host::CallbackRegistry;
 #[cfg(feature = "wasi")]
 use wrt_wasi::{
     ComponentModelProvider,
@@ -114,10 +103,10 @@ use wrt_wasi::{
 pub struct WrtdConfig {
     /// Maximum fuel (execution steps) allowed
     pub max_fuel: u64,
-    /// Maximum memory usage in bytes  
+    /// Maximum memory usage in bytes
     pub max_memory: usize,
     /// Function to execute
-    pub function_name: Option<&'static str>,
+    pub function_name: Option<String>,
     /// Module data (for no_std mode)
     pub module_data: Option<&'static [u8]>,
     /// Module path (for std mode)
@@ -289,6 +278,7 @@ pub struct WrtdEngine {
     logger:                 WrtdLogHandler,
     /// Host function registry for all host functions
     #[cfg(feature = "wrt-execution")]
+    #[allow(dead_code)]
     host_registry:          CallbackRegistry,
     /// WASI provider for WASI functions
     #[cfg(feature = "wasi")]
@@ -436,22 +426,7 @@ impl WrtdEngine {
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model");
 
         // Component model support disabled
-        return Err(Error::runtime_error("Component model temporarily disabled"));
-        // let mut registry = ComponentRegistry::new()
-        //     .map_err(|_| Error::runtime_error("Failed to create component
-        // registry"))?;
-
-        // Register component interfaces
-        // for interface in &self.config.component_interfaces {
-        //     registry
-        //         .register_interface(interface)
-        //         .map_err(|_| Error::runtime_error("Failed to register component
-        // interface"))?; }
-
-        // self.component_registry = Some(registry);
-
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Component model initialized");
-        Ok(())
+        Err(Error::runtime_error("Component model temporarily disabled"))
     }
 
     /// Detect if the binary is a WebAssembly component or module
@@ -476,7 +451,7 @@ impl WrtdEngine {
 
     /// Execute a component using the component model
     #[cfg(feature = "component-model")]
-    fn execute_component(&mut self, data: &[u8]) -> Result<()> {
+    fn execute_component(&mut self, _data: &[u8]) -> Result<()> {
         let _ = self
             .logger
             .handle_minimal_log(LogLevel::Info, "Executing WebAssembly component");
@@ -559,7 +534,7 @@ impl WrtdEngine {
 
             // Create engine with appropriate capabilities
             let mut engine = CapabilityAwareEngine::with_preset(preset)
-                .map_err(|e| Error::runtime_error("Failed to create engine"))?;
+                .map_err(|_e| Error::runtime_error("Failed to create engine"))?;
 
             // Enable WASI support if configured
             #[cfg(feature = "wasi")]
@@ -579,7 +554,7 @@ impl WrtdEngine {
                 // Only in less restrictive modes
                 let _ = engine.register_host_function("env", "host_print", |args: &[wrt_foundation::values::Value]| -> Result<Vec<wrt_foundation::values::Value>> {
                     // Simple host function that "prints" a value (in practice would log it)
-                    if let Some(wrt_foundation::values::Value::I32(val)) = args.get(0) {
+                    if let Some(wrt_foundation::values::Value::I32(_val)) = args.get(0) {
                         // In a real implementation, this would print to stdout or log
                         // For now, just return success
                     }
@@ -604,11 +579,11 @@ impl WrtdEngine {
             })?;
 
             // Execute function
-            let function_name = self.config.function_name.unwrap_or("start");
+            let function_name = self.config.function_name.as_deref().unwrap_or("start");
             let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
 
             // Check if function exists before execution
-            if !engine.has_function(instance, function_name).map_err(|e| {
+            if !engine.has_function(instance, function_name).map_err(|_e| {
                 Error::runtime_function_not_found("Failed to check function existence")
             })? {
                 let _ = self
@@ -619,7 +594,10 @@ impl WrtdEngine {
 
             engine
                 .execute(instance, function_name, &[])
-                .map_err(|e| Error::runtime_execution_error("Function execution failed"))?;
+                .map_err(|e| {
+                    eprintln!("DEBUG: execute error: {:?}", e);
+                    Error::runtime_execution_error("Function execution failed")
+                })?;
 
             self.stats.modules_executed += 1;
         }
@@ -994,10 +972,7 @@ fn main() -> Result<()> {
     // Create configuration from arguments
     let mut config = WrtdConfig::default();
     config.module_path = args.module_path;
-    if let Some(_function_name) = args.function_name {
-        // For now, we'll just use "start" as default since we need static lifetime
-        config.function_name = Some("start");
-    }
+    config.function_name = args.function_name;
 
     if let Some(fuel) = args.max_fuel {
         config.max_fuel = fuel;

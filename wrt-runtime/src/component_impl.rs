@@ -72,11 +72,11 @@ pub mod no_alloc {
             {
                 // Basic validation - just check magic number
                 if binary.len() < 8 {
-                    return Err(Error::parse_invalid_binary("Binary too small to be a valid component";
+                    return Err(Error::parse_invalid_binary("Binary too small to be a valid component"));
                 }
                 // Check for WASM magic number (0x00 0x61 0x73 0x6D)
                 if &binary[0..4] != b"\0asm" {
-                    return Err(Error::parse_invalid_binary("Invalid WASM magic number";
+                    return Err(Error::parse_invalid_binary("Invalid WASM magic number"));
                 }
                 Ok(())
             }
@@ -181,7 +181,7 @@ impl<
         // Convert to SafeStack
         let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
         let mut safe_stack = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-        safe_stack.set_verification_level(self.verification_level;
+        safe_stack.set_verification_level(self.verification_level);
 
         // Add all values to the safe stack
         for value in vec_result.iter() {
@@ -223,7 +223,7 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
             implementation: Arc::new(move |_args: &[wrt_foundation::Value]| {
                 let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
                 let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-                result.set_verification_level(verification_level;
+                result.set_verification_level(verification_level);
                 Ok(result)
             }),
         };
@@ -235,7 +235,7 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // Binary std/no_std choice
-            Err(Error::runtime_execution_error("))
+            Err(Error::runtime_execution_error("Host function creation not supported"))
         }
     }
 }
@@ -264,12 +264,12 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             #[cfg(feature = "std")]
             host_factories: Vec::with_capacity(8),
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
-            host_factories: HostFactoryVec::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_factories"),
+            host_factories: HostFactoryVec::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host factories"),
             verification_level: VerificationLevel::default(),
             #[cfg(feature = "std")]
             host_functions: HostFunctionMap::new(),
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
-            host_functions: HostFunctionMap::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_functions"),
+            host_functions: HostFunctionMap::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host functions"),
         }
     }
 
@@ -279,7 +279,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
             // Perform pre-push integrity verification
-            self.verify_integrity().expect(".expect("ComponentRuntime integrity check failed"));")
+            self.verify_integrity().expect("ComponentRuntime integrity check failed");
         }
 
         #[cfg(feature = "std")]
@@ -294,12 +294,12 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             let _factory_id = self.host_factories.len() as u32;
             let _ = self.host_factories.push(_factory_id);
             // We don't actually store the factory in no_std mode for simplicity
-            core::mem::drop(factory;
+            core::mem::drop(factory);
         }
 
         if self.verification_level.should_verify(128) {
             // Perform post-push integrity verification
-            self.verify_integrity().expect(".expect("ComponentRuntime integrity check failed after push"));")
+            self.verify_integrity().expect("ComponentRuntime integrity check failed after push");
         }
     }
 
@@ -353,7 +353,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let host_functions = {
             // Binary std/no_std choice
             for (name, _id) in self.host_functions.iter() {
-                host_function_names.push(name.clone();
+                host_function_names.push(name.clone());
             }
             // Return empty map-like structure for no_std
             ()
@@ -373,7 +373,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // Binary std/no_std choice
-            Err(Error::runtime_execution_error("))
+            Err(Error::runtime_execution_error("Component instantiation not supported in no std mode"))
         }
     }
 
@@ -397,16 +397,16 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
             // Insert the function into the host functions map
             #[cfg(feature = "std")]
-            let name_string = name.to_string());
+            let name_string = name.to_string();
             #[cfg(not(feature = "std"))]
-            let name_string = alloc::string::String::from(name;
-            
-            self.host_functions.insert(name_string, Box::new(func_impl;
+            let name_string = alloc::string::String::from(name);
+
+            self.host_functions.insert(name_string, Box::new(func_impl));
         }
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // Binary std/no_std choice
-            let _ = (name, ty, function;
+            let _ = (name, ty, function);
         }
 
         Ok(())
@@ -487,8 +487,7 @@ impl ComponentInstance for ComponentInstanceImpl {
         if self.verification_level.should_verify(128) {
             // Check that argument types match the expected types
             if name.is_empty() {
-                return Err(wrt_error::Error::runtime_execution_error(",
-                ;
+                return Err(wrt_error::Error::runtime_execution_error("Function name cannot be empty"));
             }
         }
 
@@ -559,18 +558,16 @@ impl ComponentInstance for ComponentInstanceImpl {
                     {
                         result.push(wrt_foundation::Value::I32(a + b))?;
                     } else {
-                        return Err(wrt_error::Error::runtime_execution_error(",
-                        ;
+                        return Err(wrt_error::Error::runtime_execution_error("Invalid argument type"));
                     }
                 } else {
                     return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
-                        1002,
+                        1002, "Incorrect number of arguments"));
                 }
             }
             _ => {
                 // Unknown function
-                return Err(wrt_error::Error::runtime_execution_error(",
-                ;
+                return Err(wrt_error::Error::runtime_execution_error("Unknown function"));
             }
         }
 
@@ -589,13 +586,12 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Check that the memory name is valid
             if name.is_empty() {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-                    1003,
+                    1003, "Memory name cannot be empty"));
             }
 
             // Check that offset and size are valid
             if offset + size > self.memory_store.size() as u32 {
-                return Err(wrt_error::Error::runtime_execution_error(",
-                ;
+                return Err(wrt_error::Error::runtime_execution_error("Memory access out of bounds"));
             }
         }
 
@@ -610,13 +606,12 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Check that the memory name is valid
             if name.is_empty() {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
-                    1003,
+                    1003, "Memory name cannot be empty"));
             }
 
             // Check that offset and size are valid
             if offset + bytes.len() as u32 > self.memory_store.size() as u32 {
-                return Err(wrt_error::Error::runtime_execution_error(",
-                ;
+                return Err(wrt_error::Error::runtime_execution_error("Memory write out of bounds"));
             }
         }
 
@@ -629,14 +624,14 @@ impl ComponentInstance for ComponentInstanceImpl {
         // Check the component type for the export
         for export in &self.component_type.exports {
             if export.name.as_str().map_or(false, |s| s == name) {
-                return Ok(export.ty.clone();
+                return Ok(export.ty.clone());
             }
         }
 
         // Export not found
         Err(wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             1005,
-            "))
+            "Export not found"))
     }
 }
 
@@ -704,10 +699,10 @@ mod tests {
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple legacy echo function
             let func_type = FuncType::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(), {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default);
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             }, {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default);
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             })?;
 
@@ -761,20 +756,7 @@ mod tests {
     fn test_component_instance_memory() -> Result<()> {
         // Create a component type for testing
         let component_type =
-            ComponentType { 
-                imports: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default);
-                Vec::new(provider)?
-            }, 
-                exports: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default);
-                Vec::new(provider)?
-            }, 
-                instances: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default);
-                Vec::new(provider)?
-            } 
-            };
+            ComponentType::unit(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default())?;
 
         // Create a component instance with enough memory
         let mut data = vec![0; 100]; // Initialize with 100 bytes
@@ -802,7 +784,7 @@ mod tests {
         // Verify the data - compare just the first 5 bytes
         let data = slice.data()?;
         let data_slice = &data[0..5];
-        assert_eq!(data_slice, &[1, 2, 3, 4, 5];
+        assert_eq!(data_slice, &[1, 2, 3, 4, 5]);
 
         Ok(())
     }

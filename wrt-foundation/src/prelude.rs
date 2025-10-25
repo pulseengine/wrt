@@ -340,10 +340,9 @@ pub const MAX_WASM_FUNCTION_PARAMS: usize = 128;
 pub const MAX_STATIC_CAPACITY: usize = 16; // ASIL-D: 16KB / sizeof(T)
 pub const MAX_BOUNDED_CAPACITY: usize = 64; // ASIL-C: 64KB / sizeof(T)
 
-/// Safety-level-aware function argument vector with proper precedence
-/// Precedence: std-allocation > managed-dynamic-alloc > bounded-allocation >
-/// static-allocation
-
+/// Safety-level-aware function argument vector with proper precedence.
+///
+/// Precedence hierarchy: std-allocation > managed-dynamic-alloc > bounded-allocation > static-allocation.
 /// Standard allocation (QM, DAL-E) - highest precedence
 #[cfg(feature = "std-allocation")]
 pub type ArgVec<T> = Vec<T>;

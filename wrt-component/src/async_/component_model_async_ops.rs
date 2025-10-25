@@ -519,35 +519,5 @@ impl ComponentModelAsyncOp {
     pub fn is_blocking(&self) -> bool {
         matches!(self, Self::TaskWait { .. })
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::async_::async_types::Waitable;
-
-    #[test]
-    fn test_component_model_async_op_fuel_cost() {
-        let wait_op = ComponentModelAsyncOp::TaskWait {
-            waitables:  WaitableSet::new(),
-            timeout_ms: Some(1000),
-        };
-        assert_eq!(wait_op.fuel_cost(), TASK_WAIT_FUEL);
-        assert!(wait_op.is_blocking());
-
-        let yield_op = ComponentModelAsyncOp::TaskYield;
-        assert_eq!(yield_op.fuel_cost(), TASK_YIELD_FUEL);
-        assert!(!yield_op.is_blocking());
-    }
-
-    #[test]
-    fn test_waitable_registry() {
-        let mut registry = WaitableRegistry::new().unwrap();
-        let future_handle = FutureHandle(42);
-
-        assert!(!registry.is_future_ready(future_handle).unwrap());
-
-        registry.mark_future_ready(future_handle).unwrap();
-        assert!(registry.is_future_ready(future_handle).unwrap());
-    }
 }

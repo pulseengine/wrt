@@ -85,8 +85,6 @@ impl<T: VariableContext> PureInstruction<T, Error> for VariableOp {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
     use std::{
         vec,
         vec::Vec,

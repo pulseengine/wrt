@@ -195,10 +195,11 @@ pub use wrt_foundation::platform_abstraction;
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;
 
-/// Component Model implementations of runtime interfaces - temporarily disabled
+/// Component Model implementations of runtime interfaces - temporarily disabled due to syntax errors
+// #[cfg(feature = "std")]
 // pub mod component_impl;
-/// Component Model trait definitions for runtime interfaces - temporarily
-/// disabled
+/// Component Model trait definitions for runtime interfaces - temporarily disabled due to syntax errors
+// #[cfg(feature = "std")]
 // pub mod component_traits;
 
 // Internal modules

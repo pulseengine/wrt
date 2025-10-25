@@ -43,6 +43,6 @@ pub trait ResourceStrategy: Send + Sync {
 
     /// Reset any internal state or buffers
     fn reset(&mut self) {
-        // Default is no-op
+        // Default implementation does nothing
     }
 }

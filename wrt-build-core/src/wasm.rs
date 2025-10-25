@@ -303,7 +303,7 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(&module).unwrap();
 
-        let verifier = WasmVerifier::new(temp_file.path);
+        let verifier = WasmVerifier::new(temp_file.path());
         let result = verifier.verify().unwrap();
 
         assert!(result.valid);
@@ -319,7 +319,7 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(&invalid_module).unwrap();
 
-        let verifier = WasmVerifier::new(temp_file.path);
+        let verifier = WasmVerifier::new(temp_file.path());
         let result = verifier.verify().unwrap();
 
         assert!(!result.valid);
