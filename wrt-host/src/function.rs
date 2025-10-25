@@ -281,9 +281,14 @@ impl Default for CloneableFn {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    extern crate alloc;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+
     use wrt_foundation::{
         allocator::CrateId,
-        capabilities::context::get_global_capability_context,
+        safe_managed_alloc,
         safe_memory::NoStdProvider,
     };
 
@@ -312,7 +317,7 @@ mod tests {
         let empty_args = vec![];
         #[cfg(not(feature = "std"))]
         let empty_args = {
-            let provider = safe_managed_alloc!(8192, CrateId::Host)?;
+            let provider = safe_managed_alloc!(8192, CrateId::Host).unwrap();
             ValueVec::new(provider).unwrap()
         };
 
@@ -322,12 +327,12 @@ mod tests {
         assert!(result.is_ok());
         let result_vec = result.unwrap();
         assert_eq!(result_vec.len(), 1);
-        assert!(matches!(result_vec[0], Value::I32(42)));
+        assert!(matches!(result_vec.get(0).unwrap(), Value::I32(42)));
 
         assert!(result2.is_ok());
         let result2_vec = result2.unwrap();
         assert_eq!(result2_vec.len(), 1);
-        assert!(matches!(result2_vec[0], Value::I32(42)));
+        assert!(matches!(result2_vec.get(0).unwrap(), Value::I32(42)));
     }
 
     #[test]
@@ -352,7 +357,7 @@ mod tests {
         let empty_args = vec![];
         #[cfg(not(feature = "std"))]
         let empty_args = {
-            let provider = safe_managed_alloc!(8192, CrateId::Host)?;
+            let provider = safe_managed_alloc!(8192, CrateId::Host).unwrap();
             ValueVec::new(provider).unwrap()
         };
 
@@ -361,6 +366,6 @@ mod tests {
         assert!(result.is_ok());
         let result_vec = result.unwrap();
         assert_eq!(result_vec.len(), 1);
-        assert!(matches!(result_vec[0], Value::I32(42)));
+        assert!(matches!(result_vec.get(0).unwrap(), Value::I32(42)));
     }
 }

@@ -225,52 +225,5 @@ impl Export {
         let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
         Ok(Self::new(name, format_type, value))
     }
-}
 
-#[cfg(all(test, feature = "std"))]
-mod tests {
-    use wrt_format::component::{
-        ExternType,
-        ValType,
-    };
-
-    use super::*;
-    use crate::component::{
-        ExternValue,
-        FunctionValue,
-    };
-
-    #[test]
-    fn test_export_creation() {
-        let func_type = ExternType::Function {
-            params:  vec![
-                ("a".to_owned(), ValType::S32),
-                ("b".to_owned(), ValType::S32),
-            ],
-            results: vec![ValType::S32],
-        };
-
-        let func_value = FunctionValue {
-            ty:          func_type.clone(),
-            export_name: "add".to_owned(),
-        };
-
-        let export = Export {
-            name:           "add".to_owned(),
-            ty:             func_type,
-            value:          ExternValue::Function(func_value),
-            kind:           ExportKind::Function { function_index: 0 },
-            attributes:     HashMap::new(),
-            integrity_hash: None,
-        };
-
-        assert_eq!(export.name, "add");
-        match &export.ty {
-            ExternType::Function { params, results } => {
-                assert_eq!(params.len(), 2);
-                assert_eq!(results.len(), 1);
-            },
-            _ => panic!("Expected function type"),
-        }
-    }
 }

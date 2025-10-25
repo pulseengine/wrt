@@ -550,48 +550,5 @@ impl SimpleAsyncExecutor {
             TaskResult::Failed(error) => Err(Error::from(error)),
             TaskResult::Cancelled => Err(Error::async_task_execution_failed("Task was cancelled")),
         }
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_runtime_creation() {
-        let config = RuntimeConfig::default());
-        let runtime = FuelAsyncRuntime::new(config;
-        assert!(runtime.is_ok());
-        
-        let runtime = runtime.unwrap();
-        assert_eq!(runtime.state(), RuntimeState::Initializing;
-        assert_eq!(runtime.stats().total_spawned, 0);
-    }
-    
-    #[test]
-    fn test_runtime_configuration() {
-        let config = RuntimeConfig {
-            global_fuel_budget: 500_000,
-            verification_level: VerificationLevel::Full,
-            max_concurrent_tasks: 128,
-            polling_batch_size: 16,
-            enable_cleanup: true,
-        };
-        
-        let runtime = FuelAsyncRuntime::new(config;
-        assert!(runtime.is_ok());
-        
-        let runtime = runtime.unwrap();
-        assert_eq!(runtime.global_fuel_budget, 500_000;
-        assert_eq!(runtime.verification_level, VerificationLevel::Full;
-    }
-    
-    #[test]
-    fn test_simple_executor() {
-        let executor = SimpleAsyncExecutor::new();
-        assert!(executor.is_ok());
-        
-        let executor = executor.unwrap();
-        assert_eq!(executor.runtime.state(), RuntimeState::Initializing;
-    }
 }

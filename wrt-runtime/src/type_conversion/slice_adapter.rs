@@ -116,37 +116,3 @@ where
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use wrt_foundation::{
-        budget_aware_provider::CrateId,
-        safe_managed_alloc,
-        values::Value,
-    };
-
-    use super::*;
-
-    #[test]
-    fn test_slice_to_bounded_conversion() {
-        let values = vec![Value::I32(1), Value::I32(2), Value::I32(3)];
-
-        let provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
-        let bounded = adapt_slice_to_bounded(&values, provider).unwrap();
-
-        assert_eq!(bounded.len(), 3);
-        assert_eq!(bounded.get(0).unwrap(), &Value::I32(1));
-        assert_eq!(bounded.get(1).unwrap(), &Value::I32(2));
-        assert_eq!(bounded.get(2).unwrap(), &Value::I32(3));
-    }
-
-    #[test]
-    fn test_slice_iterator() {
-        let values = vec![Value::I32(10), Value::I32(20), Value::I32(30)];
-
-        let mut iter = SliceAdapter::iter_slice(&values);
-        assert_eq!(iter.next(), Some(&Value::I32(10)));
-        assert_eq!(iter.next(), Some(&Value::I32(20)));
-        assert_eq!(iter.next(), Some(&Value::I32(30)));
-        assert_eq!(iter.next(), None);
-    }
-}

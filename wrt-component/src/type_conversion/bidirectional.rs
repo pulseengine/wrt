@@ -1331,4 +1331,5 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             ))
         },
     }
+
 }

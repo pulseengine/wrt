@@ -635,6 +635,11 @@ impl Clone for CallbackRegistry {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    extern crate alloc;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+
     use wrt_foundation::{
         builtin::BuiltinType,
         values::Value,
@@ -663,7 +668,7 @@ mod tests {
         match result {
             Ok(values) => {
                 assert_eq!(values.len(), 1);
-                assert!(matches!(values[0], Value::I32(42)));
+                assert!(matches!(values.get(0).unwrap(), Value::I32(42)));
             },
             Err(_) => panic!("Expected successful function call"),
         }

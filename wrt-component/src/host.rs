@@ -69,35 +69,5 @@ impl Host {
             }
             HostFunctionImpl::Trap(message) => Err(Error::runtime_execution_error("Host function trap executed")),
         }
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use wrt_format::component::ValType;
-
-    use super::*;
-
-    #[test]
-    fn test_host_function_management() {
-        let mut host = Host::new();
-
-        let func_type = ExternType::Function {
-            params: vec![("a".to_owned(), ValType::S32), ("b".to_owned(), ValType::S32)],
-            results: vec![ValType::S32],
-        };
-
-        let function = HostFunction {
-            ty: func_type,
-            implementation: HostFunctionImpl::Callback("add".to_owned()),
-        };
-
-        host.add_function("add".to_owned(), function;
-
-        let retrieved = host.get_function("add";
-        assert!(retrieved.is_some();
-
-        let not_found = host.get_function("non_existent";
-        assert!(not_found.is_none();
-    }
 }

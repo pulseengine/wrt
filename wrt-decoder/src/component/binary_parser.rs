@@ -720,7 +720,7 @@ mod component_binary_parser {
             assert!(result1.is_ok());
 
             // Test parsing with validation level
-            let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal);
+            let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Basic);
             assert!(result2.is_ok());
 
             let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full);
@@ -760,11 +760,25 @@ pub mod no_std_stubs {
 
     /// Component binary parser stub for no_std environments
     #[derive(Debug, Clone)]
-    pub struct ComponentBinaryParser;
+    pub struct ComponentBinaryParser {
+        pub validation_level: ValidationLevel,
+    }
 
     /// Component header stub for no_std environments
     #[derive(Debug, Clone)]
-    pub struct ComponentHeader;
+    pub struct ComponentHeader {
+        pub magic: [u8; 4],
+        pub version: u32,
+        pub layer: u32,
+    }
+
+    impl ComponentHeader {
+        pub fn validate(&self) -> Result<()> {
+            Err(Error::runtime_execution_error(
+                "Component validation not available in no_std",
+            ))
+        }
+    }
 
     /// Component section ID stub for no_std environments
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -784,9 +798,58 @@ pub mod no_std_stubs {
         Value,
     }
 
+    impl ComponentSectionId {
+        pub fn from_u8(value: u8) -> Option<Self> {
+            match value {
+                0 => Some(Self::Custom),
+                1 => Some(Self::CoreModule),
+                2 => Some(Self::CoreInstance),
+                3 => Some(Self::CoreType),
+                4 => Some(Self::Component),
+                5 => Some(Self::Instance),
+                6 => Some(Self::Alias),
+                7 => Some(Self::Type),
+                8 => Some(Self::Canon),
+                9 => Some(Self::Start),
+                10 => Some(Self::Import),
+                11 => Some(Self::Export),
+                12 => Some(Self::Value),
+                _ => None,
+            }
+        }
+
+        pub fn name(&self) -> &'static str {
+            match self {
+                Self::Custom => "custom",
+                Self::CoreModule => "core_module",
+                Self::CoreInstance => "core_instance",
+                Self::CoreType => "core_type",
+                Self::Component => "component",
+                Self::Instance => "instance",
+                Self::Alias => "alias",
+                Self::Type => "type",
+                Self::Canon => "canon",
+                Self::Start => "start",
+                Self::Import => "import",
+                Self::Export => "export",
+                Self::Value => "value",
+            }
+        }
+    }
+
+    impl core::fmt::Display for ComponentSectionId {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "{}", self.name())
+        }
+    }
+
     /// Stub component type for no_std parsing
     #[derive(Debug, Clone)]
-    pub struct Component;
+    pub struct Component {
+        pub name: Option<&'static str>,
+        pub modules: &'static [u8],
+        pub types: &'static [u8],
+    }
 
     impl Default for ComponentBinaryParser {
         fn default() -> Self {
@@ -796,11 +859,15 @@ pub mod no_std_stubs {
 
     impl ComponentBinaryParser {
         pub fn new() -> Self {
-            Self
+            Self {
+                validation_level: ValidationLevel::Standard,
+            }
         }
 
-        pub fn with_validation_level(_level: ValidationLevel) -> Self {
-            Self
+        pub fn with_validation_level(level: ValidationLevel) -> Self {
+            Self {
+                validation_level: level,
+            }
         }
 
         pub fn parse(&mut self, _bytes: &[u8]) -> Result<Component> {

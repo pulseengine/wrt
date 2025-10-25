@@ -255,5 +255,3 @@ impl SafeExportMap {
         level: wrt_foundation::verification::VerificationLevel,
     ) {
         self.exports.set_verification_level(level;
-    }
-}

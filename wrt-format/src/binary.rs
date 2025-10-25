@@ -2941,7 +2941,7 @@ mod tests {
         let mut result = Vec::new();
         let length = value.len() as u32;
         result.extend_from_slice(&write_leb128_u32_test(length));
-        result.extend_from_slice(value.as_bytes);
+        result.extend_from_slice(value.as_bytes());
         result
     }
 

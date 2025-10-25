@@ -1325,7 +1325,7 @@ mod tests {
         #[cfg(feature = "std")]
         data.push(count as u8);
 
-        let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingTypeParser::new(data.as_slice(), VerificationLevel::Standard).unwrap();
 
         assert!(parser.parse().is_err());
         Ok(())

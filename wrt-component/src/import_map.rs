@@ -191,5 +191,5 @@ impl SafeImportMap {
         level: wrt_foundation::verification::VerificationLevel,
     ) {
         self.imports.set_verification_level(level;
-    }
+
 }

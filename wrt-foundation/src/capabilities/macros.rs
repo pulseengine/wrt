@@ -273,7 +273,7 @@ mod tests {
         budget_aware_provider::CrateId,
         capabilities::DynamicMemoryCapability,
         safe_managed_alloc,
-        safe_memory::NoStdProvider,
+        safe_memory::{NoStdProvider, Provider},
         verification::VerificationLevel,
     };
 
