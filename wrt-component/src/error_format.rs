@@ -144,4 +144,5 @@ macro_rules! component_error {
     ($category:expr, $code:expr, $context:expr) => {
         $crate::error_format::format_component_error($category, $code, $context)
     };
+
 }

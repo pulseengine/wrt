@@ -597,7 +597,7 @@ mod tests {
             ) -> Result<BeforeBuiltinResult> {
                 // Bypass normal execution and return our own result
                 Ok(BeforeBuiltinResult::Bypass(vec![
-                    wrt_foundation::component_value::ComponentValue::s32(777),
+                    wrt_foundation::component_value::ComponentValue::S32(777),
                 ]))
             }
 

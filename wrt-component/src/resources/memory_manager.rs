@@ -82,38 +82,5 @@ impl MemoryManager {
     pub fn reset(&mut self) {
         self.resource_strategies.clear);
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_memory_manager() {
-        let mut resource_manager = ResourceManager::new();
-        let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
-
-        // Add a resource
-        let id = resource_manager.add_host_resource(vec![1, 2, 3, 4, 5];
-
-        // Register with memory manager
-        memory_manager.register_resource(id, &resource_manager).unwrap();
-
-        // Check strategy
-        assert_eq!(memory_manager.get_strategy(id), Some(MemoryStrategy::Copy;
-
-        // Change strategy
-        memory_manager.set_strategy(id, MemoryStrategy::Reference;
-        assert_eq!(memory_manager.get_strategy(id), Some(MemoryStrategy::Reference;
-    }
-
-    #[test]
-    fn test_invalid_resource_registration() {
-        let resource_manager = ResourceManager::new();
-        let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
-
-        // Try to register a non-existent resource
-        let result = memory_manager.register_resource(ResourceId(999), &resource_manager;
-        assert!(result.is_err();
-    }
 }

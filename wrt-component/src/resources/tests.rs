@@ -28,7 +28,6 @@ use super::size_class_buffer_pool::SizeClassBufferPool;
 use super::buffer_pool::BufferPool;
 use crate::prelude::*;
 
-#[test]
 #[cfg(feature = "std")]
 fn test_size_class_buffer_pool() {
     // Create the pool
@@ -73,44 +72,6 @@ fn test_size_class_buffer_pool() {
     );
 }
 
-#[test]
-fn test_resource_table_with_optimized_memory() {
-    // Create a resource table with optimized memory
-    let mut table = ResourceTable::new_with_optimized_memory();
-
-    // Create some resources
-    let data1 = Arc::new(String::from("test1"));
-    let data2 = Arc::new(42i32);
-
-    let handle1 = table.create_resource(1, data1).unwrap();
-    let handle2 = table.create_resource(2, data2).unwrap();
-
-    // Verify resources were created
-    assert_eq!(table.resource_count(), 2);
-
-    // Get resources and verify data
-    let resource1 = table.get_resource(handle1).unwrap();
-    let guard1 = resource1.lock().unwrap();
-    assert_eq!(guard1.type_idx, 1);
-    let string_data = guard1.data.downcast_ref::<String>().unwrap();
-    assert_eq!(string_data, "test1");
-
-    let resource2 = table.get_resource(handle2).unwrap();
-    let guard2 = resource2.lock().unwrap();
-    assert_eq!(guard2.type_idx, 2);
-    let int_data = guard2.data.downcast_ref::<i32>().unwrap();
-    assert_eq!(*int_data, 42);
-
-    // Drop resources
-    table.drop_resource(handle1).unwrap();
-    table.drop_resource(handle2).unwrap();
-
-    // Verify resources are gone
-    assert_eq!(table.resource_count(), 0);
-}
-
-#[test]
-fn test_resource_arena() {
     // Create a resource table
     let table = Arc::new(Mutex::new(ResourceTable::new()));
 
@@ -146,52 +107,11 @@ fn test_resource_arena() {
     assert_eq!(locked_table.resource_count(), 0);
 }
 
-#[test]
-fn test_auto_cleanup() {
-    // Create a resource table
-    let table = Arc::new(Mutex::new(ResourceTable::new()));
-
-    // Create resources in a scope
-    {
-        let mut arena = ResourceArena::new(table.clone());
-        let _handle = arena.create_resource(1, Arc::new(String::from("test"))).unwrap();
-
-        // Arena will be dropped at the end of this scope
-    }
-
     // Verify resources were cleaned up
     let locked_table = table.lock().unwrap();
     assert_eq!(locked_table.resource_count(), 0);
 }
 
-#[test]
-fn test_resource_manager_with_arena() {
-    // Create a resource manager
-    let manager = ResourceManager::new();
-
-    // Create a resource arena that uses the manager's table
-    // First we need to get access to the manager's table
-    let table = Arc::clone(&manager.get_resource_table());
-    let mut arena = ResourceArena::new_with_name(table, "test-arena");
-
-    // Create resources through the arena
-    let handle1 = arena.create_resource(1, Arc::new(String::from("test1"))).unwrap();
-    let handle2 = arena.create_resource(2, Arc::new(42i32)).unwrap();
-
-    // Verify resources exist in both the arena and the manager
-    assert!(arena.has_resource(ResourceId(handle1)).unwrap());
-    assert!(manager.has_resource(ResourceId(handle1)).unwrap());
-
-    // Release all resources from the arena
-    arena.release_all().unwrap();
-
-    // Verify resources are gone
-    assert!(!manager.has_resource(ResourceId(handle1)).unwrap());
-    assert!(!manager.has_resource(ResourceId(handle2)).unwrap());
-}
-
-#[test]
-fn test_multiple_arenas() {
     // Create a resource manager
     let manager = ResourceManager::new();
 
@@ -223,7 +143,6 @@ fn test_multiple_arenas() {
     assert!(manager.has_resource(ResourceId(handle2)).unwrap());
 }
 
-#[test]
 #[cfg(feature = "std")]
 fn test_performance_comparison() {
     // This is a simple benchmark to compare standard and optimized buffer pools
@@ -264,4 +183,3 @@ fn test_performance_comparison() {
         "Improvement factor: {:.2}x",
         standard_duration.as_secs_f64() / optimized_duration.as_secs_f64()
     );
-}

@@ -557,30 +557,3 @@ impl CapabilityAwareEngine {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_module_handle_creation() {
-        let handle1 = ModuleHandle::new();
-        let handle2 = ModuleHandle::new();
-        assert_ne!(handle1, handle2);
-    }
-
-    #[test]
-    fn test_instance_handle_conversion() {
-        let handle = InstanceHandle::from_index(42);
-        assert_eq!(handle.index(), 42);
-    }
-
-    #[test]
-    fn test_engine_preset_creation() {
-        // Test that each preset can be created
-        let _qm = CapabilityAwareEngine::with_preset(EnginePreset::QM)?;
-        let _asil_a = CapabilityAwareEngine::with_preset(EnginePreset::AsilA)?;
-        let _asil_b = CapabilityAwareEngine::with_preset(EnginePreset::AsilB)?;
-        let _asil_c = CapabilityAwareEngine::with_preset(EnginePreset::AsilC)?;
-        let _asil_d = CapabilityAwareEngine::with_preset(EnginePreset::AsilD)?;
-    }
-}

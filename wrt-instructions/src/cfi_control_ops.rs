@@ -353,26 +353,23 @@ impl CfiLandingPad {
 impl Default for CfiLandingPad {
     fn default() -> Self {
         Self::try_default().unwrap_or_else(|_| {
-            // Fallback for Default trait compatibility
-            Self {
-                pad_id:               0,
-                hardware_instruction: None,
-                software_validation:  None,
-                valid_predecessors:   {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // Use minimal fallback - this will panic if used, but needed for trait
-                        // compat
-                        panic!(
-                            "CfiLandingPad::default() fallback should not be used in no_std - use \
-                             try_default() instead"
-                        )
-                    }
-                },
+            #[cfg(feature = "std")]
+            {
+                // Fallback for Default trait compatibility
+                Self {
+                    pad_id:               0,
+                    hardware_instruction: None,
+                    software_validation:  None,
+                    valid_predecessors:   Vec::new(),
+                }
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                // Use minimal fallback - this will panic if used, but needed for trait compat
+                panic!(
+                    "CfiLandingPad::default() fallback should not be used in no_std - use \
+                     try_default() instead"
+                )
             }
         })
     }
@@ -818,7 +815,6 @@ impl CfiExecutionContext {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     crate::types::LandingPadExpectationVec::new(safe_managed_alloc!(
                         8192,
                         CrateId::Instructions
@@ -881,84 +877,34 @@ impl CfiExecutionContext {
 impl Default for CfiExecutionContext {
     fn default() -> Self {
         Self::try_default().unwrap_or_else(|_| {
-            // Fallback for Default trait compatibility - create minimal context
-            Self {
-                current_function:         0,
-                current_instruction:      0,
-                shadow_stack:             {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        panic!(
-                            "CfiExecutionContext::default() fallback should not be used in no_std \
-                             - use try_default() instead"
-                        )
-                    }
-                },
-                landing_pad_expectations: {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        panic!(
-                            "CfiExecutionContext::default() fallback should not be used in no_std \
-                             - use try_default() instead"
-                        )
-                    }
-                },
-                violation_count:          0,
-                metrics:                  CfiMetrics::default(),
-                calling_convention:       CallingConvention::WebAssembly,
-                current_stack_depth:      0,
-                software_config:          CfiSoftwareConfig::default(),
-                last_checkpoint_time:     0,
-                max_labels:               256,
-                valid_branch_targets:     {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        panic!(
-                            "CfiExecutionContext::default() fallback should not be used in no_std \
-                             - use try_default() instead"
-                        )
-                    }
-                },
-                max_types:                256,
-                type_signatures:          {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        panic!(
-                            "CfiExecutionContext::default() fallback should not be used in no_std \
-                             - use try_default() instead"
-                        )
-                    }
-                },
-                max_shadow_stack_depth:   1024,
-                indirect_branch_targets:  {
-                    #[cfg(feature = "std")]
-                    {
-                        Vec::new()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        panic!(
-                            "CfiExecutionContext::default() fallback should not be used in no_std \
-                             - use try_default() instead"
-                        )
-                    }
-                },
+            #[cfg(feature = "std")]
+            {
+                // Fallback for Default trait compatibility - create minimal context
+                Self {
+                    current_function:         0,
+                    current_instruction:      0,
+                    shadow_stack:             Vec::new(),
+                    landing_pad_expectations: Vec::new(),
+                    violation_count:          0,
+                    metrics:                  CfiMetrics::default(),
+                    calling_convention:       CallingConvention::WebAssembly,
+                    current_stack_depth:      0,
+                    software_config:          CfiSoftwareConfig::default(),
+                    last_checkpoint_time:     0,
+                    max_labels:               256,
+                    valid_branch_targets:     Vec::new(),
+                    max_types:                256,
+                    type_signatures:          Vec::new(),
+                    max_shadow_stack_depth:   1024,
+                    indirect_branch_targets:  Vec::new(),
+                }
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                panic!(
+                    "CfiExecutionContext::default() fallback should not be used in no_std - use \
+                     try_default() instead"
+                )
             }
         })
     }
@@ -1180,7 +1126,6 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                         crate::types::CfiRequirementVec::new(safe_managed_alloc!(
                             8192,
                             CrateId::Instructions
@@ -1252,7 +1197,6 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         let validation_requirements = {
             // For no_std environments, create minimal validation
             use crate::types::CfiRequirementVec;
-            let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
             let mut reqs =
                 CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?).map_err(
                     |_| Error::validation_error("Failed to create validation requirements"),
@@ -1332,7 +1276,6 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                         crate::types::CfiRequirementVec::new(safe_managed_alloc!(
                             8192,
                             CrateId::Instructions
@@ -1592,7 +1535,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     crate::types::CfiExpectedValueVec::new(safe_managed_alloc!(
                         8192,
                         CrateId::Instructions
@@ -1632,7 +1574,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
@@ -1649,7 +1590,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
@@ -1669,7 +1609,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
@@ -1686,7 +1625,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
@@ -1703,7 +1641,6 @@ impl DefaultCfiControlFlowOps {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;

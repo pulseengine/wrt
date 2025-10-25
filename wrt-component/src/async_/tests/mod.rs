@@ -20,4 +20,5 @@ pub use comprehensive_integration_tests::*;
 pub use performance_benchmarks::*;
 pub use asil_compliance_tests::*;
 pub use error_handling_tests::*;
-pub use fuel_async_integration_tests::*;
+pub use fuel_async_integration_tests::*;    }
+}

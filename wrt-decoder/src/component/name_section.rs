@@ -1037,7 +1037,7 @@ mod tests {
         }
 
         let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let parsed = parse_component_name_section(bytes.as_slice()).unwrap();
 
         #[cfg(feature = "std")]
         assert_eq!(parsed.component_name, Some("test_component".to_string()));
@@ -1085,7 +1085,7 @@ mod tests {
         }
 
         let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let parsed = parse_component_name_section(bytes.as_slice()).unwrap();
 
         assert_eq!(parsed.sort_names.len(), 1);
         assert!(matches!(parsed.sort_names.get(0).unwrap().0, SortIdentifier::Function));

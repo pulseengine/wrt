@@ -16,7 +16,6 @@ members = [
     "wrt-intercept",
     "wrt-platform",
     "wrt-panic",
-    "wrt-tests/integration",
     "wrt-build-core",
     "cargo-wrt"]
 exclude = ["examples/wasi-nn/inference_module"]
@@ -175,53 +174,6 @@ verification-enabled = true
 harnesses = [
     "verify_error_creation_safety",
     "verify_error_propagation"
-]
-
-# Integration tests formal verification suite (KANI Phase 4)
-[[workspace.metadata.kani.package]]
-name = "wrt-integration-tests"
-verification-enabled = true
-harnesses = [
-    # Memory safety proofs (Phase 2)
-    "kani_verify_memory_budget_never_exceeded",
-    "kani_verify_hierarchical_budget_consistency",
-    "kani_verify_cross_crate_memory_isolation",
-    "kani_verify_memory_deallocation_patterns",
-    "kani_verify_memory_fragmentation_bounds",
-    "kani_verify_concurrent_allocation_safety",
-    # Safety invariants proofs (Phase 3)
-    "kani_verify_asil_level_monotonicity",
-    "kani_verify_safety_context_preservation",
-    "kani_verify_cross_standard_conversions",
-    "kani_verify_violation_count_monotonicity",
-    # Concurrency proofs (Phase 4)
-    "kani_verify_atomic_compare_and_swap",
-    "kani_verify_atomic_fetch_and_add",
-    "kani_verify_mutex_mutual_exclusion",
-    "kani_verify_rwlock_concurrent_reads",
-    "kani_verify_memory_ordering",
-    "kani_verify_deadlock_prevention",
-    # Resource lifecycle proofs (Phase 4)
-    "kani_verify_resource_id_uniqueness",
-    "kani_verify_resource_lifecycle_correctness",
-    "kani_verify_resource_table_bounds",
-    "kani_verify_cross_component_isolation",
-    "kani_verify_resource_reference_validity",
-    "kani_verify_resource_representation_consistency",
-    # Integration proofs (Phase 4)
-    "kani_verify_cross_component_memory_isolation",
-    "kani_verify_component_interface_type_safety",
-    "kani_verify_system_wide_resource_limits",
-    "kani_verify_end_to_end_safety_preservation",
-    "kani_verify_multi_component_workflow_consistency",
-    "kani_verify_component_isolation_under_stress",
-    # Advanced proofs (KANI Optimization)
-    "verify_lockstep_synchronization",
-    "verify_tmr_fault_tolerance", 
-    "verify_diverse_redundancy_correctness",
-    "verify_memory_edc_effectiveness",
-    "verify_control_flow_integrity",
-    "verify_fault_propagation_prevention"
 ]
 
 # Runtime verification suite

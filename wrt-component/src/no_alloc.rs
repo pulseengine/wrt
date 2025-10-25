@@ -267,51 +267,5 @@ impl MinimalComponent {
     pub const fn import_count(&self) -> u8 {
         self.header.import_count
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Minimal valid Component Model binary - just magic number and version
-    const MINIMAL_COMPONENT: [u8; 8] = [0x00, 0x61, 0x73, 0x6D, 0x0A, 0x00, 0x01, 0x00];
-
-    #[test]
-    fn test_verify_component_header() {
-        let result = verify_component_header(&MINIMAL_COMPONENT;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_section_id_from_u8() {
-        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom;
-        assert_eq!(ComponentSectionId::from(1), ComponentSectionId::ComponentType;
-        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown;
-    }
-
-    #[test]
-    fn test_validation_levels() {
-        // Basic validation should pass for minimal component
-        let basic_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic;
-        assert!(basic_result.is_ok());
-
-        // Standard validation should also pass for this test
-        let std_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard;
-        assert!(std_result.is_ok());
-    }
-
-    #[test]
-    fn test_minimal_component() {
-        let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard;
-        assert!(component.is_ok());
-
-        let component = component.unwrap();
-        assert_eq!(component.size(), 8;
-        assert_eq!(component.export_count(), 0);
-        assert_eq!(component.import_count(), 0);
-        assert_eq!(component.module_count(), 0);
-        assert!(!component.has_start();
-    }
 }

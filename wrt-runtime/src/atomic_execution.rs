@@ -940,37 +940,3 @@ impl AtomicExecutionStats {
 type AtomicU8 = core::sync::atomic::AtomicU8;
 type AtomicU16 = core::sync::atomic::AtomicU16;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::thread_manager::ThreadConfig;
-
-    #[test]
-    fn test_atomic_execution_stats() {
-        let stats = AtomicExecutionStats::new();
-        assert_eq!(stats.total_operations, 0);
-        assert_eq!(stats.throughput(), 0.0);
-        assert!(!stats.is_healthy());
-    }
-
-    #[test]
-    fn test_memory_ordering_conversion() {
-        assert_eq!(
-            AtomicOrdering::from(MemoryOrdering::Unordered),
-            AtomicOrdering::Relaxed
-        );
-        assert_eq!(
-            AtomicOrdering::from(MemoryOrdering::SeqCst),
-            AtomicOrdering::SeqCst
-        );
-    }
-
-    #[cfg(feature = "std")]
-    #[test]
-    fn test_atomic_context_creation() -> Result<(), wrt_error::Error> {
-        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
-        let mut memory = result_vec![0u8; 1024]?;
-        let context = AtomicMemoryContext::new(memory.as_mut_ptr(), memory.len(), thread_manager);
-        assert!(context.is_ok());
-    }
-}

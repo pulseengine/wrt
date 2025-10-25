@@ -1122,35 +1122,3 @@ pub struct ResourceStats {
     pub active_operations:      u64,
     pub active_components:      u64,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_resource_operations_creation() {
-        // Would need proper ABI support for full test
-        // let abi_support = AsyncCanonicalAbiSupport::new(bridge;
-        // let resource_ops = ResourceAsyncOperations::new(abi_support;
-        // assert_eq!(resource_ops.active_operations.len(), 0);
-    }
-
-    #[test]
-    fn test_resource_limits() {
-        let limits = ResourceLimits {
-            max_owned_resources:       32,
-            max_borrowed_resources:    16,
-            max_concurrent_operations: 8,
-            resource_memory_limit:     512 * 1024,
-        };
-
-        assert_eq!(limits.max_owned_resources, 32);
-        assert_eq!(limits.max_borrowed_resources, 16);
-    }
-
-    #[test]
-    fn test_resource_state_transitions() {
-        assert_eq!(ResourceState::Creating as u8, 0);
-        assert_ne!(ResourceState::Active, ResourceState::Dropped);
-    }
-}

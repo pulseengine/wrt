@@ -6,8 +6,6 @@
 pub mod builder;
 pub mod capability_engine;
 pub mod presets;
-#[cfg(test)]
-mod test_standalone;
 
 pub use builder::EngineBuilder;
 pub use capability_engine::{

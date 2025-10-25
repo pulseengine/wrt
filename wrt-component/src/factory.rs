@@ -53,5 +53,5 @@ impl ComponentFactory {
     /// Enable or disable interception of resource operations
     pub fn set_enable_interception(&mut self, enable: bool) {
         self.config.enable_interception = enable;
-    }
+
 }

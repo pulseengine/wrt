@@ -896,7 +896,7 @@ mod tests {
 
         // Test i32.rotl
         context
-            .push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001))
+            .push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001u32 as i32))
             .unwrap();
         context.push_arithmetic_value(Value::I32(1)).unwrap();
         ArithmeticOp::I32Rotl.execute(&mut context).unwrap();
@@ -907,13 +907,13 @@ mod tests {
 
         // Test i32.rotr
         context
-            .push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001))
+            .push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001u32 as i32))
             .unwrap();
         context.push_arithmetic_value(Value::I32(1)).unwrap();
         ArithmeticOp::I32Rotr.execute(&mut context).unwrap();
         assert_eq!(
             context.pop_arithmetic_value().unwrap(),
-            Value::I32(0b11011000_00000000_00000000_00000000)
+            Value::I32(0b11011000_00000000_00000000_00000000u32 as i32)
         );
     }
 

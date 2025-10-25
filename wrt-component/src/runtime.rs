@@ -133,4 +133,5 @@ impl Global {
         self.value = value;
         Ok(())
     }
+
 }
