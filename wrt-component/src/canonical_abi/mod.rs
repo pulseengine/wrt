@@ -52,11 +52,12 @@ impl LoweringContext {
 }
 
 // Tests moved from canonical_abi_tests.rs
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use wrt_error::ErrorCategory;
 
     use super::*;
+    use super::canonical_abi::SimpleMemory;
 
     /// Create a test memory with some sample data
     fn create_test_memory() -> SimpleMemory {

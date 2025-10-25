@@ -491,11 +491,10 @@ impl Clone for BuiltinRegistry {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
-    use wrt_foundation::component_value::WrtComponentValue;
-
     use super::*;
+    use crate::prelude::WrtComponentValue;
     use crate::resources::ResourceManager;
 
     // Simple test handler implementation
@@ -508,7 +507,7 @@ mod tests {
             self.builtin_type
         }
 
-        fn execute(&self, args: &[WrtComponentValue]) -> Result<Vec<WrtComponentValue>> {
+        fn execute(&self, args: &[WrtComponentValue<ComponentProvider>]) -> Result<Vec<WrtComponentValue<ComponentProvider>>> {
             // Simple echo implementation for testing
             Ok(args.to_vec())
         }

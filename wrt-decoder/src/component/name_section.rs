@@ -1088,20 +1088,20 @@ mod tests {
         let parsed = parse_component_name_section(&bytes).unwrap();
 
         assert_eq!(parsed.sort_names.len(), 1);
-        assert!(matches!(parsed.sort_names[0].0, SortIdentifier::Function));
-        assert_eq!(parsed.sort_names[0].1.entries.len(), 2);
-        assert_eq!(parsed.sort_names[0].1.entries[0].index, 0);
+        assert!(matches!(parsed.sort_names.get(0).unwrap().0, SortIdentifier::Function));
+        assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.len(), 2);
+        assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().index, 0);
         #[cfg(feature = "std")]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
+            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
         }
     }
 }

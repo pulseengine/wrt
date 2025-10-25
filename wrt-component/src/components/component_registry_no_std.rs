@@ -172,7 +172,7 @@ impl Default for ComponentRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::component_no_std::Component;
+    use crate::components::component_no_std::Component;
 
     // Create a simple dummy component for testing
     fn create_test_component() -> Component {

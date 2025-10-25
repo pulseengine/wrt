@@ -65,6 +65,11 @@ pub use wrappers::{
 // Tests migrated from integration_test.rs and other test files
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
     use wrt_format::component::{
         ExternType as FormatExternType,
         ValType as FormatValType,

@@ -490,6 +490,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeInstanceType {
 // Tests moved from minimal_test.rs
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "std")]
     use std::{
         any::{
             Any,
@@ -500,6 +501,25 @@ mod tests {
         fmt,
         marker::PhantomData,
         sync::Arc,
+    };
+
+    #[cfg(not(feature = "std"))]
+    use alloc::{
+        boxed::Box,
+        collections::BTreeMap as HashMap,
+        format,
+        string::String,
+        sync::Arc,
+    };
+
+    #[cfg(not(feature = "std"))]
+    use core::{
+        any::{
+            Any,
+            TypeId,
+        },
+        fmt,
+        marker::PhantomData,
     };
 
     #[derive(Debug, Clone)]

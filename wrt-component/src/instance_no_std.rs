@@ -268,7 +268,12 @@ impl Default for InstanceCollection {
 
 #[cfg(test)]
 mod tests {
-    use wrt::types::{
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
+    use wrt_foundation::types::{
         FuncType,
         ValueType,
     };

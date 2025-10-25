@@ -107,6 +107,7 @@ mod tests {
     use std::vec::Vec;
 
     use super::*;
+    use crate::prelude::{FloatBits32, FloatBits64};
 
     // Mock context for testing
     struct MockParametricContext {

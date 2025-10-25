@@ -92,8 +92,8 @@ mod tests {
         let minimal_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal);
         assert_eq!(minimal_parser.validation_level, ValidationLevel::Minimal);
 
-        let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
-        assert_eq!(strict_parser.validation_level, ValidationLevel::Strict);
+        let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
+        assert_eq!(strict_parser.validation_level, ValidationLevel::Full);
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
 
         // Test strict validation
         let mut strict_parser =
-            ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
+            ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
         let result3 = strict_parser.parse(&binary);
         assert!(result3.is_ok());
     }
@@ -230,7 +230,7 @@ mod tests {
         let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Standard);
         assert!(result3.is_ok());
 
-        let result4 = parse_component_binary_with_validation(&binary, ValidationLevel::Strict);
+        let result4 = parse_component_binary_with_validation(&binary, ValidationLevel::Full);
         assert!(result4.is_ok());
     }
 

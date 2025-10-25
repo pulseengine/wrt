@@ -998,6 +998,14 @@ mod tests {
         fn should_intercept_function(&self) -> bool {
             false
         }
+
+        fn clone_strategy(&self) -> Arc<dyn LinkInterceptorStrategy> {
+            Arc::new(Self {
+                bypass: self.bypass,
+                modify_args: self.modify_args,
+                modify_result: self.modify_result,
+            })
+        }
     }
 
     #[test]

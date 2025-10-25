@@ -1498,10 +1498,20 @@ impl<const N: usize> Provider for NoStdProvider<N> {
     }
 
     fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
-        self.verify_access(offset, data_to_write.len())?;
-        if offset + data_to_write.len() > N {
+        // For writes, we only need to check against capacity, not against self.used
+        // because writes are allowed to extend into uninitialized memory.
+        // Only perform bounds checking against the provider's capacity.
+        if offset >= N || offset.saturating_add(data_to_write.len()) > N {
             return Err(Error::memory_out_of_bounds("Write data overflows capacity"));
         }
+
+        // Track write access for statistics if enabled
+        if self.verification_level.should_track_stats() {
+            self.access_count.fetch_add(1, Ordering::Relaxed);
+            self.last_access_offset.store(offset, Ordering::Relaxed);
+            self.last_access_length.store(data_to_write.len(), Ordering::Relaxed);
+        }
+
         self.data[offset..offset + data_to_write.len()].copy_from_slice(data_to_write);
         self.used = core::cmp::max(self.used, offset + data_to_write.len());
         // TODO: Consider if checksum/integrity of Slice/SliceMut needs update here if

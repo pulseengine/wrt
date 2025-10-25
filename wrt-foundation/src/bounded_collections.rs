@@ -3137,7 +3137,7 @@ mod tests {
 
     // Helper function to initialize memory system for tests
     fn init_test_memory_system() {
-        drop(crate::memory_init::MemoryInitializer::initialize);
+        let _ = crate::memory_init::MemoryInitializer::initialize;
     }
 
     // Test BoundedQueue

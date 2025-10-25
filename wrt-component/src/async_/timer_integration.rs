@@ -1067,11 +1067,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    #[cfg(feature = "component-model-threading")]
+    use crate::threading::{
         task_manager::TaskManager,
-        threading::thread_spawn_fuel::FuelTrackedThreadManager,
+        thread_spawn_fuel::FuelTrackedThreadManager,
     };
 
+    #[cfg(feature = "component-model-threading")]
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
@@ -1086,6 +1088,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_timer_creation() {
         let bridge = create_test_bridge();
         let mut timers = TimerIntegration::new(bridge, None);
@@ -1101,6 +1104,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_timer_statistics() {
         let bridge = create_test_bridge();
         let timers = TimerIntegration::new(bridge, None);
@@ -1111,6 +1115,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_timer_types() {
         assert_eq!(TimerType::Oneshot, TimerType::Oneshot);
         assert_ne!(TimerType::Oneshot, TimerType::Interval(1000));
@@ -1131,6 +1136,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_timer_cancellation() {
         let bridge = create_test_bridge();
         let mut timers = TimerIntegration::new(bridge, None);

@@ -3,6 +3,7 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+#[cfg(feature = "std")]
 use std::{
     sync::{
         Arc,
@@ -11,17 +12,24 @@ use std::{
     time::Instant,
 };
 
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+
 use super::{
     Resource,
     ResourceArena,
     ResourceId,
     ResourceManager,
     ResourceTable,
-    SizeClassBufferPool,
 };
+#[cfg(feature = "std")]
+use super::size_class_buffer_pool::SizeClassBufferPool;
+#[cfg(feature = "std")]
+use super::buffer_pool::BufferPool;
 use crate::prelude::*;
 
 #[test]
+#[cfg(feature = "std")]
 fn test_size_class_buffer_pool() {
     // Create the pool
     let mut pool = SizeClassBufferPool::new();
@@ -216,6 +224,7 @@ fn test_multiple_arenas() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_performance_comparison() {
     // This is a simple benchmark to compare standard and optimized buffer pools
     const NUM_ALLOCATIONS: usize = 1000;

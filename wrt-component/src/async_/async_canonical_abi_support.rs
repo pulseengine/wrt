@@ -843,10 +843,12 @@ pub struct AbiStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::task_manager::TaskManager;
+    #[cfg(feature = "component-model-threading")]
+    use crate::threading::task_manager::TaskManager;
     #[cfg(feature = "component-model-threading")]
     use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
 
+    #[cfg(feature = "component-model-threading")]
     fn create_test_bridge() -> TaskManagerAsyncBridge {
         let task_manager = wrt_foundation::Arc::new(wrt_sync::Mutex::new(TaskManager::new()));
         let thread_manager =
@@ -856,6 +858,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_abi_support_creation() {
         let bridge = create_test_bridge();
         let abi_support = AsyncCanonicalAbiSupport::new(bridge);
@@ -863,6 +866,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_component_abi_initialization() {
         let bridge = create_test_bridge();
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge);
@@ -875,6 +879,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_abi_statistics() {
         let bridge = create_test_bridge();
         let abi_support = AsyncCanonicalAbiSupport::new(bridge);

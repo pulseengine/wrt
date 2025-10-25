@@ -166,6 +166,11 @@ pub const MAX_RESOURCE_BUFFER_SIZE: usize = wrt_foundation::bounded::MAX_BUFFER_
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
     use super::*;
 
     #[test]
