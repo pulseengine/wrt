@@ -283,6 +283,61 @@ fn parse_instruction_with_provider(
                 memory_index: 0,
             })
         },
+        0x3A => {
+            // i32.store8
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Store8(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x3B => {
+            // i32.store16
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Store16(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x3C => {
+            // i64.store8
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Store8(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x3D => {
+            // i64.store16
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Store16(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x3E => {
+            // i64.store32
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Store32(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
         0x3F => {
             consumed += 1; // Skip reserved byte
             Instruction::MemorySize(0)
