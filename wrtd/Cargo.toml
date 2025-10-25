@@ -67,8 +67,8 @@ wasi-io = ["wasi", "wrt-wasi/wasi-io"]
 wasi-random = ["wasi", "wrt-wasi/wasi-random"]
 wasi-nn = ["wasi", "wrt-wasi/wasi-nn"]
 
-# Component model support (disabled - wrt-component has compilation issues)
-component-model = ["wrt-execution"]
+# Component model support
+component-model = ["wrt-execution", "dep:wrt-component", "dep:wrt-decoder", "wrt-component/std", "wrt-decoder/std"]
 
 # Safety level presets using capability-based features
 # wrtd with wrt-wasi supports QM to ASIL-B (daemon/service use cases)

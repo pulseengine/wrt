@@ -85,5 +85,5 @@ mod safe_memory {
             FormatOp::Drop => wrt_foundation::ResourceOperation::Drop,
             FormatOp::Rep => wrt_foundation::ResourceOperation::Rep,
         }
-
+    }
 }

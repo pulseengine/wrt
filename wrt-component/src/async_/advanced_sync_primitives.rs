@@ -986,5 +986,5 @@ impl CoreFuture for MutexLockFuture {
                 "Sync primitives manager dropped",
             )))
         }
-
+    }
 }
