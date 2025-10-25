@@ -191,6 +191,8 @@ pub mod bounded;
 pub mod bounded_collections;
 /// Bounded slice abstraction for safe slice-like access
 pub mod bounded_slice;
+/// Direct storage map for hot-path execution (no serialization)
+pub mod direct_map;
 /// Binary std/no_std choice
 pub mod builder;
 /// WebAssembly Component Model built-in types

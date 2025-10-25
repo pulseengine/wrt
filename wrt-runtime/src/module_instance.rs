@@ -109,8 +109,8 @@ impl Debug for ModuleInstance {
 }
 
 impl ModuleInstance {
-    /// Create a new module instance from a module
-    pub fn new(module: Module, instance_id: usize) -> Result<Self> {
+    /// Create a new module instance from a module (accepts Arc to avoid deep clones)
+    pub fn new(module: Arc<Module>, instance_id: usize) -> Result<Self> {
         // Create a single shared provider to avoid stack overflow from multiple
         // provider allocations
         let shared_provider = create_runtime_provider()?;
@@ -125,7 +125,7 @@ impl ModuleInstance {
         let globals_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
 
         Ok(Self {
-            module: Arc::new(module),
+            module,
             memories: Arc::new(Mutex::new(memories_vec)),
             tables: Arc::new(Mutex::new(tables_vec)),
             globals: Arc::new(Mutex::new(globals_vec)),
@@ -430,7 +430,7 @@ impl Default for ModuleInstance {
         let default_module = Module::default();
         // Default implementation must succeed for basic functionality
         // Use minimal memory allocation that should always work
-        match Self::new(default_module, 0) {
+        match Self::new(Arc::new(default_module), 0) {
             Ok(instance) => instance,
             Err(_) => {
                 // Create minimal instance using RuntimeProvider for type consistency
@@ -506,7 +506,7 @@ impl Default for ModuleInstance {
 impl Clone for ModuleInstance {
     fn clone(&self) -> Self {
         // Create a new instance with the same module and instance ID
-        Self::new((*self.module).clone(), self.instance_id).unwrap_or_else(|_| {
+        Self::new(Arc::clone(&self.module), self.instance_id).unwrap_or_else(|_| {
             // Fallback implementation if allocation fails
             Self::default()
         })
@@ -662,7 +662,7 @@ impl FromBytes for ModuleInstance {
         let default_module = Module::default();
 
         // Create the instance using the new method
-        Self::new(default_module, instance_id).map_err(|_| {
+        Self::new(Arc::new(default_module), instance_id).map_err(|_| {
             wrt_error::Error::runtime_error("Failed to create module instance from bytes")
         })
     }

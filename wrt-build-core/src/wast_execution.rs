@@ -74,7 +74,7 @@ impl WastEngine {
 
         use wrt_runtime::module_instance::ModuleInstance;
         let module_instance = Arc::new(
-            ModuleInstance::new(module.clone(), 0).context("Failed to create module instance")?,
+            ModuleInstance::new(Arc::new(module.clone()), 0).context("Failed to create module instance")?,
         );
 
         // Set the current module in the engine

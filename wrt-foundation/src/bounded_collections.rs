@@ -957,7 +957,11 @@ where
         let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
         let mut write_stream = WriteStream::new(slice_mut);
         item.to_bytes_with_provider(&mut write_stream, self.handler.provider())
-            .map_err(|e| BoundedError::runtime_execution_error("Failed to serialize item"))?;
+            .map_err(|e| {
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: to_bytes_with_provider failed with error: {:?}", e);
+                BoundedError::from(e)
+            })?;
 
         // Write the serialized data to the handler
         self.handler
