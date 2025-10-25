@@ -28,6 +28,7 @@ use wrt_foundation::{
         MemoryCapabilityContext,
         MemoryOperation,
     },
+    direct_map::DirectMap,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::{
@@ -196,10 +197,10 @@ pub struct CapabilityAwareEngine {
     context:           MemoryCapabilityContext,
     /// Engine preset used for resource limit extraction
     preset:            EnginePreset,
-    /// Loaded modules indexed by handle
-    modules:           BoundedMap<ModuleHandle, Module, MAX_MODULES, BaseRuntimeProvider>,
-    /// Module instances indexed by handle  
-    instances: BoundedMap<InstanceHandle, ModuleInstance, MAX_INSTANCES, BaseRuntimeProvider>,
+    /// Loaded modules indexed by handle (using DirectMap to avoid serialization stack overflow)
+    modules:           DirectMap<ModuleHandle, Arc<Module>, MAX_MODULES>,
+    /// Module instances indexed by handle (using DirectMap to avoid serialization stack overflow)
+    instances:         DirectMap<InstanceHandle, Arc<ModuleInstance>, MAX_INSTANCES>,
     /// Next instance index
     next_instance_idx: usize,
     /// Host function registry for WASI and custom host functions
@@ -232,18 +233,13 @@ impl CapabilityAwareEngine {
         context: MemoryCapabilityContext,
         preset: EnginePreset,
     ) -> Result<Self> {
-        // Use simple NoStdProvider directly for internal structures to avoid recursion
-        // These are internal engine data structures and don't need full capability
-        // checking
-        let modules_provider = BaseRuntimeProvider::default();
-        let instances_provider = BaseRuntimeProvider::default();
-
         // Initialize host integration based on preset
         let (host_registry, host_manager) = Self::create_host_integration(&preset)?;
 
-        // Create BoundedMaps for engine internal structures
-        let modules = BoundedMap::new(modules_provider)?;
-        let instances = BoundedMap::new(instances_provider)?;
+        // Create DirectMaps for engine internal structures
+        // DirectMap doesn't require providers and avoids serialization stack overflow
+        let modules = DirectMap::new();
+        let instances = DirectMap::new();
 
         // Create the inner stackless engine
         let inner_engine = StacklessEngine::new();
@@ -425,18 +421,18 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // Convert to runtime module
         let runtime_module = Module::from_wrt_module(&decoded)?;
 
-        // Create and store with unique handle
+        // Create and store with unique handle (wrapped in Arc to avoid deep clones)
         let handle = ModuleHandle::new();
-        self.modules.insert(handle, runtime_module)?;
+        self.modules.insert(handle, Arc::new(runtime_module))?;
 
         Ok(handle)
     }
 
     fn instantiate(&mut self, module_handle: ModuleHandle) -> Result<InstanceHandle> {
-        // Get the module
-        let module = self
+        // Get the module (DirectMap returns Option<&Arc<Module>>)
+        let module_arc = self
             .modules
-            .get(&module_handle)?
+            .get(&module_handle)
             .ok_or_else(|| Error::resource_not_found("Module not found"))?;
 
         // Verify capability for instance allocation
@@ -445,20 +441,20 @@ impl CapabilityEngine for CapabilityAwareEngine {
         };
         self.context.verify_operation(CrateId::Runtime, &operation)?;
 
-        // Create module instance
-        let instance = ModuleInstance::new(module.clone(), self.next_instance_idx)?;
+        // Create module instance (clone the Arc, not the Module)
+        let instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
         let instance_arc = Arc::new(instance.clone());
 
         // Register with inner engine
-        let instance_idx = self.inner.set_current_module(instance_arc)?;
+        let instance_idx = self.inner.set_current_module(instance_arc.clone())?;
         self.next_instance_idx += 1;
 
-        // Store mapping
+        // Store mapping (wrapped in Arc to avoid deep clones)
         let handle = InstanceHandle::from_index(instance_idx);
-        self.instances.insert(handle, instance)?;
+        self.instances.insert(handle, instance_arc)?;
 
         // Run start function if present
-        if let Some(start_idx) = module.start {
+        if let Some(start_idx) = module_arc.start {
             self.inner.execute(instance_idx, start_idx as usize, vec![])?;
         }
 
@@ -471,17 +467,17 @@ impl CapabilityEngine for CapabilityAwareEngine {
         func_name: &str,
         args: &[Value],
     ) -> Result<Vec<Value>> {
-        // Get the instance
+        // Get the instance (DirectMap returns Option<&Arc<ModuleInstance>>)
         let instance = self
             .instances
-            .get(&instance_handle)?
+            .get(&instance_handle)
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
         // Find the function by name using the new function resolution
         let func_idx = instance.module().validate_function_call(func_name)?;
 
-        // Set current module for execution
-        self.inner.set_current_module(Arc::new(instance.clone()))?;
+        // Set current module for execution (instance is already &Arc<ModuleInstance>)
+        self.inner.set_current_module(Arc::clone(instance))?;
 
         // Execute the function
         let results =
@@ -496,7 +492,7 @@ impl CapabilityAwareEngine {
     pub fn get_exported_functions(&self, instance_handle: InstanceHandle) -> Result<Vec<String>> {
         let instance = self
             .instances
-            .get(&instance_handle)?
+            .get(&instance_handle)
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
         let mut functions = Vec::new();
@@ -510,7 +506,7 @@ impl CapabilityAwareEngine {
     pub fn has_function(&self, instance_handle: InstanceHandle, func_name: &str) -> Result<bool> {
         let instance = self
             .instances
-            .get(&instance_handle)?
+            .get(&instance_handle)
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
         Ok(instance.module().find_function_by_name(func_name).is_some())
@@ -535,10 +531,10 @@ impl CapabilityAwareEngine {
         func_name: &str,
         args: &[wrt_foundation::values::Value],
     ) -> Result<Vec<wrt_foundation::values::Value>> {
-        // Additional capability-based validation
+        // Additional capability-based validation (DirectMap returns Option)
         let instance = self
             .instances
-            .get(&instance_handle)?
+            .get(&instance_handle)
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
         // Verify memory capability allows function execution

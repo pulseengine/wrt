@@ -103,11 +103,10 @@ type CustomSections = BoundedMap<
     16,
     RuntimeProvider,
 >;
-type ExportMap = BoundedMap<
+type ExportMap = wrt_foundation::direct_map::DirectMap<
     wrt_foundation::bounded::BoundedString<256>,
     Export,
     64,
-    RuntimeProvider,
 >;
 
 // Additional type aliases for struct fields to use unified RuntimeProvider
@@ -650,7 +649,7 @@ impl Module {
             data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start:           None,
             custom_sections: BoundedMap::new(provider.clone())?,
-            exports:         BoundedMap::new(provider)?,
+            exports:         ExportMap::new(),
             name:            None,
             binary:          None,
             validated:       false,
@@ -842,17 +841,10 @@ impl Module {
             }
         };
 
-        let exports = match BoundedMap::new(provider) {
-            Ok(map) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap exports BoundedMap created successfully");
-                map
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap exports BoundedMap creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create exports collection")
-            }
+        let exports = {
+            #[cfg(feature = "std")]
+            eprintln!("INFO: Bootstrap exports DirectMap created successfully");
+            ExportMap::new()
         };
         
         Self {
@@ -959,7 +951,7 @@ impl Module {
             data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start:           None,
             custom_sections: BoundedMap::new(runtime_provider2)?,
-            exports:         BoundedMap::new(runtime_provider3)?,
+            exports:         ExportMap::new(),
             name:            None,
             binary:          None,
             validated:       false,
@@ -1086,16 +1078,25 @@ impl Module {
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Converting {} exports from wrt_module", wrt_module.exports.len());
         for export in &wrt_module.exports {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Processing export name='{}', kind={:?}, index={}", export.name, export.kind, export.index);
+
             // Create the export name with correct provider size (8192)
             let name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name
             )?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Created export name BoundedString");
 
             // Create key with correct type for ExportMap (BoundedString<256,
             // RuntimeProvider>)
             let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name
             )?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Created map_key BoundedString");
 
             let kind = match export.kind {
                 FormatExportKind::Function => ExportKind::Function,
@@ -1114,7 +1115,17 @@ impl Module {
                 index: export.index,
             };
 
-            runtime_module.exports.insert(map_key, runtime_export)?;
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Created Export struct, about to insert into exports map");
+
+            runtime_module.exports.insert(map_key, runtime_export).map_err(|e| {
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: exports.insert failed with error: {:?}", e);
+                e
+            })?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Successfully inserted export into map");
         }
 
         #[cfg(feature = "std")]
@@ -1552,7 +1563,7 @@ impl Module {
         // RuntimeString key
         let runtime_key: wrt_foundation::bounded::BoundedString<256> =
             wrt_foundation::bounded::BoundedString::from_str_truncate(name).ok()?;
-        self.exports.get(&runtime_key).ok().flatten()
+        self.exports.get(&runtime_key).cloned()
     }
 
     /// Gets a function by index
@@ -2496,7 +2507,7 @@ impl Module {
         let bounded_name =
             wrt_foundation::bounded::BoundedString::from_str_truncate(name).ok()?;
 
-        if let Ok(Some(export)) = self.exports.get(&bounded_name) {
+        if let Some(export) = self.exports.get(&bounded_name) {
             if export.kind == ExportKind::Function {
                 return Some(export.index);
             }
