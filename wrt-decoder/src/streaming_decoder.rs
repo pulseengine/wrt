@@ -229,17 +229,140 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process import section
     fn process_import_section(&mut self, data: &[u8]) -> Result<()> {
+        use crate::optimized_string::validate_utf8_name;
+
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        #[allow(unused_assignments)]
-        {
-            offset += bytes_read;
-        }
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG process_import_section: count={}, data.len()={}", count, data.len());
 
         // Process each import one at a time
-        for _ in 0..count {
-            // Skip the actual import parsing for now
+        for i in 0..count {
+            // Parse module name
+            let (module_name, new_offset) = validate_utf8_name(data, offset)?;
+            offset = new_offset;
+
+            // Parse field name
+            let (field_name, new_offset) = validate_utf8_name(data, offset)?;
+            offset = new_offset;
+
+            // Parse import kind
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of import kind"));
+            }
+            let kind = data[offset];
+            offset += 1;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG import #{}: module='{}', field='{}', kind=0x{:02x}",
+                     i, module_name, field_name, kind);
+
+            // Parse import description and handle based on kind
+            match kind {
+                0x00 => {
+                    // Function import
+                    let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("DEBUG import #{}: function type_idx={}", i, type_idx);
+
+                    // Create placeholder function for imported function
+                    // This ensures function index space includes imports
+                    let func = Function {
+                        type_idx,
+                        locals: alloc::vec::Vec::new(),
+                        code: alloc::vec::Vec::new(),
+                    };
+                    let _ = self.module.functions.push(func);
+
+                    // Also add to imports list
+                    #[cfg(feature = "std")]
+                    {
+                        use wrt_format::module::{Import, ImportDesc};
+                        self.module.imports.push(Import {
+                            module: String::from(module_name),
+                            name: String::from(field_name),
+                            desc: ImportDesc::Function(type_idx),
+                        });
+                    }
+                },
+                0x01 => {
+                    // Table import - need to parse table type
+                    // ref_type (1 byte) + limits (flags + min, optional max)
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of table import"));
+                    }
+                    let _ref_type = data[offset];
+                    offset += 1;
+
+                    // Parse limits
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of table limits"));
+                    }
+                    let flags = data[offset];
+                    offset += 1;
+                    let (min, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                    if flags & 0x01 != 0 {
+                        let (max, bytes_read) = read_leb128_u32(data, offset)?;
+                        offset += bytes_read;
+                        #[cfg(feature = "std")]
+                        eprintln!("DEBUG import #{}: table min={}, max={}", i, min, max);
+                    } else {
+                        #[cfg(feature = "std")]
+                        eprintln!("DEBUG import #{}: table min={}", i, min);
+                    }
+                },
+                0x02 => {
+                    // Memory import - need to parse limits
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of memory import"));
+                    }
+                    let flags = data[offset];
+                    offset += 1;
+                    let (min, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                    if flags & 0x01 != 0 {
+                        let (max, bytes_read) = read_leb128_u32(data, offset)?;
+                        offset += bytes_read;
+                        #[cfg(feature = "std")]
+                        eprintln!("DEBUG import #{}: memory min={} pages, max={} pages", i, min, max);
+                    } else {
+                        #[cfg(feature = "std")]
+                        eprintln!("DEBUG import #{}: memory min={} pages", i, min);
+                    }
+                },
+                0x03 => {
+                    // Global import - need to parse global type
+                    // value_type (1 byte) + mutability (1 byte)
+                    if offset + 1 >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of global import"));
+                    }
+                    let _value_type = data[offset];
+                    offset += 1;
+                    let _mutability = data[offset];
+                    offset += 1;
+                    #[cfg(feature = "std")]
+                    eprintln!("DEBUG import #{}: global", i);
+                },
+                0x04 => {
+                    // Tag import
+                    let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                    #[cfg(feature = "std")]
+                    eprintln!("DEBUG import #{}: tag type_idx={}", i, type_idx);
+                },
+                _ => {
+                    return Err(Error::parse_error("Invalid import kind"));
+                },
+            }
         }
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG process_import_section: done, functions.len()={}", self.module.functions.len());
 
         Ok(())
     }

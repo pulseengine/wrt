@@ -244,9 +244,7 @@ impl ValueType {
             0x79 => Ok(ValueType::I16x8),
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
-            _ => Err(Error::runtime_execution_error(
-                ", // Potential: Add byte as context to Error
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid value type byte")),
         }
     }
 
@@ -266,7 +264,7 @@ impl ValueType {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                ",
+                "Invalid value type byte",
             )),
         }
     }
