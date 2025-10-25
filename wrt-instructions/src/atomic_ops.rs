@@ -551,7 +551,8 @@ mod tests {
     fn test_atomic_load_opcodes() {
         let memarg = MemArg {
             offset: 0,
-            align:  2,
+            align_exponent:  2,
+            memory_index: 0,
         };
 
         let tests = vec![
@@ -582,7 +583,8 @@ mod tests {
     fn test_atomic_store_opcodes() {
         let memarg = MemArg {
             offset: 0,
-            align:  2,
+            align_exponent:  2,
+            memory_index: 0,
         };
 
         let tests = vec![
@@ -613,7 +615,8 @@ mod tests {
     fn test_atomic_rmw_opcodes() {
         let memarg = MemArg {
             offset: 0,
-            align:  2,
+            align_exponent:  2,
+            memory_index: 0,
         };
 
         let tests = vec![
@@ -652,7 +655,8 @@ mod tests {
     fn test_atomic_cmpxchg_opcodes() {
         let memarg = MemArg {
             offset: 0,
-            align:  2,
+            align_exponent:  2,
+            memory_index: 0,
         };
 
         let tests = vec![
@@ -679,7 +683,8 @@ mod tests {
     fn test_wait_notify_opcodes() {
         let memarg = MemArg {
             offset: 0,
-            align:  2,
+            align_exponent:  2,
+            memory_index: 0,
         };
 
         let tests = vec![

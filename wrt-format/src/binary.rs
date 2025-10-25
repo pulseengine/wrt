@@ -3126,10 +3126,11 @@ mod tests {
     }
 
     // Re-export pure parsing functions for std builds
-    pub use super::{
-        parse_data,
-        parse_element_segment_pure,
-    };
+    // Note: parse_data and parse_element_segment_pure have been removed or renamed
+    // pub use super::{
+    //     parse_data,
+    //     parse_element_segment_pure,
+    // };
 }
 
 // Additional exports and aliases for compatibility
