@@ -1104,11 +1104,13 @@ impl ChannelReceiver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    #[cfg(feature = "component-model-threading")]
+    use crate::threading::{
         task_manager::TaskManager,
-        threading::thread_spawn_fuel::FuelTrackedThreadManager,
+        thread_spawn_fuel::FuelTrackedThreadManager,
     };
 
+    #[cfg(feature = "component-model-threading")]
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
@@ -1123,6 +1125,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_channel_creation() {
         let bridge = create_test_bridge();
         let mut channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
@@ -1138,6 +1141,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_channel_statistics() {
         let bridge = create_test_bridge();
         let channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
@@ -1148,6 +1152,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "component-model-threading")]
     fn test_channel_types() {
         assert_eq!(ChannelType::Oneshot, ChannelType::Oneshot);
         assert_ne!(ChannelType::Bounded(32), ChannelType::Unbounded);

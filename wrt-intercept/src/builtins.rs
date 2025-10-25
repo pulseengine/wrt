@@ -13,6 +13,11 @@ use wrt_foundation::component_value::{
 };
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
+#[cfg(feature = "std")]
+use wrt_foundation::{
+    FloatBits32,
+    FloatBits64,
+};
 #[allow(unused_imports)] // Used in feature-gated code
 use wrt_error::Error;
 
@@ -371,8 +376,8 @@ mod tests {
         let values = vec![
             ComponentValue::S32(123),
             ComponentValue::S64(456),
-            ComponentValue::F32(1.23),
-            ComponentValue::F64(4.56),
+            ComponentValue::F32(FloatBits32::from_float(1.23)),
+            ComponentValue::F64(FloatBits64::from_float(4.56)),
         ];
 
         let serialized_bytes = BuiltinSerialization::serialize(&values).unwrap();
@@ -389,14 +394,14 @@ mod tests {
         if let (ComponentValue::F32(a), ComponentValue::F32(b)) =
             (&deserialized_values[2], &values[2])
         {
-            assert!((a - b).abs() < f32::EPSILON);
+            assert!((a.to_f32() - b.to_f32()).abs() < f32::EPSILON);
         } else {
             panic!("Expected F32 values");
         }
         if let (ComponentValue::F64(a), ComponentValue::F64(b)) =
             (&deserialized_values[3], &values[3])
         {
-            assert!((a - b).abs() < f64::EPSILON);
+            assert!((a.to_f64() - b.to_f64()).abs() < f64::EPSILON);
         } else {
             panic!("Expected F64 values");
         }

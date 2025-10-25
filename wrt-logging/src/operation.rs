@@ -108,7 +108,7 @@ mod tests {
     use crate::level::LogLevel;
 
     #[test]
-    fn test_log_operation_creation() -> wrt_foundation::Result<()> {
+    fn test_log_operation_creation() -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             // Test basic creation

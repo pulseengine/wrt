@@ -50,14 +50,22 @@ impl InstanceValue {
 
 #[cfg(test)]
 mod tests {
-    use wrt::types::FuncType;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
+    use wrt_foundation::types::{
+        FuncType,
+        ValueType,
+    };
     use wrt_format::component::{
         ExternType,
         ValType,
     };
 
     use super::*;
-    use crate::component::{
+    use crate::components::component::{
         ExternValue,
         FunctionValue,
     };
@@ -65,8 +73,8 @@ mod tests {
     #[test]
     fn test_instance_value() {
         let func_type = FuncType {
-            params:  vec![wrt::types::ValueType::I32, wrt::types::ValueType::I32],
-            results: vec![wrt::types::ValueType::I32],
+            params:  vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
         };
 
         let func_value = FunctionValue {

@@ -1336,7 +1336,7 @@ mod tests {
 
         let provider = safe_managed_alloc!(512, CrateId::Component).unwrap();
         let task = ScheduledTask {
-            task_id:           TaskId(1),
+            task_id:           1 as TaskId,
             priority:          0,
             estimated_time_us: 1000,
             task_fn:           TaskFunction::Custom {

@@ -566,12 +566,12 @@ mod tests {
     fn test_minimal_binaries() {
         let core = FormatTestData::minimal_core_module().unwrap();
         assert!(core.len() >= 8);
-        assert_eq!(&core.as_slice()[0..4], &[0x00, 0x61, 0x73, 0x6d]);
+        assert_eq!(&core.as_slice().unwrap()[0..4], &[0x00, 0x61, 0x73, 0x6d]);
 
         let component = FormatTestData::minimal_component().unwrap();
         assert!(component.len() >= 8);
-        assert_eq!(&component.as_slice()[0..4], &[0x00, 0x61, 0x73, 0x6d]);
-        assert_eq!(component.as_slice()[4], 0x0a); // Component version
+        assert_eq!(&component.as_slice().unwrap()[0..4], &[0x00, 0x61, 0x73, 0x6d]);
+        assert_eq!(component.as_slice().unwrap()[4], 0x0a); // Component version
     }
 
     #[test]

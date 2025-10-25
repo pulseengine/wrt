@@ -707,16 +707,23 @@ unsafe impl core::alloc::GlobalAlloc for NoAllocator {
 
 // Panic handler for no_std builds without explicit panic handler feature
 // This minimal panic handler is only enabled when building no_std without
-// a panic handler feature, to allow the library to compile standalone
+// a panic handler feature, to allow the library to compile standalone.
+// Note: This is never active during testing as tests always link with std.
+// For actual no_std binaries, use one of the panic handler features.
 #[cfg(all(
     not(feature = "std"),
     not(test),
+    not(doc),
+    not(doctest),
     not(any(
         feature = "enable-panic-handler",
         feature = "dev-panic-handler",
         feature = "asil-b-panic-handler",
         feature = "asil-d-panic-handler"
-    ))
+    )),
+    // Only enable when std is not in the crate graph
+    // This prevents conflicts when testing with std-enabled dependencies
+    target_os = "none"
 ))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {

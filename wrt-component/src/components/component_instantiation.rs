@@ -1056,7 +1056,7 @@ mod additional_component_tests {
     use super::*;
     use crate::{
         canonical_abi::ComponentType,
-        component_linker::*,
+        components::component_linker::*,
     };
 
     // ====== COMPONENT INSTANCE TESTS ======

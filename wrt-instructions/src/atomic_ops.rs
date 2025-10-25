@@ -540,6 +540,8 @@ impl AtomicOp {
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+    use alloc::vec;
     use super::*;
 
     #[test]

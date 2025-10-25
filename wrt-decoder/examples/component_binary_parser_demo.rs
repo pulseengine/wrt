@@ -69,7 +69,7 @@ fn demo_validation_levels() -> Result<()> {
     println!("✅ Standard validation: Success");
 
     // Strict validation
-    let component3 = parse_component_binary_with_validation(&binary, ValidationLevel::Strict)?;
+    let component3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full)?;
     println!("✅ Strict validation: Success");
 
     println!("   All validation levels accept the demo component");
@@ -84,7 +84,7 @@ fn demo_parser_api() -> Result<()> {
     let binary = create_demo_component_binary();
 
     // Create parser with custom validation level
-    let mut parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
+    let mut parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
     println!("Created parser with strict validation");
 
     // Parse the component

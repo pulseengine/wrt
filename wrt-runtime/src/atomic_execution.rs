@@ -102,6 +102,23 @@ macro_rules! result_vec {
             }
         }
     };
+    ($item:expr; $count:expr) => {
+        {
+            #[cfg(feature = "std")]
+            {
+                Ok(vec![$item; $count])
+            }
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
+            {
+                let provider = wrt_foundation::safe_managed_alloc!(8192, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                let mut v = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                for _ in 0..$count {
+                    v.push($item)?;
+                }
+                Ok(v)
+            }
+        }
+    };
     ($($item:expr),+) => {
         {
             #[cfg(feature = "std")]

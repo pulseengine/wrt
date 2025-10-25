@@ -1453,6 +1453,11 @@ pub fn convert_verification_level(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -1468,7 +1473,7 @@ mod tests {
     #[test]
     fn test_register_function() {
         let mut runtime = RuntimeInstance::new();
-        let func_type = wrt_runtime::func::FuncType {
+        let func_type = FuncType {
             params:  vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
@@ -1507,7 +1512,7 @@ mod tests {
         let mut runtime = RuntimeInstance::new();
 
         // Create and register a function expecting 2 arguments
-        let func_type = wrt_runtime::func::FuncType {
+        let func_type = FuncType {
             params:  vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
@@ -1539,7 +1544,7 @@ mod tests {
         let mut runtime = RuntimeInstance::new();
 
         // Create and register a function expecting I32 arguments
-        let func_type = wrt_runtime::func::FuncType {
+        let func_type = FuncType {
             params:  vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
@@ -1571,7 +1576,7 @@ mod tests {
         let mut runtime = RuntimeInstance::new();
 
         // Create and register a function
-        let func_type = wrt_runtime::func::FuncType {
+        let func_type = FuncType {
             params:  vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
