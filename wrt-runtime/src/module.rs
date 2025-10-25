@@ -593,6 +593,11 @@ impl Data {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Module {
     /// Module types (function signatures)
+    /// In std mode, use Vec since WrtFuncType has variable size
+    /// BoundedVec requires fixed-size items but FuncType size varies with params/results
+    #[cfg(feature = "std")]
+    pub types:           Vec<WrtFuncType>,
+    #[cfg(not(feature = "std"))]
     pub types:           BoundedModuleTypes,
     /// Imported functions, tables, memories, and globals
     pub imports:         ModuleImports,
@@ -639,6 +644,9 @@ impl Module {
         let provider = Self::create_direct_provider()?;
 
         Ok(Self {
+            #[cfg(feature = "std")]
+            types:           Vec::new(),
+            #[cfg(not(feature = "std"))]
             types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             imports:         BoundedMap::new(provider.clone())?,
             functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -721,14 +729,21 @@ impl Module {
         // This should work because we're using heap allocation
         // DEBUG: Don't clone the provider - use references instead
         let provider_ref = &provider;
+
+        // In std mode, use Vec for types since WrtFuncType has variable size
+        #[cfg(feature = "std")]
+        let types = {
+            eprintln!("INFO: Bootstrap types Vec created successfully (std mode)");
+            Vec::new()
+        };
+
+        #[cfg(not(feature = "std"))]
         let types = match BoundedVec::new(provider.clone()) {
             Ok(vec) => {
-                #[cfg(feature = "std")]
                 eprintln!("INFO: Bootstrap types BoundedVec created successfully");
                 vec
             }
             Err(e) => {
-                #[cfg(feature = "std")]
                 eprintln!("ERROR: Bootstrap types BoundedVec creation failed: {:?}", e);
                 panic!("Bootstrap failed - cannot create types collection")
             }
@@ -941,6 +956,9 @@ impl Module {
         let runtime_provider2 = create_runtime_provider()?;
         let runtime_provider3 = create_runtime_provider()?;
         Ok(Self {
+            #[cfg(feature = "std")]
+            types:           Vec::new(),
+            #[cfg(not(feature = "std"))]
             types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             imports:         BoundedMap::new(runtime_provider1)?,
             functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -1001,13 +1019,29 @@ impl Module {
         // Convert types
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Converting {} types from wrt_module", wrt_module.types.len());
-        for func_type in &wrt_module.types {
+        for (i, func_type) in wrt_module.types.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Converting type {}: params.len()={}, results.len()={}",
+                     i, func_type.params.len(), func_type.results.len());
+
             let param_types: Vec<_> = func_type.params.to_vec();
             let result_types: Vec<_> = func_type.results.to_vec();
 
             let wrt_func_type = WrtFuncType::new(param_types, result_types)?;
+
+            // In std mode, Vec::push doesn't return Result
+            #[cfg(feature = "std")]
+            runtime_module.types.push(wrt_func_type);
+
+            #[cfg(not(feature = "std"))]
             runtime_module.types.push(wrt_func_type)?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: Pushed type {}, runtime_module.types.len()={}", i, runtime_module.types.len());
         }
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Done converting types, runtime_module.types.len()={}", runtime_module.types.len());
 
         // Convert functions
         #[cfg(feature = "std")]
@@ -1148,14 +1182,30 @@ impl Module {
         runtime_module.start = wrt_module.start;
 
         // Convert types
-        for func_type in &wrt_module.types {
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG Module::from_format: Converting {} types", wrt_module.types.len());
+
+        for (i, func_type) in wrt_module.types.iter().enumerate() {
             let _provider = create_runtime_provider()?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG Module::from_format: Converting type {}: params.len()={}, results.len()={}",
+                     i, func_type.params.len(), func_type.results.len());
+
             let wrt_func_type = WrtFuncType::new(
                 func_type.params.iter().copied(),
                 func_type.results.iter().copied()
             )?;
+
             runtime_module.types.push(wrt_func_type)?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG Module::from_format: Pushed type {}, runtime_module.types.len()={}",
+                     i, runtime_module.types.len());
         }
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG Module::from_format: Done converting types, final len={}", runtime_module.types.len());
 
         // Convert imports
         for import in &wrt_module.imports {
@@ -1579,6 +1629,13 @@ impl Module {
         if idx as usize >= self.types.len() {
             return None;
         }
+
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
+        return self.types.get(idx as usize).cloned();
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
         self.types.get(idx as usize).ok()
     }
 
@@ -1723,8 +1780,19 @@ impl Module {
 
     /// Add a function type to the module
     pub fn add_type(&mut self, ty: WrtFuncType) -> Result<()> {
-        self.types.push(ty)?;
-        Ok(())
+        // In std mode, Vec::push doesn't return Result
+        #[cfg(feature = "std")]
+        {
+            self.types.push(ty);
+            Ok(())
+        }
+
+        // In no_std mode, BoundedVec::push returns Result
+        #[cfg(not(feature = "std"))]
+        {
+            self.types.push(ty)?;
+            Ok(())
+        }
     }
 
     /// Add a function import to the module
@@ -1734,6 +1802,16 @@ impl Module {
         item_name: &str,
         type_idx: u32,
     ) -> Result<()> {
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
+        let func_type = self
+            .types
+            .get(type_idx as usize)
+            .cloned()
+            .ok_or_else(|| Error::validation_type_mismatch("Type index out of bounds for import func"))?;
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
         let func_type = self
             .types
             .get(type_idx as usize)
@@ -2507,10 +2585,36 @@ impl Module {
         let bounded_name =
             wrt_foundation::bounded::BoundedString::from_str_truncate(name).ok()?;
 
+        #[cfg(feature = "std")]
+        {
+            eprintln!("DEBUG find_function_by_name: looking for '{}', exports.len()={}", name, self.exports.len());
+            let keys_debug: Vec<String> = self.exports.keys()
+                .map(|k| {
+                    k.as_bytes()
+                        .ok()
+                        .and_then(|slice| {
+                            let bytes: &[u8] = slice.as_ref();
+                            std::str::from_utf8(bytes).ok().map(|s| s.to_string())
+                        })
+                        .unwrap_or_else(|| "Error: failed to read key".to_string())
+                })
+                .collect();
+            eprintln!("DEBUG find_function_by_name: exports keys: {:?}", keys_debug);
+        }
+
         if let Some(export) = self.exports.get(&bounded_name) {
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG find_function_by_name: found export kind={:?}, index={}", export.kind, export.index);
+            }
             if export.kind == ExportKind::Function {
                 return Some(export.index);
             }
+        }
+
+        #[cfg(feature = "std")]
+        {
+            eprintln!("DEBUG find_function_by_name: '{}' not found or not a function", name);
         }
         None
     }

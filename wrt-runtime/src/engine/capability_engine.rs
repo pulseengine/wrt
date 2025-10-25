@@ -476,8 +476,14 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // Find the function by name using the new function resolution
         let func_idx = instance.module().validate_function_call(func_name)?;
 
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG CapabilityEngine::execute: func_idx={}", func_idx);
+
         // Set current module for execution (instance is already &Arc<ModuleInstance>)
         self.inner.set_current_module(Arc::clone(instance))?;
+
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG CapabilityEngine::execute: about to call inner.execute");
 
         // Execute the function
         let results =

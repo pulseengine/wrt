@@ -200,7 +200,17 @@ impl ModuleInstance {
             .get(idx as usize)
             .map_err(|_| Error::runtime_function_not_found("Function index not found"))?;
 
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
         let ty = self
+            .module
+            .types
+            .get(function.type_idx as usize)
+            .ok_or_else(|| Error::validation_type_mismatch("Type index not found"))?;
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
+        let ty = &self
             .module
             .types
             .get(function.type_idx as usize)
@@ -253,7 +263,17 @@ impl ModuleInstance {
             .get(idx as usize)
             .map_err(|_| Error::runtime_function_not_found("Function index not found"))?;
 
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
         let ty = self
+            .module
+            .types
+            .get(function.type_idx as usize)
+            .ok_or_else(|| Error::validation_type_mismatch("Type index not found"))?;
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
+        let ty = &self
             .module
             .types
             .get(function.type_idx as usize)
@@ -363,6 +383,14 @@ impl ModuleInstance {
             .get(idx)
             .map_err(|_| Error::runtime_function_not_found("Function index not found"))?;
 
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
+        return self.module.types.get(function.type_idx as usize)
+            .cloned()
+            .ok_or_else(|| Error::runtime_error("Function type index out of bounds"));
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
         self.module.types.get(function.type_idx as usize)
     }
 
@@ -373,6 +401,14 @@ impl ModuleInstance {
 
     /// Get a type by index - alias for compatibility with tail_call.rs
     pub fn get_type(&self, idx: usize) -> Result<WrtFuncType> {
+        // In std mode, types is Vec so get() returns Option<&T>
+        #[cfg(feature = "std")]
+        return self.module.types.get(idx)
+            .cloned()
+            .ok_or_else(|| Error::runtime_error("Type index out of bounds"));
+
+        // In no_std mode, types is BoundedVec so get() returns Result<T>
+        #[cfg(not(feature = "std"))]
         self.module.types.get(idx)
     }
 }
