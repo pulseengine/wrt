@@ -13,11 +13,6 @@ use wrt_foundation::component_value::{
 };
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
-#[cfg(feature = "std")]
-use wrt_foundation::{
-    FloatBits32,
-    FloatBits64,
-};
 #[allow(unused_imports)] // Used in feature-gated code
 use wrt_error::Error;
 
@@ -376,8 +371,8 @@ mod tests {
         let values = vec![
             ComponentValue::S32(123),
             ComponentValue::S64(456),
-            ComponentValue::F32(FloatBits32::from_float(1.23)),
-            ComponentValue::F64(FloatBits64::from_float(4.56)),
+            ComponentValue::F32(wrt_foundation::FloatBits32::from_float(1.23)),
+            ComponentValue::F64(wrt_foundation::FloatBits64::from_float(4.56)),
         ];
 
         let serialized_bytes = BuiltinSerialization::serialize(&values).unwrap();
