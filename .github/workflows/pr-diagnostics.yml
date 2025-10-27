@@ -343,7 +343,7 @@ jobs:
         echo '```' >> pr_comment.md
         
     - name: Upload diagnostic artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: pr-diagnostics
         path: |

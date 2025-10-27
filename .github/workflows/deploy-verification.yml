@@ -152,7 +152,7 @@ jobs:
         fi
 
     - name: Upload verification artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: deployment-verification-${{ github.run_number }}
         path: |
@@ -372,7 +372,7 @@ jobs:
         zip -r certification-evidence-${{ github.run_number }}.zip certification-evidence/
 
     - name: Upload certification package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: certification-evidence-${{ github.run_number }}
         path: |
