@@ -56,6 +56,9 @@ use wrt_foundation::{
 #[cfg(not(feature = "std"))]
 type ComponentProvider = NoStdProvider<4096>;
 
+#[cfg(feature = "std")]
+use crate::builtins::ComponentProvider;
+
 use crate::{
     builtins::BuiltinHandler,
     resources::{

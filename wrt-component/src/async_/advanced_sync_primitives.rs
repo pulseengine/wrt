@@ -305,6 +305,12 @@ impl AdvancedSyncPrimitives {
         component_id: ComponentInstanceId,
         is_reentrant: bool,
     ) -> Result<SyncPrimitiveId> {
+        // Extract values before mutable borrow
+        let max_mutexes = self.component_contexts.get(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized for sync operations"))?
+            .sync_limits.max_mutexes;
+        let timestamp = self.get_timestamp();
+
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
             Error::validation_invalid_input("Component not initialized for sync operations")
         })?;
@@ -325,7 +331,7 @@ impl AdvancedSyncPrimitives {
             })
             .count();
 
-        if current_mutexes >= context.sync_limits.max_mutexes {
+        if current_mutexes >= max_mutexes {
             return Err(Error::resource_limit_exceeded(
                 "Component mutex limit exceeded",
             ));
@@ -344,7 +350,7 @@ impl AdvancedSyncPrimitives {
                 is_reentrant,
             },
             waiters: BoundedVec::new(),
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
         };
 
@@ -369,18 +375,20 @@ impl AdvancedSyncPrimitives {
         permits: u32,
         fair_scheduling: bool,
     ) -> Result<SyncPrimitiveId> {
-        let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not initialized for sync operations")
-        })?;
-
         if permits == 0 {
             return Err(Error::validation_invalid_input(
                 "Semaphore must have at least 1 permit",
             ));
         }
 
+        // Check component exists before mutable borrow
+        if !self.component_contexts.contains_key(&component_id) {
+            return Err(Error::validation_invalid_input("Component not initialized for sync operations"));
+        }
+
         let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+        let timestamp = self.get_timestamp();
 
         let primitive = SyncPrimitive {
             id: primitive_id,
@@ -391,7 +399,7 @@ impl AdvancedSyncPrimitives {
                 fair_scheduling,
             },
             waiters: BoundedVec::new(),
-            created_at: self.get_timestamp(),
+            created_at: timestamp,
             fuel_consumed: AtomicU64::new(0),
         };
 
@@ -399,7 +407,9 @@ impl AdvancedSyncPrimitives {
             .insert(primitive_id, primitive)
             .map_err(|_| Error::resource_limit_exceeded("Too many sync primitives"))?;
 
-        context.owned_primitives.push(primitive_id).ok();
+        if let Some(context) = self.component_contexts.get_mut(&component_id) {
+            context.owned_primitives.push(primitive_id).ok();
+        }
 
         self.sync_stats.total_semaphores_created.fetch_add(1, Ordering::Relaxed);
 
@@ -499,6 +509,9 @@ impl AdvancedSyncPrimitives {
         task_id: TaskId,
         component_id: ComponentInstanceId,
     ) -> Result<MutexLockResult> {
+        // Extract timestamp before mutable borrow
+        let timestamp = self.get_timestamp();
+
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -527,7 +540,7 @@ impl AdvancedSyncPrimitives {
                         component_id,
                         waker: None,
                         wait_type: WaitType::MutexLock,
-                        queued_at: self.get_timestamp(),
+                        queued_at: timestamp,
                         priority: 128, // Normal priority // Would get from task
                     };
 
@@ -559,51 +572,55 @@ impl AdvancedSyncPrimitives {
         primitive_id: SyncPrimitiveId,
         task_id: TaskId,
     ) -> Result<()> {
-        let primitive = self
-            .primitives
-            .get_mut(&primitive_id)
-            .ok_or_else(|| Error::validation_invalid_input("Mutex not found"))?;
+        {
+            let primitive = self
+                .primitives
+                .get_mut(&primitive_id)
+                .ok_or_else(|| Error::validation_invalid_input("Mutex not found"))?;
 
-        match &mut primitive.primitive_type {
-            SyncPrimitiveType::AsyncMutex {
-                locked,
-                owner,
-                lock_count,
-                is_reentrant,
-            } => {
-                // Verify ownership
-                if owner.as_ref() != Some(&task_id) {
-                    return Err(Error::invalid_state_error("Task does not own mutex"));
-                }
+            match &mut primitive.primitive_type {
+                SyncPrimitiveType::AsyncMutex {
+                    locked,
+                    owner,
+                    lock_count,
+                    is_reentrant,
+                } => {
+                    // Verify ownership
+                    if owner.as_ref() != Some(&task_id) {
+                        return Err(Error::invalid_state_error("Task does not own mutex"));
+                    }
 
-                let current_count = lock_count.load(Ordering::Acquire);
-                if current_count == 0 {
-                    return Err(Error::invalid_state_error("Mutex is not locked"));
-                }
+                    let current_count = lock_count.load(Ordering::Acquire);
+                    if current_count == 0 {
+                        return Err(Error::invalid_state_error("Mutex is not locked"));
+                    }
 
-                // Handle reentrant unlock
-                if *is_reentrant && current_count > 1 {
-                    lock_count.fetch_sub(1, Ordering::AcqRel);
+                    // Handle reentrant unlock
+                    if *is_reentrant && current_count > 1 {
+                        lock_count.fetch_sub(1, Ordering::AcqRel);
+                        primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
+                        self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
+                        return Ok(());
+                    }
+
+                    // Release the lock
+                    *owner = None;
+                    lock_count.store(0, Ordering::Release);
+                    locked.store(false, Ordering::Release);
+
                     primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
                     self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
-                    return Ok(());
                 }
-
-                // Release the lock
-                *owner = None;
-                lock_count.store(0, Ordering::Release);
-                locked.store(false, Ordering::Release);
-
-                primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
-                self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
-
-                // Wake next waiter
-                self.wake_next_mutex_waiter(primitive)?;
-
-                Ok(())
-            },
-            _ => Err(Error::validation_invalid_input("Primitive is not a mutex")),
+                _ => return Err(Error::validation_invalid_input("Primitive is not a mutex")),
+            }
         }
+
+        // Wake next waiter after releasing the primitive borrow
+        let primitive = self.primitives.get_mut(&primitive_id)
+            .ok_or_else(|| Error::validation_invalid_input("Mutex not found"))?;
+        Self::wake_next_mutex_waiter(primitive)?;
+
+        Ok(())
     }
 
     /// Acquire semaphore permit
@@ -613,6 +630,9 @@ impl AdvancedSyncPrimitives {
         task_id: TaskId,
         component_id: ComponentInstanceId,
     ) -> Result<SemaphoreAcquireResult> {
+        // Extract timestamp before mutable borrow
+        let timestamp = self.get_timestamp();
+
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -633,7 +653,7 @@ impl AdvancedSyncPrimitives {
                         component_id,
                         waker: None,
                         wait_type: WaitType::SemaphorePermit,
-                        queued_at: self.get_timestamp(),
+                        queued_at: timestamp,
                         priority: 128, // Normal priority
                     };
 
@@ -659,39 +679,43 @@ impl AdvancedSyncPrimitives {
 
     /// Release semaphore permit
     pub fn release_semaphore(&mut self, primitive_id: SyncPrimitiveId) -> Result<()> {
-        let primitive = self
-            .primitives
-            .get_mut(&primitive_id)
-            .ok_or_else(|| Error::validation_invalid_input("Semaphore not found"))?;
+        {
+            let primitive = self
+                .primitives
+                .get_mut(&primitive_id)
+                .ok_or_else(|| Error::validation_invalid_input("Semaphore not found"))?;
 
-        match &mut primitive.primitive_type {
-            SyncPrimitiveType::AsyncSemaphore {
-                permits,
-                max_permits,
-                ..
-            } => {
-                let current_permits = permits.load(Ordering::Acquire);
+            match &mut primitive.primitive_type {
+                SyncPrimitiveType::AsyncSemaphore {
+                    permits,
+                    max_permits,
+                    ..
+                } => {
+                    let current_permits = permits.load(Ordering::Acquire);
 
-                if current_permits >= *max_permits {
-                    return Err(Error::invalid_state_error(
-                        "Semaphore already at maximum permits",
-                    ));
+                    if current_permits >= *max_permits {
+                        return Err(Error::invalid_state_error(
+                            "Semaphore already at maximum permits",
+                        ));
+                    }
+
+                    // Release permit
+                    permits.fetch_add(1, Ordering::AcqRel);
+                    primitive.fuel_consumed.fetch_add(SEMAPHORE_RELEASE_FUEL, Ordering::Relaxed);
+                    self.sync_stats.total_semaphore_releases.fetch_add(1, Ordering::Relaxed);
                 }
-
-                // Release permit
-                permits.fetch_add(1, Ordering::AcqRel);
-                primitive.fuel_consumed.fetch_add(SEMAPHORE_RELEASE_FUEL, Ordering::Relaxed);
-                self.sync_stats.total_semaphore_releases.fetch_add(1, Ordering::Relaxed);
-
-                // Wake next waiter
-                self.wake_next_semaphore_waiter(primitive)?;
-
-                Ok(())
-            },
-            _ => Err(Error::validation_invalid_input(
-                "Primitive is not a semaphore",
-            )),
+                _ => return Err(Error::validation_invalid_input(
+                    "Primitive is not a semaphore",
+                )),
+            }
         }
+
+        // Wake next waiter after releasing the primitive borrow
+        let primitive = self.primitives.get_mut(&primitive_id)
+            .ok_or_else(|| Error::validation_invalid_input("Semaphore not found"))?;
+        Self::wake_next_semaphore_waiter(primitive)?;
+
+        Ok(())
     }
 
     /// Wait at async barrier
@@ -701,6 +725,9 @@ impl AdvancedSyncPrimitives {
         task_id: TaskId,
         component_id: ComponentInstanceId,
     ) -> Result<BarrierWaitResult> {
+        // Extract timestamp before mutable borrow
+        let timestamp = self.get_timestamp();
+
         let primitive = self
             .primitives
             .get_mut(&primitive_id)
@@ -724,13 +751,18 @@ impl AdvancedSyncPrimitives {
                     generation.fetch_add(1, Ordering::AcqRel);
                     waiting.store(0, Ordering::Release);
 
-                    // Wake all waiters
-                    self.wake_all_barrier_waiters(primitive)?;
-
                     primitive.fuel_consumed.fetch_add(BARRIER_WAIT_FUEL, Ordering::Relaxed);
                     self.sync_stats.total_barrier_waits.fetch_add(1, Ordering::Relaxed);
 
-                    Ok(BarrierWaitResult::Leader)
+                    // Need to wake waiters after releasing the primitive borrow
+                    let result = BarrierWaitResult::Leader;
+                    drop(primitive);
+
+                    let primitive = self.primitives.get_mut(&primitive_id)
+                        .ok_or_else(|| Error::validation_invalid_input("Barrier not found"))?;
+                    Self::wake_all_barrier_waiters(primitive)?;
+
+                    Ok(result)
                 } else {
                     // Not the last party - wait
                     let waiter = WaiterInfo {
@@ -738,7 +770,7 @@ impl AdvancedSyncPrimitives {
                         component_id,
                         waker: None,
                         wait_type: WaitType::BarrierWait,
-                        queued_at: self.get_timestamp(),
+                        queued_at: timestamp,
                         priority: 128, // Normal priority
                     };
 
@@ -802,7 +834,7 @@ impl AdvancedSyncPrimitives {
         0
     }
 
-    fn wake_next_mutex_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
+    fn wake_next_mutex_waiter(primitive: &mut SyncPrimitive) -> Result<()> {
         // Find next waiter for mutex
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
@@ -824,7 +856,7 @@ impl AdvancedSyncPrimitives {
         Ok(())
     }
 
-    fn wake_next_semaphore_waiter(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
+    fn wake_next_semaphore_waiter(primitive: &mut SyncPrimitive) -> Result<()> {
         // Find next waiter for semaphore
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
@@ -846,7 +878,7 @@ impl AdvancedSyncPrimitives {
         Ok(())
     }
 
-    fn wake_all_barrier_waiters(&mut self, primitive: &mut SyncPrimitive) -> Result<()> {
+    fn wake_all_barrier_waiters(primitive: &mut SyncPrimitive) -> Result<()> {
         // Wake all barrier waiters
         for waiter in primitive.waiters.iter() {
             if waiter.wait_type == WaitType::BarrierWait {

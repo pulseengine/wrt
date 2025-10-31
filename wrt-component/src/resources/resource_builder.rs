@@ -263,11 +263,13 @@ impl<'a> ResourceManagerBuilder<'a> {
         }
     }
 
-    /// Build the ResourceManager (no_std version)
-    pub fn build(self, table: Arc<Mutex<super::ResourceTable>>) -> super::ResourceManager
+    /// Build the ResourceManager (no_std version) with explicit resource table
+    #[cfg(not(feature = "std"))]
+    pub fn build_with_table(self, table: Arc<Mutex<super::ResourceTable>>) -> super::ResourceManager
     {
         super::ResourceManager::new_with_config(
             self.instance_id,
+            64, // Default max resources
             self.default_memory_strategy,
             self.default_verification_level,
         )

@@ -98,6 +98,12 @@ pub enum ResourceOperation {
     Reference,
     /// Dereference a resource (access it through a reference)
     Dereference,
+    /// New resource operation (component model)
+    New,
+    /// Drop a resource (component model)
+    Drop,
+    /// Resource representation operation (component model)
+    Rep,
 }
 
 /// Resource operation in a canonical function
@@ -117,7 +123,10 @@ impl ResourceOperation {
     pub fn requires_read(&self) -> bool {
         matches!(
             self,
-            ResourceOperation::Read | ResourceOperation::Execute | ResourceOperation::Dereference
+            ResourceOperation::Read
+                | ResourceOperation::Execute
+                | ResourceOperation::Dereference
+                | ResourceOperation::Rep
         )
     }
 
@@ -130,6 +139,8 @@ impl ResourceOperation {
                 | ResourceOperation::Create
                 | ResourceOperation::Delete
                 | ResourceOperation::Reference
+                | ResourceOperation::New
+                | ResourceOperation::Drop
         )
     }
 
@@ -144,6 +155,9 @@ impl ResourceOperation {
             ResourceOperation::Delete => "delete",
             ResourceOperation::Reference => "reference",
             ResourceOperation::Dereference => "dereference",
+            ResourceOperation::New => "new",
+            ResourceOperation::Drop => "drop",
+            ResourceOperation::Rep => "rep",
         }
     }
 }
@@ -166,6 +180,9 @@ impl core::str::FromStr for ResourceOperation {
             "delete" => Ok(ResourceOperation::Delete),
             "reference" => Ok(ResourceOperation::Reference),
             "dereference" => Ok(ResourceOperation::Dereference),
+            "new" => Ok(ResourceOperation::New),
+            "drop" => Ok(ResourceOperation::Drop),
+            "rep" => Ok(ResourceOperation::Rep),
             _ => Err(wrt_error::Error::parse_error("Unknown resource operation")),
         }
     }
@@ -692,6 +709,9 @@ mod kani_proofs {
             ResourceOperation::Delete,
             ResourceOperation::Reference,
             ResourceOperation::Dereference,
+            ResourceOperation::New,
+            ResourceOperation::Drop,
+            ResourceOperation::Rep,
         ] {
             // No operation should require both read and write simultaneously
             // (unless explicitly designed that way)

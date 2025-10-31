@@ -66,7 +66,7 @@ impl BudgetAwareResourceTablePool {
     /// 3. Resource limits are enforced
     pub fn create_table(&mut self) -> wrt_error::Result<ResourceTable> {
         if self.active_tables >= self.max_tables {
-            return Err(wrt_foundation::wrt_error::Error::resource_exhausted(
+            return Err(wrt_error::Error::resource_exhausted(
                 "Resource table limit exceeded",
             ));
         }

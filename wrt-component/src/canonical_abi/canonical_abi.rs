@@ -70,6 +70,10 @@ use wrt_error::{
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
+use wrt_foundation::{
+    traits::{ToBytes, FromBytes, Checksummable, WriteStream, ReadStream},
+    verification::Checksum,
+};
 
 // Import prelude for consistent type access
 use crate::prelude::*;
@@ -180,6 +184,82 @@ pub enum ComponentValue {
     Result(core::result::Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
     /// Flags (bitset)
     Flags(Vec<String>),
+}
+
+// Trait implementations for ComponentType
+impl ToBytes for ComponentType {
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_error::Result<()> {
+        // Write discriminant for the type
+        let discriminant: u8 = match self {
+            ComponentType::Bool => 0,
+            ComponentType::S8 => 1,
+            ComponentType::U8 => 2,
+            ComponentType::S16 => 3,
+            ComponentType::U16 => 4,
+            ComponentType::S32 => 5,
+            ComponentType::U32 => 6,
+            ComponentType::S64 => 7,
+            ComponentType::U64 => 8,
+            ComponentType::F32 => 9,
+            ComponentType::F64 => 10,
+            ComponentType::Char => 11,
+            ComponentType::String => 12,
+            _ => 255, // Complex types
+        };
+        writer.write_u8(discriminant)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ComponentType {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_error::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(ComponentType::Bool),
+            1 => Ok(ComponentType::S8),
+            2 => Ok(ComponentType::U8),
+            3 => Ok(ComponentType::S16),
+            4 => Ok(ComponentType::U16),
+            5 => Ok(ComponentType::S32),
+            6 => Ok(ComponentType::U32),
+            7 => Ok(ComponentType::S64),
+            8 => Ok(ComponentType::U64),
+            9 => Ok(ComponentType::F32),
+            10 => Ok(ComponentType::F64),
+            11 => Ok(ComponentType::Char),
+            12 => Ok(ComponentType::String),
+            _ => Ok(ComponentType::Bool), // Default fallback
+        }
+    }
+}
+
+impl Checksummable for ComponentType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        let discriminant: u8 = match self {
+            ComponentType::Bool => 0,
+            ComponentType::S8 => 1,
+            ComponentType::U8 => 2,
+            ComponentType::S16 => 3,
+            ComponentType::U16 => 4,
+            ComponentType::S32 => 5,
+            ComponentType::U32 => 6,
+            ComponentType::S64 => 7,
+            ComponentType::U64 => 8,
+            ComponentType::F32 => 9,
+            ComponentType::F64 => 10,
+            ComponentType::Char => 11,
+            ComponentType::String => 12,
+            _ => 255,
+        };
+        checksum.update(discriminant);
+    }
 }
 
 /// Memory interface for canonical ABI operations

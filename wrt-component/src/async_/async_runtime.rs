@@ -879,9 +879,16 @@ impl AsyncRuntime {
             tasks: BoundedVec::new(),
         };
 
-        self.streams
-            .push(entry)
-            .map_err(|_| Error::async_executor_state_violation("Too many streams"))?;
+        #[cfg(feature = "std")]
+        {
+            self.streams.push(entry);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.streams
+                .push(entry)
+                .map_err(|_| Error::async_executor_state_violation("Too many streams"))?;
+        }
 
         Ok(handle)
     }
@@ -899,9 +906,16 @@ impl AsyncRuntime {
             tasks: BoundedVec::new(),
         };
 
-        self.futures
-            .push(entry)
-            .map_err(|_| Error::async_executor_state_violation("Too many futures"))?;
+        #[cfg(feature = "std")]
+        {
+            self.futures.push(entry);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.futures
+                .push(entry)
+                .map_err(|_| Error::async_executor_state_violation("Too many futures"))?;
+        }
 
         Ok(handle)
     }
@@ -1006,9 +1020,16 @@ impl TaskScheduler {
                         wait_condition: condition,
                         timeout_us:     Some(self.current_time + 1_000_000), // 1 second timeout
                     };
-                    self.waiting_tasks.push(waiting_task).map_err(|_| {
-                        Error::async_executor_state_violation("Waiting tasks list full")
-                    })?;
+                    #[cfg(feature = "std")]
+                    {
+                        self.waiting_tasks.push(waiting_task);
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        self.waiting_tasks.push(waiting_task).map_err(|_| {
+                            Error::async_executor_state_violation("Waiting tasks list full")
+                        })?;
+                    }
                 },
                 TaskExecutionResult::Failed(_error) => {
                     // Task failed, log and remove
@@ -1191,6 +1212,12 @@ impl Reactor {
 
     /// Add event to pending queue
     pub fn add_event(&mut self, event: ReactorEvent) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            self.pending_events.push_back(event);
+            Ok(())
+        }
+        #[cfg(not(any(feature = "std",)))]
         self.pending_events
             .push(event)
             .map_err(|_| Error::async_executor_state_violation("Event queue full"))

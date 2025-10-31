@@ -584,7 +584,17 @@ impl<T> Future for SendFuture<T> {
         let this = unsafe { self.get_unchecked_mut() };
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
-        let mut manager = this.sender.channel_manager.lock();
+        let mut manager = match this.sender.channel_manager.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                // Mutex poisoned - take message if available
+                if let Some(msg) = this.message.take() {
+                    return Poll::Ready(Err(ChannelError::Closed(msg)));
+                } else {
+                    return Poll::Pending;
+                }
+            }
+        };
         let channel = match manager.channels.get_mut(&this.sender.channel_id) {
             Some(ch) => ch,
             None => {
@@ -639,7 +649,7 @@ impl<T> Future for ReceiveFuture<T> {
         let this = unsafe { self.get_unchecked_mut() };
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
-        let mut manager = this.receiver.channel_manager.lock();
+        let mut manager = this.receiver.channel_manager.lock().map_err(|_| ChannelError::Closed(()))?;
         let channel = match manager.channels.get_mut(&this.receiver.channel_id) {
             Some(ch) => ch,
             None => return Poll::Ready(Err(ChannelError::Closed(()))),
@@ -690,7 +700,10 @@ impl<T> FuelAsyncSender<T> {
     /// Try to send a message without blocking
     pub fn try_send(&self, message: T) -> core::result::Result<(), ChannelError<T>> {
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
-        let mut manager = self.channel_manager.lock();
+        let mut manager = match self.channel_manager.lock() {
+            Ok(guard) => guard,
+            Err(_) => return Err(ChannelError::Closed(message)),
+        };
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
             channel.try_send(
                 message,
@@ -722,7 +735,7 @@ impl<T> FuelAsyncReceiver<T> {
     /// Try to receive a message without blocking
     pub fn try_receive(&self) -> core::result::Result<T, ChannelError<()>> {
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
-        let mut manager = self.channel_manager.lock();
+        let mut manager = self.channel_manager.lock().map_err(|_| ChannelError::Closed(()))?;
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
             channel.try_receive(
                 self.receiver_task,

@@ -28,6 +28,8 @@ use wrt_foundation::{
     traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
     verification::Checksum,
 };
+#[cfg(feature = "std")]
+use crate::bounded_component_infra::ComponentProvider;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     bounded::BoundedString,
@@ -144,14 +146,14 @@ impl FromBytes for FutureHandle {
 
 
 /// Handle to an error context
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ErrorContextHandle(pub u32);
 
 /// Stream type for incremental value passing
 #[derive(Debug, Clone)]
 pub struct Stream<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Stream handle
     pub handle:          StreamHandle,
@@ -174,7 +176,7 @@ where
 #[derive(Debug, Clone)]
 pub struct Future<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Future handle
     pub handle:          FutureHandle,
@@ -327,7 +329,7 @@ pub struct DebugInfo {
     pub error_code:       Option<u32>,
     /// Additional properties
     #[cfg(feature = "std")]
-    pub properties:       Vec<(String, ComponentValue)>,
+    pub properties:       Vec<(String, ComponentValue<ComponentProvider>)>,
     #[cfg(not(any(feature = "std",)))]
     pub properties: BoundedVec<
         (BoundedString<64>, ComponentValue),
@@ -448,7 +450,7 @@ pub struct WaitableSet {
 
 impl<T> Stream<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Create a new stream
     pub fn new(handle: StreamHandle, element_type: ValType) -> wrt_error::Result<Self> {
@@ -497,7 +499,7 @@ where
 
 impl<T> Default for Stream<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     fn default() -> Self {
         #[cfg(feature = "std")]
@@ -518,7 +520,7 @@ where
 
 impl<T> Future<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Create a new future
     pub fn new(handle: FutureHandle, value_type: ValType) -> Self {
@@ -564,7 +566,7 @@ where
 
 impl<T> Default for Future<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     fn default() -> Self {
         Self {
@@ -643,7 +645,7 @@ impl DebugInfo {
 
     /// Add a property
     #[cfg(feature = "std")]
-    pub fn add_property(&mut self, key: String, value: ComponentValue) {
+    pub fn add_property(&mut self, key: String, value: ComponentValue<ComponentProvider>) {
         self.properties.push((key, value));
     }
 

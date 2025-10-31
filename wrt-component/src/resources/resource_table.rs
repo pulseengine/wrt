@@ -18,10 +18,7 @@ use wrt_foundation::allocator::{
 use wrt_foundation::{
     collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     budget_aware_provider::CrateId,
-    resource::{
-        ResourceOperation as FormatResourceOperation,
-        ResourceOperation,
-    },
+    resource::ResourceOperation as FormatResourceOperation,
     safe_managed_alloc,
 };
 use wrt_intercept::{
@@ -371,7 +368,7 @@ impl ResourceTable {
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::default(),
-            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             #[cfg(all(feature = "std", feature = "safety-critical"))]
             interceptors: WrtVec::new(),
@@ -441,7 +438,7 @@ impl ResourceTable {
             max_resources,
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
-            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             #[cfg(feature = "safety-critical")]
             interceptors: WrtVec::new(),
@@ -638,7 +635,8 @@ impl ResourceTable {
             .ok_or_else(|| Error::resource_error("Resource not found"))?;
 
         // Record access
-        if let Ok(mut resource) = entry.resource.lock() {
+        {
+            let mut resource = entry.resource.lock();
             resource.record_access();
         }
 
@@ -661,9 +659,6 @@ impl ResourceTable {
             return Err(Error::resource_error("Resource not found"));
         }
 
-        // Get the operation kind for interception using our utility function
-        let local_op = from_format_resource_operation(&operation);
-
         // Check interceptors first
         for interceptor in &self.interceptors {
             // Pass the format operation to interceptors
@@ -679,37 +674,25 @@ impl ResourceTable {
 
         // Apply the operation based on the resource
         match operation {
-            FormatResourceOperation::Rep(rep) => {
+            FormatResourceOperation::Rep => {
                 // Representation operation - convert resource to its representation
-                let resource = self.resources.get(&handle).unwrap();
+                let _resource = self.resources.get(&handle).unwrap();
                 Ok(ComponentValue::U32(handle))
             },
-            FormatResourceOperation::Drop(drop) => {
+            FormatResourceOperation::Drop => {
                 // Drop operation - remove the resource from the table
-                let resource = self.resources.remove(&handle).unwrap();
+                let _resource = self.resources.remove(&handle).unwrap();
                 Ok(ComponentValue::Void)
             },
-            FormatResourceOperation::Destroy(destroy) => {
-                // Destroy operation - similar to drop but may perform cleanup
-                let resource = self.resources.remove(&handle).unwrap();
-                // Run any destroy callbacks here
-                Ok(ComponentValue::Void)
-            },
-            FormatResourceOperation::New(new) => {
+            FormatResourceOperation::New => {
                 // New operation - creates a resource from its representation
                 // Binary std/no_std choice
                 // working with an existing handle
                 Ok(ComponentValue::U32(handle))
             },
-            FormatResourceOperation::Transfer(transfer) => {
-                // Transfer operation - transfers ownership
-                // For now, just return the handle
-                Ok(ComponentValue::U32(handle))
-            },
-            FormatResourceOperation::Borrow(borrow) => {
-                // Borrow operation - temporarily borrows the resource
-                // For now, just return the handle
-                Ok(ComponentValue::U32(handle))
+            _ => {
+                // For other operations, return a default value
+                Ok(ComponentValue::Void)
             },
         }
     }
@@ -738,6 +721,11 @@ impl ResourceTable {
         Ok(())
     }
 
+    /// Set default verification level for new resources
+    pub fn set_default_verification_level(&mut self, level: VerificationLevel) {
+        self.default_verification_level = level;
+    }
+
     /// Get the number of resources in the table
     pub fn resource_count(&self) -> usize {
         self.resources.len()
@@ -761,17 +749,17 @@ impl ResourceTable {
 
     /// Get a buffer from the pool
     pub fn get_buffer(&mut self, size: usize) -> Vec<u8> {
-        self.buffer_pool.lock().unwrap().allocate(size)
+        self.buffer_pool.lock().allocate(size)
     }
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: Vec<u8>) {
-        self.buffer_pool.lock().unwrap().return_buffer(buffer)
+        self.buffer_pool.lock().return_buffer(buffer)
     }
 
     /// Reset the buffer pool, clearing all pooled buffers
     pub fn reset_buffer_pool(&mut self) {
-        self.buffer_pool.lock().unwrap().reset()
+        self.buffer_pool.lock().reset()
     }
 
     /// Get memory strategy from interceptors

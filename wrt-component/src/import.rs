@@ -178,8 +178,8 @@ impl Import {
         // Namespace elements need to be joined
         #[cfg(feature = "std")]
         {
-            let ns_parts: Vec<&str> = self.namespace.elements.iter()
-                .filter_map(|elem| elem.as_str().ok())
+            let ns_parts: Vec<String> = self.namespace.elements.iter()
+                .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
                 .collect();
             let ns_str = ns_parts.join(":");
             if ns_str.is_empty() {

@@ -3536,7 +3536,7 @@ impl FuelAsyncExecutor {
                 // Convert wrt_runtime::stackless::YieldInfo to fuel_async_executor::YieldInfo
                 #[cfg(feature = "std")]
                 let stack_vec2: Vec<wrt_foundation::Value> =
-                    yield_info.operand_stack.iter().cloned().collect();
+                    yield_info.operand_stack.iter().collect();
                 #[cfg(not(feature = "std"))]
                 let stack_vec2: Vec<wrt_foundation::Value> = {
                     let mut v = Vec::new();
@@ -3548,7 +3548,7 @@ impl FuelAsyncExecutor {
 
                 #[cfg(feature = "std")]
                 let locals_vec2: Vec<wrt_foundation::Value> =
-                    yield_info.locals.iter().cloned().collect();
+                    yield_info.locals.iter().collect();
                 #[cfg(not(feature = "std"))]
                 let locals_vec2: Vec<wrt_foundation::Value> = {
                     let mut v = Vec::new();
@@ -3559,7 +3559,7 @@ impl FuelAsyncExecutor {
                 };
 
                 #[cfg(feature = "std")]
-                let call_stack_vec2: Vec<u32> = yield_info.call_stack.iter().cloned().collect();
+                let call_stack_vec2: Vec<u32> = yield_info.call_stack.iter().collect();
                 #[cfg(not(feature = "std"))]
                 let call_stack_vec2: Vec<u32> = {
                     let mut v = Vec::new();

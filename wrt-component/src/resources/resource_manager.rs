@@ -3,7 +3,10 @@
 // This module provides resource management functionality for the Component
 // Model, including resource creation, access control, and lifetime management.
 
+use std::sync::Mutex;
+
 use wrt_error::kinds::PoisonedLockError;
+use wrt_sync::WrtMutex;
 use wrt_foundation::{
     component_value::ComponentValue,
     ResourceOperation as FormatResourceOperation,
@@ -63,38 +66,38 @@ pub struct ResourceManager {
 
 impl ResourceManager {
     /// Create a new resource manager with default settings
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         Self::new_with_id("default-instance")
     }
 
     /// Create a new resource manager with optimized memory management
-    pub fn new_optimized() -> Self {
+    pub fn new_optimized() -> Result<Self> {
         Self::new_with_id_and_optimized_memory("default-instance")
     }
 
     /// Create a new resource manager with a specific instance ID
-    pub fn new_with_id(instance_id: &str) -> Self {
-        Self {
-            table: Arc::new(Mutex::new(ResourceTable::new())),
+    pub fn new_with_id(instance_id: &str) -> Result<Self> {
+        Ok(Self {
+            table: Arc::new(Mutex::new(ResourceTable::new()?)),
             instance_id: instance_id.to_string(),
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             max_resources: 1024,
             use_optimized_memory: false,
-        }
+        })
     }
 
     /// Create a new resource manager with a specific instance ID and optimized
     /// memory
-    pub fn new_with_id_and_optimized_memory(instance_id: &str) -> Self {
-        Self {
-            table: Arc::new(Mutex::new(ResourceTable::new_with_optimized_memory())),
+    pub fn new_with_id_and_optimized_memory(instance_id: &str) -> Result<Self> {
+        Ok(Self {
+            table: Arc::new(Mutex::new(ResourceTable::new_with_optimized_memory()?)),
             instance_id: instance_id.to_string(),
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             max_resources: 1024,
             use_optimized_memory: true,
-        }
+        })
     }
 
     /// Create a new resource manager with custom settings
@@ -183,9 +186,8 @@ impl ResourceManager {
 
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
-            if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
-            }
+            let mut res_guard = res.lock();
+            res_guard.name = Some(name.to_string());
         }
 
         Ok(handle)
@@ -201,7 +203,7 @@ impl ResourceManager {
     }
 
     /// Get a host resource by ID and type (legacy API)
-    pub fn get_host_resource<T: 'static + Send + Sync>(
+    pub fn get_host_resource<T: 'static + Send + Sync + Clone>(
         &self,
         id: ResourceId,
     ) -> Result<Arc<Mutex<T>>> {
@@ -209,14 +211,12 @@ impl ResourceManager {
         let resource = self.get_resource(id.0)?;
 
         // Attempt to downcast to the requested type
-        let resource_guard = resource
-            .lock()
-            .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource lock"))?;
+        let resource_guard = resource.lock();
 
         // Check if we can access the data as the requested type
         if let Some(typed_data) = resource_guard.data.downcast_ref::<T>() {
             // Create a cloned Arc<Mutex<T>> to return
-            let cloned_data = Arc::new(Mutex::new(typed_data.clone()));
+            let cloned_data = Arc::new(Mutex::new((*typed_data).clone()));
             Ok(cloned_data)
         } else {
             Err(Error::component_not_found("Resource type mismatch"))
@@ -238,7 +238,7 @@ impl ResourceManager {
     }
 
     /// Get a resource by handle
-    pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
+    pub fn get_resource(&self, handle: u32) -> Result<Arc<WrtMutex<Resource>>> {
         let table = self
             .table
             .lock()

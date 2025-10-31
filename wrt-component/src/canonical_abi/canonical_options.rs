@@ -101,8 +101,9 @@ impl CanonicalOptions {
 
         // Register with the manager before storing it
         {
-            let mut mgr = manager.write();
-            let _ = mgr.register_realloc(self.instance_id, func_index);
+            if let Ok(mut mgr) = manager.write() {
+                let _ = mgr.register_realloc(self.instance_id, func_index);
+            }
         }
 
         self.realloc_manager = Some(manager);
@@ -167,7 +168,7 @@ impl<'a> CanonicalLiftContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
-            let mut mgr = manager.write();
+            let mut mgr = manager.write().map_err(|_| ComponentError::resource_not_found("Realloc manager lock poisoned"))?;
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
@@ -234,10 +235,10 @@ impl<'a> CanonicalLiftContext<'a> {
     }
 
     /// Binary std/no_std choice
-    pub fn cleanup(mut self) -> core::result::Result<(), ComponentError> {
+    pub fn cleanup(mut self) -> Result<()> {
         // Binary std/no_std choice
         if let Some(manager) = &self.options.realloc_manager {
-            let mut mgr = manager.write();
+            let mut mgr = manager.write().map_err(|_| ComponentError::resource_not_found("Realloc manager lock poisoned"))?;
 
             for alloc in self.allocations.drain(..) {
                 mgr.deallocate(self.options.instance_id, alloc.ptr, alloc.size, alloc.align)?;
@@ -281,7 +282,7 @@ impl<'a> CanonicalLowerContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
-            let mut mgr = manager.write();
+            let mut mgr = manager.write().map_err(|_| ComponentError::resource_not_found("Realloc manager lock poisoned"))?;
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {

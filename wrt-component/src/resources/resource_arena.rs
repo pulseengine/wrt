@@ -4,12 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::kinds::PoisonedLockError;
+use wrt_sync::WrtMutex;
 
 use super::{
     ResourceId,
     ResourceTable,
 };
 use crate::prelude::*;
+
+// Override prelude's wrt_sync::Mutex with std::sync::Mutex for poisoning support
+#[cfg(feature = "std")]
+use std::sync::Mutex;
 
 /// A resource arena for managing resource lifecycles as a group
 ///
@@ -77,9 +82,8 @@ impl ResourceArena {
 
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
-            if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
-            }
+            let mut res_guard = res.lock();
+            res_guard.name = Some(name.to_string());
         }
 
         // Add to arena's managed resources
@@ -97,7 +101,7 @@ impl ResourceArena {
     }
 
     /// Get access to a resource
-    pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<super::Resource>>> {
+    pub fn get_resource(&self, handle: u32) -> Result<Arc<WrtMutex<super::Resource>>> {
         let table =
             self.table.lock().map_err(|e| Error::runtime_poisoned_lock("Error occurred"))?;
 
@@ -151,7 +155,7 @@ impl ResourceArena {
     /// Release all resources managed by this arena
     pub fn release_all(&mut self) -> Result<()> {
         if self.resources.is_empty() {
-            return Ok();
+            return Ok(());
         }
 
         let mut table =

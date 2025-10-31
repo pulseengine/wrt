@@ -3,6 +3,9 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
 use wrt_error::{
     codes,
     Error,
@@ -40,6 +43,46 @@ impl ResourceStrategy for ResourceStrategyNoStd {
         self.strategy
     }
 
+    #[cfg(feature = "std")]
+    fn process_memory(
+        &self,
+        data: &[u8],
+        operation: ResourceOperation,
+    ) -> Result<Vec<u8>> {
+        match self.strategy {
+            // Zero-copy strategy - returns a view without copying for reads, a copy for writes
+            MemoryStrategy::ZeroCopy => match operation {
+                ResourceOperation::Read => {
+                    Ok(data.to_vec())
+                },
+                ResourceOperation::Write => {
+                    Ok(data.to_vec())
+                },
+                _ => Ok(data.to_vec()), // Default for other operations
+            },
+            // Bounded-copy strategy - copies with size limit checks
+            MemoryStrategy::BoundedCopy => {
+                if data.len() > MAX_BUFFER_SIZE {
+                    return Err(Error::new(
+                        ErrorCategory::Memory,
+                        codes::MEMORY_OUT_OF_BOUNDS,
+                        "Data exceeds maximum buffer size for bounded copy",
+                    ));
+                }
+                Ok(data.to_vec())
+            },
+            // Full isolation - creates independent copies
+            MemoryStrategy::FullIsolation => {
+                Ok(data.to_vec())
+            },
+            // Handle other memory strategies
+            _ => {
+                Ok(data.to_vec())
+            },
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     fn process_memory(
         &self,
         data: &[u8],
@@ -127,7 +170,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
                 Ok(result)
             },
 
-            // Fixed buffer strategy - uses a fixed-size buffer
+            // FixedBuffer strategy - uses fixed size buffer
             MemoryStrategy::FixedBuffer => {
                 let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
@@ -137,7 +180,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
                 Ok(result)
             },
 
-            // Bounded collections strategy - uses bounded collections
+            // BoundedCollections strategy - uses bounded collections
             MemoryStrategy::BoundedCollections => {
                 let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
 

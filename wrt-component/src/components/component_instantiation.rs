@@ -56,11 +56,12 @@ use std::{
 use wrt_foundation::{
     bounded::BoundedString,
     safe_memory::NoStdProvider,
+    collections::StaticVec as BoundedVec,
+    safe_managed_alloc, CrateId,
 };
 
-// For no_std, override prelude's bounded::BoundedVec with StaticVec
-#[cfg(not(feature = "std"))]
-use wrt_foundation::collections::StaticVec as BoundedVec;
+#[cfg(feature = "std")]
+use wrt_foundation::BoundedVec;
 
 #[cfg(not(feature = "std"))]
 type InstantiationString = BoundedString<256>;
@@ -89,7 +90,14 @@ use wrt_error::{
     Result,
 };
 
+use wrt_foundation::{
+    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    verification::Checksum,
+    MemoryProvider,
+};
+
 use crate::{
+    bounded_component_infra::{ComponentProvider, BufferProvider},
     canonical_abi::{
         CanonicalABI,
         CanonicalMemory,
@@ -170,9 +178,9 @@ pub struct FunctionSignature {
     /// Function name
     pub name:    String,
     /// Parameter types
-    pub params:  BoundedVec<ComponentType, 16>,
+    pub params:  BoundedVec<ComponentType, 16, ComponentProvider>,
     /// Return types
-    pub returns: BoundedVec<ComponentType, 16>,
+    pub returns: BoundedVec<ComponentType, 16, ComponentProvider>,
 }
 
 /// Component export definition
@@ -263,7 +271,7 @@ pub struct ComponentInstanceImpl {
     /// Canonical ABI for value conversion
     abi:              CanonicalABI,
     /// Function table
-    functions:        BoundedVec<ComponentFunction, 128>,
+    functions:        BoundedVec<ComponentFunction, 128, ComponentProvider>,
     /// Instance metadata
     metadata:         InstanceMetadata,
     /// Resource manager for this instance
@@ -332,6 +340,268 @@ impl Default for FunctionImplementation {
     }
 }
 
+impl Checksummable for FunctionImplementation {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            FunctionImplementation::Native { func_index, module_index } => {
+                0u8.update_checksum(checksum);
+                func_index.update_checksum(checksum);
+                module_index.update_checksum(checksum);
+            }
+            FunctionImplementation::Host { callback } => {
+                1u8.update_checksum(checksum);
+                #[cfg(feature = "std")]
+                {
+                    callback.len().update_checksum(checksum);
+                    for ch in callback.chars() {
+                        (ch as u32).update_checksum(checksum);
+                    }
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    callback.update_checksum(checksum);
+                }
+            }
+            FunctionImplementation::Component { target_instance, target_function } => {
+                2u8.update_checksum(checksum);
+                target_instance.update_checksum(checksum);
+                #[cfg(feature = "std")]
+                {
+                    target_function.len().update_checksum(checksum);
+                    for ch in target_function.chars() {
+                        (ch as u32).update_checksum(checksum);
+                    }
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    target_function.update_checksum(checksum);
+                }
+            }
+        }
+    }
+}
+
+impl ToBytes for FunctionImplementation {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        match self {
+            FunctionImplementation::Native { func_index, module_index } => {
+                0u8.to_bytes_with_provider(writer, provider)?;
+                func_index.to_bytes_with_provider(writer, provider)?;
+                module_index.to_bytes_with_provider(writer, provider)
+            }
+            FunctionImplementation::Host { callback } => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                #[cfg(feature = "std")]
+                {
+                    (callback.len() as u32).to_bytes_with_provider(writer, provider)?;
+                    for ch in callback.chars() {
+                        (ch as u8).to_bytes_with_provider(writer, provider)?;
+                    }
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    callback.to_bytes_with_provider(writer, provider)?;
+                }
+                Ok(())
+            }
+            FunctionImplementation::Component { target_instance, target_function } => {
+                2u8.to_bytes_with_provider(writer, provider)?;
+                target_instance.to_bytes_with_provider(writer, provider)?;
+                #[cfg(feature = "std")]
+                {
+                    (target_function.len() as u32).to_bytes_with_provider(writer, provider)?;
+                    for ch in target_function.chars() {
+                        (ch as u8).to_bytes_with_provider(writer, provider)?;
+                    }
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    target_function.to_bytes_with_provider(writer, provider)?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl FromBytes for FunctionImplementation {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let tag = u8::from_bytes_with_provider(reader, provider)?;
+        match tag {
+            0 => {
+                let func_index = u32::from_bytes_with_provider(reader, provider)?;
+                let module_index = u32::from_bytes_with_provider(reader, provider)?;
+                Ok(FunctionImplementation::Native { func_index, module_index })
+            }
+            1 => {
+                #[cfg(feature = "std")]
+                {
+                    let len = u32::from_bytes_with_provider(reader, provider)? as usize;
+                    let mut bytes = vec![0u8; len];
+                    for i in 0..len {
+                        bytes[i] = u8::from_bytes_with_provider(reader, provider)?;
+                    }
+                    Ok(FunctionImplementation::Host {
+                        callback: String::from_utf8(bytes)
+                            .map_err(|_| Error::validation_error("Invalid UTF-8 in callback name"))?,
+                    })
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    let callback = wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(reader, provider)?;
+                    Ok(FunctionImplementation::Host { callback })
+                }
+            }
+            2 => {
+                let target_instance = u32::from_bytes_with_provider(reader, provider)?;
+                #[cfg(feature = "std")]
+                {
+                    let len = u32::from_bytes_with_provider(reader, provider)? as usize;
+                    let mut bytes = vec![0u8; len];
+                    for i in 0..len {
+                        bytes[i] = u8::from_bytes_with_provider(reader, provider)?;
+                    }
+                    Ok(FunctionImplementation::Component {
+                        target_instance,
+                        target_function: String::from_utf8(bytes)
+                            .map_err(|_| Error::validation_error("Invalid UTF-8 in function name"))?,
+                    })
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    let target_function = wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(reader, provider)?;
+                    Ok(FunctionImplementation::Component { target_instance, target_function })
+                }
+            }
+            _ => Err(Error::validation_error("Invalid FunctionImplementation tag")),
+        }
+    }
+}
+
+impl Checksummable for FunctionSignature {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.name.len().update_checksum(checksum);
+        for ch in self.name.chars() {
+            (ch as u32).update_checksum(checksum);
+        }
+        for param in self.params.iter() {
+            param.update_checksum(checksum);
+        }
+        for ret in self.returns.iter() {
+            ret.update_checksum(checksum);
+        }
+    }
+}
+
+impl ToBytes for FunctionSignature {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        // Write name
+        (self.name.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for ch in self.name.chars() {
+            (ch as u8).to_bytes_with_provider(writer, provider)?;
+        }
+
+        // Write params
+        (self.params.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for param in self.params.iter() {
+            param.to_bytes_with_provider(writer, provider)?;
+        }
+
+        // Write returns
+        (self.returns.len() as u32).to_bytes_with_provider(writer, provider)?;
+        for ret in self.returns.iter() {
+            ret.to_bytes_with_provider(writer, provider)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl FromBytes for FunctionSignature {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        // Read name
+        let name_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        let mut name_bytes = Vec::new();
+        for _ in 0..name_len {
+            name_bytes.push(u8::from_bytes_with_provider(reader, provider)?);
+        }
+        let name = String::from_utf8(name_bytes)
+            .map_err(|_| Error::validation_error("Invalid UTF-8 in function name"))?;
+
+        // Read params
+        let params_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        let mut params = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default())?;
+        for _ in 0..params_len {
+            let param = ComponentType::from_bytes_with_provider(reader, provider)?;
+            params.push(param).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature params capacity exceeded"))?;
+        }
+
+        // Read returns
+        let returns_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        let mut returns = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default())?;
+        for _ in 0..returns_len {
+            let ret = ComponentType::from_bytes_with_provider(reader, provider)?;
+            returns.push(ret).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature returns capacity exceeded"))?;
+        }
+
+        Ok(FunctionSignature {
+            name,
+            params,
+            returns,
+        })
+    }
+}
+
+impl Checksummable for ComponentFunction {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.handle.update_checksum(checksum);
+        self.signature.update_checksum(checksum);
+        self.implementation.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentFunction {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> Result<()> {
+        self.handle.to_bytes_with_provider(writer, provider)?;
+        self.signature.to_bytes_with_provider(writer, provider)?;
+        self.implementation.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ComponentFunction {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> Result<Self> {
+        let handle = u32::from_bytes_with_provider(reader, provider)?;
+        let signature = FunctionSignature::from_bytes_with_provider(reader, provider)?;
+        let implementation = FunctionImplementation::from_bytes_with_provider(reader, provider)?;
+        Ok(ComponentFunction {
+            handle,
+            signature,
+            implementation,
+        })
+    }
+}
+
 /// Component memory implementation
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentMemory {
@@ -342,7 +612,7 @@ pub struct ComponentMemory {
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
-    pub data:         BoundedVec<u8, 65536>,
+    pub data:         BoundedVec<u8, 65536, BufferProvider>,
 }
 
 /// Instance metadata for debugging and introspection
@@ -512,8 +782,15 @@ impl ComponentInstance {
             return Err(Error::validation_error("Too many resolved imports"));
         }
 
-        self.imports.push(resolved)
-            .map_err(|_| Error::validation_error("Failed to push resolved import"))?;
+        #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+        {
+            self.imports.push(resolved);
+        }
+        #[cfg(not(all(feature = "std", not(feature = "safety-critical"))))]
+        {
+            self.imports.push(resolved)
+                .map_err(|_| Error::validation_error("Failed to push resolved import"))?;
+        }
         Ok(())
     }
 
@@ -559,15 +836,7 @@ impl ComponentInstance {
         data: ResourceData,
     ) -> Result<ResourceHandle> {
         if let Some(resource_manager) = &mut self.resource_manager {
-            // ResourceManager doesn't have get_instance_table_mut method
-            // Use the resource manager directly
-            // Create a boxed resource data for the manager
-            #[cfg(feature = "std")]
-            let boxed_data: Box<dyn Any + Send + Sync> = data;
-            #[cfg(not(feature = "std"))]
-            let boxed_data = data;
-
-            resource_manager.create_resource(resource_type, boxed_data)
+            resource_manager.create_resource(resource_type, data)
                 .map_err(|_e| {
                     Error::component_resource_lifecycle_error("Failed to create resource")
                 })
@@ -666,7 +935,7 @@ impl ComponentMemory {
         }
 
         // Create bounded vec for memory data
-        let mut data = BoundedVec::<u8, 65536>::new();
+        let mut data = BoundedVec::<u8, 65536, BufferProvider>::new(BufferProvider::default())?;
         // Fill with zeros up to initial size (capped at 65536)
         let fill_size = (initial_size as usize).min(65536);
         for _ in 0..fill_size {
@@ -728,7 +997,13 @@ impl CanonicalMemory for ComponentMemory {
             return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
         }
 
-        Ok(self.data[start..end].to_vec())
+        // Read bytes one by one from BoundedVec
+        let mut result = Vec::with_capacity(len as usize);
+        for i in start..end {
+            let byte = self.data.get(i).map_err(|_| Error::memory_out_of_bounds("Failed to read byte from memory"))?;
+            result.push(byte);
+        }
+        Ok(result)
     }
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
@@ -739,9 +1014,14 @@ impl CanonicalMemory for ComponentMemory {
             return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
         }
 
-        // Get mutable slice to write into
-        let dest_slice = &mut self.data.as_mut_slice()[start..end];
-        dest_slice.copy_from_slice(data);
+        // Write bytes one by one to BoundedVec
+        for (i, &byte) in data.iter().enumerate() {
+            if let Some(elem) = self.data.get_mut(start + i) {
+                *elem = byte;
+            } else {
+                return Err(Error::memory_error("Failed to write byte to memory"));
+            }
+        }
         Ok(())
     }
 
@@ -791,12 +1071,12 @@ pub fn create_function_signature(
     returns: Vec<ComponentType>,
 ) -> FunctionSignature {
     // Convert Vec to BoundedVec
-    let mut bounded_params = BoundedVec::<ComponentType, 16>::new();
+    let mut bounded_params = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default()).unwrap();
     for param in params {
         let _ = bounded_params.push(param); // Silently ignore if capacity exceeded
     }
 
-    let mut bounded_returns = BoundedVec::<ComponentType, 16>::new();
+    let mut bounded_returns = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default()).unwrap();
     for ret in returns {
         let _ = bounded_returns.push(ret); // Silently ignore if capacity exceeded
     }

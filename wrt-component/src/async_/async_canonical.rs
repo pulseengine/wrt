@@ -406,7 +406,7 @@ pub enum FutureValueEnum {
 #[derive(Debug)]
 pub struct ConcreteStream<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     inner: Stream<T>,
 }
@@ -415,7 +415,7 @@ where
 #[derive(Debug)]
 pub struct ConcreteFuture<T>
 where
-    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq,
+    T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     inner: Future<T>,
 }
@@ -455,7 +455,7 @@ impl AsyncCanonicalAbi {
         let handle = StreamHandle(self.next_stream_handle);
         self.next_stream_handle += 1;
 
-        let stream = Stream::new(handle, element_type.clone())?;
+        let stream = Stream::<Value>::new(handle, element_type.clone())?;
 
         #[cfg(feature = "std")]
         {
@@ -659,7 +659,7 @@ impl AsyncCanonicalAbi {
         let handle = FutureHandle(self.next_future_handle);
         self.next_future_handle += 1;
 
-        let future = Future::new(handle, value_type.clone());
+        let future = Future::<Value>::new(handle, value_type.clone());
 
         #[cfg(feature = "std")]
         {
@@ -986,7 +986,7 @@ impl AsyncCanonicalAbi {
 
 // Trait implementations for std environment
 #[cfg(feature = "std")]
-impl<T: Clone + fmt::Debug> StreamValue for ConcreteStream<T>
+impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug> StreamValue for ConcreteStream<T>
 where
     Value: From<T>,
     T: TryFrom<Value>,
@@ -1056,7 +1056,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<T: Clone + fmt::Debug> FutureValue for ConcreteFuture<T>
+impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug> FutureValue for ConcreteFuture<T>
 where
     Value: From<T>,
     T: TryFrom<Value>,
@@ -1070,7 +1070,7 @@ where
                     Ok(AsyncReadResult::Closed)
                 }
             },
-            FutureState::Cancelled | FutureState::Error => Ok(AsyncReadResult::Closed),
+            FutureState::Cancelled | FutureState::Error | FutureState::Failed => Ok(AsyncReadResult::Closed),
             FutureState::Pending => Ok(AsyncReadResult::Blocked),
         }
     }

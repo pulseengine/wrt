@@ -694,13 +694,13 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
-            if let Some(cached) = self.call_cache.get(&key) {
-                // Update hit count
+            // Update hit count first if entry exists
+            if self.call_cache.contains_key(&key) {
                 if let Some(mut_cached) = self.call_cache.get_mut(&key) {
                     mut_cached.hit_count += 1;
                 }
-                return Some(cached);
             }
+            return self.call_cache.get(&key);
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -733,13 +733,16 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
+            // Extract current time before mutable borrow
+            let current_time = self.get_current_time();
+
             let stats = self.call_frequency.entry(key).or_insert_with(CallStats::default);
             stats.call_count += 1;
 
             // Update running average
             let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
             stats.avg_duration_ns = total_time / stats.call_count as u64;
-            stats.last_call_time = self.get_current_time();
+            stats.last_call_time = current_time;
 
             // Determine if eligible for inlining (fast, frequent calls)
             stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000;
@@ -807,7 +810,7 @@ impl CrossComponentCallManager {
         #[cfg(feature = "std")]
         {
             if self.pending_transfers.is_empty() {
-                return Ok();
+                return Ok(());
             }
 
             // Group transfers by target component for batch processing

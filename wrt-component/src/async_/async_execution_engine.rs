@@ -428,9 +428,16 @@ impl AsyncExecutionEngine {
             },
         };
 
-        self.executions.push(execution).map_err(|_| {
-            Error::runtime_execution_error("Failed to push execution to executions vector")
-        })?;
+        #[cfg(feature = "std")]
+        {
+            self.executions.push(execution);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions.push(execution).map_err(|_| {
+                Error::runtime_execution_error("Failed to push execution to executions vector")
+            })?;
+        }
 
         self.stats.executions_started += 1;
 
@@ -627,10 +634,19 @@ impl AsyncExecutionEngine {
 
     fn register_subtask(&mut self, parent_id: ExecutionId, child_id: ExecutionId) -> Result<()> {
         let parent_index = self.find_execution_index(parent_id)?;
-        self.executions[parent_index]
-            .children
-            .push(child_id)
-            .map_err(|_| Error::runtime_execution_error("Failed to register subtask"))?;
+        #[cfg(feature = "std")]
+        {
+            self.executions[parent_index]
+                .children
+                .push(child_id);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions[parent_index]
+                .children
+                .push(child_id)
+                .map_err(|_| Error::runtime_execution_error("Failed to register subtask"))?;
+        }
         self.stats.subtasks_spawned += 1;
         Ok(())
     }
@@ -655,13 +671,20 @@ impl AsyncExecutionEngine {
             async_state:   FrameAsyncState::Sync,
         };
 
-        self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
-            Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::EXECUTION_ERROR,
-                "Failed to push call frame",
-            )
-        })?;
+        #[cfg(feature = "std")]
+        {
+            self.executions[execution_index].context.call_stack.push(frame);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    wrt_error::codes::EXECUTION_ERROR,
+                    "Failed to push call frame",
+                )
+            })?;
+        }
 
         // Simulate execution completing
         let result = ExecutionResult {
@@ -707,11 +730,21 @@ impl AsyncExecutionEngine {
             async_state:   FrameAsyncState::AwaitingStream(handle),
         };
 
-        self.executions[execution_index]
-            .context
-            .call_stack
-            .push(frame)
-            .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        #[cfg(feature = "std")]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame)
+                .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        }
 
         Ok(StepResult::Waiting)
     }
@@ -766,11 +799,21 @@ impl AsyncExecutionEngine {
             async_state:   FrameAsyncState::AwaitingFuture(handle),
         };
 
-        self.executions[execution_index]
-            .context
-            .call_stack
-            .push(frame)
-            .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        #[cfg(feature = "std")]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame)
+                .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        }
 
         Ok(StepResult::Waiting)
     }
@@ -820,11 +863,21 @@ impl AsyncExecutionEngine {
             async_state:   FrameAsyncState::AwaitingMultiple(wait_set.clone()),
         };
 
-        self.executions[execution_index]
-            .context
-            .call_stack
-            .push(frame)
-            .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        #[cfg(feature = "std")]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.executions[execution_index]
+                .context
+                .call_stack
+                .push(frame)
+                .map_err(|_| Error::runtime_execution_error("Failed to push call frame"))?;
+        }
 
         Ok(StepResult::Waiting)
     }

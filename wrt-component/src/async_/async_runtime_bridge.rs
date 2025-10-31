@@ -77,13 +77,16 @@ pub mod rust_async_bridge {
     use super::*;
 
     /// Adapter to use a Component Model Future in Rust async code
-    pub struct ComponentFutureAdapter<T> {
+    pub struct ComponentFutureAdapter<T>
+    where
+        T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    {
         wasm_future:  Arc<Mutex<WasmFuture<T>>>,
         task_manager: Arc<Mutex<TaskManager>>,
         task_id:      TaskId,
     }
 
-    impl<T: Clone + Send + 'static> RustFuture for ComponentFutureAdapter<T> {
+    impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + Send + 'static> RustFuture for ComponentFutureAdapter<T> {
         type Output = core::result::Result<T, String>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -91,7 +94,7 @@ pub mod rust_async_bridge {
 
             match future.state {
                 FutureState::Ready => {
-                    if let Some(value) = future.value {
+                    if let Some(ref value) = future.value {
                         Poll::Ready(Ok(value.clone()))
                     } else {
                         Poll::Ready(Err(String::from("Future ready but no value")))

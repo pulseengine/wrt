@@ -73,7 +73,7 @@ impl<'a> ResourceArena<'a> {
         let mut table =
             self.table.lock();
 
-        let handle = table.create_resource(type_idx, data)?;
+        let handle = table.create_resource(type_idx, Arc::from(data))?;
         // Add to arena's resources, checking capacity
         if self.resources.len() >= MAX_ARENA_RESOURCES {
             return Err(Error::runtime_execution_error("Error occurred"));
@@ -97,13 +97,12 @@ impl<'a> ResourceArena<'a> {
             self.table.lock();
 
         // Create the resource
-        let handle = table.create_resource(type_idx, data)?;
+        let handle = table.create_resource(type_idx, Arc::from(data))?;
 
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
-            if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
-            }
+            let mut res_guard = res.lock();
+            res_guard.name = Some(name.to_string());
         }
 
         // Add to arena's managed resources
@@ -126,7 +125,9 @@ impl<'a> ResourceArena<'a> {
         let table =
             self.table.lock();
 
-        table.get_resource(handle)
+        // Verify the resource exists, then return the ResourceId
+        let _resource = table.get_resource(handle)?;
+        Ok(ResourceId(handle))
     }
 
     /// Check if a resource exists

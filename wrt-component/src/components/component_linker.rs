@@ -328,14 +328,20 @@ impl ComponentLinker {
             .collect();
 
         #[cfg(not(feature = "std"))]
-        let mut dependent_instances = Vec::new();
-        for instance in self.instances.values() {
-            if let (Some(comp_id), Ok(linker_id)) = (instance.component.id.as_ref(), id.as_str()) {
-                if comp_id.as_str() == linker_id {
-                    let _ = dependent_instances.push(instance.id);
+        let dependent_instances = {
+            let mut dependent_instances = Vec::new();
+            if let Ok(linker_id_str) = id.as_str() {
+                for instance in self.instances.values() {
+                    if let Some(comp_id) = instance.component.id.as_ref() {
+                        let comp_id_str = comp_id.as_str();
+                        if comp_id_str == linker_id_str {
+                            let _ = dependent_instances.push(instance.id);
+                        }
+                    }
                 }
             }
-        }
+            dependent_instances
+        };
 
         if !dependent_instances.is_empty() {
             return Err(Error::runtime_execution_error(
