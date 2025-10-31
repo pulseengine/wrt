@@ -174,9 +174,17 @@ pub enum ArithmeticOp {
 /// Execution context for arithmetic operations
 pub trait ArithmeticContext {
     /// Pop a value from the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty or value access fails
     fn pop_arithmetic_value(&mut self) -> Result<Value>;
 
     /// Push a value to the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is full or push operation fails
     fn push_arithmetic_value(&mut self, value: Value) -> Result<()>;
 }
 
@@ -186,9 +194,8 @@ where
     F: FnOnce(math::FloatBits32) -> Result<math::FloatBits32>,
 {
     let val = context.pop_arithmetic_value()?;
-    let float_bits = match val {
-        Value::F32(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F32 operand")),
+    let Value::F32(float_bits) = val else {
+        return Err(Error::invalid_type_error("Expected F32 operand"));
     };
     let math_bits = math::FloatBits32(float_bits.0);
     let result = f(math_bits)?;
@@ -200,14 +207,12 @@ where
     F: FnOnce(math::FloatBits32, math::FloatBits32) -> Result<math::FloatBits32>,
 {
     let val_b = context.pop_arithmetic_value()?;
-    let float_bits_b = match val_b {
-        Value::F32(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F32 operand")),
+    let Value::F32(float_bits_b) = val_b else {
+        return Err(Error::invalid_type_error("Expected F32 operand"));
     };
     let val_a = context.pop_arithmetic_value()?;
-    let float_bits_a = match val_a {
-        Value::F32(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F32 operand")),
+    let Value::F32(float_bits_a) = val_a else {
+        return Err(Error::invalid_type_error("Expected F32 operand"));
     };
     let math_bits_a = math::FloatBits32(float_bits_a.0);
     let math_bits_b = math::FloatBits32(float_bits_b.0);
@@ -220,9 +225,8 @@ where
     F: FnOnce(math::FloatBits64) -> Result<math::FloatBits64>,
 {
     let val = context.pop_arithmetic_value()?;
-    let float_bits = match val {
-        Value::F64(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F64 operand")),
+    let Value::F64(float_bits) = val else {
+        return Err(Error::invalid_type_error("Expected F64 operand"));
     };
     let math_bits = math::FloatBits64(float_bits.0);
     let result = f(math_bits)?;
@@ -234,14 +238,12 @@ where
     F: FnOnce(math::FloatBits64, math::FloatBits64) -> Result<math::FloatBits64>,
 {
     let val_b = context.pop_arithmetic_value()?;
-    let float_bits_b = match val_b {
-        Value::F64(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F64 operand")),
+    let Value::F64(float_bits_b) = val_b else {
+        return Err(Error::invalid_type_error("Expected F64 operand"));
     };
     let val_a = context.pop_arithmetic_value()?;
-    let float_bits_a = match val_a {
-        Value::F64(bits) => bits,
-        _ => return Err(Error::invalid_type_error("Expected F64 operand")),
+    let Value::F64(float_bits_a) = val_a else {
+        return Err(Error::invalid_type_error("Expected F64 operand"));
     };
     let math_bits_a = math::FloatBits64(float_bits_a.0);
     let math_bits_b = math::FloatBits64(float_bits_b.0);
