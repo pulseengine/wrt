@@ -129,6 +129,7 @@ impl<S: LogSink, F: ValueFormatter> LoggingStrategy<S, F> {
     }
 
     /// Configure the logging strategy
+    #[must_use]
     pub fn with_config(mut self, config: LoggingConfig) -> Self {
         self.config = config;
         self
@@ -166,10 +167,12 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
             }
 
             if limit < args.len() {
-                args_str.push_str(&format!(", ... ({} more)", args.len() - limit));
+                use core::fmt::Write;
+                let _ = write!(args_str, ", ... ({} more)", args.len() - limit);
             }
 
-            log_entry.push_str(&format!(" args: [{args_str}]"));
+            use core::fmt::Write;
+            let _ = write!(log_entry, " args: [{args_str}]");
         }
 
         // Write the log entry
@@ -201,8 +204,9 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         if self.config.log_timing {
             if let Ok(mut timing) = self.timing.lock() {
                 if let Some(start_time) = timing.take() {
+                    use core::fmt::Write;
                     let elapsed = start_time.elapsed();
-                    log_entry.push_str(&format!(" elapsed: {elapsed:?}"));
+                    let _ = write!(log_entry, " elapsed: {elapsed:?}");
                 }
             }
         }

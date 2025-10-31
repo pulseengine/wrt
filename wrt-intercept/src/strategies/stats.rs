@@ -31,7 +31,7 @@ use crate::{
     LinkInterceptorStrategy,
 };
 
-/// Statistics collected for a function (no_std version - simplified)
+/// Statistics collected for a function (`no_std` version - simplified)
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FunctionStats {
@@ -64,9 +64,9 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
         24 // 3 * u64 = 24 bytes
     }
 
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         writer.write_u64_le(self.call_count)?;
@@ -78,8 +78,8 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
 
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::FromBytes for FunctionStats {
-    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &PStream,
     ) -> wrt_error::Result<Self> {
         let call_count = reader.read_u64_le()?;

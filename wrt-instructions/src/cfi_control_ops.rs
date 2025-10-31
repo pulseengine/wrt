@@ -1420,7 +1420,7 @@ impl DefaultCfiControlFlowOps {
 
     fn compute_signature_hash(&self, type_idx: u32) -> u64 {
         // Simple hash for now - real implementation would use proper type information
-        u64::from(type_idx) * 0x9e3779b97f4a7c15
+        u64::from(type_idx) * 0x9e37_79b9_7f4a_7c15
     }
 
     fn get_current_timestamp(&self) -> u64 {
