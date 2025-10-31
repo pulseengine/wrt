@@ -24,6 +24,10 @@ pub trait PureInstruction<T, E> {
     ///
     /// * `Ok(())` - If the instruction executed successfully
     /// * `Err(E)` - If an error occurred during execution
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if instruction execution fails
     fn execute(&self, context: &mut T) -> core::result::Result<(), E>;
 }
 
@@ -43,6 +47,10 @@ pub trait PureMemoryInstruction<T, E> {
     ///
     /// * `Ok(())` - If the instruction executed successfully
     /// * `Err(E)` - If an error occurred during execution
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory operation fails
     fn execute_memory(&self, memory: &mut T) -> core::result::Result<(), E>;
 }
 

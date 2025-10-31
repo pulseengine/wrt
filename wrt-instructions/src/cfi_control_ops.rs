@@ -83,10 +83,12 @@ impl Default for CfiControlFlowProtection {
 
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
-    #[must_use] 
+    #[must_use]
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
-        let mut config = Self::default();
-        config.protection_level = level;
+        let mut config = Self {
+            protection_level: level,
+            ..Default::default()
+        };
 
         // Adjust software config based on protection level
         match level {
@@ -329,6 +331,11 @@ pub struct CfiLandingPad {
 }
 
 impl CfiLandingPad {
+    /// Create a default landing pad
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if allocation fails
     pub fn try_default() -> Result<Self> {
         Ok(Self {
             pad_id:               0,

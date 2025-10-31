@@ -33,12 +33,24 @@ pub enum ParametricOp {
 /// Execution context for parametric operations
 pub trait ParametricContext {
     /// Push a value to the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is full
     fn push_value(&mut self, value: Value) -> Result<()>;
 
     /// Pop a value from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty
     fn pop_value(&mut self) -> Result<Value>;
 
     /// Peek at the top value without popping
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty
     fn peek_value(&self) -> Result<&Value>;
 }
 

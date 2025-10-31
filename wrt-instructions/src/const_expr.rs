@@ -81,6 +81,10 @@ impl Default for ConstExpr {
 /// Context for evaluating constant expressions
 pub trait ConstExprContext {
     /// Get the value of a global variable
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the global index is invalid
     fn get_global(&self, index: u32) -> Result<Value>;
 
     /// Check if a function index is valid
@@ -109,6 +113,10 @@ impl ConstExprSequence {
     }
 
     /// Add an instruction to the sequence
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the sequence is full
     pub fn push(&mut self, instr: ConstExpr) -> Result<()> {
         if self.len >= 16 {
             return Err(Error::memory_error(
@@ -141,6 +149,10 @@ impl ConstExprSequence {
     }
 
     /// Evaluate the constant expression sequence
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if evaluation fails or invalid operations occur
     pub fn evaluate(&self, context: &dyn ConstExprContext) -> Result<Value> {
         #[cfg(feature = "std")]
         let mut stack = Vec::new();
