@@ -57,12 +57,20 @@ impl ValidationContext {
     }
 
     /// Mark the current code as unreachable
+    ///
+    /// # Errors
+    ///
+    /// This operation is infallible
     pub fn mark_unreachable(&mut self) -> Result<()> {
         self.unreachable = true;
         Ok(())
     }
 
     /// Simulate pushing a type onto the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack overflow occurs
     pub fn push_type(&mut self, _ty: ValueType) -> Result<()> {
         self.stack_depth += 1;
         if self.stack_depth > 1024 {
@@ -72,6 +80,10 @@ impl ValidationContext {
     }
 
     /// Simulate popping a type from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack underflow occurs
     pub fn pop_type(&mut self) -> Result<ValueType> {
         if !self.unreachable && self.stack_depth == 0 {
             return Err(Error::validation_error("Stack underflow"));
@@ -84,12 +96,20 @@ impl ValidationContext {
     }
 
     /// Pop and expect a specific type
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack underflow occurs or type mismatch
     pub fn pop_expect(&mut self, _expected: ValueType) -> Result<()> {
         self.pop_type()?;
         Ok(())
     }
 
     /// Push multiple types
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack overflow occurs
     pub fn push_types(&mut self, types: &[ValueType]) -> Result<()> {
         for ty in types {
             self.push_type(*ty)?;

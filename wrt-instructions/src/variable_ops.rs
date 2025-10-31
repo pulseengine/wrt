@@ -36,21 +36,45 @@ pub enum VariableOp {
 /// Execution context for variable operations
 pub trait VariableContext {
     /// Get a local variable value by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the local index is invalid
     fn get_local(&self, index: u32) -> Result<Value>;
 
     /// Set a local variable value by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the local index is invalid or type mismatch occurs
     fn set_local(&mut self, index: u32, value: Value) -> Result<()>;
 
     /// Get a global variable value by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the global index is invalid
     fn get_global(&self, index: u32) -> Result<Value>;
 
     /// Set a global variable value by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the global index is invalid or type mismatch occurs
     fn set_global(&mut self, index: u32, value: Value) -> Result<()>;
 
     /// Push a value to the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is full
     fn push_value(&mut self, value: Value) -> Result<()>;
 
     /// Pop a value from the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty
     fn pop_value(&mut self) -> Result<Value>;
 }
 

@@ -67,22 +67,46 @@ use crate::{
 /// Table operations trait defining the interface to table implementations
 pub trait TableOperations {
     /// Get a reference from a table
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table or element index is out of bounds
     fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<Value>;
 
     /// Set a reference in a table
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table or element index is out of bounds or type mismatch occurs
     fn set_table_element(&mut self, table_index: u32, elem_index: u32, value: Value) -> Result<()>;
 
     /// Get the size of a table
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table index is invalid
     fn get_table_size(&self, table_index: u32) -> Result<u32>;
 
     /// Grow a table by a given number of elements, returning previous size or
     /// -1 on failure
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table index is invalid or growth fails
     fn grow_table(&mut self, table_index: u32, delta: u32, init_value: Value) -> Result<i32>;
 
     /// Fill a table range with a value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table index or range is invalid
     fn fill_table(&mut self, table_index: u32, dst: u32, val: Value, len: u32) -> Result<()>;
 
     /// Copy elements from one table to another
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table indices or ranges are invalid
     fn copy_table(
         &mut self,
         dst_table: u32,
