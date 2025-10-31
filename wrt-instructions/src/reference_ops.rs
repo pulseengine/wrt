@@ -52,6 +52,10 @@ impl RefNull {
     }
 
     /// Execute the ref.null instruction
+    ///
+    /// # Errors
+    ///
+    /// This operation is infallible
     pub fn execute(&self) -> Result<Value> {
         match self.ref_type {
             RefType::Funcref => Ok(Value::FuncRef(None)),
@@ -78,12 +82,14 @@ impl RefIsNull {
     }
 
     /// Execute the `ref.is_null` instruction
-    pub fn execute(&self, reference: Value) -> Result<Value> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not a reference type
+    pub fn execute(&self, reference: &Value) -> Result<Value> {
         let is_null = match reference {
-            Value::FuncRef(None) => true,
-            Value::ExternRef(None) => true,
-            Value::FuncRef(Some(_)) => false,
-            Value::ExternRef(Some(_)) => false,
+            Value::FuncRef(None) | Value::ExternRef(None) => true,
+            Value::FuncRef(Some(_)) | Value::ExternRef(Some(_)) => false,
             _ => {
                 return Err(Error::type_error("ref.is_null requires a reference type"));
             },
