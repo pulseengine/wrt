@@ -150,7 +150,7 @@ impl ResourceManager {
             .table
             .lock()
             .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
-        table.add_interceptor(interceptor);
+        table.add_interceptor(interceptor)?;
         Ok(())
     }
 

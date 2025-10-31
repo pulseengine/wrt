@@ -700,7 +700,7 @@ impl CrossComponentCallManager {
                     mut_cached.hit_count += 1;
                 }
             }
-            return self.call_cache.get(&key);
+            self.call_cache.get(&key)
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -710,9 +710,8 @@ impl CrossComponentCallManager {
                     return Some(cached_target);
                 }
             }
+            None
         }
-
-        None
     }
 
     /// Update call statistics for performance optimization

@@ -451,7 +451,7 @@ impl TypeBoundsChecker {
         #[cfg(feature = "std")]
         {
             let relations = self.type_hierarchy.entry(relation.sub_type).or_insert_with(BoundedVec::new);
-            relations.push(relation);
+            let _ = relations.push(relation);
         }
         #[cfg(not(feature = "std"))]
         {

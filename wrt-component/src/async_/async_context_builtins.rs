@@ -335,7 +335,7 @@ impl Default for AsyncContext {
     }
 }
 
-/// Thread-local storage for async contexts in each execution thread
+// Thread-local storage for async contexts in each execution thread
 #[cfg(feature = "std")]
 thread_local! {
     static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> =
