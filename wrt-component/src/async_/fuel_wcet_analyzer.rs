@@ -623,7 +623,7 @@ impl FuelWcetAnalyzer {
                 #[cfg(feature = "std")]
                 warn!(
                     "WCET underestimation: Task {} consumed {} fuel, estimate was {}",
-                    task_id.0, actual_fuel, result.wcet_fuel
+                    task_id, actual_fuel, result.wcet_fuel
                 );
             } else if actual_fuel < result.wcet_fuel / 2 {
                 self.stats.overestimations.fetch_add(1, Ordering::AcqRel);

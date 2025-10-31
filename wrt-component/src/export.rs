@@ -136,7 +136,7 @@ impl Export {
     pub fn new(name: String, ty: ExternType, value: ExternValue) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) => ExportKind::Function { function_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
             ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };
@@ -159,7 +159,7 @@ impl Export {
     ) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) => ExportKind::Function { function_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
             ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };
@@ -182,7 +182,7 @@ impl Export {
     ) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) => ExportKind::Function { function_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
             ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };

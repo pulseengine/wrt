@@ -48,6 +48,15 @@ pub struct FuncType {
     pub results: Vec<ValueType>,
 }
 
+impl Default for FuncType {
+    fn default() -> Self {
+        Self {
+            params: Vec::new(),
+            results: Vec::new(),
+        }
+    }
+}
+
 /// Memory instance for components
 #[derive(Debug)]
 pub struct Memory {

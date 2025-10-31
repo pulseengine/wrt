@@ -27,10 +27,11 @@ use wrt_foundation::{
 use super::{
     MemoryStrategy,
     Resource,
-    ResourceArena,
-    ResourceTable,
-    VerificationLevel,
+    resource_table_no_std::VerificationLevel,
 };
+#[cfg(feature = "std")]
+use super::ResourceArena;
+use super::resource_table_no_std::ResourceTable;
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -96,6 +97,7 @@ impl ResourceManager {
     /// Create a new resource manager with custom settings
     pub fn new_with_config(
         instance_id: &str,
+        max_resources: usize,
         memory_strategy: MemoryStrategy,
         verification_level: VerificationLevel,
     ) -> Self {
@@ -104,7 +106,7 @@ impl ResourceManager {
             instance_id: instance_id.to_string(),
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
-            max_resources: 64,
+            max_resources,
         }
     }
 
@@ -150,9 +152,11 @@ impl ResourceManager {
         let handle = table.create_resource(type_idx, data)?;
 
         // Set the name if we have access to the resource
-        if let Ok(res) = table.get_resource(handle) {
-            if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
+        if let Ok(res_id) = table.get_resource(handle) {
+            if let Some(resource) = table.get_mut(res_id) {
+                if let Ok(bounded_name) = BoundedString::try_from_str(name) {
+                    resource.name = Some(bounded_name);
+                }
             }
         }
 
@@ -164,14 +168,17 @@ impl ResourceManager {
         let table =
             self.table.lock();
 
-        table.get_resource(handle)
+        // Verify the resource exists, then return the ResourceId
+        let _resource = table.get_resource(handle)?;
+        Ok(ResourceId(handle))
     }
 
     /// Get a resource's data pointer representation by ID
     pub fn get_resource_representation(&self, id: ResourceId) -> Result<u32> {
         let table = self.table.lock();
-        let resource = table.get(id)
-            .ok_or_else(|| Error::runtime_execution_error("Resource not found in table"))?;
+        let resource_id = table.get_resource(id.0)?;
+        let resource = table.get(resource_id)
+            .ok_or_else(|| Error::resource_error("Resource not found"))?;
         Ok(resource.data_ptr as u32)
     }
 
@@ -194,8 +201,10 @@ impl ResourceManager {
     /// Get a host resource by ID - returns locked resource
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn get_host_resource<T: Any + 'static>(&self, id: ResourceId) -> Result<Arc<Mutex<T>>> {
-        let resource_box = self.get_resource(id.0)?;
-        let guard = resource_box.lock();
+        let table = self.table.lock();
+        let resource_id = table.get_resource(id.0)?;
+        let _resource = table.get(resource_id)
+            .ok_or_else(|| Error::resource_error("Resource not found"))?;
 
         // Try to downcast the data_ptr to the requested type
         // This is a simplified version - in production you'd need proper type checking
@@ -263,13 +272,20 @@ impl ResourceManager {
     }
 
     /// Create a new resource arena that uses this manager's resource table
-    pub fn create_arena<'a>(&'a self) -> Result<ResourceArena<'a>> {
-        ResourceArena::new(&self.table)
+    /// Note: Disabled in no_std context due to type incompatibility between
+    /// WrtMutex (no_std) and std::sync::Mutex (std ResourceArena)
+    #[cfg(all(feature = "std", not(any())))] // Intentionally disabled
+    pub fn create_arena(&self) -> Result<ResourceArena> {
+        // Type mismatch: self.table is Arc<WrtMutex<ResourceTable>>
+        // but ResourceArena::new expects Arc<std::sync::Mutex<ResourceTable>>
+        Err(Error::runtime_error("Arena creation not supported from no_std manager"))
     }
 
     /// Create a new resource arena with the given name
-    pub fn create_named_arena<'a>(&'a self, name: &'a str) -> Result<ResourceArena<'a>> {
-        ResourceArena::new_with_name(&self.table, name)
+    /// Note: Disabled in no_std context due to type incompatibility
+    #[cfg(all(feature = "std", not(any())))] // Intentionally disabled
+    pub fn create_named_arena(&self, name: &str) -> Result<ResourceArena> {
+        Err(Error::runtime_error("Arena creation not supported from no_std manager"))
     }
 }
 

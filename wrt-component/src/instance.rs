@@ -21,7 +21,7 @@ use crate::export::Export;
 pub type Instance = InstanceValue;
 
 /// Represents an instance value in a component
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstanceValue {
     /// The name of the instance
     pub name:    String,

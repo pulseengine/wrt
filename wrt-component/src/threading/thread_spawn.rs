@@ -44,16 +44,13 @@ use wrt_foundation::{
         SafeMemory,
     },
 };
-use wrt_platform::{
-    advanced_sync::{
-        Priority,
-        PriorityInheritanceMutex,
-    },
-    sync::{
-        FutexLike,
-        SpinFutex,
-    },
+use wrt_platform::sync::{
+    FutexLike,
+    SpinFutex,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Mutex;
 
 const MAX_THREADS_PER_COMPONENT: usize = 32;
 const MAX_THREAD_SPAWN_REQUESTS: usize = 256;
@@ -162,13 +159,25 @@ impl Default for ThreadConfiguration {
     }
 }
 
+#[cfg(feature = "std")]
+#[derive(Debug)]
+pub struct ThreadHandle {
+    pub thread_id:    ThreadId,
+    pub component_id: ComponentInstanceId,
+    pub detached:     bool,
+    pub completed:    AtomicBool,
+    pub result:       Mutex<Option<ThreadResult>>,
+    pub join_futex:   SpinFutex,
+}
+
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct ThreadHandle {
     pub thread_id:    ThreadId,
     pub component_id: ComponentInstanceId,
     pub detached:     bool,
     pub completed:    AtomicBool,
-    pub result:       PriorityInheritanceMutex<Option<ThreadResult>>,
+    pub result:       Option<ThreadResult>,
     pub join_futex:   SpinFutex,
 }
 
@@ -394,6 +403,7 @@ impl ComponentThreadManager {
         Ok(())
     }
 
+    #[cfg(feature = "std")]
     fn create_thread_handle(
         &self,
         thread_id: ThreadId,
@@ -406,7 +416,25 @@ impl ComponentThreadManager {
             component_id: request.component_id,
             detached: request.configuration.detached,
             completed: AtomicBool::new(false),
-            result: PriorityInheritanceMutex::new(None),
+            result: Mutex::new(None),
+            join_futex,
+        })
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn create_thread_handle(
+        &self,
+        thread_id: ThreadId,
+        request: &ThreadSpawnRequest,
+    ) -> ThreadSpawnResult<ThreadHandle> {
+        let join_futex = SpinFutex::new(0);
+
+        Ok(ThreadHandle {
+            thread_id,
+            component_id: request.component_id,
+            detached: request.configuration.detached,
+            completed: AtomicBool::new(false),
+            result: None,
             join_futex,
         })
     }

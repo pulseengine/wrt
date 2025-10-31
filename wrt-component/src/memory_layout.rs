@@ -447,10 +447,11 @@ impl CanonicalMemoryPool {
         // Look for available buffer in pool
         #[cfg(not(any(feature = "std",)))]
         {
-            for i in 0..self.pools[class_idx].len() {
-                if !self.pools[class_idx][i].in_use {
-                    self.pools[class_idx][i].in_use = true;
-                    return Some(&mut self.pools[class_idx][i].data);
+            let pool = &mut self.pools[class_idx];
+            for buffer in pool.iter_mut() {
+                if !buffer.in_use {
+                    buffer.in_use = true;
+                    return Some(&mut buffer.data);
                 }
             }
             None // Pool is full in no_std
@@ -458,18 +459,22 @@ impl CanonicalMemoryPool {
 
         #[cfg(feature = "std")]
         {
-            // Find existing free buffer
-            if let Some(buffer) = self.pools[class_idx].iter_mut().find(|b| !b.in_use) {
-                buffer.in_use = true;
-                return Some(&mut buffer.data);
+            let pool = &mut self.pools[class_idx];
+
+            // Find index of existing free buffer
+            let free_index = pool.iter().position(|b| !b.in_use);
+
+            if let Some(index) = free_index {
+                pool[index].in_use = true;
+                return Some(&mut pool[index].data);
             }
 
             // Allocate new buffer
             let buffer_size = self.size_classes[class_idx];
             let data = vec![0u8; buffer_size].into_boxed_slice();
-            self.pools[class_idx].push(MemoryBuffer { data, in_use: true });
+            pool.push(MemoryBuffer { data, in_use: true });
 
-            self.pools[class_idx].last_mut().map(|b| &mut b.data[..])
+            pool.last_mut().map(|b| &mut b.data[..])
         }
     }
 

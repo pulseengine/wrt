@@ -53,7 +53,6 @@ use wrt_sync::{
     RwLock,
 };
 
-#[cfg(not(feature = "std"))]
 use crate::resources::bounded_buffer_pool::BoundedBufferPool;
 // Conditional imports for buffer pools
 #[cfg(feature = "std")]

@@ -336,9 +336,16 @@ impl AsyncCanonicalEncoder {
     }
 
     fn write_u8(&mut self, value: u8) -> Result<()> {
-        self.buffer
-            .push(value)
-            .map_err(|_| Error::runtime_execution_error("Buffer overflow in encoder"))?;
+        #[cfg(feature = "std")]
+        {
+            self.buffer.push(value);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.buffer
+                .push(value)
+                .map_err(|_| Error::runtime_execution_error("Buffer overflow in encoder"))?;
+        }
         self.position += 1;
         Ok(())
     }

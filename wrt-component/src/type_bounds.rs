@@ -450,7 +450,7 @@ impl TypeBoundsChecker {
     fn add_relation(&mut self, relation: TypeRelation) -> core::result::Result<(), ComponentError> {
         #[cfg(feature = "std")]
         {
-            let relations = self.type_hierarchy.entry(relation.sub_type).or_insert_with(Vec::new);
+            let relations = self.type_hierarchy.entry(relation.sub_type).or_insert_with(BoundedVec::new);
             relations.push(relation);
         }
         #[cfg(not(feature = "std"))]

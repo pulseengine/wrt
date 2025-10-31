@@ -148,7 +148,7 @@ pub struct PostReturnRegistry {
     max_cleanup_tasks: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Clone, Default)]
 struct PostReturnFunction {
     /// Function index in the component
     func_index: u32,
@@ -160,6 +160,28 @@ struct PostReturnFunction {
     /// Associated cancellation token for cleanup
     cancellation_token: Option<CancellationToken>,
 }
+
+impl core::fmt::Debug for PostReturnFunction {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PostReturnFunction")
+            .field("func_index", &self.func_index)
+            .field("func_ref", &"<function>")
+            .field("executing", &self.executing)
+            .field("cancellation_token", &self.cancellation_token)
+            .finish()
+    }
+}
+
+impl PartialEq for PostReturnFunction {
+    fn eq(&self, other: &Self) -> bool {
+        self.func_index == other.func_index
+            && self.executing == other.executing
+            && self.cancellation_token == other.cancellation_token
+        // Note: func_ref is not compared as function pointers can't be compared
+    }
+}
+
+impl Eq for PostReturnFunction {}
 
 impl wrt_foundation::traits::Checksummable for PostReturnFunction {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -344,7 +366,7 @@ pub enum CleanupData {
     Reference { ref_id: u32, ref_count: u32 },
     /// Custom cleanup data
     #[cfg(feature = "std")]
-    Custom { cleanup_id: String, parameters: Vec<ComponentValue> },
+    Custom { cleanup_id: String, parameters: Vec<ComponentValue<ComponentProvider>> },
     #[cfg(not(any(feature = "std", )))]
     Custom { cleanup_id: BoundedString<64>, parameters: BoundedVec<ComponentValue<NoStdProvider<2048>>, 16> },
     /// Async cleanup data
@@ -416,12 +438,14 @@ impl wrt_foundation::traits::Checksummable for CleanupData {
             Self::Custom { cleanup_id, parameters: _ } => {
                 3u8.update_checksum(checksum);
                 #[cfg(feature = "std")]
-                if let Ok(bytes) = cleanup_id.as_bytes() {
-                    bytes.as_ref().update_checksum(checksum);
+                {
+                    let bytes = cleanup_id.as_bytes();
+                    bytes.update_checksum(checksum);
                 }
                 #[cfg(not(feature = "std"))]
-                if let Ok(bytes) = cleanup_id.as_bytes() {
-                    bytes.as_ref().update_checksum(checksum);
+                {
+                    let bytes = cleanup_id.as_bytes();
+                    bytes.update_checksum(checksum);
                 }
             },
             Self::Async { stream_handle, future_handle, error_context_handle, task_id, execution_id, cancellation_token: _ } => {
@@ -686,6 +710,8 @@ impl PostReturnRegistry {
             if total_pending > self.metrics.peak_pending_tasks {
                 self.metrics.peak_pending_tasks = total_pending;
             }
+
+            return Ok(());
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -1306,7 +1332,7 @@ pub mod helpers {
     pub fn custom_cleanup_task(
         instance_id: ComponentInstanceId,
         cleanup_id: &str,
-        parameters: Vec<ComponentValue>,
+        parameters: Vec<ComponentValue<ComponentProvider>>,
         priority: u8,
     ) -> CleanupTask {
         CleanupTask {

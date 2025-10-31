@@ -141,15 +141,24 @@ impl FromBytes for ImportValue {
 }
 
 /// Function import descriptor
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FunctionImport {
     /// Function signature
     pub signature:      WrtComponentType<ComponentProvider>,
     /// Function implementation
     #[cfg(feature = "std")]
-    pub implementation: Box<dyn Fn(&[Value]) -> wrt_error::Result<Value>>,
+    pub implementation: Arc<dyn Fn(&[Value]) -> wrt_error::Result<Value> + Send + Sync>,
     #[cfg(not(any(feature = "std",)))]
     pub implementation: fn(&[Value]) -> wrt_error::Result<Value>,
+}
+
+impl core::fmt::Debug for FunctionImport {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("FunctionImport")
+            .field("signature", &self.signature)
+            .field("implementation", &"<function>")
+            .finish()
+    }
 }
 
 /// Instance import descriptor
@@ -486,7 +495,7 @@ impl Component {
             callback_registry: None,
             runtime: None,
             interceptor: None,
-            resource_table: ComponentResourceTable::new().unwrap_or_else(|_| ComponentResourceTable::default()),
+            resource_table: ComponentResourceTable::new()?,
             built_in_requirements: None,
             original_binary: None,
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
@@ -649,7 +658,7 @@ impl Component {
         // For each resource type in the component, create a table
         for _type_id in 0..self.types.len() {
             // Create a budget-aware table for this resource type
-            let table = ResourceTable::new()?;
+            let table = ResourceTable { type_id: _type_id as u32 };
             tables.push(table);
         }
 
@@ -856,7 +865,7 @@ impl Component {
                 ExportKind::Function { function_index } => {
                     // Create function export
                     let func_export = FunctionExport {
-                        signature: WrtComponentType::Unit, // TODO: Get actual signature
+                        signature: WrtComponentType::Unit(ComponentProvider::default())?, // TODO: Get actual signature
                         index:     *function_index,
                     };
                     let export_val = ExportValue::Function(func_export);
@@ -877,7 +886,7 @@ impl Component {
                 },
                 ExportKind::Type { type_index } => {
                     // Create type export
-                    let export_val = ExportValue::Type(WrtComponentType::Unit);
+                    let export_val = ExportValue::Type(WrtComponentType::Unit(ComponentProvider::default())?);
                     ResolvedExport {
                         name:        export.name.clone(),
                         value:       export_val.clone(),
@@ -917,7 +926,7 @@ impl Component {
                 ExportKind::Function { function_index } => {
                     // Create function export
                     let func_export = FunctionExport {
-                        signature: WrtComponentType::Unit, // TODO: Get actual signature
+                        signature: WrtComponentType::Unit(ComponentProvider::default())?, // TODO: Get actual signature
                         index:     *function_index,
                     };
                     let export_val = ExportValue::Function(func_export);
@@ -938,7 +947,7 @@ impl Component {
                 },
                 ExportKind::Type { type_index } => {
                     // Create type export
-                    let export_val = ExportValue::Type(WrtComponentType::Unit);
+                    let export_val = ExportValue::Type(WrtComponentType::Unit(ComponentProvider::default())?);
                     ResolvedExport {
                         name:        export.name.clone(),
                         value:       export_val.clone(),
@@ -1197,8 +1206,8 @@ impl FromBytes for ModuleInstance {
 /// Host function wrapper for the execution engine
 #[cfg(feature = "std")]
 struct HostFunctionWrapper {
-    signature:      WrtComponentType,
-    implementation: Box<dyn Fn(&[Value]) -> wrt_error::Result<Value>>,
+    signature:      WrtComponentType<ComponentProvider>,
+    implementation: Arc<dyn Fn(&[Value]) -> wrt_error::Result<Value> + Send + Sync>,
 }
 
 #[cfg(feature = "std")]
@@ -1207,7 +1216,7 @@ impl crate::execution_engine::HostFunction for HostFunctionWrapper {
         (self.implementation)(args)
     }
 
-    fn signature(&self) -> &WrtComponentType {
+    fn signature(&self) -> &WrtComponentType<ComponentProvider> {
         &self.signature
     }
 }

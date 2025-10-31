@@ -305,7 +305,7 @@ impl BuiltinRegistry {
             // interceptor: None,
             component_name: component_name.to_string(),
             host_id: host_id.to_string(),
-            #[cfg(feature = "std")]
+            #[cfg(feature = "component-model-async")]
             async_store,
             #[cfg(feature = "component-model-error-context")]
             error_store,
@@ -412,9 +412,6 @@ impl BuiltinRegistry {
             .iter()
             .find(|h| h.builtin_type() == builtin_type)
             .ok_or_else(|| Error::component_not_found("Component not found"))?;
-
-        // Create interception context
-        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id)?;
 
         // No interceptor currently, just execute
         handler.execute(args)

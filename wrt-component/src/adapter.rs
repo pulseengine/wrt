@@ -339,14 +339,8 @@ impl CoreModuleAdapter {
                     results: vec![],
                 },
                 value: ExternValue::Function(FunctionValue {
-                    ty: {
-                        use wrt_foundation::types::FuncType;
-                        FuncType::default()
-                    },
-                    export_name: {
-                        let _provider = safe_managed_alloc!(512, CrateId::Component)?;
-                        BoundedString::try_from_str(&format!("func_{}", func_adapter.core_index))?
-                    },
+                    ty: crate::runtime::FuncType::default(),
+                    export_name: format!("func_{}", func_adapter.core_index),
                 }),
                 kind: ExportKind::Function { function_index: func_adapter.core_index },
                 attributes: HashMap::new(),

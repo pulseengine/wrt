@@ -9,11 +9,9 @@ use alloc::collections::BTreeSet as HashSet;
 use std::collections::HashSet;
 
 use wrt_error::kinds::DecodingError;
+use wrt_foundation::builtin::BuiltinType;
 
-use crate::{
-    builtins::BuiltinType,
-    prelude::*,
-};
+use crate::prelude::*;
 
 /// Scan a WebAssembly module for built-in imports
 ///

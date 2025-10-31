@@ -186,5 +186,5 @@ impl SizeClassBufferPool {
             total_capacity,
             size_count: 11 + self.overflow_pools.len(),
         }
-
+    }
 }

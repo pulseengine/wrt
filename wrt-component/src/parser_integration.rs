@@ -449,16 +449,16 @@ impl ComponentLoader {
     /// Create module adapter from parsed module
     fn create_module_adapter(&self, module: &ParsedModule) -> wrt_error::Result<CoreModuleAdapter> {
         #[cfg(feature = "std")]
-        let name = "Component not found";
-        #[cfg(not(any(feature = "std", )))]
-        let name = {
-            let provider = safe_managed_alloc!(512, CrateId::Component)
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::try_from_str("module")
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?
-        };
+        let adapter = CoreModuleAdapter::new("module".to_string());
 
-        let adapter = CoreModuleAdapter::new(name)?;
+        #[cfg(not(any(feature = "std", )))]
+        let adapter = {
+            let _provider = safe_managed_alloc!(512, CrateId::Component)
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
+            let name = BoundedString::try_from_str("module")
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?;
+            CoreModuleAdapter::new(name)?
+        };
 
         // In a real implementation, would parse the module binary
         // and create appropriate function/memory/table/global adapters

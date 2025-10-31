@@ -30,6 +30,7 @@ use std::{
     vec::Vec,
 };
 
+// use wrt_decoder::prelude::DecoderVecExt; // TODO: Re-enable when wrt_decoder is available
 use wrt_error::{
     Error,
     ErrorCategory,
@@ -39,6 +40,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
+    traits::FromBytes,
     types::ValueType,
     // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
     BoundedMap,
@@ -64,11 +66,11 @@ const MAX_CONTEXT_VALUE_SIZE: usize = 256;
 const MAX_CONTEXT_KEY_SIZE: usize = 64;
 
 /// Context key identifier for async contexts
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg(feature = "std")]
 pub struct ContextKey(String);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg(not(any(feature = "std",)))]
 pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
 
@@ -169,7 +171,12 @@ impl wrt_foundation::traits::Checksummable for ContextValue {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             Self::Simple(v) => v.update_checksum(checksum),
-            Self::Binary(b) => b.update_checksum(checksum),
+            Self::Binary(b) => {
+                // Manual checksum update for Vec<u8> (DecoderVecExt not available)
+                for byte in b.iter() {
+                    byte.update_checksum(checksum);
+                }
+            },
         }
     }
 }
@@ -187,7 +194,12 @@ impl wrt_runtime::ToBytes for ContextValue {
             }
             Self::Binary(b) => {
                 1u8.to_bytes_with_provider(writer, provider)?;
-                b.to_bytes_with_provider(writer, provider)
+                // Manual serialization for Vec<u8> (DecoderVecExt not available)
+                (b.len() as u32).to_bytes_with_provider(writer, provider)?;
+                for byte in b.iter() {
+                    byte.to_bytes_with_provider(writer, provider)?;
+                }
+                Ok(())
             }
         }
     }
@@ -203,7 +215,7 @@ impl wrt_runtime::FromBytes for ContextValue {
             0 => Ok(Self::Simple(WrtComponentValue::from_bytes_with_provider(reader, provider)?)),
             1 => {
                 #[cfg(feature = "std")]
-                return Ok(Self::Binary(Vec::from_bytes_with_provider(reader, provider)?));
+                return Ok(Self::Binary(<Vec<u8> as FromBytes>::from_bytes_with_provider(reader, provider)?));
                 #[cfg(not(any(feature = "std",)))]
                 return Ok(Self::Binary(BoundedVec::from_bytes_with_provider(reader, provider)?));
             }
@@ -272,7 +284,7 @@ impl AsyncContext {
     }
 
     pub fn get(&self, key: &ContextKey) -> Option<ContextValue> {
-        self.data.get(key).ok().and_then(|opt| opt.as_ref().cloned())
+        self.data.get(key).map(|v| v.clone())
     }
 
     pub fn set(&mut self, key: ContextKey, value: ContextValue) -> Result<()> {
@@ -291,10 +303,15 @@ impl AsyncContext {
     }
 
     pub fn remove(&mut self, key: &ContextKey) -> Option<ContextValue> {
-        self.data.remove(key).ok().flatten()
+        self.data.remove(key)
     }
 
     pub fn contains_key(&self, key: &ContextKey) -> bool {
+        #[cfg(feature = "std")]
+        {
+            self.data.contains_key(key)
+        }
+        #[cfg(not(any(feature = "std",)))]
         self.data.contains_key(key).unwrap_or(false)
     }
 

@@ -76,6 +76,7 @@ pub use crate::components::component_communication::{
 // Import our prelude for type aliases like WrtComponentValue
 use crate::prelude::*;
 use crate::{
+    bounded_component_infra::ComponentProvider,
     call_context::{
         CallContextConfig, CallContextManager, MarshalingConfig as ContextMarshalingConfig,
     },
@@ -324,10 +325,13 @@ impl ComponentCommunicationStrategy {
             let function_part = &function_part[2..]; // Skip "::"
 
             let provider = NoStdProvider::<1024>::default();
+            let source = BoundedString::<256>::try_from_str("unknown").unwrap_or_default();
+            let target = BoundedString::<256>::try_from_str(component_part).unwrap_or_default();
+            let func = BoundedString::<256>::try_from_str(function_part).unwrap_or_default();
             Some(CallRoutingInfo {
-                source_component: BoundedString::try_from_str("unknown").unwrap_or_default(), // Will be set by caller
-                target_component: BoundedString::try_from_str(component_part).unwrap_or_default(),
-                function_name: BoundedString::try_from_str(function_part).unwrap_or_default(),
+                source_component: source.as_str().unwrap_or("unknown").to_string(), // Will be set by caller
+                target_component: target.as_str().unwrap_or("").to_string(),
+                function_name: func.as_str().unwrap_or("").to_string(),
                 call_context_id: None,
             })
         } else {
@@ -435,9 +439,7 @@ impl ComponentCommunicationStrategy {
                     conversions_performed: 0,
                 },
                 success: false,
-                error_message: Some(
-                    BoundedString::try_from_str("Parameter data too large").unwrap_or_default(),
-                ),
+                error_message: Some("Parameter data too large".to_string()),
             });
         }
 
@@ -694,11 +696,8 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
             let marshaling_result = self.marshal_call_parameters(args)?;
 
             if !marshaling_result.success {
-                return Err(Error::runtime_execution_error(
-                    marshaling_result
-                        .error_message
-                        .unwrap_or(String::from("Parameter marshaling failed")),
-                ));
+                // Use a static error message since Error::runtime_execution_error requires &'static str
+                return Err(Error::runtime_execution_error("Parameter marshaling failed"));
             }
 
             // Update statistics
@@ -760,7 +759,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Intercepts a lift operation in the canonical ABI
     fn intercept_lift(
         &self,
-        ty: &ValType,
+        ty: &ValType<wrt_foundation::NoStdProvider<64>>,
         addr: u32,
         memory_bytes: &[u8],
     ) -> Result<Option<Vec<u8>>> {
@@ -774,7 +773,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Intercepts a lower operation in the canonical ABI
     fn intercept_lower(
         &self,
-        value_type: &ValType,
+        value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
         value_data: &[u8],
         addr: u32,
         memory_bytes: &mut [u8],
@@ -796,7 +795,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn intercept_function_call(
         &self,
         function_name: &str,
-        arg_types: &[ValType],
+        arg_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         arg_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         // Check if this is a cross-component call we should handle
@@ -817,7 +816,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn intercept_function_result(
         &self,
         function_name: &str,
-        result_types: &[ValType],
+        result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         result_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         // Handle result marshaling for cross-component calls
@@ -861,7 +860,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn after_start(
         &self,
         component_name: &str,
-        result_types: &[ValType],
+        result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         result_data: Option<&[u8]>,
     ) -> Result<Option<Vec<u8>>> {
         // Could implement component startup completion handling
@@ -879,8 +878,8 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
         &self,
         component_name: &str,
         func_name: &str,
-        args: &[ComponentValue],
-        results: &[ComponentValue],
+        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> Result<Option<Vec<wrt_intercept::Modification>>> {
         // Could implement result post-processing for cross-component calls
         Ok(None)
@@ -935,7 +934,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_targets: {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::try_from_str("*") {
+            if let Ok(s) = BoundedString::<256>::try_from_str("*") {
                 let _ = vec.push(s);
             }
             vec
@@ -945,7 +944,7 @@ pub fn create_permissive_security_policy() -> ComponentSecurityPolicy {
         #[cfg(not(feature = "std"))]
         allowed_functions: {
             let mut vec = Vec::new();
-            if let Ok(s) = BoundedString::try_from_str("*") {
+            if let Ok(s) = BoundedString::<256>::try_from_str("*") {
                 let _ = vec.push(s);
             }
             vec

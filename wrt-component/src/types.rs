@@ -410,6 +410,11 @@ impl Default for Value {
     }
 }
 
+// Manual Eq implementation for Value
+// This is safe for WebAssembly use cases where we treat NaN as equal to itself
+// for the purposes of value equality in collections and comparisons.
+impl Eq for Value {}
+
 impl wrt_foundation::traits::ToBytes for Value {
     fn serialized_size(&self) -> usize {
         match self {

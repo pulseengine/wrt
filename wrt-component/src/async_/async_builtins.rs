@@ -186,7 +186,7 @@ pub struct TaskInfo {
     pub subtasks:      BoundedVec<SubtaskHandle, 64>,
     /// Task-local context storage
     #[cfg(feature = "std")]
-    pub context:       std::collections::HashMap<String, ComponentValue>,
+    pub context:       std::collections::HashMap<String, ComponentValue<ComponentProvider>>,
     #[cfg(not(feature = "std"))]
     pub context: BoundedVec<
         (BoundedString<64>, ComponentValue),
@@ -561,82 +561,86 @@ impl TaskRegistry {
     }
 
     /// Set a context value for a task
+    #[cfg(feature = "std")]
+    pub fn set_task_context(
+        &mut self,
+        handle: TaskHandle,
+        key: &str,
+        value: ComponentValue<ComponentProvider>,
+    ) -> Result<()> {
+        if let Some(task_info) = self.tasks.get_mut(&handle) {
+            task_info.context.insert(key.to_string(), value);
+        } else {
+            return Err(Error::runtime_execution_error("Task not found"));
+        }
+        Ok(())
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn set_task_context(
         &mut self,
         handle: TaskHandle,
         key: &str,
         value: ComponentValue,
     ) -> Result<()> {
-        #[cfg(feature = "std")]
-        {
-            if let Some(task_info) = self.tasks.get_mut(&handle) {
-                task_info.context.insert(key.to_string(), value);
-            } else {
-                return Err(Error::runtime_execution_error("Task not found"));
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            for (task_handle, task_info) in &mut self.tasks {
-                if *task_handle == handle {
-                    let provider = safe_managed_alloc!(512, CrateId::Component)?;
-                    let key_bounded = BoundedString::try_from_str(key).map_err(|_| {
-                        Error::runtime_execution_error(
-                            "Failed to create bounded string for task context key",
-                        )
-                    })?;
+        for (task_handle, task_info) in &mut self.tasks {
+            if *task_handle == handle {
+                let provider = safe_managed_alloc!(512, CrateId::Component)?;
+                let key_bounded = BoundedString::try_from_str(key).map_err(|_| {
+                    Error::runtime_execution_error(
+                        "Failed to create bounded string for task context key",
+                    )
+                })?;
 
-                    // Remove existing entry if present
-                    let mut index_to_remove = None;
-                    for (i, (existing_key, _)) in task_info.context.iter().enumerate() {
-                        if existing_key.as_str()? == key {
-                            index_to_remove = Some(i);
-                            break;
-                        }
+                // Remove existing entry if present
+                let mut index_to_remove = None;
+                for (i, (existing_key, _)) in task_info.context.iter().enumerate() {
+                    if existing_key.as_str()? == key {
+                        index_to_remove = Some(i);
+                        break;
                     }
-                    if let Some(index) = index_to_remove {
-                        task_info.context.remove(index);
-                    }
-
-                    // Add new entry
-                    task_info.context.push((key_bounded, value)).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            wrt_error::codes::RESOURCE_EXHAUSTED,
-                            "Failed to add task context entry",
-                        )
-                    })?;
-                    break;
                 }
+                if let Some(index) = index_to_remove {
+                    task_info.context.remove(index);
+                }
+
+                // Add new entry
+                task_info.context.push((key_bounded, value)).map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Resource,
+                        wrt_error::codes::RESOURCE_EXHAUSTED,
+                        "Failed to add task context entry",
+                    )
+                })?;
+                break;
             }
         }
         Ok(())
     }
 
     /// Get a context value for a task
-    pub fn get_task_context(&self, handle: TaskHandle, key: &str) -> Option<ComponentValue> {
-        #[cfg(feature = "std")]
-        {
-            if let Some(task_info) = self.tasks.get(&handle) {
-                task_info.context.get(key).cloned()
-            } else {
-                None
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            for (task_handle, task_info) in &self.tasks {
-                if *task_handle == handle {
-                    for (existing_key, value) in &task_info.context {
-                        if existing_key.as_str().ok() == Some(key) {
-                            return Some(value.clone());
-                        }
-                    }
-                    break;
-                }
-            }
+    #[cfg(feature = "std")]
+    pub fn get_task_context(&self, handle: TaskHandle, key: &str) -> Option<ComponentValue<ComponentProvider>> {
+        if let Some(task_info) = self.tasks.get(&handle) {
+            task_info.context.get(key).cloned()
+        } else {
             None
         }
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn get_task_context(&self, handle: TaskHandle, key: &str) -> Option<ComponentValue> {
+        for (task_handle, task_info) in &self.tasks {
+            if *task_handle == handle {
+                for (existing_key, value) in &task_info.context {
+                    if existing_key.as_str().ok() == Some(key) {
+                        return Some(value.clone());
+                    }
+                }
+                break;
+            }
+        }
+        None
     }
 
     /// Get current task handle (simplified implementation)
@@ -674,7 +678,7 @@ static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new();
 
 /// Get the global task registry (ASIL-D safe)
 #[cfg(feature = "std")]
-fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
+fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>> {
     Ok(GLOBAL_TASK_REGISTRY.get_or_init(|| {
         Mutex::new(TaskRegistry::new().expect("Global task registry allocation should not fail"))
     }))
@@ -692,82 +696,105 @@ pub mod builtins {
 
     /// `task.cancel` canonical built-in
     /// Cancels a running task and all its subtasks
-    pub fn task_cancel(task_handle: u32) -> Result<ComponentValue> {
+    #[cfg(feature = "std")]
+    pub fn task_cancel(task_handle: u32) -> Result<ComponentValue<ComponentProvider>> {
         let handle = TaskHandle(task_handle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
-            let result = registry.cancel_task(handle);
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
+        let result = registry.cancel_task(handle);
 
-            match result {
-                CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
-                CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
-                CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
-                CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
-                CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
-            }
+        match result {
+            CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
+            CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
+            CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
+            CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
+            CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
-            let result = registry.cancel_task(handle);
+    }
 
-            match result {
-                CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
-                CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
-                CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
-                CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
-                CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
-            }
+    #[cfg(not(feature = "std"))]
+    pub fn task_cancel(task_handle: u32) -> Result<ComponentValue> {
+        let handle = TaskHandle(task_handle);
+        let mut registry = get_task_registry()?;
+        let result = registry.cancel_task(handle);
+
+        match result {
+            CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
+            CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
+            CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
+            CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
+            CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
         }
     }
 
     /// `subtask.cancel` canonical built-in
     /// Cancels a specific subtask
+    #[cfg(feature = "std")]
+    pub fn subtask_cancel(subtask_handle: u32) -> Result<ComponentValue<ComponentProvider>> {
+        let handle = SubtaskHandle(subtask_handle);
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::CONCURRENCY_ERROR,
+                "Failed to acquire task registry lock",
+            )
+        })?;
+        let result = registry.cancel_subtask(handle);
+
+        match result {
+            CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
+            CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
+            CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
+            CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
+            CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn subtask_cancel(subtask_handle: u32) -> Result<ComponentValue> {
         let handle = SubtaskHandle(subtask_handle);
+        let mut registry = get_task_registry()?;
+        let result = registry.cancel_subtask(handle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::CONCURRENCY_ERROR,
-                    "Failed to acquire task registry lock",
-                )
-            })?;
-            let result = registry.cancel_subtask(handle);
-
-            match result {
-                CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
-                CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
-                CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
-                CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
-                CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
-            let result = registry.cancel_subtask(handle);
-
-            match result {
-                CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
-                CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
-                CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
-                CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
-                CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
-            }
+        match result {
+            CancelResult::Cancelled => Ok(ComponentValue::U32(0)), // Success
+            CancelResult::AlreadyCompleted => Ok(ComponentValue::U32(1)), // Already completed
+            CancelResult::AlreadyCancelled => Ok(ComponentValue::U32(2)), // Already cancelled
+            CancelResult::NotFound => Ok(ComponentValue::U32(3)),  // Not found
+            CancelResult::Failed(_) => Ok(ComponentValue::U32(4)), // Failed
         }
     }
 
     /// `task.spawn` canonical built-in (bonus implementation)
     /// Spawns a new async task
+    #[cfg(feature = "std")]
+    pub fn task_spawn(
+        future_handle: Option<u32>,
+        stream_handle: Option<u32>,
+    ) -> Result<ComponentValue<ComponentProvider>> {
+        let future_h = future_handle.map(FutureHandle);
+        let stream_h = stream_handle.map(StreamHandle);
+
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
+
+        match registry.register_task(future_h, stream_h) {
+            Ok(handle) => Ok(ComponentValue::U32(handle.0)),
+            Err(_) => Err(Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Failed to spawn task",
+            )),
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn task_spawn(
         future_handle: Option<u32>,
         stream_handle: Option<u32>,
@@ -775,39 +802,46 @@ pub mod builtins {
         let future_h = future_handle.map(FutureHandle);
         let stream_h = stream_handle.map(StreamHandle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+        let mut registry = get_task_registry()?;
 
-            match registry.register_task(future_h, stream_h) {
-                Ok(handle) => Ok(ComponentValue::U32(handle.0)),
-                Err(_) => Err(Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Failed to spawn task",
-                )),
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
-
-            match registry.register_task(future_h, stream_h) {
-                Ok(handle) => Ok(ComponentValue::U32(handle.0)),
-                Err(_) => Err(Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Failed to spawn task",
-                )),
-            }
+        match registry.register_task(future_h, stream_h) {
+            Ok(handle) => Ok(ComponentValue::U32(handle.0)),
+            Err(_) => Err(Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Failed to spawn task",
+            )),
         }
     }
 
     /// `subtask.spawn` canonical built-in (bonus implementation)
     /// Spawns a new subtask under a parent task
+    #[cfg(feature = "std")]
+    pub fn subtask_spawn(
+        parent_task: u32,
+        future_handle: Option<u32>,
+        stream_handle: Option<u32>,
+    ) -> Result<ComponentValue<ComponentProvider>> {
+        let parent_h = TaskHandle(parent_task);
+        let future_h = future_handle.map(FutureHandle);
+        let stream_h = stream_handle.map(StreamHandle);
+
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
+
+        match registry.register_subtask(parent_h, future_h, stream_h) {
+            Ok(handle) => Ok(ComponentValue::U32(handle.0)),
+            Err(_) => Err(Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Failed to spawn subtask",
+            )),
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn subtask_spawn(
         parent_task: u32,
         future_handle: Option<u32>,
@@ -817,261 +851,240 @@ pub mod builtins {
         let future_h = future_handle.map(FutureHandle);
         let stream_h = stream_handle.map(StreamHandle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+        let mut registry = get_task_registry()?;
 
-            match registry.register_subtask(parent_h, future_h, stream_h) {
-                Ok(handle) => Ok(ComponentValue::U32(handle.0)),
-                Err(_) => Err(Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Failed to spawn subtask",
-                )),
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
-
-            match registry.register_subtask(parent_h, future_h, stream_h) {
-                Ok(handle) => Ok(ComponentValue::U32(handle.0)),
-                Err(_) => Err(Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Failed to spawn subtask",
-                )),
-            }
+        match registry.register_subtask(parent_h, future_h, stream_h) {
+            Ok(handle) => Ok(ComponentValue::U32(handle.0)),
+            Err(_) => Err(Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Failed to spawn subtask",
+            )),
         }
     }
 
     /// `task.status` canonical built-in (bonus implementation)
     /// Gets the status of a task
+    #[cfg(feature = "std")]
+    pub fn task_status(task_handle: u32) -> Result<ComponentValue<ComponentProvider>> {
+        let handle = TaskHandle(task_handle);
+
+        let registry_mutex = get_task_registry()?;
+        let registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
+
+        if let Some(task_info) = registry.tasks.get(&handle) {
+            let status = match task_info.state {
+                TaskState::Running => 0u32,
+                TaskState::Completed => 1u32,
+                TaskState::Cancelled => 2u32,
+                TaskState::Failed => 3u32,
+            };
+            Ok(ComponentValue::U32(status))
+        } else {
+            Ok(ComponentValue::U32(4)) // Not found
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn task_status(task_handle: u32) -> Result<ComponentValue> {
         let handle = TaskHandle(task_handle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+        let registry = get_task_registry()?;
 
-            if let Some(task_info) = registry.tasks.get(&handle) {
+        for (task_handle_ref, task_info) in &registry.tasks {
+            if *task_handle_ref == handle {
                 let status = match task_info.state {
                     TaskState::Running => 0u32,
                     TaskState::Completed => 1u32,
                     TaskState::Cancelled => 2u32,
                     TaskState::Failed => 3u32,
                 };
-                Ok(ComponentValue::U32(status))
-            } else {
-                Ok(ComponentValue::U32(4)) // Not found
+                return Ok(ComponentValue::U32(status));
             }
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let registry = get_task_registry()?;
-
-            for (task_handle_ref, task_info) in &registry.tasks {
-                if *task_handle_ref == handle {
-                    let status = match task_info.state {
-                        TaskState::Running => 0u32,
-                        TaskState::Completed => 1u32,
-                        TaskState::Cancelled => 2u32,
-                        TaskState::Failed => 3u32,
-                    };
-                    return Ok(ComponentValue::U32(status));
-                }
-            }
-            Ok(ComponentValue::U32(4)) // Not found
-        }
+        Ok(ComponentValue::U32(4)) // Not found
     }
 
     /// `subtask.status` canonical built-in (bonus implementation)
     /// Gets the status of a subtask
+    #[cfg(feature = "std")]
+    pub fn subtask_status(subtask_handle: u32) -> Result<ComponentValue<ComponentProvider>> {
+        let handle = SubtaskHandle(subtask_handle);
+
+        let registry_mutex = get_task_registry()?;
+        let registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
+
+        if let Some(subtask_info) = registry.subtasks.get(&handle) {
+            let status = match subtask_info.state {
+                TaskState::Running => 0u32,
+                TaskState::Completed => 1u32,
+                TaskState::Cancelled => 2u32,
+                TaskState::Failed => 3u32,
+            };
+            Ok(ComponentValue::U32(status))
+        } else {
+            Ok(ComponentValue::U32(4)) // Not found
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn subtask_status(subtask_handle: u32) -> Result<ComponentValue> {
         let handle = SubtaskHandle(subtask_handle);
 
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+        let registry = get_task_registry()?;
 
-            if let Some(subtask_info) = registry.subtasks.get(&handle) {
+        for (subtask_handle_ref, subtask_info) in &registry.subtasks {
+            if *subtask_handle_ref == handle {
                 let status = match subtask_info.state {
                     TaskState::Running => 0u32,
                     TaskState::Completed => 1u32,
                     TaskState::Cancelled => 2u32,
                     TaskState::Failed => 3u32,
                 };
-                Ok(ComponentValue::U32(status))
-            } else {
-                Ok(ComponentValue::U32(4)) // Not found
+                return Ok(ComponentValue::U32(status));
             }
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let registry = get_task_registry()?;
-
-            for (subtask_handle_ref, subtask_info) in &registry.subtasks {
-                if *subtask_handle_ref == handle {
-                    let status = match subtask_info.state {
-                        TaskState::Running => 0u32,
-                        TaskState::Completed => 1u32,
-                        TaskState::Cancelled => 2u32,
-                        TaskState::Failed => 3u32,
-                    };
-                    return Ok(ComponentValue::U32(status));
-                }
-            }
-            Ok(ComponentValue::U32(4)) // Not found
-        }
+        Ok(ComponentValue::U32(4)) // Not found
     }
 
     /// `context.get` canonical built-in
     /// Gets a value from the current task's context storage
-    pub fn context_get(key: &str) -> Result<ComponentValue> {
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+    #[cfg(feature = "std")]
+    pub fn context_get(key: &str) -> Result<ComponentValue<ComponentProvider>> {
+        let registry_mutex = get_task_registry()?;
+        let registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
 
-            if let Some(current_task) = registry.get_current_task() {
-                if let Some(value) = registry.get_task_context(current_task, key) {
-                    Ok(value)
-                } else {
-                    Ok(ComponentValue::Option(None))
-                }
+        if let Some(current_task) = registry.get_current_task() {
+            if let Some(value) = registry.get_task_context(current_task, key) {
+                Ok(value)
             } else {
-                Err(Error::runtime_execution_error("No current task"))
+                Ok(ComponentValue::Option(None))
             }
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let registry = get_task_registry()?;
+    }
 
-            if let Some(current_task) = registry.get_current_task() {
-                if let Some(value) = registry.get_task_context(current_task, key) {
-                    Ok(value)
-                } else {
-                    Ok(ComponentValue::Option(None))
-                }
+    #[cfg(not(feature = "std"))]
+    pub fn context_get(key: &str) -> Result<ComponentValue> {
+        let registry = get_task_registry()?;
+
+        if let Some(current_task) = registry.get_current_task() {
+            if let Some(value) = registry.get_task_context(current_task, key) {
+                Ok(value)
             } else {
-                Err(Error::runtime_execution_error("No current task"))
+                Ok(ComponentValue::Option(None))
             }
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
     }
 
     /// `context.set` canonical built-in
     /// Sets a value in the current task's context storage
-    pub fn context_set(key: &str, value: ComponentValue) -> Result<ComponentValue> {
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+    #[cfg(feature = "std")]
+    pub fn context_set(key: &str, value: ComponentValue<ComponentProvider>) -> Result<ComponentValue<ComponentProvider>> {
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
 
-            if let Some(current_task) = registry.get_current_task() {
-                registry.set_task_context(current_task, key, value)?;
-                Ok(ComponentValue::U32(0)) // Success
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_OPERATION,
-                    "No current task context",
-                ))
-            }
+        if let Some(current_task) = registry.get_current_task() {
+            registry.set_task_context(current_task, key, value)?;
+            Ok(ComponentValue::U32(0)) // Success
+        } else {
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::INVALID_OPERATION,
+                "No current task context",
+            ))
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
+    }
 
-            if let Some(current_task) = registry.get_current_task() {
-                registry.set_task_context(current_task, key, value)?;
-                Ok(ComponentValue::U32(0)) // Success
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_OPERATION,
-                    "No current task context",
-                ))
-            }
+    #[cfg(not(feature = "std"))]
+    pub fn context_set(key: &str, value: ComponentValue) -> Result<ComponentValue> {
+        let mut registry = get_task_registry()?;
+
+        if let Some(current_task) = registry.get_current_task() {
+            registry.set_task_context(current_task, key, value)?;
+            Ok(ComponentValue::U32(0)) // Success
+        } else {
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::INVALID_OPERATION,
+                "No current task context",
+            ))
         }
     }
 
     /// `context.has` canonical built-in (bonus implementation)
     /// Checks if a key exists in the current task's context
-    pub fn context_has(key: &str) -> Result<ComponentValue> {
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+    #[cfg(feature = "std")]
+    pub fn context_has(key: &str) -> Result<ComponentValue<ComponentProvider>> {
+        let registry_mutex = get_task_registry()?;
+        let registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
 
-            if let Some(current_task) = registry.get_current_task() {
-                let has_key = registry.get_task_context(current_task, key).is_some();
-                Ok(ComponentValue::Bool(has_key))
-            } else {
-                Err(Error::runtime_execution_error("No current task"))
-            }
+        if let Some(current_task) = registry.get_current_task() {
+            let has_key = registry.get_task_context(current_task, key).is_some();
+            Ok(ComponentValue::Bool(has_key))
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let registry = get_task_registry()?;
+    }
 
-            if let Some(current_task) = registry.get_current_task() {
-                let has_key = registry.get_task_context(current_task, key).is_some();
-                Ok(ComponentValue::Bool(has_key))
-            } else {
-                Err(Error::runtime_execution_error("No current task"))
-            }
+    #[cfg(not(feature = "std"))]
+    pub fn context_has(key: &str) -> Result<ComponentValue> {
+        let registry = get_task_registry()?;
+
+        if let Some(current_task) = registry.get_current_task() {
+            let has_key = registry.get_task_context(current_task, key).is_some();
+            Ok(ComponentValue::Bool(has_key))
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
     }
 
     /// `context.clear` canonical built-in (bonus implementation)
     /// Clears all values from the current task's context
-    pub fn context_clear() -> Result<ComponentValue> {
-        #[cfg(feature = "std")]
-        {
-            let registry_mutex = get_task_registry()?;
-            let mut registry = registry_mutex.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire task registry lock")
-            })?;
+    #[cfg(feature = "std")]
+    pub fn context_clear() -> Result<ComponentValue<ComponentProvider>> {
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| {
+            Error::runtime_execution_error("Failed to acquire task registry lock")
+        })?;
 
-            if let Some(current_task) = registry.get_current_task() {
-                if let Some(task_info) = registry.tasks.get_mut(&current_task) {
-                    task_info.context.clear();
-                }
-                Ok(ComponentValue::U32(0)) // Success
-            } else {
-                Err(Error::runtime_execution_error("No current task"))
+        if let Some(current_task) = registry.get_current_task() {
+            if let Some(task_info) = registry.tasks.get_mut(&current_task) {
+                task_info.context.clear();
             }
+            Ok(ComponentValue::U32(0)) // Success
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
-        #[cfg(not(feature = "std"))]
-        {
-            let mut registry = get_task_registry()?;
+    }
 
-            if let Some(current_task) = registry.get_current_task() {
-                for (task_handle, task_info) in &mut registry.tasks {
-                    if *task_handle == current_task {
-                        task_info.context.clear();
-                        break;
-                    }
+    #[cfg(not(feature = "std"))]
+    pub fn context_clear() -> Result<ComponentValue> {
+        let mut registry = get_task_registry()?;
+
+        if let Some(current_task) = registry.get_current_task() {
+            for (task_handle, task_info) in &mut registry.tasks {
+                if *task_handle == current_task {
+                    task_info.context.clear();
+                    break;
                 }
-                Ok(ComponentValue::U32(0)) // Success
-            } else {
-                Err(Error::runtime_execution_error("No current task"))
             }
+            Ok(ComponentValue::U32(0)) // Success
+        } else {
+            Err(Error::runtime_execution_error("No current task"))
         }
     }
 }

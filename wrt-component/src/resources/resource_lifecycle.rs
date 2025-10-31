@@ -241,9 +241,16 @@ impl ResourceLifecycleManager {
             destructor,
         };
 
-        self.types
-            .insert(type_idx, resource_type)
-            .map_err(|_| Error::resource_error("Failed to register resource type"))?;
+        #[cfg(feature = "std")]
+        {
+            self.types.insert(type_idx, resource_type);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.types
+                .insert(type_idx, resource_type)
+                .map_err(|_| Error::resource_error("Failed to register resource type"))?;
+        }
 
         Ok(())
     }
@@ -307,9 +314,16 @@ impl ResourceLifecycleManager {
         }
 
         // Store resource
-        self.resources
-            .insert(handle, resource)
-            .map_err(|_| Error::resource_error("Failed to store resource"))?;
+        #[cfg(feature = "std")]
+        {
+            self.resources.insert(handle, resource);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.resources
+                .insert(handle, resource)
+                .map_err(|_| Error::resource_error("Failed to store resource"))?;
+        }
 
         // Update metrics
         self.metrics.total_created += 1;

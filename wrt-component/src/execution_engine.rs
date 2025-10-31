@@ -71,7 +71,7 @@ pub enum TimeBoundedOutcome {
 
 pub fn run_with_time_bounds<F, R>(_config: TimeBoundedConfig, _func: F) -> TimeBoundedOutcome
 where
-    F: FnOnce() -> Result<R, String>,
+    F: FnOnce() -> core::result::Result<R, String>,
 {
     TimeBoundedOutcome::Success
 }
@@ -85,6 +85,7 @@ use crate::{
         ImportType,
     },
     memory_layout::MemoryLayout,
+    prelude::WrtComponentType,
     string_encoding::StringEncoding,
     types::{
         ValType,
@@ -181,12 +182,12 @@ impl CallFrame {
 }
 
 /// Host function callback trait
-pub trait HostFunction {
+pub trait HostFunction: Send + Sync {
     /// Call the host function with the given arguments
     fn call(&mut self, args: &[Value]) -> wrt_error::Result<Value>;
 
     /// Get the function signature
-    fn signature(&self) -> &ComponentType;
+    fn signature(&self) -> &WrtComponentType<ComponentProvider>;
 }
 
 /// Component execution engine
@@ -402,7 +403,7 @@ impl ComponentExecutionEngine {
         };
         let result = self
             .runtime_bridge
-            .execute_component_function(instance_id, function_name, &component_values)
+            .execute_component_function(instance_id, &function_name, &component_values)
             .map_err(|_| wrt_error::Error::runtime_error("Failed to execute component function"))?;
 
         // Convert result back to engine value format
@@ -519,7 +520,7 @@ impl ComponentExecutionEngine {
     fn convert_values_to_component(
         &self,
         values: &[Value],
-    ) -> wrt_error::Result<Vec<crate::canonical_abi::ComponentValue>> {
+    ) -> wrt_error::Result<Vec<ComponentValue<ComponentProvider>>> {
         let mut component_values = Vec::new();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
@@ -656,20 +657,32 @@ impl ComponentExecutionEngine {
     pub fn register_runtime_host_function<F>(&mut self, name: &str, func: F) -> wrt_error::Result<usize>
     where
         F: Fn(
-                &[crate::canonical_abi::ComponentValue],
+                &[ComponentValue<ComponentProvider>],
             )
-                -> core::result::Result<crate::canonical_abi::ComponentValue, wrt_error::Error>
+                -> core::result::Result<ComponentValue<ComponentProvider>, wrt_error::Error>
             + Send
             + Sync
             + 'static,
     {
         use crate::canonical_abi::ComponentType;
+        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 
         let name_string = String::from(name);
-        let signature = crate::component_instantiation::FunctionSignature {
+
+        // Create params and returns using component_instantiation types
+        use crate::component_instantiation::FunctionSignature;
+        let provider_params = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+        let mut params = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_params).expect("BoundedVec creation failed");
+        params.push(ComponentType::S32).expect("Push failed");
+
+        let provider_returns = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+        let mut returns = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_returns).expect("BoundedVec creation failed");
+        returns.push(ComponentType::S32).expect("Push failed");
+
+        let signature = FunctionSignature {
             name:    name_string.clone(),
-            params:  vec![ComponentType::S32], // Simplified for now
-            returns: vec![ComponentType::S32],
+            params,
+            returns,
         };
 
         self.runtime_bridge

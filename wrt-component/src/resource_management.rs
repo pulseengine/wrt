@@ -99,7 +99,7 @@ pub enum ResourceValidationLevel {
 }
 
 /// Resource data container
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ResourceData {
     /// Raw bytes
     Bytes(BoundedVec<u8, 4096>),
@@ -108,6 +108,17 @@ pub enum ResourceData {
     Custom(Box<dyn std::any::Any + Send + Sync>),
     /// External resource reference
     External(u64),
+}
+
+impl Clone for ResourceData {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Bytes(b) => Self::Bytes(b.clone()),
+            #[cfg(feature = "std")]
+            Self::Custom(_) => panic!("Cannot clone Custom resource data"),
+            Self::External(id) => Self::External(*id),
+        }
+    }
 }
 
 /// Resource error types
