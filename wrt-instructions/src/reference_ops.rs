@@ -252,7 +252,7 @@ impl ReferenceOp {
                 if operands.is_empty() {
                     return Err(Error::runtime_error("ref.is_null requires one operand"));
                 }
-                op.execute(operands[0].clone())
+                op.execute(&operands[0])
             },
             ReferenceOp::RefFunc(op) => {
                 // Validate function exists
