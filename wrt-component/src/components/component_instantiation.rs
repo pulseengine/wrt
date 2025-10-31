@@ -983,7 +983,7 @@ impl ComponentMemory {
 
     /// Clear memory (for cleanup)
     pub fn clear(&mut self) {
-        self.data.clear();
+        let _ = self.data.clear();
         self.current_size = 0;
     }
 }

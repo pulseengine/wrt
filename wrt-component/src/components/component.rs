@@ -1210,14 +1210,14 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
         match wrt_decoder::component::decode_component(bytes) {
             Ok(component) => {
                 scan_functions_for_builtins(&(), &mut requirements)?;
-                return Ok(requirements);
+                Ok(requirements)
             },
             Err(err) => {
-                return Err(Error::component_not_found("Component not found"));
+                Err(Error::component_not_found("Component not found"))
             },
         }
     }
-    #[cfg(not(feature = "decoder"))]
+    #[cfg(not(feature = "std"))]
     {
         // Without decoder, return empty requirements
         Ok(requirements)

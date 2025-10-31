@@ -199,14 +199,14 @@ struct ComponentSyncContext {
 
 /// Sync limits per component
 #[derive(Debug, Clone)]
-struct SyncLimits {
-    max_mutexes:    usize,
-    max_semaphores: usize,
-    max_barriers:   usize,
-    max_condvars:   usize,
-    max_rwlocks:    usize,
-    max_latches:    usize,
-    fuel_budget:    u64,
+pub struct SyncLimits {
+    pub max_mutexes:    usize,
+    pub max_semaphores: usize,
+    pub max_barriers:   usize,
+    pub max_condvars:   usize,
+    pub max_rwlocks:    usize,
+    pub max_latches:    usize,
+    pub fuel_budget:    u64,
 }
 
 /// Sync configuration
@@ -756,7 +756,7 @@ impl AdvancedSyncPrimitives {
 
                     // Need to wake waiters after releasing the primitive borrow
                     let result = BarrierWaitResult::Leader;
-                    drop(primitive);
+                    // primitive reference drops here automatically
 
                     let primitive = self.primitives.get_mut(&primitive_id)
                         .ok_or_else(|| Error::validation_invalid_input("Barrier not found"))?;
