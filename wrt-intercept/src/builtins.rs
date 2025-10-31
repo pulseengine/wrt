@@ -61,15 +61,17 @@ impl InterceptContext {
     ///
     /// A new `InterceptContext` instance
     #[must_use]
-    pub fn new(_component_name: &str, builtin_type: BuiltinType, _host_id: &str) -> Self {
+    pub fn new(component_name: &str, builtin_type: BuiltinType, host_id: &str) -> Self {
+        #[cfg(not(feature = "std"))]
+        let _ = (component_name, host_id);
         Self {
             #[cfg(feature = "std")]
-            component_name: _component_name.to_string(),
+            component_name: component_name.to_string(),
             #[cfg(not(feature = "std"))]
             component_name: "default",
             builtin_type,
             #[cfg(feature = "std")]
-            host_id: _host_id.to_string(),
+            host_id: host_id.to_string(),
             #[cfg(not(feature = "std"))]
             host_id: "default",
             #[cfg(feature = "std")]
@@ -109,6 +111,12 @@ impl BuiltinSerialization {
     /// # Returns
     ///
     /// A `Result` containing the serialized bytes or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Serialization of any value fails
+    /// - Unsupported value type is encountered
     pub fn serialize(
         values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> wrt_error::Result<Vec<u8>> {
@@ -141,6 +149,13 @@ impl BuiltinSerialization {
     /// # Returns
     ///
     /// A `Result` containing the deserialized values or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Insufficient bytes available for deserialization
+    /// - Invalid type encountered
+    /// - Deserialization of any value fails
     pub fn deserialize(
         bytes: &[u8],
         types: &[ValType<wrt_foundation::NoStdProvider<64>>],
@@ -293,6 +308,10 @@ pub trait BuiltinInterceptor: Send + Sync {
     ///
     /// A `Result` containing potentially modified arguments, or a complete
     /// result if the built-in execution should be bypassed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if interception processing fails
     fn before_builtin(
         &self,
         context: &InterceptContext,
@@ -334,7 +353,7 @@ pub enum BeforeBuiltinResult {
     Bypass(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
 }
 
-/// Result of the `before_builtin` method (no_std version)
+/// Result of the `before_builtin` method (`no_std` version)
 #[cfg(not(feature = "std"))]
 pub enum BeforeBuiltinResult {
     /// Continue with the built-in execution

@@ -498,13 +498,13 @@ impl ComponentModelProvider {
             name: make_string("wasi:cli/environment.get-arguments"),
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:cli/environment.get-arguments")?,
-            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |target: &mut dyn Any| {
                 // Placeholder implementation for no_std
                 #[cfg(feature = "wasi-cli")]
                 {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_arguments_capability_aware;
                     let empty_args = value_vec!();
-                    match wasi_cli_get_arguments_capability_aware(_target, empty_args) {
+                    match wasi_cli_get_arguments_capability_aware(target, empty_args) {
                         Ok(_) => Ok(value_vec!()),
                         Err(_) => Ok(value_vec!()),
                     }
@@ -528,13 +528,13 @@ impl ComponentModelProvider {
             name: make_string("wasi:cli/environment.get-environment"),
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:cli/environment.get-environment")?,
-            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |target: &mut dyn Any| {
                 // Placeholder implementation for no_std
                 #[cfg(feature = "wasi-cli")]
                 {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_environment_capability_aware;
                     let empty_args = value_vec!();
-                    match wasi_cli_get_environment_capability_aware(_target, empty_args) {
+                    match wasi_cli_get_environment_capability_aware(target, empty_args) {
                         Ok(_) => Ok(value_vec!()),
                         Err(_) => Ok(value_vec!()),
                     }

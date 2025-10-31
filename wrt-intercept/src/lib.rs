@@ -422,11 +422,19 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     }
 
     /// Called before a component start function is executed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if interception processing fails
     fn before_start(&self, _component_name: &str) -> Result<()> {
         Ok(())
     }
 
     /// Called after a component start function has executed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if post-processing fails
     fn after_start(&self, _component_name: &str, _result_data: Option<&[u8]>) -> Result<()> {
         Ok(())
     }
@@ -772,10 +780,7 @@ impl wrt_foundation::traits::ToBytes for Modification {
     fn serialized_size(&self) -> usize {
         match self {
             Modification::None => 1, // Just the tag
-            Modification::Replace { data, .. } => {
-                1 + 8 + 4 + data.len() // tag + offset + length + data
-            },
-            Modification::Insert { data, .. } => {
+            Modification::Replace { data, .. } | Modification::Insert { data, .. } => {
                 1 + 8 + 4 + data.len() // tag + offset + length + data
             },
             Modification::Remove { .. } => {
@@ -796,6 +801,7 @@ impl wrt_foundation::traits::ToBytes for Modification {
             Modification::Replace { offset, data } => {
                 writer.write_u8(1)?; // Tag for Replace
                 writer.write_usize_le(*offset)?;
+                #[allow(clippy::cast_possible_truncation)]
                 writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
                 writer.write_all(data)?;
@@ -809,6 +815,7 @@ impl wrt_foundation::traits::ToBytes for Modification {
             Modification::Insert { offset, data } => {
                 writer.write_u8(2)?; // Tag for Insert
                 writer.write_usize_le(*offset)?;
+                #[allow(clippy::cast_possible_truncation)]
                 writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
                 writer.write_all(data)?;
