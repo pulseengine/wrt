@@ -1082,7 +1082,6 @@ pub struct BoundedLoggingStatistics {
 }
 
 /// Convenience macros for logging (only available with alloc)
-
 /// Log a debug message
 #[macro_export]
 macro_rules! log_debug {

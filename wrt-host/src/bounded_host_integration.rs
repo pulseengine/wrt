@@ -633,7 +633,6 @@ pub struct HostIntegrationStatistics {
 }
 
 /// Convenience functions for creating common host functions
-
 /// Create a simple echo function
 #[must_use]
 pub fn create_echo_function() -> SimpleBoundedHostFunction {

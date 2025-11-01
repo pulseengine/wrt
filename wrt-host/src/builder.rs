@@ -575,7 +575,7 @@ mod tests {
     fn test_builder_with_interceptor() {
         #[cfg(feature = "std")]
         use std::sync::Arc;
-        #[cfg(all(not(feature = "std")))]
+        #[cfg(not(feature = "std"))]
         use std::sync::Arc;
 
         use wrt_foundation::component_value::ComponentValue;

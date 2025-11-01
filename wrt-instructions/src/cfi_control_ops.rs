@@ -1650,7 +1650,7 @@ impl DefaultCfiControlFlowOps {
                     types
                 }
             },
-            _ => {
+            CfiTargetType::DirectCall => {
                 #[cfg(feature = "std")]
                 {
                     Vec::new()
@@ -1810,7 +1810,7 @@ impl DefaultCfiControlFlowOps {
                         ));
                     }
                 },
-                _ => {}, // WebAssembly has no additional requirements
+                CallingConvention::WebAssembly => {}, // WebAssembly has no additional requirements
             }
         }
 
