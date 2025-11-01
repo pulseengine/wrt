@@ -311,15 +311,31 @@ impl ArrayLen {
 /// contexts
 pub trait AggregateOperations {
     /// Get struct type information by type index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if type index is invalid
     fn get_struct_type(&self, type_index: u32) -> Result<Option<u32>>; // For now, just validate existence
 
-    /// Get array type information by type index  
+    /// Get array type information by type index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if type index is invalid
     fn get_array_type(&self, type_index: u32) -> Result<Option<u32>>; // For now, just validate existence
 
     /// Validate that a struct type index exists
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if struct type doesn't exist
     fn validate_struct_type(&self, type_index: u32) -> Result<()>;
 
     /// Validate that an array type index exists
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if array type doesn't exist
     fn validate_array_type(&self, type_index: u32) -> Result<()>;
 }
 
@@ -344,6 +360,10 @@ pub enum AggregateOp {
 
 impl AggregateOp {
     /// Execute the aggregate operation with the given context and stack values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if operation execution fails
     pub fn execute<C: AggregateOperations>(
         &self,
         context: &C,

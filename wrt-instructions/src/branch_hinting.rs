@@ -122,6 +122,10 @@ pub enum BranchHintOp {
 impl BranchHintOp {
     /// Execute the branch hinting operation
     /// Returns (`branch_taken`, `label_to_branch_to`, `value_to_keep_on_stack`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch operation fails
     pub fn execute(&self, operand: &Value) -> Result<(bool, Option<LabelIdx>, Option<Value>)> {
         match self {
             BranchHintOp::BrOnNull(op) => {
@@ -148,9 +152,17 @@ impl BranchHintOp {
 /// Trait for contexts that support branch hinting operations
 pub trait BranchHintingContext: ControlContext {
     /// Execute a branch on null operation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch execution fails
     fn execute_br_on_null(&mut self, label: LabelIdx) -> Result<()>;
 
     /// Execute a branch on non-null operation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch execution fails
     fn execute_br_on_non_null(&mut self, label: LabelIdx) -> Result<()>;
 }
 
