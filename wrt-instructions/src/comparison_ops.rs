@@ -110,9 +110,17 @@ pub enum ComparisonOp {
 /// Execution context for comparison operations
 pub trait ComparisonContext {
     /// Pop a value from the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty or value type is invalid
     fn pop_comparison_value(&mut self) -> Result<Value>;
 
     /// Push a value to the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is full or value cannot be pushed
     fn push_comparison_value(&mut self, value: Value) -> Result<()>;
 }
 

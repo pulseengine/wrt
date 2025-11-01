@@ -112,6 +112,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Vec<Value>>` - Potentially modified arguments to use for the
     ///   call
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if argument modification fails
     fn before_call(
         &self,
         source: &str,
@@ -133,6 +137,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     /// # Returns
     ///
     /// * `Result<Vec<Value>>` - Potentially modified result
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result modification fails
     fn after_call(
         &self,
         source: &str,
@@ -175,6 +183,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized value if lifting was handled,
     ///   None if it should proceed normally
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization or memory access fails
     #[cfg(feature = "std")]
     fn intercept_lift(
         &self,
@@ -198,6 +210,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<bool>` - True if the lowering was handled, false if it should
     ///   proceed normally
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialization or memory write fails
     #[cfg(feature = "std")]
     fn intercept_lower(
         &self,
@@ -230,6 +246,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized result values if call was
     ///   handled, None if it should proceed normally
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function execution or serialization fails
     #[cfg(feature = "std")]
     fn intercept_function_call(
         &self,
@@ -252,6 +272,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized results if modified,
     ///   None if they should be returned as is
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result modification or serialization fails
     #[cfg(feature = "std")]
     fn intercept_function_result(
         &self,
@@ -273,6 +297,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized result value if operation was
     ///   handled, None if it should proceed normally
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if resource operation or serialization fails
     fn intercept_resource_operation(
         &self,
         _handle: u32,
@@ -306,6 +334,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized values to use as the result,
     ///   None to execute normally
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if initialization or serialization fails
     fn before_start(&self, _component_name: &str) -> Result<Option<Vec<u8>>> {
         Ok(None)
     }
@@ -323,6 +355,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized values to use as the
     ///   final result, None to use the original result
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result modification or serialization fails
     #[cfg(feature = "std")]
     fn after_start(
         &self,
@@ -352,6 +388,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     /// # Returns
     ///
     /// * `Result<Option<Vec<Modification>>>` - Optional modifications to apply
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result processing fails
     #[cfg(feature = "std")]
     fn process_results(
         &self,
@@ -504,6 +544,10 @@ impl LinkInterceptor {
     ///
     /// * `Result<Vec<Value>>` - The result of the function call after
     ///   interception
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if interception or function call fails
     #[cfg(feature = "std")]
     pub fn intercept_call<F>(
         &self,
@@ -578,6 +622,10 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<InterceptionResult>` - The processed interception result
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result processing fails
     #[cfg(feature = "std")]
     pub fn post_intercept(
         &self,
@@ -616,6 +664,10 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<Vec<u8>>` - The modified serialized data
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if modification application fails
     #[cfg(feature = "std")]
     pub fn apply_modifications(
         &self,

@@ -329,6 +329,10 @@ pub trait BuiltinInterceptor: Send + Sync {
     /// # Returns
     ///
     /// A `Result` containing potentially modified result values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if result modification fails
     fn after_builtin(
         &self,
         context: &InterceptContext,
