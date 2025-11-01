@@ -80,7 +80,7 @@ pub struct PostReturnEntry {
     pub func_index:    u32,
     /// Arguments to pass to the cleanup function
     #[cfg(feature = "std")]
-    pub args:          Vec<ComponentValue<DefaultMemoryProvider<1024>>>,
+    pub args:          Vec<ComponentValue<DefaultMemoryProvider>>,
     #[cfg(not(feature = "std"))]
     pub args:          BoundedVec<ComponentValue, 16>,
     /// Priority of this cleanup operation (higher = more critical)
@@ -346,7 +346,7 @@ impl PostReturnContext {
 
     /// Convert ComponentValue to raw value for function calls
     #[cfg(feature = "std")]
-    fn component_value_to_raw(&self, value: &ComponentValue<DefaultMemoryProvider<1024>>) -> Result<Value> {
+    fn component_value_to_raw(&self, value: &ComponentValue<DefaultMemoryProvider>) -> Result<Value> {
         match value {
             ComponentValue::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
             ComponentValue::S8(v) => Ok(Value::I32(*v as i32)),

@@ -671,18 +671,27 @@ impl ComponentExecutionEngine {
 
         // Create params and returns using component_instantiation types
         use crate::component_instantiation::FunctionSignature;
-        let provider_params = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
-        let mut params = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_params).expect("BoundedVec creation failed");
-        params.push(ComponentType::S32).expect("Push failed");
-
-        let provider_returns = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
-        let mut returns = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_returns).expect("BoundedVec creation failed");
-        returns.push(ComponentType::S32).expect("Push failed");
-
+        #[cfg(feature = "std")]
         let signature = FunctionSignature {
             name:    name_string.clone(),
-            params,
-            returns,
+            params: vec![ComponentType::S32],
+            returns: vec![ComponentType::S32],
+        };
+        #[cfg(not(feature = "std"))]
+        let signature = {
+            let provider_params = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+            let mut params = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_params).expect("BoundedVec creation failed");
+            params.push(ComponentType::S32).expect("Push failed");
+
+            let provider_returns = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+            let mut returns = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_returns).expect("BoundedVec creation failed");
+            returns.push(ComponentType::S32).expect("Push failed");
+
+            FunctionSignature {
+                name:    name_string.clone(),
+                params,
+                returns,
+            }
         };
 
         self.runtime_bridge

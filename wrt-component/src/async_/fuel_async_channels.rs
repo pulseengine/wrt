@@ -584,6 +584,9 @@ impl<T> Future for SendFuture<T> {
         let this = unsafe { self.get_unchecked_mut() };
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
+        #[cfg(feature = "std")]
+        let mut manager = this.sender.channel_manager.lock().expect("Channel manager mutex poisoned");
+        #[cfg(not(feature = "std"))]
         let mut manager = this.sender.channel_manager.lock();
         let channel = match manager.channels.get_mut(&this.sender.channel_id) {
             Some(ch) => ch,
@@ -639,6 +642,9 @@ impl<T> Future for ReceiveFuture<T> {
         let this = unsafe { self.get_unchecked_mut() };
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
+        #[cfg(feature = "std")]
+        let mut manager = this.receiver.channel_manager.lock().expect("Channel manager mutex poisoned");
+        #[cfg(not(feature = "std"))]
         let mut manager = this.receiver.channel_manager.lock();
         let channel = match manager.channels.get_mut(&this.receiver.channel_id) {
             Some(ch) => ch,
@@ -690,6 +696,9 @@ impl<T> FuelAsyncSender<T> {
     /// Try to send a message without blocking
     pub fn try_send(&self, message: T) -> core::result::Result<(), ChannelError<T>> {
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
+        #[cfg(feature = "std")]
+        let mut manager = self.channel_manager.lock().expect("Channel manager mutex poisoned");
+        #[cfg(not(feature = "std"))]
         let mut manager = self.channel_manager.lock();
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
             channel.try_send(
@@ -722,6 +731,9 @@ impl<T> FuelAsyncReceiver<T> {
     /// Try to receive a message without blocking
     pub fn try_receive(&self) -> core::result::Result<T, ChannelError<()>> {
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
+        #[cfg(feature = "std")]
+        let mut manager = self.channel_manager.lock().expect("Channel manager mutex poisoned");
+        #[cfg(not(feature = "std"))]
         let mut manager = self.channel_manager.lock();
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
             channel.try_receive(
