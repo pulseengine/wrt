@@ -94,7 +94,7 @@ pub trait MemoryOperations {
     #[cfg(feature = "std")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
 
-    /// Read bytes from memory (no_std variant)
+    /// Read bytes from memory (`no_std` variant)
     ///
     /// # Errors
     ///
@@ -946,7 +946,7 @@ pub trait DataSegmentOperations {
     #[cfg(feature = "std")]
     fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>>;
 
-    /// Get data segment bytes (no_std variant)
+    /// Get data segment bytes (`no_std` variant)
     ///
     /// # Errors
     ///

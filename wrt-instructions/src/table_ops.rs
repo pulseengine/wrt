@@ -211,6 +211,10 @@ impl TableSet {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if index or value type is invalid or table access fails
     pub fn execute(
         &self,
         table: &mut (impl TableOperations + ?Sized),

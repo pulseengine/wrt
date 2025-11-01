@@ -124,18 +124,10 @@ impl wrt_foundation::traits::ToBytes for Value {
     fn serialized_size(&self) -> usize {
         // Simplified size calculation
         1 + match self {
-            Value::Bool(_) => 1,
-            Value::U8(_) => 1,
-            Value::U16(_) => 2,
-            Value::U32(_) => 4,
-            Value::U64(_) => 8,
-            Value::S8(_) => 1,
-            Value::S16(_) => 2,
-            Value::S32(_) => 4,
-            Value::S64(_) => 8,
-            Value::F32(_) => 4,
-            Value::F64(_) => 8,
-            _ => 8, // Placeholder for complex types
+            Value::Bool(_) | Value::U8(_) | Value::S8(_) => 1,
+            Value::U16(_) | Value::S16(_) => 2,
+            Value::U32(_) | Value::S32(_) | Value::F32(_) => 4,
+            Value::U64(_) | Value::S64(_) | Value::F64(_) | _ => 8, // 8-byte types and complex types
         }
     }
 

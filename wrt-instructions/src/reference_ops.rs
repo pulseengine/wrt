@@ -204,8 +204,8 @@ impl RefEq {
     pub fn execute(&self, ref1: Value, ref2: Value) -> Result<Value> {
         let equal = match (ref1, ref2) {
             // Both null references of same type are equal
-            (Value::FuncRef(None), Value::FuncRef(None)) => true,
-            (Value::ExternRef(None), Value::ExternRef(None)) => true,
+            (Value::FuncRef(None), Value::FuncRef(None))
+            | (Value::ExternRef(None), Value::ExternRef(None)) => true,
 
             // Non-null funcref comparison
             (Value::FuncRef(Some(f1)), Value::FuncRef(Some(f2))) => f1.index == f2.index,
@@ -218,12 +218,11 @@ impl RefEq {
             },
 
             // Mixed null/non-null or different types are not equal
-            (Value::FuncRef(_), Value::ExternRef(_)) | (Value::ExternRef(_), Value::FuncRef(_)) => {
-                false
-            },
-            (Value::FuncRef(None), Value::FuncRef(Some(_)))
-            | (Value::FuncRef(Some(_)), Value::FuncRef(None)) => false,
-            (Value::ExternRef(None), Value::ExternRef(Some(_)))
+            (Value::FuncRef(_), Value::ExternRef(_))
+            | (Value::ExternRef(_), Value::FuncRef(_))
+            | (Value::FuncRef(None), Value::FuncRef(Some(_)))
+            | (Value::FuncRef(Some(_)), Value::FuncRef(None))
+            | (Value::ExternRef(None), Value::ExternRef(Some(_)))
             | (Value::ExternRef(Some(_)), Value::ExternRef(None)) => false,
 
             // Non-reference types are an error

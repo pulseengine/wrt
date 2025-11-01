@@ -88,6 +88,10 @@ pub struct WasiValueBox {
 
 impl WasiValueBox {
     /// Create a new boxed value with capability verification
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability verification or memory allocation fails
     pub fn new(value: CapabilityAwareValue) -> Result<Self> {
         // Verify we have allocation capability
         let context = get_global_capability_context()?;
@@ -123,6 +127,10 @@ impl Default for CapabilityAwareValue {
 /// Helper functions for creating capability-aware values
 impl CapabilityAwareValue {
     /// Create a capability-aware string value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if string conversion or memory allocation fails
     pub fn string_from_str(s: &str) -> Result<Self> {
         let _provider = create_wasi_value_provider()?;
         let bounded_string = WasiBoundedString::try_from_str(s)?;
@@ -130,6 +138,10 @@ impl CapabilityAwareValue {
     }
 
     /// Create a capability-aware list value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation or vec push operation fails
     pub fn list_from_vec(values: alloc::vec::Vec<CapabilityAwareValue>) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
         let mut bounded_vec = WasiBoundedVec::new(provider)?;
@@ -144,6 +156,10 @@ impl CapabilityAwareValue {
     }
 
     /// Create a capability-aware record value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if string conversion, memory allocation, or vec operations fail
     pub fn record_from_pairs(
         pairs: alloc::vec::Vec<(alloc::string::String, CapabilityAwareValue)>,
     ) -> Result<Self> {
@@ -161,6 +177,10 @@ impl CapabilityAwareValue {
     }
 
     /// Create a capability-aware optional value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if boxing the value fails
     pub fn option_from_value(value: Option<CapabilityAwareValue>) -> Result<Self> {
         let boxed_value = match value {
             Some(v) => Some(WasiValueBox::new(v)?),
@@ -170,6 +190,10 @@ impl CapabilityAwareValue {
     }
 
     /// Create a capability-aware result value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if boxing the ok or error value fails
     pub fn result_from_values(
         result: core::result::Result<CapabilityAwareValue, CapabilityAwareValue>,
     ) -> Result<Self> {
