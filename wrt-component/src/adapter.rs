@@ -35,8 +35,10 @@ use wrt_foundation::{
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     BoundedString,
+    bounded::MAX_WASM_NAME_LENGTH,
 };
 use wrt_foundation::RefType;
+use wrt_foundation::types::FuncType as WrtFuncType;
 
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
@@ -339,8 +341,11 @@ impl CoreModuleAdapter {
                     results: vec![],
                 },
                 value: ExternValue::Function(FunctionValue {
-                    ty: crate::runtime::FuncType::default(),
-                    export_name: format!("func_{}", func_adapter.core_index),
+                    ty: WrtFuncType::default(),
+                    export_name: {
+                        let name_str = format!("func_{}", func_adapter.core_index);
+                        BoundedString::from_str_truncate(&name_str)?
+                    },
                 }),
                 kind: ExportKind::Function { function_index: func_adapter.core_index },
                 attributes: HashMap::new(),

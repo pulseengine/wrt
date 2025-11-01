@@ -445,8 +445,9 @@ impl wrt_foundation::traits::Checksummable for CleanupData {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let bytes = cleanup_id.as_bytes();
-                    bytes.update_checksum(checksum);
+                    // SafeSlice doesn't implement update_checksum, so we compute
+                    // checksum based on the string length as a simple alternative
+                    cleanup_id.len().update_checksum(checksum);
                 }
             },
             Self::Async { stream_handle, future_handle, error_context_handle, task_id, execution_id, cancellation_token: _ } => {

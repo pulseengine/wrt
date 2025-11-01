@@ -101,9 +101,8 @@ impl CanonicalOptions {
 
         // Register with the manager before storing it
         {
-            if let Ok(mut mgr) = manager.write() {
-                let _ = mgr.register_realloc(self.instance_id, func_index);
-            }
+            let mut mgr = manager.write();
+            let _ = mgr.register_realloc(self.instance_id, func_index);
         }
 
         self.realloc_manager = Some(manager);

@@ -329,9 +329,9 @@ impl ComponentCommunicationStrategy {
             let target = BoundedString::<256>::try_from_str(component_part).unwrap_or_default();
             let func = BoundedString::<256>::try_from_str(function_part).unwrap_or_default();
             Some(CallRoutingInfo {
-                source_component: source.as_str().unwrap_or("unknown").to_string(), // Will be set by caller
-                target_component: target.as_str().unwrap_or("").to_string(),
-                function_name: func.as_str().unwrap_or("").to_string(),
+                source_component: BoundedString::from_str_truncate(source.as_str().unwrap_or("unknown")).ok()?, // Will be set by caller
+                target_component: BoundedString::from_str_truncate(target.as_str().unwrap_or("")).ok()?,
+                function_name: BoundedString::from_str_truncate(func.as_str().unwrap_or("")).ok()?,
                 call_context_id: None,
             })
         } else {
@@ -439,7 +439,7 @@ impl ComponentCommunicationStrategy {
                     conversions_performed: 0,
                 },
                 success: false,
-                error_message: Some("Parameter data too large".to_string()),
+                error_message: Some(BoundedString::from_str_truncate("Parameter data too large")?),
             });
         }
 

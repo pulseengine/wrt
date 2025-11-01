@@ -986,7 +986,7 @@ impl Component {
     /// Get an instance by name
     pub fn get_instance(&self, name: &str) -> Option<&InstanceValue> {
         self.instances.iter().find(|instance| {
-            instance.name.as_str() == name
+            instance.name.as_str().ok() == Some(name)
         })
     }
 
