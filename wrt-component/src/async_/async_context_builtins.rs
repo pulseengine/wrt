@@ -284,7 +284,7 @@ impl AsyncContext {
     }
 
     pub fn get(&self, key: &ContextKey) -> Option<ContextValue> {
-        self.data.get(key).map(|v| v.clone())
+        self.data.get(key).ok().flatten().map(|v| v.clone())
     }
 
     pub fn set(&mut self, key: ContextKey, value: ContextValue) -> Result<()> {
@@ -303,7 +303,7 @@ impl AsyncContext {
     }
 
     pub fn remove(&mut self, key: &ContextKey) -> Option<ContextValue> {
-        self.data.remove(key)
+        self.data.remove(key).ok().flatten()
     }
 
     pub fn contains_key(&self, key: &ContextKey) -> bool {

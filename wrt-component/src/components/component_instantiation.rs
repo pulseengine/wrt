@@ -544,7 +544,7 @@ impl FromBytes for FunctionSignature {
 
         // Read params
         let params_len = u32::from_bytes_with_provider(reader, provider)? as usize;
-        let mut params = BoundedVec::<ComponentType, 16>::new()?;
+        let mut params = BoundedVec::<ComponentType, 16>::new();
         for _ in 0..params_len {
             let param = ComponentType::from_bytes_with_provider(reader, provider)?;
             params.push(param).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature params capacity exceeded"))?;
@@ -552,7 +552,7 @@ impl FromBytes for FunctionSignature {
 
         // Read returns
         let returns_len = u32::from_bytes_with_provider(reader, provider)? as usize;
-        let mut returns = BoundedVec::<ComponentType, 16>::new()?;
+        let mut returns = BoundedVec::<ComponentType, 16>::new();
         for _ in 0..returns_len {
             let ret = ComponentType::from_bytes_with_provider(reader, provider)?;
             returns.push(ret).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature returns capacity exceeded"))?;
@@ -935,7 +935,7 @@ impl ComponentMemory {
         }
 
         // Create bounded vec for memory data
-        let mut data = BoundedVec::<u8, 65536>::new()?;
+        let mut data = BoundedVec::<u8, 65536>::new();
         // Fill with zeros up to initial size (capped at 65536)
         let fill_size = (initial_size as usize).min(65536);
         for _ in 0..fill_size {
@@ -1000,7 +1000,7 @@ impl CanonicalMemory for ComponentMemory {
         // Read bytes one by one from BoundedVec
         let mut result = Vec::with_capacity(len as usize);
         for i in start..end {
-            let byte = self.data.get(i).map_err(|_| Error::memory_out_of_bounds("Failed to read byte from memory"))?;
+            let byte = *self.data.get(i).ok_or_else(|| Error::memory_out_of_bounds("Failed to read byte from memory"))?;
             result.push(byte);
         }
         Ok(result)
