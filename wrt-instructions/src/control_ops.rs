@@ -406,76 +406,160 @@ impl BrTable {
 /// Function operations trait for call-related operations
 pub trait FunctionOperations {
     /// Get function type signature by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid
     fn get_function_type(&self, func_idx: u32) -> Result<u32>;
 
     /// Get table element (function reference) by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table or element index is invalid
     fn get_table_function(&self, table_idx: u32, elem_idx: u32) -> Result<u32>;
 
     /// Validate function signature matches expected type
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if signatures don't match
     fn validate_function_signature(&self, func_idx: u32, expected_type: u32) -> Result<()>;
 
     /// Execute function call
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function call fails
     fn execute_function_call(&mut self, func_idx: u32) -> Result<()>;
 }
 
 /// Execution context for control flow operations
 pub trait ControlContext {
     /// Push a value to the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is full
     fn push_control_value(&mut self, value: Value) -> Result<()>;
 
     /// Pop a value from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is empty
     fn pop_control_value(&mut self) -> Result<Value>;
 
     /// Get the current block depth
     fn get_block_depth(&self) -> usize;
 
     /// Start a new block
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if block nesting exceeds limits
     fn enter_block(&mut self, block_type: Block) -> Result<()>;
 
     /// Exit the current block
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no block to exit
     fn exit_block(&mut self) -> Result<Block>;
 
     /// Branch to a specific label
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch target is invalid
     fn branch(&mut self, target: BranchTarget) -> Result<()>;
 
     /// Return from the current function
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if return fails
     fn return_function(&mut self) -> Result<()>;
 
     /// Call a function by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid or call fails
     fn call_function(&mut self, func_idx: u32) -> Result<()>;
 
     /// Call a function indirectly through a table
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table/type index is invalid or call fails
     fn call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
 
     /// Tail call a function by index (`return_call`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid or call fails
     fn return_call(&mut self, func_idx: u32) -> Result<()>;
 
     /// Tail call a function indirectly through a table (`return_call_indirect`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table/type index is invalid or call fails
     fn return_call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
 
     /// Trap the execution (unreachable)
+    ///
+    /// # Errors
+    ///
+    /// Always returns an error with the trap message
     fn trap(&mut self, message: &str) -> Result<()>;
 
     /// Get the current block
     fn get_current_block(&self) -> Option<&Block>;
 
     /// Get function operations interface
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if operations interface is unavailable
     fn get_function_operations(&mut self) -> Result<&mut dyn FunctionOperations>;
 
     /// Execute function return with value handling
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if return execution fails
     fn execute_return(&mut self) -> Result<()>;
 
     /// Execute `call_indirect` with full validation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if validation or call fails
     fn execute_call_indirect(&mut self, table_idx: u32, type_idx: u32, func_idx: i32)
         -> Result<()>;
 
     /// Execute branch table operation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch execution fails
     fn execute_br_table(&mut self, table: &[u32], default: u32, index: i32) -> Result<()>;
 
     /// Execute branch on null - branch if reference is null
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch execution fails
     fn execute_br_on_null(&mut self, label: u32) -> Result<()>;
 
-    /// Execute branch on non-null - branch if reference is not null  
+    /// Execute branch on non-null - branch if reference is not null
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if branch execution fails
     fn execute_br_on_non_null(&mut self, label: u32) -> Result<()>;
 }
 
