@@ -162,6 +162,11 @@ impl TockFutex {
         self.value.load(Ordering::Acquire)
     }
 
+    /// Store a new value
+    pub fn store(&self, val: u32) {
+        self.value.store(val, Ordering::Release);
+    }
+
     /// Perform compare-and-exchange operation
     pub fn compare_exchange(&self, current: u32, new: u32) -> Result<u32, u32> {
         self.value.compare_exchange(current, new, Ordering::AcqRel, Ordering::Acquire)

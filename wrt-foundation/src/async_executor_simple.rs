@@ -102,11 +102,16 @@ mod tests {
 
     #[test]
     fn test_simple_async() {
+        extern crate alloc;
+        use alloc::boxed::Box;
+
         async fn test_future() -> u32 {
             42
         }
 
-        let result = with_async(test_future()).unwrap();
+        // Pin the future to satisfy the Unpin bound
+        let pinned = Box::pin(test_future());
+        let result = with_async(pinned).unwrap();
         assert_eq!(result, 42);
     }
 }
