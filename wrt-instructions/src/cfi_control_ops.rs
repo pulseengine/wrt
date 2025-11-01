@@ -692,6 +692,10 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
 /// CFI-aware control flow operations trait
 pub trait CfiControlFlowOps {
     /// Execute indirect call with CFI protection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if CFI validation fails or call target is invalid
     fn call_indirect_with_cfi(
         &self,
         type_idx: u32,
@@ -701,6 +705,10 @@ pub trait CfiControlFlowOps {
     ) -> Result<CfiProtectedBranchTarget>;
 
     /// Execute return with CFI protection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if CFI validation fails
     fn return_with_cfi(
         &self,
         cfi_protection: &CfiControlFlowProtection,
@@ -708,6 +716,10 @@ pub trait CfiControlFlowOps {
     ) -> Result<()>;
 
     /// Execute branch with CFI protection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if CFI validation fails or branch target is invalid
     fn branch_with_cfi(
         &self,
         label_idx: u32,
@@ -717,6 +729,10 @@ pub trait CfiControlFlowOps {
     ) -> Result<CfiProtectedBranchTarget>;
 
     /// Insert CFI landing pad
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if landing pad insertion fails
     fn insert_cfi_landing_pad(
         &self,
         target_type: CfiTargetType,
@@ -725,6 +741,10 @@ pub trait CfiControlFlowOps {
     ) -> Result<CfiLandingPad>;
 
     /// Validate CFI requirements
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if validation requirements are not met
     fn validate_cfi_requirements(
         &self,
         requirements: &[CfiValidationRequirement],

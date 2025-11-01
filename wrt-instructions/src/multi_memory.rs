@@ -274,6 +274,10 @@ impl MultiMemoryStore {
     /// Execute the multi-memory store operation
     /// Note: In a real implementation, this would be called by the runtime
     /// with access to the specific memory instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is out of bounds
     pub fn execute_with_memory(
         &self,
         memory: &mut impl MemoryOperations,
@@ -308,6 +312,10 @@ impl MultiMemoryBulk {
     }
 
     /// Execute memory.fill operation on specific memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory fill operation fails
     pub fn fill(
         &self,
         memory: &mut impl MemoryOperations,
@@ -321,6 +329,10 @@ impl MultiMemoryBulk {
     }
 
     /// Execute memory.copy operation within the same memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory copy operation fails
     pub fn copy(
         &self,
         memory: &mut impl MemoryOperations,
@@ -334,6 +346,10 @@ impl MultiMemoryBulk {
     }
 
     /// Execute memory.init operation on specific memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory init operation fails
     pub fn init(
         &self,
         memory: &mut impl MemoryOperations,
@@ -371,6 +387,10 @@ impl MultiMemoryCrossCopy {
     /// Execute cross-memory copy operation
     /// Note: This is a simplified implementation. A real runtime would
     /// need access to both memory instances to perform the copy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if copy operation fails or memory indices are invalid
     pub fn execute(
         &self,
         _dest_memory: &mut impl MemoryOperations,
@@ -410,6 +430,10 @@ impl MultiMemorySize {
     }
 
     /// Execute memory.size operation on specific memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory size query fails
     pub fn execute(&self, memory: &impl MemoryOperations) -> Result<Value> {
         // Get size in pages (64KB each)
         let size_bytes = memory.size_in_bytes()?;
@@ -435,6 +459,10 @@ impl MultiMemoryGrow {
 
     /// Execute memory.grow operation on specific memory
     /// Returns the old size in pages, or -1 if grow failed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if argument type is invalid
     pub fn execute(&self, memory: &mut impl MemoryOperations, pages: &Value) -> Result<Value> {
         // Extract page count
         let page_count = match pages {
@@ -458,6 +486,10 @@ impl MultiMemoryGrow {
 /// Helper trait for memory index validation
 pub trait MultiMemoryValidation {
     /// Validate that a memory index is valid for this module
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory index is out of bounds
     fn validate_memory_index(&self, index: u32) -> Result<()>;
 
     /// Get the number of memories in this module
