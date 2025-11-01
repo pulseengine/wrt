@@ -120,6 +120,10 @@ pub trait TableOperations {
 /// Element segment operations trait for table.init and elem.drop
 pub trait ElementSegmentOperations {
     /// Get element from segment
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if element index is invalid
     #[cfg(feature = "std")]
     fn get_element_segment(&self, elem_index: u32) -> Result<Option<Vec<Value>>>;
 
@@ -132,6 +136,10 @@ pub trait ElementSegmentOperations {
     >;
 
     /// Drop (mark as unavailable) an element segment
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if element index is invalid
     fn drop_element_segment(&mut self, elem_index: u32) -> Result<()>;
 }
 
@@ -159,6 +167,10 @@ impl TableGet {
     /// # Returns
     ///
     /// The reference value at the index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if index is invalid or out of bounds
     pub fn execute(&self, table: &(impl TableOperations + ?Sized), index: &Value) -> Result<Value> {
         let idx = match index {
             Value::I32(i) => {
@@ -252,6 +264,10 @@ impl TableSize {
     /// # Returns
     ///
     /// The size of the table as an i32 Value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table index is invalid
     pub fn execute(&self, table: &(impl TableOperations + ?Sized)) -> Result<Value> {
         let size = table.get_table_size(self.table_index)?;
         Ok(Value::I32(size as i32))
@@ -641,15 +657,31 @@ pub enum TableOp {
 /// Execution context for unified table operations
 pub trait TableContext {
     /// Pop a value from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is empty
     fn pop_value(&mut self) -> Result<Value>;
 
     /// Push a value to the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is full
     fn push_value(&mut self, value: Value) -> Result<()>;
 
     /// Get table operations interface
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table operations are unavailable
     fn get_tables(&mut self) -> Result<&mut dyn TableOperations>;
 
     /// Get element segment operations interface
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if element operations are unavailable
     fn get_element_segments(&mut self) -> Result<&mut dyn ElementSegmentOperations>;
 
     /// Execute table.init operation (helper to avoid borrowing issues)
