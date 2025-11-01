@@ -233,14 +233,17 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
                         }
 
                         if limit < values.len() {
-                            result_str.push_str(&format!(", ... ({} more)", values.len() - limit));
+                            use core::fmt::Write;
+                            let _ = write!(result_str, ", ... ({} more)", values.len() - limit);
                         }
 
-                        log_entry.push_str(&format!(" result: [{result_str}]"));
+                        use core::fmt::Write;
+                        let _ = write!(log_entry, " result: [{result_str}]");
                     }
                 },
                 Err(e) => {
-                    log_entry.push_str(&format!(" error: {e}"));
+                    use core::fmt::Write;
+                    let _ = write!(log_entry, " error: {e}");
                 },
             }
         }
