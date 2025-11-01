@@ -78,58 +78,62 @@ impl MacOsFutex {
 
     /// Direct syscall implementation of _ulock_wait
     unsafe fn ulock_wait(operation: u32, addr: *const u32, value: u64, timeout: u32) -> i32 {
-        let mut result: i32;
+        let result: i32;
 
-        #[cfg(target_arch = "x86_64")]
-        core::arch::asm!(
-            "syscall",
-            inout("rax") SYSCALL_ULOCK_WAIT => _,
-            in("rdi") operation,
-            in("rsi") addr,
-            in("rdx") value,
-            in("r10") timeout,
-            lateout("rax") result,
-            out("rcx") _,
-            out("r11") _,
-        );
-        #[cfg(target_arch = "aarch64")]
-        core::arch::asm!(
-            "svc #0x80",
-            inout("x8") SYSCALL_ULOCK_WAIT => _,
-            in("x0") operation,
-            in("x1") addr,
-            in("x2") value,
-            in("x3") timeout,
-            lateout("x0") result,
-        );
+        unsafe {
+            #[cfg(target_arch = "x86_64")]
+            core::arch::asm!(
+                "syscall",
+                inout("rax") SYSCALL_ULOCK_WAIT => _,
+                in("rdi") operation,
+                in("rsi") addr,
+                in("rdx") value,
+                in("r10") timeout,
+                lateout("rax") result,
+                out("rcx") _,
+                out("r11") _,
+            );
+            #[cfg(target_arch = "aarch64")]
+            core::arch::asm!(
+                "svc #0x80",
+                inout("x8") SYSCALL_ULOCK_WAIT => _,
+                in("x0") operation,
+                in("x1") addr,
+                in("x2") value,
+                in("x3") timeout,
+                lateout("x0") result,
+            );
+        }
 
         result
     }
 
     /// Direct syscall implementation of _ulock_wake
     unsafe fn ulock_wake(operation: u32, addr: *const u32, wake_flags: u64) -> i32 {
-        let mut result: i32;
+        let result: i32;
 
-        #[cfg(target_arch = "x86_64")]
-        core::arch::asm!(
-            "syscall",
-            inout("rax") SYSCALL_ULOCK_WAKE => _,
-            in("rdi") operation,
-            in("rsi") addr,
-            in("rdx") wake_flags,
-            lateout("rax") result,
-            out("rcx") _,
-            out("r11") _,
-        );
-        #[cfg(target_arch = "aarch64")]
-        core::arch::asm!(
-            "svc #0x80",
-            inout("x8") SYSCALL_ULOCK_WAKE => _,
-            in("x0") operation,
-            in("x1") addr,
-            in("x2") wake_flags,
-            lateout("x0") result,
-        );
+        unsafe {
+            #[cfg(target_arch = "x86_64")]
+            core::arch::asm!(
+                "syscall",
+                inout("rax") SYSCALL_ULOCK_WAKE => _,
+                in("rdi") operation,
+                in("rsi") addr,
+                in("rdx") wake_flags,
+                lateout("rax") result,
+                out("rcx") _,
+                out("r11") _,
+            );
+            #[cfg(target_arch = "aarch64")]
+            core::arch::asm!(
+                "svc #0x80",
+                inout("x8") SYSCALL_ULOCK_WAKE => _,
+                in("x0") operation,
+                in("x1") addr,
+                in("x2") wake_flags,
+                lateout("x0") result,
+            );
+        }
 
         result
     }

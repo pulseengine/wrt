@@ -88,60 +88,64 @@ impl MacOsAllocator {
         fd: i32,
         offset: usize,
     ) -> *mut u8 {
-        let mut ret: *mut u8;
+        let ret: *mut u8;
 
-        #[cfg(target_arch = "x86_64")]
-        core::arch::asm!(
-            "syscall",
-            inout("rax") SYSCALL_MMAP => _,
-            in("rdi") addr,
-            in("rsi") len,
-            in("rdx") prot,
-            in("r10") flags,
-            in("r8") fd,
-            in("r9") offset,
-            lateout("rax") ret,
-            out("rcx") _,
-            out("r11") _,
-        );
-        #[cfg(target_arch = "aarch64")]
-        core::arch::asm!(
-            "svc #0x80",
-            inout("x8") SYSCALL_MMAP => _,
-            in("x0") addr,
-            in("x1") len,
-            in("x2") prot,
-            in("x3") flags,
-            in("x4") fd,
-            in("x5") offset,
-            lateout("x0") ret,
-        );
+        unsafe {
+            #[cfg(target_arch = "x86_64")]
+            core::arch::asm!(
+                "syscall",
+                inout("rax") SYSCALL_MMAP => _,
+                in("rdi") addr,
+                in("rsi") len,
+                in("rdx") prot,
+                in("r10") flags,
+                in("r8") fd,
+                in("r9") offset,
+                lateout("rax") ret,
+                out("rcx") _,
+                out("r11") _,
+            );
+            #[cfg(target_arch = "aarch64")]
+            core::arch::asm!(
+                "svc #0x80",
+                inout("x8") SYSCALL_MMAP => _,
+                in("x0") addr,
+                in("x1") len,
+                in("x2") prot,
+                in("x3") flags,
+                in("x4") fd,
+                in("x5") offset,
+                lateout("x0") ret,
+            );
+        }
 
         ret
     }
 
     /// Performs the munmap syscall directly without libc
     unsafe fn munmap(addr: *mut u8, len: usize) -> i32 {
-        let mut ret: i32;
+        let ret: i32;
 
-        #[cfg(target_arch = "x86_64")]
-        core::arch::asm!(
-            "syscall",
-            inout("rax") SYSCALL_MUNMAP => _,
-            in("rdi") addr,
-            in("rsi") len,
-            lateout("rax") ret,
-            out("rcx") _,
-            out("r11") _,
-        );
-        #[cfg(target_arch = "aarch64")]
-        core::arch::asm!(
-            "svc #0x80",
-            inout("x8") SYSCALL_MUNMAP => _,
-            in("x0") addr,
-            in("x1") len,
-            lateout("x0") ret,
-        );
+        unsafe {
+            #[cfg(target_arch = "x86_64")]
+            core::arch::asm!(
+                "syscall",
+                inout("rax") SYSCALL_MUNMAP => _,
+                in("rdi") addr,
+                in("rsi") len,
+                lateout("rax") ret,
+                out("rcx") _,
+                out("r11") _,
+            );
+            #[cfg(target_arch = "aarch64")]
+            core::arch::asm!(
+                "svc #0x80",
+                inout("x8") SYSCALL_MUNMAP => _,
+                in("x0") addr,
+                in("x1") len,
+                lateout("x0") ret,
+            );
+        }
 
         ret
     }
@@ -309,7 +313,7 @@ impl PageAllocator for MacOsAllocator {
 
         // SAFETY: ptr was obtained from our mmap call and is valid.
         // size is the total size we had reserved.
-        let result = Self::munmap(ptr.as_ptr(), size);
+        let result = unsafe { Self::munmap(ptr.as_ptr(), size) };
         if result != 0 {
             // munmap failed, need to restore base_ptr
             self.base_ptr = Some(base_ptr);

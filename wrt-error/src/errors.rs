@@ -343,9 +343,8 @@ impl Error {
             | ErrorCategory::Type
             | ErrorCategory::PlatformRuntime
             | ErrorCategory::AsyncRuntime
-            | ErrorCategory::Async => "ASIL-B", // Type safety, platform runtime, and
-            // async runtime are ASIL-B
-            ErrorCategory::InvalidInput => "ASIL-B", // Input validation is ASIL-B
+            | ErrorCategory::Async
+            | ErrorCategory::InvalidInput => "ASIL-B", // Type safety, input validation, platform runtime, and async runtime are ASIL-B
             _ => "QM", // Other errors are Quality Management level
         }
     }

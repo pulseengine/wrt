@@ -89,7 +89,7 @@ impl ZephyrTimeout {
 }
 
 // FFI declarations for Zephyr kernel APIs
-extern "C" {
+unsafe extern "C" {
     /// Wait on a futex until value changes
     fn k_futex_wait(futex: *mut ZephyrFutexHandle, expected: u32, timeout: i32) -> i32;
 

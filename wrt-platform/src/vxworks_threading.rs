@@ -8,7 +8,7 @@ use wrt_error::{
 use crate::vxworks_memory::VxWorksContext;
 
 #[cfg(target_os = "vxworks")]
-extern "C" {
+unsafe extern "C" {
     // VxWorks task functions (LKM context)
     fn taskSpawn(
         name: *const u8,
