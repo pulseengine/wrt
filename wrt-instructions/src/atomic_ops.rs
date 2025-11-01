@@ -245,44 +245,122 @@ pub enum AtomicOp {
 /// Trait for atomic memory operations implementation
 pub trait AtomicOperations {
     /// Atomic wait on 32-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_wait32(&mut self, addr: u32, expected: i32, timeout_ns: Option<u64>) -> Result<i32>;
 
-    /// Atomic wait on 64-bit value  
+    /// Atomic wait on 64-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_wait64(&mut self, addr: u32, expected: i64, timeout_ns: Option<u64>) -> Result<i32>;
 
     /// Notify waiters on memory address
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_notify(&mut self, addr: u32, count: u32) -> Result<u32>;
 
     /// Atomic load operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_load_i32(&self, addr: u32) -> Result<i32>;
+
+    /// Atomic load 64-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_load_i64(&self, addr: u32) -> Result<i64>;
 
     /// Atomic store operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_store_i32(&mut self, addr: u32, value: i32) -> Result<()>;
+
+    /// Atomic store 64-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_store_i64(&mut self, addr: u32, value: i64) -> Result<()>;
 
     /// Atomic read-modify-write operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_add_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_add_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_sub_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_sub_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_and_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_and_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_or_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_or_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_xor_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_xor_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_xchg_i32(&mut self, addr: u32, value: i32) -> Result<i32>;
+    /// # Errors
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_xchg_i64(&mut self, addr: u32, value: i64) -> Result<i64>;
 
     /// Atomic compare and exchange operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_cmpxchg_i32(&mut self, addr: u32, expected: i32, replacement: i32) -> Result<i32>;
+
+    /// Atomic compare and exchange 64-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_cmpxchg_i64(&mut self, addr: u32, expected: i64, replacement: i64) -> Result<i64>;
 
     /// Atomic read-modify-write compare and exchange operations (additional
     /// variants)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_cmpxchg_i32(&mut self, addr: u32, expected: i32, replacement: i32)
         -> Result<i32>;
+
+    /// Atomic RMW compare and exchange 64-bit value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is misaligned
     fn atomic_rmw_cmpxchg_i64(&mut self, addr: u32, expected: i64, replacement: i64)
         -> Result<i64>;
 }

@@ -87,9 +87,18 @@ use crate::{
 /// Memory trait defining the requirements for memory operations
 pub trait MemoryOperations {
     /// Read bytes from memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read operation exceeds memory bounds
     #[cfg(feature = "std")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
 
+    /// Read bytes from memory (no_std variant)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read operation exceeds memory bounds
     #[cfg(not(any(feature = "std",)))]
     fn read_bytes(
         &self,
@@ -98,18 +107,38 @@ pub trait MemoryOperations {
     ) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>;
 
     /// Write bytes to memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write operation exceeds memory bounds
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()>;
 
     /// Get the size of memory in bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory size cannot be determined
     fn size_in_bytes(&self) -> Result<usize>;
 
     /// Grow memory by the specified number of bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory cannot be grown by the specified amount
     fn grow(&mut self, bytes: usize) -> Result<()>;
 
     /// Fill memory region with a byte value (bulk memory operation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the fill operation exceeds memory bounds
     fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()>;
 
     /// Copy memory region within the same memory (bulk memory operation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the copy operation exceeds memory bounds
     fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()>;
 }
 
@@ -374,15 +403,19 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// The loaded value or an error
+    /// The loaded value
     ///
-    /// Returns an error if the memory access is invalid
+    /// # Errors
+    ///
+    /// Returns an error if the memory access is invalid or out of bounds
     pub fn execute(
         &self,
         memory: &(impl MemoryOperations + ?Sized),
         addr_arg: &Value,
     ) -> Result<Value> {
         // Extract address from argument
+        // Note: WebAssembly addresses are i32 but treated as unsigned for memory operations
+        #[allow(clippy::cast_sign_loss)]
         let addr = match addr_arg {
             Value::I32(a) => *a as u32,
             _ => {
@@ -798,11 +831,9 @@ impl MemoryStore {
     /// * `addr_arg` - The base address to store to
     /// * `value` - The value to store
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Success or an error
-    ///
-    /// Returns an error if the memory access is invalid
+    /// Returns an error if the memory access is invalid or out of bounds
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
@@ -908,9 +939,18 @@ pub struct DataDrop {
 /// Trait for data segment operations (needed for memory.init and data.drop)
 pub trait DataSegmentOperations {
     /// Get data segment bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data segment index is invalid
     #[cfg(feature = "std")]
     fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>>;
 
+    /// Get data segment bytes (no_std variant)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data segment index is invalid
     #[cfg(not(any(feature = "std",)))]
     fn get_data_segment(
         &self,
@@ -918,6 +958,10 @@ pub trait DataSegmentOperations {
     ) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>>;
 
     /// Drop (mark as unavailable) a data segment
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data segment index is invalid
     fn drop_data_segment(&mut self, data_index: u32) -> Result<()>;
 }
 
@@ -937,9 +981,9 @@ impl MemoryFill {
     /// * `value` - Fill byte value (i32, only low 8 bits used)
     /// * `size` - Number of bytes to fill (i32)
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Success or an error
+    /// Returns an error if the fill operation exceeds memory bounds
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
@@ -999,9 +1043,9 @@ impl MemoryCopy {
     /// * `src` - Source address (i32)
     /// * `size` - Number of bytes to copy (i32)
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Success or an error
+    /// Returns an error if the copy operation exceeds memory bounds
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
@@ -1065,9 +1109,9 @@ impl MemoryInit {
     /// * `src` - Source offset in data segment (i32)
     /// * `size` - Number of bytes to copy (i32)
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Success or an error
+    /// Returns an error if the initialization operation exceeds memory or data segment bounds
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
@@ -1150,9 +1194,9 @@ impl DataDrop {
     ///
     /// * `data_segments` - Access to data segments
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Success or an error
+    /// Returns an error if the data segment index is invalid
     pub fn execute(&self, data_segments: &mut (impl DataSegmentOperations + ?Sized)) -> Result<()> {
         data_segments.drop_data_segment(self.data_index)
     }
@@ -1202,6 +1246,10 @@ impl MemorySize {
     /// # Returns
     ///
     /// The size of memory in pages (64KiB pages) as an i32 Value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory size cannot be determined
     pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized)) -> Result<Value> {
         let size_in_bytes = memory.size_in_bytes()?;
         let size_in_pages = (size_in_bytes / 65_536) as i32;
@@ -1233,6 +1281,10 @@ impl MemoryGrow {
     /// # Returns
     ///
     /// The previous size in pages, or -1 if the operation failed (as i32 Value)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the delta value is not i32 or memory size cannot be determined
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
@@ -1270,18 +1322,38 @@ impl MemoryGrow {
 /// Execution context for unified memory operations
 pub trait MemoryContext {
     /// Pop a value from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is empty
     fn pop_value(&mut self) -> Result<Value>;
 
     /// Push a value to the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stack is full
     fn push_value(&mut self, value: Value) -> Result<()>;
 
     /// Get memory instance by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the memory index is invalid
     fn get_memory(&mut self, index: u32) -> Result<&mut dyn MemoryOperations>;
 
     /// Get data segment operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if data segments are unavailable
     fn get_data_segments(&mut self) -> Result<&mut dyn DataSegmentOperations>;
 
     /// Execute memory.init operation (helper to avoid borrowing issues)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory initialization fails
     fn execute_memory_init(
         &mut self,
         memory_index: u32,

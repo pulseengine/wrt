@@ -182,6 +182,10 @@ impl Return {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the return operation fails
     pub fn execute(&self, context: &mut impl ControlContext) -> Result<()> {
         context.execute_return()
     }
@@ -221,6 +225,10 @@ impl CallIndirect {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid or call fails
     pub fn execute(&self, context: &mut impl ControlContext) -> Result<()> {
         // Pop the function index from the stack
         let func_idx = context
@@ -274,6 +282,10 @@ impl ReturnCallIndirect {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid or call fails
     pub fn execute(&self, context: &mut impl ControlContext) -> Result<()> {
         // Pop the function index from the stack
         let func_idx = context
@@ -325,6 +337,10 @@ impl BrTable {
     }
 
     /// Create a `br_table` from a slice (works in all environments)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation fails in no_std mode
     pub fn from_slice(table_slice: &[u32], default: u32) -> Result<Self> {
         #[cfg(feature = "std")]
         {
