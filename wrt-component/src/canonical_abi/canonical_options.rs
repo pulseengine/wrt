@@ -101,6 +101,9 @@ impl CanonicalOptions {
 
         // Register with the manager before storing it
         {
+            #[cfg(feature = "std")]
+            let mut mgr = manager.write().expect("Realloc manager lock poisoned");
+            #[cfg(not(feature = "std"))]
             let mut mgr = manager.write();
             let _ = mgr.register_realloc(self.instance_id, func_index);
         }
@@ -167,6 +170,9 @@ impl<'a> CanonicalLiftContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
+            #[cfg(feature = "std")]
+            let mut mgr = manager.write().expect("Realloc manager lock poisoned");
+            #[cfg(not(feature = "std"))]
             let mut mgr = manager.write();
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
@@ -237,6 +243,9 @@ impl<'a> CanonicalLiftContext<'a> {
     pub fn cleanup(mut self) -> Result<()> {
         // Binary std/no_std choice
         if let Some(manager) = &self.options.realloc_manager {
+            #[cfg(feature = "std")]
+            let mut mgr = manager.write().expect("Realloc manager lock poisoned");
+            #[cfg(not(feature = "std"))]
             let mut mgr = manager.write();
 
             for alloc in self.allocations.drain(..) {
@@ -281,6 +290,9 @@ impl<'a> CanonicalLowerContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Binary std/no_std choice
+            #[cfg(feature = "std")]
+            let mut mgr = manager.write().expect("Realloc manager lock poisoned");
+            #[cfg(not(feature = "std"))]
             let mut mgr = manager.write();
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?

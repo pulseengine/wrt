@@ -986,7 +986,14 @@ impl Component {
     /// Get an instance by name
     pub fn get_instance(&self, name: &str) -> Option<&InstanceValue> {
         self.instances.iter().find(|instance| {
-            instance.name.as_str().ok() == Some(name)
+            #[cfg(feature = "std")]
+            {
+                instance.name.as_str() == name
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                instance.name.as_str().ok().as_deref() == Some(name)
+            }
         })
     }
 

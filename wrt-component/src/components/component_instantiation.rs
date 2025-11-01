@@ -997,8 +997,15 @@ impl ComponentMemory {
         let target_len = (new_size as usize).min(self.data.capacity());
 
         // Grow the bounded vec to new size (capped at capacity)
-        while self.data.len() < target_len {
-            self.data.push(0).map_err(|_| Error::memory_error("Memory growth capacity exceeded"))?;
+        #[cfg(feature = "std")]
+        {
+            self.data.resize(target_len, 0);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            while self.data.len() < target_len {
+                self.data.push(0).map_err(|_| Error::memory_error("Memory growth capacity exceeded"))?;
+            }
         }
 
         self.current_size = new_size;

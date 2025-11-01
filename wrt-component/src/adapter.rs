@@ -341,10 +341,14 @@ impl CoreModuleAdapter {
                     results: vec![],
                 },
                 value: ExternValue::Function(FunctionValue {
-                    ty: WrtFuncType::default(),
+                    ty: crate::runtime::FuncType::default(),
                     export_name: {
                         let name_str = format!("func_{}", func_adapter.core_index);
-                        BoundedString::from_str_truncate(&name_str)?
+                        #[cfg(feature = "std")]
+                        let export_name = name_str;
+                        #[cfg(not(feature = "std"))]
+                        let export_name = BoundedString::from_str_truncate(&name_str)?;
+                        export_name
                     },
                 }),
                 kind: ExportKind::Function { function_index: func_adapter.core_index },
