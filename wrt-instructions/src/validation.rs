@@ -336,6 +336,10 @@ pub fn validate_conversion_op(
 }
 
 /// Validate reference type operations
+///
+/// # Errors
+///
+/// Returns an error if reference type validation fails
 pub fn validate_ref_op(
     op_name: &str,
     ref_type: Option<ValueType>,

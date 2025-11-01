@@ -849,9 +849,17 @@ impl SimdInstruction {
 /// SIMD execution context trait for accessing execution state
 pub trait SimdExecutionContext {
     /// Pop a value from the execution stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is empty
     fn pop_value(&mut self) -> Result<Value>;
 
     /// Push a value onto the execution stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is full
     fn push_value(&mut self, value: Value) -> Result<()>;
 
     /// Get access to SIMD context for executing SIMD operations

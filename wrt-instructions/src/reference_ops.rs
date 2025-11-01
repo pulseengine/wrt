@@ -261,6 +261,10 @@ pub enum ReferenceOp {
 
 impl ReferenceOp {
     /// Execute the reference operation with the given context and stack values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if operation execution fails
     pub fn execute<C: ReferenceOperations>(
         &self,
         context: &C,
