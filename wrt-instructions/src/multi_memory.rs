@@ -160,6 +160,10 @@ impl MultiMemoryLoad {
     /// Execute the multi-memory load operation
     /// Note: In a real implementation, this would be called by the runtime
     /// with access to the specific memory instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory access fails or address is out of bounds
     pub fn execute_with_memory(
         &self,
         memory: &impl MemoryOperations,

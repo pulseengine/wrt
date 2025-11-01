@@ -114,9 +114,17 @@ pub enum ConversionOp {
 /// Execution context for conversion operations
 pub trait ConversionContext {
     /// Pop a value from the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is empty
     fn pop_conversion_value(&mut self) -> Result<Value>;
 
     /// Push a value to the context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack is full
     fn push_conversion_value(&mut self, value: Value) -> Result<()>;
 }
 

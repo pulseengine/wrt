@@ -116,6 +116,10 @@ impl RefFunc {
     /// Note: In a real implementation, this would validate the function index
     /// against the module's function table and create an actual function
     /// reference
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid
     pub fn execute(&self) -> Result<Value> {
         // In a full implementation, this would:
         // 1. Validate that function_index exists in the module
@@ -145,6 +149,10 @@ impl RefAsNonNull {
     }
 
     /// Execute the `ref.as_non_null` instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reference is null or not a reference type
     pub fn execute(&self, reference: Value) -> Result<Value> {
         match reference {
             Value::FuncRef(None) | Value::ExternRef(None) => {
@@ -162,9 +170,17 @@ impl RefAsNonNull {
 /// contexts
 pub trait ReferenceOperations {
     /// Get a function by its index for ref.func operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index is invalid
     fn get_function(&self, function_index: u32) -> Result<Option<u32>>;
 
     /// Validate that a function index exists
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if function index doesn't exist
     fn validate_function_index(&self, function_index: u32) -> Result<()>;
 }
 
@@ -181,6 +197,10 @@ impl RefEq {
 
     /// Execute the ref.eq instruction
     /// Returns 1 if references are equal, 0 otherwise
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if values are not reference types
     pub fn execute(&self, ref1: Value, ref2: Value) -> Result<Value> {
         let equal = match (ref1, ref2) {
             // Both null references of same type are equal

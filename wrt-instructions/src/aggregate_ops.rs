@@ -55,6 +55,10 @@ impl StructNew {
 
     /// Execute the struct.new instruction
     /// Takes field values from the stack and creates a new struct
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if struct creation or field assignment fails
     pub fn execute(&self, field_values: &[Value]) -> Result<Value> {
         let mut struct_ref = StructRef::new(self.type_index, DefaultMemoryProvider::default())?;
 
@@ -87,6 +91,10 @@ impl StructGet {
     }
 
     /// Execute the struct.get instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if value is not a struct or field index is invalid
     pub fn execute(&self, struct_value: Value) -> Result<Value> {
         match struct_value {
             Value::StructRef(Some(struct_ref)) => {
@@ -126,6 +134,10 @@ impl StructSet {
     }
 
     /// Execute the struct.set instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if value is not a struct or field update fails
     pub fn execute(&self, struct_value: Value, new_value: Value) -> Result<Value> {
         match struct_value {
             Value::StructRef(Some(mut struct_ref)) => {
@@ -163,6 +175,10 @@ impl ArrayNew {
 
     /// Execute the array.new instruction
     /// Takes size and initial value from the stack
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if array creation fails
     pub fn execute(&self, size: u32, init_value: Value) -> Result<Value> {
         let array_ref = ArrayRef::with_size(
             self.type_index,
@@ -190,6 +206,10 @@ impl ArrayGet {
     }
 
     /// Execute the array.get instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if value is not an array or index is out of bounds
     pub fn execute(&self, array_value: Value, index: u32) -> Result<Value> {
         match array_value {
             Value::ArrayRef(Some(array_ref)) => {
@@ -224,6 +244,10 @@ impl ArraySet {
     }
 
     /// Execute the array.set instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if value is not an array or index is out of bounds
     pub fn execute(&self, array_value: Value, index: u32, new_value: Value) -> Result<Value> {
         match array_value {
             Value::ArrayRef(Some(mut array_ref)) => {
@@ -260,6 +284,10 @@ impl ArrayLen {
     }
 
     /// Execute the array.len instruction
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if value is not an array
     pub fn execute(&self, array_value: Value) -> Result<Value> {
         match array_value {
             Value::ArrayRef(Some(array_ref)) => {

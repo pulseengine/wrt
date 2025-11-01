@@ -118,6 +118,10 @@ impl ValidationContext {
     }
 
     /// Pop multiple types
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if stack underflow occurs
     pub fn pop_types(&mut self, types: &[ValueType]) -> Result<()> {
         for _ty in types.iter().rev() {
             self.pop_type()?;
@@ -126,6 +130,10 @@ impl ValidationContext {
     }
 
     /// Validate a branch target label
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if label is invalid
     pub fn validate_branch_target(&mut self, _label: u32) -> Result<()> {
         // For simplified validation, we just check that the label is reasonable
         // In a full implementation, this would validate against the current control
