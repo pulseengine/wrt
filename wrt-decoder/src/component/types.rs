@@ -320,6 +320,7 @@ pub trait ComponentAnalyzer {
 
 /// Export information
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ExportInfo {
     /// Export name
     #[cfg(feature = "std")]
@@ -364,30 +365,10 @@ impl ExportInfo {
     }
 }
 
-impl Default for ExportInfo {
-    fn default() -> Self {
-        #[cfg(feature = "std")]
-        return Self {
-            name:      alloc::string::String::new(),
-            kind:      alloc::string::String::new(),
-            type_info: alloc::string::String::new(),
-        };
-
-        #[cfg(not(feature = "std"))]
-        {
-            // Use fallback empty strings for Default trait compatibility
-            // For managed allocation, use ExportInfo::new() instead
-            Self {
-                name:      crate::prelude::DecoderString::default(),
-                kind:      crate::prelude::DecoderString::default(),
-                type_info: crate::prelude::DecoderString::default(),
-            }
-        }
-    }
-}
 
 /// Import information
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ImportInfo {
     /// Import module
     #[cfg(feature = "std")]
@@ -441,29 +422,6 @@ impl ImportInfo {
     }
 }
 
-impl Default for ImportInfo {
-    fn default() -> Self {
-        #[cfg(feature = "std")]
-        return Self {
-            module:    alloc::string::String::new(),
-            name:      alloc::string::String::new(),
-            kind:      alloc::string::String::new(),
-            type_info: alloc::string::String::new(),
-        };
-
-        #[cfg(not(feature = "std"))]
-        {
-            // Use fallback empty strings for Default trait compatibility
-            // For managed allocation, use ImportInfo::new() instead
-            Self {
-                module:    crate::prelude::DecoderString::default(),
-                name:      crate::prelude::DecoderString::default(),
-                kind:      crate::prelude::DecoderString::default(),
-                type_info: crate::prelude::DecoderString::default(),
-            }
-        }
-    }
-}
 
 /// Component binary metadata
 #[derive(Debug, Clone)]

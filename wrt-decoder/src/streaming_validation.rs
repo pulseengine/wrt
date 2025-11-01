@@ -144,6 +144,7 @@ impl Default for ValidationConfig {
 
 /// Validation statistics
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ValidationStats {
     /// Total bytes validated
     pub bytes_validated:     usize,
@@ -158,18 +159,6 @@ pub struct ValidationStats {
     pub start_time:          std::time::Instant,
 }
 
-impl Default for ValidationStats {
-    fn default() -> Self {
-        Self {
-            bytes_validated: 0,
-            sections_validated: 0,
-            functions_validated: 0,
-            types_validated: 0,
-            #[cfg(feature = "std")]
-            start_time: std::time::Instant::now(),
-        }
-    }
-}
 
 impl StreamingValidator {
     /// Create a new streaming validator
