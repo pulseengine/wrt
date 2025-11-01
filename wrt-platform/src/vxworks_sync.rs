@@ -14,7 +14,7 @@ use wrt_error::{
 use crate::FutexLike;
 
 #[cfg(target_os = "vxworks")]
-extern "C" {
+unsafe extern "C" {
     // VxWorks semaphore functions (both LKM and RTP)
     fn semBCreate(options: i32, initial_state: i32) -> usize; // SEM_ID
     fn semMCreate(options: i32) -> usize; // Mutex semaphore

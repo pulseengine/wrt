@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[cfg(target_os = "vxworks")]
-extern "C" {
+unsafe extern "C" {
     // Binary std/no_std choice
     fn memPartAlloc(mem_part_id: usize, size: usize) -> *mut u8;
     fn memPartAlignedAlloc(mem_part_id: usize, size: usize, alignment: usize) -> *mut u8;

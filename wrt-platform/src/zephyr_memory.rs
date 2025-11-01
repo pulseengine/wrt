@@ -81,7 +81,7 @@ struct ZephyrMemPartition {
 }
 
 // FFI declarations for Zephyr kernel APIs
-extern "C" {
+unsafe extern "C" {
     /// Allocate aligned memory from a heap
     fn k_heap_aligned_alloc(
         heap: *mut ZephyrHeap,
@@ -228,7 +228,7 @@ impl ZephyrAllocator {
             };
 
             // Initialize memory domain
-            let result = k_mem_domain_init(domain, 1, &partition as *const _ as *mut _);
+            let result = unsafe { k_mem_domain_init(domain, 1, &partition as *const _ as *mut _) };
             if result != 0 {
                 return Err(Error::runtime_execution_error(
                     "Zephyr memory pool allocation failed",
@@ -247,7 +247,7 @@ impl ZephyrAllocator {
         if let Some(domain) = self.memory_domain.take() {
             if let Some(partition) = self.current_partition.take() {
                 // Remove partition from domain
-                k_mem_domain_remove_partition(domain.as_ptr(), &partition as *const _ as *mut _);
+                unsafe { k_mem_domain_remove_partition(domain.as_ptr(), &partition as *const _ as *mut _) };
             }
 
             // In real Zephyr implementation, static domains don't need explicit
@@ -466,7 +466,7 @@ impl PageAllocator for ZephyrAllocator {
         }
 
         // Clean up memory domain first
-        if let Err(e) = self.cleanup_memory_domain() {
+        if let Err(e) = unsafe { self.cleanup_memory_domain() } {
             // Binary std/no_std choice
             self.base_ptr = Some(base_ptr);
             return Err(e);
@@ -474,7 +474,7 @@ impl PageAllocator for ZephyrAllocator {
 
         // Free the memory using Zephyr's heap API
         // Binary std/no_std choice
-        k_heap_free(self.heap, ptr.as_ptr());
+        unsafe { k_heap_free(self.heap, ptr.as_ptr()) };
 
         // Reset internal state
         self.total_reserved_bytes = 0;
