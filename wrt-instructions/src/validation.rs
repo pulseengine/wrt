@@ -169,10 +169,18 @@ pub enum ControlKind {
 /// Trait for validating instructions
 pub trait Validate {
     /// Validate this instruction in the given context
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if validation fails
     fn validate(&self, ctx: &mut ValidationContext) -> Result<()>;
 }
 
 /// Validate arithmetic operations
+///
+/// # Errors
+///
+/// Returns an error if operand types are invalid or stack operations fail
 pub fn validate_arithmetic_op(
     _op_name: &str,
     input_types: &[ValueType],
@@ -187,6 +195,10 @@ pub fn validate_arithmetic_op(
 }
 
 /// Validate memory operations
+///
+/// # Errors
+///
+/// Returns an error if memory index is invalid or stack types don't match
 pub fn validate_memory_op(
     _op_name: &str,
     memory_idx: u32,
@@ -215,6 +227,10 @@ pub fn validate_memory_op(
 }
 
 /// Validate control flow operations
+///
+/// # Errors
+///
+/// Returns an error if control flow structure is invalid
 pub fn validate_control_op(
     _kind: ControlKind,
     _block_type: BlockType,
@@ -225,6 +241,10 @@ pub fn validate_control_op(
 }
 
 /// Validate branch operations
+///
+/// # Errors
+///
+/// Returns an error if branch depth exceeds limits
 pub fn validate_branch(depth: u32, ctx: &mut ValidationContext) -> Result<()> {
     // Basic validation only
     if depth > 1000 {
@@ -235,12 +255,20 @@ pub fn validate_branch(depth: u32, ctx: &mut ValidationContext) -> Result<()> {
 }
 
 /// Validate function calls
+///
+/// # Errors
+///
+/// Returns an error if function index is invalid
 pub fn validate_call(_func_idx: u32, _ctx: &mut ValidationContext) -> Result<()> {
     // Simplified validation
     Ok(())
 }
 
 /// Validate local variable operations
+///
+/// # Errors
+///
+/// Returns an error if local index is invalid or stack operations fail
 pub fn validate_local_op(_local_idx: u32, is_get: bool, ctx: &mut ValidationContext) -> Result<()> {
     if is_get {
         // local.get: [] -> [type]
@@ -254,7 +282,11 @@ pub fn validate_local_op(_local_idx: u32, is_get: bool, ctx: &mut ValidationCont
     Ok(())
 }
 
-/// Validate global variable operations  
+/// Validate global variable operations
+///
+/// # Errors
+///
+/// Returns an error if global index is invalid or stack operations fail
 pub fn validate_global_op(
     _global_idx: u32,
     is_get: bool,
@@ -273,6 +305,10 @@ pub fn validate_global_op(
 }
 
 /// Validate comparison operations
+///
+/// # Errors
+///
+/// Returns an error if operand types don't match or stack operations fail
 pub fn validate_comparison_op(input_type: ValueType, ctx: &mut ValidationContext) -> Result<()> {
     if !ctx.is_unreachable() {
         ctx.pop_expect(input_type)?;
@@ -283,6 +319,10 @@ pub fn validate_comparison_op(input_type: ValueType, ctx: &mut ValidationContext
 }
 
 /// Validate conversion operations
+///
+/// # Errors
+///
+/// Returns an error if type conversion is invalid or stack operations fail
 pub fn validate_conversion_op(
     from_type: ValueType,
     to_type: ValueType,
