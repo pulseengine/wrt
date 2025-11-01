@@ -24,6 +24,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    ToString,
 };
 
 // For no_std, override prelude's bounded::BoundedVec with StaticVec

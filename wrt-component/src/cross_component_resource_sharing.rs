@@ -15,6 +15,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     collections::{StaticVec, StaticMap},
     safe_managed_alloc,
+    ToString,
     // safe_memory::SafeMemory, // Not available
 };
 

@@ -10,6 +10,7 @@ use wrt_foundation::{
         ToBytes,
     },
     ExternType as RuntimeExternType,
+    ToString,
 };
 use crate::bounded_component_infra::ComponentProvider;
 
