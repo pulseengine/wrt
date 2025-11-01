@@ -817,6 +817,11 @@ pub struct CfiExecutionContext {
 }
 
 impl CfiExecutionContext {
+    /// Create a new CFI execution context with default values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if initialization fails
     pub fn try_default() -> Result<Self> {
         // Remove unused providers - they were placeholders
 

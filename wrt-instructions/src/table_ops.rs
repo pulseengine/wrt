@@ -299,6 +299,10 @@ impl TableGrow {
     /// # Returns
     ///
     /// The previous size, or -1 if the operation failed (as i32 Value)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table grow operation fails
     pub fn execute(
         &self,
         table: &mut (impl TableOperations + ?Sized),
@@ -356,6 +360,10 @@ impl TableFill {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table fill operation fails
     pub fn execute(
         &self,
         table: &mut (impl TableOperations + ?Sized),
@@ -430,6 +438,10 @@ impl TableCopy {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table copy operation fails
     pub fn execute(
         &self,
         table: &mut (impl TableOperations + ?Sized),
@@ -513,6 +525,10 @@ impl TableInit {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table init operation fails
     pub fn execute(
         &self,
         table: &mut (impl TableOperations + ?Sized),
@@ -625,6 +641,10 @@ impl ElemDrop {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if element drop operation fails
     pub fn execute(
         &self,
         elem_segments: &mut (impl ElementSegmentOperations + ?Sized),
@@ -685,6 +705,10 @@ pub trait TableContext {
     fn get_element_segments(&mut self) -> Result<&mut dyn ElementSegmentOperations>;
 
     /// Execute table.init operation (helper to avoid borrowing issues)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table init operation fails
     fn execute_table_init(
         &mut self,
         table_index: u32,

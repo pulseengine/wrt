@@ -375,6 +375,10 @@ impl BrTable {
     /// # Returns
     ///
     /// Success or an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if table operations fail
     pub fn execute(&self, context: &mut impl ControlContext) -> Result<()> {
         // Pop the table index from the stack
         let index = context
