@@ -32,6 +32,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
+    traits::DefaultMemoryProvider,
     values::Value,
 };
 
@@ -79,7 +80,7 @@ pub struct PostReturnEntry {
     pub func_index:    u32,
     /// Arguments to pass to the cleanup function
     #[cfg(feature = "std")]
-    pub args:          Vec<ComponentValue>,
+    pub args:          Vec<ComponentValue<DefaultMemoryProvider<1024>>>,
     #[cfg(not(feature = "std"))]
     pub args:          BoundedVec<ComponentValue, 16>,
     /// Priority of this cleanup operation (higher = more critical)
@@ -344,6 +345,33 @@ impl PostReturnContext {
     }
 
     /// Convert ComponentValue to raw value for function calls
+    #[cfg(feature = "std")]
+    fn component_value_to_raw(&self, value: &ComponentValue<DefaultMemoryProvider<1024>>) -> Result<Value> {
+        match value {
+            ComponentValue::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
+            ComponentValue::S8(v) => Ok(Value::I32(*v as i32)),
+            ComponentValue::U8(v) => Ok(Value::I32(*v as i32)),
+            ComponentValue::S16(v) => Ok(Value::I32(*v as i32)),
+            ComponentValue::U16(v) => Ok(Value::I32(*v as i32)),
+            ComponentValue::S32(v) => Ok(Value::I32(*v)),
+            ComponentValue::U32(v) => Ok(Value::I32(*v as i32)),
+            ComponentValue::S64(v) => Ok(Value::I64(*v)),
+            ComponentValue::U64(v) => Ok(Value::I64(*v as i64)),
+            ComponentValue::F32(v) => Ok(Value::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits()))),
+            ComponentValue::F64(v) => Ok(Value::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits()))),
+            ComponentValue::String(s) => {
+                // For strings, we typically pass pointer and length
+                // This is a simplified version - real implementation would need
+                // proper memory management
+                Ok(Value::I32(s.as_ptr() as i32))
+            },
+            _ => Err(Error::runtime_execution_error(
+                "unsupported_component_value_type",
+            )),
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
     fn component_value_to_raw(&self, value: &ComponentValue) -> Result<Value> {
         match value {
             ComponentValue::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),

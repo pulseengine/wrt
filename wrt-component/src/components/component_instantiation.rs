@@ -178,8 +178,14 @@ pub struct FunctionSignature {
     /// Function name
     pub name:    String,
     /// Parameter types
+    #[cfg(feature = "std")]
+    pub params:  Vec<ComponentType>,
+    #[cfg(not(feature = "std"))]
     pub params:  BoundedVec<ComponentType, 16>,
     /// Return types
+    #[cfg(feature = "std")]
+    pub returns: Vec<ComponentType>,
+    #[cfg(not(feature = "std"))]
     pub returns: BoundedVec<ComponentType, 16>,
 }
 
@@ -271,6 +277,9 @@ pub struct ComponentInstanceImpl {
     /// Canonical ABI for value conversion
     abi:              CanonicalABI,
     /// Function table
+    #[cfg(feature = "std")]
+    functions:        Vec<ComponentFunction>,
+    #[cfg(not(feature = "std"))]
     functions:        BoundedVec<ComponentFunction, 128>,
     /// Instance metadata
     metadata:         InstanceMetadata,
@@ -544,17 +553,29 @@ impl FromBytes for FunctionSignature {
 
         // Read params
         let params_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        #[cfg(feature = "std")]
+        let mut params = Vec::new();
+        #[cfg(not(feature = "std"))]
         let mut params = BoundedVec::<ComponentType, 16>::new();
         for _ in 0..params_len {
             let param = ComponentType::from_bytes_with_provider(reader, provider)?;
+            #[cfg(feature = "std")]
+            params.push(param);
+            #[cfg(not(feature = "std"))]
             params.push(param).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature params capacity exceeded"))?;
         }
 
         // Read returns
         let returns_len = u32::from_bytes_with_provider(reader, provider)? as usize;
+        #[cfg(feature = "std")]
+        let mut returns = Vec::new();
+        #[cfg(not(feature = "std"))]
         let mut returns = BoundedVec::<ComponentType, 16>::new();
         for _ in 0..returns_len {
             let ret = ComponentType::from_bytes_with_provider(reader, provider)?;
+            #[cfg(feature = "std")]
+            returns.push(ret);
+            #[cfg(not(feature = "std"))]
             returns.push(ret).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature returns capacity exceeded"))?;
         }
 
@@ -612,6 +633,9 @@ pub struct ComponentMemory {
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
+    #[cfg(feature = "std")]
+    pub data:         Vec<u8>,
+    #[cfg(not(feature = "std"))]
     pub data:         BoundedVec<u8, 65536>,
 }
 
@@ -935,12 +959,18 @@ impl ComponentMemory {
         }
 
         // Create bounded vec for memory data
-        let mut data = BoundedVec::<u8, 65536>::new();
-        // Fill with zeros up to initial size (capped at 65536)
-        let fill_size = (initial_size as usize).min(65536);
-        for _ in 0..fill_size {
-            data.push(0).map_err(|_| Error::memory_error("Memory data capacity exceeded"))?;
-        }
+        #[cfg(feature = "std")]
+        let data = vec![0u8; initial_size as usize];
+        #[cfg(not(feature = "std"))]
+        let data = {
+            let mut data = BoundedVec::<u8, 65536>::new();
+            // Fill with zeros up to initial size (capped at 65536)
+            let fill_size = (initial_size as usize).min(65536);
+            for _ in 0..fill_size {
+                data.push(0).map_err(|_| Error::memory_error("Memory data capacity exceeded"))?;
+            }
+            data
+        };
 
         Ok(Self {
             handle,
@@ -1067,24 +1097,35 @@ impl std::error::Error for InstantiationError {}
 /// Create a function signature
 pub fn create_function_signature(
     name: String,
-    params: Vec<ComponentType>,
-    returns: Vec<ComponentType>,
+    params_vec: Vec<ComponentType>,
+    returns_vec: Vec<ComponentType>,
 ) -> FunctionSignature {
-    // Convert Vec to BoundedVec
-    let mut bounded_params = BoundedVec::<ComponentType, 16>::new().unwrap();
-    for param in params {
-        let _ = bounded_params.push(param); // Silently ignore if capacity exceeded
+    #[cfg(feature = "std")]
+    {
+        FunctionSignature {
+            name,
+            params: params_vec,
+            returns: returns_vec,
+        }
     }
+    #[cfg(not(feature = "std"))]
+    {
+        // Convert Vec to BoundedVec
+        let mut bounded_params = BoundedVec::<ComponentType, 16>::new();
+        for param in params_vec {
+            let _ = bounded_params.push(param); // Silently ignore if capacity exceeded
+        }
 
-    let mut bounded_returns = BoundedVec::<ComponentType, 16>::new().unwrap();
-    for ret in returns {
-        let _ = bounded_returns.push(ret); // Silently ignore if capacity exceeded
-    }
+        let mut bounded_returns = BoundedVec::<ComponentType, 16>::new();
+        for ret in returns_vec {
+            let _ = bounded_returns.push(ret); // Silently ignore if capacity exceeded
+        }
 
-    FunctionSignature {
-        name,
-        params: bounded_params,
-        returns: bounded_returns,
+        FunctionSignature {
+            name,
+            params: bounded_params,
+            returns: bounded_returns,
+        }
     }
 }
 
