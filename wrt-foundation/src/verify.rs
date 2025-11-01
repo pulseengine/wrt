@@ -144,9 +144,8 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(10))]
     pub fn verify_bounded_collections_memory_safety() {
-        // Use DefaultNoStdProvider for verification
-        #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default();
+        // Use safe_managed_alloc for verification
+        let memory_provider = safe_managed_alloc!(256, CrateId::Foundation).unwrap();
         let handler = SafeMemoryHandler::new(memory_provider);
 
         // Generate constrained capacity for verification
@@ -200,12 +199,11 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(8))]
     pub fn verify_safe_memory_bounds() {
-        // Test with a constrained NoStdProvider
+        // Test with a constrained memory provider
         let size: usize = kani::any();
         kani::assume(size > 0 && size <= 256); // Constrained for verification
 
-        #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default();
+        let mut memory_provider = safe_managed_alloc!(256, CrateId::Foundation).unwrap();
         memory_provider.resize(size).unwrap();
 
         // Verify access within bounds
@@ -240,9 +238,8 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_atomic_memory_operations() {
-        // Create AtomicMemoryOps with a DefaultNoStdProvider
-        #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default();
+        // Create AtomicMemoryOps with safe_managed_alloc
+        let memory_provider = safe_managed_alloc!(256, CrateId::Foundation).unwrap();
         let handler = SafeMemoryHandler::new(memory_provider);
         let atomic_mem_ops = AtomicMemoryOps::new(handler);
 
@@ -387,8 +384,7 @@ pub mod kani_verification {
         let buffer_size: usize = kani::any();
         kani::assume(buffer_size > 0 && buffer_size <= 64);
 
-        #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default();
+        let mut memory_provider = safe_managed_alloc!(256, CrateId::Foundation).unwrap();
         memory_provider.resize(buffer_size).unwrap();
 
         // Test valid accesses

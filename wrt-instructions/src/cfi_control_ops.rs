@@ -1376,7 +1376,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         context: &mut CfiExecutionContext,
     ) -> Result<CfiLandingPad> {
         let hardware_instruction = if let Some(ref hw_config) = cfi_protection.hardware_config {
-            self.create_hardware_instruction(target_type, hw_config)?
+            self.create_hardware_instruction(target_type, hw_config)
         } else {
             None
         };
@@ -1446,22 +1446,26 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn compute_return_address(&self, context: &CfiExecutionContext) -> u64 {
+        let _ = self; // Unused in current implementation
         // Combine function index and instruction offset into return address
         (u64::from(context.current_function) << 32) | u64::from(context.current_instruction)
     }
 
     fn compute_signature_hash(&self, type_idx: u32) -> u64 {
+        let _ = self; // Unused in current implementation
         // Simple hash for now - real implementation would use proper type information
         u64::from(type_idx) * 0x9e37_79b9_7f4a_7c15
     }
 
     fn get_current_timestamp(&self) -> u64 {
+        let _ = self; // Unused in current implementation
         // Software fallback - return 0 for deterministic behavior
         // Real implementation would use platform-specific timing APIs
         0
     }
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
+        let _ = self; // Unused in current implementation
         #[cfg(feature = "std")]
         let shadow_entry_opt = context.shadow_stack.pop();
         #[cfg(not(feature = "std"))]
@@ -1486,6 +1490,7 @@ impl DefaultCfiControlFlowOps {
         label_idx: u32,
         context: &CfiExecutionContext,
     ) -> Result<u32> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Validate label index bounds
         if label_idx >= context.max_labels {
             return Err(Error::validation_control_flow_error(
@@ -1516,7 +1521,8 @@ impl DefaultCfiControlFlowOps {
         &self,
         target_type: CfiTargetType,
         hw_config: &HardwareCfiConfig,
-    ) -> Result<Option<CfiHardwareInstruction>> {
+    ) -> Option<CfiHardwareInstruction> {
+        let _ = self; // Unused except for generate_riscv_label call
         match &hw_config.settings {
             #[cfg(target_arch = "aarch64")]
             HardwareCfiSettings::ArmBti { mode, .. } => {
@@ -1526,23 +1532,23 @@ impl DefaultCfiControlFlowOps {
                     CfiTargetType::Branch => ArmBtiMode::JumpOnly,
                     _ => *mode,
                 };
-                Ok(Some(CfiHardwareInstruction::ArmBti { mode: bti_mode }))
+                Some(CfiHardwareInstruction::ArmBti { mode: bti_mode })
             },
 
             #[cfg(target_arch = "riscv64")]
             HardwareCfiSettings::RiscVCfi {
                 landing_pads: true, ..
-            } => Ok(Some(CfiHardwareInstruction::RiscVLandingPad {
+            } => Some(CfiHardwareInstruction::RiscVLandingPad {
                 label: self.generate_riscv_label(),
-            })),
+            }),
 
             #[cfg(target_arch = "x86_64")]
             HardwareCfiSettings::X86Cet {
                 indirect_branch_tracking: true,
                 ..
-            } => Ok(Some(CfiHardwareInstruction::X86Endbr)),
+            } => Some(CfiHardwareInstruction::X86Endbr),
 
-            _ => Ok(None),
+            _ => None,
         }
     }
 
@@ -1579,17 +1585,20 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn generate_landing_pad_id(&self, _context: &CfiExecutionContext) -> u32 {
+        let _ = self; // Unused in current implementation
         // Generate unique landing pad ID
         0 // Placeholder
     }
 
     fn generate_cfi_check_id(&self, _context: &CfiExecutionContext) -> u32 {
+        let _ = self; // Unused in current implementation
         // Generate unique CFI check ID
         0 // Placeholder
     }
 
     #[cfg(target_arch = "riscv64")]
     fn generate_riscv_label(&self) -> u32 {
+        let _ = self; // Unused in current implementation
         // Generate unique RISC-V landing pad label
         0 // Placeholder
     }
@@ -1598,6 +1607,7 @@ impl DefaultCfiControlFlowOps {
         &self,
         target_type: CfiTargetType,
     ) -> Result<crate::types::CfiTargetTypeVec> {
+        let _ = self; // Unused in current implementation
         Ok(match target_type {
             CfiTargetType::IndirectCall => {
                 #[cfg(feature = "std")]
@@ -1673,6 +1683,7 @@ impl DefaultCfiControlFlowOps {
         signature_hash: u64,
         context: &CfiExecutionContext,
     ) -> Result<()> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Validate type index bounds
         if expected_type_index >= context.max_types {
             return Err(Error::validation_value_type_error(
@@ -1699,6 +1710,7 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn validate_shadow_stack(&self, context: &CfiExecutionContext) -> Result<()> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Check shadow stack depth
         if context.shadow_stack.len() > context.max_shadow_stack_depth {
             return Err(Error::security_stack_overflow("Shadow stack overflow"));
@@ -1745,6 +1757,7 @@ impl DefaultCfiControlFlowOps {
         valid_targets: &[u32],
         context: &CfiExecutionContext,
     ) -> Result<()> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Ensure valid targets list is not empty
         if valid_targets.is_empty() {
             return Err(Error::validation_control_flow_error(
@@ -1782,6 +1795,7 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn validate_calling_convention(&self, context: &CfiExecutionContext) -> Result<()> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Validate stack alignment for calls
         const REQUIRED_ALIGNMENT: u32 = 16; // Common for most ABIs
         if context.current_stack_depth % REQUIRED_ALIGNMENT != 0 {
@@ -1822,6 +1836,7 @@ impl DefaultCfiControlFlowOps {
         max_duration: u64,
         context: &CfiExecutionContext,
     ) -> Result<()> {
+        let _ = self; // Unused in current implementation
         // ASIL-B: Check if temporal validation is enabled
         if !context.software_config.temporal_validation {
             return Ok(()); // Skip if not enabled

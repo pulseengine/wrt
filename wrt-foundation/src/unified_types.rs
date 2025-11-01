@@ -129,7 +129,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default());
+        let provider = safe_managed_alloc!(SMALL * core::mem::size_of::<T>(), CrateId::Foundation)?;
         BoundedVec::new(provider)
     }
 
@@ -137,7 +137,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default());
+        let provider = safe_managed_alloc!(MEDIUM * core::mem::size_of::<T>(), CrateId::Foundation)?;
         BoundedVec::new(provider)
     }
 
@@ -145,12 +145,12 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default());
+        let provider = safe_managed_alloc!(LARGE * core::mem::size_of::<T>(), CrateId::Foundation)?;
         BoundedVec::new(provider)
     }
 
     fn create_runtime_string() -> wrt_error::Result<BoundedString<MEDIUM, DefaultNoStdProvider>> {
-        let provider = DefaultNoStdProvider::default());
+        let provider = safe_managed_alloc!(MEDIUM, CrateId::Foundation)?;
         BoundedString::try_from_str("", provider).map_err(|_| Error::runtime_execution_error("Failed to create runtime string"))
     }
 }

@@ -490,12 +490,12 @@ mod tests {
 
         let builder = TockAllocatorBuilder::new()
             .with_maximum_pages(2)
-            .with_verification_level(VerificationLevel::Basic)
+            .with_verification_level(VerificationLevel::Minimal)
             .with_static_buffer(unsafe { &mut BUFFER });
 
         // Test that builder compiles and has correct settings
         assert_eq!(builder.maximum_pages, 2);
-        assert_eq!(builder.verification_level, VerificationLevel::Basic);
+        assert_eq!(builder.verification_level, VerificationLevel::Minimal);
         assert!(builder.static_buffer.is_some());
     }
 

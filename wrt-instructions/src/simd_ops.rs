@@ -572,6 +572,7 @@ impl SimdOp {
         };
         match self {
             // Load operations take 1 input (memory index)
+            // Load and extract lane operations take 1 input (memory index or vector)
             V128Load { .. }
             | V128Load8x8S { .. }
             | V128Load8x8U { .. }
@@ -582,10 +583,8 @@ impl SimdOp {
             | V128Load8Splat { .. }
             | V128Load16Splat { .. }
             | V128Load32Splat { .. }
-            | V128Load64Splat { .. } => 1,
-
-            // Extract lane operations take 1 input (vector)
-            I8x16ExtractLaneS { .. }
+            | V128Load64Splat { .. }
+            | I8x16ExtractLaneS { .. }
             | I8x16ExtractLaneU { .. }
             | I16x8ExtractLaneS { .. }
             | I16x8ExtractLaneU { .. }

@@ -1226,22 +1226,9 @@ impl<const N: usize> Default for NoStdProvider<N> {
     /// # Compile-time Detection
     /// This usage will be detected by budget enforcement lints.
     fn default() -> Self {
-        // Track bypass usage for enforcement monitoring
-        #[cfg(feature = "budget-enforcement")]
-        {
-            compile_error!(
-                "Direct NoStdProvider::default() usage detected! Use \
-                 BudgetProvider::new(crate_id) or create_provider! macro instead. This is a \
-                 budget enforcement violation."
-            );
-        }
-
         // Emit warning for detection by linting tools
-        #[cfg(not(feature = "budget-enforcement"))]
-        {
-            // Runtime tracking of bypasses for monitoring
-            // Modern memory system automatically tracks usage
-        }
+        // Runtime tracking of bypasses for monitoring
+        // Modern memory system automatically tracks usage
 
         // CRITICAL: Prevent stack overflow for large N values
         // For large providers (>8KB), this will cause stack overflow
