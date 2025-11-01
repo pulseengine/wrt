@@ -130,14 +130,12 @@ where
     F: FnOnce(math::FloatBits32, math::FloatBits32) -> Result<i32>,
 {
     let val_b = context.pop_comparison_value()?;
-    let float_bits_b = match val_b {
-        Value::F32(bits) => bits,
-        _ => return Err(Error::type_error("Expected F32 operand")),
+    let Value::F32(float_bits_b) = val_b else {
+        return Err(Error::type_error("Expected F32 operand"));
     };
     let val_a = context.pop_comparison_value()?;
-    let float_bits_a = match val_a {
-        Value::F32(bits) => bits,
-        _ => return Err(Error::type_error("Expected F32 operand")),
+    let Value::F32(float_bits_a) = val_a else {
+        return Err(Error::type_error("Expected F32 operand"));
     };
     let math_bits_a = math::FloatBits32(float_bits_a.0);
     let math_bits_b = math::FloatBits32(float_bits_b.0);
@@ -151,14 +149,12 @@ where
     F: FnOnce(math::FloatBits64, math::FloatBits64) -> Result<i32>,
 {
     let val_b = context.pop_comparison_value()?;
-    let float_bits_b = match val_b {
-        Value::F64(bits) => bits,
-        _ => return Err(Error::type_error("Expected F64 operand")),
+    let Value::F64(float_bits_b) = val_b else {
+        return Err(Error::type_error("Expected F64 operand"));
     };
     let val_a = context.pop_comparison_value()?;
-    let float_bits_a = match val_a {
-        Value::F64(bits) => bits,
-        _ => return Err(Error::type_error("Expected F64 operand")),
+    let Value::F64(float_bits_a) = val_a else {
+        return Err(Error::type_error("Expected F64 operand"));
     };
     let math_bits_a = math::FloatBits64(float_bits_a.0);
     let math_bits_b = math::FloatBits64(float_bits_b.0);

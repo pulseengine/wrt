@@ -256,9 +256,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I32(a), Value::I32(b)) => (a, b),
-                        _ => return Err(Error::type_error("I32Add requires two i32 values")),
+                    let (Value::I32(a_val), Value::I32(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I32Add requires two i32 values"));
                     };
 
                     let result = wrt_math::i32_add(a_val, b_val)?;
@@ -275,9 +274,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I32(a), Value::I32(b)) => (a, b),
-                        _ => return Err(Error::type_error("I32Sub requires two i32 values")),
+                    let (Value::I32(a_val), Value::I32(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I32Sub requires two i32 values"));
                     };
 
                     let result = wrt_math::i32_sub(a_val, b_val)?;
@@ -294,9 +292,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I32(a), Value::I32(b)) => (a, b),
-                        _ => return Err(Error::type_error("I32Mul requires two i32 values")),
+                    let (Value::I32(a_val), Value::I32(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I32Mul requires two i32 values"));
                     };
 
                     let result = wrt_math::i32_mul(a_val, b_val)?;
@@ -313,9 +310,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I64(a), Value::I64(b)) => (a, b),
-                        _ => return Err(Error::type_error("I64Add requires two i64 values")),
+                    let (Value::I64(a_val), Value::I64(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I64Add requires two i64 values"));
                     };
 
                     let result = wrt_math::i64_add(a_val, b_val)?;
@@ -332,9 +328,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I64(a), Value::I64(b)) => (a, b),
-                        _ => return Err(Error::type_error("I64Sub requires two i64 values")),
+                    let (Value::I64(a_val), Value::I64(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I64Sub requires two i64 values"));
                     };
 
                     let result = wrt_math::i64_sub(a_val, b_val)?;
@@ -351,9 +346,8 @@ impl ConstExprSequence {
                     let b = Self::stack_pop(&mut stack)?;
                     let a = Self::stack_pop(&mut stack)?;
 
-                    let (a_val, b_val) = match (a, b) {
-                        (Value::I64(a), Value::I64(b)) => (a, b),
-                        _ => return Err(Error::type_error("I64Mul requires two i64 values")),
+                    let (Value::I64(a_val), Value::I64(b_val)) = (a, b) else {
+                        return Err(Error::type_error("I64Mul requires two i64 values"));
                     };
 
                     let result = wrt_math::i64_mul(a_val, b_val)?;
