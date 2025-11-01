@@ -551,6 +551,12 @@ pub mod no_std_stubs {
     #[derive(Debug, Clone)]
     pub struct ValidationConfig;
 
+    impl Default for ValidationConfig {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ValidationConfig {
         pub fn new() -> Self {
             Self

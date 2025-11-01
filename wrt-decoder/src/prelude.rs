@@ -720,7 +720,7 @@ impl<const N: usize> DecoderStringExt for BoundedString<N> {
         let s = core::str::from_utf8(slice)
             .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8"))?;
         // BoundedString no longer needs provider after StaticVec migration
-        Ok(Self::try_from_str(s).map_err(|_| wrt_error::Error::parse_error("String too long"))?)
+        Self::try_from_str(s).map_err(|_| wrt_error::Error::parse_error("String too long"))
     }
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
