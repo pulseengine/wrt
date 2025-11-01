@@ -609,10 +609,10 @@ fn calculate_initialization_steps(module: &crate::module::Module) -> usize {
     let mut steps = 0;
 
     // Count active data segments (each requires offset evaluation + memory.init)
-    steps += module.data.iter().filter(|d| is_data_active(&d)).count() * 2;
+    steps += module.data.iter().filter(|d| is_data_active(d)).count() * 2;
 
     // Count active element segments (each requires offset evaluation + table.init)
-    steps += module.elements.iter().filter(|e| is_element_active(&e)).count() * 2;
+    steps += module.elements.iter().filter(|e| is_element_active(e)).count() * 2;
 
     // Add start function call if present
     if module.start.is_some() {
