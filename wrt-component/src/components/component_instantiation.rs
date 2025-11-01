@@ -178,9 +178,9 @@ pub struct FunctionSignature {
     /// Function name
     pub name:    String,
     /// Parameter types
-    pub params:  BoundedVec<ComponentType, 16, ComponentProvider>,
+    pub params:  BoundedVec<ComponentType, 16>,
     /// Return types
-    pub returns: BoundedVec<ComponentType, 16, ComponentProvider>,
+    pub returns: BoundedVec<ComponentType, 16>,
 }
 
 /// Component export definition
@@ -271,7 +271,7 @@ pub struct ComponentInstanceImpl {
     /// Canonical ABI for value conversion
     abi:              CanonicalABI,
     /// Function table
-    functions:        BoundedVec<ComponentFunction, 128, ComponentProvider>,
+    functions:        BoundedVec<ComponentFunction, 128>,
     /// Instance metadata
     metadata:         InstanceMetadata,
     /// Resource manager for this instance
@@ -544,7 +544,7 @@ impl FromBytes for FunctionSignature {
 
         // Read params
         let params_len = u32::from_bytes_with_provider(reader, provider)? as usize;
-        let mut params = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default())?;
+        let mut params = BoundedVec::<ComponentType, 16>::new()?;
         for _ in 0..params_len {
             let param = ComponentType::from_bytes_with_provider(reader, provider)?;
             params.push(param).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature params capacity exceeded"))?;
@@ -552,7 +552,7 @@ impl FromBytes for FunctionSignature {
 
         // Read returns
         let returns_len = u32::from_bytes_with_provider(reader, provider)? as usize;
-        let mut returns = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default())?;
+        let mut returns = BoundedVec::<ComponentType, 16>::new()?;
         for _ in 0..returns_len {
             let ret = ComponentType::from_bytes_with_provider(reader, provider)?;
             returns.push(ret).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature returns capacity exceeded"))?;
@@ -612,7 +612,7 @@ pub struct ComponentMemory {
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
-    pub data:         BoundedVec<u8, 65536, BufferProvider>,
+    pub data:         BoundedVec<u8, 65536>,
 }
 
 /// Instance metadata for debugging and introspection
@@ -935,7 +935,7 @@ impl ComponentMemory {
         }
 
         // Create bounded vec for memory data
-        let mut data = BoundedVec::<u8, 65536, BufferProvider>::new(BufferProvider::default())?;
+        let mut data = BoundedVec::<u8, 65536>::new()?;
         // Fill with zeros up to initial size (capped at 65536)
         let fill_size = (initial_size as usize).min(65536);
         for _ in 0..fill_size {
@@ -1071,12 +1071,12 @@ pub fn create_function_signature(
     returns: Vec<ComponentType>,
 ) -> FunctionSignature {
     // Convert Vec to BoundedVec
-    let mut bounded_params = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default()).unwrap();
+    let mut bounded_params = BoundedVec::<ComponentType, 16>::new().unwrap();
     for param in params {
         let _ = bounded_params.push(param); // Silently ignore if capacity exceeded
     }
 
-    let mut bounded_returns = BoundedVec::<ComponentType, 16, ComponentProvider>::new(ComponentProvider::default()).unwrap();
+    let mut bounded_returns = BoundedVec::<ComponentType, 16>::new().unwrap();
     for ret in returns {
         let _ = bounded_returns.push(ret); // Silently ignore if capacity exceeded
     }

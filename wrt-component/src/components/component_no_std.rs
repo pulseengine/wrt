@@ -118,6 +118,8 @@ pub const MAX_FUNCTION_REF_SIZE: usize = 64;
 pub enum ExternValue {
     /// Function value
     Function(FunctionValue),
+    /// Function value (alternative naming for compatibility)
+    Func(FunctionValue),
     /// Table value
     Table(TableValue),
     /// Memory value
