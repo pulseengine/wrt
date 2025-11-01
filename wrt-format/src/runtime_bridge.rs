@@ -551,9 +551,9 @@ impl ModuleBridge {
         };
         for (index, element_segment) in module.elements.iter().enumerate() {
             let hint = ElementInitializationHint {
-                segment_type:             get_element_segment_type(element_segment),
-                table_target:             get_element_table_index(element_segment),
-                offset_evaluation_needed: is_element_active(element_segment),
+                segment_type:             get_element_segment_type(&element_segment),
+                table_target:             get_element_table_index(&element_segment),
+                offset_evaluation_needed: is_element_active(&element_segment),
                 element_count:            match &element_segment.init_data {
                     crate::pure_format_types::PureElementInit::FunctionIndices(indices) => {
                         indices.len()

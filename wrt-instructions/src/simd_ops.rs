@@ -31,6 +31,10 @@ use std::vec::Vec;
 /// SIMD operation context trait for accessing SIMD functionality
 pub trait SimdContext {
     /// Execute a SIMD operation on v128 values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if SIMD operation execution fails or operand types are invalid
     fn execute_simd_op(&mut self, op: SimdOp, inputs: &[Value]) -> Result<Value>;
 }
 
@@ -580,9 +584,6 @@ impl SimdOp {
             | V128Load32Splat { .. }
             | V128Load64Splat { .. } => 1,
 
-            // Store operations take 2 inputs (memory index and value)
-            V128Store { .. } => 2,
-
             // Extract lane operations take 1 input (vector)
             I8x16ExtractLaneS { .. }
             | I8x16ExtractLaneU { .. }
@@ -593,8 +594,9 @@ impl SimdOp {
             | F32x4ExtractLane { .. }
             | F64x2ExtractLane { .. } => 1,
 
-            // Replace lane operations take 2 inputs (vector and value)
-            I8x16ReplaceLane { .. }
+            // Store and replace lane operations take 2 inputs (memory index/vector and value)
+            V128Store { .. }
+            | I8x16ReplaceLane { .. }
             | I16x8ReplaceLane { .. }
             | I32x4ReplaceLane { .. }
             | I64x2ReplaceLane { .. }

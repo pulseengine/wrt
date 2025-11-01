@@ -48,6 +48,10 @@ impl BrOnNull {
 
     /// Execute the `br_on_null` instruction
     /// Returns Ok(true) if branch taken, Ok(false) if not taken
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reference is not a reference type
     pub fn execute(&self, reference: &Value) -> Result<bool> {
         match reference {
             Value::FuncRef(None) | Value::ExternRef(None) => {
@@ -86,6 +90,10 @@ impl BrOnNonNull {
     /// Execute the `br_on_non_null` instruction
     /// Returns Ok(true) if branch taken, Ok(false) if not taken
     /// Also returns the reference value for stack manipulation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reference is not a reference type
     pub fn execute(&self, reference: &Value) -> Result<(bool, Option<Value>)> {
         match reference {
             Value::FuncRef(None) | Value::ExternRef(None) => {

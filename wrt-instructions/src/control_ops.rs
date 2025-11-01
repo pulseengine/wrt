@@ -340,7 +340,7 @@ impl BrTable {
     ///
     /// # Errors
     ///
-    /// Returns an error if memory allocation fails in no_std mode
+    /// Returns an error if memory allocation fails in `no_std` mode
     pub fn from_slice(table_slice: &[u32], default: u32) -> Result<Self> {
         #[cfg(feature = "std")]
         {

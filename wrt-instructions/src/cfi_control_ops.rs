@@ -1615,7 +1615,7 @@ impl DefaultCfiControlFlowOps {
                     types
                 }
             },
-            CfiTargetType::Return => {
+            CfiTargetType::Return | CfiTargetType::FunctionEntry => {
                 #[cfg(feature = "std")]
                 {
                     vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall]
@@ -1634,7 +1634,7 @@ impl DefaultCfiControlFlowOps {
                     types
                 }
             },
-            CfiTargetType::Branch => {
+            CfiTargetType::Branch | CfiTargetType::BlockEntry => {
                 #[cfg(feature = "std")]
                 {
                     vec![CfiTargetType::Branch]
@@ -1646,41 +1646,6 @@ impl DefaultCfiControlFlowOps {
                         .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types
                         .push(CfiTargetType::Branch)
-                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
-                    types
-                }
-            },
-            CfiTargetType::BlockEntry => {
-                #[cfg(feature = "std")]
-                {
-                    vec![CfiTargetType::Branch]
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
-                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
-                    types
-                        .push(CfiTargetType::Branch)
-                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
-                    types
-                }
-            },
-            CfiTargetType::FunctionEntry => {
-                #[cfg(feature = "std")]
-                {
-                    vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall]
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
-                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
-                    types
-                        .push(CfiTargetType::DirectCall)
-                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
-                    types
-                        .push(CfiTargetType::IndirectCall)
                         .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
