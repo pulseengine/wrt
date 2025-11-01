@@ -4,7 +4,7 @@
 //! This module provides utilities to convert from parsed Vec-based structures
 //! to the proper BoundedVec-based ValType structures.
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{
     string::String,
     vec::Vec,

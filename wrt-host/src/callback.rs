@@ -771,7 +771,7 @@ pub fn function_key(module_name: &str, function_name: &str) -> String {
     #[cfg(feature = "std")]
     return format!("{}::{}", module_name, function_name);
 
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     return alloc::format!("{}::{}", module_name, function_name);
 }
 

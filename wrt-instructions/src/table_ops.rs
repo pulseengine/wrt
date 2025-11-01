@@ -177,7 +177,11 @@ impl TableGet {
                 if *i < 0 {
                     return Err(Error::runtime_error("Table index cannot be negative"));
                 }
-                *i as u32
+                // Safety: Validated i >= 0, safe to cast to u32
+                #[allow(clippy::cast_sign_loss)]
+                {
+                    *i as u32
+                }
             },
             _ => return Err(Error::type_error("table.get index must be i32")),
         };
@@ -226,7 +230,11 @@ impl TableSet {
                 if *i < 0 {
                     return Err(Error::runtime_error("Table index cannot be negative"));
                 }
-                *i as u32
+                // Safety: Validated i >= 0, safe to cast to u32
+                #[allow(clippy::cast_sign_loss)]
+                {
+                    *i as u32
+                }
             },
             _ => return Err(Error::type_error("table.set index must be i32")),
         };
