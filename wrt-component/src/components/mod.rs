@@ -47,6 +47,7 @@ pub use component_instantiation::{
     ComponentExport,
     ComponentFunction,
     ComponentImport,
+    ComponentInstance,
     ComponentInstanceImpl,
     ComponentMemory,
     ExportType,
