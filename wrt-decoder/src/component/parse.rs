@@ -1846,118 +1846,54 @@ mod std_parsing {
 
     /// Parse an export section
     pub fn parse_export_section(bytes: &[u8]) -> Result<(Vec<Export>, usize)> {
-        // Read a vector of exports
+        // Per Component Model spec:
+        // export ::= n:<exportname'> si:<sortidx>
+        // Note: exportname' uses same two-string format as importname (namespace + name)
+        // sortidx ::= sort:<sort> idx:<u32>
+
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         let mut exports = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
-            // Read export name
-            let (basic_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+            // Read export name - appears to use same two-string format as imports
+            // Namespace string (can be empty)
+            let (namespace_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let basic_name = bytes_to_string(basic_name_bytes);
+            let _namespace = bytes_to_string(namespace_bytes);
 
-            // Read flags
+            // Name string (the export name like "wasi:cli/run@0.2.0")
+            let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+            offset += bytes_read;
+            let name = bytes_to_string(name_bytes);
+
+            // Read sortidx: sort byte + index
             if offset >= bytes.len() {
-                return Err(Error::from(kinds::ParseError(
-                    "Unexpected end of input while parsing export flags",
-                )));
-            }
-            let flags = bytes[offset];
-            offset += 1;
-
-            // Parse flags
-            let is_resource = (flags & 0x01) != 0;
-            let has_semver = (flags & 0x02) != 0;
-            let has_integrity = (flags & 0x04) != 0;
-            let has_nested = (flags & 0x08) != 0;
-
-            // Read semver (if present)
-            let semver = if has_semver {
-                let (ver_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
-                offset += bytes_read;
-                let ver = bytes_to_string(ver_bytes);
-                Some(ver)
-            } else {
-                None
-            };
-
-            // Read integrity (if present)
-            let integrity = if has_integrity {
-                let (hash_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
-                offset += bytes_read;
-                let hash = bytes_to_string(hash_bytes);
-                Some(hash)
-            } else {
-                None
-            };
-
-            // Read nested namespaces (if present)
-            let nested = if has_nested {
-                // Read count of nested namespaces
-                let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                let mut nested_names = Vec::new();
-                for _ in 0..nested_count {
-                    let (nested_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let nested_name = bytes_to_string(nested_name_bytes);
-                    nested_names.push(nested_name);
-                }
-                nested_names
-            } else {
-                Vec::new()
-            };
-
-            // Create export name
-            let export_name = wrt_format::component::ExportName {
-                name: basic_name,
-                is_resource,
-                semver,
-                integrity,
-                nested,
-            };
-
-            // Read sort byte
-            if offset >= bytes.len() {
-                return Err(Error::from(kinds::ParseError(
-                    "Unexpected end of input while parsing export sort",
-                )));
+                return Err(Error::parse_error("Unexpected end of input while parsing export sort"));
             }
             let sort_byte = bytes[offset];
             offset += 1;
 
-            // Parse sort
+            // Parse sort (0x00-0x05)
             let sort = parse_sort(sort_byte)?;
 
             // Read index
             let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
             offset += bytes_read;
 
-            // Read type flag
-            if offset >= bytes.len() {
-                return Err(Error::from(kinds::ParseError(
-                    "Unexpected end of input while parsing export type flag",
-                )));
-            }
-            let has_type = bytes[offset] != 0;
-            offset += 1;
-
-            // Read type (if present)
-            let ty = if has_type {
-                let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
-                offset += bytes_read;
-                Some(extern_type)
-            } else {
-                None
+            // Create export with simplified name structure
+            let export_name = wrt_format::component::ExportName {
+                name,
+                is_resource: false,
+                semver: None,
+                integrity: None,
+                nested: Vec::new(),
             };
 
-            // Create the export
             exports.push(Export {
                 name: export_name,
                 sort,
                 idx,
-                ty,
+                ty: None, // Type information comes from type section via index
             });
         }
 
