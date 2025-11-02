@@ -413,6 +413,11 @@ impl ComponentLinker {
             state: crate::types::ComponentInstanceState::Initialized,
             resource_manager: None,
             memory: None,
+            metadata: crate::types::ComponentMetadata::default(),
+            #[cfg(feature = "std")]
+            type_index: std::collections::HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            type_index: (),
             #[cfg(all(feature = "std", feature = "safety-critical"))]
             functions: wrt_foundation::allocator::WrtVec::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
@@ -455,7 +460,6 @@ impl ComponentLinker {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new()
             },
-            metadata: crate::types::ComponentMetadata::default(),
         };
 
         // Add resolved imports from instantiation module

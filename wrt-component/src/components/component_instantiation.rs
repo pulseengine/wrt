@@ -737,6 +737,10 @@ impl ComponentInstance {
             resource_manager: None,
             memory: None,
             metadata: ComponentMetadata::default(),
+            #[cfg(feature = "std")]
+            type_index: std::collections::HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            type_index: (),
             functions,
             imports,
             exports,
@@ -785,7 +789,7 @@ impl ComponentInstance {
         // parsed.modules is now empty (moved)
 
         // Phase 3: Build type index (streaming)
-        Self::build_type_index(&parsed.types)?;
+        let type_index = Self::build_type_index(&parsed.types)?;
         // parsed.types can be dropped after indexing (will happen when parsed is dropped)
 
         // Phase 4: Extract exports (streaming)
@@ -812,10 +816,55 @@ impl ComponentInstance {
         // At this point, parsed is dropped and only runtime_component remains
         let mut instance = Self::new(id, runtime_component)?;
 
+        // Store type index for runtime type resolution (Step 2)
+        #[cfg(feature = "std")]
+        {
+            instance.type_index = type_index;
+        }
+
         // Update metadata with conversion stats
         instance.metadata.function_calls = 0;
 
+        // Test type lookup (Step 2)
+        #[cfg(feature = "std")]
+        {
+            println!("=== STEP 2: Type Lookup Test ===");
+            for idx in 0..instance.type_index.len() {
+                match instance.get_type(idx as u32) {
+                    Ok(ty) => {
+                        let type_name = Self::get_type_name(ty);
+                        println!("✓ Type lookup successful: Type[{}] = {}", idx, type_name);
+                    }
+                    Err(e) => {
+                        println!("✗ Type lookup failed: Type[{}] - {:?}", idx, e);
+                    }
+                }
+            }
+            println!();
+        }
+
         Ok(instance)
+    }
+
+    /// Get a type by index (Step 2)
+    ///
+    /// Looks up a type definition by its index in the type section.
+    /// Returns an error if the index is out of bounds.
+    #[cfg(feature = "std")]
+    pub fn get_type(&self, idx: u32) -> Result<&wrt_format::component::ComponentType> {
+        self.type_index.get(&idx)
+            .ok_or_else(|| Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
+                "Type index out of bounds"
+            ))
+    }
+
+    /// Get a type by index (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    pub fn get_type(&self, _idx: u32) -> Result<()> {
+        // No_std version - type lookup not yet implemented
+        Ok(())
     }
 
     /// Validate component against ASIL-D safety limits
@@ -933,13 +982,17 @@ impl ComponentInstance {
     /// runtime type resolution for Canon ABI operations and export/import linking.
     ///
     /// **Output**: Prints each type as it's indexed for visibility
-    /// **Step 1**: Currently just displays types; Step 2 will store the index
+    /// **Step 2**: Now stores the index for runtime type lookup
     #[cfg(feature = "std")]
     fn build_type_index(
         types: &[wrt_format::component::ComponentType]
-    ) -> Result<()> {
+    ) -> Result<std::collections::HashMap<u32, wrt_format::component::ComponentType>> {
+        use std::collections::HashMap;
+
         println!("=== STEP 1: Building Type Index ===");
         println!("Total types to index: {}", types.len());
+
+        let mut index = HashMap::new();
 
         for (idx, ty) in types.iter().enumerate() {
             let type_name = Self::get_type_name(ty);
@@ -950,10 +1003,12 @@ impl ComponentInstance {
                 println!("    ├─ Params: {}", params.len());
                 println!("    └─ Results: {}", results.len());
             }
+
+            index.insert(idx as u32, ty.clone());
         }
 
-        println!("✓ Type index built: {} entries\n", types.len());
-        Ok(())
+        println!("✓ Type index built: {} entries\n", index.len());
+        Ok(index)
     }
 
     /// Build type index (no_std version - simplified, no printing)

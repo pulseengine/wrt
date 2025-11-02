@@ -508,6 +508,10 @@ impl Component {
             resource_manager: None,
             memory: None,
             metadata: crate::types::ComponentMetadata::default(),
+            #[cfg(feature = "std")]
+            type_index: std::collections::HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            type_index: (),
             functions: {
                 #[cfg(all(feature = "std", feature = "safety-critical"))]
                 {
