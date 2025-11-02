@@ -1382,7 +1382,7 @@ impl ComponentInstance {
         Ok(())
     }
 
-    /// Analyze and instantiate core modules (Step 7)
+    /// Analyze and instantiate core modules (Step 7 & 8)
     #[cfg(feature = "std")]
     fn instantiate_core_modules(
         module_binaries: &[Vec<u8>]
@@ -1394,6 +1394,15 @@ impl ComponentInstance {
             println!("(No core modules to instantiate)\n");
             return Ok(Vec::new());
         }
+
+        // Step 8: Use parallel instantiation for multiple modules
+        if module_binaries.len() >= 2 {
+            println!("=== STEP 8: Parallel Module Processing ===");
+            println!("Using std::thread::scope for {} modules", module_binaries.len());
+            return Self::instantiate_core_modules_parallel(module_binaries);
+        }
+
+        println!("(Single module - sequential processing)\n");
 
         let mut instantiated_modules = Vec::with_capacity(module_binaries.len());
 
@@ -1543,6 +1552,146 @@ impl ComponentInstance {
 
         println!("✓ Instantiated {} core modules\n", instantiated_modules.len());
         Ok(instantiated_modules)
+    }
+
+    /// Parallel module instantiation using std::thread::scope (Step 8)
+    #[cfg(feature = "std")]
+    fn instantiate_core_modules_parallel(
+        module_binaries: &[Vec<u8>]
+    ) -> Result<Vec<wrt_runtime::module::Module>> {
+        use std::sync::{Arc, Mutex};
+        use std::time::Instant;
+
+        let start_time = Instant::now();
+
+        // Shared results vector protected by Mutex
+        let results: Arc<Mutex<Vec<Option<wrt_runtime::module::Module>>>> =
+            Arc::new(Mutex::new(vec![None; module_binaries.len()]));
+
+        // Shared error tracking
+        let errors: Arc<Mutex<Vec<(usize, String)>>> = Arc::new(Mutex::new(Vec::new()));
+
+        println!("Spawning {} threads...", module_binaries.len());
+
+        // Use scoped threads to safely borrow module_binaries
+        std::thread::scope(|scope| {
+            let mut handles = Vec::new();
+
+            for (idx, binary) in module_binaries.iter().enumerate() {
+                let results = Arc::clone(&results);
+                let errors = Arc::clone(&errors);
+
+                let handle = scope.spawn(move || {
+                    let thread_start = Instant::now();
+                    println!("  Thread[{}]: Starting module instantiation...", idx);
+
+                    // Parse and instantiate the module
+                    match Self::instantiate_single_module(idx, binary) {
+                        Ok(module) => {
+                            let elapsed = thread_start.elapsed();
+                            println!("  Thread[{}]: ✓ Completed in {:.2}ms", idx, elapsed.as_secs_f64() * 1000.0);
+
+                            // Store result
+                            let mut results_guard = results.lock().unwrap();
+                            results_guard[idx] = Some(module);
+                        }
+                        Err(e) => {
+                            println!("  Thread[{}]: ✗ Failed: {}", idx, e);
+                            let mut errors_guard = errors.lock().unwrap();
+                            errors_guard.push((idx, format!("{}", e)));
+                        }
+                    }
+                });
+
+                handles.push(handle);
+            }
+
+            // Wait for all threads to complete
+            for handle in handles {
+                let _ = handle.join();
+            }
+        });
+
+        let total_elapsed = start_time.elapsed();
+        println!("✓ All threads completed in {:.2}ms", total_elapsed.as_secs_f64() * 1000.0);
+
+        // Check for errors
+        let errors_guard = errors.lock().unwrap();
+        if !errors_guard.is_empty() {
+            println!("✗ {} modules failed to instantiate:", errors_guard.len());
+            for (idx, err) in errors_guard.iter() {
+                println!("  Module[{}]: {}", idx, err);
+            }
+            return Err(Error::new(
+                wrt_error::ErrorCategory::RuntimeTrap,
+                wrt_error::codes::RUNTIME_ERROR,
+                "One or more modules failed to instantiate"
+            ));
+        }
+
+        // Collect successful results
+        let results_guard = results.lock().unwrap();
+        let instantiated_modules: Vec<wrt_runtime::module::Module> = results_guard
+            .iter()
+            .filter_map(|opt| opt.as_ref().cloned())
+            .collect();
+
+        println!("✓ Successfully instantiated {} modules in parallel\n", instantiated_modules.len());
+        Ok(instantiated_modules)
+    }
+
+    /// Instantiate a single module (helper for parallel processing)
+    #[cfg(feature = "std")]
+    fn instantiate_single_module(
+        idx: usize,
+        binary: &[u8]
+    ) -> Result<wrt_runtime::module::Module> {
+        use wrt_decoder::load_wasm_unified;
+
+        // Parse the module
+        let wasm_info = load_wasm_unified(binary)
+            .map_err(|_| Error::new(
+                wrt_error::ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                "Failed to parse core module binary"
+            ))?;
+
+        // Verify it's a core module
+        if !wasm_info.is_core_module() {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
+                "Not a core module"
+            ));
+        }
+
+        let module_info = wasm_info.require_module_info()
+            .map_err(|_| Error::new(
+                wrt_error::ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                "Module info not available"
+            ))?;
+
+        // Log key module stats (concise for parallel output)
+        println!("  Thread[{}]: {} bytes, {} imports, {} exports",
+            idx, binary.len(), module_info.imports.len(), module_info.exports.len());
+
+        // Create runtime module
+        let mut empty_module = wrt_runtime::module::Module::new()
+            .map_err(|_| Error::new(
+                wrt_error::ErrorCategory::RuntimeTrap,
+                wrt_error::codes::RUNTIME_ERROR,
+                "Failed to create empty module"
+            ))?;
+
+        let runtime_module = empty_module.load_from_binary(binary)
+            .map_err(|_| Error::new(
+                wrt_error::ErrorCategory::RuntimeTrap,
+                wrt_error::codes::RUNTIME_ERROR,
+                "Failed to load module from binary"
+            ))?;
+
+        Ok(runtime_module)
     }
 
     /// Instantiate core modules (no_std placeholder)
