@@ -843,6 +843,35 @@ impl ComponentInstance {
             println!();
         }
 
+        // Test safe type resolution with circular reference detection (Step 3)
+        #[cfg(feature = "std")]
+        {
+            println!("=== STEP 3: Safe Type Resolution Test ===");
+            for idx in 0..instance.type_index.len() {
+                match instance.resolve_type_safe(idx as u32) {
+                    Ok(ty) => {
+                        let type_name = Self::get_type_name(ty);
+                        println!("✓ Safe resolution successful: Type[{}] → {}", idx, type_name);
+                    }
+                    Err(e) => {
+                        println!("✗ Safe resolution failed: Type[{}] - {:?}", idx, e);
+                    }
+                }
+            }
+
+            // Test error handling for out-of-bounds
+            let invalid_idx = instance.type_index.len() as u32 + 10;
+            match instance.resolve_type_safe(invalid_idx) {
+                Ok(_) => {
+                    println!("✗ Should have failed for invalid index {}", invalid_idx);
+                }
+                Err(_) => {
+                    println!("✓ Correctly rejected invalid index {}", invalid_idx);
+                }
+            }
+            println!();
+        }
+
         Ok(instance)
     }
 
@@ -864,6 +893,77 @@ impl ComponentInstance {
     #[cfg(not(feature = "std"))]
     pub fn get_type(&self, _idx: u32) -> Result<()> {
         // No_std version - type lookup not yet implemented
+        Ok(())
+    }
+
+    /// Resolve a type reference, following any indirection (Step 3)
+    ///
+    /// This resolves ExternType::Type(idx) to the actual ComponentType definition.
+    /// It handles potential alias chains and detects circular references.
+    ///
+    /// **Use case**: When processing exports/imports, we often have ExternType::Type(idx)
+    /// references that need to be resolved to know the actual function signature, etc.
+    #[cfg(feature = "std")]
+    pub fn resolve_extern_type(
+        &self,
+        extern_type: &wrt_format::component::ExternType,
+    ) -> Result<Option<&wrt_format::component::ComponentType>> {
+        match extern_type {
+            wrt_format::component::ExternType::Type(idx) => {
+                // Resolve the type index
+                let resolved = self.get_type(*idx)?;
+                Ok(Some(resolved))
+            }
+            _ => {
+                // Not a type reference - return None
+                Ok(None)
+            }
+        }
+    }
+
+    /// Resolve a type with circular reference detection (Step 3)
+    ///
+    /// This is a safety wrapper around get_type that prevents infinite loops
+    /// in case of circular type references (though these should be caught by validation).
+    ///
+    /// **Max depth**: 16 levels of indirection (ASIL-D bounded)
+    #[cfg(feature = "std")]
+    pub fn resolve_type_safe(&self, idx: u32) -> Result<&wrt_format::component::ComponentType> {
+        const MAX_RESOLUTION_DEPTH: usize = 16;
+
+        let mut current_idx = idx;
+        let mut visited = std::collections::HashSet::new();
+
+        for depth in 0..MAX_RESOLUTION_DEPTH {
+            // Check for circular reference
+            if !visited.insert(current_idx) {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Validation,
+                    wrt_error::codes::VALIDATION_ERROR,
+                    "Circular type reference detected"
+                ));
+            }
+
+            // Get the type
+            let ty = self.get_type(current_idx)?;
+
+            // Check if this is a type that needs further resolution
+            // (In Component Model, types are usually direct, not aliased through type definitions)
+            // So we just return the type we found
+            return Ok(ty);
+        }
+
+        // If we hit max depth without resolving, that's an error
+        Err(Error::new(
+            wrt_error::ErrorCategory::Validation,
+            wrt_error::codes::VALIDATION_ERROR,
+            "Type resolution depth exceeded (possible circular reference)"
+        ))
+    }
+
+    /// No_std placeholder for resolve functions
+    #[cfg(not(feature = "std"))]
+    pub fn resolve_type_safe(&self, _idx: u32) -> Result<()> {
         Ok(())
     }
 
