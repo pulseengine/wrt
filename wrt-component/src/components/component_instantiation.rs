@@ -803,6 +803,11 @@ impl ComponentInstance {
         Self::parse_imports(&parsed.imports)?;
         // parsed.imports will be converted later
 
+        // Phase 7: Instantiate core modules (Step 7)
+        let _instantiated_modules = Self::instantiate_core_modules(&module_binaries)?;
+        // For now, we just verify they can be instantiated
+        // Full module execution will come in later steps
+
         // Build minimal runtime component
         // In future: this will hold the actual converted data
         let component_type = crate::components::component::WrtComponentType::default();
@@ -811,7 +816,7 @@ impl ComponentInstance {
         // Store module binaries in runtime component
         runtime_component.modules = module_binaries;
 
-        // Phase 7: Create instance with runtime component
+        // Phase 8: Create instance with runtime component
         // At this point, parsed is dropped and only runtime_component remains
         let mut instance = Self::new(id, runtime_component)?;
 
@@ -1375,6 +1380,177 @@ impl ComponentInstance {
     #[cfg(not(feature = "std"))]
     fn parse_imports(_imports: &[wrt_format::component::Import]) -> Result<()> {
         Ok(())
+    }
+
+    /// Analyze and instantiate core modules (Step 7)
+    #[cfg(feature = "std")]
+    fn instantiate_core_modules(
+        module_binaries: &[Vec<u8>]
+    ) -> Result<Vec<wrt_runtime::module::Module>> {
+        println!("=== STEP 7: Core Module Instantiation ===");
+        println!("Total modules to instantiate: {}", module_binaries.len());
+
+        if module_binaries.is_empty() {
+            println!("(No core modules to instantiate)\n");
+            return Ok(Vec::new());
+        }
+
+        let mut instantiated_modules = Vec::with_capacity(module_binaries.len());
+
+        for (idx, binary) in module_binaries.iter().enumerate() {
+            println!("  Module[{}]:", idx);
+            println!("    ├─ Binary size: {} bytes", binary.len());
+
+            // Parse the module using wrt-decoder
+            use wrt_decoder::load_wasm_unified;
+            let wasm_info = load_wasm_unified(binary)
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::Parse,
+                    wrt_error::codes::PARSE_ERROR,
+                    "Failed to parse core module binary"
+                ))?;
+
+            // Verify it's a core module
+            if !wasm_info.is_core_module() {
+                println!("    └─ ✗ Not a core module");
+                continue;
+            }
+
+            let module_info = wasm_info.require_module_info()
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::Parse,
+                    wrt_error::codes::PARSE_ERROR,
+                    "Module info not available"
+                ))?;
+
+            // Display module details
+            println!("    ├─ Type signatures: {}", module_info.function_types.len());
+
+            println!("    ├─ Imports: {}", module_info.imports.len());
+            let func_imports = module_info.imports.iter()
+                .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Function(_)))
+                .count();
+            let memory_imports = module_info.imports.iter()
+                .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Memory))
+                .count();
+            let table_imports = module_info.imports.iter()
+                .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Table))
+                .count();
+            let global_imports = module_info.imports.iter()
+                .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Global))
+                .count();
+
+            if func_imports > 0 {
+                println!("    │  ├─ Functions: {}", func_imports);
+            }
+            if memory_imports > 0 {
+                println!("    │  ├─ Memories: {}", memory_imports);
+            }
+            if table_imports > 0 {
+                println!("    │  ├─ Tables: {}", table_imports);
+            }
+            if global_imports > 0 {
+                println!("    │  └─ Globals: {}", global_imports);
+            }
+
+            println!("    ├─ Exports: {}", module_info.exports.len());
+            let func_exports = module_info.exports.iter()
+                .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Function))
+                .count();
+            let memory_exports = module_info.exports.iter()
+                .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Memory))
+                .count();
+            let table_exports = module_info.exports.iter()
+                .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Table))
+                .count();
+            let global_exports = module_info.exports.iter()
+                .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Global))
+                .count();
+
+            if func_exports > 0 {
+                println!("    │  ├─ Functions: {}", func_exports);
+            }
+            if memory_exports > 0 {
+                println!("    │  ├─ Memories: {}", memory_exports);
+            }
+            if table_exports > 0 {
+                println!("    │  ├─ Tables: {}", table_exports);
+            }
+            if global_exports > 0 {
+                println!("    │  └─ Globals: {}", global_exports);
+            }
+
+            // Show memory requirements if present
+            if let Some((min_pages, max_pages)) = module_info.memory_pages {
+                print!("    ├─ Memory: {} pages", min_pages);
+                if let Some(max) = max_pages {
+                    println!(" (max: {})", max);
+                } else {
+                    println!(" (unbounded)");
+                }
+            }
+
+            // Show start function if present
+            if let Some(start_idx) = module_info.start_function {
+                println!("    ├─ Start function: func[{}]", start_idx);
+            } else {
+                println!("    ├─ Start function: (none)");
+            }
+
+            // Show a few key exports
+            if !module_info.exports.is_empty() {
+                println!("    ├─ Key exports:");
+                for (eidx, export) in module_info.exports.iter().take(3).enumerate() {
+                    let export_type = match &export.export_type {
+                        wrt_decoder::ExportType::Function => "Function",
+                        wrt_decoder::ExportType::Table => "Table",
+                        wrt_decoder::ExportType::Memory => "Memory",
+                        wrt_decoder::ExportType::Global => "Global",
+                    };
+                    if eidx < 2 {
+                        println!("    │  ├─ \"{}\": {}", export.name, export_type);
+                    } else {
+                        println!("    │  └─ \"{}\" : {}", export.name, export_type);
+                    }
+                }
+                if module_info.exports.len() > 3 {
+                    println!("    │     ... ({} more)", module_info.exports.len() - 3);
+                }
+            }
+
+            // Instantiate the module using wrt-runtime
+            println!("    ├─ Status: Parsing successful");
+
+            // Create runtime module
+            let mut empty_module = wrt_runtime::module::Module::new()
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::RuntimeTrap,
+                    wrt_error::codes::RUNTIME_ERROR,
+                    "Failed to create empty module"
+                ))?;
+
+            let runtime_module = empty_module.load_from_binary(binary)
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::RuntimeTrap,
+                    wrt_error::codes::RUNTIME_ERROR,
+                    "Failed to load module from binary"
+                ))?;
+
+            println!("    └─ ✓ Module instantiated");
+
+            instantiated_modules.push(runtime_module);
+        }
+
+        println!("✓ Instantiated {} core modules\n", instantiated_modules.len());
+        Ok(instantiated_modules)
+    }
+
+    /// Instantiate core modules (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn instantiate_core_modules(
+        _module_binaries: &[Vec<u8>]
+    ) -> Result<Vec<wrt_runtime::module::Module>> {
+        Ok(Vec::new())
     }
 
     /// Build type index from parsed component types
