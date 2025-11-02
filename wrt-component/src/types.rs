@@ -126,6 +126,11 @@ pub struct ComponentInstance {
     pub memory:           Option<ComponentMemory>,
     /// Instance metadata for tracking
     pub metadata:         ComponentMetadata,
+    /// Type index for runtime type resolution (Step 2)
+    #[cfg(feature = "std")]
+    pub type_index:       std::collections::HashMap<u32, wrt_format::component::ComponentType>,
+    #[cfg(not(feature = "std"))]
+    pub type_index:       (),  // Placeholder for no_std
     /// Function table for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub functions:        WrtVec<crate::components::component_instantiation::ComponentFunction, { CrateId::Component as u8 }, 128>,
