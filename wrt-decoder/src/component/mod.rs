@@ -340,6 +340,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                     },
                     Err(_) => {
                         // Continue parsing other sections
+                        // Some type features (aliases, certain valtypes) not yet fully implemented
                     }
                 }
             },
