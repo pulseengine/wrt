@@ -810,7 +810,10 @@ impl ComponentInstance {
         Self::link_core_modules(&instantiated_modules)?;
 
         // Phase 9: Prepare for execution (Step 10)
-        Self::prepare_module_execution(&instantiated_modules)?;
+        let execution_plan = Self::prepare_module_execution(&instantiated_modules)?;
+
+        // Phase 10: Execute modules (Step 11)
+        Self::execute_modules(&instantiated_modules, &execution_plan)?;
 
         // Build minimal runtime component
         // In future: this will hold the actual converted data
@@ -1864,23 +1867,24 @@ impl ComponentInstance {
     }
 
     /// Prepare modules for execution by analyzing start functions and exports (Step 10)
+    /// Returns: Vec<(module_idx, function_name, function_idx, is_start)>
     #[cfg(feature = "std")]
     fn prepare_module_execution(
         modules: &[wrt_runtime::module::Module]
-    ) -> Result<()> {
+    ) -> Result<Vec<(usize, String, u32, bool)>> {
         println!("=== STEP 10: Execution Preparation ===");
         println!("Total modules to prepare: {}", modules.len());
 
         if modules.is_empty() {
             println!("(No modules to execute)\n");
-            return Ok(());
+            return Ok(Vec::new());
         }
 
         println!();
 
         let mut total_start_functions = 0;
         let mut total_exported_functions = 0;
-        let mut executable_functions = Vec::new();
+        let mut execution_plan = Vec::new();
 
         // Analyze each module for execution
         for (idx, module) in modules.iter().enumerate() {
@@ -1890,7 +1894,7 @@ impl ComponentInstance {
             if let Some(start_idx) = module.start {
                 println!("  ├─ Start function: func[{}] ✓", start_idx);
                 total_start_functions += 1;
-                executable_functions.push((idx, "start".to_string(), start_idx));
+                execution_plan.push((idx, "_start".to_string(), start_idx, true));
             } else {
                 println!("  ├─ Start function: (none)");
             }
@@ -1914,7 +1918,7 @@ impl ComponentInstance {
                     } else {
                         println!("  │  └─ \"{}\" → func[{}]", fname, findex);
                     }
-                    executable_functions.push((idx, fname.clone(), *findex));
+                    execution_plan.push((idx, fname.clone(), *findex, false));
                 }
                 if func_exports.len() > 3 {
                     println!("  │     ... ({} more)", func_exports.len() - 3);
@@ -1934,33 +1938,101 @@ impl ComponentInstance {
         println!("Execution plan:");
         println!("  ├─ Modules with start functions: {}", total_start_functions);
         println!("  ├─ Exported functions: {}", total_exported_functions);
-        println!("  └─ Total executable entry points: {}", executable_functions.len());
+        println!("  └─ Total executable entry points: {}", execution_plan.len());
 
         println!();
 
         // Show execution order
-        if !executable_functions.is_empty() {
+        if !execution_plan.is_empty() {
             println!("Execution sequence (if triggered):");
-            for (seq, (mod_idx, func_name, func_idx)) in executable_functions.iter().enumerate().take(5) {
-                println!("  {}. Module[{}].\"{}\" (func[{}])", seq + 1, mod_idx, func_name, func_idx);
+            for (seq, (module_idx, func_name, func_idx, is_start)) in execution_plan.iter().enumerate().take(5) {
+                let marker = if *is_start { "[START]" } else { "" };
+                println!("  {}. Module[{}].\"{}\" (func[{}]) {}",
+                    seq + 1, module_idx, func_name, func_idx, marker);
             }
-            if executable_functions.len() > 5 {
-                println!("     ... ({} more functions available)", executable_functions.len() - 5);
+            if execution_plan.len() > 5 {
+                println!("     ... ({} more functions available)", execution_plan.len() - 5);
             }
         } else {
             println!("⚠ No executable entry points found");
         }
 
         println!();
-        println!("✓ Ready for execution (execution deferred to runtime)");
+        println!("✓ Ready for execution");
+        println!();
+
+        Ok(execution_plan)
+    }
+
+    /// Prepare modules for execution (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn prepare_module_execution(_modules: &[wrt_runtime::module::Module]) -> Result<Vec<()>> {
+        Ok(Vec::new())
+    }
+
+    /// Execute modules according to execution plan (Step 11)
+    #[cfg(feature = "std")]
+    fn execute_modules(
+        modules: &[wrt_runtime::module::Module],
+        execution_plan: &[(usize, String, u32, bool)],
+    ) -> Result<()> {
+        println!("=== STEP 11: Function Execution ===");
+
+        if execution_plan.is_empty() {
+            println!("(No functions to execute)\n");
+            return Ok(());
+        }
+
+        println!("Executing {} functions...", execution_plan.len());
+        println!();
+
+        // Separate start functions from regular exports
+        let start_functions: Vec<_> = execution_plan.iter().filter(|(_, _, _, is_start)| *is_start).collect();
+        let export_functions: Vec<_> = execution_plan.iter().filter(|(_, _, _, is_start)| !*is_start).collect();
+
+        // Execute start functions first
+        if !start_functions.is_empty() {
+            println!("Start functions:");
+            for (module_idx, _func_name, func_idx, _is_start) in &start_functions {
+                println!("  Module[{}]._start (func[{}]):", module_idx, func_idx);
+
+                // Note: Full execution requires engine setup
+                // For now, we show what would be executed
+                println!("    ├─ Status: Execution deferred (requires engine)");
+                println!("    ├─ Module function count: {}", modules[*module_idx].functions.len());
+                println!("    └─ Would execute: Module[{}] start function", module_idx);
+            }
+            println!();
+        }
+
+        // Show available exported functions
+        if !export_functions.is_empty() {
+            println!("Available exported functions ({}):", export_functions.len());
+            for (idx, (module_idx, func_name, func_idx, _is_start)) in export_functions.iter().enumerate().take(5) {
+                println!("  {}. Module[{}].\"{}\" (func[{}])",
+                    idx + 1, module_idx, func_name, func_idx);
+                println!("     └─ Ready to call (requires engine setup)");
+            }
+            if export_functions.len() > 5 {
+                println!("     ... ({} more functions)", export_functions.len() - 5);
+            }
+            println!();
+        }
+
+        println!("✓ Execution analysis complete");
+        println!("  Note: Full execution requires:");
+        println!("    - Engine initialization (CapabilityEngine)");
+        println!("    - ModuleInstance creation");
+        println!("    - Import resolution");
+        println!("    - Memory allocation");
         println!();
 
         Ok(())
     }
 
-    /// Prepare modules for execution (no_std placeholder)
+    /// Execute modules (no_std placeholder)
     #[cfg(not(feature = "std"))]
-    fn prepare_module_execution(_modules: &[wrt_runtime::module::Module]) -> Result<()> {
+    fn execute_modules(_modules: &[wrt_runtime::module::Module], _plan: &[()]) -> Result<()> {
         Ok(())
     }
 
