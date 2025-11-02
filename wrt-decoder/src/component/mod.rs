@@ -318,7 +318,15 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 component.modules = modules;
             },
             0x02 => {
-                // Section 2: Core Instances (skip for now)
+                // Section 2: Core Instances
+                match parse::parse_core_instance_section(section_data) {
+                    Ok((instances, _)) => {
+                        component.core_instances = instances;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x03 => {
                 // Section 3: Core Types (skip for now)
@@ -327,10 +335,26 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 4: Component (skip for now)
             },
             0x05 => {
-                // Section 5: Instances (skip for now)
+                // Section 5: Instances
+                match parse::parse_instance_section(section_data) {
+                    Ok((instances, _)) => {
+                        component.instances = instances;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x06 => {
-                // Section 6: Aliases (skip for now)
+                // Section 6: Aliases
+                match parse::parse_alias_section(section_data) {
+                    Ok((aliases, _)) => {
+                        component.aliases = aliases;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x07 => {
                 // Section 7: Types
@@ -345,7 +369,15 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 }
             },
             0x08 => {
-                // Section 8: Canonical (skip for now)
+                // Section 8: Canonical (Canon ABI operations: lift, lower, resource)
+                match parse::parse_canon_section(section_data) {
+                    Ok((canons, _)) => {
+                        component.canonicals = canons;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x09 => {
                 // Section 9: Start (skip for now)
