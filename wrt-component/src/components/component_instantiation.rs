@@ -804,8 +804,11 @@ impl ComponentInstance {
         // parsed.imports will be converted later
 
         // Phase 7: Instantiate core modules (Step 7)
-        let _instantiated_modules = Self::instantiate_core_modules(&module_binaries)?;
-        // For now, we just verify they can be instantiated
+        let instantiated_modules = Self::instantiate_core_modules(&module_binaries)?;
+
+        // Phase 8: Link modules (Step 9)
+        Self::link_core_modules(&instantiated_modules)?;
+        // For now, we just analyze and display linkage
         // Full module execution will come in later steps
 
         // Build minimal runtime component
@@ -1700,6 +1703,163 @@ impl ComponentInstance {
         _module_binaries: &[Vec<u8>]
     ) -> Result<Vec<wrt_runtime::module::Module>> {
         Ok(Vec::new())
+    }
+
+    /// Link core modules by analyzing imports and exports (Step 9)
+    #[cfg(feature = "std")]
+    fn link_core_modules(
+        modules: &[wrt_runtime::module::Module]
+    ) -> Result<()> {
+        use std::collections::{HashMap, HashSet};
+
+        println!("=== STEP 9: Module Linking ===");
+        println!("Total modules to link: {}", modules.len());
+
+        if modules.is_empty() {
+            println!("(No modules to link)\n");
+            return Ok(());
+        }
+
+        println!();
+
+        // Build export map: (export_name) -> module_idx
+        let mut export_map: HashMap<String, usize> = HashMap::new();
+
+        println!("Analyzing exports:");
+        for (idx, module) in modules.iter().enumerate() {
+            let export_count = module.exports.len();
+            if export_count > 0 {
+                println!("  Module[{}]: {} exports", idx, export_count);
+
+                // Iterate over exports using DirectMap's iter() method
+                for (export_name, _export_val) in module.exports.iter() {
+                    let name_str = export_name.as_str().unwrap_or("<invalid>");
+                    export_map.insert(name_str.to_string(), idx);
+                    println!("    ├─ \"{}\"", name_str);
+                }
+            } else {
+                println!("  Module[{}]: no exports", idx);
+            }
+        }
+
+        println!();
+
+        // Analyze each module's imports
+        println!("Analyzing imports:");
+        let mut dependencies: Vec<HashSet<usize>> = vec![HashSet::new(); modules.len()];
+        let mut host_imports: Vec<Vec<String>> = vec![Vec::new(); modules.len()];
+        let mut total_imports = 0;
+
+        for (idx, module) in modules.iter().enumerate() {
+            let import_count = module.imports.len();
+            total_imports += import_count;
+
+            if import_count > 0 {
+                println!("  Module[{}]: {} imports", idx, import_count);
+                // Note: Full import resolution requires nested iteration over ModuleImports
+                // For now, we mark modules with imports as having potential host dependencies
+                if import_count > 0 {
+                    host_imports[idx].push(format!("({}  imports)", import_count));
+                }
+            } else {
+                println!("  Module[{}]: no imports", idx);
+            }
+        }
+
+        println!();
+
+        // Build dependency graph visualization
+        println!("Link graph:");
+        for (idx, deps) in dependencies.iter().enumerate() {
+            if deps.is_empty() && host_imports[idx].is_empty() {
+                println!("  Module[{}] (no dependencies)", idx);
+            } else {
+                let mut dep_list = Vec::new();
+
+                if !host_imports[idx].is_empty() {
+                    dep_list.push("Host".to_string());
+                }
+
+                for &dep_idx in deps {
+                    dep_list.push(format!("Module[{}]", dep_idx));
+                }
+
+                println!("  Module[{}] → [{}]", idx, dep_list.join(", "));
+            }
+        }
+
+        println!();
+
+        // Compute instantiation order (topological sort)
+        let instantiation_order = Self::topological_sort(&dependencies)?;
+
+        println!("Instantiation order: {:?}", instantiation_order);
+
+        // Report summary
+        println!();
+        println!("✓ Linking analysis complete");
+        println!("  Exports indexed: {}", export_map.len());
+        println!("  Total imports: {}", total_imports);
+
+        println!();
+        Ok(())
+    }
+
+    /// Topological sort for module instantiation order
+    #[cfg(feature = "std")]
+    fn topological_sort(dependencies: &[std::collections::HashSet<usize>]) -> Result<Vec<usize>> {
+        use std::collections::HashSet;
+
+        let n = dependencies.len();
+        let mut visited = vec![false; n];
+        let mut stack = Vec::new();
+        let mut in_progress = HashSet::new();
+
+        fn visit(
+            node: usize,
+            dependencies: &[HashSet<usize>],
+            visited: &mut [bool],
+            in_progress: &mut HashSet<usize>,
+            stack: &mut Vec<usize>,
+        ) -> Result<()> {
+            if in_progress.contains(&node) {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Validation,
+                    wrt_error::codes::VALIDATION_ERROR,
+                    "Circular dependency detected"
+                ));
+            }
+
+            if visited[node] {
+                return Ok(());
+            }
+
+            in_progress.insert(node);
+
+            for &dep in &dependencies[node] {
+                visit(dep, dependencies, visited, in_progress, stack)?;
+            }
+
+            in_progress.remove(&node);
+            visited[node] = true;
+            stack.push(node);
+
+            Ok(())
+        }
+
+        for i in 0..n {
+            if !visited[i] {
+                visit(i, dependencies, &mut visited, &mut in_progress, &mut stack)?;
+            }
+        }
+
+        Ok(stack)
+    }
+
+    /// Link core modules (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn link_core_modules(_modules: &[wrt_runtime::module::Module]) -> Result<()> {
+        Ok(())
     }
 
     /// Build type index from parsed component types
