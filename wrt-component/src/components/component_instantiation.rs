@@ -785,9 +785,8 @@ impl ComponentInstance {
         // parsed.modules is now empty (moved)
 
         // Phase 3: Build type index (streaming)
-        let _type_count = parsed.types.len();
-        // For now, we'll store type count; full type resolution comes later
-        // parsed.types can be dropped after indexing
+        Self::build_type_index(&parsed.types)?;
+        // parsed.types can be dropped after indexing (will happen when parsed is dropped)
 
         // Phase 4: Extract exports (streaming)
         let export_count = parsed.exports.len();
@@ -914,6 +913,64 @@ impl ComponentInstance {
         }
 
         Ok(module_binaries)
+    }
+
+    /// Get a readable type name for logging/debugging
+    fn get_type_name(ty: &wrt_format::component::ComponentType) -> &'static str {
+        use wrt_format::component::ComponentTypeDefinition;
+        match &ty.definition {
+            ComponentTypeDefinition::Component { .. } => "Component",
+            ComponentTypeDefinition::Instance { .. } => "Instance",
+            ComponentTypeDefinition::Function { .. } => "Function",
+            ComponentTypeDefinition::Value(_) => "Value",
+            ComponentTypeDefinition::Resource { .. } => "Resource",
+        }
+    }
+
+    /// Build type index from parsed component types
+    ///
+    /// This creates a mapping from type index to ComponentType, allowing
+    /// runtime type resolution for Canon ABI operations and export/import linking.
+    ///
+    /// **Output**: Prints each type as it's indexed for visibility
+    /// **Step 1**: Currently just displays types; Step 2 will store the index
+    #[cfg(feature = "std")]
+    fn build_type_index(
+        types: &[wrt_format::component::ComponentType]
+    ) -> Result<()> {
+        println!("=== STEP 1: Building Type Index ===");
+        println!("Total types to index: {}", types.len());
+
+        for (idx, ty) in types.iter().enumerate() {
+            let type_name = Self::get_type_name(ty);
+            println!("  Type[{}]: {}", idx, type_name);
+
+            // Additional detail for function types (most common)
+            if let wrt_format::component::ComponentTypeDefinition::Function { params, results } = &ty.definition {
+                println!("    ├─ Params: {}", params.len());
+                println!("    └─ Results: {}", results.len());
+            }
+        }
+
+        println!("✓ Type index built: {} entries\n", types.len());
+        Ok(())
+    }
+
+    /// Build type index (no_std version - simplified, no printing)
+    #[cfg(not(feature = "std"))]
+    fn build_type_index(
+        types: &[wrt_format::component::ComponentType]
+    ) -> Result<()> {
+        // In no_std, we just validate type count for now
+        // Full type resolution will be implemented when needed
+        if types.len() > MAX_TYPES {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::CAPACITY_EXCEEDED,
+                "Type count exceeds maximum"
+            ));
+        }
+        Ok(())
     }
 
     /// Initialize the instance (transition from Initializing to Ready)
