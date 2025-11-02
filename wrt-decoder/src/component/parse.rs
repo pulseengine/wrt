@@ -1139,9 +1139,10 @@ mod std_parsing {
                             offset += bytes_read;
                         },
                         0x02 => {
-                            // Alias - skip for now (complex structure)
-                            // TODO: Implement alias parsing
-                            return Err(Error::parse_error("Alias in instance type not yet supported"));
+                            // Alias - parse and skip (it's a type declaration, not an export)
+                            // alias ::= 0x02 <aliastarget>
+                            let (_target, bytes_read) = parse_alias_target(&bytes[offset..])?;
+                            offset += bytes_read;
                         },
                         0x04 => {
                             // Export declaration: name + externdesc
@@ -1462,14 +1463,12 @@ mod std_parsing {
             },
             0x01 => {
                 // Function: 0x01 i:<typeidx>
+                // This is a type reference, not an inline function definition
                 let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::ExternType::Function {
-                        params: vec![],  // Type index reference, actual type resolved later
-                        results: vec![]
-                    },
+                    wrt_format::component::ExternType::Type(type_idx),
                     offset,
                 ))
             },
@@ -1543,11 +1542,12 @@ mod std_parsing {
             },
             0x05 => {
                 // Instance: 0x05 i:<typeidx>
+                // This is a type reference, not an inline instance definition
                 let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::ExternType::Instance { exports: vec![] },
+                    wrt_format::component::ExternType::Type(type_idx),
                     offset,
                 ))
             },
