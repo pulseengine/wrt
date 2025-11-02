@@ -152,7 +152,7 @@ mod std_parsing {
                 let mut args = Vec::with_capacity(args_count as usize);
                 for _ in 0..args_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -179,7 +179,7 @@ mod std_parsing {
                 let mut exports = Vec::with_capacity(exports_count as usize);
                 for _ in 0..exports_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -343,12 +343,12 @@ mod std_parsing {
                 let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read module name
-                    let (module_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (module_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let module_name = bytes_to_string(module_name_bytes);
 
                     // Read field name
-                    let (field_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (field_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let field_name = bytes_to_string(field_name_bytes);
 
@@ -366,7 +366,7 @@ mod std_parsing {
                 let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read export name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -652,7 +652,7 @@ mod std_parsing {
                 let mut args = Vec::with_capacity(args_count as usize);
                 for _ in 0..args_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -691,7 +691,7 @@ mod std_parsing {
                 let mut exports = Vec::with_capacity(exports_count as usize);
                 for _ in 0..exports_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1063,12 +1063,12 @@ mod std_parsing {
                 let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read namespace
-                    let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (namespace_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let namespace = bytes_to_string(namespace_bytes);
 
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1086,7 +1086,7 @@ mod std_parsing {
                 let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1112,7 +1112,7 @@ mod std_parsing {
                 let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1138,7 +1138,7 @@ mod std_parsing {
                 let mut params = Vec::with_capacity(param_count as usize);
                 for _ in 0..param_count {
                     // Read parameter name
-                    let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
 
                     // Read parameter type
@@ -1261,7 +1261,7 @@ mod std_parsing {
                 let mut fields = Vec::with_capacity(field_count as usize);
                 for _i in 0..field_count {
                     // Read field name
-                    let (name_bytes, bytes_read) = match binary::read_string(bytes, offset) {
+                    let (name_bytes, bytes_read) = match wrt_format::binary::read_string(bytes, offset) {
                         Ok(result) => result,
                         Err(_e) => {
                             return Err(Error::from(kinds::ParseError(
@@ -1381,7 +1381,14 @@ mod std_parsing {
         }
     }
 
-    /// Parse an external type
+    /// Parse an external type descriptor (externdesc)
+    /// Based on Component Model spec:
+    /// externdesc ::= 0x00 0x11 i:<core:typeidx>  => (core module (type i))
+    ///              | 0x01 i:<typeidx>             => (func (type i))
+    ///              | 0x02 b:<valuebound>          => (value b)
+    ///              | 0x03 b:<typebound>           => (type b)
+    ///              | 0x04 i:<typeidx>             => (component (type i))
+    ///              | 0x05 i:<typeidx>             => (instance (type i))
     fn parse_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::ExternType, usize)> {
         if bytes.is_empty() {
             return Err(Error::parse_error(
@@ -1395,151 +1402,119 @@ mod std_parsing {
 
         match tag {
             0x00 => {
-                // Function type
-
-                // Read parameter vector
-                let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                let mut params = Vec::with_capacity(param_count as usize);
-                for _ in 0..param_count {
-                    // Read parameter name
-                    let (name, bytes_read) = binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-
-                    // Read parameter type
-                    let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                    offset += bytes_read;
-
-                    params.push((name, val_type));
+                // Core module: 0x00 0x11 i:<core:typeidx>
+                if offset >= bytes.len() {
+                    return Err(Error::parse_error("Unexpected end of core module extern type"));
                 }
 
-                // Read result vector
-                let (result_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
+                let sort_tag = bytes[offset];
+                offset += 1;
 
-                let mut results = Vec::with_capacity(result_count as usize);
-                for _ in 0..result_count {
-                    // Read result type
-                    let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                    offset += bytes_read;
-
-                    results.push(val_type);
+                if sort_tag != 0x11 {
+                    return Err(Error::parse_error("Expected 0x11 (module sort) after 0x00"));
                 }
+
+                // Read core type index
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::ExternType::Function {
-                        params:  params
-                            .into_iter()
-                            .map(|(name, ty)| {
-                                let name_str = core::str::from_utf8(name)
-                                    .unwrap_or("invalid_utf8")
-                                    .to_string();
-                                (name_str, val_type_to_format_val_type(ty))
-                            })
-                            .collect(),
-                        results: results.into_iter().map(val_type_to_format_val_type).collect(),
-                    },
+                    wrt_format::component::ExternType::Module { type_idx },
                     offset,
                 ))
             },
             0x01 => {
-                // Value type
-
-                // Read value type
-                let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                // Function: 0x01 i:<typeidx>
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::ExternType::Value(val_type_to_format_val_type(val_type)),
+                    wrt_format::component::ExternType::Function {
+                        params: vec![],  // Type index reference, actual type resolved later
+                        results: vec![]
+                    },
                     offset,
                 ))
             },
             0x02 => {
-                // Type reference
+                // Value bound: 0x02 b:<valuebound>
+                // valuebound ::= 0x00 i:<valueidx> => (eq i)
+                //              | 0x01 t:<valtype>  => t
+                if offset >= bytes.len() {
+                    return Err(Error::parse_error("Unexpected end of value bound"));
+                }
 
-                // Read type index
+                let bound_tag = bytes[offset];
+                offset += 1;
+
+                match bound_tag {
+                    0x00 => {
+                        // Eq bound - value index
+                        let (value_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                        offset += bytes_read;
+                        // Use a simple type as placeholder for value reference
+                        Ok((wrt_format::component::ExternType::Value(
+                            wrt_format::component::FormatValType::Bool
+                        ), offset))
+                    },
+                    0x01 => {
+                        // Direct value type
+                        let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                        offset += bytes_read;
+                        Ok((
+                            wrt_format::component::ExternType::Value(val_type_to_format_val_type(val_type)),
+                            offset,
+                        ))
+                    },
+                    _ => Err(Error::parse_error("Invalid value bound tag")),
+                }
+            },
+            0x03 => {
+                // Type bound: 0x03 b:<typebound>
+                // typebound ::= 0x00 i:<typeidx> => (eq i)
+                //             | 0x01            => (sub resource)
+                if offset >= bytes.len() {
+                    return Err(Error::parse_error("Unexpected end of type bound"));
+                }
+
+                let bound_tag = bytes[offset];
+                offset += 1;
+
+                match bound_tag {
+                    0x00 => {
+                        // Eq bound - type index
+                        let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                        offset += bytes_read;
+                        Ok((wrt_format::component::ExternType::Type(type_idx), offset))
+                    },
+                    0x01 => {
+                        // Sub resource bound
+                        Ok((wrt_format::component::ExternType::Type(0xFFFFFFFF), offset))
+                    },
+                    _ => Err(Error::parse_error("Invalid type bound tag")),
+                }
+            },
+            0x04 => {
+                // Component: 0x04 i:<typeidx>
                 let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::ExternType::Type(type_idx), offset))
-            },
-            0x03 => {
-                // Instance type
-
-                // Read export vector
-                let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                let mut exports = Vec::with_capacity(export_count as usize);
-                for _ in 0..export_count {
-                    // Read export name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let name = bytes_to_string(name_bytes);
-
-                    // Read export type
-                    let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
-                    offset += bytes_read;
-
-                    exports.push((name, extern_type));
-                }
-
                 Ok((
-                    wrt_format::component::ExternType::Instance { exports },
+                    wrt_format::component::ExternType::Component { type_idx },
                     offset,
                 ))
             },
-            0x04 => {
-                // Component type
-
-                // Read import vector
-                let (import_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            0x05 => {
+                // Instance: 0x05 i:<typeidx>
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
-
-                let mut imports = Vec::with_capacity(import_count as usize);
-                for _ in 0..import_count {
-                    // Read namespace
-                    let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let namespace = bytes_to_string(namespace_bytes);
-
-                    // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let name = bytes_to_string(name_bytes);
-
-                    // Read type
-                    let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
-                    offset += bytes_read;
-
-                    imports.push((namespace, name, extern_type));
-                }
-
-                // Read export vector
-                let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                let mut exports = Vec::with_capacity(export_count as usize);
-                for _ in 0..export_count {
-                    // Read name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let name = bytes_to_string(name_bytes);
-
-                    // Read type
-                    let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
-                    offset += bytes_read;
-
-                    exports.push((name, extern_type));
-                }
 
                 Ok((
-                    wrt_format::component::ExternType::Component { imports, exports },
+                    wrt_format::component::ExternType::Instance { exports: vec![] },
                     offset,
                 ))
             },
-            _ => Err(Error::parse_error("Invalid external type tag ")),
+            _ => Err(Error::parse_error("Invalid external type tag")),
         }
     }
 
@@ -1583,7 +1558,7 @@ mod std_parsing {
                 let mut fields = Vec::with_capacity(field_count as usize);
                 for _ in 0..field_count {
                     // Read field name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1604,7 +1579,7 @@ mod std_parsing {
                 let mut cases = Vec::with_capacity(case_count as usize);
                 for _ in 0..case_count {
                     // Read case name
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1668,7 +1643,7 @@ mod std_parsing {
 
                 let mut flags = Vec::with_capacity(flag_count as usize);
                 for _ in 0..flag_count {
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
                     flags.push(name);
@@ -1683,7 +1658,7 @@ mod std_parsing {
 
                 let mut variants = Vec::with_capacity(variant_count as usize);
                 for _ in 0..variant_count {
-                    let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
                     variants.push(name);
@@ -1802,84 +1777,18 @@ mod std_parsing {
         let mut imports = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
-            // Read import name
-            let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+            // Read importname which consists of TWO strings: namespace and name
+            // Namespace string (can be empty)
+            let (namespace_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
             offset += bytes_read;
             let namespace = bytes_to_string(namespace_bytes);
 
-            let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+            // Name string (the interface name like "wasi:cli/environment@0.2.0")
+            let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
             offset += bytes_read;
             let name = bytes_to_string(name_bytes);
 
-            // Check if there are nested namespaces or package information
-            let provider = crate::prelude::create_decoder_provider::<1024>()?;
-            let mut nested = crate::prelude::Vec::new();
-            let mut package = None;
-
-            // Read nested namespace flag if present
-            if offset < bytes.len() {
-                let has_nested = bytes[offset] != 0;
-                offset += 1;
-
-                if has_nested {
-                    // Read count of nested namespaces
-                    let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                    offset += bytes_read;
-
-                    // Read each nested namespace
-                    for _ in 0..nested_count {
-                        let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                        offset += bytes_read;
-                        let nested_name = bytes_to_string(nested_name_bytes);
-                        nested.push(nested_name);
-                    }
-                }
-
-                // Read package flag if present
-                if offset < bytes.len() {
-                    let has_package = bytes[offset] != 0;
-                    offset += 1;
-
-                    if has_package {
-                        // Read package name
-                        let (package_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                        offset += bytes_read;
-                        let package_name = bytes_to_string(package_name_bytes);
-
-                        // Read version flag
-                        let has_version = bytes[offset] != 0;
-                        offset += 1;
-
-                        let mut version = None;
-                        if has_version {
-                            let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                            offset += bytes_read;
-                            let ver = bytes_to_string(ver_bytes);
-                            version = Some(ver);
-                        }
-
-                        // Read hash flag
-                        let has_hash = bytes[offset] != 0;
-                        offset += 1;
-
-                        let mut hash = None;
-                        if has_hash {
-                            let (h_bytes, bytes_read) = binary::read_string(bytes, offset)?;
-                            offset += bytes_read;
-                            let h = bytes_to_string(h_bytes);
-                            hash = Some(h);
-                        }
-
-                        package = Some(wrt_format::component::PackageReference {
-                            name: package_name,
-                            version,
-                            hash,
-                        });
-                    }
-                }
-            }
-
-            // Read import type
+            // Read externdesc (external descriptor)
             let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
             offset += bytes_read;
 
@@ -1888,8 +1797,8 @@ mod std_parsing {
                 name: wrt_format::component::ImportName {
                     namespace,
                     name,
-                    nested,
-                    package,
+                    nested: Vec::new(),
+                    package: None,
                 },
                 ty:   extern_type,
             });
@@ -1906,7 +1815,7 @@ mod std_parsing {
 
         for _ in 0..count {
             // Read export name
-            let (basic_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+            let (basic_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
             offset += bytes_read;
             let basic_name = bytes_to_string(basic_name_bytes);
 
@@ -1927,7 +1836,7 @@ mod std_parsing {
 
             // Read semver (if present)
             let semver = if has_semver {
-                let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                let (ver_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let ver = bytes_to_string(ver_bytes);
                 Some(ver)
@@ -1937,7 +1846,7 @@ mod std_parsing {
 
             // Read integrity (if present)
             let integrity = if has_integrity {
-                let (hash_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                let (hash_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let hash = bytes_to_string(hash_bytes);
                 Some(hash)
@@ -1953,7 +1862,7 @@ mod std_parsing {
 
                 let mut nested_names = Vec::new();
                 for _ in 0..nested_count {
-                    let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (nested_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let nested_name = bytes_to_string(nested_name_bytes);
                     nested_names.push(nested_name);
@@ -2064,7 +1973,7 @@ mod std_parsing {
                 offset += 1;
 
                 if has_name {
-                    let (value_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                    let (value_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let value_name = bytes_to_string(value_name_bytes);
                     name = Some(value_name);
@@ -2287,7 +2196,7 @@ mod std_parsing {
             },
             0x0B => {
                 // Char value
-                let (value_str, bytes_read) = binary::read_string(bytes, offset)?;
+                let (value_str, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
 
                 // Convert bytes to string and validate that it's a single Unicode scalar value
@@ -2309,7 +2218,7 @@ mod std_parsing {
             },
             0x0C => {
                 // String value
-                let (value_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                let (value_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let value = bytes_to_string(value_bytes);
                 Ok((wrt_format::component::ConstValue::String(value), offset))
@@ -2361,7 +2270,7 @@ mod std_parsing {
                 offset += bytes_read;
 
                 // Read export name
-                let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let name = bytes_to_string(name_bytes);
 
@@ -2407,7 +2316,7 @@ mod std_parsing {
                 offset += bytes_read;
 
                 // Read export name
-                let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
+                let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let name = bytes_to_string(name_bytes);
 
@@ -2470,7 +2379,7 @@ mod std_parsing {
     /// various WebAssembly and Component Model sections.
     #[allow(dead_code)]
     pub fn parse_name(bytes: &[u8]) -> Result<(String, usize)> {
-        let (name_bytes, length) = binary::read_string(bytes, 0)?;
+        let (name_bytes, length) = wrt_format::binary::read_string(bytes, 0)?;
         let name_str = core::str::from_utf8(name_bytes)
             .map_err(|_| Error::runtime_execution_error("Invalid UTF-8 in name"))?;
         Ok((name_str.to_string(), length))

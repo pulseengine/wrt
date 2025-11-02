@@ -555,6 +555,11 @@ pub enum ComponentTypeDefinition {
 /// Component external type
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExternType {
+    /// Core module type
+    Module {
+        /// Type index
+        type_idx: u32,
+    },
     /// Function type
     Function {
         /// Parameter types
@@ -573,10 +578,8 @@ pub enum ExternType {
     },
     /// Component type
     Component {
-        /// Component imports
-        imports: Vec<(String, String, ExternType)>,
-        /// Component exports
-        exports: Vec<(String, ExternType)>,
+        /// Type index
+        type_idx: u32,
     },
 }
 

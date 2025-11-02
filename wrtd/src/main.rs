@@ -158,7 +158,7 @@ impl Default for WrtdConfig {
             #[cfg(feature = "wasi")]
             wasi_args: Vec::new(),
             #[cfg(feature = "component-model")]
-            enable_component_model: false,
+            enable_component_model: true,
             #[cfg(feature = "component-model")]
             component_interfaces: Vec::new(),
             enable_memory_profiling: false,
@@ -424,8 +424,10 @@ impl WrtdEngine {
     fn init_component_model(&mut self) -> Result<()> {
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model");
 
-        // Component model support disabled
-        Err(Error::runtime_error("Component model temporarily disabled"))
+        // Component model initialization
+        // Component registry and linker will be created on-demand during execution
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Component model initialized");
+        Ok(())
     }
 
     /// Detect if the binary is a WebAssembly component or module
@@ -457,20 +459,14 @@ impl WrtdEngine {
 
         #[cfg(feature = "component-model")]
         {
-            // Decode the component from binary data
-            let component = decode_component(data)
-                .map_err(|e| {
-                    #[cfg(feature = "std")]
-                    eprintln!("DEBUG: Component decode error: {:?}", e);
-                    Error::parse_error("Failed to parse component binary")
-                })?;
+            // Initialize the memory system before decoding component
+            use wrt_foundation::memory_init::MemoryInitializer;
+            MemoryInitializer::initialize()
+                .map_err(|_| Error::runtime_error("Failed to initialize memory system"))?;
 
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG: Component decoded successfully");
-                eprintln!("DEBUG: Component imports: {}", component.imports.len());
-                eprintln!("DEBUG: Component exports: {}", component.exports.len());
-            }
+            // Decode the component from binary data
+            let _component = decode_component(data)
+                .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
 
             // For now, just validate that the component loaded successfully
             // Full component execution will be implemented progressively
@@ -591,16 +587,12 @@ impl WrtdEngine {
             }
 
             // Load module
-            let module_handle = engine.load_module(data).map_err(|e| {
-                eprintln!("DEBUG: load_module error: {:?}", e);
-                Error::runtime_execution_error("Failed to load module - see debug output")
-            })?;
+            let module_handle = engine.load_module(data)
+                .map_err(|_| Error::runtime_execution_error("Failed to load module"))?;
 
             // Instantiate
-            let instance = engine.instantiate(module_handle).map_err(|e| {
-                eprintln!("DEBUG: instantiate error: {:?}", e);
-                Error::runtime_execution_error("Failed to instantiate module - see debug output")
-            })?;
+            let instance = engine.instantiate(module_handle)
+                .map_err(|_| Error::runtime_execution_error("Failed to instantiate module"))?;
 
             // Execute function
             let function_name = self.config.function_name.as_deref().unwrap_or("start");
@@ -618,10 +610,7 @@ impl WrtdEngine {
 
             engine
                 .execute(instance, function_name, &[])
-                .map_err(|e| {
-                    eprintln!("DEBUG: execute error: {:?}", e);
-                    Error::runtime_execution_error("Function execution failed")
-                })?;
+                .map_err(|_| Error::runtime_execution_error("Function execution failed"))?;
 
             self.stats.modules_executed += 1;
         }
@@ -727,7 +716,6 @@ impl WrtdEngine {
 
         // Check if this is a component or module
         let is_component = self.detect_component_format(&module_data)?;
-        eprintln!("DEBUG: is_component = {}", is_component);
 
         // Get module size for resource estimation
         #[cfg(feature = "std")]
@@ -755,10 +743,6 @@ impl WrtdEngine {
         }
 
         // Route execution based on binary type
-        eprintln!(
-            "DEBUG: routing to {} execution",
-            if is_component { "component" } else { "traditional" }
-        );
         if is_component {
             // Execute as WebAssembly component
             #[cfg(feature = "component-model")]
@@ -858,7 +842,7 @@ impl SimpleArgs {
             #[cfg(feature = "wasi")]
             wasi_args: Vec::new(),
             #[cfg(feature = "component-model")]
-            enable_component_model: false,
+            enable_component_model: true,
             #[cfg(feature = "component-model")]
             component_interfaces: Vec::new(),
             enable_memory_profiling: false,
@@ -983,12 +967,8 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    eprintln!("DEBUG: wrtd starting");
-
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
-
-    eprintln!("DEBUG: args parsed");
 
     println!("WebAssembly Runtime Daemon (wrtd)");
     println!("===================================");

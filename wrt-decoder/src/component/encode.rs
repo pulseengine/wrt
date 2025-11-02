@@ -294,33 +294,16 @@ mod std_encoding {
                     encode_extern_type(export_ty, data)?;
                 }
             },
-            wrt_format::component::ExternType::Component { imports, exports } => {
-                // Write component tag
-                data.push(binary::EXTERN_TYPE_COMPONENT_TAG);
-
-                // Write import count
-                data.extend_from_slice(&write_leb128_u32(imports.len() as u32));
-
-                // Write each import
-                for (namespace, name, import_ty) in imports {
-                    // Write namespace
-                    data.extend_from_slice(&write_string(namespace));
-                    // Write name
-                    data.extend_from_slice(&write_string(name));
-                    // Write import type
-                    encode_extern_type(import_ty, data)?;
-                }
-
-                // Write export count
-                data.extend_from_slice(&write_leb128_u32(exports.len() as u32));
-
-                // Write each export
-                for (name, export_ty) in exports {
-                    // Write export name
-                    data.extend_from_slice(&write_string(name));
-                    // Write export type
-                    encode_extern_type(export_ty, data)?;
-                }
+            wrt_format::component::ExternType::Module { type_idx } => {
+                // Core module: 0x00 0x11 type_idx
+                data.push(0x00);
+                data.push(0x11);
+                data.extend_from_slice(&write_leb128_u32(*type_idx));
+            },
+            wrt_format::component::ExternType::Component { type_idx } => {
+                // Component: 0x04 type_idx
+                data.push(0x04);
+                data.extend_from_slice(&write_leb128_u32(*type_idx));
             },
         }
 

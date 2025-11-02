@@ -464,6 +464,10 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
     format_extern_type: &FormatExternType,
 ) -> Result<TypesWrtExternType<P>> {
     match format_extern_type {
+        FormatExternType::Module { type_idx } => {
+            // Core module type - not yet implemented
+            Err(Error::runtime_execution_error("Module extern types not yet supported"))
+        },
         FormatExternType::Function { params, results } => {
             // Convert all parameter types to core ValueType
             let converted_params = params
@@ -526,47 +530,15 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
                 exports: export_vec,
             }))
         },
-        FormatExternType::Component { imports, exports } => {
-            // Convert imports to Import<P>
-            use wrt_foundation::{WasmName, component::Namespace};
-
+        FormatExternType::Component { type_idx } => {
+            // Component type reference - create a placeholder component type
+            // In a full implementation, this would look up the type from the type index space
             let provider = P::default();
-            let mut import_vec = wrt_foundation::BoundedVec::new(provider.clone())?;
 
-            for (ns, name, ext_type) in imports.iter() {
-                let namespace = Namespace::from_str(ns.as_str(), provider.clone())?;
-                let item_name = WasmName::from_str_truncate(name.as_str())
-                    .map_err(|_| Error::runtime_execution_error("Failed to create WasmName"))?;
-                let extern_ty = format_to_runtime_extern_type(ext_type)?;
-                let import = wrt_foundation::component::Import {
-                    key: wrt_foundation::component::ImportKey {
-                        namespace,
-                        name: item_name,
-                    },
-                    ty: extern_ty,
-                };
-                import_vec.push(import)?;
-            }
-
-            // Convert exports to Export<P>
-            let mut export_vec = wrt_foundation::BoundedVec::new(provider.clone())?;
-
-            for (name, ext_type) in exports.iter() {
-                let wasm_name = WasmName::from_str_truncate(name.as_str())
-                    .map_err(|_| Error::runtime_execution_error("Failed to create WasmName"))?;
-                let extern_ty = format_to_runtime_extern_type(ext_type)?;
-                let export = wrt_foundation::component::Export {
-                    name: wasm_name,
-                    ty: extern_ty,
-                    desc: None,
-                };
-                export_vec.push(export)?;
-            }
-
-            // Create component type manually since there's no new() method
+            // Create empty component type as placeholder
             Ok(TypesWrtExternType::Component(ComponentType {
-                imports: import_vec,
-                exports: export_vec,
+                imports: wrt_foundation::BoundedVec::new(provider.clone())?,
+                exports: wrt_foundation::BoundedVec::new(provider.clone())?,
                 aliases: wrt_foundation::BoundedVec::new(provider.clone())?,
                 instances: wrt_foundation::BoundedVec::new(provider.clone())?,
                 core_instances: wrt_foundation::BoundedVec::new(provider.clone())?,
@@ -706,8 +678,7 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
                     .collect();
 
             Ok(FormatExternType::Component {
-                imports: imports_format?,
-                exports: exports_format?,
+                type_idx: 0, // Placeholder type index
             })
         },
         WrtExternType::Resource(resource_type) => {
@@ -1133,8 +1104,7 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
                     .collect();
 
             Ok(FormatExternType::Component {
-                imports: imports_result?,
-                exports: exports_result?,
+                type_idx: 0, // Placeholder type index
             })
         },
         wrt_foundation::ExternType::Tag(_tag_type) => {
@@ -1169,6 +1139,10 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
     format_extern_type: &FormatExternType,
 ) -> Result<wrt_foundation::ExternType<P>> {
     match format_extern_type {
+        FormatExternType::Module { type_idx } => {
+            // Core module type - not yet implemented
+            Err(Error::runtime_execution_error("Module extern types not yet supported"))
+        },
         FormatExternType::Function { params, results } => {
             // Convert parameter types - create an empty vector and then convert and add
             // each parameter
@@ -1268,7 +1242,7 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
                 },
             ))
         },
-        FormatExternType::Component { imports, exports } => {
+        FormatExternType::Component { type_idx } => {
             // Get a provider for creating the bounded structures
             let provider = P::default();
 
@@ -1279,41 +1253,13 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
                 P,
             > = wrt_foundation::BoundedVec::new(provider.clone())?;
 
-            for (namespace, name, extern_type) in imports {
-                let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let namespace_obj = wrt_foundation::Namespace::from_str(namespace, P::default())?;
-                let name_wasm = wrt_foundation::WasmName::try_from_str(name)
-                    .map_err(|_| Error::runtime_execution_error("Invalid import name"))?;
-                let import = wrt_foundation::Import {
-                    key: wrt_foundation::ImportKey {
-                        namespace: namespace_obj,
-                        name: name_wasm,
-                    },
-                    ty: types_extern,
-                };
-                import_vec.push(import)
-                    .map_err(|_| Error::capacity_exceeded("Too many imports"))?;
-            }
-
-            // Convert component exports to Export<P> structs
-            let mut export_vec: wrt_foundation::BoundedVec<
+            // No imports/exports to iterate - type_idx is just a reference
+            // Create empty bounded vecs
+            let export_vec: wrt_foundation::BoundedVec<
                 wrt_foundation::Export<P>,
                 128,
                 P,
             > = wrt_foundation::BoundedVec::new(provider.clone())?;
-
-            for (name, extern_type) in exports {
-                let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
-                let name_wasm = wrt_foundation::WasmName::try_from_str(name)
-                    .map_err(|_| Error::runtime_execution_error("Invalid export name"))?;
-                let export = wrt_foundation::Export {
-                    name: name_wasm,
-                    ty: types_extern,
-                    desc: None,
-                };
-                export_vec.push(export)
-                    .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
-            }
 
             // Create empty instances BoundedVec
             let instances = wrt_foundation::BoundedVec::new(provider.clone())?;
