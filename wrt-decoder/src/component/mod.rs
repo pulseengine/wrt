@@ -329,10 +329,27 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 }
             },
             0x03 => {
-                // Section 3: Core Types (skip for now)
+                // Section 3: Core Types
+                match parse::parse_core_type_section(section_data) {
+                    Ok((types, _)) => {
+                        component.core_types = types;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x04 => {
-                // Section 4: Component (skip for now)
+                // Section 4: Component (nested component definitions)
+                match parse::parse_component_section(section_data) {
+                    Ok((components, _)) => {
+                        component.components = components;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                        // Nested components are advanced feature
+                    }
+                }
             },
             0x05 => {
                 // Section 5: Instances
@@ -380,7 +397,15 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 }
             },
             0x09 => {
-                // Section 9: Start (skip for now)
+                // Section 9: Start (component start function)
+                match parse::parse_start_section(section_data) {
+                    Ok((start, _)) => {
+                        component.start = Some(start);
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             0x0A => {
                 // Section 10: Imports
@@ -399,7 +424,15 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 }
             },
             0x0C => {
-                // Section 12: Values (skip for now)
+                // Section 12: Values (constant values)
+                match parse::parse_value_section(section_data) {
+                    Ok((values, _)) => {
+                        component.values = values;
+                    },
+                    Err(_) => {
+                        // Continue parsing other sections
+                    }
+                }
             },
             _ => {
                 // Unknown section - ignore for now
