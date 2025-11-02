@@ -795,13 +795,13 @@ impl ComponentInstance {
         // Phase 4: Parse canonical ABI operations (Step 5)
         Self::parse_canonical_operations(&parsed.canonicals)?;
 
-        // Phase 5: Extract exports (streaming)
-        let export_count = parsed.exports.len();
-        // parsed.exports will be converted
+        // Phase 5: Parse exports (Step 6a)
+        Self::parse_exports(&parsed.exports)?;
+        // parsed.exports will be converted later
 
-        // Phase 6: Extract imports (streaming)
-        let import_count = parsed.imports.len();
-        // parsed.imports will be converted
+        // Phase 6: Parse imports (Step 6b)
+        Self::parse_imports(&parsed.imports)?;
+        // parsed.imports will be converted later
 
         // Build minimal runtime component
         // In future: this will hold the actual converted data
@@ -1192,6 +1192,188 @@ impl ComponentInstance {
     fn parse_canonical_operations(
         _canonicals: &[wrt_format::component::Canon]
     ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Parse and display component exports (Step 6a)
+    #[cfg(feature = "std")]
+    fn parse_exports(
+        exports: &[wrt_format::component::Export]
+    ) -> Result<()> {
+        println!("=== STEP 6a: Component Exports ===");
+        println!("Total exports: {}", exports.len());
+
+        if exports.is_empty() {
+            println!("(No exports defined)\n");
+            return Ok(());
+        }
+
+        for (idx, export) in exports.iter().enumerate() {
+            use wrt_format::component::Sort;
+
+            println!("  Export[{}]: \"{}\"", idx, export.name.name);
+
+            // Show sort (Function, Instance, etc.)
+            let sort_name = match &export.sort {
+                Sort::Core(core_sort) => {
+                    use wrt_format::component::CoreSort;
+                    match core_sort {
+                        CoreSort::Function => "Core.Function",
+                        CoreSort::Table => "Core.Table",
+                        CoreSort::Memory => "Core.Memory",
+                        CoreSort::Global => "Core.Global",
+                        CoreSort::Type => "Core.Type",
+                        CoreSort::Module => "Core.Module",
+                        CoreSort::Instance => "Core.Instance",
+                    }
+                }
+                Sort::Function => "Function",
+                Sort::Value => "Value",
+                Sort::Type => "Type",
+                Sort::Component => "Component",
+                Sort::Instance => "Instance",
+            };
+            println!("    ├─ Sort: {}", sort_name);
+            println!("    ├─ Index: {}", export.idx);
+
+            // Show type information if available
+            if let Some(ref ty) = export.ty {
+                use wrt_format::component::ExternType;
+                match ty {
+                    ExternType::Function { params, results, .. } => {
+                        println!("    ├─ Type: Function");
+                        println!("    │  ├─ Params: {}", params.len());
+                        println!("    │  └─ Results: {}", results.len());
+                    }
+                    ExternType::Module { type_idx } => {
+                        println!("    ├─ Type: Module");
+                        println!("    │  └─ Type index: {}", type_idx);
+                    }
+                    ExternType::Component { type_idx } => {
+                        println!("    ├─ Type: Component");
+                        println!("    │  └─ Type index: {}", type_idx);
+                    }
+                    ExternType::Instance { exports } => {
+                        println!("    ├─ Type: Instance");
+                        println!("    │  └─ Exports: {}", exports.len());
+                    }
+                    ExternType::Value(value_type) => {
+                        println!("    ├─ Type: Value");
+                        println!("    │  └─ Value type: {:?}", value_type);
+                    }
+                    ExternType::Type(bounds) => {
+                        println!("    ├─ Type: Type");
+                        println!("    │  └─ Bounds: {:?}", bounds);
+                    }
+                }
+            } else {
+                println!("    ├─ Type: (not specified)");
+            }
+
+            // Show additional metadata
+            if export.name.is_resource {
+                println!("    ├─ Resource: yes");
+            }
+            if let Some(ref semver) = export.name.semver {
+                println!("    ├─ Semver: {}", semver);
+            }
+            if let Some(ref integrity) = export.name.integrity {
+                println!("    └─ Integrity: {}...", &integrity[..integrity.len().min(16)]);
+            } else {
+                println!("    └─ (end)");
+            }
+        }
+
+        println!("✓ Parsed {} exports\n", exports.len());
+        Ok(())
+    }
+
+    /// Parse exports (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn parse_exports(_exports: &[wrt_format::component::Export]) -> Result<()> {
+        Ok(())
+    }
+
+    /// Parse and display component imports (Step 6b)
+    #[cfg(feature = "std")]
+    fn parse_imports(
+        imports: &[wrt_format::component::Import]
+    ) -> Result<()> {
+        println!("=== STEP 6b: Component Imports ===");
+        println!("Total imports: {}", imports.len());
+
+        if imports.is_empty() {
+            println!("(No imports required)\n");
+            return Ok(());
+        }
+
+        for (idx, import) in imports.iter().enumerate() {
+            use wrt_format::component::ExternType;
+
+            // Show namespace.name format
+            let full_name = if import.name.nested.is_empty() {
+                format!("{}:{}", import.name.namespace, import.name.name)
+            } else {
+                format!("{}:{}:{}",
+                    import.name.namespace,
+                    import.name.nested.join(":"),
+                    import.name.name)
+            };
+
+            println!("  Import[{}]: \"{}\"", idx, full_name);
+
+            // Show type information
+            match &import.ty {
+                ExternType::Function { params, results, .. } => {
+                    println!("    ├─ Type: Function");
+                    println!("    │  ├─ Params: {}", params.len());
+                    for (pidx, (pname, _ptype)) in params.iter().enumerate() {
+                        if pidx < 3 {
+                            println!("    │  │  ├─ {}: <type>", pname);
+                        }
+                    }
+                    if params.len() > 3 {
+                        println!("    │  │  └─ ... ({} more)", params.len() - 3);
+                    }
+                    println!("    │  └─ Results: {}", results.len());
+                }
+                ExternType::Module { type_idx } => {
+                    println!("    ├─ Type: Module");
+                    println!("    │  └─ Type index: {}", type_idx);
+                }
+                ExternType::Component { type_idx } => {
+                    println!("    ├─ Type: Component");
+                    println!("    │  └─ Type index: {}", type_idx);
+                }
+                ExternType::Instance { exports } => {
+                    println!("    ├─ Type: Instance");
+                    println!("    │  └─ Exports: {}", exports.len());
+                }
+                ExternType::Value(value_type) => {
+                    println!("    ├─ Type: Value");
+                    println!("    │  └─ Value type: {:?}", value_type);
+                }
+                ExternType::Type(bounds) => {
+                    println!("    ├─ Type: Type");
+                    println!("    │  └─ Bounds: {:?}", bounds);
+                }
+            }
+
+            // Show package reference if present
+            if let Some(ref pkg) = import.name.package {
+                println!("    └─ Package: {} (version: {:?})", pkg.name, pkg.version);
+            } else {
+                println!("    └─ (end)");
+            }
+        }
+
+        println!("✓ Parsed {} imports\n", imports.len());
+        Ok(())
+    }
+
+    /// Parse imports (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn parse_imports(_imports: &[wrt_format::component::Import]) -> Result<()> {
         Ok(())
     }
 
