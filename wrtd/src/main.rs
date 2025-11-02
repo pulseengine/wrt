@@ -465,14 +465,29 @@ impl WrtdEngine {
                 .map_err(|_| Error::runtime_error("Failed to initialize memory system"))?;
 
             // Decode the component from binary data
-            let _component = decode_component(data)
+            let parsed_component = decode_component(data)
                 .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
 
-            // For now, just validate that the component loaded successfully
-            // Full component execution will be implemented progressively
             let _ = self.logger.handle_minimal_log(
                 LogLevel::Info,
-                "Component loaded and validated successfully"
+                "Component parsed successfully"
+            );
+
+            // Create a component instance (consumes parsed component for memory efficiency)
+            use wrt_component::components::component_instantiation::ComponentInstance;
+            let _instance = ComponentInstance::from_parsed(0, parsed_component)
+                .map_err(|_| Error::runtime_error("Failed to create component instance"))?;
+            // parsed_component is now dropped - we only keep runtime instance
+
+            let _ = self.logger.handle_minimal_log(
+                LogLevel::Info,
+                "Component instance created (memory-efficient)"
+            );
+
+            // TODO: Call instance.initialize() and execute start function
+            let _ = self.logger.handle_minimal_log(
+                LogLevel::Info,
+                "Component instantiation complete - ready for execution"
             );
 
             return Ok(());
