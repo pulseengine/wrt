@@ -1610,9 +1610,13 @@ pub mod with_alloc {
             return Err(parse_error("Invalid WebAssembly component magic bytes"));
         }
 
-        // Check version
-        if bytes[4..8] != COMPONENT_VERSION {
-            return Err(parse_error("Unsupported WebAssembly component version"));
+        // Check version - be permissive about layer versions
+        // Byte 4 is the layer version (0x01 for old components, 0x0A-0x0D for newer)
+        // Bytes 5-7 are the component version (typically 0x01 0x00)
+        let layer_version = bytes[4];
+        if layer_version == 0 || layer_version > 0x1F {
+            // Layer 0 is invalid, accept up to layer 31 for future compatibility
+            return Err(parse_error("Unsupported WebAssembly component layer version"));
         }
 
         if bytes.len() < 10 {

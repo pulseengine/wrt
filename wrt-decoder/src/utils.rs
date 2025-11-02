@@ -89,29 +89,28 @@ pub fn detect_binary_type(data: &[u8]) -> Result<BinaryType> {
         return Err(Error::parse_error("Binary data too short"));
     }
 
-    // Check magic number
-    match &data[0..4] {
-        // WebAssembly module magic "\0asm"
-        magic if magic == WASM_MAGIC => {
-            // Check version
-            if data[4..8] == WASM_VERSION {
-                Ok(BinaryType::CoreModule)
-            } else {
-                Err(Error::runtime_execution_error(
-                    "Invalid WebAssembly version",
-                ))
-            }
-        },
-        // Component magic
-        magic if magic == COMPONENT_MAGIC => {
-            // Check version
-            if data[4..8] == COMPONENT_VERSION {
-                Ok(BinaryType::Component)
-            } else {
-                Err(Error::runtime_execution_error("Invalid component version"))
-            }
-        },
-        _ => Err(Error::parse_error("Unknown binary format")),
+    // Check magic number - both modules and components use \0asm
+    if &data[0..4] != WASM_MAGIC {
+        return Err(Error::parse_error("Invalid WebAssembly magic number"));
+    }
+
+    // Distinguish between module and component by version bytes
+    // Core modules: version = 0x01 0x00 0x00 0x00 (little-endian 1)
+    // Components: layer = 0x01-0x1F, version = varies (typically 0x01 0x00)
+    if data[4..8] == WASM_VERSION {
+        // This is a core WebAssembly module (version 1)
+        Ok(BinaryType::CoreModule)
+    } else {
+        // Check if this looks like a component (layer byte in valid range)
+        let layer_version = data[4];
+        if layer_version > 0 && layer_version <= 0x1F {
+            // This is a WebAssembly component (layer 1-31)
+            Ok(BinaryType::Component)
+        } else {
+            Err(Error::runtime_execution_error(
+                "Unsupported WebAssembly version or component layer",
+            ))
+        }
     }
 }
 
