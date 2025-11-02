@@ -1048,13 +1048,17 @@ mod std_parsing {
             )));
         }
 
-        // Read the form tag
+        // Read the form tag (deftype)
+        // Per Component Model spec:
+        // 0x40 = functype
+        // 0x41 = componenttype
+        // 0x42 = instancetype
         let form = bytes[0];
         let mut offset = 1;
 
         match form {
-            0x00 => {
-                // Component type
+            0x41 => {
+                // Component type (0x41)
 
                 // Read import vector
                 let (import_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1102,25 +1106,58 @@ mod std_parsing {
                     offset,
                 ))
             },
-            0x01 => {
-                // Instance type
+            0x42 => {
+                // Instance type (0x42)
+                // instancetype ::= 0x42 id*:vec(<instancedecl>)
+                // instancedecl ::= 0x00 t:<core:type>
+                //                | 0x01 t:<type>
+                //                | 0x02 a:<alias>
+                //                | 0x04 ed:<exportdecl>
 
-                // Read export vector
-                let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                // Read vector of instance declarations
+                let (decl_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize);
-                for _ in 0..export_count {
-                    // Read name
-                    let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
-                    offset += bytes_read;
-                    let name = bytes_to_string(name_bytes);
+                let mut exports = Vec::new();
+                for _ in 0..decl_count {
+                    if offset >= bytes.len() {
+                        return Err(Error::parse_error("Unexpected end of instance declarations"));
+                    }
 
-                    // Read type
-                    let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
-                    offset += bytes_read;
+                    let decl_tag = bytes[offset];
+                    offset += 1;
 
-                    exports.push((name, extern_type));
+                    match decl_tag {
+                        0x00 => {
+                            // Core type - read type index and skip
+                            let (_type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                            offset += bytes_read;
+                        },
+                        0x01 => {
+                            // Type - read type index and skip
+                            let (_type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                            offset += bytes_read;
+                        },
+                        0x02 => {
+                            // Alias - skip for now (complex structure)
+                            // TODO: Implement alias parsing
+                            return Err(Error::parse_error("Alias in instance type not yet supported"));
+                        },
+                        0x04 => {
+                            // Export declaration: name + externdesc
+                            let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                            offset += bytes_read;
+                            let name = bytes_to_string(name_bytes);
+
+                            let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
+                            offset += bytes_read;
+
+                            exports.push((name, extern_type));
+                        },
+                        _ => {
+                            return Err(Error::parse_error("Invalid instance declaration tag"));
+                        }
+                    }
                 }
 
                 Ok((
@@ -1128,8 +1165,8 @@ mod std_parsing {
                     offset,
                 ))
             },
-            0x02 => {
-                // Function type
+            0x40 => {
+                // Function type (0x40)
 
                 // Read parameter vector
                 let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
