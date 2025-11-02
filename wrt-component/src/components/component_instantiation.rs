@@ -792,17 +792,16 @@ impl ComponentInstance {
         let module_binaries = Self::extract_core_modules(&mut parsed)?;
         // parsed.modules is now empty (moved)
 
-        // Phase 4: Extract exports (streaming)
+        // Phase 4: Parse canonical ABI operations (Step 5)
+        Self::parse_canonical_operations(&parsed.canonicals)?;
+
+        // Phase 5: Extract exports (streaming)
         let export_count = parsed.exports.len();
         // parsed.exports will be converted
 
-        // Phase 5: Extract imports (streaming)
+        // Phase 6: Extract imports (streaming)
         let import_count = parsed.imports.len();
         // parsed.imports will be converted
-
-        // Phase 6: Extract canonical operations (streaming)
-        let canon_count = parsed.canonicals.len();
-        // parsed.canonicals will be converted
 
         // Build minimal runtime component
         // In future: this will hold the actual converted data
@@ -1110,6 +1109,90 @@ impl ComponentInstance {
             ComponentTypeDefinition::Value(_) => "Value",
             ComponentTypeDefinition::Resource { .. } => "Resource",
         }
+    }
+
+    /// Parse and display canonical ABI operations (Step 5)
+    ///
+    /// Canonical operations define how to convert between core WebAssembly
+    /// and component model values:
+    /// - Lift: Convert core values to component values
+    /// - Lower: Convert component values to core values
+    /// - Resource: Resource lifecycle operations (new/drop/rep)
+    #[cfg(feature = "std")]
+    fn parse_canonical_operations(
+        canonicals: &[wrt_format::component::Canon]
+    ) -> Result<()> {
+        println!("=== STEP 5: Canonical ABI Operations ===");
+        println!("Total operations: {}", canonicals.len());
+
+        if canonicals.is_empty() {
+            println!("(No canonical operations defined)\n");
+            return Ok(());
+        }
+
+        for (idx, canon) in canonicals.iter().enumerate() {
+            use wrt_format::component::CanonOperation;
+
+            print!("  Canon[{}]: ", idx);
+
+            match &canon.operation {
+                CanonOperation::Lift { func_idx, type_idx, .. } => {
+                    println!("Lift");
+                    println!("    ├─ Core func[{}] → Component", func_idx);
+                    println!("    └─ Type: type[{}]", type_idx);
+                }
+                CanonOperation::Lower { func_idx, .. } => {
+                    println!("Lower");
+                    println!("    └─ Component func[{}] → Core", func_idx);
+                }
+                CanonOperation::Resource(res_op) => {
+                    use wrt_format::component::FormatResourceOperation;
+                    match res_op {
+                        FormatResourceOperation::New(res_new) => {
+                            println!("Resource.New");
+                            println!("    └─ Type: type[{}]", res_new.type_idx);
+                        }
+                        FormatResourceOperation::Drop(res_drop) => {
+                            println!("Resource.Drop");
+                            println!("    └─ Type: type[{}]", res_drop.type_idx);
+                        }
+                        FormatResourceOperation::Rep(res_rep) => {
+                            println!("Resource.Rep");
+                            println!("    └─ Type: type[{}]", res_rep.type_idx);
+                        }
+                    }
+                }
+                CanonOperation::Realloc { alloc_func_idx, memory_idx } => {
+                    println!("Realloc");
+                    println!("    ├─ Alloc func[{}]", alloc_func_idx);
+                    println!("    └─ Memory: mem[{}]", memory_idx);
+                }
+                CanonOperation::PostReturn { func_idx } => {
+                    println!("PostReturn");
+                    println!("    └─ Cleanup func[{}]", func_idx);
+                }
+                CanonOperation::MemoryCopy { src_memory_idx, dst_memory_idx, .. } => {
+                    println!("MemoryCopy");
+                    println!("    ├─ Source: mem[{}]", src_memory_idx);
+                    println!("    └─ Dest: mem[{}]", dst_memory_idx);
+                }
+                CanonOperation::Async { func_idx, .. } => {
+                    println!("Async");
+                    println!("    └─ Async func[{}]", func_idx);
+                }
+            }
+        }
+
+        println!("✓ Parsed {} canonical operations\n", canonicals.len());
+        Ok(())
+    }
+
+    /// Parse canonical operations (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn parse_canonical_operations(
+        _canonicals: &[wrt_format::component::Canon]
+    ) -> Result<()> {
+        Ok(())
     }
 
     /// Build type index from parsed component types
