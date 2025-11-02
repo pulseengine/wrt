@@ -784,13 +784,13 @@ impl ComponentInstance {
         // Phase 1: Validate safety limits before processing
         Self::validate_component_limits(&parsed)?;
 
-        // Phase 2: Extract and process core modules (streaming)
-        let module_binaries = Self::extract_core_modules(&mut parsed)?;
-        // parsed.modules is now empty (moved)
-
-        // Phase 3: Build type index (streaming)
+        // Phase 2: Build type index (streaming) - Steps 1-3
         let type_index = Self::build_type_index(&parsed.types)?;
         // parsed.types can be dropped after indexing (will happen when parsed is dropped)
+
+        // Phase 3: Extract and process core modules (streaming) - Step 4
+        let module_binaries = Self::extract_core_modules(&mut parsed)?;
+        // parsed.modules is now empty (moved)
 
         // Phase 4: Extract exports (streaming)
         let export_count = parsed.exports.len();
@@ -1030,22 +1030,52 @@ impl ComponentInstance {
     /// When threading is enabled, validation can be parallelized.
     ///
     /// **Memory**: After this call, parsed.modules is empty - memory is transferred.
+    /// **Step 4**: Now shows detailed validation output for each module
     fn extract_core_modules(
         parsed: &mut wrt_format::component::Component
     ) -> Result<Vec<Vec<u8>>> {
         use wrt_error::{ErrorCategory, codes};
 
+        #[cfg(feature = "std")]
+        {
+            println!("=== STEP 4: Module Extraction and Validation ===");
+            println!("Total modules to extract: {}", parsed.modules.len());
+        }
+
         let mut module_binaries = Vec::with_capacity(parsed.modules.len());
 
         // Move modules out of parsed component (no copy)
-        for module in parsed.modules.drain(..) {
+        for (idx, module) in parsed.modules.drain(..).enumerate() {
             // Extract the binary data from the module
             // Module structure contains the actual binary
             if let Some(binary) = module.binary {
+                #[cfg(feature = "std")]
+                println!("  Module[{}]:", idx);
+
                 // Validate module magic/version before accepting
-                if binary.len() >= 4 && &binary[0..4] == b"\0asm" {
+                if binary.len() >= 8 && &binary[0..4] == b"\0asm" {
+                    // Read version bytes
+                    let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
+
+                    #[cfg(feature = "std")]
+                    {
+                        println!("    ├─ Size: {} bytes", binary.len());
+                        println!("    ├─ Magic: ✓ (valid WASM)");
+                        println!("    ├─ Version: {}", version);
+
+                        // Validate it's a core module (version 1)
+                        if version == 1 {
+                            println!("    └─ Type: Core Module ✓");
+                        } else {
+                            println!("    └─ Type: Unknown version (expected 1)");
+                        }
+                    }
+
                     module_binaries.push(binary.to_vec());
                 } else {
+                    #[cfg(feature = "std")]
+                    println!("    └─ ✗ Invalid magic number or too short");
+
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::PARSE_INVALID_MAGIC_BYTES,
@@ -1053,6 +1083,9 @@ impl ComponentInstance {
                     ));
                 }
             } else {
+                #[cfg(feature = "std")]
+                println!("  Module[{}]: ✗ Missing binary data", idx);
+
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::PARSE_INVALID_SECTION_ID,
@@ -1060,6 +1093,9 @@ impl ComponentInstance {
                 ));
             }
         }
+
+        #[cfg(feature = "std")]
+        println!("✓ Extracted {} valid modules\n", module_binaries.len());
 
         Ok(module_binaries)
     }
