@@ -165,11 +165,11 @@ pub struct CommunicationStats {
 #[derive(Debug, Clone)]
 pub struct CallRoutingInfo {
     /// Source component
-    pub source_component: String,
+    pub source_component: BoundedString<256>,
     /// Target component
-    pub target_component: String,
+    pub target_component: BoundedString<256>,
     /// Function name
-    pub function_name: String,
+    pub function_name: BoundedString<256>,
     /// Call context ID
     pub call_context_id: Option<u64>,
 }
@@ -329,9 +329,9 @@ impl ComponentCommunicationStrategy {
             let target = BoundedString::<256>::try_from_str(component_part).unwrap_or_default();
             let func = BoundedString::<256>::try_from_str(function_part).unwrap_or_default();
             Some(CallRoutingInfo {
-                source_component: source.as_str().unwrap_or("unknown").to_string(), // Will be set by caller
-                target_component: target.as_str().unwrap_or("").to_string(),
-                function_name: func.as_str().unwrap_or("").to_string(),
+                source_component: BoundedString::<256>::try_from_str(source.as_str().unwrap_or("unknown")).unwrap_or_default(),
+                target_component: BoundedString::<256>::try_from_str(target.as_str().unwrap_or("")).unwrap_or_default(),
+                function_name: BoundedString::<256>::try_from_str(func.as_str().unwrap_or("")).unwrap_or_default(),
                 call_context_id: None,
             })
         } else {
@@ -345,10 +345,14 @@ impl ComponentCommunicationStrategy {
             return Ok(());
         }
 
-        if let Some(policy) = self.security_policies.get(&routing_info.source_component) {
+        let source_str = routing_info.source_component.as_str().unwrap_or("");
+        let target_str = routing_info.target_component.as_str().unwrap_or("");
+        let func_str = routing_info.function_name.as_str().unwrap_or("");
+
+        if let Some(policy) = self.security_policies.get(source_str) {
             // Check allowed targets
             if !policy.allowed_targets.is_empty()
-                && !policy.allowed_targets.contains(&routing_info.target_component)
+                && !policy.allowed_targets.iter().any(|t| t.as_str() == target_str)
             {
                 return Err(Error::security_access_denied(
                     "Component not allowed as target",
@@ -362,14 +366,7 @@ impl ComponentCommunicationStrategy {
                     let pattern_str = pattern.as_str();
                     #[cfg(not(feature = "std"))]
                     let pattern_str = pattern.as_str().unwrap_or("");
-                    #[cfg(feature = "std")]
-                    return routing_info.function_name.contains(pattern_str);
-                    #[cfg(not(feature = "std"))]
-                    routing_info
-                        .function_name
-                        .as_str()
-                        .map(|s| s.contains(pattern_str))
-                        .unwrap_or(false)
+                    func_str.contains(pattern_str)
                 })
             {
                 return Err(Error::security_access_denied(
@@ -687,7 +684,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<Vec<wrt_foundation::values::Value>> {
         // Check if this is a cross-component call
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = source.to_string();
+            routing_info.source_component = BoundedString::<256>::try_from_str(source).unwrap_or_default();
 
             // Validate security policy
             self.validate_security_policy(&routing_info)?;

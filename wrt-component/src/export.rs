@@ -65,10 +65,7 @@ impl Default for Export {
 
         #[cfg(feature = "std")]
         let func_value = FunctionValue {
-            ty:          crate::runtime::FuncType {
-                params:  vec![],
-                results: vec![],
-            },
+            ty:          wrt_foundation::types::FuncType::new([], []).unwrap_or_default(),
             export_name: String::new(),
         };
 
