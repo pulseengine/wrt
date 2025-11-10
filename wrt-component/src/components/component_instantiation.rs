@@ -815,6 +815,9 @@ impl ComponentInstance {
         // Phase 10: Execute modules (Step 11)
         Self::execute_modules(&instantiated_modules, &execution_plan)?;
 
+        // Phase 11: Initialize engine (Step 12)
+        let _engine = Self::initialize_engine(&instantiated_modules, &execution_plan)?;
+
         // Build minimal runtime component
         // In future: this will hold the actual converted data
         let component_type = crate::components::component::WrtComponentType::default();
@@ -2033,6 +2036,79 @@ impl ComponentInstance {
     /// Execute modules (no_std placeholder)
     #[cfg(not(feature = "std"))]
     fn execute_modules(_modules: &[wrt_runtime::module::Module], _plan: &[()]) -> Result<()> {
+        Ok(())
+    }
+
+    /// Initialize execution engine with configuration (Step 12)
+    #[cfg(feature = "std")]
+    fn initialize_engine(
+        modules: &[wrt_runtime::module::Module],
+        execution_plan: &[(usize, String, u32, bool)],
+    ) -> Result<Box<dyn wrt_runtime::engine_factory::RuntimeEngine>> {
+        use wrt_runtime::engine_factory::{EngineFactory, EngineType, MemoryProviderType, EngineConfig};
+
+        println!("=== STEP 12: Engine Initialization ===");
+
+        // Calculate memory requirements based on module count
+        // Default to 64KB per module (1 page = 64KB)
+        let total_memory = if modules.is_empty() {
+            65536 // Minimum 64KB
+        } else {
+            modules.len() * 65536 // 64KB per module
+        };
+
+        println!("Memory requirements:");
+        println!("  ├─ Modules: {}", modules.len());
+        println!("  ├─ Base memory: {} bytes ({} KB)", total_memory, total_memory / 1024);
+        println!("  └─ Allocating: {} bytes ({} KB)", total_memory * 2, total_memory * 2 / 1024);
+        println!();
+
+        // Configure engine
+        let config = EngineConfig::new(EngineType::CapabilityAware)
+            .with_memory_provider(MemoryProviderType::CapabilityAware)
+            .with_memory_budget(total_memory * 2) // 2x for safety margin
+            .with_max_call_depth(1024)
+            .with_debug_mode(true);
+
+        println!("Engine configuration:");
+        println!("  ├─ Type: {:?}", config.engine_type);
+        println!("  ├─ Memory provider: {:?}", config.memory_provider);
+        println!("  ├─ Memory budget: {} bytes ({} KB)", config.memory_budget, config.memory_budget / 1024);
+        println!("  ├─ Max call depth: {:?}", config.max_call_depth);
+        println!("  └─ Debug mode: {}", config.debug_mode);
+        println!();
+
+        // Create engine
+        println!("Creating engine...");
+        let engine = EngineFactory::create(config)?;
+        println!("✓ Engine created successfully");
+        println!();
+
+        // Show what's ready
+        println!("Engine ready for:");
+        println!("  ├─ {} modules", modules.len());
+        println!("  ├─ {} functions in execution plan", execution_plan.len());
+
+        let start_count = execution_plan.iter().filter(|(_, _, _, is_start)| *is_start).count();
+        let export_count = execution_plan.len() - start_count;
+
+        if start_count > 0 {
+            println!("  ├─ {} start functions", start_count);
+        }
+        if export_count > 0 {
+            println!("  └─ {} exported functions", export_count);
+        }
+        println!();
+
+        Ok(engine)
+    }
+
+    /// Initialize engine (no_std placeholder)
+    #[cfg(not(feature = "std"))]
+    fn initialize_engine(
+        _modules: &[wrt_runtime::module::Module],
+        _plan: &[()],
+    ) -> Result<()> {
         Ok(())
     }
 

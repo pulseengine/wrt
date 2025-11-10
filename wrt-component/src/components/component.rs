@@ -585,7 +585,7 @@ pub enum ExternValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionValue {
     /// Function type
-    pub ty:          crate::runtime::FuncType,
+    pub ty:          wrt_foundation::types::FuncType,
     /// Export name that this function refers to
     pub export_name: String,
 }

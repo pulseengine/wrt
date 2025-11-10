@@ -341,7 +341,7 @@ impl CoreModuleAdapter {
                     results: vec![],
                 },
                 value: ExternValue::Function(FunctionValue {
-                    ty: crate::runtime::FuncType::default(),
+                    ty: wrt_foundation::types::FuncType::default(),
                     export_name: {
                         let name_str = format!("func_{}", func_adapter.core_index);
                         #[cfg(feature = "std")]
