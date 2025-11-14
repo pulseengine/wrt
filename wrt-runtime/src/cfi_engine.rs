@@ -1193,6 +1193,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial]
     fn test_cfi_engine_creation() {
         let protection = CfiControlFlowProtection::default();
         let engine = CfiExecutionEngine::new(protection).expect("Ok");
@@ -1203,6 +1204,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_cfi_engine_with_policy() {
         let protection = CfiControlFlowProtection::default();
         let policy = CfiViolationPolicy::LogAndContinue;
@@ -1220,6 +1222,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_cfi_violation_handling() {
         let protection = CfiControlFlowProtection::default();
         let mut engine =
