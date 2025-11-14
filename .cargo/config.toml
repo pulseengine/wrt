@@ -9,4 +9,3 @@ rustflags = ["--cfg=coverage"]
 [target.'cfg(llvm_coverage)']
 rustflags = ["--cfg=coverage"]
 
- 

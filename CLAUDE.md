@@ -540,6 +540,10 @@ The JSON output follows LSP (Language Server Protocol) specification for maximum
 - Memory allocation failures handled via Result types and ? operator
 - All builds must pass ASIL verification before merging
 - Legacy memory system migration IN PROGRESS - ~344 instances remaining to eliminate
+- **Test execution**: Tests that conflict on global resources use `#[serial_test::serial]` attribute
+  - CFI engine tests share global capability-based memory budget and run serially
+  - Most tests run in parallel for speed
+  - Use `serial_test` crate to mark new tests that need serial execution
 - **Diagnostic system**: Use `--output json` for structured output, `--cache --diff-only` for incremental analysis
 - **AI Integration**: JSON output is LSP-compatible for IDE and tooling integration
 - **Performance**: Caching reduces analysis time from 3-4s to ~0.7s on subsequent runs

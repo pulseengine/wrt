@@ -141,4 +141,5 @@ helper-mode = ["dep:wrt-platform", "wrt-platform?/helper-mode"]
 kani = []
 kani-verifier = []
 
-
+[dev-dependencies]
+serial_test = "3.2"
