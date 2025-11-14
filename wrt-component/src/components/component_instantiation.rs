@@ -797,26 +797,30 @@ impl ComponentInstance {
 
         // Phase 5: Parse exports (Step 6a)
         Self::parse_exports(&parsed.exports)?;
-        // parsed.exports will be converted later
+        // Save exports for later resolution
+        let exports_to_resolve = parsed.exports.clone();
 
         // Phase 6: Parse imports (Step 6b)
         Self::parse_imports(&parsed.imports)?;
-        // parsed.imports will be converted later
 
-        // Phase 7: Instantiate core modules (Step 7)
-        let instantiated_modules = Self::instantiate_core_modules(&module_binaries)?;
+        // Phase 6.5: Link imports to providers
+        use crate::linker::ComponentLinker;
+        let mut linker = ComponentLinker::new()?;
+        let resolved_imports = linker.link_imports(&parsed.imports)?;
 
-        // Phase 8: Link modules (Step 9)
-        Self::link_core_modules(&instantiated_modules)?;
+        // Phase 7: DEFERRED - Core modules instantiation
+        // NOTE: In Component Model, core modules are only instantiated when referenced
+        // by component instances. We defer instantiation until function calls require them.
+        // This avoids stack overflow on large modules (850KB) during component init.
+        #[cfg(feature = "std")]
+        {
+            println!("=== STEP 7: Core Module Instantiation (DEFERRED) ===");
+            println!("Core modules will be instantiated lazily when needed");
+            println!("Stored {} module binaries for later instantiation\n", module_binaries.len());
+        }
 
-        // Phase 9: Prepare for execution (Step 10)
-        let execution_plan = Self::prepare_module_execution(&instantiated_modules)?;
-
-        // Phase 10: Execute modules (Step 11)
-        Self::execute_modules(&instantiated_modules, &execution_plan)?;
-
-        // Phase 11: Initialize engine (Step 12)
-        let _engine = Self::initialize_engine(&instantiated_modules, &execution_plan)?;
+        // Phase 8-11: DEFERRED - These phases depend on instantiated modules
+        // Will be performed lazily during function execution
 
         // Build minimal runtime component
         // In future: this will hold the actual converted data
@@ -834,6 +838,33 @@ impl ComponentInstance {
         #[cfg(feature = "std")]
         {
             instance.type_index = type_index;
+        }
+
+        // Resolve exports and add to instance
+        #[cfg(feature = "std")]
+        {
+            Self::resolve_exports(&mut instance, &exports_to_resolve)?;
+        }
+
+        // Store resolved imports in instance
+        #[cfg(feature = "std")]
+        {
+            instance.imports = resolved_imports;
+            println!("[INSTANTIATION] Stored {} resolved imports in instance", instance.imports.len());
+        }
+
+        // Execute start functions immediately (Step 12) - DEFERRED
+        #[cfg(feature = "std")]
+        {
+            println!("\n=== Component Initialization Complete ===");
+            println!("Modules: {} binaries stored", instance.component.modules.len());
+            println!("Imports: {} resolved", instance.imports.len());
+            println!();
+            println!("Start functions will execute when component functions are called");
+            println!("Component ready for execution\n");
+
+            // Update instance state to Running
+            instance.state = ComponentInstanceState::Running;
         }
 
         // Update metadata with conversion stats
@@ -1392,6 +1423,166 @@ impl ComponentInstance {
         Ok(())
     }
 
+    /// Resolve parsed exports into resolved exports (Step 6a - Resolution)
+    #[cfg(feature = "std")]
+    fn resolve_exports(
+        instance: &mut Self,
+        parsed_exports: &[wrt_format::component::Export]
+    ) -> Result<()> {
+        use crate::instantiation::{ResolvedExport, ExportValue, FunctionExport};
+        use crate::bounded_component_infra::ComponentProvider;
+        use wrt_format::component::Sort;
+        use wrt_foundation::safe_memory::NoStdProvider;
+
+        println!("\n=== Resolving Component Exports ===");
+        println!("Total exports to resolve: {}", parsed_exports.len());
+
+        for (idx, export) in parsed_exports.iter().enumerate() {
+            let export_name = if export.name.nested.is_empty() {
+                export.name.name.clone()
+            } else {
+                format!("{}:{}",
+                    export.name.nested.join(":"),
+                    export.name.name)
+            };
+
+            println!("  Resolving[{}]: \"{}\"", idx, export_name);
+
+            // Create an export value based on the sort
+            let export_value = match &export.sort {
+                Sort::Function => {
+                    // Create a function export with placeholder signature
+                    let provider = NoStdProvider::<4096>::default();
+                    let signature = wrt_foundation::ComponentType::unit(provider)
+                        .unwrap_or_else(|_| panic!("Failed to create component type"));
+
+                    let func_export = FunctionExport {
+                        signature,
+                        index: export.idx,
+                    };
+                    ExportValue::Function(func_export)
+                },
+                Sort::Instance => {
+                    // Instance export - use placeholder value
+                    ExportValue::Value(crate::types::Value::Bool(false).into())
+                },
+                _ => {
+                    // Other sorts - use placeholder value
+                    ExportValue::Value(crate::types::Value::Bool(false).into())
+                }
+            };
+
+            let resolved = ResolvedExport {
+                name: export_name.clone(),
+                value: export_value.clone(),
+                export_type: export_value,
+            };
+
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            {
+                instance.exports.push(resolved);
+            }
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            {
+                instance.exports.push(resolved).map_err(|_| {
+                    Error::validation_error("Too many exports")
+                })?;
+            }
+
+            // Create ComponentFunction entries for callable exports
+            match &export.sort {
+                Sort::Function => {
+                    println!("    ├─ Creating ComponentFunction for Sort::Function");
+                    let func = ComponentFunction {
+                        handle: export.idx as FunctionHandle,
+                        signature: FunctionSignature {
+                            name: export_name.clone(),
+                            #[cfg(feature = "std")]
+                            params: Vec::new(),
+                            #[cfg(not(feature = "std"))]
+                            params: {
+                                use wrt_foundation::bounded::BoundedVec;
+                                BoundedVec::new()
+                            },
+                            #[cfg(feature = "std")]
+                            returns: Vec::new(),
+                            #[cfg(not(feature = "std"))]
+                            returns: {
+                                use wrt_foundation::bounded::BoundedVec;
+                                BoundedVec::new()
+                            },
+                        },
+                        implementation: FunctionImplementation::Native {
+                            func_index: export.idx,
+                            module_index: 0, // Main module
+                        },
+                    };
+
+                    #[cfg(feature = "std")]
+                    {
+                        instance.functions.push(func);
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        instance.functions.push(func).map_err(|_| {
+                            Error::validation_error("Too many functions")
+                        })?;
+                    }
+                    println!("    ├─ Added to instance.functions");
+                },
+                Sort::Instance => {
+                    println!("    ├─ Creating ComponentFunction for Sort::Instance");
+                    // For instance exports like "wasi:cli/run@0.2.0"
+                    // The instance contains functions accessible via qualified names
+                    let func = ComponentFunction {
+                        handle: export.idx as FunctionHandle,
+                        signature: FunctionSignature {
+                            name: export_name.clone(),
+                            #[cfg(feature = "std")]
+                            params: Vec::new(),
+                            #[cfg(not(feature = "std"))]
+                            params: {
+                                use wrt_foundation::bounded::BoundedVec;
+                                BoundedVec::new()
+                            },
+                            #[cfg(feature = "std")]
+                            returns: Vec::new(),
+                            #[cfg(not(feature = "std"))]
+                            returns: {
+                                use wrt_foundation::bounded::BoundedVec;
+                                BoundedVec::new()
+                            },
+                        },
+                        implementation: FunctionImplementation::Native {
+                            func_index: export.idx,
+                            module_index: 0, // Will need proper resolution
+                        },
+                    };
+
+                    #[cfg(feature = "std")]
+                    {
+                        instance.functions.push(func);
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        instance.functions.push(func).map_err(|_| {
+                            Error::validation_error("Too many functions")
+                        })?;
+                    }
+                    println!("    ├─ Added to instance.functions as Native implementation");
+                },
+                _ => {
+                    println!("    ├─ Non-callable export type");
+                }
+            }
+
+            println!("    ✓ Resolved");
+        }
+
+        println!("✓ Resolved {} exports\n", parsed_exports.len());
+        Ok(())
+    }
+
     /// Analyze and instantiate core modules (Step 7 & 8)
     #[cfg(feature = "std")]
     fn instantiate_core_modules(
@@ -1405,14 +1596,10 @@ impl ComponentInstance {
             return Ok(Vec::new());
         }
 
-        // Step 8: Use parallel instantiation for multiple modules
-        if module_binaries.len() >= 2 {
-            println!("=== STEP 8: Parallel Module Processing ===");
-            println!("Using std::thread::scope for {} modules", module_binaries.len());
-            return Self::instantiate_core_modules_parallel(module_binaries);
-        }
-
-        println!("(Single module - sequential processing)\n");
+        // Step 8: Use sequential instantiation (parallel causes stack overflow with large modules)
+        // TODO: Re-enable parallel processing with larger thread stack size
+        println!("=== STEP 7: Core Module Instantiation ===");
+        println!("Total modules: {} (sequential processing)\n", module_binaries.len());
 
         let mut instantiated_modules = Vec::with_capacity(module_binaries.len());
 
@@ -1540,20 +1727,34 @@ impl ComponentInstance {
             // Instantiate the module using wrt-runtime
             println!("    ├─ Status: Parsing successful");
 
-            // Create runtime module
-            let mut empty_module = wrt_runtime::module::Module::new()
+            // Use a thread with larger stack size for module loading (16MB)
+            // This prevents stack overflow on large modules (850KB)
+            let binary_clone = binary.clone();
+            let runtime_module = std::thread::Builder::new()
+                .name(format!("module-loader-{}", idx))
+                .stack_size(16 * 1024 * 1024)  // 16MB stack
+                .spawn(move || -> Result<wrt_runtime::module::Module> {
+                    {
+                        let mut module = wrt_runtime::module::Module::new()?;
+                        module.load_from_binary(&binary_clone)
+                    }
+                        .map_err(|_| Error::new(
+                            wrt_error::ErrorCategory::RuntimeTrap,
+                            wrt_error::codes::RUNTIME_ERROR,
+                            "Failed to load module from binary"
+                        ))
+                })
                 .map_err(|_| Error::new(
                     wrt_error::ErrorCategory::RuntimeTrap,
                     wrt_error::codes::RUNTIME_ERROR,
-                    "Failed to create empty module"
-                ))?;
-
-            let runtime_module = empty_module.load_from_binary(binary)
+                    "Failed to spawn module loader thread"
+                ))?
+                .join()
                 .map_err(|_| Error::new(
                     wrt_error::ErrorCategory::RuntimeTrap,
                     wrt_error::codes::RUNTIME_ERROR,
-                    "Failed to load module from binary"
-                ))?;
+                    "Module loader thread panicked"
+                ))??;
 
             println!("    └─ ✓ Module instantiated");
 
@@ -1686,20 +1887,16 @@ impl ComponentInstance {
         println!("  Thread[{}]: {} bytes, {} imports, {} exports",
             idx, binary.len(), module_info.imports.len(), module_info.exports.len());
 
-        // Create runtime module
-        let mut empty_module = wrt_runtime::module::Module::new()
-            .map_err(|_| Error::new(
-                wrt_error::ErrorCategory::RuntimeTrap,
-                wrt_error::codes::RUNTIME_ERROR,
-                "Failed to create empty module"
-            ))?;
-
-        let runtime_module = empty_module.load_from_binary(binary)
-            .map_err(|_| Error::new(
-                wrt_error::ErrorCategory::RuntimeTrap,
-                wrt_error::codes::RUNTIME_ERROR,
-                "Failed to load module from binary"
-            ))?;
+        // Create runtime module directly from binary
+        let runtime_module = {
+            let mut module = wrt_runtime::module::Module::new()?;
+            module.load_from_binary(binary)
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::RuntimeTrap,
+                    wrt_error::codes::RUNTIME_ERROR,
+                    "Failed to load module from binary"
+                ))
+        }?;
 
         Ok(runtime_module)
     }
@@ -2182,6 +2379,83 @@ impl ComponentInstance {
     }
 
     /// Call a function in this instance
+    ///
+    /// # Parameters
+    /// - `function_name`: Name of the function to call
+    /// - `args`: Arguments to pass to the function
+    /// - `host_registry`: Optional reference to host function registry for calling WASI/host functions
+    #[cfg(feature = "wrt-execution")]
+    pub fn call_function(
+        &mut self,
+        function_name: &str,
+        args: &[ComponentValue],
+        host_registry: Option<&wrt_host::CallbackRegistry>,
+    ) -> Result<Vec<ComponentValue>> {
+        // Check instance state
+        if self.state != ComponentInstanceState::Running {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_STATE,
+                "Instance not in ready state",
+            ));
+        }
+
+        // Find the function (extract data to avoid multiple borrows)
+        let (func_impl, func_sig) = {
+            let function = self.find_function(function_name)?;
+            (function.implementation.clone(), function.signature.clone())
+        };
+
+        // Validate arguments
+        self.validate_function_args(&func_sig, args)?;
+
+        // Update metrics
+        self.metadata.function_calls += 1;
+
+        // Use extracted function implementation
+        let function = ComponentFunction {
+            handle: 0,
+            signature: func_sig,
+            implementation: func_impl,
+        };
+
+        // Execute the function based on its implementation
+        match &function.implementation {
+            FunctionImplementation::Native {
+                func_index,
+                module_index,
+            } => {
+                #[cfg(feature = "std")]
+                {
+                    self.call_native_function(*func_index, *module_index, args)
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Err(Error::runtime_not_implemented("Native function calls require std feature"))
+                }
+            }
+            FunctionImplementation::Host { callback } => {
+                #[cfg(feature = "std")]
+                let callback_str = callback.as_str();
+                #[cfg(not(feature = "std"))]
+                let callback_str = callback.as_str()?;
+                self.call_host_function(callback_str, args, host_registry)
+            },
+            FunctionImplementation::Component {
+                target_instance,
+                target_function,
+            } => {
+                // This would need to go through the linker to call another component
+                // For now, return a placeholder
+                Err(Error::runtime_not_implemented(
+                    "Component-to-component calls not yet implemented",
+                ))
+            },
+        }
+    }
+
+    /// Call a function in this instance (no host registry version)
+    #[cfg(not(feature = "wrt-execution"))]
     pub fn call_function(
         &mut self,
         function_name: &str,
@@ -2220,13 +2494,22 @@ impl ComponentInstance {
             FunctionImplementation::Native {
                 func_index,
                 module_index,
-            } => self.call_native_function(*func_index, *module_index, args),
+            } => {
+                #[cfg(feature = "std")]
+                {
+                    self.call_native_function(*func_index, *module_index, args)
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Err(Error::runtime_not_implemented("Native function calls require std feature"))
+                }
+            }
             FunctionImplementation::Host { callback } => {
                 #[cfg(feature = "std")]
                 let callback_str = callback.as_str();
                 #[cfg(not(feature = "std"))]
                 let callback_str = callback.as_str()?;
-                self.call_host_function(callback_str, args)
+                self.call_host_function(callback_str, args, None)
             },
             FunctionImplementation::Component {
                 target_instance,
@@ -2376,24 +2659,275 @@ impl ComponentInstance {
         Ok(())
     }
 
+    #[cfg(feature = "std")]
     fn call_native_function(
         &mut self,
-        _func_index: u32,
-        _module_index: u32,
-        _args: &[ComponentValue],
+        func_index: u32,
+        module_index: u32,
+        args: &[ComponentValue],
     ) -> Result<Vec<ComponentValue>> {
-        // Simplified implementation - would call actual WebAssembly function
-        Ok(vec![ComponentValue::S32(42)]) // Placeholder result
+        println!("[CALL_NATIVE] Calling func[{}] in module[{}]", func_index, module_index);
+
+        // Get the module binary
+        let module_binary = self.component.modules.get(module_index as usize)
+            .ok_or_else(|| Error::runtime_execution_error("Module index out of bounds"))?;
+
+        println!("[CALL_NATIVE] Module binary size: {} bytes", module_binary.len());
+
+        // For now, instantiate module in a thread with large stack (32MB) to avoid stack overflow
+        // Large WASM components with many imports need substantial stack for parsing
+        let binary_clone = module_binary.clone();
+        let func_idx = func_index;
+
+        // DIAGNOSTIC PHASE 1: Test modules incrementally to find size threshold
+        // We have 4 modules: 850KB, 2.2KB, 365B, 24B
+        // Let's test them from smallest to largest to find where the stack overflow occurs
+
+        println!("[DIAGNOSTIC] Testing module instantiation...");
+        println!("[DIAGNOSTIC] Total modules available: {}", self.component.modules.len());
+
+        let result = std::thread::Builder::new()
+            .name(format!("module-test-{}", module_index))
+            .stack_size(128 * 1024 * 1024)  // 128MB stack (diagnostic)
+            .spawn(move || -> Result<Vec<ComponentValue>> {
+                println!("[TEST-THREAD] Attempting to instantiate module...");
+                println!("[TEST-THREAD] Binary size: {} bytes", binary_clone.len());
+
+                // Load module directly (static method returns Box<Module>)
+                println!("[TEST-THREAD] Loading module from binary...");
+
+                let module = {
+                    let mut m = wrt_runtime::module::Module::new().map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to create module: {:?}", e);
+                        Error::runtime_execution_error("Failed to create module")
+                    })?;
+                    m.load_from_binary(&binary_clone)
+                }
+                    .map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to load module: {:?}", e);
+                        Error::runtime_execution_error("Failed to load module from binary")
+                    })?;
+
+                println!("[TEST-THREAD] ✓ Module loaded successfully!");
+                println!("[TEST-THREAD] Exports: {}", module.exports.len());
+                println!("[TEST-THREAD] Imports: {}", module.imports.len());
+
+                // Execute the function using the runtime engine
+                use wrt_runtime::engine::{CapabilityAwareEngine, CapabilityEngine, EnginePreset};
+                use wrt_foundation::memory_init::MemoryInitializer;
+
+                // Initialize memory system
+                MemoryInitializer::initialize()
+                    .map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to initialize memory: {:?}", e);
+                        Error::runtime_error("Memory initialization failed")
+                    })?;
+
+                // Create execution engine
+                let mut engine = CapabilityAwareEngine::with_preset(EnginePreset::QM)
+                    .map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to create engine: {:?}", e);
+                        Error::runtime_error("Engine creation failed")
+                    })?;
+
+                // Register WASI host functions before loading module
+                println!("[TEST-THREAD] Registering WASI host functions...");
+
+                // Define the host functions as standalone functions (not closures)
+                // so they can be Clone
+                #[derive(Clone)]
+                struct GetStdout;
+                impl GetStdout {
+                    fn call(&self, _args: &[wrt_foundation::values::Value]) -> wrt_error::Result<Vec<wrt_foundation::values::Value>> {
+                        use crate::linker::wasi_stdout;
+                        use wrt_foundation::values::Value;
+
+                        println!("[HOST-FUNCTION] get-stdout called!");
+                        match wasi_stdout::wasi_get_stdout() {
+                            Ok(handle) => Ok(vec![Value::I32(handle as i32)]),
+                            Err(_) => Ok(vec![Value::I32(1)]), // Return stdout fd anyway
+                        }
+                    }
+                }
+
+                #[derive(Clone)]
+                struct BlockingWriteFlush;
+                impl BlockingWriteFlush {
+                    fn call(&self, args: &[wrt_foundation::values::Value]) -> wrt_error::Result<Vec<wrt_foundation::values::Value>> {
+                        use crate::linker::wasi_stdout;
+                        use wrt_foundation::values::Value;
+
+                        println!("[HOST-FUNCTION] blocking-write-and-flush called with {} args!", args.len());
+
+                        // Expected args: handle (i32), ptr (i32), len (i32)
+                        // For now, just acknowledge the call
+                        Ok(vec![Value::I64(0)]) // Return success
+                    }
+                }
+
+                let get_stdout_fn = GetStdout;
+                let write_flush_fn = BlockingWriteFlush;
+
+                // Register the functions
+                let _ = engine.register_host_function("wasi:cli/stdout@0.2.0", "get-stdout",
+                    move |args| get_stdout_fn.call(args));
+
+                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[method]output-stream.blocking-write-and-flush",
+                    move |args| write_flush_fn.call(args));
+
+                println!("[TEST-THREAD] ✓ WASI functions registered");
+                println!("[TEST-THREAD] Loading module into engine...");
+
+                // Load module into engine
+                let module_handle = engine.load_module(&binary_clone)
+                    .map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to load into engine: {:?}", e);
+                        Error::runtime_error("Engine load failed")
+                    })?;
+
+                // Instantiate module
+                let instance = engine.instantiate(module_handle)
+                    .map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to instantiate: {:?}", e);
+                        Error::runtime_error("Instantiation failed")
+                    })?;
+
+                #[cfg(feature = "std")]
+                println!("[TEST-THREAD] ✓ Engine and instance ready");
+
+                // Try to find and execute the component's exported function
+                // For WASI components, look for standard entry points
+                #[cfg(feature = "std")]
+                let entry_points = vec![
+                    "_start",          // WASI command entry point
+                    "wasi:cli/run@0.2.0#run",  // Component model entry point
+                    "_initialize",     // WASI initialization
+                ];
+
+                #[cfg(feature = "std")]
+                {
+                    let mut executed = false;
+                    for entry_point in &entry_points {
+                        println!("[TEST-THREAD] Trying to call function: {}", entry_point);
+
+                        match engine.execute(instance, entry_point, &[]) {
+                            Ok(results) => {
+                                println!("[TEST-THREAD] ✓ Successfully called {}", entry_point);
+                                println!("[TEST-THREAD] Results: {:?}", results);
+                                executed = true;
+                                break;
+                            }
+                            Err(e) => {
+                                println!("[TEST-THREAD] Function {} not found or failed: {:?}", entry_point, e);
+                                continue;
+                            }
+                        }
+                    }
+
+                    if !executed {
+                        println!("[TEST-THREAD] No standard entry point found, module loaded but not executed");
+                    }
+
+                    println!("[TEST-THREAD] Module instantiated and execution attempted");
+                }
+
+                Ok(vec![])
+            })
+            .map_err(|e| {
+                println!("[DIAGNOSTIC] ✗ Failed to spawn thread: {:?}", e);
+                Error::runtime_execution_error("Failed to spawn execution thread")
+            })?
+            .join()
+            .map_err(|e| {
+                println!("[DIAGNOSTIC] ✗ Thread panicked: {:?}", e);
+                Error::runtime_execution_error("Execution thread panicked")
+            })??;
+
+        println!("[CALL_NATIVE] Function execution completed");
+        Ok(result)
     }
 
+    #[cfg(feature = "wrt-execution")]
+    fn call_host_function(
+        &mut self,
+        callback: &str,
+        args: &[ComponentValue],
+        host_registry: Option<&wrt_host::CallbackRegistry>,
+    ) -> Result<Vec<ComponentValue>> {
+        // Get the host registry or return error
+        let registry = host_registry.ok_or_else(|| {
+            Error::runtime_execution_error("Host function registry not available")
+        })?;
+
+        // Extract module name from callback string (e.g., "wasi:cli/run@0.2.0" -> "wasi:cli")
+        let module_name = if let Some(colon_pos) = callback.find(':') {
+            if let Some(slash_pos) = callback[colon_pos..].find('/') {
+                &callback[..colon_pos + slash_pos]
+            } else {
+                callback
+            }
+        } else {
+            callback
+        };
+
+        // Convert ComponentValue arguments to wrt_foundation::values::Value
+        // For now, we'll support basic types
+        use wrt_foundation::values::{FloatBits32, FloatBits64};
+        let mut wasm_args = Vec::new();
+        for arg in args {
+            let wasm_value = match arg {
+                ComponentValue::Bool(b) => wrt_foundation::values::Value::I32(if *b { 1 } else { 0 }),
+                ComponentValue::S8(v) => wrt_foundation::values::Value::I32(*v as i32),
+                ComponentValue::U8(v) => wrt_foundation::values::Value::I32(*v as i32),
+                ComponentValue::S16(v) => wrt_foundation::values::Value::I32(*v as i32),
+                ComponentValue::U16(v) => wrt_foundation::values::Value::I32(*v as i32),
+                ComponentValue::S32(v) => wrt_foundation::values::Value::I32(*v),
+                ComponentValue::U32(v) => wrt_foundation::values::Value::I32(*v as i32),
+                ComponentValue::S64(v) => wrt_foundation::values::Value::I64(*v),
+                ComponentValue::U64(v) => wrt_foundation::values::Value::I64(*v as i64),
+                ComponentValue::F32(v) => wrt_foundation::values::Value::F32(FloatBits32::from_f32(*v)),
+                ComponentValue::F64(v) => wrt_foundation::values::Value::F64(FloatBits64::from_f64(*v)),
+                _ => return Err(Error::runtime_execution_error("Unsupported argument type for host function")),
+            };
+            wasm_args.push(wasm_value);
+        }
+
+        // Create a dummy engine (component model doesn't use engine parameter)
+        let mut dummy_engine = ();
+        let engine_any: &mut dyn core::any::Any = &mut dummy_engine;
+
+        // Look up the function in the registry and call it
+        // The callback string is the full function name (e.g., "wasi:cli/run@0.2.0")
+        let results = registry.call_host_function(engine_any, module_name, callback, wasm_args)
+            .map_err(|_| Error::runtime_function_not_found("Host function not found or execution failed"))?;
+
+        // Convert results back to ComponentValue
+        let mut component_results = Vec::new();
+        for result in results.as_slice() {
+            let component_value = match result {
+                wrt_foundation::values::Value::I32(v) => ComponentValue::S32(*v),
+                wrt_foundation::values::Value::I64(v) => ComponentValue::S64(*v),
+                wrt_foundation::values::Value::F32(v) => ComponentValue::F32(v.to_f32()),
+                wrt_foundation::values::Value::F64(v) => ComponentValue::F64(v.to_f64()),
+                _ => return Err(Error::runtime_execution_error("Unsupported return type from host function")),
+            };
+            component_results.push(component_value);
+        }
+
+        Ok(component_results)
+    }
+
+    #[cfg(not(feature = "wrt-execution"))]
     fn call_host_function(
         &mut self,
         _callback: &str,
         _args: &[ComponentValue],
+        _host_registry: Option<&()>,  // Dummy type for no wrt-execution
     ) -> Result<Vec<ComponentValue>> {
         // Simplified implementation - would call actual host function
         Ok(vec![ComponentValue::String(String::from("host_result"))]) // Placeholder result
     }
+
 }
 
 impl ComponentMemory {

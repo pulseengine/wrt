@@ -207,9 +207,15 @@ impl RuntimeModuleBuilder for ModuleBuilder {
 
         // For now, create empty function with proper types
         // TODO: Implement proper bytecode parsing with compatible types
-        let provider1 = create_runtime_provider()?;
+        #[cfg(feature = "std")]
+        let instructions = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let instructions = {
+            let provider1 = create_runtime_provider()?;
+            wrt_foundation::bounded::BoundedVec::new(provider1)?
+        };
+
         let provider2 = create_runtime_provider()?;
-        let instructions = wrt_foundation::bounded::BoundedVec::new(provider1)?;
         let locals = wrt_foundation::bounded::BoundedVec::new(provider2)?;
 
         // Create the function with proper types
@@ -371,7 +377,7 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
         )?;
 
         let decoder_module = wrt_decoder::decode_module(binary)?;
-        Module::from_wrt_module(&decoder_module)
+        Module::from_wrt_module(&decoder_module).map(|boxed| *boxed)  // Dereference Box
         // Scope drops here, memory available for reuse
     }
     #[cfg(all(not(feature = "decoder"), feature = "std"))]

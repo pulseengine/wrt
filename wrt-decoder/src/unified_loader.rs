@@ -117,8 +117,8 @@ pub enum ExportType {
 pub struct WasmInfo {
     /// Detected format type
     pub format_type:     WasmFormat,
-    /// Module information (if core module)
-    pub module_info:     Option<ModuleInfo>,
+    /// Module information (if core module) - Boxed to avoid stack overflow with large modules
+    pub module_info:     Option<Box<ModuleInfo>>,
     /// Component information (if component)
     pub component_info:  Option<ComponentInfo>,
     /// Built-in imports found in the binary
@@ -153,6 +153,7 @@ impl WasmInfo {
     pub fn require_module_info(&self) -> Result<&ModuleInfo> {
         self.module_info
             .as_ref()
+            .map(|boxed| boxed.as_ref())  // Dereference the Box
             .ok_or_else(|| Error::validation_type_mismatch("WASM binary is not a core module"))
     }
 
@@ -205,8 +206,14 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
     match format_type {
         WasmFormat::CoreModule => {
             // Parse as core module
-            info.module_info = Some(extract_module_info(binary)?);
+            println!("[LOAD_WASM_UNIFIED] Calling extract_module_info...");
+            let module_info = extract_module_info(binary)?;
+            println!("[LOAD_WASM_UNIFIED] extract_module_info returned successfully");
+            info.module_info = Some(Box::new(module_info));  // Box to avoid stack overflow
+            println!("[LOAD_WASM_UNIFIED] Boxed module_info");
+            println!("[LOAD_WASM_UNIFIED] Calling extract_builtin_imports...");
             info.builtin_imports = extract_builtin_imports(binary)?;
+            println!("[LOAD_WASM_UNIFIED] extract_builtin_imports returned successfully");
         },
         WasmFormat::Component => {
             // Parse as component
@@ -295,6 +302,8 @@ fn extract_module_info(binary: &[u8]) -> Result<ModuleInfo> {
         offset = section_end;
     }
 
+    println!("[PARSER] extract_module_info: Parsing complete, returning result");
+    println!("[PARSER] Final counts - imports: {}, exports: {}", info.imports.len(), info.exports.len());
     Ok(info)
 }
 
@@ -334,7 +343,12 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
     let (count, bytes_read) = read_leb128_u32(data, offset)?;
     offset += bytes_read;
 
-    for _ in 0..count {
+    println!("[PARSER] parse_import_section_info: {} imports to parse", count);
+
+    for i in 0..count {
+        if i % 10 == 0 {
+            println!("[PARSER] Processing import {}/{}", i, count);
+        }
         // Parse module name
         let (module_len, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
@@ -451,7 +465,12 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
     let (count, bytes_read) = read_leb128_u32(data, offset)?;
     offset += bytes_read;
 
-    for _ in 0..count {
+    println!("[PARSER] parse_export_section_info: {} exports to parse", count);
+
+    for i in 0..count {
+        if i % 10 == 0 {
+            println!("[PARSER] Processing export {}/{}", i, count);
+        }
         // Parse export name
         let (name_len, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;

@@ -315,13 +315,17 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x01 => {
                 // Section 1: Core Module
                 let (modules, _) = parse::parse_core_module_section(section_data)?;
-                component.modules = modules;
+                #[cfg(feature = "std")]
+                println!("[DECODER] Section 0x01 (Core Module): parsed {} modules", modules.len());
+                component.modules.extend(modules);
+                #[cfg(feature = "std")]
+                println!("[DECODER] Total modules in component: {}", component.modules.len());
             },
             0x02 => {
                 // Section 2: Core Instances
                 match parse::parse_core_instance_section(section_data) {
                     Ok((instances, _)) => {
-                        component.core_instances = instances;
+                        component.core_instances.extend(instances);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -332,7 +336,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 3: Core Types
                 match parse::parse_core_type_section(section_data) {
                     Ok((types, _)) => {
-                        component.core_types = types;
+                        component.core_types.extend(types);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -343,7 +347,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 4: Component (nested component definitions)
                 match parse::parse_component_section(section_data) {
                     Ok((components, _)) => {
-                        component.components = components;
+                        component.components.extend(components);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -355,7 +359,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 5: Instances
                 match parse::parse_instance_section(section_data) {
                     Ok((instances, _)) => {
-                        component.instances = instances;
+                        component.instances.extend(instances);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -366,7 +370,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 6: Aliases
                 match parse::parse_alias_section(section_data) {
                     Ok((aliases, _)) => {
-                        component.aliases = aliases;
+                        component.aliases.extend(aliases);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -377,7 +381,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 7: Types
                 match parse::parse_component_type_section(section_data) {
                     Ok((types, _)) => {
-                        component.types = types;
+                        component.types.extend(types);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -389,7 +393,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 8: Canonical (Canon ABI operations: lift, lower, resource)
                 match parse::parse_canon_section(section_data) {
                     Ok((canons, _)) => {
-                        component.canonicals = canons;
+                        component.canonicals.extend(canons);
                     },
                     Err(_) => {
                         // Continue parsing other sections
@@ -410,13 +414,13 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x0A => {
                 // Section 10: Imports
                 let (imports, _) = parse::parse_import_section(section_data)?;
-                component.imports = imports;
+                component.imports.extend(imports);
             },
             0x0B => {
                 // Section 11: Exports
                 match parse::parse_export_section(section_data) {
                     Ok((exports, _)) => {
-                        component.exports = exports;
+                        component.exports.extend(exports);
                     },
                     Err(_) => {
                         // Continue - not critical for initial testing
@@ -427,7 +431,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 12: Values (constant values)
                 match parse::parse_value_section(section_data) {
                     Ok((values, _)) => {
-                        component.values = values;
+                        component.values.extend(values);
                     },
                     Err(_) => {
                         // Continue parsing other sections

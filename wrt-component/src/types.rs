@@ -112,7 +112,6 @@ pub struct ComponentMetadata {
 ///
 /// SW-REQ-ID: REQ_TYPE_001 - Unified type definitions
 /// SW-REQ-ID: REQ_SAFETY_002 - Type safety enforcement
-#[derive(Debug, Clone)]
 pub struct ComponentInstance {
     /// Unique instance ID
     pub id:               u32,
@@ -168,6 +167,24 @@ pub struct ComponentInstance {
     #[cfg(not(any(feature = "std",)))]
     pub module_instances:
         BoundedVec<ModuleInstance, 64>,
+}
+
+impl fmt::Debug for ComponentInstance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ComponentInstance")
+            .field("id", &self.id)
+            .field("component", &self.component)
+            .field("state", &self.state)
+            .field("resource_manager", &self.resource_manager)
+            .field("memory", &self.memory)
+            .field("metadata", &self.metadata)
+            .field("functions", &self.functions.len())
+            .field("imports", &self.imports.len())
+            .field("exports", &self.exports.len())
+            .field("resource_tables", &self.resource_tables.len())
+            .field("module_instances", &self.module_instances.len())
+            .finish()
+    }
 }
 
 impl ComponentInstance {

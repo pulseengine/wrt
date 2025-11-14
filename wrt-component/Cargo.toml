@@ -50,6 +50,9 @@ std = [
     "wrt-foundation/wrt-allocator",
     "dep:log"]
 
+# WRT execution engine support (enables host function registry integration)
+wrt-execution = []
+
 # Allocation support for no_std environments (DEPRECATED - use bounded-allocation instead)
 alloc = [
     "bounded-allocation",

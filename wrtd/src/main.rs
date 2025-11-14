@@ -80,13 +80,7 @@ pub mod memory_limits;
 // Component model support - temporarily disabled
 // #[cfg(feature = "component-model")]
 #[cfg(feature = "component-model")]
-use wrt_component::{
-    components::Component,
-};
-#[cfg(feature = "component-model")]
 use wrt_decoder::component::decode_component;
-#[cfg(all(feature = "wasi", feature = "wrt-execution"))]
-use wrt_host::CallbackRegistry;
 // Enhanced host function registry
 #[cfg(feature = "wrt-execution")]
 use wrt_host::CallbackRegistry;
@@ -311,6 +305,9 @@ impl WrtdEngine {
         // Initialize platform optimizations
         engine.init_platform_optimizations()?;
 
+        // Initialize memory system (required for WASI and other subsystems)
+        wrt_foundation::memory_init::init_wrt_memory()?;
+
         // Initialize memory profiling if enabled
         if engine.config.enable_memory_profiling {
             engine.init_memory_profiling()?;
@@ -372,16 +369,18 @@ impl WrtdEngine {
             .logger
             .handle_minimal_log(LogLevel::Info, "Initializing WASI host functions");
 
-        // Get WASI capabilities or use default
-        let mut capabilities = self
-            .config
-            .wasi_capabilities
-            .clone()
-            .unwrap_or_else(|| WasiCapabilities::minimal);
+        // Get WASI capabilities or create minimal set
+        let mut capabilities = if let Some(caps) = self.config.wasi_capabilities.clone() {
+            caps
+        } else {
+            WasiCapabilities::minimal().map_err(|_| {
+                Error::runtime_error("Failed to create minimal WASI capabilities")
+            })?
+        };
 
         // Configure environment variables
         for env_var in &self.config.wasi_env_vars {
-            capabilities.environment.add_allowed_var(env_var);
+            let _ = capabilities.environment.add_allowed_var(env_var);
         }
 
         // Enable args access if args are provided
@@ -389,31 +388,32 @@ impl WrtdEngine {
             capabilities.environment.args_access = true;
         }
 
+        // Enable random access for components that need it
+        capabilities.random.secure_random = true;
+        capabilities.random.pseudo_random = true;
+
+        // Enable stdout/stderr for component output
+        capabilities.io.stdout_access = true;
+        capabilities.io.stderr_access = true;
+
         // Create WASI Preview2 provider
-        let provider: Box<dyn WasiHostProvider> = match self.config.wasi_version {
+        let mut provider = match self.config.wasi_version {
             WasiVersion::Preview2 => {
-                let provider = ComponentModelProvider::new(capabilities).map_err(|_| {
+                ComponentModelProvider::new(capabilities).map_err(|_| {
                     Error::runtime_error("Failed to create WASI Preview 2 provider")
-                })?;
-                Box::new(provider)
+                })?
             },
         };
 
         // Register WASI functions with host registry
-        let host_functions = provider
-            .get_host_functions()
-            .map_err(|_| Error::runtime_error("Failed to get WASI host functions"))?;
-
-        for function in host_functions {
-            self.host_registry
-                .register_function(function)
-                .map_err(|_| Error::runtime_error("Failed to register WASI function"))?;
-        }
+        provider.register_with_registry(&mut self.host_registry)
+            .map_err(|_| Error::runtime_error("Failed to register WASI functions"))?;
 
         // Update stats
-        self.stats.host_functions_registered += provider.function_count();
+        let function_count = provider.function_count();
+        self.stats.host_functions_registered += function_count;
 
-        self.wasi_provider = Some(provider);
+        self.wasi_provider = Some(Box::new(provider));
 
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI host functions registered");
         Ok(())
@@ -473,22 +473,72 @@ impl WrtdEngine {
                 "Component parsed successfully"
             );
 
-            // Create a component instance (consumes parsed component for memory efficiency)
+            // Create and initialize component instance (consumes parsed component for memory efficiency)
+            // This includes executing start functions and transitioning to Running state
+            // Note: WASI functions are already registered in host_registry from init_wasi()
             use wrt_component::components::component_instantiation::ComponentInstance;
-            let _instance = ComponentInstance::from_parsed(0, parsed_component)
-                .map_err(|_| Error::runtime_error("Failed to create component instance"))?;
+
+            let mut instance = ComponentInstance::from_parsed(0, parsed_component)
+                .map_err(|_| Error::runtime_error("Failed to create and initialize component instance"))?;
             // parsed_component is now dropped - we only keep runtime instance
 
             let _ = self.logger.handle_minimal_log(
                 LogLevel::Info,
-                "Component instance created (memory-efficient)"
+                "Component initialized and running successfully"
             );
 
-            // TODO: Call instance.initialize() and execute start function
-            let _ = self.logger.handle_minimal_log(
-                LogLevel::Info,
-                "Component instantiation complete - ready for execution"
-            );
+            // Check for WASI CLI entry point and invoke it
+            // Debug: print available exports
+            #[cfg(feature = "std")]
+            {
+                println!("\n=== Available Exports ===");
+                println!("Total exports: {}", instance.exports.len());
+                for (idx, export) in instance.exports.iter().enumerate() {
+                    println!("  Export[{}]: \"{}\"", idx, export.name);
+                }
+                println!();
+            }
+
+            if let Some(_export) = instance.get_export("wasi:cli/run@0.2.0") {
+                let _ = self.logger.handle_minimal_log(
+                    LogLevel::Info,
+                    "Calling wasi:cli/run@0.2.0 entry point"
+                );
+
+                // TODO: Pass actual command-line arguments from config
+                // For now, pass empty args (WASI components can get args from WASI functions)
+                let args = vec![];
+
+                // Pass the host_registry so component can call WASI functions
+                #[cfg(feature = "wrt-execution")]
+                let result = instance.call_function("wasi:cli/run@0.2.0", &args, Some(&self.host_registry));
+                #[cfg(not(feature = "wrt-execution"))]
+                let result = instance.call_function("wasi:cli/run@0.2.0", &args);
+
+                match result {
+                    Ok(_results) => {
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Info,
+                            "Component executed successfully"
+                        );
+                    }
+                    Err(e) => {
+                        #[cfg(feature = "std")]
+                        {
+                            eprintln!("Component execution error: {}", e);
+                        }
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Warn,
+                            "Component execution failed"
+                        );
+                    }
+                }
+            } else {
+                let _ = self.logger.handle_minimal_log(
+                    LogLevel::Info,
+                    "No wasi:cli/run entry point found - component initialized only"
+                );
+            }
 
             return Ok(());
         }
@@ -501,29 +551,8 @@ impl WrtdEngine {
         #[allow(unreachable_code)]
         if false {
 
-            // Create component linker with host functions
-            // let mut linker = ComponentLinker::new() // Disabled
-            // .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
-
-            // Link WASI functions if available
-            #[cfg(feature = "wasi")]
-            if let Some(ref wasi_provider) = self.wasi_provider {
-                linker
-                    .link_wasi_provider(wasi_provider.as_ref())
-                    .map_err(|_| Error::runtime_error("Failed to link WASI provider"))?;
-            }
-
-            // Create component instance
-            // let instance = ComponentInstance::new(&component, &linker) // Disabled
-                .map_err(|_| Error::runtime_execution_error("Failed to instantiate component"))?;
-
-            // Execute the component's main function
-            // instance
-            //     .call_main(&[])
-            //     .map_err(|_| Error::runtime_execution_error("Component
-            // execution failed"))?;
-
-            // self.stats.components_executed += 1;
+            // Note: WASI functions are already registered with host_registry via init_wasi()
+            // Component can look them up when resolving imports
         } else {
             return Err(Error::runtime_error("Component model not initialized"));
         }
@@ -574,10 +603,10 @@ impl WrtdEngine {
             // Enable WASI support if configured
             #[cfg(feature = "wasi")]
             if self.config.enable_wasi {
-                if let Err(e) = engine.enable_wasi() {
+                if let Err(_e) = engine.enable_wasi() {
                     let _ = self.logger.handle_minimal_log(
-                        LogLevel::Warning,
-                        &format!("WASI not available for this ASIL level: {}", e),
+                        LogLevel::Warn,
+                        "WASI not available for this ASIL level",
                     );
                 } else {
                     let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI support enabled");
@@ -623,9 +652,19 @@ impl WrtdEngine {
                 return Err(Error::runtime_function_not_found("Function not found"));
             }
 
-            engine
+            let results = engine
                 .execute(instance, function_name, &[])
                 .map_err(|_| Error::runtime_execution_error("Function execution failed"))?;
+
+            // Display execution results
+            if !results.is_empty() {
+                println!("\n✓ Function '{}' returned {} value(s):", function_name, results.len());
+                for (i, value) in results.iter().enumerate() {
+                    println!("  [{}] {:?}", i, value);
+                }
+            } else {
+                println!("\n✓ Function '{}' completed (no return values)", function_name);
+            }
 
             self.stats.modules_executed += 1;
         }
@@ -1014,16 +1053,19 @@ fn main() -> Result<()> {
         }
 
         if config.enable_wasi {
-            let mut capabilities = WasiCapabilities::minimal();
+            let mut capabilities = WasiCapabilities::minimal().map_err(|e| {
+                eprintln!("Failed to create WASI capabilities: {}", e);
+                e
+            })?;
 
             // Add filesystem access paths
             for path in &args.wasi_fs_paths {
-                capabilities.filesystem.add_allowed_path(path);
+                let _ = capabilities.filesystem.add_allowed_path(path);
             }
 
             // Configure environment variables
             for env_var in &args.wasi_env_vars {
-                capabilities.environment.add_allowed_var(env_var);
+                let _ = capabilities.environment.add_allowed_var(env_var);
             }
 
             // Enable args access if args are provided

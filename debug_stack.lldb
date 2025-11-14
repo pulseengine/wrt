@@ -1,0 +1,20 @@
+# LLDB script to debug stack overflow
+# Run with: lldb -s debug_stack.lldb
+
+# Set target
+file ./target/debug/wrtd
+
+# Set arguments
+settings set -- target.run-args --fuel 100000 --memory 10000000 ./file_ops_component.wasm
+
+# Run the program
+run
+
+# When it crashes, print backtrace
+bt all
+
+# Show the top 50 frames with details
+bt 50
+
+# Quit
+quit

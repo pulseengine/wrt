@@ -349,10 +349,25 @@ impl ComponentCommunicationStrategy {
         let target_str = routing_info.target_component.as_str().unwrap_or("");
         let func_str = routing_info.function_name.as_str().unwrap_or("");
 
-        if let Some(policy) = self.security_policies.get(source_str) {
+        // Find policy by iterating (since we can't use get with different string types)
+        let policy = self.security_policies.iter()
+            .find(|(k, _)| {
+                #[cfg(feature = "std")]
+                { k.as_str() == source_str }
+                #[cfg(not(feature = "std"))]
+                { k.as_str().ok() == Some(source_str) }
+            })
+            .map(|(_, v)| v);
+
+        if let Some(policy) = policy {
             // Check allowed targets
             if !policy.allowed_targets.is_empty()
-                && !policy.allowed_targets.iter().any(|t| t.as_str() == target_str)
+                && !policy.allowed_targets.iter().any(|t| {
+                    #[cfg(feature = "std")]
+                    { t.as_str() == target_str }
+                    #[cfg(not(feature = "std"))]
+                    { t.as_str().ok() == Some(target_str) }
+                })
             {
                 return Err(Error::security_access_denied(
                     "Component not allowed as target",
@@ -436,7 +451,10 @@ impl ComponentCommunicationStrategy {
                     conversions_performed: 0,
                 },
                 success: false,
+                #[cfg(feature = "std")]
                 error_message: Some("Parameter data too large".to_string()),
+                #[cfg(not(feature = "std"))]
+                error_message: Some(wrt_foundation::BoundedString::try_from_str("Parameter data too large").unwrap_or_default()),
             });
         }
 

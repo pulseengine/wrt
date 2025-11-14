@@ -263,11 +263,11 @@ impl ComponentModelProvider {
     pub fn new(capabilities: WasiCapabilities) -> Result<Self> {
         let resource_manager = WasiResourceManager::new()?;
 
-        // Initialize function cache
+        // Initialize function cache (None = not built yet)
         #[cfg(feature = "std")]
-        let cached_functions = Some(Vec::with_capacity(0));
+        let cached_functions = None;
         #[cfg(not(feature = "std"))]
-        let cached_functions = Some(0);
+        let cached_functions = None;
 
         Ok(Self {
             capabilities,

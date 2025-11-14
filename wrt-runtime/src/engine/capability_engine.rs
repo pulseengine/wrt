@@ -242,7 +242,14 @@ impl CapabilityAwareEngine {
         let instances = DirectMap::new();
 
         // Create the inner stackless engine
-        let inner_engine = StacklessEngine::new();
+        let mut inner_engine = StacklessEngine::new();
+
+        // Pass the host registry to the inner engine if available
+        #[cfg(feature = "std")]
+        if let Some(ref registry) = host_registry {
+            use std::sync::Arc as StdArc;
+            inner_engine.set_host_registry(StdArc::new(registry.clone()));
+        }
 
         Ok(Self {
             inner: inner_engine,
@@ -321,15 +328,27 @@ impl CapabilityAwareEngine {
         func: F,
     ) -> Result<()>
     where
-        F: Fn(&[Value]) -> Result<Vec<Value>> + Send + Sync + 'static,
+        F: Fn(&[Value]) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
     {
         #[cfg(feature = "std")]
         {
-            if let Some(ref _mut_registry) = self.host_registry {
-                // TODO: Implement host function registration when CallbackRegistry API is
-                // available The function signature needs to match what
-                // HostFunctionHandler expects For now, return success as
-                // placeholder
+            if let Some(ref mut registry) = self.host_registry {
+                use wrt_host::CloneableFn;
+                use core::any::Any;
+
+                // Wrap the user's function to match the HostFunctionHandler signature
+                // HostFunctionHandler expects: Fn(&mut dyn Any, Vec<Value>) -> Result<Vec<Value>>
+                let wrapped = move |_engine: &mut dyn Any, args: Vec<Value>| -> Result<Vec<Value>> {
+                    func(&args)
+                };
+
+                // Create a CloneableFn from the wrapped closure
+                let handler = CloneableFn::new_with_args(wrapped);
+
+                // Register with the CallbackRegistry
+                registry.register_host_function(module_name, func_name, handler);
+
+                eprintln!("[ENGINE] Registered host function: {}::{}", module_name, func_name);
                 Ok(())
             } else {
                 Err(Error::not_supported_unsupported_operation(
@@ -473,6 +492,64 @@ impl CapabilityEngine for CapabilityAwareEngine {
             .get(&instance_handle)
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
+        // Check if this is a directly callable host function by name
+        // This allows test code to directly invoke WASI functions
+        #[cfg(feature = "std")]
+        {
+            // Try to split func_name into module::function format
+            if func_name.contains("::") {
+                let parts: Vec<&str> = func_name.split("::").collect();
+                if parts.len() >= 2 {
+                    let module_str = parts[0];
+                    let func_str = parts[1..].join("::");
+
+                    if let Some(ref registry) = self.host_registry {
+                        if registry.has_host_function(module_str, &func_str) {
+                            eprintln!("[DISPATCH] Direct call to host function: {}::{}", module_str, func_str);
+
+                            let mut dummy_engine = ();
+                            let results = registry.call_host_function(
+                                &mut dummy_engine as &mut dyn core::any::Any,
+                                module_str,
+                                &func_str,
+                                args.to_vec()
+                            )?;
+
+                            eprintln!("[DISPATCH] Host function returned {} values", results.len());
+                            return Ok(results);
+                        }
+                    }
+                }
+            }
+
+            // Also try wasi: prefix format like "wasi:cli/stdout@0.2.0"
+            if func_name.starts_with("wasi:") {
+                // Extract just the function name part (last component after #)
+                if let Some(hash_pos) = func_name.rfind('#') {
+                    let module_part = &func_name[..hash_pos];
+                    let func_part = &func_name[hash_pos+1..];
+
+                    if let Some(ref registry) = self.host_registry {
+                        if registry.has_host_function(module_part, func_part) {
+                            eprintln!("[DISPATCH] WASI host function call: {}#{}", module_part, func_part);
+
+                            let mut dummy_engine = ();
+                            let results = registry.call_host_function(
+                                &mut dummy_engine as &mut dyn core::any::Any,
+                                module_part,
+                                func_part,
+                                args.to_vec()
+                            )?;
+
+                            eprintln!("[DISPATCH] Host function returned {} values", results.len());
+                            return Ok(results);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Not a host function - execute normally
         // Find the function by name using the new function resolution
         let func_idx = instance.module().validate_function_call(func_name)?;
 
