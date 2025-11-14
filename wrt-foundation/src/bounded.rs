@@ -552,6 +552,55 @@ impl From<crate::Error> for BoundedError {
     }
 }
 
+/// Helper struct for getting serialized size with specialization support.
+/// Uses autoref specialization trick to prefer StaticSerializedSize over Default.
+struct SizeHelper<T>(core::marker::PhantomData<T>);
+
+/// Helper trait for size calculation
+trait GetSize {
+    fn get(&self) -> usize;
+}
+
+/// Low priority implementation: uses Default (single reference)
+impl<T> GetSize for &SizeHelper<T>
+where
+    T: crate::traits::ToBytes + Default,
+{
+    #[inline]
+    fn get(&self) -> usize {
+        if core::mem::size_of::<T>() == 0 {
+            0 // ZST
+        } else {
+            T::default().serialized_size()
+        }
+    }
+}
+
+/// High priority implementation: uses StaticSerializedSize (double reference)
+impl<T> GetSize for &&SizeHelper<T>
+where
+    T: crate::traits::StaticSerializedSize,
+{
+    #[inline]
+    fn get(&self) -> usize {
+        T::SERIALIZED_SIZE
+    }
+}
+
+/// Helper function to get serialized size without requiring Default for large types.
+/// Tries StaticSerializedSize first (via autoref specialization), falls back to T::default().serialized_size().
+#[inline]
+fn get_item_serialized_size<T>() -> usize
+where
+    T: crate::traits::ToBytes + Default,
+{
+    // Autoref specialization: creates a reference that will auto-deref to
+    // the best matching impl. If T: StaticSerializedSize, &&SizeHelper matches;
+    // otherwise &SizeHelper matches.
+    let helper = SizeHelper::<T>(core::marker::PhantomData);
+    (&helper).get()
+}
+
 /// A bounded stack with a fixed maximum capacity and verification.
 ///
 /// This stack ensures it never exceeds the specified capacity `N_ELEMENTS`.
@@ -616,7 +665,7 @@ where
     /// calculations if not handled carefully. For ZSTs, N_ELEMENTS should
     /// typically be 0, or specific ZST handling should be ensured.
     pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> Result<Self> {
-        let item_serialized_size = T::default().serialized_size();
+        let item_serialized_size = get_item_serialized_size::<T>();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             // Prevent division by zero or logical errors if N_ELEMENTS > 0 but items are
             // ZSTs. Or, if this is allowed, ensure memory_needed is handled
@@ -3442,7 +3491,7 @@ where
     fn serialized_size(&self) -> usize {
         // Length (u32) + checksum + items
         4 + self.checksum.serialized_size()
-            + (self.length * if self.length > 0 { T::default().serialized_size() } else { 0 })
+            + (self.length * if self.length > 0 { get_item_serialized_size::<T>() } else { 0 })
     }
 
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(

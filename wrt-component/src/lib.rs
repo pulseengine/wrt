@@ -73,6 +73,7 @@ pub mod instance;
 #[cfg(not(feature = "std"))]
 pub mod instance_no_std;
 pub mod instantiation;
+pub mod linker;
 pub mod memory_layout;
 #[cfg(feature = "safety-critical")]
 pub mod memory_limits;

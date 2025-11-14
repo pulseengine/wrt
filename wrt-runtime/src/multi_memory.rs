@@ -211,7 +211,7 @@ impl MultiMemoryInstance {
         Ok(Self {
             memory_index,
             memory_type,
-            memory: Arc::new(WrtMutex::new(memory)),
+            memory: Arc::new(WrtMutex::new(*memory)),  // Dereference Box<Memory>
             stats: Arc::new(WrtMutex::new(MultiMemoryStats::new())),
         })
     }

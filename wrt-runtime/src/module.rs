@@ -138,11 +138,15 @@ fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WrtExpr {
     /// Parsed instructions (simplified representation)
+    /// In std mode, use Vec to avoid serialization issues with Instruction enum
+    #[cfg(feature = "std")]
+    pub instructions: Vec<wrt_foundation::types::Instruction<RuntimeProvider>>,
+    #[cfg(not(feature = "std"))]
     pub instructions: wrt_foundation::bounded::BoundedVec<
         wrt_foundation::types::Instruction<RuntimeProvider>,
         1024,
         RuntimeProvider,
-    >, // Parsed instructions
+    >,
 }
 
 impl WrtExpr {
@@ -602,10 +606,18 @@ pub struct Module {
     /// Imported functions, tables, memories, and globals
     pub imports:         ModuleImports,
     /// Function definitions
+    /// In std mode, use Vec since Function has variable size (contains BoundedVecs for locals/instructions)
+    #[cfg(feature = "std")]
+    pub functions:       Vec<Function>,
+    #[cfg(not(feature = "std"))]
     pub functions:       BoundedFunctionVec,
     /// Table instances
     pub tables:          BoundedTableVec,
     /// Memory instances
+    /// In std mode, use Vec to avoid deserialization on every access
+    #[cfg(feature = "std")]
+    pub memories:        Vec<MemoryWrapper>,
+    #[cfg(not(feature = "std"))]
     pub memories:        BoundedMemoryVec,
     /// Global variable instances
     pub globals:         BoundedGlobalVec,
@@ -628,6 +640,17 @@ pub struct Module {
 }
 
 impl Module {
+    /// Push memory (uniform API for std and no_std)
+    pub fn push_memory(&mut self, memory: MemoryWrapper) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            self.memories.push(memory);
+            Ok(())
+        }
+        #[cfg(not(feature = "std"))]
+        self.memories.push(memory)
+    }
+
     /// Creates a truly empty module with properly initialized providers
     /// This is used to avoid circular dependencies during engine initialization
     pub fn empty() -> Self {
@@ -649,8 +672,14 @@ impl Module {
             #[cfg(not(feature = "std"))]
             types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             imports:         BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            functions:       Vec::new(),
+            #[cfg(not(feature = "std"))]
             functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            memories:        Vec::new(),
+            #[cfg(not(feature = "std"))]
             memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -762,19 +791,16 @@ impl Module {
             }
         };
 
+        #[cfg(feature = "std")]
+        let functions = {
+            eprintln!("INFO: Bootstrap functions Vec created successfully");
+            Vec::new()
+        };
+        #[cfg(not(feature = "std"))]
         let functions = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                {
-                    eprintln!("INFO: Bootstrap functions BoundedVec created successfully");
-                    eprintln!("DEBUG: Functions BoundedVec item_serialized_size field not accessible - need to check constructor");
-                }
-                vec
-            }
+            Ok(vec) => vec,
             Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap functions BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create functions collection")
+                panic!("Bootstrap failed - cannot create functions collection: {:?}", e)
             }
         };
         
@@ -791,16 +817,16 @@ impl Module {
             }
         };
 
+        #[cfg(feature = "std")]
+        let memories = {
+            eprintln!("INFO: Bootstrap memories Vec created successfully");
+            Vec::new()
+        };
+        #[cfg(not(feature = "std"))]
         let memories = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap memories BoundedVec created successfully");
-                vec
-            }
+            Ok(vec) => vec,
             Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap memories BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create memories collection")
+                panic!("Bootstrap failed - cannot create memories collection: {:?}", e)
             }
         };
 
@@ -961,8 +987,14 @@ impl Module {
             #[cfg(not(feature = "std"))]
             types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             imports:         BoundedMap::new(runtime_provider1)?,
+            #[cfg(feature = "std")]
+            functions:       Vec::new(),
+            #[cfg(not(feature = "std"))]
             functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            memories:        Vec::new(),
+            #[cfg(not(feature = "std"))]
             memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -1103,7 +1135,7 @@ impl Module {
                 // Now try the function push
                 eprintln!("DEBUG: Now testing Function push - this will likely fail due to Function::default() complexity");
             }
-            runtime_module.functions.push(runtime_func)?;
+            runtime_module.push_function(runtime_func)?;
             #[cfg(feature = "std")]
             eprintln!("DEBUG: Successfully pushed runtime function {}", func_idx);
         }
@@ -1160,6 +1192,61 @@ impl Module {
 
             #[cfg(feature = "std")]
             eprintln!("DEBUG: Successfully inserted export into map");
+        }
+
+        // Convert memories - NOW ENABLED (stack overflow fixed)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} memories from wrt_module", wrt_module.memories.len());
+        for (mem_idx, memory) in wrt_module.memories.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] Converting memory type...", mem_idx);
+
+            let memory_type = to_core_memory_type(*memory);
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] About to call Memory::new()...", mem_idx);
+
+            let memory_instance = Memory::new(memory_type)?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] Memory::new() succeeded, about to create MemoryWrapper...", mem_idx);
+
+            let wrapper = MemoryWrapper::new(memory_instance);
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] MemoryWrapper created, about to push to runtime_module.memories...", mem_idx);
+
+            runtime_module.push_memory(wrapper)?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] Successfully pushed to runtime_module.memories", mem_idx);
+        }
+
+        // Convert globals - NOW ENABLED (stack overflow fixed)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} globals from wrt_module", wrt_module.globals.len());
+        for global in &wrt_module.globals {
+            let initial_value = match global.global_type.value_type {
+                wrt_foundation::types::ValueType::I32 => wrt_foundation::values::Value::I32(0),
+                wrt_foundation::types::ValueType::I64 => wrt_foundation::values::Value::I64(0),
+                wrt_foundation::types::ValueType::F32 => wrt_foundation::values::Value::F32(
+                    wrt_foundation::values::FloatBits32(0),
+                ),
+                wrt_foundation::types::ValueType::F64 => wrt_foundation::values::Value::F64(
+                    wrt_foundation::values::FloatBits64(0),
+                ),
+                _ => {
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Unsupported global type",
+                    ))
+                },
+            };
+            let new_global = Global::new(
+                global.global_type.value_type,
+                global.global_type.mutable,
+                initial_value,
+            )?;
+            runtime_module.globals.push(GlobalWrapper(Arc::new(new_global)))?;
         }
 
         #[cfg(feature = "std")]
@@ -1263,7 +1350,7 @@ impl Module {
 
         // Convert functions
         for function in &wrt_module.functions {
-            runtime_module.functions.push(Function {
+            runtime_module.push_function(Function {
                 type_idx: function.type_idx,
                 locals:   crate::type_conversion::convert_locals_to_bounded(&function.locals)?,
                 // Body conversion would happen here
@@ -1491,7 +1578,7 @@ impl Module {
             // TODO: Properly convert the instruction sequence
             let runtime_body = WrtExpr::default();
 
-            runtime_module.functions.push(Function {
+            runtime_module.push_function(Function {
                 type_idx,
                 locals: runtime_locals,
                 body: runtime_body,
@@ -1621,7 +1708,21 @@ impl Module {
         if idx as usize >= self.functions.len() {
             return None;
         }
-        self.functions.get(idx as usize).ok()
+        #[cfg(feature = "std")]
+        return self.functions.get(idx as usize).cloned();
+        #[cfg(not(feature = "std"))]
+        return self.functions.get(idx as usize).ok();
+    }
+
+    /// Helper method to push function - abstracts Vec vs BoundedVec difference
+    pub fn push_function(&mut self, func: Function) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            self.functions.push(func);
+            Ok(())
+        }
+        #[cfg(not(feature = "std"))]
+        self.functions.push(func).map_err(|e| e.into())
     }
 
     /// Gets a function type by index
@@ -1647,6 +1748,18 @@ impl Module {
     }
 
     /// Gets a memory by index
+    #[cfg(feature = "std")]
+    pub fn get_memory(&self, idx: usize) -> Result<&MemoryWrapper> {
+        self.memories.get(idx).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::MEMORY_NOT_FOUND,
+                "Memory index out of bounds",
+            )
+        })
+    }
+
+    #[cfg(not(feature = "std"))]
     pub fn get_memory(&self, idx: usize) -> Result<MemoryWrapper> {
         self.memories.get(idx).map_err(|_| {
             Error::new(
@@ -2005,7 +2118,7 @@ impl Module {
             body: WrtExpr::default(),
         };
 
-        self.functions.push(function)?;
+        self.push_function(function)?;
         Ok(())
     }
 
@@ -2017,7 +2130,7 @@ impl Module {
 
     /// Add a memory to the module
     pub fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<()> {
-        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+        self.push_memory(MemoryWrapper::new(Memory::new(to_core_memory_type(
             memory_type,
         ))?))?;
         Ok(())
@@ -2159,11 +2272,22 @@ impl Module {
             body,
         };
         if func_idx as usize == self.functions.len() {
-            self.functions.push(func_entry)?;
+            self.push_function(func_entry)?;
         } else {
-            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| {
-                Error::runtime_component_limit_exceeded("Failed to set function entry")
-            })?;
+            #[cfg(feature = "std")]
+            {
+                if (func_idx as usize) < self.functions.len() {
+                    self.functions[func_idx as usize] = func_entry;
+                } else {
+                    return Err(Error::runtime_component_limit_exceeded("Function index out of bounds"));
+                }
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| {
+                    Error::runtime_component_limit_exceeded("Failed to set function entry")
+                })?;
+            }
         }
         Ok(())
     }
@@ -2555,8 +2679,7 @@ impl Module {
                 shared: false,
             };
             runtime_module
-                .memories
-                .push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+                .push_memory(MemoryWrapper::new(Memory::new(to_core_memory_type(
                     memory_type,
                 ))?))?;
         }
@@ -2970,8 +3093,8 @@ impl AsRef<Arc<Memory>> for MemoryWrapper {
 
 impl MemoryWrapper {
     /// Create a new memory wrapper
-    pub fn new(memory: Memory) -> Self {
-        Self(Arc::new(memory))
+    pub fn new(memory: Box<Memory>) -> Self {
+        Self(Arc::from(memory))
     }
 
     /// Get a reference to the inner memory

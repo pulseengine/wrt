@@ -301,7 +301,13 @@ impl CrossComponentResourceSharingManager {
         Ok(Self {
             handle_manager:       HandleRepresentationManager::new().map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Failed to create handle manager".to_string(),
+                #[cfg(not(feature = "std"))]
+                #[cfg(feature = "std")]
+                message:          "Failed to create handle manager".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Failed to create handle manager",
                 source_component: None,
                 target_component: None,
                 resource:         None,
@@ -309,7 +315,10 @@ impl CrossComponentResourceSharingManager {
             type_registry:        GenerativeTypeRegistry::new(),
             bounds_checker:       TypeBoundsChecker::new().map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Failed to create bounds checker".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Failed to create bounds checker",
                 source_component: None,
                 target_component: None,
                 resource:         None,
@@ -317,7 +326,10 @@ impl CrossComponentResourceSharingManager {
             virt_manager:         None,
             post_return_registry: PostReturnRegistry::new(64).map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Failed to create post return registry".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Failed to create post return registry",
                 source_component: None,
                 target_component: None,
                 resource:         None,
@@ -390,7 +402,10 @@ impl CrossComponentResourceSharingManager {
         self.sharing_agreements.insert(agreement_id, agreement).map_err(|_| {
             ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Too many sharing agreements".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Too many sharing agreements",
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource:         None,
@@ -431,7 +446,10 @@ impl CrossComponentResourceSharingManager {
             .get_representation(resource_handle)
             .map_err(|e| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceNotFound,
+                #[cfg(feature = "std")]
                 message:          "Component not found".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Component not found",
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource:         Some(resource_handle),
@@ -441,7 +459,10 @@ impl CrossComponentResourceSharingManager {
         if !resource_types.contains(&resource_type) {
             return Err(ResourceSharingError {
                 kind:             ResourceSharingErrorKind::TypeMismatch,
+                #[cfg(feature = "std")]
                 message:          "Resource type not covered by agreement".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Resource type not covered by agreement",
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource:         Some(resource_handle),
@@ -459,7 +480,10 @@ impl CrossComponentResourceSharingManager {
             )
             .map_err(|e| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::TransferFailed,
+                #[cfg(feature = "std")]
                 message:          "Component not found".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Component not found",
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource:         Some(resource_handle),
@@ -541,7 +565,10 @@ impl CrossComponentResourceSharingManager {
                 .get(&resource_handle)
                 .ok_or(ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
+                    #[cfg(feature = "std")]
                     message:          "Resource not shared".to_string(),
+                    #[cfg(not(feature = "std"))]
+                    message:          "Resource not shared",
                     source_component: Some(component_id),
                     target_component: None,
                     resource:         Some(resource_handle),
@@ -553,7 +580,10 @@ impl CrossComponentResourceSharingManager {
         {
             return Err(ResourceSharingError {
                 kind:             ResourceSharingErrorKind::PermissionDenied,
+                #[cfg(feature = "std")]
                 message:          "Component does not have access to shared resource".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Component does not have access to shared resource",
                 source_component: Some(component_id),
                 target_component: None,
                 resource:         Some(resource_handle),
@@ -564,7 +594,10 @@ impl CrossComponentResourceSharingManager {
         if shared_resource.is_locked.load(Ordering::Acquire) {
             return Err(ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ConcurrentAccess,
+                #[cfg(feature = "std")]
                 message:          "Resource is locked".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Resource is locked",
                 source_component: Some(component_id),
                 target_component: None,
                 resource:         Some(resource_handle),
@@ -580,7 +613,10 @@ impl CrossComponentResourceSharingManager {
             .perform_operation(component_id, resource_handle, operation)
             .map_err(|e| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::TransferFailed,
+                #[cfg(feature = "std")]
                 message:          "Component not found".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Component not found",
                 source_component: Some(component_id),
                 target_component: None,
                 resource:         Some(resource_handle),
@@ -614,7 +650,10 @@ impl CrossComponentResourceSharingManager {
             let shared_resource = self.shared_resources.get_mut(&resource_handle).ok_or({
                 ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
+                    #[cfg(feature = "std")]
                     message:          "Resource not shared".to_string(),
+                    #[cfg(not(feature = "std"))]
+                    message:          "Resource not shared",
                     source_component: Some(component_id),
                     target_component: None,
                     resource:         Some(resource_handle),
@@ -638,7 +677,10 @@ impl CrossComponentResourceSharingManager {
         self.handle_manager.drop_handle(component_id, resource_handle).map_err(|e| {
             ResourceSharingError {
                 kind:             ResourceSharingErrorKind::TransferFailed,
+                #[cfg(feature = "std")]
                 message:          "Component not found".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Component not found",
                 source_component: Some(component_id),
                 target_component: None,
                 resource:         Some(resource_handle),
@@ -664,7 +706,10 @@ impl CrossComponentResourceSharingManager {
 
         self.sharing_policies.push(policy).map_err(|_| ResourceSharingError {
             kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+            #[cfg(feature = "std")]
             message:          "Too many sharing policies".to_string(),
+            #[cfg(not(feature = "std"))]
+            message:          "Too many sharing policies",
             source_component: None,
             target_component: None,
             resource:         None,
@@ -680,7 +725,10 @@ impl CrossComponentResourceSharingManager {
     ) -> ResourceSharingResult<()> {
         self.callbacks.insert(name, callback).map_err(|_| ResourceSharingError {
             kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+            #[cfg(feature = "std")]
             message:          "Too many callbacks".to_string(),
+            #[cfg(not(feature = "std"))]
+            message:          "Too many callbacks",
             source_component: None,
             target_component: None,
             resource:         None,
@@ -721,7 +769,10 @@ impl CrossComponentResourceSharingManager {
         if source == target {
             return Err(ResourceSharingError {
                 kind:             ResourceSharingErrorKind::InvalidSharingAgreement,
+                #[cfg(feature = "std")]
                 message:          "Cannot share with self".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Cannot share with self",
                 source_component: Some(source),
                 target_component: Some(target),
                 resource:         None,
@@ -732,7 +783,10 @@ impl CrossComponentResourceSharingManager {
         if self.would_create_circular_dependency(source, target) {
             return Err(ResourceSharingError {
                 kind:             ResourceSharingErrorKind::CircularDependency,
+                #[cfg(feature = "std")]
                 message:          "Would create circular dependency".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Would create circular dependency",
                 source_component: Some(source),
                 target_component: Some(target),
                 resource:         None,
@@ -794,7 +848,10 @@ impl CrossComponentResourceSharingManager {
                     if types.contains(resource_type) {
                         return Err(ResourceSharingError {
                             kind:             ResourceSharingErrorKind::PolicyViolation,
+                            #[cfg(feature = "std")]
                             message:          "Resource type denied by policy".to_string(),
+                            #[cfg(not(feature = "std"))]
+                            message:          "Resource type denied by policy",
                             source_component: Some(source),
                             target_component: Some(target),
                             resource:         None,
@@ -807,7 +864,10 @@ impl CrossComponentResourceSharingManager {
                     if !types.contains(resource_type) {
                         return Err(ResourceSharingError {
                             kind:             ResourceSharingErrorKind::PolicyViolation,
+                            #[cfg(feature = "std")]
                             message:          "Resource type not allowed by policy".to_string(),
+                            #[cfg(not(feature = "std"))]
+                            message:          "Resource type not allowed by policy",
                             source_component: Some(source),
                             target_component: Some(target),
                             resource:         None,
@@ -868,7 +928,10 @@ impl CrossComponentResourceSharingManager {
                 shared_resource.shared_with.push(shared_with).map_err(|_| {
                     ResourceSharingError {
                         kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                        #[cfg(feature = "std")]
                         message:          "Too many components sharing resource".to_string(),
+                        #[cfg(not(feature = "std"))]
+                        message:          "Too many components sharing resource",
                         source_component: Some(owner),
                         target_component: Some(shared_with),
                         resource:         Some(handle),
@@ -880,7 +943,10 @@ impl CrossComponentResourceSharingManager {
                 shared_resource.sharing_agreements.push(agreement_id).map_err(|_| {
                     ResourceSharingError {
                         kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                        #[cfg(feature = "std")]
                         message:          "Too many agreements for resource".to_string(),
+                        #[cfg(not(feature = "std"))]
+                        message:          "Too many agreements for resource",
                         source_component: Some(owner),
                         target_component: Some(shared_with),
                         resource:         Some(handle),
@@ -894,7 +960,10 @@ impl CrossComponentResourceSharingManager {
             let resource_type =
                 self.type_registry.get_resource_type(resource_handle).ok_or(ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceNotFound,
+                    #[cfg(feature = "std")]
                     message:          "Component not found".to_string(),
+                    #[cfg(not(feature = "std"))]
+                    message:          "Component not found",
                     source_component: Some(owner),
                     target_component: Some(shared_with),
                     resource:         Some(handle),
@@ -903,7 +972,10 @@ impl CrossComponentResourceSharingManager {
             let mut shared_with_vec = StaticVec::new();
             shared_with_vec.push(shared_with).map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Failed to create shared_with list".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Failed to create shared_with list",
                 source_component: Some(owner),
                 target_component: Some(shared_with),
                 resource:         Some(handle),
@@ -912,7 +984,10 @@ impl CrossComponentResourceSharingManager {
             let mut agreements_vec = StaticVec::new();
             agreements_vec.push(agreement_id).map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Failed to create agreements list".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Failed to create agreements list",
                 source_component: Some(owner),
                 target_component: Some(shared_with),
                 resource:         Some(handle),
@@ -931,7 +1006,10 @@ impl CrossComponentResourceSharingManager {
             self.shared_resources.insert(handle, shared_resource).map_err(|_| {
                 ResourceSharingError {
                     kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                    #[cfg(feature = "std")]
                     message:          "Too many shared resources".to_string(),
+                    #[cfg(not(feature = "std"))]
+                    message:          "Too many shared resources",
                     source_component: Some(owner),
                     target_component: Some(shared_with),
                     resource:         Some(handle),
@@ -950,7 +1028,10 @@ impl CrossComponentResourceSharingManager {
         // For now, we'll add it to the queue
         self.transfer_queue.push(request).map_err(|_| ResourceSharingError {
             kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+            #[cfg(feature = "std")]
             message:          "Transfer queue full".to_string(),
+            #[cfg(not(feature = "std"))]
+            message:          "Transfer queue full",
             source_component: None,
             target_component: None,
             resource:         None,
@@ -975,7 +1056,10 @@ impl CrossComponentResourceSharingManager {
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
         self.sharing_agreements.get(&agreement_id).ok_or(ResourceSharingError {
             kind:             ResourceSharingErrorKind::InvalidSharingAgreement,
+            #[cfg(feature = "std")]
             message:          "Agreement not found".to_string(),
+            #[cfg(not(feature = "std"))]
+            message:          "Agreement not found",
             source_component: None,
             target_component: None,
             resource:         None,
@@ -1004,7 +1088,10 @@ impl CrossComponentResourceSharingManager {
 
             agreement.metadata.audit_log.push(entry).map_err(|_| ResourceSharingError {
                 kind:             ResourceSharingErrorKind::ResourceLimitExceeded,
+                #[cfg(feature = "std")]
                 message:          "Audit log full".to_string(),
+                #[cfg(not(feature = "std"))]
+                message:          "Audit log full",
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource:         None,

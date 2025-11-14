@@ -27,15 +27,30 @@ use crate::bounded_runtime_infra::{
     RuntimeProvider,
 };
 type InstructionProvider = RuntimeProvider;
+
+// Match WrtExpr type: Vec in std mode, BoundedVec in no_std mode
+#[cfg(feature = "std")]
+type InstructionVec = Vec<Instruction<InstructionProvider>>;
+#[cfg(not(feature = "std"))]
 type InstructionVec = BoundedVec<Instruction<InstructionProvider>, 1024, InstructionProvider>;
+
 type TargetVec = BoundedVec<u32, 256, InstructionProvider>;
 
 /// Parse WebAssembly bytecode into runtime instructions with a provided memory provider
 pub fn parse_instructions_with_provider(
-    bytecode: &[u8], 
+    bytecode: &[u8],
     provider: InstructionProvider
 ) -> Result<InstructionVec> {
+    // Validate that bytecode is not empty - WebAssembly requires at least an End instruction
+    if bytecode.is_empty() {
+        return Err(Error::parse_error("Empty bytecode - WebAssembly requires at least an End instruction"));
+    }
+
     let provider_clone = provider.clone();
+
+    #[cfg(feature = "std")]
+    let mut instructions = Vec::new();
+    #[cfg(not(feature = "std"))]
     let mut instructions = BoundedVec::new(provider)
         .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
 
@@ -43,9 +58,14 @@ pub fn parse_instructions_with_provider(
     while offset < bytecode.len() {
         let (instruction, consumed) = parse_instruction_with_provider(bytecode, offset, &provider_clone)?;
         let is_end = matches!(instruction, Instruction::End);
+
+        #[cfg(feature = "std")]
+        instructions.push(instruction);
+        #[cfg(not(feature = "std"))]
         instructions
             .push(instruction)
             .map_err(|_| Error::capacity_limit_exceeded("Too many instructions in function"))?;
+
         offset += consumed;
 
         // Check for end instruction
@@ -86,8 +106,6 @@ fn parse_instruction_with_provider(
 
     let opcode = bytecode[offset];
     let mut consumed = 1;
-    #[cfg(feature = "std")]
-    eprintln!("DEBUG: Parsing instruction opcode: 0x{:02X}", opcode);
 
     let instruction = match opcode {
         // Control instructions
@@ -238,6 +256,106 @@ fn parse_instruction_with_provider(
             let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
             consumed += bytes1 + bytes2;
             Instruction::F64Load(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x2C => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Load8S(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x2D => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Load8U(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x2E => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Load16S(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x2F => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I32Load16U(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x30 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load8S(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x31 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load8U(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x32 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load16S(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x33 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load16U(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x34 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load32S(MemArg {
+                align_exponent: align,
+                offset,
+                memory_index: 0,
+            })
+        },
+        0x35 => {
+            let (align, bytes1) = read_leb128_u32(bytecode, offset + 1)?;
+            let (offset, bytes2) = read_leb128_u32(bytecode, offset + 1 + bytes1)?;
+            consumed += bytes1 + bytes2;
+            Instruction::I64Load32U(MemArg {
                 align_exponent: align,
                 offset,
                 memory_index: 0,
@@ -413,6 +531,19 @@ fn parse_instruction_with_provider(
         0x4E => Instruction::I32GeS,
         0x4F => Instruction::I32GeU,
 
+        // i64 comparisons
+        0x50 => Instruction::I64Eqz,
+        0x51 => Instruction::I64Eq,
+        0x52 => Instruction::I64Ne,
+        0x53 => Instruction::I64LtS,
+        0x54 => Instruction::I64LtU,
+        0x55 => Instruction::I64GtS,
+        0x56 => Instruction::I64GtU,
+        0x57 => Instruction::I64LeS,
+        0x58 => Instruction::I64LeU,
+        0x59 => Instruction::I64GeS,
+        0x5A => Instruction::I64GeU,
+
         // i64 operations
         0x7C => Instruction::I64Add,
         0x7D => Instruction::I64Sub,
@@ -472,6 +603,12 @@ fn parse_instruction_with_provider(
         0xBB => Instruction::F64PromoteF32,
 
         _ => {
+            // Show context around the unknown opcode
+            let context_start = offset.saturating_sub(5);
+            let context_end = (offset + 10).min(bytecode.len());
+            let context = &bytecode[context_start..context_end];
+            eprintln!("[INSTRUCTION_PARSER] Unknown opcode: 0x{:02X} at offset {}", opcode, offset);
+            eprintln!("[INSTRUCTION_PARSER] Context: {:02X?}", context);
             return Err(Error::parse_error("Unknown instruction opcode"));
         },
     };

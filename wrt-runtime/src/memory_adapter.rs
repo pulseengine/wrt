@@ -268,7 +268,7 @@ impl SafeMemoryAdapter {
         let memory = Memory::new(memory_type)?;
 
         // Create a new adapter with the memory
-        let arc_memory = Arc::new(memory);
+        let arc_memory: Arc<Memory> = Arc::from(memory);  // Convert Box<Memory> to Arc<Memory>
 
         #[cfg(feature = "std")]
         let provider = {

@@ -662,7 +662,15 @@ impl CallRouter {
         target_instance: &mut ComponentInstance,
     ) -> Result<Vec<ComponentValue>> {
         // Execute the function in the target instance
-        target_instance.call_function(function_name, parameters)
+        // Note: Component-to-component calls don't need host registry
+        #[cfg(feature = "wrt-execution")]
+        {
+            target_instance.call_function(function_name, parameters, None)
+        }
+        #[cfg(not(feature = "wrt-execution"))]
+        {
+            target_instance.call_function(function_name, parameters)
+        }
     }
 }
 

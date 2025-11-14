@@ -102,6 +102,8 @@ impl MemoryInitializer {
             (CrateId::TestRegistry, CRATE_BUDGETS[14]),
             (CrateId::VerificationTool, CRATE_BUDGETS[15]),
             (CrateId::Unknown, CRATE_BUDGETS[16]),
+            (CrateId::Wasi, CRATE_BUDGETS[17]),
+            (CrateId::WasiComponents, CRATE_BUDGETS[18]),
         ];
 
         // Legacy coordinator removed - using capability-only system

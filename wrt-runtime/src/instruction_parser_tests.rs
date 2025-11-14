@@ -27,22 +27,26 @@ mod tests {
 
     #[test]
     fn test_parse_i32_const() {
-        let bytecode = vec![0x41, 0x7F, 0x0B]; // i32.const 127 + end
+        // 127 in signed LEB128 requires 2 bytes: 0xFF 0x00
+        // (single byte 0x7F = -1 in signed LEB128)
+        let bytecode = vec![0x41, 0xFF, 0x00, 0x0B]; // i32.const 127 + end
         let instructions = parse_instructions(&bytecode).unwrap();
         assert_eq!(instructions.len(), 2);
         match instructions.get(0).unwrap() {
-            Instruction::I32Const(val) => assert_eq!(val, 127),
+            Instruction::I32Const(val) => assert_eq!(*val, 127),
             _ => panic!("Expected I32Const instruction"),
         }
     }
 
     #[test]
     fn test_parse_i64_const() {
-        let bytecode = vec![0x42, 0x64, 0x0B]; // i64.const 100 + end
+        // 100 in signed LEB128 requires 2 bytes: 0xE4 0x00
+        // (single byte 0x64 would be sign-extended to negative)
+        let bytecode = vec![0x42, 0xE4, 0x00, 0x0B]; // i64.const 100 + end
         let instructions = parse_instructions(&bytecode).unwrap();
         assert_eq!(instructions.len(), 2);
         match instructions.get(0).unwrap() {
-            Instruction::I64Const(val) => assert_eq!(val, 100),
+            Instruction::I64Const(val) => assert_eq!(*val, 100),
             _ => panic!("Expected I64Const instruction"),
         }
     }
@@ -53,7 +57,7 @@ mod tests {
         let instructions = parse_instructions(&bytecode).unwrap();
         assert_eq!(instructions.len(), 2);
         match instructions.get(0).unwrap() {
-            Instruction::LocalGet(idx) => assert_eq!(idx, 2),
+            Instruction::LocalGet(idx) => assert_eq!(*idx, 2),
             _ => panic!("Expected LocalGet instruction"),
         }
     }
@@ -64,7 +68,7 @@ mod tests {
         let instructions = parse_instructions(&bytecode).unwrap();
         assert_eq!(instructions.len(), 2);
         match instructions.get(0).unwrap() {
-            Instruction::LocalSet(idx) => assert_eq!(idx, 3),
+            Instruction::LocalSet(idx) => assert_eq!(*idx, 3),
             _ => panic!("Expected LocalSet instruction"),
         }
     }

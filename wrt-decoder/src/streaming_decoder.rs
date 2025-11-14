@@ -399,12 +399,14 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process memory section
     fn process_memory_section(&mut self, data: &[u8]) -> Result<()> {
+        use wrt_format::binary::read_leb128_u32;
+
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
-        #[allow(unused_assignments)]
-        {
-            offset += bytes_read;
-        }
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("[MEMORY_SECTION] Processing {} memories", count);
 
         // Check memory count against platform limits
         if count > 1 && !self.platform_limits.max_components > 0 {
@@ -414,8 +416,38 @@ impl<'a> StreamingDecoder<'a> {
         }
 
         // Process each memory one at a time
-        for _ in 0..count {
-            // Parse memory type and validate against platform limits
+        for i in 0..count {
+            // Parse limits flag (0x00 = min only, 0x01 = min and max, 0x03 = min/max/shared)
+            let flags = data[offset];
+            offset += 1;
+
+            let (min, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            let max = if flags & 0x01 != 0 {
+                let (max_val, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+                Some(max_val)
+            } else {
+                None
+            };
+
+            let shared = (flags & 0x02) != 0;
+
+            #[cfg(feature = "std")]
+            eprintln!("[MEMORY_SECTION] Memory {}: min={}, max={:?}, shared={}", i, min, max, shared);
+
+            // Create memory type
+            let memory_type = wrt_foundation::types::MemoryType {
+                limits: wrt_foundation::types::Limits { min, max },
+                shared,
+            };
+
+            // Add to module
+            self.module.memories.push(memory_type);
+
+            #[cfg(feature = "std")]
+            eprintln!("[MEMORY_SECTION] Added memory {}, total memories: {}", i, self.module.memories.len());
         }
 
         Ok(())
@@ -544,22 +576,70 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
+        #[cfg(feature = "std")]
+        eprintln!("[CODE_SECTION] Processing {} function bodies", count);
+
+        // Code bodies are for module-defined functions only (not imports)
+        // So code[i] goes to function[num_imports + i]
+        let num_imports = self.module.imports.len();
+
         // Process each function body one at a time
         for i in 0..count {
             let (body_size, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
-            // Instead of loading entire body, we could process instructions
-            // one at a time for even lower memory usage
+            let body_start = offset;
             let body_end = offset + body_size as usize;
             if body_end > data.len() {
                 return Err(Error::parse_error("Function body extends beyond section"));
             }
 
-            // For now, copy the body - but this could be optimized further
-            if let Some(func) = self.module.functions.get_mut(i as usize) {
-                let body_data = &data[offset..body_end];
-                func.code.extend_from_slice(body_data);
+            // Parse locals first (they come before instructions in the function body)
+            let mut body_offset = 0;
+            let (local_count, local_bytes) = read_leb128_u32(&data[body_start..body_end], body_offset)?;
+            body_offset += local_bytes;
+
+            #[cfg(feature = "std")]
+            eprintln!("[CODE_SECTION] Function {}: {} local groups", i, local_count);
+
+            // Code section index i corresponds to module-defined function at index (num_imports + i)
+            let func_index = num_imports + i as usize;
+            if let Some(func) = self.module.functions.get_mut(func_index) {
+                // Parse local variable declarations
+                for _ in 0..local_count {
+                    let (count, bytes) = read_leb128_u32(&data[body_start..body_end], body_offset)?;
+                    body_offset += bytes;
+
+                    if body_offset >= body_size as usize {
+                        return Err(Error::parse_error("Unexpected end of function body"));
+                    }
+
+                    let value_type = data[body_start + body_offset];
+                    body_offset += 1;
+
+                    // Convert to ValueType and add to locals
+                    let vt = match value_type {
+                        0x7F => wrt_foundation::types::ValueType::I32,
+                        0x7E => wrt_foundation::types::ValueType::I64,
+                        0x7D => wrt_foundation::types::ValueType::F32,
+                        0x7C => wrt_foundation::types::ValueType::F64,
+                        _ => return Err(Error::parse_error("Invalid local type")),
+                    };
+
+                    // Add 'count' locals of this type
+                    for _ in 0..count {
+                        let _ = func.locals.push(vt);
+                    }
+                }
+
+                // Now copy only the instruction bytes (after locals, before the implicit 'end')
+                let instructions_start = body_start + body_offset;
+                let instructions_data = &data[instructions_start..body_end];
+                func.code.extend_from_slice(instructions_data);
+
+                #[cfg(feature = "std")]
+                eprintln!("[CODE_SECTION] Function {}: {} locals, {} instruction bytes",
+                         i, func.locals.len(), func.code.len());
             }
 
             offset = body_end;

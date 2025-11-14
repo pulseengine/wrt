@@ -340,9 +340,11 @@ impl Default for ThreadExecutionStats {
 pub struct ThreadManager {
     /// Thread configuration
     pub config:     ThreadConfig,
-    /// Active thread contexts using bounded collections
-    // TODO: Replace with proper bounded collection once ThreadExecutionContext implements required
-    // traits
+    /// Active thread contexts
+    /// In std mode, use Vec to avoid stack overflow with large arrays
+    #[cfg(feature = "std")]
+    threads: Vec<Option<ThreadExecutionContext>>,
+    #[cfg(not(feature = "std"))]
     threads: [Option<ThreadExecutionContext>; MAX_MANAGED_THREADS],
     /// Next thread ID to assign
     next_thread_id: ThreadId,
@@ -355,6 +357,9 @@ impl ThreadManager {
     pub fn new(config: ThreadConfig) -> Result<Self> {
         Ok(Self {
             config,
+            #[cfg(feature = "std")]
+            threads: (0..MAX_MANAGED_THREADS).map(|_| None).collect(),
+            #[cfg(not(feature = "std"))]
             threads: [const { None }; MAX_MANAGED_THREADS],
             next_thread_id: 1, // Thread ID 0 is reserved for main thread
             stats: ThreadManagerStats::new(),
@@ -533,10 +538,7 @@ impl ThreadManager {
 
     /// Get number of active threads
     pub fn active_thread_count(&self) -> usize {
-        // Simplified implementation for bounded collections
-        // TODO: Implement proper active thread counting when bounded map API supports
-        // iteration For now, return length as a placeholder
-        self.threads.len()
+        self.threads.iter().filter(|t| t.is_some()).count()
     }
 
     /// Cleanup completed threads
@@ -578,14 +580,7 @@ impl ThreadManager {
 
     /// Get total thread count
     pub fn thread_count(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.threads.len()
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            self.threads.iter().filter(|slot| slot.is_some()).count()
-        }
+        self.threads.iter().filter(|slot| slot.is_some()).count()
     }
 
     // Private helper methods
@@ -620,6 +615,9 @@ impl Default for ThreadManager {
         Self::new(ThreadConfig::default()).unwrap_or_else(|_| {
             // Create a minimal thread manager with very limited resources
             Self {
+                #[cfg(feature = "std")]
+                threads:        (0..MAX_MANAGED_THREADS).map(|_| None).collect(),
+                #[cfg(not(feature = "std"))]
                 threads:        [const { None }; MAX_MANAGED_THREADS],
                 next_thread_id: 1,
                 config:         ThreadConfig {

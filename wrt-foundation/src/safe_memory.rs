@@ -1266,7 +1266,7 @@ impl<const N: usize> NoStdProvider<N> {
         
         Self {
             data: data_array,
-            used: N, // FIX: Set used to N so size() returns available space
+            used: N, // WebAssembly memory is fully zero-initialized, so all N bytes are valid to read
             access_count: AtomicUsize::new(0),
             last_access_offset: AtomicUsize::new(0),
             last_access_length: AtomicUsize::new(0),
@@ -1503,7 +1503,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
         self.used = core::cmp::max(self.used, offset + data_to_write.len());
         // TODO: Consider if checksum/integrity of Slice/SliceMut needs update here if
         // they are live. This provider itself doesn't maintain a checksum over
-        // its raw data array. Individual Slices/SliceMuts do.
+        // its raw data array. Individual Slices/SliceMut do.
         Ok(())
     }
 

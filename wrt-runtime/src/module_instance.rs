@@ -194,6 +194,13 @@ impl ModuleInstance {
     /// Get the function type for a function
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn function_type(&self, idx: u32) -> Result<crate::prelude::CoreFuncType> {
+        #[cfg(feature = "std")]
+        let function = self
+            .module
+            .functions
+            .get(idx as usize)
+            .ok_or_else(|| Error::runtime_function_not_found("Function index not found"))?;
+        #[cfg(not(feature = "std"))]
         let function = self
             .module
             .functions
@@ -261,7 +268,7 @@ impl ModuleInstance {
             .module
             .functions
             .get(idx as usize)
-            .map_err(|_| Error::runtime_function_not_found("Function index not found"))?;
+            .ok_or_else(|| Error::runtime_function_not_found("Function index not found"))?;
 
         // In std mode, types is Vec so get() returns Option<&T>
         #[cfg(feature = "std")]
@@ -294,7 +301,7 @@ impl ModuleInstance {
         let mut memories = self.memories.lock();
 
         memories
-            .push(MemoryWrapper::new(memory))
+            .push(MemoryWrapper::new(Box::new(memory)))
             .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
         Ok(())
     }
@@ -369,14 +376,29 @@ impl ModuleInstance {
 
     /// Get a function by index - alias for compatibility with tail_call.rs
     pub fn get_function(&self, idx: usize) -> Result<crate::module::Function> {
-        self.module
+        #[cfg(feature = "std")]
+        return self.module
             .functions
             .get(idx)
-            .map_err(|_| Error::runtime_function_not_found("Function index not found"))
+            .cloned()
+            .ok_or_else(|| Error::runtime_function_not_found("Function index not found"));
+        #[cfg(not(feature = "std"))]
+        return self.module
+            .functions
+            .get(idx)
+            .map(|f| f.clone())
+            .map_err(|_| Error::runtime_function_not_found("Function index not found"));
     }
 
-    /// Get function type by index - alias for compatibility with tail_call.rs  
+    /// Get function type by index - alias for compatibility with tail_call.rs
     pub fn get_function_type(&self, idx: usize) -> Result<WrtFuncType> {
+        #[cfg(feature = "std")]
+        let function = self
+            .module
+            .functions
+            .get(idx)
+            .ok_or_else(|| Error::runtime_function_not_found("Function index not found"))?;
+        #[cfg(not(feature = "std"))]
         let function = self
             .module
             .functions

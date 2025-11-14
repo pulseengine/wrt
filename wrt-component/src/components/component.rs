@@ -639,7 +639,7 @@ impl MemoryValue {
         let memory = Memory::new(core_ty)?;
         Ok(Self {
             ty,
-            memory: Arc::new(RwLock::new(memory)),
+            memory: Arc::new(RwLock::new(*memory)),  // Dereference Box<Memory>
         })
     }
 
@@ -666,7 +666,7 @@ impl MemoryValue {
         let memory = Memory::new_with_name(core_ty, name)?;
         Ok(Self {
             ty,
-            memory: Arc::new(RwLock::new(memory)),
+            memory: Arc::new(RwLock::new(memory)),  // Memory::new_with_name returns Memory, not Box
         })
     }
 

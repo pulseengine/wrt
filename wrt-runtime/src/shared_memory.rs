@@ -623,7 +623,7 @@ pub fn create_shared_memory(
 
     let shared_memory = SharedMemoryInstance::new(
         memory_type,
-        Box::new(memory_impl),
+        memory_impl,  // Memory::new() already returns Box<Memory>
         thread_manager,
         capability_context,
     )?;

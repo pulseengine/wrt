@@ -80,10 +80,38 @@ mod std_parsing {
 
     /// Parse a core module section
     pub fn parse_core_module_section(bytes: &[u8]) -> Result<(Vec<Module>, usize)> {
-        // Read a vector of modules
-        let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut modules = Vec::with_capacity(count as usize);
+        // Component Model spec: core module sections can be either:
+        // 1. Inline format: section contains one module binary directly
+        // 2. Vector format: count followed by (size, module)* pairs
 
+        let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
+
+        #[cfg(feature = "std")]
+        {
+            println!("[PARSE] parse_core_module_section: section size={}, count={}", bytes.len(), count);
+            if count == 0 && bytes.len() > 8 {
+                println!("[PARSE] Count is 0 but section has data - checking if inline format");
+                // Check for WASM magic at start
+                if bytes.len() >= 8 && &bytes[0..4] == b"\0asm" {
+                    println!("[PARSE] Found inline core module (WASM magic at offset 0)");
+                }
+            }
+        }
+
+        let mut modules = Vec::with_capacity(if count == 0 { 1 } else { count as usize });
+
+        // Handle inline format: if count is 0 and we have WASM magic, treat entire section as one module
+        if count == 0 && bytes.len() >= 8 && &bytes[0..4] == b"\0asm" {
+            #[cfg(feature = "std")]
+            println!("[PARSE] Parsing inline core module format");
+
+            // The entire section is one module
+            let module = binary::parse_binary(bytes)?;
+            modules.push(module);
+            return Ok((modules, bytes.len()));
+        }
+
+        // Handle vector format
         for _ in 0..count {
             // Read a module binary size
             let (module_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
