@@ -124,6 +124,11 @@ type BoundedMemoryVec = wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, R
 type BoundedGlobalVec = wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, RuntimeProvider>;
 type BoundedElementVec = wrt_foundation::bounded::BoundedVec<Element, 256, RuntimeProvider>;
 type BoundedDataVec = wrt_foundation::bounded::BoundedVec<Data, 256, RuntimeProvider>;
+
+// Binary storage: Vec in std mode for large modules, BoundedVec in no_std
+#[cfg(feature = "std")]
+type BoundedBinary = Vec<u8>;
+#[cfg(not(feature = "std"))]
 type BoundedBinary = wrt_foundation::bounded::BoundedVec<u8, 65536, RuntimeProvider>;
 
 /// Convert MemoryType to CoreMemoryType
@@ -2335,14 +2340,22 @@ impl Module {
     /// Set the binary representation of the module
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary(&mut self, binary: Vec<u8>) -> Result<()> {
-        let provider = create_runtime_provider()?;
-        let mut bounded_binary =
-            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
-        for byte in binary {
-            bounded_binary.push(byte)?;
+        #[cfg(feature = "std")]
+        {
+            self.binary = Some(binary);
+            Ok(())
         }
-        self.binary = Some(bounded_binary);
-        Ok(())
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_runtime_provider()?;
+            let mut bounded_binary =
+                wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+            for byte in binary {
+                bounded_binary.push(byte)?;
+            }
+            self.binary = Some(bounded_binary);
+            Ok(())
+        }
     }
 
     /// Validate the module
@@ -2515,14 +2528,22 @@ impl Module {
     /// Set the binary representation of the module (alternative method)
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_binary_runtime(&mut self, binary: Vec<u8>) -> Result<()> {
-        let provider = create_runtime_provider()?;
-        let mut bounded_binary =
-            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
-        for byte in binary {
-            bounded_binary.push(byte)?;
+        #[cfg(feature = "std")]
+        {
+            self.binary = Some(binary);
+            Ok(())
         }
-        self.binary = Some(bounded_binary);
-        Ok(())
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_runtime_provider()?;
+            let mut bounded_binary =
+                wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+            for byte in binary {
+                bounded_binary.push(byte)?;
+            }
+            self.binary = Some(bounded_binary);
+            Ok(())
+        }
     }
 
     /// Load a module from WebAssembly binary
@@ -2547,20 +2568,28 @@ impl Module {
             ));
         }
 
+        eprintln!("[LOAD_FROM_BINARY] About to call require_module_info");
         let module_info = wasm_info.require_module_info()?;
+        eprintln!("[LOAD_FROM_BINARY] Got module_info successfully");
 
         // Create runtime module from unified API data
+        eprintln!("[LOAD_FROM_BINARY] About to call from_module_info");
         let runtime_module = Self::from_module_info(module_info, binary)?;
+        eprintln!("[LOAD_FROM_BINARY] from_module_info completed successfully");
 
         // Store the binary for later use
-        // Note: This is the only place where we keep the full binary in memory
-        // Consider using a streaming approach here too if binary size is a concern
-        let provider = create_runtime_provider()?;
-        let mut bounded_binary =
-            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
-        for byte in binary {
-            bounded_binary.push(*byte)?;
-        }
+        #[cfg(feature = "std")]
+        let bounded_binary = binary.to_vec();
+
+        #[cfg(not(feature = "std"))]
+        let bounded_binary = {
+            let provider = create_runtime_provider()?;
+            let mut vec = wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+            for byte in binary {
+                vec.push(*byte)?;
+            }
+            vec
+        };
 
         Ok(Self {
             binary: Some(bounded_binary),
