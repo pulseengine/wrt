@@ -281,6 +281,9 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
         let (section_size, size_len) = wrt_format::binary::read_leb128_u32(data, offset)?;
         offset += size_len;
 
+        #[cfg(feature = "std")]
+        eprintln!("[SECTION_PARSER] Section 0x{:02x} at offset {} (size {} bytes)", section_id, offset - size_len - 1, section_size);
+
         // Ensure the section size is valid
         if offset + section_size as usize > data.len() {
             return Err(Error::parse_error(
@@ -325,10 +328,17 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 2: Core Instances
                 match parse::parse_core_instance_section(section_data) {
                     Ok((instances, _)) => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[COMPONENT_PARSER] Extending core_instances from {} to {} (+{} instances)",
+                                 component.core_instances.len(),
+                                 component.core_instances.len() + instances.len(),
+                                 instances.len());
                         component.core_instances.extend(instances);
                     },
-                    Err(_) => {
+                    Err(e) => {
                         // Continue parsing other sections
+                        #[cfg(feature = "std")]
+                        eprintln!("[COMPONENT_PARSER] ERROR parsing core instances: {:?}", e);
                     }
                 }
             },
@@ -370,9 +380,13 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 6: Aliases
                 match parse::parse_alias_section(section_data) {
                     Ok((aliases, _)) => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[SECTION_PARSER] Section 0x06 (Aliases): parsed {} aliases", aliases.len());
                         component.aliases.extend(aliases);
                     },
-                    Err(_) => {
+                    Err(e) => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[SECTION_PARSER] ERROR parsing alias section: {:?}", e);
                         // Continue parsing other sections
                     }
                 }
