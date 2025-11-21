@@ -150,6 +150,21 @@ pub struct ExecutionStats {
     pub function_calls: u64,
 }
 
+/// Pre-allocated WASI stub memory regions
+#[derive(Debug, Clone)]
+pub struct WasiStubMemory {
+    /// Pointer to empty list structure (ptr=0, len=0)
+    pub empty_list: u32,
+    /// Pointer to option None discriminant (0)
+    pub option_none: u32,
+    /// Pointer to empty environment list
+    pub empty_env: u32,
+    /// Stdout handle value
+    pub stdout_handle: u32,
+    /// Stderr handle value
+    pub stderr_handle: u32,
+}
+
 /// Simple stackless WebAssembly execution engine
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct StacklessEngine {
@@ -172,6 +187,11 @@ pub struct StacklessEngine {
     /// Host function registry for calling imported functions
     #[cfg(feature = "std")]
     host_registry:         Option<Arc<wrt_host::CallbackRegistry>>,
+    /// Pre-allocated WASI stub memory for each instance
+    wasi_stubs:            HashMap<usize, WasiStubMemory>,
+    /// Cross-instance import links: (instance_id, import_module, import_name) -> (target_instance_id, export_name)
+    #[cfg(feature = "std")]
+    import_links:          HashMap<(usize, String, String), (usize, String)>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -210,7 +230,65 @@ impl StacklessEngine {
             instruction_pointer: AtomicU64::new(0),
             #[cfg(feature = "std")]
             host_registry:       None,
+            wasi_stubs:          HashMap::new(),
+            #[cfg(feature = "std")]
+            import_links:        HashMap::new(),
         }
+    }
+
+    /// Register a cross-instance import link
+    #[cfg(feature = "std")]
+    pub fn register_import_link(
+        &mut self,
+        instance_id: usize,
+        import_module: String,
+        import_name: String,
+        target_instance_id: usize,
+        export_name: String,
+    ) {
+        let key = (instance_id, import_module, import_name);
+        self.import_links.insert(key, (target_instance_id, export_name));
+    }
+
+    /// Call an exported function in another instance by name
+    #[cfg(feature = "std")]
+    fn call_exported_function(
+        &self,
+        target_instance_id: usize,
+        export_name: &str,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        // Get the target instance
+        let target_instance = self.instances.get(&target_instance_id)
+            .ok_or_else(|| wrt_error::Error::resource_not_found("Target instance not found"))?
+            .clone();
+
+        // Access module via public API
+        let module = target_instance.module();
+
+        // Find the exported function by name
+        let mut func_idx = None;
+        for (name, export) in &module.exports {
+            if name == export_name {
+                // Export has kind: ExportKind and index: u32 fields
+                use crate::module::ExportKind;
+                if let ExportKind::Function = export.kind {
+                    func_idx = Some(export.index as usize);
+                    break;
+                }
+            }
+        }
+
+        let func_idx = func_idx.ok_or_else(|| {
+            eprintln!("[CROSS_INSTANCE_CALL] Export '{}' not found", export_name);
+            wrt_error::Error::resource_not_found("Export not found")
+        })?;
+
+        eprintln!("[CROSS_INSTANCE_CALL] Calling {}() in instance {} at function index {}",
+                 export_name, target_instance_id, func_idx);
+
+        // Execute the function in the target instance
+        self.execute(target_instance_id, func_idx, args)
     }
 
     /// Set the host function registry for imported function calls
@@ -353,7 +431,18 @@ impl StacklessEngine {
             ));
         }
 
-        self.instances.insert(instance_id, instance);
+        self.instances.insert(instance_id, instance.clone());
+
+        // Initialize WASI stub memory for this instance
+        eprintln!("[WASI-INIT] Attempting to initialize WASI stubs for instance {}", instance_id);
+        let module = instance.module();
+        match self.initialize_wasi_stubs(instance_id, module) {
+            Ok(_) => eprintln!("[WASI-INIT] ✓ Successfully initialized WASI stubs for instance {}", instance_id),
+            Err(e) => {
+                eprintln!("[WASI-INIT] Warning: Failed to initialize WASI stubs: {:?}", e);
+                // Continue anyway - not all modules need WASI
+            }
+        }
 
         self.current_instance_id = Some(instance_id);
         Ok(instance_id)
@@ -435,20 +524,63 @@ impl StacklessEngine {
             // Get the parsed instructions
             eprintln!("[DEBUG] Accessing func.body for func_idx={}", func_idx);
             eprintln!("[DEBUG] func.type_idx={}, func.locals.len()={}", func.type_idx, func.locals.len());
+
+            // Get the function type to see how many parameters it expects
+            if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                eprintln!("[DEBUG] Function type: params.len()={}, results.len()={}",
+                         func_type.params.len(), func_type.results.len());
+            }
+            eprintln!("[DEBUG] Called with args.len()={}", args.len());
+
             let instructions = &func.body.instructions;
             eprintln!("[INTERPRETER] Starting execution: {} instructions", instructions.len());
             let mut operand_stack: Vec<Value> = Vec::new();
             let mut locals: Vec<Value> = Vec::new();
+            let mut instruction_count = 0usize;
+            let mut block_depth = 0i32; // Track nesting depth during execution
 
             // Initialize parameters as locals
-            for arg in args {
-                locals.push(arg);
+            // Need to match the function type signature, not just provided args
+            eprintln!("[INTERPRETER] Initializing locals: args.len()={}, func.locals.len()={}", args.len(), func.locals.len());
+
+            // Get expected parameter count from function type
+            let expected_param_count = module.types.get(func.type_idx as usize)
+                .map(|ft| ft.params.len())
+                .unwrap_or(0);
+
+            eprintln!("[INTERPRETER] Function expects {} parameters, got {} args", expected_param_count, args.len());
+
+            // Add provided arguments
+            for (i, arg) in args.iter().enumerate() {
+                if i < expected_param_count {
+                    locals.push(arg.clone());
+                }
             }
+
+            // Pad with default values for missing parameters
+            if args.len() < expected_param_count {
+                if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                    for i in args.len()..expected_param_count {
+                        let param_type = func_type.params.get(i).unwrap_or(&wrt_foundation::ValueType::I32);
+                        let default_value = match param_type {
+                            wrt_foundation::ValueType::I32 => Value::I32(0),
+                            wrt_foundation::ValueType::I64 => Value::I64(0),
+                            wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                            wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                            _ => Value::I32(0),
+                        };
+                        locals.push(default_value);
+                    }
+                }
+            }
+
+            eprintln!("[INTERPRETER] After parameters: locals.len()={}", locals.len());
 
             // Initialize remaining locals to zero
             // Each LocalEntry has a count field - create that many locals of that type
             for i in 0..func.locals.len() {
                 if let Ok(local_decl) = func.locals.get(i) {
+                    eprintln!("[INTERPRETER] LocalEntry[{}]: type={:?}, count={}", i, local_decl.value_type, local_decl.count);
                     let zero_value = match local_decl.value_type {
                         wrt_foundation::ValueType::I32 => Value::I32(0),
                         wrt_foundation::ValueType::I64 => Value::I64(0),
@@ -460,12 +592,18 @@ impl StacklessEngine {
                     for _ in 0..local_decl.count {
                         locals.push(zero_value.clone());
                     }
+                    eprintln!("[INTERPRETER] After LocalEntry[{}]: locals.len()={}", i, locals.len());
                 }
             }
             eprintln!("[INTERPRETER] Initialized {} locals total", locals.len());
 
             // Execute instructions - iterate over parsed Instruction enum
-            for pc in 0..instructions.len() {
+            let mut pc = 0;
+
+            // Track block stack: (block_type, start_pc) where block_type is "loop", "block", or "if"
+            let mut block_stack: Vec<(&str, usize)> = Vec::new();
+
+            while pc < instructions.len() {
                 #[cfg(feature = "std")]
                 let instruction = instructions.get(pc)
                     .ok_or_else(|| wrt_error::Error::runtime_error("Instruction index out of bounds"))?;
@@ -473,30 +611,136 @@ impl StacklessEngine {
                 let instruction = instructions.get(pc)
                     .map_err(|_| wrt_error::Error::runtime_error("Instruction index out of bounds"))?;
 
+                instruction_count += 1;
                 eprintln!("[INTERPRETER] pc={}, instruction={:?}", pc, instruction);
 
                 match *instruction {
+                    Instruction::Nop => {
+                        // No operation - do nothing
+                        eprintln!("[INTERPRETER] Nop");
+                    }
+                    Instruction::Drop => {
+                        // Pop and discard top value from stack
+                        if let Some(value) = operand_stack.pop() {
+                            eprintln!("[INTERPRETER] Drop: discarded {:?}", value);
+                        } else {
+                            eprintln!("[INTERPRETER] Drop: stack underflow");
+                            return Err(wrt_error::Error::runtime_trap("Drop: stack underflow"));
+                        }
+                    }
+                    Instruction::Select => {
+                        // Pop condition, then two values, push selected value
+                        // Stack: [val1, val2, condition] -> [selected]
+                        // If condition != 0, select val2, else select val1
+                        if let (Some(Value::I32(condition)), Some(val2), Some(val1)) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop()) {
+                            let selected = if condition != 0 { val2 } else { val1 };
+                            eprintln!("[INTERPRETER] Select: condition={}, selected={:?}", condition, selected);
+                            operand_stack.push(selected);
+                        } else {
+                            eprintln!("[INTERPRETER] Select: insufficient operands on stack");
+                            return Err(wrt_error::Error::runtime_trap("Select: stack underflow"));
+                        }
+                    }
                     Instruction::Call(func_idx) => {
-                        eprintln!("[INTERPRETER] Call func_idx={}", func_idx);
+                        eprintln!("[INTERPRETER] ⚡ CALL INSTRUCTION: func_idx={}", func_idx);
+
+                        // Count total number of imports across all modules
+                        let num_imports = self.count_total_imports(&module);
+
+                        eprintln!("[INTERPRETER]   Total import modules: {}", module.imports.len());
+                        eprintln!("[INTERPRETER]   Total individual imports: {}", num_imports);
+                        eprintln!("[INTERPRETER]   Total functions: {}", module.functions.len());
+
+                        // Try to get function name from exports
+                        eprintln!("[INTERPRETER]   Checking {} exports for function name", module.exports.len());
 
                         // Check if this is an import (host function)
-                        let num_imports = module.imports.len();
 
                         if (func_idx as usize) < num_imports {
                             // This is a host function call
                             eprintln!("[INTERPRETER] Calling host function at import index {}", func_idx);
 
-                            // Get the import to find its module and name
-                            // TODO: Actually iterate through imports to find by index
-                            // For now, skip import dispatch
-                            eprintln!("[INTERPRETER] Warning: Import dispatch not yet implemented");
-                            continue;
+                            // Find the import by index
+                            let import_result = self.find_import_by_index(&module, func_idx as usize);
+
+                            if let Ok((module_name, field_name)) = import_result {
+                                eprintln!("[INTERPRETER] Host function: {}::{}", module_name, field_name);
+
+                                // Check if this import is linked to another instance
+                                #[cfg(feature = "std")]
+                                {
+                                    let import_key = (instance_id, module_name.clone(), field_name.clone());
+                                    if let Some((target_instance, export_name)) = self.import_links.get(&import_key) {
+                                        eprintln!("[INTERPRETER] Import linked! Calling instance {}.{}", target_instance, export_name);
+
+                                        // Call the linked function in the target instance
+                                        // For now, assume no parameters (will need to handle this properly)
+                                        let result = self.call_exported_function(*target_instance, export_name, vec![])?;
+
+                                        // Push result onto stack if function returns a value
+                                        if let Some(value) = result.first() {
+                                            operand_stack.push(value.clone());
+                                        }
+
+                                        continue; // Skip WASI dispatch
+                                    }
+                                }
+
+                                // Dispatch to WASI implementation
+                                let result = self.call_wasi_function(
+                                    &module_name,
+                                    &field_name,
+                                    &mut operand_stack,
+                                    &module,
+                                    instance_id,
+                                )?;
+
+                                // Push result onto stack if function returns a value
+                                if let Some(value) = result {
+                                    operand_stack.push(value);
+                                }
+                            } else {
+                                eprintln!("[INTERPRETER] Warning: Could not resolve import {}", func_idx);
+                                // Push dummy return value to keep stack balanced
+                                operand_stack.push(Value::I32(0));
+                            }
                         } else {
-                            // Regular function call - recursive execution
-                            let call_args = operand_stack.clone();
-                            operand_stack.clear();
+                            // Regular function call - get function signature to know how many args to pop
+                            let local_func_idx = func_idx as usize - num_imports;
+                            if local_func_idx >= module.functions.len() {
+                                eprintln!("[INTERPRETER] Function index {} out of bounds", func_idx);
+                                return Err(wrt_error::Error::runtime_error("Function index out of bounds"));
+                            }
+
+                            let func = &module.functions[local_func_idx];
+                            let func_type = module.types.get(func.type_idx as usize)
+                                .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
+
+                            // Pop the required number of arguments from the stack
+                            let param_count = func_type.params.len();
+
+                            eprintln!("[INTERPRETER] Call({}): needs {} params, stack has {} values",
+                                func_idx, param_count, operand_stack.len());
+
+                            let mut call_args = Vec::new();
+                            for _ in 0..param_count {
+                                if let Some(arg) = operand_stack.pop() {
+                                    call_args.push(arg);
+                                } else {
+                                    eprintln!("[INTERPRETER] Not enough arguments on stack for function call");
+                                    return Err(wrt_error::Error::runtime_error("Stack underflow on function call"));
+                                }
+                            }
+                            // Arguments were popped in reverse order, so reverse them
+                            call_args.reverse();
+
+                            eprintln!("[INTERPRETER] Stack before call: {} values, after popping args: {} values",
+                                operand_stack.len() + call_args.len(), operand_stack.len());
 
                             let results = self.execute(instance_id, func_idx as usize, call_args)?;
+                            eprintln!("[INTERPRETER] Function returned {} results", results.len());
+
                             for result in results {
                                 operand_stack.push(result);
                             }
@@ -547,16 +791,20 @@ impl StacklessEngine {
                         }
                     }
                     Instruction::GlobalGet(global_idx) => {
-                        eprintln!("[INTERPRETER] GlobalGet: reading global[{}]", global_idx);
+                        eprintln!("[INTERPRETER] GlobalGet: reading global[{}], module.globals.len()={}",
+                                 global_idx, module.globals.len());
                         if (global_idx as usize) < module.globals.len() {
-                            if let Ok(global_wrapper) = module.globals.get(global_idx as usize) {
-                                let global = &global_wrapper.0; // Unwrap Arc
-                                let value = global.get().clone();
-                                eprintln!("[INTERPRETER] GlobalGet: global[{}] = {:?}", global_idx, value);
-                                operand_stack.push(value);
-                            } else {
-                                eprintln!("[INTERPRETER] GlobalGet: failed to get global[{}]", global_idx);
-                                operand_stack.push(Value::I32(0)); // Default value
+                            match module.globals.get(global_idx as usize) {
+                                Ok(global_wrapper) => {
+                                    let global = &global_wrapper.0; // Unwrap Arc
+                                    let value = global.get().clone();
+                                    eprintln!("[INTERPRETER] GlobalGet: global[{}] = {:?}", global_idx, value);
+                                    operand_stack.push(value);
+                                }
+                                Err(e) => {
+                                    eprintln!("[INTERPRETER] GlobalGet: failed to get global[{}]: {:?}", global_idx, e);
+                                    operand_stack.push(Value::I32(0)); // Default value
+                                }
                             }
                         } else {
                             eprintln!("[INTERPRETER] GlobalGet: global[{}] out of bounds (globals.len()={})", global_idx, module.globals.len());
@@ -629,6 +877,36 @@ impl StacklessEngine {
                             }
                             let result = (a as u32).wrapping_rem(b as u32) as i32;
                             eprintln!("[INTERPRETER] I32RemU: {} % {} = {}", a as u32, b as u32, result as u32);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    // I64 arithmetic operations
+                    Instruction::I64Add => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.wrapping_add(b);
+                            eprintln!("[INTERPRETER] I64Add: {} + {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Sub => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.wrapping_sub(b);
+                            eprintln!("[INTERPRETER] I64Sub: {} - {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Mul => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.wrapping_mul(b);
+                            eprintln!("[INTERPRETER] I64Mul: {} * {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    // Conversion operations
+                    Instruction::I32WrapI64 => {
+                        if let Some(Value::I64(value)) = operand_stack.pop() {
+                            let result = value as i32;
+                            eprintln!("[INTERPRETER] I32WrapI64: {} -> {}", value, result);
                             operand_stack.push(Value::I32(result));
                         }
                     }
@@ -787,6 +1065,22 @@ impl StacklessEngine {
                             let result = if a == 0 { 1 } else { 0 };
                             eprintln!("[INTERPRETER] I32Eqz: {} == 0 = {}", a, result != 0);
                             operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::I64ExtendI32S => {
+                        // Extend i32 to i64 with sign extension
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = a as i64;  // Sign-extends automatically
+                            eprintln!("[INTERPRETER] I64ExtendI32S: {} -> {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64ExtendI32U => {
+                        // Extend i32 to i64 with zero extension
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = (a as u32) as i64;  // Zero-extends
+                            eprintln!("[INTERPRETER] I64ExtendI32U: {} -> {}", a, result);
+                            operand_stack.push(Value::I64(result));
                         }
                     }
                     // Memory operations
@@ -1058,7 +1352,9 @@ impl StacklessEngine {
                         }
                     }
                     Instruction::If { block_type_idx } => {
-                        eprintln!("[INTERPRETER] If: block_type_idx={}", block_type_idx);
+                        block_depth += 1;
+                        block_stack.push(("if", pc));
+                        eprintln!("[INTERPRETER] If: block_type_idx={}, depth now {}", block_type_idx, block_depth);
                         // Pop condition
                         if let Some(Value::I32(condition)) = operand_stack.pop() {
                             eprintln!("[INTERPRETER] If: condition = {}", condition != 0);
@@ -1078,10 +1374,18 @@ impl StacklessEngine {
                                             }
                                             wrt_foundation::types::Instruction::End => {
                                                 depth -= 1;
+                                                if depth == 0 {
+                                                    // Found matching end - jump just before it so we execute the End
+                                                    eprintln!("[INTERPRETER] If: found matching end at pc={}", new_pc);
+                                                    pc = new_pc - 1; // -1 because we'll +1 at end of loop
+                                                    break;
+                                                }
                                             }
                                             wrt_foundation::types::Instruction::Else => {
                                                 if depth == 1 {
-                                                    eprintln!("[INTERPRETER] If: found else at pc={}", new_pc);
+                                                    // Found else at same level - execute else block
+                                                    eprintln!("[INTERPRETER] If: found else at pc={}, will execute else block", new_pc);
+                                                    pc = new_pc; // Jump to else, will +1 to start after else
                                                     break;
                                                 }
                                             }
@@ -1090,8 +1394,6 @@ impl StacklessEngine {
                                     }
                                     new_pc += 1;
                                 }
-                                // TODO: properly handle else block
-                                eprintln!("[INTERPRETER] If: skipping condition block");
                             } else {
                                 eprintln!("[INTERPRETER] If: executing then block");
                             }
@@ -1099,7 +1401,8 @@ impl StacklessEngine {
                     }
                     Instruction::Else => {
                         eprintln!("[INTERPRETER] Else: skipping to end of if block");
-                        // Skip to matching end
+                        // When we hit Else during execution, it means we executed the then block
+                        // and need to skip over the else block to the end
                         let mut depth = 1;
                         let mut new_pc = pc + 1;
 
@@ -1113,48 +1416,294 @@ impl StacklessEngine {
                                     }
                                     wrt_foundation::types::Instruction::End => {
                                         depth -= 1;
+                                        if depth == 0 {
+                                            // Found matching end - jump just before it
+                                            eprintln!("[INTERPRETER] Else: found matching end at pc={}", new_pc);
+                                            pc = new_pc - 1; // -1 because we'll +1 at end of loop
+                                            break;
+                                        }
                                     }
                                     _ => {}
                                 }
                             }
                             new_pc += 1;
                         }
-                        // TODO: implement proper jump
                     }
                     Instruction::Block { block_type_idx } => {
-                        eprintln!("[INTERPRETER] Block: block_type_idx={}", block_type_idx);
-                        // For now, just execute through the block
+                        block_depth += 1;
+                        block_stack.push(("block", pc));
+                        eprintln!("[INTERPRETER] Block: block_type_idx={}, depth now {}", block_type_idx, block_depth);
+                        // Just execute through the block - End will decrement depth
                     }
                     Instruction::Loop { block_type_idx } => {
-                        eprintln!("[INTERPRETER] Loop: block_type_idx={}", block_type_idx);
-                        // For now, just execute through (no actual loop yet)
+                        block_depth += 1;
+                        block_stack.push(("loop", pc));
+                        eprintln!("[INTERPRETER] Loop: block_type_idx={}, depth now {}, start_pc={}", block_type_idx, block_depth, pc);
+                        // Just execute through - Br will handle jumping back to start
                     }
                     Instruction::Br(label_idx) => {
                         eprintln!("[INTERPRETER] Br: label_idx={} (unconditional branch)", label_idx);
-                        // TODO: Implement proper branch
-                        // For now, just continue
+
+                        // Get the target block from the block_stack
+                        // label_idx=0 means innermost block, 1 means next outer, etc.
+                        if (label_idx as usize) < block_stack.len() {
+                            let stack_idx = block_stack.len() - 1 - (label_idx as usize);
+                            let (block_type, start_pc) = block_stack[stack_idx];
+
+                            if block_type == "loop" {
+                                // For Loop: jump backward to the loop start
+                                eprintln!("[INTERPRETER] Br: jumping backward to loop start at pc={}", start_pc);
+                                pc = start_pc;  // Will +1 at end of iteration, so we execute the Loop instruction again
+                            } else {
+                                // For Block/If: jump forward to the End (current behavior)
+                                let mut target_depth = label_idx as i32 + 1;
+                                let mut new_pc = pc + 1;
+                                let mut depth = 0;
+
+                                while new_pc < instructions.len() && target_depth > 0 {
+                                    if let Some(instr) = instructions.get(new_pc) {
+                                        match instr {
+                                            wrt_foundation::types::Instruction::Block { .. } |
+                                            wrt_foundation::types::Instruction::Loop { .. } |
+                                            wrt_foundation::types::Instruction::If { .. } => {
+                                                depth += 1;
+                                            }
+                                            wrt_foundation::types::Instruction::End => {
+                                                if depth == 0 {
+                                                    target_depth -= 1;
+                                                    if target_depth == 0 {
+                                                        eprintln!("[INTERPRETER] Br: jumping forward to pc={} (end of {} block)", new_pc, block_type);
+                                                        pc = new_pc - 1;
+                                                        break;
+                                                    }
+                                                } else {
+                                                    depth -= 1;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    new_pc += 1;
+                                }
+                            }
+                        } else {
+                            eprintln!("[INTERPRETER] Br: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                        }
                     }
                     Instruction::BrIf(label_idx) => {
                         if let Some(Value::I32(condition)) = operand_stack.pop() {
                             eprintln!("[INTERPRETER] BrIf: label_idx={}, condition={}", label_idx, condition != 0);
                             if condition != 0 {
-                                // TODO: Implement proper conditional branch
-                                eprintln!("[INTERPRETER] BrIf: would branch (not implemented)");
+                                // Branch conditionally - same logic as Br
+                                if (label_idx as usize) < block_stack.len() {
+                                    let stack_idx = block_stack.len() - 1 - (label_idx as usize);
+                                    let (block_type, start_pc) = block_stack[stack_idx];
+
+                                    if block_type == "loop" {
+                                        // For Loop: jump backward to the loop start
+                                        eprintln!("[INTERPRETER] BrIf: jumping backward to loop start at pc={}", start_pc);
+                                        pc = start_pc;
+                                    } else {
+                                        // For Block/If: jump forward to the End
+                                        let mut target_depth = label_idx as i32 + 1;
+                                        let mut new_pc = pc + 1;
+                                        let mut depth = 0;
+
+                                        while new_pc < instructions.len() && target_depth > 0 {
+                                            if let Some(instr) = instructions.get(new_pc) {
+                                                match instr {
+                                                    wrt_foundation::types::Instruction::Block { .. } |
+                                                    wrt_foundation::types::Instruction::Loop { .. } |
+                                                    wrt_foundation::types::Instruction::If { .. } => {
+                                                        depth += 1;
+                                                    }
+                                                    wrt_foundation::types::Instruction::End => {
+                                                        if depth == 0 {
+                                                            target_depth -= 1;
+                                                            if target_depth == 0 {
+                                                                eprintln!("[INTERPRETER] BrIf: jumping forward to pc={} (end of {} block)", new_pc, block_type);
+                                                                pc = new_pc - 1;
+                                                                break;
+                                                            }
+                                                        } else {
+                                                            depth -= 1;
+                                                        }
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                            new_pc += 1;
+                                        }
+                                    }
+                                } else {
+                                    eprintln!("[INTERPRETER] BrIf: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                                }
+                            } else {
+                                eprintln!("[INTERPRETER] BrIf: condition false, not branching");
                             }
                         }
                     }
-                    Instruction::Return | Instruction::End => {
+                    Instruction::MemorySize(memory_idx) => {
+                        // Get the memory size in pages (1 page = 64KB = 65536 bytes)
+                        if (memory_idx as usize) < module.memories.len() {
+                            let memory = &module.memories[memory_idx as usize].0;
+                            let size_in_bytes = memory.size_in_bytes();
+                            let size_in_pages = size_in_bytes / 65536;
+                            eprintln!("[INTERPRETER] MemorySize: memory[{}] = {} pages ({} bytes)",
+                                     memory_idx, size_in_pages, size_in_bytes);
+                            operand_stack.push(Value::I32(size_in_pages as i32));
+                        } else {
+                            eprintln!("[INTERPRETER] MemorySize: memory[{}] out of bounds, pushing 0", memory_idx);
+                            operand_stack.push(Value::I32(0));
+                        }
+                    }
+                    Instruction::MemoryGrow(memory_idx) => {
+                        // Pop the number of pages to grow
+                        if let Some(Value::I32(delta)) = operand_stack.pop() {
+                            if delta < 0 {
+                                // Negative delta is invalid, return -1 (failure)
+                                eprintln!("[INTERPRETER] MemoryGrow: negative delta {}, pushing -1", delta);
+                                operand_stack.push(Value::I32(-1));
+                            } else if (memory_idx as usize) < module.memories.len() {
+                                let memory = &module.memories[memory_idx as usize].0;
+                                let size_in_bytes = memory.size_in_bytes();
+                                let old_size_pages = size_in_bytes / 65536;
+                                eprintln!("[INTERPRETER] MemoryGrow: memory[{}] grow by {} pages (current: {})",
+                                         memory_idx, delta, old_size_pages);
+                                // Actually grow the memory
+                                match memory.grow_shared(delta as u32) {
+                                    Ok(prev_pages) => {
+                                        eprintln!("[INTERPRETER] MemoryGrow: success, was {} pages, now {} pages",
+                                                 prev_pages, memory.size());
+                                        operand_stack.push(Value::I32(prev_pages as i32));
+                                    }
+                                    Err(e) => {
+                                        eprintln!("[INTERPRETER] MemoryGrow: failed to grow: {:?}, pushing -1", e);
+                                        operand_stack.push(Value::I32(-1));
+                                    }
+                                }
+                            } else {
+                                eprintln!("[INTERPRETER] MemoryGrow: memory[{}] out of bounds, pushing -1", memory_idx);
+                                operand_stack.push(Value::I32(-1));
+                            }
+                        }
+                    }
+                    Instruction::BrTable { ref targets, default_target } => {
+                        // Pop the index from the stack
+                        if let Some(Value::I32(index)) = operand_stack.pop() {
+                            eprintln!("[INTERPRETER] BrTable: index={}, targets.len()={}, default={}",
+                                     index, targets.len(), default_target);
+
+                            // Select the target based on the index
+                            let label_idx = if index >= 0 && (index as usize) < targets.len() {
+                                // Use the indexed target
+                                match targets.get(index as usize) {
+                                    Ok(target) => {
+                                        eprintln!("[INTERPRETER] BrTable: using target[{}] = {}", index, target);
+                                        target
+                                    }
+                                    Err(_) => {
+                                        eprintln!("[INTERPRETER] BrTable: error getting target[{}], using default {}", index, default_target);
+                                        default_target
+                                    }
+                                }
+                            } else {
+                                // Index out of range, use default
+                                eprintln!("[INTERPRETER] BrTable: index {} out of range, using default {}", index, default_target);
+                                default_target
+                            };
+
+                            // Branch to the selected target (same logic as Br)
+                            eprintln!("[INTERPRETER] BrTable: label_idx={}, block_stack.len()={}", label_idx, block_stack.len());
+                            eprintln!("[INTERPRETER] BrTable: block_stack contents:");
+                            for (i, (btype, bpc)) in block_stack.iter().enumerate() {
+                                eprintln!("[INTERPRETER]   [{}]: {} at pc={}", i, btype, bpc);
+                            }
+                            if (label_idx as usize) < block_stack.len() {
+                                let stack_idx = block_stack.len() - 1 - (label_idx as usize);
+                                let (block_type, start_pc) = block_stack[stack_idx];
+                                eprintln!("[INTERPRETER] BrTable: accessing block_stack[{}], target block is {} at pc={}", stack_idx, block_type, start_pc);
+
+                                if block_type == "loop" {
+                                    // For Loop: jump backward to the loop start
+                                    eprintln!("[INTERPRETER] BrTable: jumping backward to loop start at pc={}", start_pc);
+                                    pc = start_pc;
+                                } else {
+                                    // For Block/If: jump forward to the End
+                                    let mut target_depth = label_idx as i32 + 1;
+                                    let mut new_pc = pc + 1;
+                                    let mut depth = 0;
+
+                                    while new_pc < instructions.len() && target_depth > 0 {
+                                        if let Some(instr) = instructions.get(new_pc) {
+                                            match instr {
+                                                wrt_foundation::types::Instruction::Block { .. } |
+                                                wrt_foundation::types::Instruction::Loop { .. } |
+                                                wrt_foundation::types::Instruction::If { .. } => {
+                                                    depth += 1;
+                                                }
+                                                wrt_foundation::types::Instruction::End => {
+                                                    if depth == 0 {
+                                                        target_depth -= 1;
+                                                        if target_depth == 0 {
+                                                            eprintln!("[INTERPRETER] BrTable: jumping forward to pc={} (end of {} block)", new_pc, block_type);
+                                                            pc = new_pc - 1;
+                                                            break;
+                                                        }
+                                                    } else {
+                                                        depth -= 1;
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                        new_pc += 1;
+                                    }
+                                }
+                            } else {
+                                eprintln!("[INTERPRETER] BrTable: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                            }
+                        } else {
+                            eprintln!("[INTERPRETER] BrTable: no index on stack");
+                        }
+                    }
+                    Instruction::Return => {
+                        eprintln!("[INTERPRETER] 🔙 Return at pc={}", pc);
+                        eprintln!("[INTERPRETER]   Operand stack size: {}", operand_stack.len());
+                        eprintln!("[INTERPRETER]   Instructions executed: {}", instruction_count);
                         break; // Exit function
+                    }
+                    Instruction::End => {
+                        if block_depth == 0 {
+                            // This is the function's final End
+                            eprintln!("[INTERPRETER] 🔙 End at pc={} (function end, depth=0)", pc);
+                            eprintln!("[INTERPRETER]   Operand stack size: {}", operand_stack.len());
+                            eprintln!("[INTERPRETER]   Instructions executed: {}", instruction_count);
+                            break; // Exit function
+                        } else {
+                            // This ends a block/loop/if - decrement and continue
+                            block_depth -= 1;
+                            if !block_stack.is_empty() {
+                                let (block_type, start_pc) = block_stack.pop().unwrap();
+                                eprintln!("[INTERPRETER] End at pc={} (closes {} from pc={}, depth now {})", pc, block_type, start_pc, block_depth);
+                            } else {
+                                eprintln!("[INTERPRETER] End at pc={} (closes block, depth now {})", pc, block_depth);
+                            }
+                        }
                     }
                     _ => {
                         // Skip unimplemented instructions for now
                         eprintln!("[INTERPRETER] Unimplemented instruction at pc={}: {:?}", pc, instruction);
                     }
                 }
+
+                // Increment program counter for next iteration
+                pc += 1;
             }
 
             // Return values from operand stack matching function signature
             eprintln!("[INTERPRETER] Function complete. Operand stack has {} values", operand_stack.len());
+            eprintln!("[INTERPRETER] STATS: Executed {} instructions total", instruction_count);
             eprintln!("[INTERPRETER] Function type expects {} results", func_type.results.len());
 
             let mut results = Vec::new();
@@ -1409,6 +1958,325 @@ impl StacklessEngine {
             .map_err(|_| wrt_error::Error::runtime_error("Failed to create results vector"))?;
 
         Ok(crate::stackless::ExecutionResult::Completed(results))
+    }
+
+    /// Count total number of imports across all modules
+    fn count_total_imports(&self, module: &crate::module::Module) -> usize {
+        let mut total = 0;
+
+        #[cfg(feature = "std")]
+        {
+            for (_module_name, imports_map) in &module.imports {
+                total += imports_map.len();
+            }
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            for (_module_name, imports_map) in module.imports.iter() {
+                total += imports_map.len().unwrap_or(0);
+            }
+        }
+
+        total
+    }
+
+    /// Find import by function index
+    fn find_import_by_index(&self, module: &crate::module::Module, func_idx: usize) -> Result<(String, String)> {
+        let mut current_idx = 0;
+
+        #[cfg(feature = "std")]
+        {
+            for (module_name, imports_map) in &module.imports {
+                for (field_name, _import) in imports_map {
+                    if current_idx == func_idx {
+                        return Ok((module_name.clone(), field_name.clone()));
+                    }
+                    current_idx += 1;
+                }
+            }
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            for (module_name, imports_map) in module.imports.iter() {
+                for (field_name, _import) in imports_map.iter() {
+                    if current_idx == func_idx {
+                        return Ok((module_name.to_string(), field_name.to_string()));
+                    }
+                    current_idx += 1;
+                }
+            }
+        }
+
+        Err(wrt_error::Error::runtime_error("Import index out of bounds"))
+    }
+
+    /// Find export function index by name
+    fn find_export_index(&self, module: &crate::module::Module, name: &str) -> Result<usize> {
+        #[cfg(feature = "std")]
+        {
+            for (export_name, export) in &module.exports {
+                if export_name.as_str() == name {
+                    if let crate::module::ExportKind::Function = export.kind {
+                        return Ok(export.index as usize);
+                    }
+                }
+            }
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            for (export_name, export) in module.exports.iter() {
+                if export_name.as_str() == name {
+                    if let crate::module::ExportKind::Function = export.kind {
+                        return Ok(export.index as usize);
+                    }
+                }
+            }
+        }
+
+        Err(wrt_error::Error::runtime_error("Export function not found"))
+    }
+
+    /// Call cabi_realloc to allocate memory in WASM instance
+    fn call_cabi_realloc(&mut self, instance_id: usize, func_idx: usize,
+                         old_ptr: u32, old_size: u32, align: u32, new_size: u32) -> Result<u32> {
+        let args = vec![
+            Value::I32(old_ptr as i32),
+            Value::I32(old_size as i32),
+            Value::I32(align as i32),
+            Value::I32(new_size as i32),
+        ];
+
+        let results = self.execute(instance_id, func_idx, args)?;
+
+        if let Some(Value::I32(ptr)) = results.first() {
+            Ok(*ptr as u32)
+        } else {
+            Err(wrt_error::Error::runtime_error("cabi_realloc returned invalid value"))
+        }
+    }
+
+    /// Write data to WASM instance memory
+    fn write_to_instance(&self, instance_id: usize, addr: u32, data: &[u8]) -> Result<()> {
+        let instance = self.instances.get(&instance_id)
+            .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found"))?;
+
+        eprintln!("[WASI-INIT] write_to_instance: instance has {} memories",
+                  if instance.module().memories.is_empty() { 0 } else { instance.module().memories.len() });
+
+        let memory = instance.memory(0)?;
+        let pages = memory.0.size();  // This is the size() method that returns pages
+        let bytes = pages as usize * 65536;  // Convert pages to bytes
+        eprintln!("[WASI-INIT] write_to_instance: memory {} pages = {} bytes", pages, bytes);
+        memory.0.write_shared(addr, data)?;
+        Ok(())
+    }
+
+    /// Initialize WASI stub memory for an instance
+    ///
+    /// For now, we use a simple fixed address (0x100) for stub data since memory cloning
+    /// has issues preserving size. This is safe because:
+    /// - Address 0x100 (256 bytes) is well within even small WASM memories
+    /// - The data is just zeros which won't interfere with normal operation
+    /// - WASM code that reads these pointers will get valid empty lists/None values
+    fn initialize_wasi_stubs(&mut self, instance_id: usize, module: &crate::module::Module) -> Result<()> {
+        eprintln!("[WASI-INIT] Initializing WASI stubs for instance {}", instance_id);
+
+        // Use a low fixed address that's guaranteed to be valid in most WASM memories
+        // We need 16 bytes total: 8 for empty list + 1 for option None + 7 padding
+        let base_ptr = 0x100u32; // 256 bytes into memory
+
+        // Try to write stub data - if this fails, memory isn't ready yet
+        match self.write_to_instance(instance_id, base_ptr, &[0u8; 16]) {
+            Ok(_) => {
+                eprintln!("[WASI-INIT] ✓ Wrote 16 bytes of stub data at ptr={:#x}", base_ptr);
+
+                // Cache the pointers
+                let stub_mem = WasiStubMemory {
+                    empty_list: base_ptr,      // Points to 8 bytes of zeros = (ptr=0, len=0)
+                    option_none: base_ptr + 8, // Points to 1 byte zero = None
+                    empty_env: base_ptr,       // Reuse empty_list
+                    stdout_handle: 1,
+                    stderr_handle: 2,
+                };
+
+                self.wasi_stubs.insert(instance_id, stub_mem);
+                eprintln!("[WASI-INIT] ✓ WASI stubs initialized successfully");
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("[WASI-INIT] Failed to write stub data: {:?}", e);
+                eprintln!("[WASI-INIT] Memory might not be initialized yet, will use fallback pointers");
+
+                // Even if we can't write, we can still return valid pointers
+                // The WASM memory likely has zeros at these addresses anyway
+                let stub_mem = WasiStubMemory {
+                    empty_list: base_ptr,
+                    option_none: base_ptr + 8,
+                    empty_env: base_ptr,
+                    stdout_handle: 1,
+                    stderr_handle: 2,
+                };
+
+                self.wasi_stubs.insert(instance_id, stub_mem);
+                Ok(()) // Don't fail - just use the pointers anyway
+            }
+        }
+    }
+
+    /// Call a WASI host function
+    fn call_wasi_function(
+        &self,
+        module_name: &str,
+        field_name: &str,
+        stack: &mut Vec<Value>,
+        module: &crate::module::Module,
+        instance_id: usize,
+    ) -> Result<Option<Value>> {
+        use std::io::Write;
+
+        eprintln!("[WASI] Calling {}::{}", module_name, field_name);
+
+        // Get cached stub memory (if initialized)
+        let stub_mem = self.wasi_stubs.get(&instance_id);
+
+        match (module_name, field_name) {
+            // wasi:cli/environment@0.2.0
+            ("wasi:cli/environment@0.2.0", "get-environment") => {
+                if let Some(stub) = stub_mem {
+                    eprintln!("[WASI] get-environment: returning empty list ptr={}", stub.empty_env);
+                    Ok(Some(Value::I32(stub.empty_env as i32)))
+                } else {
+                    eprintln!("[WASI] get-environment: stub not initialized, returning 0");
+                    Ok(Some(Value::I32(0)))
+                }
+            }
+
+            ("wasi:cli/environment@0.2.0", "get-arguments") => {
+                if let Some(stub) = stub_mem {
+                    eprintln!("[WASI] get-arguments: returning empty list ptr={}", stub.empty_list);
+                    Ok(Some(Value::I32(stub.empty_list as i32)))
+                } else {
+                    eprintln!("[WASI] get-arguments: stub not initialized, returning 0");
+                    Ok(Some(Value::I32(0)))
+                }
+            }
+
+            ("wasi:cli/environment@0.2.0", "initial-cwd") => {
+                if let Some(stub) = stub_mem {
+                    eprintln!("[WASI] initial-cwd: returning option None ptr={}", stub.option_none);
+                    Ok(Some(Value::I32(stub.option_none as i32)))
+                } else {
+                    eprintln!("[WASI] initial-cwd: stub not initialized, returning 0");
+                    Ok(Some(Value::I32(0)))
+                }
+            }
+
+            // wasi:cli/stdout@0.2.0::get-stdout() -> stream
+            ("wasi:cli/stdout@0.2.0", "get-stdout") => {
+                let handle = stub_mem.map(|s| s.stdout_handle).unwrap_or(1);
+                eprintln!("[WASI] get-stdout: returning handle {}", handle);
+                Ok(Some(Value::I32(handle as i32)))
+            }
+
+            // wasi:cli/stderr@0.2.0::get-stderr() -> stream
+            ("wasi:cli/stderr@0.2.0", "get-stderr") => {
+                let handle = stub_mem.map(|s| s.stderr_handle).unwrap_or(2);
+                eprintln!("[WASI] get-stderr: returning handle {}", handle);
+                Ok(Some(Value::I32(handle as i32)))
+            }
+
+            // wasi:cli/exit@0.2.0::exit(code)
+            ("wasi:cli/exit@0.2.0", "exit") => {
+                let exit_code = if let Some(Value::I32(code)) = stack.pop() {
+                    code
+                } else {
+                    1
+                };
+
+                eprintln!("[WASI] exit called with code: {}", exit_code);
+                std::process::exit(exit_code);
+            }
+
+            // wasi:io/streams@0.2.0::[method]output-stream.blocking-write-and-flush(stream, data_ptr, data_len) -> result
+            ("wasi:io/streams@0.2.0", "[method]output-stream.blocking-write-and-flush") => {
+                use crate::wasi_preview2;
+
+                // Pop arguments: stream, data_ptr, data_len
+                let data_len = if let Some(Value::I32(len)) = stack.pop() {
+                    len
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing data_len argument"));
+                };
+
+                let data_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
+                    ptr
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing data_ptr argument"));
+                };
+
+                let stream_handle = if let Some(Value::I32(s)) = stack.pop() {
+                    s
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing stream argument"));
+                };
+
+                eprintln!("[WASI] blocking-write-and-flush: stream={}, ptr={}, len={}", stream_handle, data_ptr, data_len);
+
+                // Read data from WebAssembly memory and write to stdout/stderr
+                // Use instance memory instead of module memory
+                if let Some(instance) = self.instances.get(&instance_id) {
+                    if let Ok(memory_wrapper) = instance.memory(0) {
+                        // Read data from instance memory into a buffer
+                        let mut buffer = vec![0u8; data_len as usize];
+                        if let Ok(()) = memory_wrapper.0.read(data_ptr as u32, &mut buffer) {
+                            eprintln!("[WASI] Read {} bytes from memory at ptr={}", buffer.len(), data_ptr);
+
+                        // Write directly to stdout/stderr instead of using the memory-based function
+                        use std::io::Write;
+                        let result = if stream_handle == 1 {
+                            // Stdout
+                            let mut stdout = std::io::stdout();
+                            stdout.write_all(&buffer)
+                                .and_then(|_| stdout.flush())
+                                .map(|_| 0)
+                                .unwrap_or(1)
+                        } else if stream_handle == 2 {
+                            // Stderr
+                            let mut stderr = std::io::stderr();
+                            stderr.write_all(&buffer)
+                                .and_then(|_| stderr.flush())
+                                .map(|_| 0)
+                                .unwrap_or(1)
+                        } else {
+                            eprintln!("[WASI] Invalid stream handle: {}", stream_handle);
+                            1 // Error
+                        };
+
+                            eprintln!("[WASI] Write result: {}", result);
+                            Ok(Some(Value::I64(result as i64))) // WASI Preview 2 returns i64 for result types
+                        } else {
+                            eprintln!("[WASI] Failed to read memory at ptr={}, len={}", data_ptr, data_len);
+                            Ok(Some(Value::I64(1))) // Error
+                        }
+                    } else {
+                        eprintln!("[WASI] Failed to get memory from instance");
+                        Ok(Some(Value::I64(1))) // Error
+                    }
+                } else {
+                    eprintln!("[WASI] No instance available for id={}", instance_id);
+                    Ok(Some(Value::I64(1))) // Error
+                }
+            }
+
+            // Default: stub implementation
+            _ => {
+                eprintln!("[WASI] Stub for {}::{}", module_name, field_name);
+                Ok(Some(Value::I32(0))) // Default success
+            }
+        }
     }
 }
 

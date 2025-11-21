@@ -170,6 +170,18 @@ pub trait CapabilityEngine: Send + Sync {
     /// Instantiate a module with capability-gated resources
     fn instantiate(&mut self, module: ModuleHandle) -> Result<InstanceHandle>;
 
+    /// Link an import from one module to an export from an instantiated instance
+    /// This must be called after the providing instance is instantiated but before
+    /// the importing module is instantiated
+    fn link_import(
+        &mut self,
+        module: ModuleHandle,
+        import_module: &str,
+        import_name: &str,
+        provider_instance: InstanceHandle,
+        export_name: &str,
+    ) -> Result<()>;
+
     /// Execute a function with capability enforcement
     fn execute(
         &mut self,
@@ -189,6 +201,13 @@ use crate::bounded_runtime_infra::{
     RUNTIME_MEMORY_SIZE,
 };
 
+/// Import link describes how to resolve an import
+#[derive(Debug, Clone)]
+struct ImportLink {
+    provider_instance: InstanceHandle,
+    export_name: String,
+}
+
 /// Capability-aware WebAssembly execution engine
 pub struct CapabilityAwareEngine {
     /// Inner stackless execution engine
@@ -207,6 +226,12 @@ pub struct CapabilityAwareEngine {
     host_registry:     Option<CallbackRegistry>,
     /// Bounded host integration manager for safety-critical environments
     host_manager:      Option<BoundedHostIntegrationManager>,
+    /// Import links: module_handle -> (module::name -> ImportLink)
+    #[cfg(feature = "std")]
+    import_links:      std::collections::HashMap<ModuleHandle, std::collections::HashMap<String, ImportLink>>,
+    /// Instance handle to instance_idx mapping for cross-instance calls
+    #[cfg(feature = "std")]
+    handle_to_idx:     std::collections::HashMap<InstanceHandle, usize>,
 }
 
 impl CapabilityAwareEngine {
@@ -260,6 +285,10 @@ impl CapabilityAwareEngine {
             next_instance_idx: 0,
             host_registry,
             host_manager,
+            #[cfg(feature = "std")]
+            import_links: std::collections::HashMap::new(),
+            #[cfg(feature = "std")]
+            handle_to_idx: std::collections::HashMap::new(),
         })
     }
 
@@ -438,11 +467,19 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let decoded = decode_module(binary)?;
 
         // Convert to runtime module
-        let runtime_module = Module::from_wrt_module(&decoded)?;
+        let mut runtime_module = Module::from_wrt_module(&decoded)?;
+
+        // Initialize data segments into memory
+        #[cfg(feature = "std")]
+        runtime_module.initialize_data_segments()?;
+
+        // Stack pointer is now initialized early during global creation in from_wrt_module()
+        // No need for late initialization here anymore
 
         // Create and store with unique handle (wrapped in Arc to avoid deep clones)
         let handle = ModuleHandle::new();
-        self.modules.insert(handle, Arc::new(runtime_module))?;
+        let module_arc = Arc::new(runtime_module);
+        self.modules.insert(handle, module_arc)?;
 
         Ok(handle)
     }
@@ -461,8 +498,24 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.context.verify_operation(CrateId::Runtime, &operation)?;
 
         // Create module instance (clone the Arc, not the Module)
-        let instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
-        let instance_arc = Arc::new(instance.clone());
+        let mut instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
+
+        // Copy globals from module to instance (critical for stack pointer initialization!)
+        instance.populate_globals_from_module()?;
+
+        // Copy memories from module to instance (critical for memory access!)
+        instance.populate_memories_from_module()?;
+
+        // Initialize data segments into instance memory (critical for static data!)
+        #[cfg(feature = "std")]
+        instance.initialize_data_segments()?;
+
+        // Apply import links if any exist for this module
+        // We need the instance_idx before we can register links, so we'll do it after registration
+        let pending_links = self.import_links.get(&module_handle).cloned();
+
+        // Don't clone! Cloning creates a fresh empty instance, losing all our populate work
+        let instance_arc = Arc::new(instance);
 
         // Register with inner engine
         let instance_idx = self.inner.set_current_module(instance_arc.clone())?;
@@ -472,12 +525,101 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let handle = InstanceHandle::from_index(instance_idx);
         self.instances.insert(handle, instance_arc)?;
 
+        // Store handle -> instance_idx mapping for cross-instance calls
+        #[cfg(feature = "std")]
+        self.handle_to_idx.insert(handle, instance_idx);
+
+        // Register import links with the inner engine
+        #[cfg(feature = "std")]
+        if let Some(links) = pending_links {
+            eprintln!("[INSTANTIATE] Applying {} import links for instance {}", links.len(), instance_idx);
+            for (import_key, link) in links {
+                // Parse import_key (format: "module::name" or just "name")
+                let (import_module, import_name) = if let Some(pos) = import_key.rfind("::") {
+                    (import_key[..pos].to_string(), import_key[pos+2..].to_string())
+                } else {
+                    (String::new(), import_key.clone())
+                };
+
+                // Get the target instance_idx from our mapping
+                let target_idx = self.handle_to_idx.get(&link.provider_instance)
+                    .copied()
+                    .ok_or_else(|| Error::resource_not_found("Provider instance not found"))?;
+
+                eprintln!("[INSTANTIATE]   Linking {}::{} (in instance {}) -> instance {}.{}",
+                         import_module, import_name, instance_idx, target_idx, link.export_name);
+
+                self.inner.register_import_link(
+                    instance_idx,
+                    import_module,
+                    import_name,
+                    target_idx,
+                    link.export_name,
+                );
+            }
+        }
+
         // Run start function if present
         if let Some(start_idx) = module_arc.start {
+            #[cfg(feature = "std")]
+            eprintln!("[INSTANTIATE] Module has start function at index {}. Running automatically...", start_idx);
             self.inner.execute(instance_idx, start_idx as usize, vec![])?;
+            #[cfg(feature = "std")]
+            eprintln!("[INSTANTIATE] Start function completed");
+        } else {
+            #[cfg(feature = "std")]
+            eprintln!("[INSTANTIATE] No start function in module");
         }
 
         Ok(handle)
+    }
+
+    #[cfg(feature = "std")]
+    fn link_import(
+        &mut self,
+        module: ModuleHandle,
+        import_module: &str,
+        import_name: &str,
+        provider_instance: InstanceHandle,
+        export_name: &str,
+    ) -> Result<()> {
+        // Create the key for this import (module::name format)
+        let import_key = if import_module.is_empty() {
+            import_name.to_string()
+        } else {
+            format!("{}::{}", import_module, import_name)
+        };
+
+        // Create the import link
+        let link = ImportLink {
+            provider_instance,
+            export_name: export_name.to_string(),
+        };
+
+        // Store it in our links map
+        self.import_links
+            .entry(module)
+            .or_insert_with(std::collections::HashMap::new)
+            .insert(import_key, link);
+
+        #[cfg(feature = "std")]
+        eprintln!("[LINK_IMPORT] Linked {}::{} -> instance {:?}.{}",
+                 import_module, import_name, provider_instance, export_name);
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn link_import(
+        &mut self,
+        _module: ModuleHandle,
+        _import_module: &str,
+        _import_name: &str,
+        _provider_instance: InstanceHandle,
+        _export_name: &str,
+    ) -> Result<()> {
+        // No-std mode: import linking not yet supported
+        Err(Error::runtime_error("Import linking not supported in no_std mode"))
     }
 
     fn execute(

@@ -139,10 +139,14 @@ mod std_parsing {
     pub fn parse_core_instance_section(bytes: &[u8]) -> Result<(Vec<CoreInstance>, usize)> {
         // Read a vector of core instances
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
+        #[cfg(feature = "std")]
+        eprintln!("[PARSE_CORE_INSTANCE_SECTION] Parsing {} core instances", count);
         let mut instances = Vec::with_capacity(count as usize);
 
-        for _ in 0..count {
+        for idx in 0..count {
             // Parse the instance expression
+            #[cfg(feature = "std")]
+            eprintln!("[PARSE_CORE_INSTANCE_SECTION] Parsing core instance {}/{}", idx, count);
             let (instance_expr, bytes_read) = parse_core_instance_expr(&bytes[offset..])?;
             offset += bytes_read;
 
@@ -171,6 +175,8 @@ mod std_parsing {
             0x00 => {
                 // Instantiate a module
                 let (module_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                #[cfg(feature = "std")]
+                eprintln!("[PARSE_CORE_INSTANCE] tag=0x00 (instantiate), module_idx={}, bytes_read={}", module_idx, bytes_read);
                 offset += bytes_read;
 
                 // Read argument vector
@@ -183,6 +189,14 @@ mod std_parsing {
                     let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
+
+                    // Read sort/kind byte (e.g., instance, module, func, etc.)
+                    // According to Component Model spec: modulearg := name:string kind:byte idx:u32
+                    if offset >= bytes.len() {
+                        return Err(Error::parse_error("Unexpected end of input while parsing arg kind"));
+                    }
+                    let _kind_byte = bytes[offset];
+                    offset += 1;
 
                     // Read instance index
                     let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -2238,7 +2252,13 @@ mod std_parsing {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         let mut aliases = Vec::with_capacity(count as usize);
 
-        for _ in 0..count {
+        #[cfg(feature = "std")]
+        eprintln!("[ALIAS_SECTION] Section has {} aliases, section size {} bytes", count, bytes.len());
+
+        for i in 0..count {
+            #[cfg(feature = "std")]
+            eprintln!("[ALIAS_SECTION] Parsing alias {} at offset {}", i, offset);
+
             // Read alias target
             let (target, bytes_read) = parse_alias_target(&bytes[offset..])?;
             offset += bytes_read;
@@ -2251,6 +2271,13 @@ mod std_parsing {
     }
 
     /// Parse an alias target
+    ///
+    /// According to the Component Model spec:
+    /// alias ::= s:<sort> t:<aliastarget>
+    ///
+    /// Where:
+    /// - s is the sort byte (func, table, memory, global, type, module, instance, etc.)
+    /// - t is the aliastarget discriminant (0x00=export, 0x01=core export, 0x02=outer)
     fn parse_alias_target(bytes: &[u8]) -> Result<(wrt_format::component::AliasTarget, usize)> {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
@@ -2258,13 +2285,44 @@ mod std_parsing {
             )));
         }
 
-        // Read the target tag
-        let tag = bytes[0];
+        // FIRST: Read the sort byte (what kind of thing is being aliased)
+        let sort_byte = bytes[0];
         let mut offset = 1;
+
+        #[cfg(feature = "std")]
+        eprintln!("[ALIAS_TARGET] Parsing alias with sort: 0x{:02x}", sort_byte);
+
+        // SECOND: Read the aliastarget tag (where it comes from)
+        if offset >= bytes.len() {
+            return Err(Error::from(kinds::ParseError(
+                "Unexpected end of input while parsing alias target tag",
+            )));
+        }
+        let tag = bytes[offset];
+        offset += 1;
+
+        #[cfg(feature = "std")]
+        eprintln!("[ALIAS_TARGET] Alias target tag: 0x{:02x}", tag);
+
+        // Convert sort_byte to CoreSort
+        let kind = match sort_byte {
+            binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
+            binary::COMPONENT_CORE_SORT_TABLE => wrt_format::component::CoreSort::Table,
+            binary::COMPONENT_CORE_SORT_MEMORY => wrt_format::component::CoreSort::Memory,
+            binary::COMPONENT_CORE_SORT_GLOBAL => wrt_format::component::CoreSort::Global,
+            binary::COMPONENT_CORE_SORT_TYPE => wrt_format::component::CoreSort::Type,
+            binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
+            binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
+            _ => {
+                #[cfg(feature = "std")]
+                eprintln!("[ALIAS_PARSER] Invalid core sort kind byte: 0x{:02x}", sort_byte);
+                return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
+            },
+        };
 
         match tag {
             0x00 => {
-                // Core instance export
+                // 0x00 = export (component instance export)
 
                 // Read instance index
                 let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -2275,30 +2333,36 @@ mod std_parsing {
                 offset += bytes_read;
                 let name = bytes_to_string(name_bytes);
 
-                // Read kind byte
-                if offset >= bytes.len() {
-                    return Err(Error::from(kinds::ParseError(
-                        "Unexpected end of input while parsing core export kind",
-                    )));
-                }
-                let kind_byte = bytes[offset];
-                offset += 1;
+                #[cfg(feature = "std")]
+                eprintln!("[ALIAS_TARGET] Component export alias: instance {} exports '{}'", instance_idx, name);
 
-                // Convert to CoreSort
-                let kind = match kind_byte {
-                    binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
-                    binary::COMPONENT_CORE_SORT_TABLE => wrt_format::component::CoreSort::Table,
-                    binary::COMPONENT_CORE_SORT_MEMORY => wrt_format::component::CoreSort::Memory,
-                    binary::COMPONENT_CORE_SORT_GLOBAL => wrt_format::component::CoreSort::Global,
-                    binary::COMPONENT_CORE_SORT_TYPE => wrt_format::component::CoreSort::Type,
-                    binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
-                    binary::COMPONENT_CORE_SORT_INSTANCE => {
-                        wrt_format::component::CoreSort::Instance
+                // Convert the CoreSort we parsed earlier to Sort
+                let sort_kind = wrt_format::component::Sort::Core(kind);
+
+                Ok((
+                    wrt_format::component::AliasTarget::InstanceExport {
+                        instance_idx,
+                        name,
+                        kind: sort_kind,
                     },
-                    _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
-                    },
-                };
+                    offset,
+                ))
+            },
+            0x01 => {
+                // 0x01 = core export (from core instance)
+
+                // Read instance index
+                let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                // Read export name
+                let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+                let name = bytes_to_string(name_bytes);
+
+                #[cfg(feature = "std")]
+                eprintln!("[ALIAS_TARGET] Core export alias: instance {} exports '{}' as {:?}",
+                         instance_idx, name, kind);
 
                 Ok((
                     wrt_format::component::AliasTarget::CoreInstanceExport {
@@ -2309,68 +2373,33 @@ mod std_parsing {
                     offset,
                 ))
             },
-            0x01 => {
-                // Instance export
-
-                // Read instance index
-                let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                // Read export name
-                let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
-                offset += bytes_read;
-                let name = bytes_to_string(name_bytes);
-
-                // Read kind byte
-                if offset >= bytes.len() {
-                    return Err(Error::from(kinds::ParseError(
-                        "Unexpected end of input while parsing export kind",
-                    )));
-                }
-                let kind_byte = bytes[offset];
-                offset += 1;
-
-                // Parse sort
-                let kind = parse_sort(kind_byte)?;
-
-                Ok((
-                    wrt_format::component::AliasTarget::InstanceExport {
-                        instance_idx,
-                        name,
-                        kind,
-                    },
-                    offset,
-                ))
-            },
             0x02 => {
-                // Outer definition
+                // 0x02 = outer (from enclosing component)
 
-                // Read count
+                // Read count (nesting level)
                 let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
-
-                // Read kind byte
-                if offset >= bytes.len() {
-                    return Err(Error::from(kinds::ParseError(
-                        "Unexpected end of input while parsing outer kind",
-                    )));
-                }
-                let kind_byte = bytes[offset];
-                offset += 1;
-
-                // Parse sort
-                let kind = parse_sort(kind_byte)?;
 
                 // Read index
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
+                #[cfg(feature = "std")]
+                eprintln!("[ALIAS_TARGET] Outer alias: count {}, idx {}", count, idx);
+
+                // Convert the CoreSort we parsed earlier to Sort
+                let sort_kind = wrt_format::component::Sort::Core(kind);
+
                 Ok((
-                    wrt_format::component::AliasTarget::Outer { count, kind, idx },
+                    wrt_format::component::AliasTarget::Outer { count, kind: sort_kind, idx },
                     offset,
                 ))
             },
-            _ => Err(Error::from(kinds::ParseError("Invalid alias target tag"))),
+            _ => {
+                #[cfg(feature = "std")]
+                eprintln!("[ALIAS_TARGET] Unsupported alias target tag: 0x{:02x}", tag);
+                Err(Error::from(kinds::ParseError("Invalid alias target tag")))
+            },
         }
     }
 
