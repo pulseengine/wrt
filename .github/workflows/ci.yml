@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     # This job runs on push, PR, and all manual triggers (regardless of input)
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -82,7 +82,7 @@ jobs:
     name: Code Quality Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     # This job runs on push, PR, and all manual triggers (regardless of input)
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -169,7 +169,7 @@ jobs:
     runs-on: ubuntu-latest
     # Run safety verification on all pushes and PRs
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -224,7 +224,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_analysis == true # Compare to boolean true
     needs: [ci_checks_and_docs, core_tests_and_analysis, safety_verification] # Optional: wait for other jobs
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -265,7 +265,7 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         with:
           path: |
@@ -301,7 +301,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }} 
