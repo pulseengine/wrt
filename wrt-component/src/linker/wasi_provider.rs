@@ -65,8 +65,41 @@ impl WasiInstanceProvider {
             name if name.starts_with("wasi:cli/stdout") => {
                 self.add_stdout_exports(&mut instance)?;
             }
+            name if name.starts_with("wasi:cli/stdin") => {
+                self.add_stdin_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/stderr") => {
+                self.add_stderr_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/environment") => {
+                self.add_environment_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/exit") => {
+                self.add_exit_exports(&mut instance)?;
+            }
             name if name.starts_with("wasi:io/streams") => {
                 self.add_streams_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:io/error") => {
+                self.add_error_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:io/poll") => {
+                self.add_poll_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:filesystem/types") => {
+                self.add_filesystem_types_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:filesystem/preopens") => {
+                self.add_filesystem_preopens_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:clocks/monotonic-clock") => {
+                self.add_monotonic_clock_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:clocks/wall-clock") => {
+                self.add_wall_clock_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:random/random") => {
+                self.add_random_exports(&mut instance)?;
             }
             _ => {
                 #[cfg(feature = "std")]
@@ -114,10 +147,103 @@ impl WasiInstanceProvider {
         Ok(())
     }
 
+    /// Add stdin interface exports (wasi:cli/stdin@0.2.0)
+    fn add_stdin_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-stdin() -> input-stream
+        self.add_simple_export(instance, "get-stdin")
+    }
+
+    /// Add stderr interface exports (wasi:cli/stderr@0.2.0)
+    fn add_stderr_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-stderr() -> output-stream
+        self.add_simple_export(instance, "get-stderr")
+    }
+
+    /// Add environment interface exports (wasi:cli/environment@0.2.0)
+    fn add_environment_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-environment() -> list<tuple<string, string>>
+        self.add_simple_export(instance, "get-environment")?;
+        // Export: get-arguments() -> list<string>
+        self.add_simple_export(instance, "get-arguments")
+    }
+
+    /// Add exit interface exports (wasi:cli/exit@0.2.0)
+    fn add_exit_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: exit(status: result) -> ()
+        self.add_simple_export(instance, "exit")
+    }
+
     /// Add streams interface exports (wasi:io/streams@0.2.0)
     fn add_streams_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
         // Export: [method]output-stream.blocking-write-and-flush
-        let write_flush_index = self.next_function_index;
+        self.add_simple_export(instance, "[method]output-stream.blocking-write-and-flush")?;
+        // Export: [method]input-stream.blocking-read
+        self.add_simple_export(instance, "[method]input-stream.blocking-read")?;
+        // Export: [method]output-stream.blocking-flush
+        self.add_simple_export(instance, "[method]output-stream.blocking-flush")?;
+        // Export: [method]output-stream.write
+        self.add_simple_export(instance, "[method]output-stream.write")?;
+        // Export: [method]input-stream.read
+        self.add_simple_export(instance, "[method]input-stream.read")
+    }
+
+    /// Add error interface exports (wasi:io/error@0.2.0)
+    fn add_error_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: [method]error.to-debug-string
+        self.add_simple_export(instance, "[method]error.to-debug-string")
+    }
+
+    /// Add poll interface exports (wasi:io/poll@0.2.0)
+    fn add_poll_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: poll(pollables: list<pollable>) -> list<u32>
+        self.add_simple_export(instance, "poll")
+    }
+
+    /// Add filesystem types interface exports (wasi:filesystem/types@0.2.0)
+    fn add_filesystem_types_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: [method]descriptor.read-via-stream
+        self.add_simple_export(instance, "[method]descriptor.read-via-stream")?;
+        // Export: [method]descriptor.write-via-stream
+        self.add_simple_export(instance, "[method]descriptor.write-via-stream")?;
+        // Export: [method]descriptor.stat
+        self.add_simple_export(instance, "[method]descriptor.stat")?;
+        // Export: [method]descriptor.open-at
+        self.add_simple_export(instance, "[method]descriptor.open-at")
+    }
+
+    /// Add filesystem preopens interface exports (wasi:filesystem/preopens@0.2.0)
+    fn add_filesystem_preopens_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-directories() -> list<tuple<descriptor, string>>
+        self.add_simple_export(instance, "get-directories")
+    }
+
+    /// Add monotonic clock interface exports (wasi:clocks/monotonic-clock@0.2.0)
+    fn add_monotonic_clock_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: now() -> instant
+        self.add_simple_export(instance, "now")?;
+        // Export: resolution() -> duration
+        self.add_simple_export(instance, "resolution")
+    }
+
+    /// Add wall clock interface exports (wasi:clocks/wall-clock@0.2.0)
+    fn add_wall_clock_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: now() -> datetime
+        self.add_simple_export(instance, "now")?;
+        // Export: resolution() -> datetime
+        self.add_simple_export(instance, "resolution")
+    }
+
+    /// Add random interface exports (wasi:random/random@0.2.0)
+    fn add_random_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-random-bytes(len: u64) -> list<u8>
+        self.add_simple_export(instance, "get-random-bytes")?;
+        // Export: get-random-u64() -> u64
+        self.add_simple_export(instance, "get-random-u64")
+    }
+
+    /// Helper to add a simple function export
+    fn add_simple_export(&mut self, instance: &mut InstanceImport, name: &str) -> Result<()> {
+        let func_index = self.next_function_index;
         self.next_function_index += 1;
 
         let provider = ComponentProvider::default();
@@ -125,25 +251,25 @@ impl WasiInstanceProvider {
 
         let func_export = FunctionExport {
             signature,
-            index: write_flush_index,
+            index: func_index,
         };
 
         #[cfg(feature = "std")]
         instance.exports.insert(
-            "[method]output-stream.blocking-write-and-flush".to_string(),
+            name.to_string(),
             Box::new(ExportValue::Function(func_export)),
         );
 
         #[cfg(not(feature = "std"))]
         {
             use wrt_foundation::bounded::BoundedString;
-            let name = BoundedString::try_from_str("[method]output-stream.blocking-write-and-flush")?;
-            instance.exports.push((name, Box::new(ExportValue::Function(func_export))))
+            let bounded_name = BoundedString::try_from_str(name)?;
+            instance.exports.push((bounded_name, Box::new(ExportValue::Function(func_export))))
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many exports"))?;
         }
 
         #[cfg(feature = "std")]
-        println!("[WASI-PROVIDER] Added export: [method]output-stream.blocking-write-and-flush (index {})", write_flush_index);
+        println!("[WASI-PROVIDER] Added export: {} (index {})", name, func_index);
 
         Ok(())
     }

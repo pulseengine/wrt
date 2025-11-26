@@ -292,6 +292,16 @@ impl CapabilityAwareEngine {
         })
     }
 
+    /// Set the host function registry for WASI and custom host functions
+    ///
+    /// This allows updating the registry after engine creation, which is needed
+    /// for component model instantiation where the registry is created separately.
+    #[cfg(feature = "std")]
+    pub fn set_host_registry(&mut self, registry: std::sync::Arc<wrt_host::CallbackRegistry>) {
+        self.host_registry = Some((*registry).clone());
+        self.inner.set_host_registry(registry);
+    }
+
     /// Convert engine preset to ASIL execution mode
     fn preset_to_asil_mode(&self) -> ASILExecutionMode {
         match self.preset {
@@ -463,23 +473,29 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // TODO: Apply resource limits to execution context
         // This would integrate with the fuel async executor to enforce limits
 
-        // Decode the module using wrt-decoder
-        let decoded = decode_module(binary)?;
+        // Decode the module using wrt-decoder (Box to avoid stack overflow)
+        let decoded = Box::new(decode_module(binary)?);
 
-        // Convert to runtime module
-        let mut runtime_module = Module::from_wrt_module(&decoded)?;
+        // Convert to runtime module (pass by reference, returns Box<Module>)
+        let runtime_module = Module::from_wrt_module(&*decoded)?;
 
-        // Initialize data segments into memory
-        #[cfg(feature = "std")]
-        runtime_module.initialize_data_segments()?;
+        // TODO: Initialize data segments into memory
+        // #[cfg(feature = "std")]
+        // runtime_module.initialize_data_segments()?;
 
         // Stack pointer is now initialized early during global creation in from_wrt_module()
         // No need for late initialization here anymore
 
         // Create and store with unique handle (wrapped in Arc to avoid deep clones)
         let handle = ModuleHandle::new();
-        let module_arc = Arc::new(runtime_module);
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG load_module: About to Arc::new(*runtime_module)");
+        let module_arc = Arc::new(*runtime_module);
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG load_module: About to insert into modules map");
         self.modules.insert(handle, module_arc)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG load_module: Insert completed, returning handle");
 
         Ok(handle)
     }
@@ -500,15 +516,15 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // Create module instance (clone the Arc, not the Module)
         let mut instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
 
-        // Copy globals from module to instance (critical for stack pointer initialization!)
-        instance.populate_globals_from_module()?;
+        // TODO: Copy globals from module to instance (critical for stack pointer initialization!)
+        // instance.populate_globals_from_module()?;
 
-        // Copy memories from module to instance (critical for memory access!)
-        instance.populate_memories_from_module()?;
+        // TODO: Copy memories from module to instance (critical for memory access!)
+        // instance.populate_memories_from_module()?;
 
-        // Initialize data segments into instance memory (critical for static data!)
-        #[cfg(feature = "std")]
-        instance.initialize_data_segments()?;
+        // TODO: Initialize data segments into instance memory (critical for static data!)
+        // #[cfg(feature = "std")]
+        // instance.initialize_data_segments()?;
 
         // Apply import links if any exist for this module
         // We need the instance_idx before we can register links, so we'll do it after registration
@@ -583,20 +599,37 @@ impl CapabilityEngine for CapabilityAwareEngine {
         provider_instance: InstanceHandle,
         export_name: &str,
     ) -> Result<()> {
-        // Create the key for this import (module::name format)
+        // Convert handles to instance IDs for StacklessEngine
+        // ModuleHandle and InstanceHandle are both wrappers around usize
+        let module_id = module.0 as usize;
+        let provider_id = provider_instance.0 as usize;
+
+        // Add to inner StacklessEngine's import_links
+        // Key: (instance_id, import_module, import_name)
+        // Value: (target_instance_id, export_name)
+        #[cfg(feature = "std")]
+        {
+            self.inner.add_import_link(
+                module_id,
+                import_module.to_string(),
+                import_name.to_string(),
+                provider_id,
+                export_name.to_string()
+            );
+        }
+
+        // Also store in our own links map for tracking
         let import_key = if import_module.is_empty() {
             import_name.to_string()
         } else {
             format!("{}::{}", import_module, import_name)
         };
 
-        // Create the import link
         let link = ImportLink {
             provider_instance,
             export_name: export_name.to_string(),
         };
 
-        // Store it in our links map
         self.import_links
             .entry(module)
             .or_insert_with(std::collections::HashMap::new)

@@ -135,8 +135,8 @@ pub struct WrtdConfig {
 impl Default for WrtdConfig {
     fn default() -> Self {
         Self {
-            max_fuel: 10_000,
-            max_memory: 64 * 1024, // 64KB default
+            max_fuel: 1_000_000, // 1M fuel for large components
+            max_memory: 64 * 1024 * 1024, // 64MB default
             function_name: None,
             module_data: None,
             #[cfg(feature = "std")]
@@ -464,21 +464,27 @@ impl WrtdEngine {
             MemoryInitializer::initialize()
                 .map_err(|_| Error::runtime_error("Failed to initialize memory system"))?;
 
-            // Decode the component from binary data
-            let parsed_component = decode_component(data)
-                .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
+            // Decode the component from binary data and immediately Box it to avoid stack overflow
+            let mut parsed_component = Box::new(decode_component(data)
+                .map_err(|_| Error::parse_error("Failed to parse component binary"))?);
 
             let _ = self.logger.handle_minimal_log(
                 LogLevel::Info,
                 "Component parsed successfully"
             );
 
-            // Create and initialize component instance (consumes parsed component for memory efficiency)
+            eprintln!("DEBUG: About to call ComponentInstance::from_parsed");
+
+            // Create and initialize component instance (passes by reference to avoid stack overflow)
             // This includes executing start functions and transitioning to Running state
             // Note: WASI functions are already registered in host_registry from init_wasi()
             use wrt_component::components::component_instantiation::ComponentInstance;
 
-            let mut instance = ComponentInstance::from_parsed(0, parsed_component)
+            eprintln!("DEBUG: Calling from_parsed...");
+            // Wrap host_registry in Arc for passing to component
+            use std::sync::Arc;
+            let registry_arc = Arc::new(self.host_registry.clone());
+            let mut instance = ComponentInstance::from_parsed(0, &mut *parsed_component, Some(registry_arc))
                 .map_err(|_| Error::runtime_error("Failed to create and initialize component instance"))?;
             // parsed_component is now dropped - we only keep runtime instance
 
@@ -886,7 +892,7 @@ impl SimpleArgs {
             max_memory: None,
             force_nostd: false,
             #[cfg(feature = "wasi")]
-            enable_wasi: false,
+            enable_wasi: true,
             #[cfg(feature = "wasi")]
             wasi_version: None,
             #[cfg(feature = "wasi")]
@@ -1021,6 +1027,19 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
+    // Run main logic in a thread with 32MB stack to handle deep WebAssembly processing
+    // This is necessary because Module struct initialization requires significant stack space
+    const STACK_SIZE: usize = 32 * 1024 * 1024; // 32MB
+
+    std::thread::Builder::new()
+        .stack_size(STACK_SIZE)
+        .spawn(|| main_with_stack())
+        .expect("Failed to spawn main thread")
+        .join()
+        .expect("Main thread panicked")
+}
+
+fn main_with_stack() -> Result<()> {
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
 

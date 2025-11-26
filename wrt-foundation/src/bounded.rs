@@ -3642,6 +3642,10 @@ impl<const N_BYTES: usize> Ord for BoundedString<N_BYTES> {
 }
 
 impl<const N_BYTES: usize> ToBytes for BoundedString<N_BYTES> {
+    fn serialized_size(&self) -> usize {
+        self.bytes.serialized_size()
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -3724,9 +3728,8 @@ impl<const N_BYTES: usize> WasmName<N_BYTES> {
     ///
     /// The string will be truncated if it exceeds `N_BYTES`.
     pub fn from_str_truncate(s: &str) -> core::result::Result<Self, BoundedError> {
-        // Temporary implementation until BoundedString migration is complete
-        let mut inner = BoundedString::default();
-        // TODO: Implement proper string copying once StaticVec-based BoundedString methods are ready
+        // Directly use BoundedString's from_str_truncate which properly handles the conversion
+        let inner = BoundedString::from_str_truncate(s)?;
         Ok(Self { inner })
     }
 
@@ -3734,11 +3737,8 @@ impl<const N_BYTES: usize> WasmName<N_BYTES> {
     ///
     /// Returns an error if the string exceeds `N_BYTES`.
     pub fn try_from_str(s: &str) -> core::result::Result<Self, SerializationError> {
-        if s.len() > N_BYTES {
-            return Err(SerializationError::Custom("String too long for WasmName"));
-        }
-        // Temporary implementation until BoundedString migration is complete
-        let inner = BoundedString::default();
+        // Use BoundedString's try_from_str which properly handles the conversion
+        let inner = BoundedString::try_from_str(s)?;
         Ok(Self { inner })
     }
 
@@ -3893,9 +3893,10 @@ impl<const N_BYTES: usize>
     /// This will panic if the internal bytes are not valid UTF-8.
     /// For a non-panicking version, use `try_as_str`.
     pub fn as_str(&self) -> core::result::Result<&str, BoundedError> {
-        // This is temporarily disabled due to lifetime issues in no_std mode
-        // TODO: Implement proper lifetime management or alternative API
-        Err(BoundedError::runtime_execution_error("Operation failed"))
+        // Get the bytes from StaticVec and convert to &str
+        let bytes = self.bytes.as_slice();
+        core::str::from_utf8(bytes)
+            .map_err(|_| BoundedError::new(BoundedErrorKind::Utf8Error, "Invalid UTF-8"))
     }
 
     /// Tries to return the string as a slice.

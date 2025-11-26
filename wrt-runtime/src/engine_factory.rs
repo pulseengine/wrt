@@ -205,6 +205,10 @@ pub trait RuntimeEngine {
 
     /// Get engine statistics
     fn get_statistics(&self) -> EngineStatistics;
+
+    /// Set the host function registry for imported function calls
+    #[cfg(feature = "std")]
+    fn set_host_registry(&mut self, registry: std::sync::Arc<wrt_host::CallbackRegistry>);
 }
 
 // Implement RuntimeEngine for StacklessEngine
@@ -242,6 +246,11 @@ impl RuntimeEngine for crate::stackless::StacklessEngine {
 
     fn get_statistics(&self) -> EngineStatistics {
         EngineStatistics::default()
+    }
+
+    #[cfg(feature = "std")]
+    fn set_host_registry(&mut self, registry: std::sync::Arc<wrt_host::CallbackRegistry>) {
+        self.set_host_registry(registry);
     }
 }
 

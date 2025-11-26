@@ -20,6 +20,12 @@ cargo-wrt --help
 - Any example code MUST be in the `example/` directory or test files, not in the runtime implementation.
 - The runtime should be able to execute real WebAssembly modules without special-casing specific files.
 - Only use placeholders when absolutely necessary and clearly document them.
+- **NO FALLBACK LOGIC**: NEVER add fallback code that masks bugs or incomplete implementations. Fallbacks prevent us from seeing real issues and create technical debt. If something doesn't work, fix the root cause - don't add a fallback. Examples of banned fallbacks:
+  - `unwrap_or_else(|| default_value)` when the value should always exist
+  - `if lookup_fails { use_hardcoded_assumption }` instead of proper lookup
+  - "Fallback to instance X" when proper mapping should exist
+  - Any code that says "this is a temporary workaround"
+- **FAIL LOUD AND EARLY**: If data is missing or incorrect, return an error immediately. Don't silently substitute defaults or guess values.
 
 ## Memory System Architecture
 

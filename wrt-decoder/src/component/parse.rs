@@ -1171,19 +1171,39 @@ mod std_parsing {
 
                     match decl_tag {
                         0x00 => {
-                            // Core type - read type index and skip
-                            let (_type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                            // Core type: 0x00 t:<core:type>
+                            // This is an inline core type definition
+                            #[cfg(feature = "std")]
+                            eprintln!("[INSTANCEDECL] Parsing inline core type at offset {}", offset);
+
+                            let (_core_type_def, bytes_read) = parse_core_type_definition(&bytes[offset..])?;
                             offset += bytes_read;
                         },
                         0x01 => {
-                            // Type - read type index and skip
-                            let (_type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                            // Type: 0x01 t:<type>
+                            // According to spec: type ::= dt:<deftype>
+                            // This is an inline type definition (deftype)
+                            #[cfg(feature = "std")]
+                            eprintln!("[INSTANCEDECL] Parsing inline type at offset {} (bytes: {:02x} {:02x} {:02x} {:02x})",
+                                offset,
+                                bytes.get(offset).copied().unwrap_or(0),
+                                bytes.get(offset+1).copied().unwrap_or(0),
+                                bytes.get(offset+2).copied().unwrap_or(0),
+                                bytes.get(offset+3).copied().unwrap_or(0));
+
+                            let (_type_def, bytes_read) = parse_component_type_definition(&bytes[offset..])?;
+
+                            #[cfg(feature = "std")]
+                            eprintln!("[INSTANCEDECL] Inline type consumed {} bytes, next offset {}, next byte: {:02x}",
+                                bytes_read, offset + bytes_read, bytes.get(offset + bytes_read).copied().unwrap_or(0));
+
                             offset += bytes_read;
                         },
                         0x02 => {
-                            // Alias - parse and skip (it's a type declaration, not an export)
-                            // alias ::= 0x02 <aliastarget>
-                            let (_target, bytes_read) = parse_alias_target(&bytes[offset..])?;
+                            // Alias - parse complete alias (sort + aliastarget)
+                            // instancedecl ::= 0x02 a:<alias>
+                            // alias ::= s:<sort> t:<aliastarget>
+                            let (_alias, bytes_read) = parse_alias(&bytes[offset..])?;
                             offset += bytes_read;
                         },
                         0x04 => {
@@ -1295,9 +1315,25 @@ mod std_parsing {
                     offset,
                 ))
             },
-            _ => Err(Error::from(kinds::ParseError(
-                "Invalid component type form",
-            ))),
+            _ => {
+                // For any other form byte, try to parse as defvaltype
+                // deftype ::= dvt:<defvaltype> | ft:<functype> | ct:<componenttype> | it:<instancetype> | rt:<resourcetype>
+                // primvaltype ranges from 0x64-0x7f
+                // defvaltype opcodes are 0x65-0x72
+
+                #[cfg(feature = "std")]
+                eprintln!("[TYPE_DEF] Attempting to parse form 0x{:02x} as defvaltype", form);
+
+                // Note: parse_val_type expects bytes[0] to be the type tag/opcode
+                // The form byte at bytes[0] IS the defvaltype opcode in this case
+                // parse_val_type will read it and return the total bytes consumed
+                let (val_type, bytes_read) = parse_val_type(bytes)?;
+
+                Ok((
+                    wrt_format::component::ComponentTypeDefinition::Value(val_type),
+                    bytes_read,
+                ))
+            },
         }
     }
 
@@ -1598,6 +1634,12 @@ mod std_parsing {
     }
 
     /// Parse a value type
+    /// Parse a valtype according to Component Model spec
+    ///
+    /// valtype ::= i:<typeidx> => i
+    ///           | pvt:<primvaltype> => pvt
+    ///
+    /// This can be either a type index (non-negative) or a primvaltype (negative SLEB128)
     fn parse_val_type(bytes: &[u8]) -> Result<(wrt_format::component::FormatValType, usize)> {
         if bytes.is_empty() {
             return Err(Error::parse_error(
@@ -1605,11 +1647,14 @@ mod std_parsing {
             ));
         }
 
-        // Read the type tag
+        // Read the type tag - could be a type index or primvaltype/defvaltype opcode
         let tag = bytes[0];
+
+        // Check against known opcodes first, then fall back to type index
         let mut offset = 1;
 
         match tag {
+            // primvaltype opcodes (0x64-0x7f)
             0x7F => Ok((wrt_format::component::FormatValType::Bool, offset)),
             0x7E => Ok((wrt_format::component::FormatValType::S8, offset)),
             0x7D => Ok((wrt_format::component::FormatValType::U8, offset)),
@@ -1623,25 +1668,23 @@ mod std_parsing {
             0x75 => Ok((wrt_format::component::FormatValType::F64, offset)),
             0x74 => Ok((wrt_format::component::FormatValType::Char, offset)),
             0x73 => Ok((wrt_format::component::FormatValType::String, offset)),
+            0x64 => Ok((wrt_format::component::FormatValType::ErrorContext, offset)),
+
+            // defvaltype opcodes (0x65-0x72)
             0x72 => {
-                // Reference type
-                let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-                Ok((wrt_format::component::FormatValType::Ref(idx), offset))
-            },
-            0x71 => {
-                // Record type
+                // Record type: 0x72 lt*:vec(<labelvaltype>) => (record (field lt)*)
+                // labelvaltype ::= l:<label'> t:<valtype>
                 let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 let mut fields = Vec::with_capacity(field_count as usize);
                 for _ in 0..field_count {
-                    // Read field name
+                    // Read field label (name)
                     let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
-                    // Read field type
+                    // Read field valtype
                     let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     offset += bytes_read;
 
@@ -1650,36 +1693,50 @@ mod std_parsing {
 
                 Ok((wrt_format::component::FormatValType::Record(fields), offset))
             },
-            0x70 => {
-                // Variant type
+            0x71 => {
+                // Variant type: 0x71 case*:vec(<case>) => (variant case+)
+                // case ::= l:<label'> t?:<valtype>? 0x00 => (case l t?)
                 let (case_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 let mut cases = Vec::with_capacity(case_count as usize);
                 for _ in 0..case_count {
-                    // Read case name
+                    // Read case label (name)
                     let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
-                    // Read case type flag
-                    let has_type = bytes[offset] != 0;
+                    // Read optional type: <T>? ::= 0x00 | 0x01 t:<T>
+                    if offset >= bytes.len() {
+                        return Err(Error::parse_error("Unexpected end parsing variant case"));
+                    }
+                    let has_type_flag = bytes[offset];
                     offset += 1;
 
-                    let mut case_type = None;
-                    if has_type {
+                    let case_type = if has_type_flag == 0x01 {
                         let (ty, bytes_read) = parse_val_type(&bytes[offset..])?;
                         offset += bytes_read;
-                        case_type = Some(ty);
+                        Some(ty)
+                    } else {
+                        None
+                    };
+
+                    // Read trailing 0x00 byte
+                    if offset >= bytes.len() {
+                        return Err(Error::parse_error("Unexpected end parsing variant case trailer"));
                     }
+                    if bytes[offset] != 0x00 {
+                        return Err(Error::parse_error("Expected 0x00 trailer in variant case"));
+                    }
+                    offset += 1;
 
                     cases.push((name, case_type));
                 }
 
                 Ok((wrt_format::component::FormatValType::Variant(cases), offset))
             },
-            0x6F => {
-                // List type
+            0x70 => {
+                // List type: 0x70 t:<valtype> => (list t)
                 let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
                 Ok((
@@ -1687,36 +1744,38 @@ mod std_parsing {
                     offset,
                 ))
             },
-            0x6E => {
-                // Fixed-length list type (🔧)
-                let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                offset += bytes_read;
-
-                // Read the length
-                let (length, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                Ok((
-                    wrt_format::component::FormatValType::FixedList(Box::new(element_type), length),
+            0x6F => {
+                // Tuple type: 0x6f t*:vec(<valtype>) => (tuple t+)
+                #[cfg(feature = "std")]
+                eprintln!("[PARSE_VAL_TYPE] Parsing tuple at offset {}, bytes: {:02x} {:02x} {:02x} {:02x}",
                     offset,
-                ))
-            },
-            0x6D => {
-                // Tuple type
-                let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    bytes.get(offset).copied().unwrap_or(0),
+                    bytes.get(offset+1).copied().unwrap_or(0),
+                    bytes.get(offset+2).copied().unwrap_or(0),
+                    bytes.get(offset+3).copied().unwrap_or(0));
+
+                let (elem_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut fields = Vec::with_capacity(field_count as usize);
-                for _ in 0..field_count {
-                    let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                #[cfg(feature = "std")]
+                eprintln!("[PARSE_VAL_TYPE] Tuple has {} elements, offset now {}", elem_count, offset);
+
+                let mut elements = Vec::with_capacity(elem_count as usize);
+                for i in 0..elem_count {
+                    let (elem_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                    #[cfg(feature = "std")]
+                    eprintln!("[PARSE_VAL_TYPE] Tuple element {} consumed {} bytes, offset now {}", i, bytes_read, offset + bytes_read);
                     offset += bytes_read;
-                    fields.push(field_type);
+                    elements.push(elem_type);
                 }
 
-                Ok((wrt_format::component::FormatValType::Tuple(fields), offset))
+                #[cfg(feature = "std")]
+                eprintln!("[PARSE_VAL_TYPE] Tuple complete, returning offset {}", offset);
+
+                Ok((wrt_format::component::FormatValType::Tuple(elements), offset))
             },
-            0x6C => {
-                // Flags type
+            0x6E => {
+                // Flags type: 0x6e l*:vec(<label'>) => (flags l+)
                 let (flag_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
@@ -1730,23 +1789,23 @@ mod std_parsing {
 
                 Ok((wrt_format::component::FormatValType::Flags(flags), offset))
             },
-            0x6B => {
-                // Enum type
-                let (variant_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            0x6D => {
+                // Enum type: 0x6d l*:vec(<label'>) => (enum l+)
+                let (case_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut variants = Vec::with_capacity(variant_count as usize);
-                for _ in 0..variant_count {
+                let mut cases = Vec::with_capacity(case_count as usize);
+                for _ in 0..case_count {
                     let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
-                    variants.push(name);
+                    cases.push(name);
                 }
 
-                Ok((wrt_format::component::FormatValType::Enum(variants), offset))
+                Ok((wrt_format::component::FormatValType::Enum(cases), offset))
             },
-            0x6A => {
-                // Option type
+            0x6B => {
+                // Option type: 0x6b t:<valtype> => (option t)
                 let (inner_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
                 Ok((
@@ -1754,66 +1813,95 @@ mod std_parsing {
                     offset,
                 ))
             },
+            0x6A => {
+                // Result type: 0x6a t?:<valtype>? u?:<valtype>? => (result t? (error u)?)
+                // This is complex - result can have ok type, error type, both, or neither
+                // <T>? ::= 0x00 | 0x01 t:<T>
+
+                // Read ok type (optional)
+                if offset >= bytes.len() {
+                    return Err(Error::parse_error("Unexpected end parsing result ok type"));
+                }
+                let has_ok_flag = bytes[offset];
+                offset += 1;
+
+                let ok_type = if has_ok_flag == 0x01 {
+                    let (ty, bytes_read) = parse_val_type(&bytes[offset..])?;
+                    offset += bytes_read;
+                    Some(Box::new(ty))
+                } else {
+                    None
+                };
+
+                // Read error type (optional)
+                if offset >= bytes.len() {
+                    return Err(Error::parse_error("Unexpected end parsing result error type"));
+                }
+                let has_err_flag = bytes[offset];
+                offset += 1;
+
+                let err_type = if has_err_flag == 0x01 {
+                    let (ty, bytes_read) = parse_val_type(&bytes[offset..])?;
+                    offset += bytes_read;
+                    Some(Box::new(ty))
+                } else {
+                    None
+                };
+
+                // Encode as a Result with combined type
+                // FormatValType::Result expects a single Box<FormatValType>
+                // We'll use a tuple or variant to represent both ok/error
+                // For now, simplify to just the ok type
+                let result_type = ok_type.unwrap_or_else(|| Box::new(wrt_format::component::FormatValType::Void));
+
+                Ok((wrt_format::component::FormatValType::Result(result_type), offset))
+            },
             0x69 => {
-                // Result type (ok only)
-                let (ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                offset += bytes_read;
-                Ok((
-                    wrt_format::component::FormatValType::Result(Box::new(ok_type)),
-                    offset,
-                ))
-            },
-            0x68 => {
-                // Result type (err only)
-                let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                #[allow(unused_assignments)]
-                {
-                    offset += bytes_read;
-                }
-                // TODO: Fix FormatValType enum to support ResultErr variant
-                // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)),
-                // offset))
-                Err(Error::parse_error("ResultErr variant not implemented "))
-            },
-            0x67 => {
-                // Result type (ok and err)
-                let (_ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                #[allow(unused_assignments)]
-                {
-                    offset += bytes_read;
-                }
-                let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                #[allow(unused_assignments)]
-                {
-                    offset += bytes_read;
-                }
-                // TODO: Fix FormatValType enum to support ResultBoth variant
-                // Ok((
-                //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type),
-                // Box::new(err_type)),     offset,
-                // ))
-                Err(Error::parse_error("ResultBoth variant not implemented "))
-            },
-            0x66 => {
-                // Own a resource
+                // Own type: 0x69 i:<typeidx> => (own i)
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
                 Ok((wrt_format::component::FormatValType::Own(idx), offset))
             },
-            0x65 => {
-                // Borrow a resource
+            0x68 => {
+                // Borrow type: 0x68 i:<typeidx> => (borrow i)
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
                 Ok((wrt_format::component::FormatValType::Borrow(idx), offset))
             },
-            0x64 => {
-                // Error context type
-                Ok((wrt_format::component::FormatValType::ErrorContext, offset))
+            0x67 => {
+                // Fixed-length list type: 0x67 t:<valtype> len:<u32> => (list t len) 🔧
+                let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                offset += bytes_read;
+
+                // Read the length
+                let (length, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                Ok((
+                    wrt_format::component::FormatValType::FixedList(Box::new(element_type), length),
+                    offset,
+                ))
             },
-            _ => Err(Error::parse_error("Invalid value type tag ")),
+
+            // Note: 0x66 (stream) and 0x65 (future) are part of the async proposal (🔀)
+            // We don't have these in FormatValType yet, so skip them for now
+            0x66 | 0x65 => {
+                #[cfg(feature = "std")]
+                eprintln!("[VAL_TYPE] Skipping async type 0x{:02x} (stream/future not yet implemented)", tag);
+                // For now, treat as Void
+                Ok((wrt_format::component::FormatValType::Void, offset))
+            },
+
+            _ => {
+                // Not a known opcode - try to parse as a type index (unsigned LEB128)
+                #[cfg(feature = "std")]
+                eprintln!("[VAL_TYPE] Tag 0x{:02x} not a known opcode, parsing as type index", tag);
+
+                let (idx, bytes_read) = binary::read_leb128_u32(bytes, 0)?;
+                Ok((wrt_format::component::FormatValType::Ref(idx), bytes_read))
+            },
         }
     }
-
     /// Parse a start section
     pub fn parse_start_section(bytes: &[u8]) -> Result<(Start, usize)> {
         let mut offset = 0;
@@ -2246,6 +2334,14 @@ mod std_parsing {
         }
     }
 
+    /// Parse a single alias (sort + aliastarget)
+    ///
+    /// This is the complete alias production: alias ::= s:<sort> t:<aliastarget>
+    pub fn parse_alias(bytes: &[u8]) -> Result<(Alias, usize)> {
+        let (target, bytes_read) = parse_alias_target(bytes)?;
+        Ok((Alias { target, dest_idx: None }, bytes_read))
+    }
+
     /// Parse an alias section
     pub fn parse_alias_section(bytes: &[u8]) -> Result<(Vec<Alias>, usize)> {
         // Read a vector of aliases
@@ -2259,12 +2355,11 @@ mod std_parsing {
             #[cfg(feature = "std")]
             eprintln!("[ALIAS_SECTION] Parsing alias {} at offset {}", i, offset);
 
-            // Read alias target
-            let (target, bytes_read) = parse_alias_target(&bytes[offset..])?;
+            // Parse complete alias (sort + aliastarget)
+            let (alias, bytes_read) = parse_alias(&bytes[offset..])?;
             offset += bytes_read;
 
-            // Create the alias
-            aliases.push(Alias { target });
+            aliases.push(alias);
         }
 
         Ok((aliases, offset))
@@ -2277,6 +2372,8 @@ mod std_parsing {
     ///
     /// Where:
     /// - s is the sort byte (func, table, memory, global, type, module, instance, etc.)
+    ///   * For COMPONENT_SORT_CORE (0x00), this is followed by a CoreSort byte
+    ///   * For other values, this is the complete Sort
     /// - t is the aliastarget discriminant (0x00=export, 0x01=core export, 0x02=outer)
     fn parse_alias_target(bytes: &[u8]) -> Result<(wrt_format::component::AliasTarget, usize)> {
         if bytes.is_empty() {
@@ -2292,6 +2389,54 @@ mod std_parsing {
         #[cfg(feature = "std")]
         eprintln!("[ALIAS_TARGET] Parsing alias with sort: 0x{:02x}", sort_byte);
 
+        // Parse the sort - this may be a CoreSort (if sort_byte == 0x00) or a full Sort
+        let parsed_sort: wrt_format::component::Sort;
+
+        if sort_byte == binary::COMPONENT_SORT_CORE {
+            // This is a core item - read the CoreSort byte
+            if offset >= bytes.len() {
+                return Err(Error::from(kinds::ParseError(
+                    "Unexpected end of input while parsing CoreSort",
+                )));
+            }
+            let core_sort_byte = bytes[offset];
+            offset += 1;
+
+            #[cfg(feature = "std")]
+            eprintln!("[ALIAS_TARGET] Core sort byte: 0x{:02x}", core_sort_byte);
+
+            let core_sort = match core_sort_byte {
+                binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
+                binary::COMPONENT_CORE_SORT_TABLE => wrt_format::component::CoreSort::Table,
+                binary::COMPONENT_CORE_SORT_MEMORY => wrt_format::component::CoreSort::Memory,
+                binary::COMPONENT_CORE_SORT_GLOBAL => wrt_format::component::CoreSort::Global,
+                binary::COMPONENT_CORE_SORT_TYPE => wrt_format::component::CoreSort::Type,
+                binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
+                binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
+                _ => {
+                    #[cfg(feature = "std")]
+                    eprintln!("[ALIAS_TARGET] Invalid core sort byte: 0x{:02x}", core_sort_byte);
+                    return Err(Error::from(kinds::ParseError("Invalid core sort byte")));
+                },
+            };
+            parsed_sort = wrt_format::component::Sort::Core(core_sort);
+        } else {
+            // This is a component-level sort
+            parsed_sort = match sort_byte {
+                binary::COMPONENT_SORT_FUNC => wrt_format::component::Sort::Function,
+                binary::COMPONENT_SORT_VALUE => wrt_format::component::Sort::Value,
+                binary::COMPONENT_SORT_TYPE => wrt_format::component::Sort::Type,
+                binary::COMPONENT_SORT_COMPONENT => wrt_format::component::Sort::Component,
+                binary::COMPONENT_SORT_INSTANCE => wrt_format::component::Sort::Instance,
+                binary::COMPONENT_SORT_MODULE => wrt_format::component::Sort::Component,
+                _ => {
+                    #[cfg(feature = "std")]
+                    eprintln!("[ALIAS_TARGET] Invalid sort byte: 0x{:02x}", sort_byte);
+                    return Err(Error::from(kinds::ParseError("Invalid sort byte")));
+                },
+            };
+        }
+
         // SECOND: Read the aliastarget tag (where it comes from)
         if offset >= bytes.len() {
             return Err(Error::from(kinds::ParseError(
@@ -2303,22 +2448,6 @@ mod std_parsing {
 
         #[cfg(feature = "std")]
         eprintln!("[ALIAS_TARGET] Alias target tag: 0x{:02x}", tag);
-
-        // Convert sort_byte to CoreSort
-        let kind = match sort_byte {
-            binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
-            binary::COMPONENT_CORE_SORT_TABLE => wrt_format::component::CoreSort::Table,
-            binary::COMPONENT_CORE_SORT_MEMORY => wrt_format::component::CoreSort::Memory,
-            binary::COMPONENT_CORE_SORT_GLOBAL => wrt_format::component::CoreSort::Global,
-            binary::COMPONENT_CORE_SORT_TYPE => wrt_format::component::CoreSort::Type,
-            binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
-            binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
-            _ => {
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS_PARSER] Invalid core sort kind byte: 0x{:02x}", sort_byte);
-                return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
-            },
-        };
 
         match tag {
             0x00 => {
@@ -2334,22 +2463,29 @@ mod std_parsing {
                 let name = bytes_to_string(name_bytes);
 
                 #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Component export alias: instance {} exports '{}'", instance_idx, name);
-
-                // Convert the CoreSort we parsed earlier to Sort
-                let sort_kind = wrt_format::component::Sort::Core(kind);
+                eprintln!("[ALIAS_TARGET] Component export alias: instance {} exports '{}' (sort: {:?})", instance_idx, name, parsed_sort);
 
                 Ok((
                     wrt_format::component::AliasTarget::InstanceExport {
                         instance_idx,
                         name,
-                        kind: sort_kind,
+                        kind: parsed_sort,
                     },
                     offset,
                 ))
             },
             0x01 => {
                 // 0x01 = core export (from core instance)
+
+                // For core exports, the sort must be Sort::Core(CoreSort)
+                let core_sort = match parsed_sort {
+                    wrt_format::component::Sort::Core(cs) => cs,
+                    _ => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[ALIAS_TARGET] Core export must have CoreSort, got: {:?}", parsed_sort);
+                        return Err(Error::from(kinds::ParseError("Core export must have CoreSort")));
+                    }
+                };
 
                 // Read instance index
                 let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -2362,13 +2498,13 @@ mod std_parsing {
 
                 #[cfg(feature = "std")]
                 eprintln!("[ALIAS_TARGET] Core export alias: instance {} exports '{}' as {:?}",
-                         instance_idx, name, kind);
+                         instance_idx, name, core_sort);
 
                 Ok((
                     wrt_format::component::AliasTarget::CoreInstanceExport {
                         instance_idx,
                         name,
-                        kind,
+                        kind: core_sort,
                     },
                     offset,
                 ))
@@ -2385,13 +2521,14 @@ mod std_parsing {
                 offset += bytes_read;
 
                 #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Outer alias: count {}, idx {}", count, idx);
-
-                // Convert the CoreSort we parsed earlier to Sort
-                let sort_kind = wrt_format::component::Sort::Core(kind);
+                eprintln!("[ALIAS_TARGET] Outer alias: count {}, idx {} (sort: {:?})", count, idx, parsed_sort);
 
                 Ok((
-                    wrt_format::component::AliasTarget::Outer { count, kind: sort_kind, idx },
+                    wrt_format::component::AliasTarget::Outer {
+                        count,
+                        kind: parsed_sort,
+                        idx
+                    },
                     offset,
                 ))
             },
