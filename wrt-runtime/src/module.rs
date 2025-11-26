@@ -94,7 +94,7 @@ type ImportMap = BoundedMap<
 type ModuleImports = BoundedMap<
     wrt_foundation::bounded::BoundedString<256>,
     ImportMap,
-    32,
+    128, // Increased from 32 to handle modules with many import namespaces
     RuntimeProvider,
 >;
 type CustomSections = BoundedMap<
@@ -106,7 +106,7 @@ type CustomSections = BoundedMap<
 type ExportMap = wrt_foundation::direct_map::DirectMap<
     wrt_foundation::bounded::BoundedString<256>,
     Export,
-    64,
+    256, // Increased from 64 to handle TinyGo modules with many exports
 >;
 
 // Additional type aliases for struct fields to use unified RuntimeProvider
@@ -599,7 +599,7 @@ impl Data {
 }
 
 /// Represents a WebAssembly module in the runtime
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
     /// Module types (function signatures)
     /// In std mode, use Vec since WrtFuncType has variable size
@@ -656,401 +656,58 @@ impl Module {
         self.memories.push(memory)
     }
 
-    /// Creates a truly empty module with properly initialized providers
-    /// This is used to avoid circular dependencies during engine initialization
-    pub fn empty() -> Self {
-        // BOOTSTRAP MODE: Skip all complex provider systems and get basic functionality working
-        #[cfg(feature = "std")]
-        eprintln!("INFO: Module::empty() using bootstrap mode - simple standard collections");
-        Self::bootstrap_empty()
-    }
+    /// REMOVED: All Module::empty(), try_empty(), bootstrap_empty(), etc.
+    /// These functions used the old NoStdProvider system which causes stack overflow
+    /// Use Module::new_empty() or Module::from_wrt_module() with proper initialization instead
 
-    /// Internal helper to create empty module with proper error handling
-    fn try_empty() -> Result<Self> {
-        // BYPASS create_runtime_provider() which causes circular dependency
-        // Create provider directly using heap allocation to avoid stack overflow
-        let provider = Self::create_direct_provider()?;
-
+    /// Creates an empty module using the unified memory system (create_runtime_provider)
+    /// This replaces the old Module::new() and Module::empty() functions
+    pub fn new_empty() -> Result<Self> {
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
         Ok(Self {
-            #[cfg(feature = "std")]
-            types:           Vec::new(),
-            #[cfg(not(feature = "std"))]
-            types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            imports:         BoundedMap::new(provider.clone())?,
-            #[cfg(feature = "std")]
-            functions:       Vec::new(),
-            #[cfg(not(feature = "std"))]
-            functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            #[cfg(feature = "std")]
-            memories:        Vec::new(),
-            #[cfg(not(feature = "std"))]
-            memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            start:           None,
-            custom_sections: BoundedMap::new(provider.clone())?,
-            exports:         ExportMap::new(),
-            name:            None,
-            binary:          None,
-            validated:       false,
-        })
-    }
-
-    /// Create a provider directly without circular dependencies
-    /// This bypasses create_runtime_provider() which can cause infinite recursion
-    fn create_direct_provider() -> Result<crate::bounded_runtime_infra::RuntimeProvider> {
-        use wrt_foundation::{
-            safe_memory::NoStdProvider,
-            capabilities::{DynamicMemoryCapability, CapabilityAwareProvider},
-            verification::VerificationLevel,
-            CrateId,
-        };
-        use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
-        
-        // Create provider using heap allocation (our fix prevents stack overflow)
-        let base_provider = NoStdProvider::<RUNTIME_MEMORY_SIZE>::new_heap_allocated();
-        
-        // Create capability without triggering circular dependency
-        let capability = DynamicMemoryCapability::new(
-            RUNTIME_MEMORY_SIZE,
-            CrateId::Runtime,
-            VerificationLevel::Standard,
-        );
-        
-        // Create provider wrapper
-        Ok(CapabilityAwareProvider::new(
-            base_provider,
-            wrt_foundation::Box::new(capability),
-            CrateId::Runtime,
-        ))
-    }
-
-
-    /// Bootstrap mode: Create module with standard collections, no complex providers
-    /// This bypasses ALL circular dependency issues and gets basic WASM execution working
-    fn bootstrap_empty() -> Self {
-        // Create ONE heap-allocated provider and reuse it for all collections
-        // This avoids the Default::default() trap that causes stack overflow
-        
-        use wrt_foundation::{
-            safe_memory::NoStdProvider,
-            capabilities::{DynamicMemoryCapability, CapabilityAwareProvider},
-            verification::VerificationLevel,
-            CrateId,
-            bounded::BoundedVec,
-        };
-        use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
-        use wrt_foundation::bounded_collections::BoundedMap;
-        
-        // Use the standard runtime provider creation but bypass potential circular dependencies
-        // The heap allocation fix should prevent stack overflow 
-        let provider = match create_runtime_provider() {
-            Ok(p) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap created runtime provider successfully");
-                p
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap runtime provider creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create runtime provider")
-            }
-        };
-        
-        // Now create all bounded collections with this single provider
-        // This should work because we're using heap allocation
-        // DEBUG: Don't clone the provider - use references instead
-        let provider_ref = &provider;
-
-        // In std mode, use Vec for types since WrtFuncType has variable size
-        #[cfg(feature = "std")]
-        let types = {
-            eprintln!("INFO: Bootstrap types Vec created successfully (std mode)");
-            Vec::new()
-        };
-
-        #[cfg(not(feature = "std"))]
-        let types = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                eprintln!("INFO: Bootstrap types BoundedVec created successfully");
-                vec
-            }
-            Err(e) => {
-                eprintln!("ERROR: Bootstrap types BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create types collection")
-            }
-        };
-
-        let imports = match BoundedMap::new(provider.clone()) {
-            Ok(map) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap imports BoundedMap created successfully");
-                map
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap imports BoundedMap creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create imports collection")
-            }
-        };
-
-        #[cfg(feature = "std")]
-        let functions = {
-            eprintln!("INFO: Bootstrap functions Vec created successfully");
-            Vec::new()
-        };
-        #[cfg(not(feature = "std"))]
-        let functions = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => vec,
-            Err(e) => {
-                panic!("Bootstrap failed - cannot create functions collection: {:?}", e)
-            }
-        };
-        
-        let tables = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap tables BoundedVec created successfully");
-                vec
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap tables BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create tables collection")
-            }
-        };
-
-        #[cfg(feature = "std")]
-        let memories = {
-            eprintln!("INFO: Bootstrap memories Vec created successfully");
-            Vec::new()
-        };
-        #[cfg(not(feature = "std"))]
-        let memories = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => vec,
-            Err(e) => {
-                panic!("Bootstrap failed - cannot create memories collection: {:?}", e)
-            }
-        };
-
-        let globals = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap globals BoundedVec created successfully");
-                vec
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap globals BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create globals collection")
-            }
-        };
-        
-        let elements = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap elements BoundedVec created successfully");
-                vec
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap elements BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create elements collection")
-            }
-        };
-
-        let data = match BoundedVec::new(provider.clone()) {
-            Ok(vec) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap data BoundedVec created successfully");
-                vec
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap data BoundedVec creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create data collection")
-            }
-        };
-
-        let custom_sections = match BoundedMap::new(provider.clone()) {
-            Ok(map) => {
-                #[cfg(feature = "std")]
-                eprintln!("INFO: Bootstrap custom_sections BoundedMap created successfully");
-                map
-            }
-            Err(e) => {
-                #[cfg(feature = "std")]
-                eprintln!("ERROR: Bootstrap custom_sections BoundedMap creation failed: {:?}", e);
-                panic!("Bootstrap failed - cannot create custom_sections collection")
-            }
-        };
-
-        let exports = {
-            #[cfg(feature = "std")]
-            eprintln!("INFO: Bootstrap exports DirectMap created successfully");
-            ExportMap::new()
-        };
-        
-        Self {
-            types,
-            imports,
-            functions,
-            tables,
-            memories,
-            globals,
-            elements,
-            data,
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
-            custom_sections,
-            exports,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
             name: None,
             binary: None,
             validated: false,
-        }
-    }
-
-    /// Zero-allocation fallback that creates a module without any provider allocation
-    /// This completely bypasses the memory system to prevent stack overflow
-    fn zero_allocation_empty() -> Self {
-        // Try to create a working module with heap-allocated providers
-        if let Ok(module) = Self::heap_allocated_empty() {
-            #[cfg(feature = "std")]
-            eprintln!("INFO: Using heap-allocated providers successfully");
-            return module;
-        }
-
-        #[cfg(feature = "std")]
-        eprintln!("WARNING: Falling back to minimal collections - limited functionality");
-        // Create module with default/empty collections
-        // This may have limited functionality but prevents stack overflow
-        Self {
-            types: Default::default(),
-            imports: Default::default(),
-            functions: Default::default(),
-            tables: Default::default(),
-            memories: Default::default(),
-            globals: Default::default(),
-            elements: Default::default(),
-            data: Default::default(),
-            start: None,
-            custom_sections: Default::default(),
-            exports: Default::default(),
-            name: None,
-            binary: None,
-            validated: false,
-        }
-    }
-
-    /// Create providers on heap to avoid stack overflow while maintaining functionality
-    fn heap_allocated_empty() -> Result<Self> {
-        use wrt_foundation::{
-            safe_memory::NoStdProvider,
-            capabilities::{DynamicMemoryCapability, CapabilityAwareProvider},
-            verification::VerificationLevel,
-        };
-        use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
-        
-        // Try to avoid stack overflow by using much smaller provider on stack
-        // If 32KB is too big for stack, use a smaller size that fits
-        const SAFE_STACK_SIZE: usize = 4096; // 4KB should be safe on most systems
-        
-        let base_provider_small = NoStdProvider::<SAFE_STACK_SIZE>::default();
-        
-        // Create capability for the smaller size
-        let capability = DynamicMemoryCapability::new(
-            SAFE_STACK_SIZE,
-            CrateId::Runtime,
-            VerificationLevel::Standard,
-        );
-        
-        // Create provider wrapper
-        let provider = CapabilityAwareProvider::new(
-            base_provider_small,
-            wrt_foundation::Box::new(capability),
-            CrateId::Runtime,
-        );
-        
-        // NOTE: This will create type mismatches with the expected 32KB providers
-        // The type system expects CapabilityAwareProvider<NoStdMemoryProvider<32768>>
-        // but we're providing CapabilityAwareProvider<NoStdMemoryProvider<4096>>
-        // This will likely cause compilation errors, so return an error to fall back
-        Err(wrt_error::Error::memory_error("Type mismatch with smaller provider sizes"))
-    }
-
-
-    /// Creates a new empty module
-    pub fn new() -> Result<Self> {
-        let provider = create_runtime_provider()?;
-        let runtime_provider1 = create_runtime_provider()?;
-        let runtime_provider2 = create_runtime_provider()?;
-        let runtime_provider3 = create_runtime_provider()?;
-        Ok(Self {
-            #[cfg(feature = "std")]
-            types:           Vec::new(),
-            #[cfg(not(feature = "std"))]
-            types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            imports:         BoundedMap::new(runtime_provider1)?,
-            #[cfg(feature = "std")]
-            functions:       Vec::new(),
-            #[cfg(not(feature = "std"))]
-            functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            #[cfg(feature = "std")]
-            memories:        Vec::new(),
-            #[cfg(not(feature = "std"))]
-            memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            start:           None,
-            custom_sections: BoundedMap::new(runtime_provider2)?,
-            exports:         ExportMap::new(),
-            name:            None,
-            binary:          None,
-            validated:       false,
         })
     }
 
     /// Creates a runtime Module from a `wrt_format::module::Module`.
     /// This is the primary constructor after decoding.
     #[cfg(feature = "std")]
-    pub fn from_wrt_module(wrt_module: &wrt_format::module::Module) -> Result<Self> {
+    pub fn from_wrt_module(wrt_module: &wrt_format::module::Module) -> Result<Box<Self>> {
         // Ensure memory system is initialized before creating providers
         wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
 
-        // Use empty() instead of new() to avoid memory allocation during initialization
-        // This prevents stack overflow when the memory system isn't fully initialized
-        let mut runtime_module = Self::empty();
+        // Use create_runtime_provider (wraps safe_managed_alloc with proper types)
+        let shared_provider = crate::bounded_runtime_infra::create_runtime_provider()?;
 
-        // Map start function if present
-        runtime_module.start = wrt_module.start;
-
-        // BOOTSTRAP MODE: Create provider the same way as our bootstrap collections
-        // DON'T call create_runtime_provider() as it triggers circular dependency!
-        let shared_provider = {
-            use wrt_foundation::{
-                safe_memory::NoStdProvider,
-                capabilities::{DynamicMemoryCapability, CapabilityAwareProvider},
-                verification::VerificationLevel,
-                CrateId,
-            };
-            use crate::bounded_runtime_infra::RUNTIME_MEMORY_SIZE;
-            
-            // Use same approach as bootstrap - heap allocation
-            let base_provider = NoStdProvider::<RUNTIME_MEMORY_SIZE>::new_heap_allocated();
-            let capability = DynamicMemoryCapability::new(
-                RUNTIME_MEMORY_SIZE,
-                CrateId::Runtime,
-                VerificationLevel::Standard,
-            );
-            
-            CapabilityAwareProvider::new(
-                base_provider,
-                wrt_foundation::Box::new(capability),
-                CrateId::Runtime,
-            )
+        // Create initial empty module with proper providers
+        let mut runtime_module = Self {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            start: wrt_module.start,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
         };
 
         // Convert types
@@ -1088,16 +745,30 @@ impl Module {
             eprintln!("DEBUG: Processing function {}, type_idx={}, locals.len()={}, code.len()={}",
                      func_idx, func.type_idx, func.locals.len(), func.code.len());
 
-            // Convert locals using the locals conversion function
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: About to convert locals for function {}", func_idx);
-            let locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&func.locals, shared_provider.clone())?;
+            // Handle imported functions (they have no code, but still need to be in the function table)
+            let (locals, body) = if func.code.is_empty() {
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: Function {} is imported (no code) - creating stub entry", func_idx);
 
-            // Parse the function body bytecode into instructions
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: About to parse instructions for function {}", func_idx);
-            let instructions = crate::instruction_parser::parse_instructions_with_provider(&func.code, shared_provider.clone())?;
-            let body = WrtExpr { instructions };
+                // Imported function: create with empty locals and empty body
+                let empty_locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&[], shared_provider.clone())?;
+                // Create empty instruction vector directly (don't parse empty bytecode)
+                #[cfg(feature = "std")]
+                let empty_instructions = Vec::new();
+                #[cfg(not(feature = "std"))]
+                let empty_instructions = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
+                (empty_locals, WrtExpr { instructions: empty_instructions })
+            } else {
+                // Local function: convert locals and parse code
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: About to convert locals for function {}", func_idx);
+                let locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&func.locals, shared_provider.clone())?;
+
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: About to parse instructions for function {}", func_idx);
+                let instructions = crate::instruction_parser::parse_instructions_with_provider(&func.code, shared_provider.clone())?;
+                (locals, WrtExpr { instructions })
+            };
 
             #[cfg(feature = "std")]
             eprintln!("DEBUG: About to create runtime function for function {}", func_idx);
@@ -1256,7 +927,7 @@ impl Module {
 
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Bootstrap module conversion complete, returning runtime_module");
-        Ok(runtime_module)
+        Ok(Box::new(runtime_module))
     }
 
     /// Creates a runtime Module from a `wrt_format::module::Module` in no_std
@@ -1433,7 +1104,7 @@ impl Module {
             runtime_module.exports.insert(map_key, export_obj)?;
         }
 
-        Ok(runtime_module)
+        Ok(Box::new(runtime_module))
     }
 
     /// Creates a runtime Module from a `wrt_foundation::types::Module`.
@@ -2600,7 +2271,24 @@ impl Module {
 
     /// Create runtime Module from unified API ModuleInfo
     fn from_module_info(module_info: &wrt_decoder::ModuleInfo, binary: &[u8]) -> Result<Self> {
-        let mut runtime_module = Self::new()?;
+        // Create module directly using create_runtime_provider
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+        let mut runtime_module = Self {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
+        };
 
         // Set start function if present
         runtime_module.start = module_info.start_function;
@@ -2667,20 +2355,46 @@ impl Module {
             )?;
 
             // Add to imports map
+            eprintln!("[FROM_MODULE_INFO] Creating module_key from '{}'", &import.module);
             let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &import.module)?;
+                &import.module)
+                .map_err(|e| {
+                    eprintln!("[FROM_MODULE_INFO] ✗ Failed to create module_key: {:?}", e);
+                    Error::foundation_bounded_capacity_exceeded("Failed to convert module name")
+                })?;
+            eprintln!("[FROM_MODULE_INFO] Creating item_key from '{}'", &import.name);
             let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                &import.name)?;
+                &import.name)
+                .map_err(|e| {
+                    eprintln!("[FROM_MODULE_INFO] ✗ Failed to create item_key: {:?}", e);
+                    Error::foundation_bounded_capacity_exceeded("Failed to convert import name")
+                })?;
 
             // Get or create inner map
+            eprintln!("[FROM_MODULE_INFO] Getting or creating inner map for module_key");
             let mut inner_map = match runtime_module.imports.get(&module_key)? {
-                Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?,
+                Some(existing) => {
+                    eprintln!("[FROM_MODULE_INFO] Found existing inner map");
+                    existing
+                },
+                None => {
+                    eprintln!("[FROM_MODULE_INFO] Creating new inner map");
+                    ImportMap::new(create_runtime_provider()?)?
+                },
             };
 
             // Insert the import
-            inner_map.insert(item_key, import_struct)?;
+            eprintln!("[FROM_MODULE_INFO] Inserting import into inner map");
+            eprintln!("[FROM_MODULE_INFO] Import: module='{}', name='{}'",
+                import_struct.module.as_str().unwrap_or("<error>"),
+                import_struct.name.as_str().unwrap_or("<error>"));
+            inner_map.insert(item_key, import_struct).map_err(|e| {
+                eprintln!("[FROM_MODULE_INFO] ✗ Insert failed: {:?}", e);
+                e
+            })?;
+            eprintln!("[FROM_MODULE_INFO] Inserting inner map into imports");
             runtime_module.imports.insert(module_key, inner_map)?;
+            eprintln!("[FROM_MODULE_INFO] ✓ Import processed successfully");
         }
 
         // Process exports
@@ -2718,13 +2432,13 @@ impl Module {
         if !module_info.function_types.is_empty() {
             // Fall back to full parsing for complex cases
             use wrt_decoder::decoder;
-            let decoded_module = decoder::decode_module(binary)?;
+            let decoded_module = Box::new(decoder::decode_module(binary)?);
 
             // decoded_module is wrt_format::Module, so we need the format-compatible method
             #[cfg(feature = "std")]
-            let full_runtime_module = Module::from_wrt_module(&decoded_module)?;
+            let full_runtime_module = *Module::from_wrt_module(&*decoded_module)?;
             #[cfg(not(feature = "std"))]
-            let full_runtime_module = Module::from_wrt_module_nostd(&decoded_module)?;
+            let full_runtime_module = Module::from_wrt_module_nostd(&*decoded_module)?;
 
             return Ok(full_runtime_module);
         }
@@ -2949,9 +2663,23 @@ impl wrt_foundation::traits::FromBytes for Module {
         reader.read_exact(&mut counts)?;
 
         // Create a new empty module with the restored name and validation status
-        let mut module = Module::new()?;
-        module.name = name;
-        module.validated = validated;
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+        let mut module = Module {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name,
+            binary: None,
+            validated,
+        };
 
         Ok(module)
     }

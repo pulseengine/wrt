@@ -482,10 +482,13 @@ impl ReferenceOperations for ModuleInstance {
 
 /// Manual trait implementations for ModuleInstance since fields don't support
 /// automatic derivation
+/// REMOVED: Default implementation causes stack overflow through Module::empty()
+/// Use ModuleInstance::new() with proper initialization instead
+/* DISABLED - CAUSES STACK OVERFLOW
 impl Default for ModuleInstance {
     fn default() -> Self {
-        // Create a default module instance with a default module
-        let default_module = Module::default();
+        // Create a default module instance with an empty module
+        let default_module = Module::empty();
         // Default implementation must succeed for basic functionality
         // Use minimal memory allocation that should always work
         match Self::new(Arc::new(default_module), 0) {
@@ -506,7 +509,7 @@ impl Default for ModuleInstance {
                                 // System is in unrecoverable state - but we must return something
                                 // Create an invalid instance that will fail safely later
                                 return Self {
-                                    module: Arc::new(Module::default()),
+                                    module: Arc::new(Module::empty()),
                                     memories: Arc::new(Mutex::new(Default::default())),
                                     tables: Arc::new(Mutex::new(Default::default())),
                                     globals: Arc::new(Mutex::new(Default::default())),
@@ -520,7 +523,7 @@ impl Default for ModuleInstance {
                     },
                 };
                 Self {
-                    module: Arc::new(Module::default()),
+                    module: Arc::new(Module::empty()),
                     memories: Arc::new(Mutex::new(
                         // Try to create with RuntimeProvider, fallback to empty vector creation
                         wrt_foundation::bounded::BoundedVec::new(runtime_provider.clone())
@@ -560,14 +563,13 @@ impl Default for ModuleInstance {
         }
     }
 }
+*/ // End of DISABLED Default impl
 
 impl Clone for ModuleInstance {
     fn clone(&self) -> Self {
         // Create a new instance with the same module and instance ID
-        Self::new(Arc::clone(&self.module), self.instance_id).unwrap_or_else(|_| {
-            // Fallback implementation if allocation fails
-            Self::default()
-        })
+        Self::new(Arc::clone(&self.module), self.instance_id)
+            .expect("Failed to clone ModuleInstance - memory allocation failed")
     }
 }
 
@@ -714,10 +716,27 @@ impl FromBytes for ModuleInstance {
             }
         }
 
-        // Create a default module instance with empty collections
+        // Create a default module instance with empty collections using create_runtime_provider
         // This is a simplified implementation - in a real scenario,
         // you'd need to reconstruct the actual module
-        let default_module = Module::default();
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+
+        let default_module = Module {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
+        };
 
         // Create the instance using the new method
         Self::new(Arc::new(default_module), instance_id).map_err(|_| {

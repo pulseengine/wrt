@@ -271,6 +271,27 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
 fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()> {
     let mut offset = 0;
 
+    // Track index counters for each sort to assign dest_idx to aliases
+    // These are incremented for both aliases AND canon definitions
+    // IMPORTANT: Core and component index spaces are SEPARATE
+    use wrt_format::component::{CoreSort, CanonOperation};
+
+    // Core-level counters (for CoreInstanceExport aliases)
+    let mut core_func_counter = 0u32;
+    let mut core_table_counter = 0u32;
+    let mut core_memory_counter = 0u32;
+    let mut core_global_counter = 0u32;
+    let mut core_type_counter = 0u32;
+    let mut core_module_counter = 0u32;
+    let mut core_instance_counter = 0u32;
+
+    // Component-level counters (for InstanceExport aliases)
+    let mut component_func_counter = 0u32;
+    let mut component_type_counter = 0u32;
+    let mut component_instance_counter = 0u32;
+    let mut component_counter = 0u32;
+    let mut value_counter = 0u32;
+
     // Parse each section
     while offset < data.len() {
         // Read section ID
@@ -379,9 +400,57 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x06 => {
                 // Section 6: Aliases
                 match parse::parse_alias_section(section_data) {
-                    Ok((aliases, _)) => {
+                    Ok((mut aliases, _)) => {
                         #[cfg(feature = "std")]
                         eprintln!("[SECTION_PARSER] Section 0x06 (Aliases): parsed {} aliases", aliases.len());
+
+                        // Assign dest_idx to each alias based on its sort and current counter
+                        for alias in &mut aliases {
+                            use wrt_format::component::{AliasTarget, Sort};
+                            match &alias.target {
+                                AliasTarget::CoreInstanceExport { kind, .. } => {
+                                    // Core-level aliases use core counters
+                                    let idx = match kind {
+                                        CoreSort::Function => { let i = core_func_counter; core_func_counter += 1; i },
+                                        CoreSort::Table => { let i = core_table_counter; core_table_counter += 1; i },
+                                        CoreSort::Memory => { let i = core_memory_counter; core_memory_counter += 1; i },
+                                        CoreSort::Global => { let i = core_global_counter; core_global_counter += 1; i },
+                                        CoreSort::Type => { let i = core_type_counter; core_type_counter += 1; i },
+                                        CoreSort::Module => { let i = core_module_counter; core_module_counter += 1; i },
+                                        CoreSort::Instance => { let i = core_instance_counter; core_instance_counter += 1; i },
+                                    };
+                                    alias.dest_idx = Some(idx);
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Assigned CoreInstanceExport {:?}[{}]", kind, idx);
+                                },
+                                AliasTarget::InstanceExport { kind, .. } => {
+                                    // Component-level aliases use component counters
+                                    let idx = match kind {
+                                        Sort::Function => { let i = component_func_counter; component_func_counter += 1; i },
+                                        Sort::Component => { let i = component_counter; component_counter += 1; i },
+                                        Sort::Instance => { let i = component_instance_counter; component_instance_counter += 1; i },
+                                        Sort::Value => { let i = value_counter; value_counter += 1; i },
+                                        Sort::Type => { let i = component_type_counter; component_type_counter += 1; i },
+                                        Sort::Core(_) => {
+                                            // Core sorts in InstanceExport are unusual, skip for now
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[SECTION_PARSER] WARNING: InstanceExport with Core sort");
+                                            continue;
+                                        },
+                                    };
+                                    alias.dest_idx = Some(idx);
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Assigned InstanceExport {:?}[{}]", kind, idx);
+                                },
+                                AliasTarget::Outer { .. } => {
+                                    // Outer aliases reference parent component's index space
+                                    // These don't consume indices in the current component
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Outer alias (no index assigned)");
+                                }
+                            }
+                        }
+
                         component.aliases.extend(aliases);
                     },
                     Err(e) => {
@@ -407,6 +476,36 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 8: Canonical (Canon ABI operations: lift, lower, resource)
                 match parse::parse_canon_section(section_data) {
                     Ok((canons, _)) => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[SECTION_PARSER] Section 0x08 (Canonicals): parsed {} canons", canons.len());
+
+                        // Increment counters for canon definitions that create items
+                        for canon in &canons {
+                            match &canon.operation {
+                                CanonOperation::Lower { .. } => {
+                                    // Canon lower creates a CORE function
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Canon lower creates core func[{}]", core_func_counter);
+                                    core_func_counter += 1;
+                                },
+                                CanonOperation::Lift { .. } => {
+                                    // Canon lift creates a COMPONENT function
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Canon lift creates component func[{}]", component_func_counter);
+                                    component_func_counter += 1;
+                                },
+                                CanonOperation::Resource(_) => {
+                                    // Resource operations (like resource.drop) create CORE functions
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[SECTION_PARSER] Canon resource creates core func[{}]", core_func_counter);
+                                    core_func_counter += 1;
+                                },
+                                _ => {
+                                    // Other canon operations may not create items
+                                }
+                            }
+                        }
+
                         component.canonicals.extend(canons);
                     },
                     Err(_) => {

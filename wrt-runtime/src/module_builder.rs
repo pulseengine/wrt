@@ -124,11 +124,27 @@ impl RuntimeModuleBuilder for ModuleBuilder {
 
     /// Creates a new module builder.
     fn new() -> Self {
+        // Create module directly to avoid Module::new()
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()
+            .expect("Failed to create runtime provider");
+        let module = Module {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create imports"),
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create tables"),
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create globals"),
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create elements"),
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create data"),
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create custom_sections"),
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
+        };
         Self {
-            module:              Module::new().unwrap_or_else(|e| {
-                // Log the error and panic or handle gracefully
-                panic!("Failed to create new module: {:?}", e)
-            }),
+            module,
             imported_func_count: 0,
         }
     }
@@ -353,8 +369,26 @@ impl ModuleBuilder {
     /// Creates a new module builder with an existing binary.
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn with_binary(_binary: Vec<u8>) -> Result<Self> {
+        // Create module directly to avoid Module::new()
+        let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+        let module = Module {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
+        };
         Ok(Self {
-            module:              Module::new()?,
+            module,
             imported_func_count: 0,
         })
     }
@@ -376,8 +410,8 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
             wrt_foundation::budget_aware_provider::CrateId::Runtime,
         )?;
 
-        let decoder_module = wrt_decoder::decode_module(binary)?;
-        Module::from_wrt_module(&decoder_module).map(|boxed| *boxed)  // Dereference Box
+        let decoder_module = Box::new(wrt_decoder::decode_module(binary)?);
+        Module::from_wrt_module(&*decoder_module).map(|boxed| *boxed)  // Dereference Box
         // Scope drops here, memory available for reuse
     }
     #[cfg(all(not(feature = "decoder"), feature = "std"))]

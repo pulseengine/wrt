@@ -455,7 +455,86 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process global section
     fn process_global_section(&mut self, data: &[u8]) -> Result<()> {
-        // Parse globals one at a time
+        use wrt_format::binary::read_leb128_u32;
+        use wrt_foundation::types::ValueType;
+        use wrt_format::types::FormatGlobalType;
+        use wrt_format::module::Global;
+
+        let (count, mut offset) = read_leb128_u32(data, 0)?;
+
+        #[cfg(feature = "std")]
+        {
+            eprintln!("DEBUG process_global_section: count={}, data.len()={}, offset after count={}", count, data.len(), offset);
+            eprint!("DEBUG first 20 bytes: ");
+            for i in 0..data.len().min(20) {
+                eprint!("{:02x} ", data[i]);
+            }
+            eprintln!();
+        }
+
+        for i in 0..count {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG global #{}: starting at offset {}", i, offset);
+
+            // Parse global type: value_type + mutability
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of global type"));
+            }
+
+            // Parse value type
+            let value_type = match data[offset] {
+                0x7F => ValueType::I32,
+                0x7E => ValueType::I64,
+                0x7D => ValueType::F32,
+                0x7C => ValueType::F64,
+                _ => return Err(Error::parse_error("Invalid global value type")),
+            };
+            offset += 1;
+
+            // Parse mutability (0x00 = const, 0x01 = var)
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of global mutability"));
+            }
+            let mutable = data[offset] == 0x01;
+            offset += 1;
+
+            // Parse init expression - store raw bytes from start to 0x0b end marker
+            // For now, just scan until we find 0x0b at the start of a "line"
+            // A proper implementation would parse the instruction stream
+            let init_start = offset;
+
+            // Simple scan: just find the first 0x0b
+            // This works for simple init expressions like i32.const
+            while offset < data.len() && data[offset] != 0x0b {
+                offset += 1;
+            }
+
+            // Include the 0x0b end marker
+            if offset < data.len() {
+                offset += 1;
+            } else {
+                return Err(Error::parse_error("Init expression missing end marker"));
+            }
+
+            // Extract init expression bytes (including the 0x0b end marker)
+            let init_bytes = data[init_start..offset].to_vec();
+
+            let global_type = FormatGlobalType {
+                value_type,
+                mutable,
+            };
+
+            let global = Global {
+                global_type,
+                init: init_bytes,
+            };
+
+            self.module.globals.push(global);
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG global #{}: type={:?}, mutable={}, init_len={}", i, value_type, mutable, offset - init_start);
+        }
+
         Ok(())
     }
 

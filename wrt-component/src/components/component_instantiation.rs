@@ -779,34 +779,75 @@ impl ComponentInstance {
     /// - Imports: 256 max
     pub fn from_parsed(
         id: InstanceId,
-        mut parsed: wrt_format::component::Component,
+        parsed: &mut wrt_format::component::Component,
+        host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
     ) -> Result<Self> {
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: ENTERED, Component passed by reference");
+
+        // Component passed by reference to avoid stack overflow (850KB structure)
+        // Work with references throughout
+
         // Phase 1: Validate safety limits before processing
-        Self::validate_component_limits(&parsed)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to validate_component_limits");
+        Self::validate_component_limits(parsed)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: validate_component_limits completed");
 
         // Phase 2: Build type index (streaming) - Steps 1-3
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to build_type_index");
         let type_index = Self::build_type_index(&parsed.types)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: build_type_index completed");
         // parsed.types can be dropped after indexing (will happen when parsed is dropped)
 
         // Phase 3: Extract and process core modules (streaming) - Step 4
-        let module_binaries = Self::extract_core_modules(&mut parsed)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to extract_core_modules");
+        let module_binaries = Self::extract_core_modules(parsed)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: extract_core_modules completed");
         // parsed.modules is now empty (moved)
 
         // Phase 4: Parse canonical ABI operations (Step 5)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to parse_canonical_operations");
         Self::parse_canonical_operations(&parsed.canonicals)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: parse_canonical_operations completed");
 
         // Phase 5: Parse exports (Step 6a)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to parse_exports");
         Self::parse_exports(&parsed.exports)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: parse_exports completed");
         // Save exports for later resolution
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to clone exports");
         let exports_to_resolve = parsed.exports.clone();
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: exports cloned");
 
         // Phase 6: Parse imports (Step 6b)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to parse_imports");
         Self::parse_imports(&parsed.imports)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: parse_imports completed");
 
         // Phase 6.5: Link imports to providers
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to create ComponentLinker");
         use crate::linker::ComponentLinker;
         let mut linker = ComponentLinker::new()?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to link_imports");
         let resolved_imports = linker.link_imports(&parsed.imports)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: link_imports completed");
 
         // Phase 7: Core modules instantiation following component instructions
         // The component's core_instances tell us which modules to instantiate and in what order.
@@ -820,6 +861,8 @@ impl ComponentInstance {
         use alloc::collections::BTreeMap as HashMap;
         use wrt_format::component::{AliasTarget, CoreSort};
 
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to build alias map");
         let mut core_export_sources: HashMap<(CoreSort, u32), u32> = HashMap::new();
         for alias in &parsed.aliases {
             if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
@@ -830,10 +873,24 @@ impl ComponentInstance {
                 eprintln!("[ALIAS] Core instance {} exports '{}' of kind {:?}", instance_idx, name, kind);
             }
         }
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: alias map built");
 
         // Create capability engine for instantiation
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: About to create CapabilityAwareEngine");
         use wrt_runtime::engine::{CapabilityAwareEngine, CapabilityEngine, EnginePreset};
         let mut engine = CapabilityAwareEngine::with_preset(EnginePreset::QM)?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG from_parsed: engine created");
+
+        // Set host registry for WASI and custom host functions
+        #[cfg(feature = "std")]
+        if let Some(ref registry) = host_registry {
+            eprintln!("DEBUG from_parsed: Setting host registry on engine");
+            engine.set_host_registry(registry.clone());
+            eprintln!("DEBUG from_parsed: Host registry set successfully");
+        }
 
         // Track instantiated modules by core instance index
         // Map: core_instance_idx -> runtime instance handle
@@ -846,14 +903,37 @@ impl ComponentInstance {
 
         #[cfg(feature = "std")]
         {
-            println!("=== STEP 7: Core Module Instantiation ===");
-            println!("Module binaries available: {}", module_binaries.len());
-            println!("Core instances to instantiate: {}\n", parsed.core_instances.len());
+            eprintln!("DEBUG from_parsed: STEP 7 - Core Module Instantiation");
+            eprintln!("DEBUG from_parsed: Module binaries available: {}", module_binaries.len());
+            let num_core_instances = parsed.core_instances.len();
+            eprintln!("DEBUG from_parsed: Core instances to instantiate: {}", num_core_instances);
+
+            // Build alias map: (CoreSort, index) -> (instance_idx, export_name)
+            // This maps each aliased item to its source instance
+            // The index now comes from alias.dest_idx which was computed during parsing
+            // to account for intermixed canon definitions
+            use std::collections::HashMap;
+            use wrt_format::component::{AliasTarget, CoreSort};
+            let mut alias_map: HashMap<(CoreSort, u32), (u32, String)> = HashMap::new();
+
+            eprintln!("DEBUG: Building alias map from {} aliases", parsed.aliases.len());
+            for alias in &parsed.aliases {
+                if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
+                    if let Some(dest_idx) = alias.dest_idx {
+                        alias_map.insert((*kind, dest_idx), (*instance_idx, name.clone()));
+                        eprintln!("DEBUG: Alias {:?}[{}] -> instance {} export '{}'", kind, dest_idx, instance_idx, name);
+                    } else {
+                        eprintln!("WARNING: Alias missing dest_idx: {:?} instance {} export '{}'", kind, instance_idx, name);
+                    }
+                }
+            }
+            eprintln!("DEBUG: Alias map built with {} core exports", alias_map.len());
 
             // Instantiate modules according to core_instances order
             // core_instances describes WHAT to instantiate and HOW to link imports
+            eprintln!("DEBUG from_parsed: About to iterate core_instances");
             for (core_instance_idx, core_instance) in parsed.core_instances.iter().enumerate() {
-                println!("  CoreInstance[{}]:", core_instance_idx);
+                eprintln!("DEBUG from_parsed: Processing CoreInstance[{}]", core_instance_idx);
 
                 // Extract module reference from instance expression
                 use wrt_format::component::CoreInstanceExpr;
@@ -870,17 +950,9 @@ impl ComponentInstance {
                         let binary = &module_binaries[module_idx];
                         println!("    ├─ Binary size: {} bytes", binary.len());
 
-                        // Parse module info for diagnostics
-                        use wrt_decoder::load_wasm_unified;
-                        if let Ok(wasm_info) = load_wasm_unified(binary) {
-                            if let Some(module_info) = wasm_info.module_info {
-                                println!("    ├─ Module parsed: {} exports, {} imports",
-                                         module_info.exports.len(), module_info.imports.len());
-                                if let Some(start_idx) = module_info.start_function {
-                                    println!("    ├─ ⚠ Module has START function (idx {}) - will run during instantiation", start_idx);
-                                }
-                            }
-                        }
+                        // Skip diagnostic parsing to avoid stack overflow
+                        // TODO: Fix large structure handling in load_wasm_unified
+                        eprintln!("DEBUG: Skipping load_wasm_unified diagnostics to avoid stack overflow");
 
                         // Load module into engine
                         println!("    ├─ Loading module into engine...");
@@ -942,23 +1014,15 @@ impl ComponentInstance {
                         }
 
                         // InlineExports re-export items from other instances via aliases
-                        // Look through aliases to find where these exports come from
+                        // Use the alias_map to find where these exports come from
                         let mut source_instance_idx: Option<u32> = None;
 
                         for export in exports {
-                            // Check if this export index was aliased from a core instance
-                            for alias in &parsed.aliases {
-                                if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
-                                    // Check if this alias matches the export
-                                    if *kind == export.sort {
-                                        // Found a matching alias - use its source instance
-                                        source_instance_idx = Some(*instance_idx);
-                                        println!("    │  ├─ Export {} '{}' aliased from instance {}", export.idx, export.name, instance_idx);
-                                        break;
-                                    }
-                                }
-                            }
-                            if source_instance_idx.is_some() {
+                            // Look up this export in the alias map using (sort, index)
+                            if let Some((instance_idx, export_name)) = alias_map.get(&(export.sort, export.idx)) {
+                                source_instance_idx = Some(*instance_idx);
+                                println!("    │  ├─ Export[{}] '{}' (sort={:?}) -> instance {} export '{}'",
+                                         export.idx, export.name, export.sort, instance_idx, export_name);
                                 break;  // Found source, stop searching
                             }
                         }
@@ -969,21 +1033,28 @@ impl ComponentInstance {
                                 core_instances_map.insert(core_instance_idx, source_handle);
                                 println!("    └─ Mapped");
                             } else {
-                                println!("    └─ SKIPPED: Source instance {} not yet instantiated", src_idx);
+                                println!("    └─ ERROR: Source instance {} not yet instantiated", src_idx);
+                                return Err(Error::runtime_error("InlineExports source instance not instantiated"));
                             }
                         } else {
-                            // Fallback: InlineExports with a single Function export likely references
-                            // the main module instance (13) which exports _initialize
-                            if exports.len() == 1 && exports[0].sort == wrt_format::component::CoreSort::Function {
-                                if let Some(&source_handle) = core_instances_map.get(&13) {
-                                    println!("    ├─ Using fallback: mapping to instance 13 (main module)");
-                                    core_instances_map.insert(core_instance_idx, source_handle);
-                                    println!("    └─ Mapped");
-                                } else {
-                                    println!("    └─ SKIPPED: Fallback instance 13 not available");
-                                }
+                            // If we can't find the alias, it likely references a canon-lowered function
+                            // Create a STUB instance for now (canon functions will be implemented later)
+                            println!("    └─ WARNING: Export references canon function (not yet fully implemented)");
+                            for export in exports {
+                                println!("        - Export[{}] name='{}' sort={:?}", export.idx, export.name, export.sort);
+                            }
+                            println!("    └─ Creating stub instance (canon functions will return errors when called)");
+
+                            // Create a minimal stub instance
+                            // We need an InstanceHandle to put in the map, so use instance 0 as a fallback
+                            // This allows import linking to succeed even though the functions won't work
+                            if let Some(&stub_handle) = core_instances_map.get(&0) {
+                                println!("    ├─ Using instance 0 as stub source");
+                                core_instances_map.insert(core_instance_idx, stub_handle);
+                                println!("    └─ Stub instance created (exports will not be functional)");
                             } else {
-                                println!("    └─ SKIPPED: Could not determine source instance from aliases");
+                                println!("    └─ ERROR: Cannot create stub - no instances available");
+                                return Err(Error::runtime_error("Cannot create stub for canon function - no base instance"));
                             }
                         }
                     },
@@ -1908,7 +1979,7 @@ impl ComponentInstance {
                 .stack_size(16 * 1024 * 1024)  // 16MB stack
                 .spawn(move || -> Result<wrt_runtime::module::Module> {
                     {
-                        let mut module = wrt_runtime::module::Module::new()?;
+                        let mut module = wrt_runtime::module::Module::new_empty()?;
                         module.load_from_binary(&binary_clone)
                     }
                         .map_err(|_| Error::new(
@@ -2062,7 +2133,7 @@ impl ComponentInstance {
 
         // Create runtime module directly from binary
         let runtime_module = {
-            let mut module = wrt_runtime::module::Module::new()?;
+            let mut module = wrt_runtime::module::Module::new_empty()?;
             module.load_from_binary(binary)
                 .map_err(|_| Error::new(
                     wrt_error::ErrorCategory::RuntimeTrap,
@@ -2110,9 +2181,7 @@ impl ComponentInstance {
 
                 // Iterate over exports
                 for (export_name, _export_val) in module.exports.iter() {
-                    #[cfg(feature = "std")]
-                    let name_str = export_name.as_str();
-                    #[cfg(not(feature = "std"))]
+                    // BoundedString::as_str() returns Result<&str, BoundedError>
                     let name_str = export_name.as_str().unwrap_or("<invalid>");
 
                     export_map.insert(name_str.to_string(), idx);
@@ -2280,9 +2349,7 @@ impl ComponentInstance {
             let mut func_exports = Vec::new();
             for (export_name, export_val) in module.exports.iter() {
                 if let wrt_runtime::module::ExportKind::Function = export_val.kind {
-                    #[cfg(feature = "std")]
-                    let name_str = export_name.as_str();
-                    #[cfg(not(feature = "std"))]
+                    // BoundedString::as_str() returns Result<&str, BoundedError>
                     let name_str = export_name.as_str().unwrap_or("<invalid>");
 
                     func_exports.push((name_str.to_string(), export_val.index));
@@ -2422,6 +2489,7 @@ impl ComponentInstance {
     fn initialize_engine(
         modules: &[wrt_runtime::module::Module],
         execution_plan: &[(usize, String, u32, bool)],
+        host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
     ) -> Result<Box<dyn wrt_runtime::engine_factory::RuntimeEngine>> {
         use wrt_runtime::engine_factory::{EngineFactory, EngineType, MemoryProviderType, EngineConfig};
 
@@ -2458,8 +2526,15 @@ impl ComponentInstance {
 
         // Create engine
         println!("Creating engine...");
-        let engine = EngineFactory::create(config)?;
+        let mut engine = EngineFactory::create(config)?;
         println!("✓ Engine created successfully");
+
+        // Set host registry for WASI and custom host functions
+        if let Some(registry) = host_registry {
+            println!("Setting host registry on engine...");
+            engine.set_host_registry(registry);
+            println!("✓ Host registry set successfully");
+        }
         println!();
 
         // Show what's ready
@@ -2486,6 +2561,7 @@ impl ComponentInstance {
     fn initialize_engine(
         _modules: &[wrt_runtime::module::Module],
         _plan: &[()],
+        _host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -2878,10 +2954,45 @@ impl ComponentInstance {
                 println!("[TEST-THREAD] Loading module from binary...");
 
                 let module = {
-                    let mut m = wrt_runtime::module::Module::new().map_err(|e| {
-                        println!("[TEST-THREAD] ✗ Failed to create module: {:?}", e);
-                        Error::runtime_execution_error("Failed to create module")
+                    // Create module directly using create_runtime_provider
+                    let provider = wrt_runtime::bounded_runtime_infra::create_runtime_provider().map_err(|e| {
+                        println!("[TEST-THREAD] ✗ Failed to create runtime provider: {:?}", e);
+                        Error::runtime_execution_error("Failed to create runtime provider")
                     })?;
+                    let mut m = wrt_runtime::module::Module {
+                        types: Vec::new(),
+                        imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create imports: {:?}", e);
+                            Error::runtime_execution_error("Failed to create imports")
+                        })?,
+                        functions: Vec::new(),
+                        tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create tables: {:?}", e);
+                            Error::runtime_execution_error("Failed to create tables")
+                        })?,
+                        memories: Vec::new(),
+                        globals: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create globals: {:?}", e);
+                            Error::runtime_execution_error("Failed to create globals")
+                        })?,
+                        elements: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create elements: {:?}", e);
+                            Error::runtime_execution_error("Failed to create elements")
+                        })?,
+                        data: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create data: {:?}", e);
+                            Error::runtime_execution_error("Failed to create data")
+                        })?,
+                        start: None,
+                        custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create custom_sections: {:?}", e);
+                            Error::runtime_execution_error("Failed to create custom_sections")
+                        })?,
+                        exports: wrt_foundation::direct_map::DirectMap::new(),
+                        name: None,
+                        binary: None,
+                        validated: false,
+                    };
                     m.load_from_binary(&binary_clone)
                 }
                     .map_err(|e| {

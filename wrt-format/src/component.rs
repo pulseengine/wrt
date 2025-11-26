@@ -286,7 +286,7 @@ pub struct CoreInlineExport {
 }
 
 /// Core WebAssembly sort kinds
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoreSort {
     /// Function reference
     Function,
@@ -477,7 +477,10 @@ pub enum Sort {
 #[derive(Debug, Clone)]
 pub struct Alias {
     /// Alias target
-    pub target: AliasTarget,
+    pub target:   AliasTarget,
+    /// Destination index in the appropriate index space (computed during parsing)
+    /// This is the index this alias occupies, accounting for intermixed canon definitions
+    pub dest_idx: Option<u32>,
 }
 
 /// Component alias target
