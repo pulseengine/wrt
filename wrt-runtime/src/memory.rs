@@ -165,9 +165,13 @@ use crate::prelude::{
 };
 
 // Platform-aware memory providers for memory operations
-// CRITICAL: LargeMemoryProvider reduced from 64MB to 64KB to prevent stack overflow
-// WebAssembly memory is managed via paging, we don't need the full buffer here
-type LargeMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<65536>; // 64KB (1 page) for memory metadata
+// For std mode: Use StdProvider which uses Vec<u8> for dynamically-sized memory
+// For no_std mode: Use NoStdProvider with fixed size (limited to compile-time constant)
+#[cfg(feature = "std")]
+type LargeMemoryProvider = wrt_foundation::safe_memory::StdProvider;
+#[cfg(not(feature = "std"))]
+type LargeMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<524288>; // 512KB (8 pages) for no_std
+
 type SmallMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<4096>; // 4KB for small objects
 type MediumMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<65536>; // 64KB for medium objects
 
@@ -360,20 +364,29 @@ impl Clone for Memory {
         let current_bytes = self.data.read().to_vec().unwrap_or_default();
 
         // Create new SafeMemoryHandler wrapped in Mutex
-        let new_provider = LargeMemoryProvider::default();
-        let mut new_handler = SafeMemoryHandler::new(new_provider);
-
-        // Copy the data into the new handler
-        if !current_bytes.is_empty() {
-            new_handler.write_data(0, &current_bytes).unwrap_or_else(|e| {
-                panic!("Failed to write cloned data: {}", e);
-            });
-        }
-
+        // In std mode, use StdProvider with proper size allocation
         #[cfg(feature = "std")]
-        let new_data = Box::new(std::sync::Mutex::new(new_handler));
+        let new_data = {
+            use wrt_foundation::safe_memory::StdProvider;
+            // Create provider with data directly (StdProvider::new takes Vec<u8>)
+            let new_provider = StdProvider::new(current_bytes.clone());
+            let new_handler = SafeMemoryHandler::new(new_provider);
+            Box::new(std::sync::Mutex::new(new_handler))
+        };
+
         #[cfg(not(feature = "std"))]
-        let new_data = Box::new(RwLock::new(new_handler));
+        let new_data = {
+            let new_provider = LargeMemoryProvider::default();
+            let mut new_handler = SafeMemoryHandler::new(new_provider);
+
+            // Copy the data into the new handler
+            if !current_bytes.is_empty() {
+                new_handler.write_data(0, &current_bytes).unwrap_or_else(|e| {
+                    panic!("Failed to write cloned data: {}", e);
+                });
+            }
+            Box::new(RwLock::new(new_handler))
+        };
 
         // Clone metrics, handling potential RwLock poisoning for no_std
         #[cfg(feature = "std")]
@@ -441,41 +454,17 @@ impl PartialEq for Memory {
 
 impl Eq for Memory {}
 
-impl Default for Memory {
-    fn default() -> Self {
-        use wrt_foundation::types::{
-            Limits,
-            MemoryType,
-        };
-        let memory_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(1),
-            },
-            shared: false,
-        };
-        *Self::new(to_core_memory_type(&memory_type)).unwrap_or_else(|e| {
-            // If we can't create default memory, create a minimal fallback
-            // Log the error if logging is available
-            #[cfg(feature = "std")]
-            eprintln!(
-                "Warning: Failed to create default memory: {}. Creating minimal fallback.",
-                e
-            );
-
-            // Create minimal memory with zero pages
-            let minimal_type = MemoryType {
-                limits: Limits {
-                    min: 0,
-                    max: Some(1),
-                },
-                shared: false,
-            };
-            Self::new(to_core_memory_type(&minimal_type))
-                .expect("Critical: Unable to create even minimal memory")
-        })
-    }
-}
+// REMOVED: Default implementation for Memory
+// This violates the NO FALLBACK LOGIC rule from CLAUDE.md:
+// "NEVER add fallback code that masks bugs or incomplete implementations"
+// "FAIL LOUD AND EARLY: If data is missing or incorrect, return an error immediately"
+//
+// The hardcoded limits (min: 1, max: Some(1)) were masking a bug where
+// wrapper modules weren't properly inheriting or sharing memory specifications
+// from the main module. Memory specifications must always be explicit.
+//
+// Additionally, the fallback logic that created "minimal" memory with 0 pages
+// was even worse - it would hide critical memory configuration errors.
 
 impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -548,6 +537,14 @@ impl Memory {
         let initial_pages = ty.limits.min;
         let maximum_pages_opt = ty.limits.max; // This is Option<u32>
 
+        // DEBUG: Log the memory type being used
+        #[cfg(feature = "tracing")]
+        {
+            use wrt_foundation::tracing::info;
+            info!("Creating memory with initial_pages={}, max_pages={:?} from CoreMemoryType",
+                  initial_pages, maximum_pages_opt);
+        }
+
         // Wasm MVP allows up to 65536 pages (4GiB).
         // Binary std/no_std choice
         // PalMemoryProvider::new will pass these pages to the PageAllocator.
@@ -570,7 +567,21 @@ impl Memory {
 
         let current_size_bytes = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
 
+        // In std mode, use StdProvider which can be dynamically sized
+        // In no_std mode, use NoStdProvider with fixed compile-time size
+        #[cfg(feature = "std")]
+        let provider = {
+            use wrt_foundation::safe_memory::StdProvider;
+            // Create a StdProvider with Vec pre-allocated and pre-filled to the required size
+            // This ensures memory is available immediately for WebAssembly to use
+            let mut provider = StdProvider::with_capacity(current_size_bytes);
+            // Initialize the memory to zeros (WebAssembly spec requires zero-initialized memory)
+            provider.add_data(&vec![0u8; current_size_bytes]);
+            provider
+        };
+        #[cfg(not(feature = "std"))]
         let provider = LargeMemoryProvider::default();
+
         let handler = SafeMemoryHandler::new(provider);
 
         Ok(Box::new(Self {
@@ -2180,146 +2191,17 @@ impl Memory {
     }
 }
 
-impl MemoryProvider for Memory {
-    // Missing trait implementations
-    #[cfg(feature = "std")]
-    type Allocator = LargeMemoryProvider;
-    #[cfg(not(feature = "std"))]
-    type Allocator = LargeMemoryProvider;
+// REMOVED: MemoryProvider implementation for Memory
+// This was architecturally incorrect - Memory is a CONSUMER of memory services,
+// not a PROVIDER. Memory instances use memory providers (like LargeMemoryProvider)
+// to manage their underlying storage, but should not themselves act as providers.
+//
+// This implementation was also requiring Default trait which violated the
+// NO FALLBACK LOGIC rule from CLAUDE.md.
 
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<SafeSlice<'_>> {
-        // ASIL-B Note: This method has been disabled due to complex lifetime
-        // interactions with Mutex. Use read() method instead for thread-safe access.
-        Err(Error::runtime_execution_error("borrow_slice disabled for ASIL-B compliance - use read() instead"))
-    }
-
-    fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
-        #[cfg(feature = "std")]
-        let data_size = self.data.lock().unwrap().size();
-        #[cfg(not(feature = "std"))]
-        let data_size = self.data.read().size();
-
-        if offset + len > data_size {
-            return Err(Error::memory_error("Memory access out of bounds"));
-        }
-        Ok(())
-    }
-
-    fn size(&self) -> usize {
-        #[cfg(feature = "std")]
-        return self.data.lock().unwrap().size();
-        #[cfg(not(feature = "std"))]
-        return self.data.read().size();
-    }
-
-    fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        let offset_u32 = usize_to_wasm_u32(offset)?;
-        self.write(offset_u32, data)
-    }
-
-    fn capacity(&self) -> usize {
-        #[cfg(feature = "std")]
-        return self.data.lock().unwrap().capacity();
-        #[cfg(not(feature = "std"))]
-        return self.data.read().capacity();
-    }
-
-    fn verify_integrity(&self) -> Result<()> {
-        // Memory integrity is maintained by the bounded data structure
-        Ok(())
-    }
-
-    fn set_verification_level(&mut self, _level: VerificationLevel) {
-        // Verification level is not configurable for Memory
-    }
-
-    fn verification_level(&self) -> VerificationLevel {
-        VerificationLevel::Basic
-    }
-
-    fn memory_stats(&self) -> MemoryStats {
-        // Read the data size through Mutex
-        #[cfg(feature = "std")]
-        let data_size = self.data.lock().unwrap().size();
-        #[cfg(not(feature = "std"))]
-        let data_size = self.data.read().size();
-
-        MemoryStats {
-            total_size:      data_size,
-            access_count:    self.access_count() as usize, // Use the existing access_count method
-            unique_regions:  1,                            // Single memory region
-            max_access_size: self.max_access_size(),
-        }
-    }
-
-    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>> {
-        // ASIL-B: Disabled for complex lifetime interactions with Mutex
-        Err(Error::runtime_execution_error("get_slice_mut disabled for ASIL-B compliance"))
-    }
-
-    fn copy_within(&mut self, src: usize, dest: usize, len: usize) -> Result<()> {
-        #[cfg(feature = "std")]
-        let data_size = self.data.lock().unwrap().size();
-        #[cfg(not(feature = "std"))]
-        let data_size = self.data.read().size();
-
-        if src + len > data_size || dest + len > data_size {
-            return Err(Error::memory_error("Copy within bounds check failed"));
-        }
-
-        // Use the data's copy_within method if available, otherwise manual copy
-        #[cfg(feature = "std")]
-        self.data.lock().unwrap().copy_within(src, dest, len)?;
-        #[cfg(not(feature = "std"))]
-        self.data.write().copy_within(src, dest, len)?;
-
-        Ok(())
-    }
-
-    fn ensure_used_up_to(&mut self, size: usize) -> Result<()> {
-        #[cfg(feature = "std")]
-        let data_capacity = self.data.lock().unwrap().capacity();
-        #[cfg(not(feature = "std"))]
-        let data_capacity = self.data.read().capacity();
-
-        if size > data_capacity {
-            return Err(Error::memory_error("Cannot ensure size beyond capacity"));
-        }
-        // Memory is always "used" up to its current size
-        Ok(())
-    }
-
-    fn acquire_memory(&self, _layout: core::alloc::Layout) -> Result<*mut u8> {
-        // Memory is always available - return a non-null pointer for compatibility
-        Ok(core::ptr::NonNull::dangling().as_ptr())
-    }
-
-    fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> Result<()> {
-        // Memory doesn't need explicit release
-        Ok(())
-    }
-
-    #[cfg(feature = "std")]
-    fn get_allocator(&self) -> &Self::Allocator {
-        // Use default provider for static allocation
-        use std::sync::LazyLock;
-        static ALLOCATOR: LazyLock<LargeMemoryProvider> =
-            LazyLock::new(LargeMemoryProvider::default);
-        &ALLOCATOR
-    }
-
-    #[cfg(not(feature = "std"))]
-    fn get_allocator(&self) -> &Self::Allocator {
-        self.data.provider()
-    }
-
-    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>>
-    where
-        Self: Clone,
-    {
-        Ok(SafeMemoryHandler::new(self.clone()))
-    }
-}
+// impl MemoryProvider for Memory {
+//     [Implementation removed - see above comment]
+// }
 
 // MemorySafety trait implementation removed as it doesn't exist in
 // wrt-foundation

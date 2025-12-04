@@ -76,6 +76,9 @@ pub mod simd_runtime;
 pub mod simple_types;
 pub mod unified_types;
 
+// WASI Preview2 host implementation
+pub mod wasip2_host;
+
 // Component model integration
 pub mod capability_integration;
 pub mod component_unified;

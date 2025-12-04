@@ -54,6 +54,7 @@ pub mod blast_zone;
 pub mod builtins;
 pub mod call_context;
 pub mod canonical_abi;
+pub mod canonical_executor;
 pub mod components;
 pub mod cross_component_calls;
 pub mod cross_component_communication;

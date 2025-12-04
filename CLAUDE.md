@@ -26,6 +26,13 @@ cargo-wrt --help
   - "Fallback to instance X" when proper mapping should exist
   - Any code that says "this is a temporary workaround"
 - **FAIL LOUD AND EARLY**: If data is missing or incorrect, return an error immediately. Don't silently substitute defaults or guess values.
+- **USE TRACING FRAMEWORK**: Always use the wrt_foundation::tracing framework for logging and debugging instead of eprintln! or println!. The tracing framework provides:
+  - Structured logging with spans for context (ModuleTrace, ImportTrace, ExecutionTrace, MemoryTrace, etc.)
+  - Proper log levels (trace!, debug!, info!, warn!, error!)
+  - Integration with RUST_LOG environment variable for filtering
+  - Import with: `#[cfg(feature = "tracing")] use wrt_foundation::tracing::{debug, error, info, trace, warn, span, Level};`
+  - Use spans to provide context: `let span = span!(Level::INFO, "operation_name", field = value);`
+  - Never use eprintln! or println! for debugging - always use the tracing framework
 
 ## Memory System Architecture
 

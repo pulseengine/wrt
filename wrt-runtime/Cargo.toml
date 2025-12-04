@@ -42,7 +42,11 @@ std = [
     "dep:wrt-platform",
     "wrt-sync/std",
     "wrt-foundation/std",
-    "wrt-foundation/platform-memory"]
+    "wrt-foundation/platform-memory",
+    "wrt-foundation/tracing"]
+
+# Tracing support for debugging complex execution flows
+tracing = ["wrt-foundation/tracing"]
 
 # Allocation support for no_std environments (DEPRECATED - use bounded-allocation instead)
 alloc = [

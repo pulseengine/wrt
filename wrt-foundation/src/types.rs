@@ -943,6 +943,16 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     I64TruncF32U,
     I64TruncF64S,
     I64TruncF64U,
+
+    // Saturating truncation operations (non-trapping)
+    I32TruncSatF32S,
+    I32TruncSatF32U,
+    I32TruncSatF64S,
+    I32TruncSatF64U,
+    I64TruncSatF32S,
+    I64TruncSatF32U,
+    I64TruncSatF64S,
+    I64TruncSatF64U,
     F32ConvertI32S,
     F32ConvertI32U,
     F32ConvertI64S,

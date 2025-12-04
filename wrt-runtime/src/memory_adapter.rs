@@ -333,15 +333,17 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+        use wrt_foundation::tracing::{debug, trace};
+
         // Check that the range is valid
         self.check_range(offset, bytes.len() as u32)?;
 
-        // We can't modify buffer directly through Arc, so use a special method to write
-        // to memory without dereferencing Arc<Memory> as mutable
-        // TODO: Implement safe write functionality for Arc<Memory>
-        Err(Error::runtime_execution_error(
-            "Write operation not yet implemented for Arc<Memory>",
-        ))
+        // Use the thread-safe write_shared method designed for Arc<Memory>
+        trace!("Writing {} bytes to memory at offset {:#x}", bytes.len(), offset);
+        self.memory.write_shared(offset, bytes)?;
+
+        debug!("Successfully wrote {} bytes to memory at offset {:#x}", bytes.len(), offset);
+        Ok(())
     }
 
     fn size(&self) -> Result<u32> {
@@ -350,13 +352,19 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn grow(&self, pages: u32) -> Result<u32> {
+        use wrt_foundation::tracing::warn;
+
         // Get the current size
         let result = self.memory.size();
 
-        // Grow the memory - this should handle interior mutability internally
-        // TODO: Implement safe grow functionality for Arc<Memory>
+        // TODO: The grow_shared method requires &mut self, but we only have Arc<Memory>
+        // This requires either:
+        // 1. Adding interior mutability to Memory for the grow operation
+        // 2. Refactoring to use Arc<Mutex<Memory>> or Arc<RwLock<Memory>>
+        // 3. Adding a new grow method that takes &self and uses interior mutability
+        warn!("Memory grow operation requested but not yet implemented for Arc<Memory> (needs {} pages)", pages);
         Err(Error::runtime_execution_error(
-            "Grow operation not yet implemented for Arc<Memory>",
+            "Grow operation not yet implemented for Arc<Memory> - requires interior mutability",
         ))
     }
 

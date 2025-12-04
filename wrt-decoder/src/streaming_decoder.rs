@@ -32,6 +32,8 @@ pub struct StreamingDecoder<'a> {
     offset:          usize,
     /// Platform limits for validation
     platform_limits: ComprehensivePlatformLimits,
+    /// Number of function imports (for proper function indexing)
+    num_function_imports: usize,
     /// The module being built (std version)
     #[cfg(feature = "std")]
     module:          WrtModule,
@@ -50,6 +52,7 @@ impl<'a> StreamingDecoder<'a> {
             binary,
             offset: 0,
             platform_limits: ComprehensivePlatformLimits::default(),
+            num_function_imports: 0,
             module,
         })
     }
@@ -67,6 +70,7 @@ impl<'a> StreamingDecoder<'a> {
             binary,
             offset: 0,
             platform_limits: ComprehensivePlatformLimits::default(),
+            num_function_imports: 0,
             module,
         })
     }
@@ -278,16 +282,23 @@ impl<'a> StreamingDecoder<'a> {
                     };
                     let _ = self.module.functions.push(func);
 
-                    // Also add to imports list
+                    // Track function imports for proper function indexing
+                    self.num_function_imports += 1;
+
+                    // Store the import in module.imports for runtime resolution
                     #[cfg(feature = "std")]
                     {
                         use wrt_format::module::{Import, ImportDesc};
-                        self.module.imports.push(Import {
-                            module: String::from(module_name),
-                            name: String::from(field_name),
+                        let import = Import {
+                            module: module_name.to_string(),
+                            name: field_name.to_string(),
                             desc: ImportDesc::Function(type_idx),
-                        });
+                        };
+                        self.module.imports.push(import);
                     }
+
+                    eprintln!("DEBUG: Recorded import {}::{} at function index {}",
+                             module_name, field_name, self.num_function_imports - 1);
                 },
                 0x01 => {
                     // Table import - need to parse table type
@@ -660,7 +671,11 @@ impl<'a> StreamingDecoder<'a> {
 
         // Code bodies are for module-defined functions only (not imports)
         // So code[i] goes to function[num_imports + i]
-        let num_imports = self.module.imports.len();
+        let num_imports = self.num_function_imports;
+
+        #[cfg(feature = "std")]
+        eprintln!("[CODE_SECTION] num_function_imports={}, total functions={}",
+            num_imports, self.module.functions.len());
 
         // Process each function body one at a time
         for i in 0..count {
@@ -749,6 +764,9 @@ impl<'a> StreamingDecoder<'a> {
     /// Finish decoding and return the module (std version)
     #[cfg(feature = "std")]
     pub fn finish(self) -> Result<WrtModule> {
+        #[cfg(feature = "std")]
+        eprintln!("[StreamingDecoder::finish] Returning module with {} imports",
+            self.module.imports.len());
         Ok(self.module)
     }
 

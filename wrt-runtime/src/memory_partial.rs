@@ -355,16 +355,14 @@ impl PartialEq for Memory {
 
 impl Eq for Memory {}
 
-impl Default for Memory {
-    fn default() -> Self {
-        use wrt_foundation::types::{Limits, MemoryType};
-        let memory_type = MemoryType {
-            limits: Limits { min: 1, max: Some(1) },
-            shared: false,
-        };
-        Self::new(memory_type).unwrap()
-    }
-}
+// REMOVED: Default implementation for Memory
+// This violates the NO FALLBACK LOGIC rule from CLAUDE.md:
+// "NEVER add fallback code that masks bugs or incomplete implementations"
+// "FAIL LOUD AND EARLY: If data is missing or incorrect, return an error immediately"
+//
+// The hardcoded limits (min: 1, max: Some(1)) were masking a bug where
+// wrapper modules weren't properly inheriting memory specifications from
+// the main module. Memory specifications must always be explicit.
 
 impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {

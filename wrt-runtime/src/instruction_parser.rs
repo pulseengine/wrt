@@ -55,21 +55,61 @@ pub fn parse_instructions_with_provider(
         .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
 
     let mut offset = 0;
+
+    #[cfg(feature = "std")]
+    let mut instruction_count = 0u32;
+    #[cfg(feature = "std")]
+    static mut FUNC_COUNTER: u32 = 0;
+    #[cfg(feature = "std")]
+    let func_id = unsafe {
+        FUNC_COUNTER += 1;
+        FUNC_COUNTER
+    };
+
+    #[cfg(feature = "std")]
+    if func_id == 34 || func_id == 44 {
+        eprintln!("DEBUG: [Func {}] Starting parse, bytecode.len()={}", func_id, bytecode.len());
+    }
+
+    // WebAssembly function bodies should end with 0x0B (End)
+    // Parse until we reach the end of bytecode - the last byte should be 0x0B
     while offset < bytecode.len() {
+        #[cfg(feature = "std")]
+        {
+            instruction_count += 1;
+            if instruction_count % 1000 == 0 {
+                eprintln!("DEBUG: [Func {}] Parsed {} instructions so far at offset {}", func_id, instruction_count, offset);
+            }
+            if instruction_count > 50000 {
+                eprintln!("ERROR: Function {} appears stuck - parsed {} instructions!", func_id, instruction_count);
+                return Err(Error::parse_error("Function parsing appears stuck in infinite loop"));
+            }
+        }
+
         let (instruction, consumed) = parse_instruction_with_provider(bytecode, offset, &provider_clone)?;
-        let is_end = matches!(instruction, Instruction::End);
 
         #[cfg(feature = "std")]
-        instructions.push(instruction);
+        if consumed == 0 {
+            eprintln!("ERROR: Instruction at offset {} consumed 0 bytes! Opcode: 0x{:02X}", offset, bytecode[offset]);
+            return Err(Error::parse_error("Instruction consumed 0 bytes"));
+        }
+
+        #[cfg(feature = "std")]
+        instructions.push(instruction.clone());
         #[cfg(not(feature = "std"))]
         instructions
-            .push(instruction)
+            .push(instruction.clone())
             .map_err(|_| Error::capacity_limit_exceeded("Too many instructions in function"))?;
 
         offset += consumed;
 
-        // Check for end instruction
-        if is_end {
+        // Check if this was the final End instruction
+        // The function body ends when we've consumed all bytecode and the last instruction was End
+        if matches!(instruction, Instruction::End) && offset >= bytecode.len() {
+            #[cfg(feature = "std")]
+            if func_id == 34 || func_id == 44 {
+                eprintln!("DEBUG: [Func {}] Hit final End at offset {}, done parsing", func_id, offset);
+            }
             break;
         }
     }
@@ -106,6 +146,8 @@ fn parse_instruction_with_provider(
 
     let opcode = bytecode[offset];
     let mut consumed = 1;
+
+    // Removed per-opcode debug logging for performance
 
     let instruction = match opcode {
         // Control instructions
@@ -149,17 +191,29 @@ fn parse_instruction_with_provider(
         0x0E => {
             // BrTable
             #[cfg(feature = "std")]
-            eprintln!("DEBUG: Parsing BrTable instruction - using shared provider");
+            eprintln!("DEBUG: Parsing BrTable instruction at offset {}", offset);
             let mut targets = BoundedVec::new(provider.clone())
                 .map_err(|_| Error::parse_error("Failed to create BrTable targets vector"))?;
 
             let (count, mut bytes_consumed) = read_leb128_u32(bytecode, offset + 1)?;
             consumed += bytes_consumed;
 
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: BrTable has {} targets", count);
+
+            // Sanity check - if count is suspiciously large, there's likely an issue
+            if count > 10000 {
+                return Err(Error::parse_error("BrTable has suspiciously large target count"));
+            }
+
             // Parse all target labels
-            for _ in 0..count {
+            for i in 0..count {
                 let (target, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
                 consumed += bytes;
+                #[cfg(feature = "std")]
+                if i < 3 || i == count - 1 {
+                    eprintln!("DEBUG: BrTable target[{}] = {}", i, target);
+                }
                 targets
                     .push(target)
                     .map_err(|_| Error::parse_error("Too many BrTable targets"))?;
@@ -502,6 +556,9 @@ fn parse_instruction_with_provider(
         },
 
         // Numeric instructions - i32 operations
+        0x67 => Instruction::I32Clz,     // Count leading zeros
+        0x68 => Instruction::I32Ctz,     // Count trailing zeros
+        0x69 => Instruction::I32Popcnt,  // Population count
         0x6A => Instruction::I32Add,
         0x6B => Instruction::I32Sub,
         0x6C => Instruction::I32Mul,
@@ -544,7 +601,26 @@ fn parse_instruction_with_provider(
         0x59 => Instruction::I64GeS,
         0x5A => Instruction::I64GeU,
 
+        // F32 comparison operations
+        0x5B => Instruction::F32Eq,
+        0x5C => Instruction::F32Ne,
+        0x5D => Instruction::F32Lt,
+        0x5E => Instruction::F32Gt,
+        0x5F => Instruction::F32Le,
+        0x60 => Instruction::F32Ge,
+
+        // F64 comparison operations
+        0x61 => Instruction::F64Eq,
+        0x62 => Instruction::F64Ne,
+        0x63 => Instruction::F64Lt,
+        0x64 => Instruction::F64Gt,
+        0x65 => Instruction::F64Le,
+        0x66 => Instruction::F64Ge,
+
         // i64 operations
+        0x79 => Instruction::I64Clz,     // Count leading zeros
+        0x7A => Instruction::I64Ctz,     // Count trailing zeros
+        0x7B => Instruction::I64Popcnt,  // Population count
         0x7C => Instruction::I64Add,
         0x7D => Instruction::I64Sub,
         0x7E => Instruction::I64Mul,
@@ -561,7 +637,16 @@ fn parse_instruction_with_provider(
         0x89 => Instruction::I64Rotl,
         0x8A => Instruction::I64Rotr,
 
-        // f32 operations
+        // f32 unary operations
+        0x8B => Instruction::F32Abs,
+        0x8C => Instruction::F32Neg,
+        0x8D => Instruction::F32Ceil,
+        0x8E => Instruction::F32Floor,
+        0x8F => Instruction::F32Trunc,
+        0x90 => Instruction::F32Nearest,
+        0x91 => Instruction::F32Sqrt,
+
+        // f32 binary operations
         0x92 => Instruction::F32Add,
         0x93 => Instruction::F32Sub,
         0x94 => Instruction::F32Mul,
@@ -570,7 +655,16 @@ fn parse_instruction_with_provider(
         0x97 => Instruction::F32Max,
         0x98 => Instruction::F32Copysign,
 
-        // f64 operations
+        // f64 unary operations
+        0x99 => Instruction::F64Abs,
+        0x9A => Instruction::F64Neg,
+        0x9B => Instruction::F64Ceil,
+        0x9C => Instruction::F64Floor,
+        0x9D => Instruction::F64Trunc,
+        0x9E => Instruction::F64Nearest,
+        0x9F => Instruction::F64Sqrt,
+
+        // f64 binary operations
         0xA0 => Instruction::F64Add,
         0xA1 => Instruction::F64Sub,
         0xA2 => Instruction::F64Mul,
@@ -602,6 +696,84 @@ fn parse_instruction_with_provider(
         0xBA => Instruction::F64ConvertI64U,
         0xBB => Instruction::F64PromoteF32,
 
+        // Reinterpret instructions (bit casting)
+        0xBC => Instruction::I32ReinterpretF32,
+        0xBD => Instruction::I64ReinterpretF64,
+        0xBE => Instruction::F32ReinterpretI32,
+        0xBF => Instruction::F64ReinterpretI64,
+
+        // Sign-extension operators (proposal, but commonly used)
+        0xC0 => Instruction::I32Extend8S,   // Sign-extend 8-bit to 32-bit
+        0xC1 => Instruction::I32Extend16S,  // Sign-extend 16-bit to 32-bit
+        0xC2 => Instruction::I64Extend8S,   // Sign-extend 8-bit to 64-bit
+        0xC3 => Instruction::I64Extend16S,  // Sign-extend 16-bit to 64-bit
+        0xC4 => Instruction::I64Extend32S,  // Sign-extend 32-bit to 64-bit
+
+        // Multi-byte opcodes (bulk memory, SIMD, etc.)
+        0xFC => {
+            // Read the second byte to determine the actual instruction
+            if offset + 1 >= bytecode.len() {
+                return Err(Error::parse_error("Unexpected end of bytecode in multi-byte opcode"));
+            }
+            let subopcode = bytecode[offset + 1];
+            consumed += 1;  // For the subopcode byte
+
+            match subopcode {
+                // Saturating truncation operations (0xFC 0x00 - 0xFC 0x07)
+                // These saturate (clamp) on overflow instead of trapping
+                0x00 => Instruction::I32TruncSatF32S,
+                0x01 => Instruction::I32TruncSatF32U,
+                0x02 => Instruction::I32TruncSatF64S,
+                0x03 => Instruction::I32TruncSatF64U,
+                0x04 => Instruction::I64TruncSatF32S,
+                0x05 => Instruction::I64TruncSatF32U,
+                0x06 => Instruction::I64TruncSatF64S,
+                0x07 => Instruction::I64TruncSatF64U,
+                // Bulk memory operations
+                0x08 => {
+                    // memory.init: data_idx, mem_idx
+                    let (data_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    // mem_idx is always 0 in MVP
+                    if offset + consumed >= bytecode.len() {
+                        return Err(Error::parse_error("Unexpected end in memory.init"));
+                    }
+                    let mem_idx = bytecode[offset + consumed];
+                    consumed += 1;
+                    Instruction::MemoryInit(data_idx, mem_idx as u32)
+                }
+                0x09 => {
+                    // data.drop: data_idx
+                    let (data_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    Instruction::DataDrop(data_idx)
+                }
+                0x0A => {
+                    // memory.copy: dst_mem_idx, src_mem_idx
+                    // Both are typically 0x00 in MVP
+                    if offset + 3 >= bytecode.len() {
+                        return Err(Error::parse_error("Unexpected end in memory.copy"));
+                    }
+                    let dst_mem = bytecode[offset + 2];
+                    let src_mem = bytecode[offset + 3];
+                    consumed += 2;
+                    Instruction::MemoryCopy(dst_mem as u32, src_mem as u32)
+                }
+                0x0B => {
+                    // memory.fill: mem_idx
+                    if offset + 2 >= bytecode.len() {
+                        return Err(Error::parse_error("Unexpected end in memory.fill"));
+                    }
+                    let mem_idx = bytecode[offset + 2];
+                    consumed += 1;
+                    Instruction::MemoryFill(mem_idx as u32)
+                }
+                _ => {
+                    eprintln!("[INSTRUCTION_PARSER] Unknown FC subopcode: 0xFC 0x{:02X} at offset {}", subopcode, offset);
+                    return Err(Error::parse_error("Unknown multi-byte instruction"));
+                }
+            }
+        }
         _ => {
             // Show context around the unknown opcode
             let context_start = offset.saturating_sub(5);
@@ -652,7 +824,7 @@ fn parse_block_type(bytecode: &[u8], offset: usize) -> Result<BlockType> {
 }
 
 /// Read a LEB128 encoded u32
-fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
+pub(crate) fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     let mut result = 0u32;
     let mut shift = 0;
     let mut consumed = 0;
@@ -683,7 +855,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 }
 
 /// Read a LEB128 encoded i32
-fn read_leb128_i32(data: &[u8], offset: usize) -> Result<(i32, usize)> {
+pub(crate) fn read_leb128_i32(data: &[u8], offset: usize) -> Result<(i32, usize)> {
     let mut result = 0i32;
     let mut shift = 0;
     let mut consumed = 0;
@@ -716,7 +888,7 @@ fn read_leb128_i32(data: &[u8], offset: usize) -> Result<(i32, usize)> {
 }
 
 /// Read a LEB128 encoded i64
-fn read_leb128_i64(data: &[u8], offset: usize) -> Result<(i64, usize)> {
+pub(crate) fn read_leb128_i64(data: &[u8], offset: usize) -> Result<(i64, usize)> {
     let mut result = 0i64;
     let mut shift = 0;
     let mut consumed = 0;
