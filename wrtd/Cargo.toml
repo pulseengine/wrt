@@ -35,6 +35,10 @@ wrt-wasi = { path = "../wrt-wasi", default-features = false, optional = true }
 # Global allocator for no_std mode
 linked_list_allocator = { version = "0.10", optional = true }
 
+# Tracing support for debugging
+tracing = { version = "0.1", optional = true, default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", optional = true, default-features = false, features = ["std", "env-filter", "fmt"] }
+
 # No external dependencies - use internal capabilities only
 
 [features]
@@ -56,6 +60,14 @@ wrt-execution = [
     "wrt-runtime/std",
     "wrt-platform/std",
     "wrt-host/std"
+]
+
+# Tracing support for debugging
+tracing = [
+    "dep:tracing",
+    "dep:tracing-subscriber",
+    "wrt-foundation?/tracing",
+    "wrt-runtime?/tracing"
 ]
 
 # WASI support features

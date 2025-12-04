@@ -130,6 +130,10 @@ pub mod execution;
 // Runtime memory budget limits for safety-critical operations
 pub mod runtime_limits;
 
+// Tracing support for debugging complex execution flows
+#[cfg(feature = "tracing")]
+pub mod tracing;
+
 // Re-export common types from prelude
 pub use prelude::*;
 

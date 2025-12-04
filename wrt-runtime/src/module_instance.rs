@@ -338,6 +338,90 @@ impl ModuleInstance {
         Ok(())
     }
 
+    /// Initialize data segments into memory
+    /// This copies the static data from data segments into the appropriate memory locations
+    pub fn initialize_data_segments(&self) -> Result<()> {
+        use wrt_foundation::tracing::{debug, info};
+        use wrt_foundation::DataMode as WrtDataMode;
+
+        info!("Initializing data segments for instance {}", self.instance_id);
+
+        // Iterate through all data segments in the module
+        for (idx, data_segment) in self.module.data.iter().enumerate() {
+            // Only process active data segments
+            if let WrtDataMode::Active { .. } = &data_segment.mode {
+                debug!("Processing active data segment {}", idx);
+
+                // Get the memory index (default to 0 if not specified)
+                let memory_idx = data_segment.memory_idx.unwrap_or(0);
+
+                // Get the offset expression and evaluate it
+                let offset = if let Some(ref offset_expr) = data_segment.offset_expr {
+                    // Evaluate the offset expression - for now, assume it's a constant
+                    // In a complete implementation, we'd need to evaluate the expression
+                    // Most data segments use simple i32.const instructions for offsets
+                    // WrtExpr has instructions field that contains parsed Instructions
+                    let expr_instructions = &offset_expr.instructions;
+
+                    // Check if we have an I32Const instruction (common for data segment offsets)
+                    if !expr_instructions.is_empty() {
+                        match &expr_instructions[0] {
+                            wrt_foundation::types::Instruction::I32Const(value) => {
+                                debug!("Data segment {} has I32Const offset: {}", idx, value);
+                                *value as u32
+                            }
+                            _ => {
+                                // For other instructions, default to 0
+                                debug!("Data segment {} has non-constant offset expression, using 0", idx);
+                                0
+                            }
+                        }
+                    } else {
+                        // Empty expression means offset 0
+                        debug!("Data segment {} has empty offset expression, using 0", idx);
+                        0
+                    }
+                } else {
+                    0
+                };
+
+                debug!("Data segment {} targets memory {} at offset {:#x}", idx, memory_idx, offset);
+
+                // Get the memory instance
+                #[cfg(feature = "std")]
+                let memories = self.memories.lock()
+                    .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+                #[cfg(not(feature = "std"))]
+                let memories = self.memories.lock();
+
+                if memory_idx as usize >= memories.len() {
+                    return Err(Error::runtime_error("Data segment references invalid memory index"));
+                }
+
+                // Find the memory at the specified index using an iterator
+                let memory_wrapper = memories.iter()
+                    .nth(memory_idx as usize)
+                    .ok_or_else(|| Error::runtime_error("Failed to get memory from collection"))?;
+                let memory = &memory_wrapper.0;
+
+                // Write the data to memory
+                let init_data = data_segment.init.as_slice()
+                    .map_err(|e| Error::runtime_error("Failed to get data segment bytes"))?;
+                debug!("Writing {} bytes of data to memory at offset {:#x}", init_data.len(), offset);
+
+                // Use the thread-safe write_shared method for Arc<Memory>
+                memory.write_shared(offset, init_data)?;
+
+                info!("Successfully initialized data segment {} ({} bytes)", idx, init_data.len());
+            } else {
+                debug!("Skipping passive data segment {}", idx);
+            }
+        }
+
+        info!("Data segment initialization complete for instance {}", self.instance_id);
+        Ok(())
+    }
+
     /// Initialize debug information for this instance
     #[cfg(feature = "debug")]
     pub fn init_debug_info(&mut self, module_bytes: &'static [u8]) -> Result<()> {

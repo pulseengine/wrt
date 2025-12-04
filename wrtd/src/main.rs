@@ -644,8 +644,8 @@ impl WrtdEngine {
             let instance = engine.instantiate(module_handle)
                 .map_err(|_| Error::runtime_execution_error("Failed to instantiate module"))?;
 
-            // Execute function
-            let function_name = self.config.function_name.as_deref().unwrap_or("start");
+            // Execute function - try common entry points
+            let function_name = self.config.function_name.as_deref().unwrap_or("_start");
             let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
 
             // Check if function exists before execution
@@ -1040,6 +1040,28 @@ fn main() -> Result<()> {
 }
 
 fn main_with_stack() -> Result<()> {
+    // Initialize tracing subscriber if tracing feature is enabled
+    #[cfg(feature = "tracing")]
+    {
+        use tracing_subscriber::{EnvFilter, fmt};
+
+        // Set up tracing with environment-based filtering
+        // Use RUST_LOG environment variable to control verbosity
+        // e.g., RUST_LOG=debug,wrt_runtime=trace
+        let filter = EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("info"));
+
+        fmt()
+            .with_env_filter(filter)
+            .with_target(true)
+            .with_thread_ids(false)
+            .with_file(true)
+            .with_line_number(true)
+            .init();
+
+        eprintln!("[TRACING] Tracing initialized - use RUST_LOG env var to control output");
+    }
+
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
 

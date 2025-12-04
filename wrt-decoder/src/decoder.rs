@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 
-use wrt_format::module::Module as WrtModule;
+use wrt_format::module::{Module as WrtModule, ImportDesc};
 use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::prelude::*;
@@ -140,9 +140,20 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     let format_import = wrt_format::module::Import {
                         module: import.module_name.as_str().unwrap_or("").to_string(),
                         name:   import.item_name.as_str().unwrap_or("").to_string(),
-                        desc:   convert_import_desc(import.desc),
+                        desc:   convert_import_desc(import.desc.clone()),
                     };
                     module.imports.push(format_import);
+
+                    // CRITICAL: Add imported functions to the functions vector
+                    // This ensures proper function indexing
+                    if let wrt_foundation::types::ImportDesc::Function(type_idx) = import.desc {
+                        let func = wrt_format::module::Function {
+                            type_idx,
+                            locals: Vec::new(),
+                            code: Vec::new(), // Imported functions have no code
+                        };
+                        module.functions.push(func);
+                    }
                 }
             },
             crate::sections::Section::Function(func_indices) => {
@@ -199,9 +210,29 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
             },
             crate::sections::Section::Code(code_bodies) => {
                 // Update function bodies
+                // CRITICAL: The code section only contains code for local functions.
+                // Imported functions are already in the functions vector with empty code.
+                // We need to skip imported functions when assigning code.
+                let num_imports = module.imports.iter()
+                    .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
+                    .count();
+
+                #[cfg(feature = "std")]
+                eprintln!("[DECODER] Code section: {} bodies, {} function imports, {} total functions",
+                    code_bodies.len(), num_imports, module.functions.len());
+
                 for (idx, body) in code_bodies.into_iter().enumerate() {
-                    if let Some(func) = module.functions.get_mut(idx) {
+                    // The actual function index is num_imports + idx
+                    let func_idx = num_imports + idx;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("[DECODER] Assigning code body {} to function {}", idx, func_idx);
+
+                    if let Some(func) = module.functions.get_mut(func_idx) {
                         func.code = body.into_iter().collect();
+                    } else {
+                        #[cfg(feature = "std")]
+                        eprintln!("[DECODER] WARNING: Function index {} not found in functions vector", func_idx);
                     }
                 }
             },
@@ -293,8 +324,17 @@ fn build_module_from_sections(
             },
             crate::sections::Section::Code(code_bodies) => {
                 // Update function bodies
+                // CRITICAL: The code section only contains code for local functions.
+                // We need to skip imported functions when assigning code.
+                let num_imports = module.imports.iter()
+                    .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
+                    .count();
+
                 for (idx, body) in code_bodies.into_iter().enumerate() {
-                    if let Some(func) = module.functions.get_mut(idx) {
+                    // The actual function index is num_imports + idx
+                    let func_idx = num_imports + idx;
+
+                    if let Some(func) = module.functions.get_mut(func_idx) {
                         #[cfg(feature = "std")]
                         {
                             func.code = body.into_iter().collect();

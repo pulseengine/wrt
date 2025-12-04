@@ -746,6 +746,16 @@ impl CapabilityEngine for CapabilityAwareEngine {
 }
 
 impl CapabilityAwareEngine {
+    /// Get the import namespaces from a loaded module
+    /// Returns a list of unique module names from the import section
+    pub fn get_module_import_namespaces(&self, module_handle: ModuleHandle) -> Vec<String> {
+        // BoundedMap doesn't support iteration, so we return an empty list
+        // The caller will need to use alternative methods to determine imports
+        // TODO: Add iteration support to BoundedMap or use a different data structure
+        let _ = module_handle;
+        Vec::new()
+    }
+
     /// Get the list of exported functions from an instance
     pub fn get_exported_functions(&self, instance_handle: InstanceHandle) -> Result<Vec<String>> {
         let instance = self

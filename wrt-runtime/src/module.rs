@@ -15,6 +15,11 @@ use alloc::{
     vec::Vec,
 };
 
+// Import tracing utilities
+use wrt_foundation::tracing::{debug, trace};
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::{ModuleTrace, ImportTrace};
+
 use wrt_foundation::MemoryProvider;
 use wrt_format::{
     module::{
@@ -711,10 +716,16 @@ impl Module {
         };
 
         // Convert types
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
+        debug!("Converting {} types from wrt_module", wrt_module.types.len());
+        #[cfg(all(feature = "std", not(feature = "tracing")))]
         eprintln!("DEBUG: Converting {} types from wrt_module", wrt_module.types.len());
+
         for (i, func_type) in wrt_module.types.iter().enumerate() {
-            #[cfg(feature = "std")]
+            #[cfg(feature = "tracing")]
+            trace!("Converting type {}: params.len()={}, results.len()={}",
+                     i, func_type.params.len(), func_type.results.len());
+            #[cfg(all(feature = "std", not(feature = "tracing")))]
             eprintln!("DEBUG: Converting type {}: params.len()={}, results.len()={}",
                      i, func_type.params.len(), func_type.results.len());
 
@@ -730,12 +741,83 @@ impl Module {
             #[cfg(not(feature = "std"))]
             runtime_module.types.push(wrt_func_type)?;
 
-            #[cfg(feature = "std")]
+            #[cfg(feature = "tracing")]
+            trace!("Pushed type {}, runtime_module.types.len()={}", i, runtime_module.types.len());
+            #[cfg(all(feature = "std", not(feature = "tracing")))]
             eprintln!("DEBUG: Pushed type {}, runtime_module.types.len()={}", i, runtime_module.types.len());
         }
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
+        debug!("Done converting types, runtime_module.types.len()={}", runtime_module.types.len());
+        #[cfg(all(feature = "std", not(feature = "tracing")))]
         eprintln!("DEBUG: Done converting types, runtime_module.types.len()={}", runtime_module.types.len());
+
+        // Convert imports
+        #[cfg(feature = "tracing")]
+        let import_span = ImportTrace::registering("", "", wrt_module.imports.len()).entered();
+        #[cfg(feature = "tracing")]
+        debug!("Processing {} imports from wrt_module", wrt_module.imports.len());
+        #[cfg(all(feature = "std", not(feature = "tracing")))]
+        eprintln!("[from_wrt_module] Processing {} imports from wrt_module", wrt_module.imports.len());
+
+        use wrt_format::module::ImportDesc as FormatImportDesc;
+
+        for import in &wrt_module.imports {
+            let desc = match &import.desc {
+                FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
+                FormatImportDesc::Table(tt) => RuntimeImportDesc::Table(tt.clone()),
+                FormatImportDesc::Memory(mt) => RuntimeImportDesc::Memory(*mt),
+                FormatImportDesc::Global(gt) => {
+                    RuntimeImportDesc::Global(wrt_foundation::types::GlobalType {
+                        value_type: gt.value_type,
+                        mutable:    gt.mutable,
+                    })
+                },
+                FormatImportDesc::Tag(_tag_idx) => {
+                    // Handle Tag import - convert to appropriate runtime representation
+                    return Err(Error::parse_error("Tag imports not yet supported"));
+                },
+            };
+
+            // Convert string to BoundedString - need different sizes for different use cases
+            // 128-char strings for Import struct fields
+            let bounded_module_128 = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &import.module
+            )?;
+            let bounded_name_128 =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name)?;
+
+            // 256-char strings for map keys
+            let bounded_module_256 = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &import.module
+            )?;
+            let bounded_name_256 =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name)?;
+
+            let import_entry = Import {
+                module: bounded_module_128,
+                name: bounded_name_128,
+                ty: wrt_foundation::component::ExternType::default(),
+                desc,
+            };
+
+            // Get or create inner map for this module
+            let mut inner_map = match runtime_module.imports.get(&bounded_module_256)? {
+                Some(existing) => existing,
+                None => ImportMap::new(crate::bounded_runtime_infra::create_runtime_provider()?)?,
+            };
+
+            // Insert the import into the inner map
+            inner_map.insert(bounded_name_256, import_entry)?;
+
+            // Update the outer map
+            runtime_module.imports.insert(bounded_module_256.clone(), inner_map)?;
+
+            #[cfg(feature = "tracing")]
+            trace!("Added import to module (tracing enabled)");
+            #[cfg(all(feature = "std", not(feature = "tracing")))]
+            eprintln!("[from_wrt_module] Added import: {}::{}", import.module, import.name);
+        }
 
         // Convert functions
         #[cfg(feature = "std")]
@@ -765,8 +847,20 @@ impl Module {
                 let locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&func.locals, shared_provider.clone())?;
 
                 #[cfg(feature = "std")]
-                eprintln!("DEBUG: About to parse instructions for function {}", func_idx);
+                eprintln!("DEBUG: About to parse instructions for function {}, func.code.len()={}", func_idx, func.code.len());
+
+                // Debug: show the raw bytecode
+                #[cfg(feature = "std")]
+                if !func.code.is_empty() {
+                    eprintln!("DEBUG: Raw bytecode for function {}: {:02x?}", func_idx, &func.code[..func.code.len().min(20)]);
+                } else {
+                    eprintln!("DEBUG: WARNING - Function {} has empty code!", func_idx);
+                }
+
                 let instructions = crate::instruction_parser::parse_instructions_with_provider(&func.code, shared_provider.clone())?;
+
+                #[cfg(feature = "std")]
+                eprintln!("DEBUG: Parsed {} instructions for function {}", instructions.len(), func_idx);
                 (locals, WrtExpr { instructions })
             };
 
@@ -880,6 +974,10 @@ impl Module {
             let memory_type = to_core_memory_type(*memory);
 
             #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] Module declares: min={} pages ({}KB), max={:?} pages",
+                mem_idx, memory_type.limits.min, memory_type.limits.min * 64, memory_type.limits.max);
+
+            #[cfg(feature = "std")]
             eprintln!("DEBUG: [Memory {}] About to call Memory::new()...", mem_idx);
 
             let memory_instance = Memory::new(memory_type)?;
@@ -899,23 +997,74 @@ impl Module {
         }
 
         // Convert globals - NOW ENABLED (stack overflow fixed)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} globals from wrt_module", wrt_module.globals.len());
-        for global in &wrt_module.globals {
-            let initial_value = match global.global_type.value_type {
-                wrt_foundation::types::ValueType::I32 => wrt_foundation::values::Value::I32(0),
-                wrt_foundation::types::ValueType::I64 => wrt_foundation::values::Value::I64(0),
-                wrt_foundation::types::ValueType::F32 => wrt_foundation::values::Value::F32(
-                    wrt_foundation::values::FloatBits32(0),
-                ),
-                wrt_foundation::types::ValueType::F64 => wrt_foundation::values::Value::F64(
-                    wrt_foundation::values::FloatBits64(0),
-                ),
-                _ => {
-                    return Err(Error::not_supported_unsupported_operation(
-                        "Unsupported global type",
-                    ))
-                },
+        debug!("Converting {} globals from wrt_module", wrt_module.globals.len());
+        for (global_idx, global) in wrt_module.globals.iter().enumerate() {
+            // Parse the init expression to get the actual initial value
+            // The init expression is typically a simple constant instruction like i32.const
+            let init_bytes = global.init.as_slice();
+
+            // Debug output to see what's in the init expression
+            trace!("Global[{}] init bytes: {:?}", global_idx, init_bytes);
+
+            let initial_value = if !init_bytes.is_empty() {
+                // Parse the init expression
+                // Common patterns:
+                // [0x41, value_bytes, 0x0b] = i32.const value
+                // [0x42, value_bytes, 0x0b] = i64.const value
+                // [0x43, value_bytes, 0x0b] = f32.const value
+                // [0x44, value_bytes, 0x0b] = f64.const value
+                // [0x23, global_idx, 0x0b] = global.get global_idx
+
+                match init_bytes[0] {
+                    0x41 => {
+                        // i32.const - parse LEB128 encoded i32
+                        let (value, _) = crate::instruction_parser::read_leb128_i32(&init_bytes, 1)?;
+                        debug!("Global[{}] initialized with i32.const {}", global_idx, value);
+                        wrt_foundation::values::Value::I32(value)
+                    },
+                    0x42 => {
+                        // i64.const - parse LEB128 encoded i64
+                        let (value, _) = crate::instruction_parser::read_leb128_i64(&init_bytes, 1)?;
+                        wrt_foundation::values::Value::I64(value)
+                    },
+                    0x43 => {
+                        // f32.const - 4 bytes little-endian
+                        if init_bytes.len() < 5 {
+                            return Err(Error::parse_error("Invalid f32.const init expression"));
+                        }
+                        let mut bytes = [0u8; 4];
+                        bytes.copy_from_slice(&init_bytes[1..5]);
+                        let value = u32::from_le_bytes(bytes);
+                        wrt_foundation::values::Value::F32(wrt_foundation::values::FloatBits32(value))
+                    },
+                    0x44 => {
+                        // f64.const - 8 bytes little-endian
+                        if init_bytes.len() < 9 {
+                            return Err(Error::parse_error("Invalid f64.const init expression"));
+                        }
+                        let mut bytes = [0u8; 8];
+                        bytes.copy_from_slice(&init_bytes[1..9]);
+                        let value = u64::from_le_bytes(bytes);
+                        wrt_foundation::values::Value::F64(wrt_foundation::values::FloatBits64(value))
+                    },
+                    0x23 => {
+                        // global.get - need to reference another global's value
+                        // For now this is not implemented
+                        return Err(Error::not_supported_unsupported_operation(
+                            "global.get init expression not yet implemented"
+                        ));
+                    },
+                    _ => {
+                        return Err(Error::parse_error(
+                            "Unknown init expression opcode in global initializer"
+                        ));
+                    }
+                }
+            } else {
+                // No init expression - this is an error, globals must be initialized
+                return Err(Error::parse_error(
+                    "Global has no init expression"
+                ))
             };
             let new_global = Global::new(
                 global.global_type.value_type,
@@ -971,6 +1120,9 @@ impl Module {
         eprintln!("DEBUG Module::from_format: Done converting types, final len={}", runtime_module.types.len());
 
         // Convert imports
+        #[cfg(feature = "std")]
+        eprintln!("[from_wrt_module] Processing {} imports from wrt_module", wrt_module.imports.len());
+
         for import in &wrt_module.imports {
             let desc = match &import.desc {
                 FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
@@ -1007,7 +1159,7 @@ impl Module {
             let import_entry = Import {
                 module: bounded_module_128,
                 name: bounded_name_128,
-                ty: ExternType::default(),
+                ty: wrt_foundation::component::ExternType::default(),
                 desc,
             };
 
@@ -1021,7 +1173,12 @@ impl Module {
             inner_map.insert(bounded_name_256, import_entry)?;
 
             // Update the outer map
-            runtime_module.imports.insert(bounded_module_256, inner_map)?;
+            runtime_module.imports.insert(bounded_module_256.clone(), inner_map)?;
+
+            #[cfg(feature = "tracing")]
+            trace!("Added import to module (tracing enabled)");
+            #[cfg(all(feature = "std", not(feature = "tracing")))]
+            eprintln!("[from_wrt_module] Added import: {}::{}", import.module, import.name);
         }
 
         // Convert functions
@@ -2314,10 +2471,13 @@ impl Module {
                     ExternType::Table(table_type)
                 },
                 wrt_decoder::ImportType::Memory => {
-                    // Create default memory type
+                    // CRITICAL: Memory imports in Component Model should NOT have hardcoded limits
+                    // The actual memory specifications come from the provider module (Module 0 with 2 pages)
+                    // For shared-everything dynamic linking, all modules share the same linear memory
+                    // Temporarily use min:0 to indicate this needs to be resolved via linking
                     let memory_type = WrtMemoryType {
-                        limits: WrtLimits { min: 1, max: None },
-                        shared: false,
+                        limits: WrtLimits { min: 0, max: None },  // Will be resolved via linking
+                        shared: true,  // Component Model uses shared memory
                     };
                     ExternType::Memory(memory_type)
                 },
@@ -2807,38 +2967,20 @@ pub struct MemoryWrapper(pub Arc<Memory>);
 
 impl Default for MemoryWrapper {
     fn default() -> Self {
-        // EMERGENCY FIX: Create minimal memory to avoid stack overflow recursion
-        // This implementation avoids the large memory allocation that was causing
-        // stack overflow during BoundedVec::default() serialization size calculations.
-
-        use wrt_foundation::types::{
-            Limits,
-            MemoryType,
-        };
-
-        // Create the smallest possible memory (0 pages)
-        let memory_type = MemoryType {
-            limits: Limits {
-                min: 0, // 0 pages to minimize allocation
-                max: Some(0),
-            },
-            shared: false,
-        };
-
-        // Convert to CoreMemoryType and create Memory
-        let core_type = to_core_memory_type(memory_type);
-
-        match Memory::new(core_type) {
-            Ok(memory) => Self::new(memory),
-            Err(_) => {
-                // If even 0-page memory fails, there's a deeper issue
-                // This should not happen, but prevents stack overflow
-                panic!(
-                    "CRITICAL: Cannot create minimal MemoryWrapper - check Memory::new \
-                     implementation"
-                );
-            },
-        }
+        // FAIL LOUD AND EARLY: This violates the NO FALLBACK LOGIC rule from CLAUDE.md
+        // Memory must always be explicitly created or shared - there should never be
+        // a fallback default memory.
+        //
+        // This Default is only provided because BoundedVec requires it, but it should
+        // NEVER be used in practice. If this panic fires, it means:
+        // - Wrapper modules aren't properly inheriting memory from Module 0
+        // - Memory specifications weren't being properly linked during instantiation
+        // - Instances are being created without required memory
+        panic!(
+            "CRITICAL: MemoryWrapper::default() called - this indicates a memory linking bug. \
+             Memories must be explicitly created or shared, never defaulted. \
+             Check that all modules properly inherit or share memory from Module 0."
+        );
     }
 }
 
@@ -3173,28 +3315,14 @@ impl FromBytes for MemoryWrapper {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
 
-        // Create a default memory (simplified implementation)
-        use wrt_foundation::types::{
-            Limits,
-            MemoryType,
-        };
-        let memory_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(1),
-            },
-            shared: false,
-        };
-
-        let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
-            wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::INVALID_VALUE,
-                "Failed to create memory from bytes",
-            )
-        })?;
-
-        Ok(MemoryWrapper::new(memory))
+        // FAIL LOUD AND EARLY: This violates the NO FALLBACK LOGIC rule
+        // Memories must be shared from Module 0, not created during deserialization
+        panic!(
+            "CRITICAL: MemoryWrapper::from_bytes called - this indicates a memory linking bug. \
+             Wrapper modules should inherit memory from Module 0 through shared-everything linking, \
+             not create new memories during deserialization. The hardcoded 1-page memory (min: 1, max: Some(1)) \
+             was masking a bug where wrapper modules weren't properly sharing Module 0's memory."
+        );
     }
 }
 

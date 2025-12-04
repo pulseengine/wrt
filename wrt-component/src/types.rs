@@ -167,6 +167,12 @@ pub struct ComponentInstance {
     #[cfg(not(any(feature = "std",)))]
     pub module_instances:
         BoundedVec<ModuleInstance, 64>,
+    /// Runtime engine for executing WASM functions (if available)
+    #[cfg(feature = "wrt-execution")]
+    pub runtime_engine: Option<Box<wrt_runtime::engine::CapabilityAwareEngine>>,
+    /// Main module instance handle for execution
+    #[cfg(feature = "wrt-execution")]
+    pub main_instance_handle: Option<wrt_runtime::engine::InstanceHandle>,
 }
 
 impl fmt::Debug for ComponentInstance {

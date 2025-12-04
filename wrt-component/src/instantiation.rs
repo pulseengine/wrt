@@ -502,6 +502,10 @@ impl Component {
         };
 
         let instance = ComponentInstance {
+            #[cfg(feature = "wrt-execution")]
+            runtime_engine: None,
+            #[cfg(feature = "wrt-execution")]
+            main_instance_handle: None,
             id: instance_id,
             component: component_ref,
             state: crate::types::ComponentInstanceState::Initialized,
