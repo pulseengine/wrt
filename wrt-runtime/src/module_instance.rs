@@ -29,6 +29,7 @@ use wrt_foundation::{
 use wrt_instructions::reference_ops::ReferenceOperations;
 
 // Type alias for FuncType to make signatures more readable - uses unified RuntimeProvider
+#[cfg(not(feature = "std"))]
 use crate::bounded_runtime_infra::{
     create_runtime_provider,
     BoundedGlobalVec,
@@ -36,6 +37,13 @@ use crate::bounded_runtime_infra::{
     BoundedImportMap,
     BoundedMemoryVec,
     BoundedTableVec,
+    RuntimeProvider,
+};
+#[cfg(feature = "std")]
+use crate::bounded_runtime_infra::{
+    create_runtime_provider,
+    BoundedImportExportName,
+    BoundedImportMap,
     RuntimeProvider,
 };
 use crate::{
@@ -81,11 +89,20 @@ use crate::prelude::{
 pub struct ModuleInstance {
     /// The module this instance was instantiated from
     module:      Arc<Module>,
-    /// The instance's memory (using safety-critical wrapper types)
+    /// The instance's memory - Vec in std mode to avoid serialization overhead
+    #[cfg(feature = "std")]
+    memories:    Arc<Mutex<Vec<MemoryWrapper>>>,
+    #[cfg(not(feature = "std"))]
     memories:    Arc<Mutex<BoundedMemoryVec<MemoryWrapper>>>,
-    /// The instance's tables (using safety-critical wrapper types)
+    /// The instance's tables - Vec in std mode to avoid serialization overhead
+    #[cfg(feature = "std")]
+    tables:      Arc<Mutex<Vec<TableWrapper>>>,
+    #[cfg(not(feature = "std"))]
     tables:      Arc<Mutex<BoundedTableVec<TableWrapper>>>,
-    /// The instance's globals (using safety-critical wrapper types)
+    /// The instance's globals - Vec in std mode to avoid serialization overhead
+    #[cfg(feature = "std")]
+    globals:     Arc<Mutex<Vec<GlobalWrapper>>>,
+    #[cfg(not(feature = "std"))]
     globals:     Arc<Mutex<BoundedGlobalVec<GlobalWrapper>>>,
     /// Instance ID for debugging
     instance_id: usize,
@@ -110,6 +127,23 @@ impl Debug for ModuleInstance {
 
 impl ModuleInstance {
     /// Create a new module instance from a module (accepts Arc to avoid deep clones)
+    #[cfg(feature = "std")]
+    pub fn new(module: Arc<Module>, instance_id: usize) -> Result<Self> {
+        // In std mode, use Vec for simplicity and to avoid serialization overhead
+        Ok(Self {
+            module,
+            memories: Arc::new(Mutex::new(Vec::new())),
+            tables: Arc::new(Mutex::new(Vec::new())),
+            globals: Arc::new(Mutex::new(Vec::new())),
+            instance_id,
+            imports: Default::default(),
+            #[cfg(feature = "debug")]
+            debug_info: None,
+        })
+    }
+
+    /// Create a new module instance from a module (accepts Arc to avoid deep clones)
+    #[cfg(not(feature = "std"))]
     pub fn new(module: Arc<Module>, instance_id: usize) -> Result<Self> {
         // Create a single shared provider to avoid stack overflow from multiple
         // provider allocations
@@ -145,50 +179,71 @@ impl ModuleInstance {
     /// Get a memory from this instance
     pub fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
         #[cfg(feature = "std")]
-        let memories = self
-            .memories
-            .lock()
-            .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+        {
+            let memories = self
+                .memories
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+            let memory = memories
+                .get(idx as usize)
+                .ok_or_else(|| Error::runtime_execution_error("Memory index out of bounds"))?;
+            Ok(memory.clone())
+        }
 
         #[cfg(not(feature = "std"))]
-        let memories = self.memories.lock();
-
-        let memory = memories
-            .get(idx as usize)
-            .map_err(|_| Error::runtime_execution_error("Memory index out of bounds"))?;
-        Ok(memory.clone())
+        {
+            let memories = self.memories.lock();
+            let memory = memories
+                .get(idx as usize)
+                .map_err(|_| Error::runtime_execution_error("Memory index out of bounds"))?;
+            Ok(memory.clone())
+        }
     }
 
     /// Get a table from this instance
     pub fn table(&self, idx: u32) -> Result<TableWrapper> {
         #[cfg(feature = "std")]
-        let tables =
-            self.tables.lock().map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+        {
+            let tables =
+                self.tables.lock().map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+            let table = tables
+                .get(idx as usize)
+                .ok_or_else(|| Error::resource_table_not_found("Runtime operation error"))?;
+            Ok(table.clone())
+        }
 
         #[cfg(not(feature = "std"))]
-        let tables = self.tables.lock();
-
-        let table = tables
-            .get(idx as usize)
-            .map_err(|_| Error::resource_table_not_found("Runtime operation error"))?;
-        Ok(table.clone())
+        {
+            let tables = self.tables.lock();
+            let table = tables
+                .get(idx as usize)
+                .map_err(|_| Error::resource_table_not_found("Runtime operation error"))?;
+            Ok(table.clone())
+        }
     }
 
     /// Get a global from this instance
     pub fn global(&self, idx: u32) -> Result<GlobalWrapper> {
         #[cfg(feature = "std")]
-        let globals = self
-            .globals
-            .lock()
-            .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+        {
+            let globals = self
+                .globals
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+            let global = globals
+                .get(idx as usize)
+                .ok_or_else(|| Error::resource_global_not_found("Runtime operation error"))?;
+            Ok(global.clone())
+        }
 
         #[cfg(not(feature = "std"))]
-        let globals = self.globals.lock();
-
-        let global = globals
-            .get(idx as usize)
-            .map_err(|_| Error::resource_global_not_found("Runtime operation error"))?;
-        Ok(global.clone())
+        {
+            let globals = self.globals.lock();
+            let global = globals
+                .get(idx as usize)
+                .map_err(|_| Error::resource_global_not_found("Runtime operation error"))?;
+            Ok(global.clone())
+        }
     }
 
     /// Get the function type for a function
@@ -292,49 +347,144 @@ impl ModuleInstance {
     /// Add a memory to this instance
     pub fn add_memory(&self, memory: Memory) -> Result<()> {
         #[cfg(feature = "std")]
-        let mut memories = self
-            .memories
-            .lock()
-            .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+        {
+            let mut memories = self
+                .memories
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+            memories.push(MemoryWrapper::new(Box::new(memory)));
+            Ok(())
+        }
 
         #[cfg(not(feature = "std"))]
-        let mut memories = self.memories.lock();
-
-        memories
-            .push(MemoryWrapper::new(Box::new(memory)))
-            .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
-        Ok(())
+        {
+            let mut memories = self.memories.lock();
+            memories
+                .push(MemoryWrapper::new(Box::new(memory)))
+                .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
+            Ok(())
+        }
     }
 
     /// Add a table to this instance
     pub fn add_table(&self, table: Table) -> Result<()> {
         #[cfg(feature = "std")]
-        let mut tables =
-            self.tables.lock().map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+        {
+            let mut tables =
+                self.tables.lock().map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+            tables.push(TableWrapper::new(table));
+            Ok(())
+        }
 
         #[cfg(not(feature = "std"))]
-        let mut tables = self.tables.lock();
-
-        tables
-            .push(TableWrapper::new(table))
-            .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
-        Ok(())
+        {
+            let mut tables = self.tables.lock();
+            tables
+                .push(TableWrapper::new(table))
+                .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
+            Ok(())
+        }
     }
 
     /// Add a global to this instance
     pub fn add_global(&self, global: Global) -> Result<()> {
         #[cfg(feature = "std")]
-        let mut globals = self
-            .globals
-            .lock()
-            .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+        {
+            let mut globals = self
+                .globals
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+            globals.push(GlobalWrapper::new(global));
+            Ok(())
+        }
 
         #[cfg(not(feature = "std"))]
-        let mut globals = self.globals.lock();
+        {
+            let mut globals = self.globals.lock();
+            globals
+                .push(GlobalWrapper::new(global))
+                .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
+            Ok(())
+        }
+    }
 
-        globals
-            .push(GlobalWrapper::new(global))
-            .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
+    /// Populate globals from the module into this instance
+    /// This copies all global variables from the module definition to the instance
+    pub fn populate_globals_from_module(&self) -> Result<()> {
+        use wrt_foundation::tracing::{debug, info};
+
+        info!("Populating globals from module for instance {}", self.instance_id);
+
+        #[cfg(feature = "std")]
+        {
+            let mut globals = self
+                .globals
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+
+            // In std mode, module.globals is BoundedVec so we iterate using index
+            for idx in 0..self.module.globals.len() {
+                if let Ok(global_wrapper) = self.module.globals.get(idx) {
+                    debug!("Copying global {} to instance", idx);
+                    globals.push(global_wrapper.clone());
+                }
+            }
+            info!("Populated {} globals for instance {}", self.module.globals.len(), self.instance_id);
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            let mut globals = self.globals.lock();
+            for idx in 0..self.module.globals.len() {
+                if let Ok(global_wrapper) = self.module.globals.get(idx) {
+                    debug!("Copying global {} to instance", idx);
+                    globals
+                        .push(global_wrapper.clone())
+                        .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
+                }
+            }
+            info!("Populated globals for instance {}", self.instance_id);
+        }
+
+        Ok(())
+    }
+
+    /// Populate memories from the module into this instance
+    /// This copies all memory instances from the module definition to the instance
+    pub fn populate_memories_from_module(&self) -> Result<()> {
+        use wrt_foundation::tracing::{debug, info};
+
+        info!("Populating memories from module for instance {}", self.instance_id);
+
+        #[cfg(feature = "std")]
+        {
+            let mut memories = self
+                .memories
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+
+            // In std mode, module.memories is Vec so we can iterate directly
+            for (idx, memory_wrapper) in self.module.memories.iter().enumerate() {
+                debug!("Copying memory {} to instance", idx);
+                memories.push(memory_wrapper.clone());
+            }
+            info!("Populated {} memories for instance {}", self.module.memories.len(), self.instance_id);
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            let mut memories = self.memories.lock();
+            for idx in 0..self.module.memories.len() {
+                if let Ok(memory_wrapper) = self.module.memories.get(idx) {
+                    debug!("Copying memory {} to instance", idx);
+                    memories
+                        .push(memory_wrapper.clone())
+                        .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
+                }
+            }
+            info!("Populated memories for instance {}", self.instance_id);
+        }
+
         Ok(())
     }
 

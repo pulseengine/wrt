@@ -4,6 +4,10 @@
 //! to enforce safety constraints based on the selected preset (QM, ASIL-A,
 //! ASIL-B).
 
+// Import tracing utilities
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::debug;
+
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::sync::Arc;
 use core::sync::atomic::{
@@ -514,17 +518,27 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.context.verify_operation(CrateId::Runtime, &operation)?;
 
         // Create module instance (clone the Arc, not the Module)
-        let mut instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
+        let instance = ModuleInstance::new(module_arc.clone(), self.next_instance_idx)?;
+        #[cfg(feature = "tracing")]
+        debug!("Created ModuleInstance for idx {}", self.next_instance_idx);
 
-        // TODO: Copy globals from module to instance (critical for stack pointer initialization!)
-        // instance.populate_globals_from_module()?;
+        // Copy globals from module to instance (critical for stack pointer initialization!)
+        #[cfg(feature = "tracing")]
+        debug!("Populating globals from module...");
+        instance.populate_globals_from_module()?;
 
-        // TODO: Copy memories from module to instance (critical for memory access!)
-        // instance.populate_memories_from_module()?;
+        // Copy memories from module to instance (critical for memory access!)
+        #[cfg(feature = "tracing")]
+        debug!("Populating memories from module...");
+        instance.populate_memories_from_module()?;
 
-        // TODO: Initialize data segments into instance memory (critical for static data!)
-        // #[cfg(feature = "std")]
-        // instance.initialize_data_segments()?;
+        // Initialize data segments into instance memory (critical for static data!)
+        #[cfg(feature = "std")]
+        {
+            #[cfg(feature = "tracing")]
+            debug!("Initializing data segments...");
+            instance.initialize_data_segments()?;
+        }
 
         // Apply import links if any exist for this module
         // We need the instance_idx before we can register links, so we'll do it after registration

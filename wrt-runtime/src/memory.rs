@@ -1074,7 +1074,20 @@ impl Memory {
             .checked_add(size)
             .ok_or_else(|| Error::memory_out_of_bounds("Memory write would overflow"))?;
 
-        if end > self.size_in_bytes() {
+        let mem_size = self.size_in_bytes();
+        #[cfg(feature = "tracing")]
+        {
+            use wrt_foundation::tracing::debug;
+            debug!("write_shared: offset={}, size={}, end={}, mem_size={}, pages={}",
+                   offset_usize, size, end, mem_size, self.current_pages.load(Ordering::Relaxed));
+        }
+
+        if end > mem_size {
+            #[cfg(feature = "tracing")]
+            {
+                use wrt_foundation::tracing::error;
+                error!("write_shared bounds check FAILED: end {} > mem_size {}", end, mem_size);
+            }
             return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
         }
 
