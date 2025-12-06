@@ -817,18 +817,25 @@ mod std_parsing {
 
         match tag {
             0x00 => {
-                // Lift operation
+                // Lift operation: 0x00 0x00 f opts ft
+                // Skip the func sort discriminant (0x00)
+                if offset >= bytes.len() || bytes[offset] != 0x00 {
+                    return Err(Error::from(kinds::ParseError(
+                        "Invalid lift operation - missing func sort discriminant",
+                    )));
+                }
+                offset += 1;
 
                 // Read core function index
                 let (func_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                // Read type index
-                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
                 // Read options
                 let (options, bytes_read) = parse_lift_options(&bytes[offset..])?;
+                offset += bytes_read;
+
+                // Read type index
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
                 Ok((
@@ -841,7 +848,14 @@ mod std_parsing {
                 ))
             },
             0x01 => {
-                // Lower operation
+                // Lower operation: 0x01 0x00 f opts
+                // Skip the func sort discriminant (0x00)
+                if offset >= bytes.len() || bytes[offset] != 0x00 {
+                    return Err(Error::from(kinds::ParseError(
+                        "Invalid lower operation - missing func sort discriminant",
+                    )));
+                }
+                offset += 1;
 
                 // Read function index
                 let (func_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -857,27 +871,44 @@ mod std_parsing {
                 ))
             },
             0x02 => {
-                // Resource operations
-
-                // Read resource operation
-                let (resource_op, bytes_read) = parse_resource_operation(&bytes[offset..])?;
+                // resource.new rt
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                // Convert from ResourceCanonicalOperation to FormatResourceOperation
-                let format_resource_op = match resource_op {
-                    resource::ResourceCanonicalOperation::New(new) => {
-                        wrt_format::component::FormatResourceOperation::New(new)
-                    },
-                    resource::ResourceCanonicalOperation::Drop(drop) => {
-                        wrt_format::component::FormatResourceOperation::Drop(drop)
-                    },
-                    resource::ResourceCanonicalOperation::Rep(rep) => {
-                        wrt_format::component::FormatResourceOperation::Rep(rep)
-                    },
-                };
+                Ok((
+                    wrt_format::component::CanonOperation::Resource(
+                        wrt_format::component::FormatResourceOperation::New(
+                            resource::ResourceNew { type_idx }
+                        )
+                    ),
+                    offset,
+                ))
+            },
+            0x03 => {
+                // resource.drop rt
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::CanonOperation::Resource(format_resource_op),
+                    wrt_format::component::CanonOperation::Resource(
+                        wrt_format::component::FormatResourceOperation::Drop(
+                            resource::ResourceDrop { type_idx }
+                        )
+                    ),
+                    offset,
+                ))
+            },
+            0x04 => {
+                // resource.rep rt
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                Ok((
+                    wrt_format::component::CanonOperation::Resource(
+                        wrt_format::component::FormatResourceOperation::Rep(
+                            resource::ResourceRep { type_idx }
+                        )
+                    ),
                     offset,
                 ))
             },
@@ -891,59 +922,80 @@ mod std_parsing {
     fn parse_lift_options(bytes: &[u8]) -> Result<(wrt_format::component::LiftOptions, usize)> {
         let mut offset = 0;
 
-        // Read memory index (optional)
-        let (has_memory, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        // Read options count (vector length)
+        let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
         offset += bytes_read;
 
-        let memory_idx = if has_memory != 0 {
-            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            Some(idx)
-        } else {
-            None
-        };
+        let mut memory_idx = None;
+        let mut string_encoding = wrt_format::component::StringEncoding::UTF8;
+        let mut realloc_func_idx = None;
+        let mut post_return_func_idx = None;
+        let mut is_async = false;
 
-        // Read string encoding (optional)
-        let (has_encoding, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-        offset += bytes_read;
-
-        let string_encoding = if has_encoding != 0 {
+        // Parse each canonopt
+        for _ in 0..count {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
-                    "Unexpected end of input while parsing string encoding",
+                    "Unexpected end of input while parsing canon options",
                 )));
             }
 
-            let encoding_byte = bytes[offset];
+            let opt_tag = bytes[offset];
             offset += 1;
 
-            let encoding = match encoding_byte {
-                0x00 => wrt_format::component::StringEncoding::UTF8,
-                0x01 => wrt_format::component::StringEncoding::UTF16,
-                0x02 => wrt_format::component::StringEncoding::Latin1,
-                0x03 => wrt_format::component::StringEncoding::ASCII,
-                _ => {
-                    return Err(Error::from(kinds::ParseError("Invalid string encoding")));
+            match opt_tag {
+                0x00 => {
+                    // UTF8 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::UTF8;
                 },
-            };
-
-            Some(encoding)
-        } else {
-            None
-        };
-
-        let string_encoding_value = match string_encoding {
-            Some(encoding) => encoding,
-            None => wrt_format::component::StringEncoding::UTF8,
-        };
+                0x01 => {
+                    // UTF16 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::UTF16;
+                },
+                0x02 => {
+                    // Latin1+UTF16 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::Latin1;
+                },
+                0x03 => {
+                    // (memory m)
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                    memory_idx = Some(idx);
+                },
+                0x04 => {
+                    // (realloc f)
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                    realloc_func_idx = Some(idx);
+                },
+                0x05 => {
+                    // (post-return f)
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                    post_return_func_idx = Some(idx);
+                },
+                0x06 => {
+                    // async
+                    is_async = true;
+                },
+                0x07 => {
+                    // (callback f) - skip for now
+                    let (_, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                },
+                _ => {
+                    return Err(Error::from(kinds::ParseError("Invalid canon option tag")));
+                }
+            }
+        }
 
         Ok((
             wrt_format::component::LiftOptions {
-                memory_idx:           Some(memory_idx.unwrap_or(0)),
-                string_encoding:      Some(string_encoding_value),
-                realloc_func_idx:     None,
-                post_return_func_idx: None,
-                is_async:             false,
+                memory_idx,
+                string_encoding:      Some(string_encoding),
+                realloc_func_idx,
+                post_return_func_idx,
+                is_async,
             },
             offset,
         ))
@@ -953,58 +1005,77 @@ mod std_parsing {
     fn parse_lower_options(bytes: &[u8]) -> Result<(wrt_format::component::LowerOptions, usize)> {
         let mut offset = 0;
 
-        // Read memory index (optional)
-        let (has_memory, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        // Read options count (vector length)
+        let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
         offset += bytes_read;
 
-        let memory_idx = if has_memory != 0 {
-            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            Some(idx)
-        } else {
-            None
-        };
+        let mut memory_idx = None;
+        let mut string_encoding = wrt_format::component::StringEncoding::UTF8;
+        let mut realloc_func_idx = None;
+        let mut is_async = false;
 
-        // Read string encoding (optional)
-        let (has_encoding, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-        offset += bytes_read;
-
-        let string_encoding = if has_encoding != 0 {
+        // Parse each canonopt
+        for _ in 0..count {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
-                    "Unexpected end of input while parsing string encoding",
+                    "Unexpected end of input while parsing canon options",
                 )));
             }
 
-            let encoding_byte = bytes[offset];
+            let opt_tag = bytes[offset];
             offset += 1;
 
-            let encoding = match encoding_byte {
-                0x00 => wrt_format::component::StringEncoding::UTF8,
-                0x01 => wrt_format::component::StringEncoding::UTF16,
-                0x02 => wrt_format::component::StringEncoding::Latin1,
-                0x03 => wrt_format::component::StringEncoding::ASCII,
-                _ => {
-                    return Err(Error::from(kinds::ParseError("Invalid string encoding")));
+            match opt_tag {
+                0x00 => {
+                    // UTF8 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::UTF8;
                 },
-            };
-
-            Some(encoding)
-        } else {
-            None
-        };
-
-        let string_encoding_value = match string_encoding {
-            Some(encoding) => encoding,
-            None => wrt_format::component::StringEncoding::UTF8,
-        };
+                0x01 => {
+                    // UTF16 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::UTF16;
+                },
+                0x02 => {
+                    // Latin1+UTF16 string encoding
+                    string_encoding = wrt_format::component::StringEncoding::Latin1;
+                },
+                0x03 => {
+                    // (memory m)
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                    memory_idx = Some(idx);
+                },
+                0x04 => {
+                    // (realloc f)
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                    realloc_func_idx = Some(idx);
+                },
+                0x05 => {
+                    // (post-return f) - skip for now
+                    let (_, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                },
+                0x06 => {
+                    // async
+                    is_async = true;
+                },
+                0x07 => {
+                    // (callback f) - skip for now
+                    let (_, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    offset += bytes_read;
+                },
+                _ => {
+                    return Err(Error::from(kinds::ParseError("Invalid canon option tag")));
+                }
+            }
+        }
 
         Ok((
             wrt_format::component::LowerOptions {
-                memory_idx:       Some(memory_idx.unwrap_or(0)),
-                string_encoding:  Some(string_encoding_value),
-                realloc_func_idx: None,
-                is_async:         false,
+                memory_idx,
+                string_encoding:  Some(string_encoding),
+                realloc_func_idx,
+                is_async,
                 error_mode:       None,
             },
             offset,

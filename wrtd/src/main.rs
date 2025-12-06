@@ -505,10 +505,17 @@ impl WrtdEngine {
                 println!();
             }
 
-            if let Some(_export) = instance.get_export("wasi:cli/run@0.2.0") {
+            // Find wasi:cli/run export with any version
+            let run_export = instance.exports.iter()
+                .find(|e| e.name.starts_with("wasi:cli/run@"))
+                .map(|e| e.name.clone());
+
+            if let Some(export_name) = run_export {
+                #[cfg(feature = "std")]
+                eprintln!("[INFO] Calling {} entry point", export_name);
                 let _ = self.logger.handle_minimal_log(
                     LogLevel::Info,
-                    "Calling wasi:cli/run@0.2.0 entry point"
+                    "Calling wasi:cli/run entry point"
                 );
 
                 // TODO: Pass actual command-line arguments from config
@@ -517,9 +524,9 @@ impl WrtdEngine {
 
                 // Pass the host_registry so component can call WASI functions
                 #[cfg(feature = "wrt-execution")]
-                let result = instance.call_function("wasi:cli/run@0.2.0", &args, Some(&self.host_registry));
+                let result = instance.call_function(&export_name, &args, Some(&self.host_registry));
                 #[cfg(not(feature = "wrt-execution"))]
-                let result = instance.call_function("wasi:cli/run@0.2.0", &args);
+                let result = instance.call_function(&export_name, &args);
 
                 match result {
                     Ok(_results) => {
@@ -702,7 +709,7 @@ impl WrtdEngine {
     /// Load module data with bounded allocations
     #[cfg(feature = "std")]
     fn load_module_bounded(&self) -> Result<Vec<u8>> {
-        const MAX_MODULE_SIZE: usize = 2 * 1024 * 1024; // 2 MiB limit
+        const MAX_MODULE_SIZE: usize = 8 * 1024 * 1024; // 8 MiB limit
 
         if let Some(ref path) = self.config.module_path {
             // Check file size first

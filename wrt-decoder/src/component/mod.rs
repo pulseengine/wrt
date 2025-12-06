@@ -508,7 +508,9 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
 
                         component.canonicals.extend(canons);
                     },
-                    Err(_) => {
+                    Err(e) => {
+                        #[cfg(feature = "std")]
+                        eprintln!("[SECTION_PARSER] ERROR parsing canon section: {:?}", e);
                         // Continue parsing other sections
                     }
                 }

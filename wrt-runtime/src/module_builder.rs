@@ -127,9 +127,29 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         // Create module directly to avoid Module::new()
         let provider = crate::bounded_runtime_infra::create_runtime_provider()
             .expect("Failed to create runtime provider");
+        #[cfg(feature = "std")]
         let module = Module {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create imports"),
+            import_order: Vec::new(),
+            functions: Vec::new(),
+            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create tables"),
+            memories: Vec::new(),
+            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create globals"),
+            elements: Vec::new(),
+            data: Vec::new(),
+            start: None,
+            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create custom_sections"),
+            exports: wrt_foundation::direct_map::DirectMap::new(),
+            name: None,
+            binary: None,
+            validated: false,
+        };
+        #[cfg(not(feature = "std"))]
+        let module = Module {
+            types: Vec::new(),
+            imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create imports"),
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create import_order"),
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create tables"),
             memories: Vec::new(),
@@ -374,11 +394,21 @@ impl ModuleBuilder {
         let module = Module {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            import_order: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            elements: Vec::new(),
+            #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            data: Vec::new(),
+            #[cfg(not(feature = "std"))]
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,

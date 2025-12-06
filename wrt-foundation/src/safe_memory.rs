@@ -1241,7 +1241,7 @@ impl<const N: usize> Default for NoStdProvider<N> {
         // For N <= 8192, this should be safe on most systems.
         Self {
             data:               [0u8; N], /* Initialize with zeros. Safe for small N. */
-            used:               0,
+            used:               N, /* All bytes are initialized to zero, so all N bytes are usable */
             access_count:       AtomicUsize::new(0),
             last_access_offset: AtomicUsize::new(0),
             last_access_length: AtomicUsize::new(0),
