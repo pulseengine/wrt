@@ -9,12 +9,14 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
+    boxed::Box,
     collections::BTreeMap as HashMap,
     string::String,
     vec::Vec,
 };
 #[cfg(feature = "std")]
 use std::{
+    boxed::Box,
     collections::HashMap,
     string::String,
     vec::Vec,

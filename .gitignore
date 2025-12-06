@@ -47,3 +47,10 @@ docs_output/
 .cursor/
 .cursorignore
 *.rlib
+
+# Temporary test files
+*.log
+/test_*.wat
+/simple.wat
+/minimal.wat
+/file_ops_component.wat

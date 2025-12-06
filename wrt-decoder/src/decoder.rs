@@ -214,7 +214,7 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                 // Imported functions are already in the functions vector with empty code.
                 // We need to skip imported functions when assigning code.
                 let num_imports = module.imports.iter()
-                    .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
+                    .filter(|import| matches!(import.desc, ImportDesc::Function(..)))
                     .count();
 
                 #[cfg(feature = "std")]
@@ -327,7 +327,7 @@ fn build_module_from_sections(
                 // CRITICAL: The code section only contains code for local functions.
                 // We need to skip imported functions when assigning code.
                 let num_imports = module.imports.iter()
-                    .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
+                    .filter(|import| matches!(import.desc, ImportDesc::Function(..)))
                     .count();
 
                 for (idx, body) in code_bodies.into_iter().enumerate() {
