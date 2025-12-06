@@ -29,12 +29,13 @@ use wrt_foundation::{
     },
 };
 
-/// Memory size for runtime provider (128KB).
+/// Memory size for runtime provider (8KB).
 ///
-/// Previously was 131072 (128KB) which caused stack overflow on stack.
-/// 4096 was too small for runtime providers - increased to 32KB.
-/// Now 128KB to handle large component imports serialization (uses heap allocation).
-pub const RUNTIME_MEMORY_SIZE: usize = 131072;
+/// Previously was 131072 (128KB) which caused stack overflow.
+/// The issue is that NoStdProvider stores [u8; N] directly in the struct,
+/// so even "heap allocation" ends up on the stack when returned.
+/// 8KB is the threshold that avoids the heap allocation path entirely.
+pub const RUNTIME_MEMORY_SIZE: usize = 8192;
 
 // Stack allocation threshold - use platform allocator for sizes above this
 const STACK_ALLOCATION_THRESHOLD: usize = 4096; // 4KB

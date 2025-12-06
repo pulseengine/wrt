@@ -908,7 +908,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the memory cannot be grown
-    pub fn grow_shared(&mut self, pages: u32) -> Result<u32> {
+    pub fn grow_shared(&self, pages: u32) -> Result<u32> {
         // Return early if not growing
         if pages == 0 {
             return Ok(self.current_pages.load(Ordering::Relaxed));

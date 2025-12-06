@@ -483,6 +483,23 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // Convert to runtime module (pass by reference, returns Box<Module>)
         let runtime_module = Module::from_wrt_module(&*decoded)?;
 
+        #[cfg(feature = "std")]
+        {
+            let elem_count = runtime_module.elements.len();
+            let first_elem_items = if elem_count > 0 {
+                // In std mode, elements is Vec, so get() returns Option<&T>
+                if let Some(elem) = runtime_module.elements.get(0) {
+                    elem.items.len()
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
+            eprintln!("[LOAD_MODULE] After from_wrt_module: elements.len()={}, first_elem.items.len()={}",
+                     elem_count, first_elem_items);
+        }
+
         // TODO: Initialize data segments into memory
         // #[cfg(feature = "std")]
         // runtime_module.initialize_data_segments()?;

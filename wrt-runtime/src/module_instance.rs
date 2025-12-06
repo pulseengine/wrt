@@ -425,7 +425,13 @@ impl ModuleInstance {
             // In std mode, module.globals is BoundedVec so we iterate using index
             for idx in 0..self.module.globals.len() {
                 if let Ok(global_wrapper) = self.module.globals.get(idx) {
-                    debug!("Copying global {} to instance", idx);
+                    debug!(
+                        "Copying global {} to instance - is_mutable: {}, value_type: {:?}, value: {:?}",
+                        idx,
+                        global_wrapper.is_mutable(),
+                        global_wrapper.value_type(),
+                        global_wrapper.get_value()
+                    );
                     globals.push(global_wrapper.clone());
                 }
             }
@@ -494,10 +500,16 @@ impl ModuleInstance {
         use wrt_foundation::tracing::{debug, info};
         use wrt_foundation::DataMode as WrtDataMode;
 
-        info!("Initializing data segments for instance {}", self.instance_id);
+        info!("Initializing data segments for instance {} - module has {} data segments",
+              self.instance_id, self.module.data.len());
+
+        #[cfg(feature = "std")]
+        eprintln!("[DATA_INIT] Instance {} has {} data segments to initialize",
+                 self.instance_id, self.module.data.len());
 
         // Iterate through all data segments in the module
         for (idx, data_segment) in self.module.data.iter().enumerate() {
+            debug!("Processing data segment {}", idx);
             // Only process active data segments
             if let WrtDataMode::Active { .. } = &data_segment.mode {
                 debug!("Processing active data segment {}", idx);
@@ -555,12 +567,22 @@ impl ModuleInstance {
                 let memory = &memory_wrapper.0;
 
                 // Write the data to memory
+                #[cfg(feature = "std")]
+                let init_data = &data_segment.init[..];
+                #[cfg(not(feature = "std"))]
                 let init_data = data_segment.init.as_slice()
-                    .map_err(|e| Error::runtime_error("Failed to get data segment bytes"))?;
+                    .map_err(|_e| Error::runtime_error("Failed to get data segment bytes"))?;
                 debug!("Writing {} bytes of data to memory at offset {:#x}", init_data.len(), offset);
+
+                #[cfg(feature = "std")]
+                eprintln!("[DATA_INIT] Writing {} bytes to memory {} at offset {:#x}",
+                         init_data.len(), memory_idx, offset);
 
                 // Use the thread-safe write_shared method for Arc<Memory>
                 memory.write_shared(offset, init_data)?;
+
+                #[cfg(feature = "std")]
+                eprintln!("[DATA_INIT] Successfully wrote data segment {}", idx);
 
                 info!("Successfully initialized data segment {} ({} bytes)", idx, init_data.len());
             } else {
@@ -958,11 +980,21 @@ impl FromBytes for ModuleInstance {
         let default_module = Module {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            import_order: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            elements: Vec::new(),
+            #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            data: Vec::new(),
+            #[cfg(not(feature = "std"))]
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,

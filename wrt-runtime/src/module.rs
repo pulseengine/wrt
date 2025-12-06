@@ -120,7 +120,11 @@ type BoundedImportName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedModuleName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedLocalsVec = wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 64, RuntimeProvider>;
 type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 1024, RuntimeProvider>;
-type BoundedDataInit = wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>;
+// Data init storage: Vec in std mode for large segments, BoundedVec in no_std
+#[cfg(feature = "std")]
+type BoundedDataInit = Vec<u8>;
+#[cfg(not(feature = "std"))]
+type BoundedDataInit = wrt_foundation::bounded::BoundedVec<u8, 16384, RuntimeProvider>;
 type BoundedModuleTypes =
     wrt_foundation::bounded::BoundedVec<WrtFuncType, 256, RuntimeProvider>;
 type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 4096, RuntimeProvider>;
@@ -468,7 +472,8 @@ impl wrt_foundation::traits::Checksummable for Element {
 
 impl wrt_foundation::traits::ToBytes for Element {
     fn serialized_size(&self) -> usize {
-        16 // simplified
+        // 1 (mode) + 4 (table_index) + 4 (offset) + 4 (items count) + items.len() * 4
+        1 + 4 + 4 + 4 + self.items.len() * 4
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
@@ -476,13 +481,25 @@ impl wrt_foundation::traits::ToBytes for Element {
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> Result<()> {
-        let mode_byte = match &self.mode {
-            WrtElementMode::Active { .. } => 0u8,
-            WrtElementMode::Passive => 1u8,
-            WrtElementMode::Declarative => 2u8,
+        // Serialize mode with offset
+        let (mode_byte, table_idx, offset) = match &self.mode {
+            WrtElementMode::Active { table_index, offset } => (0u8, *table_index, *offset),
+            WrtElementMode::Passive => (1u8, 0, 0),
+            WrtElementMode::Declarative => (2u8, 0, 0),
         };
         writer.write_all(&mode_byte.to_le_bytes())?;
-        writer.write_all(&self.table_idx.unwrap_or(0).to_le_bytes())
+        writer.write_all(&table_idx.to_le_bytes())?;
+        writer.write_all(&offset.to_le_bytes())?;
+
+        // Serialize items count and items
+        let items_count = self.items.len() as u32;
+        writer.write_all(&items_count.to_le_bytes())?;
+        for i in 0..self.items.len() {
+            if let Ok(item) = self.items.get(i) {
+                writer.write_all(&item.to_le_bytes())?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -491,27 +508,50 @@ impl wrt_foundation::traits::FromBytes for Element {
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> Result<Self> {
-        let mut bytes = [0u8; 1];
-        reader.read_exact(&mut bytes)?;
-        let mode = match bytes[0] {
+        // Read mode byte
+        let mut mode_byte = [0u8; 1];
+        reader.read_exact(&mut mode_byte)?;
+
+        // Read table_index
+        let mut table_idx_bytes = [0u8; 4];
+        reader.read_exact(&mut table_idx_bytes)?;
+        let table_index = u32::from_le_bytes(table_idx_bytes);
+
+        // Read offset
+        let mut offset_bytes = [0u8; 4];
+        reader.read_exact(&mut offset_bytes)?;
+        let offset = u32::from_le_bytes(offset_bytes);
+
+        let mode = match mode_byte[0] {
             0 => WrtElementMode::Active {
-                table_index: 0,
-                offset:      0,
+                table_index,
+                offset,
             },
             1 => WrtElementMode::Passive,
             _ => WrtElementMode::Declarative,
         };
 
-        let mut idx_bytes = [0u8; 4];
-        reader.read_exact(&mut idx_bytes)?;
-        let table_idx = Some(u32::from_le_bytes(idx_bytes));
+        // Read items count
+        let mut count_bytes = [0u8; 4];
+        reader.read_exact(&mut count_bytes)?;
+        let items_count = u32::from_le_bytes(count_bytes) as usize;
+
+        // Read items
+        let provider = create_runtime_provider()?;
+        let mut items = BoundedElementItems::new(provider)?;
+        for _ in 0..items_count {
+            let mut item_bytes = [0u8; 4];
+            reader.read_exact(&mut item_bytes)?;
+            let item = u32::from_le_bytes(item_bytes);
+            items.push(item)?;
+        }
 
         Ok(Self {
             mode,
-            table_idx,
+            table_idx: if table_index > 0 || mode_byte[0] == 0 { Some(table_index) } else { None },
             offset_expr: None,
             element_type: WrtRefType::Funcref,
-            items: BoundedElementItems::new(create_runtime_provider().unwrap()).unwrap(),
+            items,
         })
     }
 }
@@ -585,19 +625,32 @@ impl wrt_foundation::traits::FromBytes for Data {
         reader.read_exact(&mut idx_bytes)?;
         let _len = u32::from_le_bytes(idx_bytes);
 
+        #[cfg(feature = "std")]
+        let init = Vec::new();
+
+        #[cfg(not(feature = "std"))]
+        let init = BoundedDataInit::new(create_runtime_provider().map_err(|_| {
+            wrt_error::Error::memory_error("Failed to allocate provider for data init")
+        })?)?;
+
         Ok(Self {
             mode,
             memory_idx,
             offset_expr: None,
-            init: BoundedDataInit::new(create_runtime_provider().map_err(|_| {
-                wrt_error::Error::memory_error("Failed to allocate provider for data init")
-            })?)?,
+            init,
         })
     }
 }
 
 impl Data {
     /// Returns a reference to the data in this segment
+    #[cfg(feature = "std")]
+    pub fn data(&self) -> Result<&[u8]> {
+        Ok(&self.init)
+    }
+
+    /// Returns a reference to the data in this segment
+    #[cfg(not(feature = "std"))]
     pub fn data(&self) -> Result<&[u8]> {
         self.init.as_slice()
     }
@@ -615,6 +668,11 @@ pub struct Module {
     pub types:           BoundedModuleTypes,
     /// Imported functions, tables, memories, and globals
     pub imports:         ModuleImports,
+    /// Ordered list of imports for index-based lookup (module_name, field_name)
+    #[cfg(feature = "std")]
+    pub import_order:    Vec<(String, String)>,
+    #[cfg(not(feature = "std"))]
+    pub import_order:    wrt_foundation::bounded::BoundedVec<(BoundedImportName, BoundedImportName), 256, RuntimeProvider>,
     /// Function definitions
     /// In std mode, use Vec since Function has variable size (contains BoundedVecs for locals/instructions)
     #[cfg(feature = "std")]
@@ -632,8 +690,17 @@ pub struct Module {
     /// Global variable instances
     pub globals:         BoundedGlobalVec,
     /// Element segments for tables
+    /// In std mode, use Vec since Element has variable-size items (BoundedVec)
+    /// and BoundedVec requires fixed-size serialization
+    #[cfg(feature = "std")]
+    pub elements:        Vec<Element>,
+    #[cfg(not(feature = "std"))]
     pub elements:        BoundedElementVec,
     /// Data segments for memories
+    /// In std mode, use Vec since Data has variable size (data_bytes can be large)
+    #[cfg(feature = "std")]
+    pub data:            Vec<Data>,
+    #[cfg(not(feature = "std"))]
     pub data:            BoundedDataVec,
     /// Start function index
     pub start:           Option<u32>,
@@ -672,11 +739,21 @@ impl Module {
         Ok(Self {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            import_order: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            elements: Vec::new(),
+            #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            data: Vec::new(),
+            #[cfg(not(feature = "std"))]
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
@@ -701,12 +778,13 @@ impl Module {
         let mut runtime_module = Self {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
+            import_order: Vec::new(), // Ordered list of imports for index-based lookup
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
-            elements: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
-            data: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            elements: Vec::new(), // Vec in std mode for variable-size Element items
+            data: Vec::new(), // Vec in std mode for large data segments
             start: wrt_module.start,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
             exports: wrt_foundation::direct_map::DirectMap::new(),
@@ -758,7 +836,8 @@ impl Module {
         #[cfg(feature = "tracing")]
         debug!("Processing {} imports from wrt_module", wrt_module.imports.len());
         #[cfg(all(feature = "std", not(feature = "tracing")))]
-        eprintln!("[from_wrt_module] Processing {} imports from wrt_module", wrt_module.imports.len());
+        eprintln!("[from_wrt_module] Processing {} imports from wrt_module, wrt_module.data.len()={}",
+                 wrt_module.imports.len(), wrt_module.data.len());
 
         use wrt_format::module::ImportDesc as FormatImportDesc;
 
@@ -812,6 +891,16 @@ impl Module {
 
             // Update the outer map
             runtime_module.imports.insert(bounded_module_256.clone(), inner_map)?;
+
+            // Track import order for index-based lookup
+            #[cfg(feature = "std")]
+            runtime_module.import_order.push((import.module.to_string(), import.name.to_string()));
+            #[cfg(not(feature = "std"))]
+            {
+                let order_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module)?;
+                let order_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name)?;
+                runtime_module.import_order.push((order_module, order_name))?;
+            }
 
             #[cfg(feature = "tracing")]
             trace!("Added import to module (tracing enabled)");
@@ -1066,12 +1155,242 @@ impl Module {
                     "Global has no init expression"
                 ))
             };
+            debug!(
+                "Global[{}] from wrt_format: value_type={:?}, mutable={}",
+                global_idx, global.global_type.value_type, global.global_type.mutable
+            );
             let new_global = Global::new(
                 global.global_type.value_type,
                 global.global_type.mutable,
                 initial_value,
             )?;
-            runtime_module.globals.push(GlobalWrapper(Arc::new(new_global)))?;
+            runtime_module.globals.push(GlobalWrapper(Arc::new(RwLock::new(new_global))))?;
+        }
+
+        // Convert data segments - CRITICAL for memory initialization!
+        debug!("Converting {} data segments from wrt_module", wrt_module.data.len());
+        for (data_idx, data_seg) in wrt_module.data.iter().enumerate() {
+            // Convert PureDataSegment to runtime Data
+            use wrt_format::pure_format_types::PureDataMode;
+
+            // Parse offset from the offset_expr_bytes
+            let (mode, memory_idx, offset_expr) = match &data_seg.mode {
+                PureDataMode::Active { memory_index, offset_expr_len } => {
+                    // Parse the offset expression bytes
+                    let offset_bytes = &data_seg.offset_expr_bytes;
+                    let offset: u32 = if !offset_bytes.is_empty() && offset_bytes[0] == 0x41 {
+                        // i32.const - parse LEB128 value
+                        let (value, _) = crate::instruction_parser::read_leb128_i32(offset_bytes, 1)?;
+                        value as u32
+                    } else {
+                        0
+                    };
+                    debug!("Data segment {} is active: memory={}, offset={}", data_idx, memory_index, offset);
+
+                    // Also create the offset expression for the Data struct
+                    let instructions = if !offset_bytes.is_empty() {
+                        crate::instruction_parser::parse_instructions_with_provider(
+                            offset_bytes.as_slice(),
+                            shared_provider.clone()
+                        )?
+                    } else {
+                        #[cfg(feature = "std")]
+                        { Vec::new().into() }
+                        #[cfg(not(feature = "std"))]
+                        { wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())? }
+                    };
+
+                    (
+                        WrtDataMode::Active {
+                            memory_index: *memory_index,
+                            offset,
+                        },
+                        Some(*memory_index),
+                        Some(WrtExpr { instructions })
+                    )
+                },
+                PureDataMode::Passive => {
+                    debug!("Data segment {} is passive", data_idx);
+                    (WrtDataMode::Passive, None, None)
+                },
+            };
+
+            // Convert init data bytes
+            let init_bytes = &data_seg.data_bytes;
+            debug!("Data segment {} has {} init bytes", data_idx, init_bytes.len());
+
+            // Create init data - Vec in std mode, BoundedVec in no_std
+            #[cfg(feature = "std")]
+            let init: Vec<u8> = init_bytes.to_vec();
+
+            #[cfg(not(feature = "std"))]
+            let init = {
+                let data_provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+                let mut bounded_init = wrt_foundation::bounded::BoundedVec::<u8, 16384, RuntimeProvider>::new(data_provider)?;
+                for (byte_idx, byte) in init_bytes.iter().take(16384).enumerate() {
+                    bounded_init.push(*byte).map_err(|e| {
+                        Error::capacity_limit_exceeded("Data segment init too large")
+                    })?;
+                }
+                if init_bytes.len() > 16384 {
+                    debug!("Warning: Data segment {} truncated from {} to 16384 bytes", data_idx, init_bytes.len());
+                }
+                bounded_init
+            };
+
+            let runtime_data = Data {
+                mode,
+                memory_idx,
+                offset_expr,
+                init,
+            };
+
+            #[cfg(feature = "std")]
+            {
+                eprintln!("DEBUG: Pushing data segment {} to runtime_module.data (current len: {})", data_idx, runtime_module.data.len());
+                runtime_module.data.push(runtime_data);
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                runtime_module.data.push(runtime_data).map_err(|e| {
+                    Error::capacity_limit_exceeded("Too many data segments")
+                })?;
+            }
+            debug!("Successfully converted data segment {}", data_idx);
+        }
+        debug!("Data segment conversion complete: {} segments", runtime_module.data.len());
+
+        // Convert element segments - CRITICAL for call_indirect and table initialization!
+        debug!("Converting {} element segments from wrt_module", wrt_module.elements.len());
+        #[cfg(feature = "std")]
+        eprintln!("[from_wrt_module] Converting {} element segments", wrt_module.elements.len());
+
+        for (elem_idx, elem_seg) in wrt_module.elements.iter().enumerate() {
+            use wrt_format::pure_format_types::{PureElementInit, PureElementMode};
+
+            // Parse offset from the offset_expr_bytes
+            let (mode, table_idx, offset_value) = match &elem_seg.mode {
+                PureElementMode::Active { table_index, offset_expr_len } => {
+                    // Parse the offset expression bytes
+                    let offset_bytes = &elem_seg.offset_expr_bytes;
+                    let offset: u32 = if !offset_bytes.is_empty() && offset_bytes[0] == 0x41 {
+                        // i32.const - parse LEB128 value
+                        let (value, _) = crate::instruction_parser::read_leb128_i32(offset_bytes, 1)?;
+                        value as u32
+                    } else {
+                        0
+                    };
+                    #[cfg(feature = "std")]
+                    eprintln!("[from_wrt_module] Element segment {} is active: table={}, offset={}",
+                             elem_idx, table_index, offset);
+
+                    (
+                        WrtElementMode::Active {
+                            table_index: *table_index,
+                            offset,
+                        },
+                        Some(*table_index),
+                        offset,
+                    )
+                },
+                PureElementMode::Passive => {
+                    #[cfg(feature = "std")]
+                    eprintln!("[from_wrt_module] Element segment {} is passive", elem_idx);
+                    (WrtElementMode::Passive, None, 0)
+                },
+                PureElementMode::Declared => {
+                    #[cfg(feature = "std")]
+                    eprintln!("[from_wrt_module] Element segment {} is declared", elem_idx);
+                    (WrtElementMode::Declarative, None, 0)
+                },
+            };
+
+            // Extract function indices from element init data
+            let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+            let mut items = wrt_foundation::bounded::BoundedVec::<u32, 1024, RuntimeProvider>::new(provider)?;
+
+            match &elem_seg.init_data {
+                PureElementInit::FunctionIndices(func_indices) => {
+                    #[cfg(feature = "std")]
+                    eprintln!("[from_wrt_module] Element segment {} has {} function indices",
+                             elem_idx, func_indices.len());
+                    for (i, func_idx) in func_indices.iter().enumerate() {
+                        #[cfg(feature = "std")]
+                        if i < 5 || i == func_indices.len() - 1 {
+                            eprintln!("[from_wrt_module]   elem[{}] = func {}", offset_value + i as u32, func_idx);
+                        }
+                        items.push(*func_idx)?;
+                    }
+                },
+                PureElementInit::ExpressionBytes(expr_bytes) => {
+                    // For expression bytes, we'd need to evaluate them
+                    // For now, try to parse ref.func instructions
+                    #[cfg(feature = "std")]
+                    eprintln!("[from_wrt_module] Element segment {} has {} expression items",
+                             elem_idx, expr_bytes.len());
+                    for (i, expr) in expr_bytes.iter().enumerate() {
+                        // Try to parse ref.func instruction (0xD2 followed by funcidx)
+                        if !expr.is_empty() && expr[0] == 0xD2 {
+                            // Parse LEB128 function index
+                            if expr.len() > 1 {
+                                let (func_idx, _) = crate::instruction_parser::read_leb128_u32(expr, 1)?;
+                                #[cfg(feature = "std")]
+                                if i < 5 {
+                                    eprintln!("[from_wrt_module]   elem[{}] = func {} (from ref.func)",
+                                             offset_value + i as u32, func_idx);
+                                }
+                                items.push(func_idx)?;
+                            }
+                        }
+                    }
+                },
+            }
+
+            // Create offset expression for the Element struct
+            let offset_expr = if !elem_seg.offset_expr_bytes.is_empty() {
+                let instructions = crate::instruction_parser::parse_instructions_with_provider(
+                    elem_seg.offset_expr_bytes.as_slice(),
+                    shared_provider.clone()
+                )?;
+                Some(WrtExpr { instructions })
+            } else {
+                None
+            };
+
+            #[cfg(feature = "std")]
+            eprintln!("[from_wrt_module] Element segment {} has {} items after conversion, mode={:?}",
+                     elem_idx, items.len(), mode);
+
+            let runtime_elem = Element {
+                mode,
+                table_idx,
+                offset_expr,
+                element_type: elem_seg.element_type,
+                items,
+            };
+
+            #[cfg(feature = "std")]
+            {
+                runtime_module.elements.push(runtime_elem);
+                eprintln!("[from_wrt_module] Element segment {} converted, runtime_module.elements.len()={}",
+                         elem_idx, runtime_module.elements.len());
+            }
+            #[cfg(not(feature = "std"))]
+            runtime_module.elements.push(runtime_elem)?;
+        }
+        debug!("Element segment conversion complete: {} segments", runtime_module.elements.len());
+
+        #[cfg(feature = "std")]
+        {
+            // Final check: verify element items are retained
+            let elem_count = runtime_module.elements.len();
+            if elem_count > 0 {
+                let elem = &runtime_module.elements[0];
+                eprintln!("[from_wrt_module] FINAL: elements.len()={}, first_elem.items.len()={}, mode={:?}",
+                         elem_count, elem.items.len(), elem.mode);
+            } else {
+                eprintln!("[from_wrt_module] FINAL: elements.len()=0");
+            }
         }
 
         #[cfg(feature = "std")]
@@ -1175,6 +1494,16 @@ impl Module {
             // Update the outer map
             runtime_module.imports.insert(bounded_module_256.clone(), inner_map)?;
 
+            // Track import order for index-based lookup
+            #[cfg(feature = "std")]
+            runtime_module.import_order.push((import.module.to_string(), import.name.to_string()));
+            #[cfg(not(feature = "std"))]
+            {
+                let order_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module)?;
+                let order_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name)?;
+                runtime_module.import_order.push((order_module, order_name))?;
+            }
+
             #[cfg(feature = "tracing")]
             trace!("Added import to module (tracing enabled)");
             #[cfg(all(feature = "std", not(feature = "tracing")))]
@@ -1229,7 +1558,7 @@ impl Module {
                 global.global_type.mutable,
                 initial_value,
             )?;
-            runtime_module.globals.push(GlobalWrapper(Arc::new(new_global)))?;
+            runtime_module.globals.push(GlobalWrapper(Arc::new(RwLock::new(new_global))))?;
         }
 
         // Convert exports
@@ -2069,6 +2398,9 @@ impl Module {
             items,
         };
 
+        #[cfg(feature = "std")]
+        self.elements.push(runtime_element);
+        #[cfg(not(feature = "std"))]
         self.elements.push(runtime_element)?;
         Ok(())
     }
@@ -2128,13 +2460,19 @@ impl Module {
     /// Add a data segment to the module
     pub fn add_data(&mut self, data: wrt_format::pure_format_types::PureDataSegment) -> Result<()> {
         // Convert format data to runtime data
-        let provider = create_runtime_provider()?;
-        let mut init_4096 = wrt_foundation::bounded::BoundedVec::new(provider)?;
+        #[cfg(feature = "std")]
+        let init_vec: Vec<u8> = data.data_bytes.clone();
 
-        // Copy data from the format's data_bytes (Vec<u8> in std mode)
-        for byte in &data.data_bytes {
-            init_4096.push(*byte)?;
-        }
+        #[cfg(not(feature = "std"))]
+        let init_vec = {
+            let provider = create_runtime_provider()?;
+            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::<u8, 16384, RuntimeProvider>::new(provider)?;
+            // Copy data from the format's data_bytes
+            for byte in data.data_bytes.iter().take(16384) {
+                bounded_vec.push(*byte)?;
+            }
+            bounded_vec
+        };
 
         let runtime_data = crate::module::Data {
             mode:        WrtDataMode::Active {
@@ -2143,9 +2481,12 @@ impl Module {
             }, // Default mode
             memory_idx:  Some(0), // Default memory index - field is deprecated
             offset_expr: None,    // Would need to convert from data.offset
-            init:        init_4096,
+            init:        init_vec,
         };
 
+        #[cfg(feature = "std")]
+        self.data.push(runtime_data);
+        #[cfg(not(feature = "std"))]
         self.data.push(runtime_data)?;
         Ok(())
     }
@@ -2290,6 +2631,15 @@ impl Module {
             wrt_format::pure_format_types::PureElementMode::Declared => WrtElementMode::Declarative,
         };
 
+        #[cfg(feature = "std")]
+        self.elements.push(crate::module::Element {
+            mode:         runtime_mode,
+            table_idx:    None, // Simplified for now
+            offset_expr:  None, // Element segment doesn't have direct offset_expr field
+            element_type: element_segment.element_type,
+            items:        items_resolved,
+        });
+        #[cfg(not(feature = "std"))]
         self.elements.push(crate::module::Element {
             mode:         runtime_mode,
             table_idx:    None, // Simplified for now
@@ -2317,14 +2667,29 @@ impl Module {
             wrt_format::pure_format_types::PureDataMode::Passive => (WrtDataMode::Passive, None),
         };
 
-        // Convert data_segment.data_bytes to larger capacity
-        let provider = create_runtime_provider()?;
-        let mut runtime_init =
-            wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider)?;
-        for byte in data_segment.data_bytes.iter() {
-            runtime_init.push(*byte)?;
-        }
+        // Convert data_segment.data_bytes - Vec in std mode, BoundedVec in no_std
+        #[cfg(feature = "std")]
+        let runtime_init: Vec<u8> = data_segment.data_bytes.clone();
 
+        #[cfg(not(feature = "std"))]
+        let runtime_init = {
+            let provider = create_runtime_provider()?;
+            let mut bounded_init =
+                wrt_foundation::bounded::BoundedVec::<u8, 16384, RuntimeProvider>::new(provider)?;
+            for byte in data_segment.data_bytes.iter().take(16384) {
+                bounded_init.push(*byte)?;
+            }
+            bounded_init
+        };
+
+        #[cfg(feature = "std")]
+        self.data.push(crate::module::Data {
+            mode: runtime_mode,
+            memory_idx,
+            offset_expr: None, // Simplified for now
+            init: runtime_init,
+        });
+        #[cfg(not(feature = "std"))]
         self.data.push(crate::module::Data {
             mode: runtime_mode,
             memory_idx,
@@ -2433,11 +2798,21 @@ impl Module {
         let mut runtime_module = Self {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            import_order: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            elements: Vec::new(),
+            #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            data: Vec::new(),
+            #[cfg(not(feature = "std"))]
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
@@ -2554,6 +2929,17 @@ impl Module {
             })?;
             eprintln!("[FROM_MODULE_INFO] Inserting inner map into imports");
             runtime_module.imports.insert(module_key, inner_map)?;
+
+            // Track import order for index-based lookup
+            #[cfg(feature = "std")]
+            runtime_module.import_order.push((import.module.clone(), import.name.clone()));
+            #[cfg(not(feature = "std"))]
+            {
+                let order_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module)?;
+                let order_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name)?;
+                runtime_module.import_order.push((order_module, order_name))?;
+            }
+
             eprintln!("[FROM_MODULE_INFO] ✓ Import processed successfully");
         }
 
@@ -2824,14 +3210,24 @@ impl wrt_foundation::traits::FromBytes for Module {
 
         // Create a new empty module with the restored name and validation status
         let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
-        let mut module = Module {
+        let module = Module {
             types: Vec::new(),
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            import_order: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            elements: Vec::new(),
+            #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            data: Vec::new(),
+            #[cfg(not(feature = "std"))]
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
             custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone())?,
@@ -3128,9 +3524,19 @@ impl MemoryWrapper {
     }
 }
 
-/// Wrapper for Arc<Global> to enable trait implementations
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GlobalWrapper(pub Arc<Global>);
+/// Wrapper for Arc<RwLock<Global>> to enable trait implementations and mutable access
+#[derive(Debug, Clone)]
+pub struct GlobalWrapper(pub Arc<RwLock<Global>>);
+
+// Manual PartialEq implementation since RwLock doesn't implement PartialEq
+impl PartialEq for GlobalWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare by Arc pointer equality (same underlying lock)
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for GlobalWrapper {}
 
 impl Default for GlobalWrapper {
     fn default() -> Self {
@@ -3145,62 +3551,122 @@ impl Default for GlobalWrapper {
 impl GlobalWrapper {
     /// Create a new global wrapper
     pub fn new(global: Global) -> Self {
-        Self(Arc::new(global))
+        Self(Arc::new(RwLock::new(global)))
     }
 
-    /// Get a reference to the inner global
+    /// Get a reference to the inner global (returns the Arc<RwLock<Global>>)
     #[must_use]
-    pub fn inner(&self) -> &Arc<Global> {
+    pub fn inner(&self) -> &Arc<RwLock<Global>> {
         &self.0
     }
 
     /// Get the global value
     pub fn get(&self) -> Result<WrtValue> {
-        Ok(self.0.get().clone())
+        #[cfg(feature = "std")]
+        {
+            let guard = self.0.read().map_err(|_| {
+                crate::Error::runtime_execution_error("Failed to acquire read lock on global")
+            })?;
+            Ok(guard.get().clone())
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let guard = self.0.read();
+            Ok(guard.get().clone())
+        }
     }
 
     /// Set the global value
     pub fn set(&self, value: WrtValue) -> Result<()> {
-        // Since Global is behind Arc, we can't mutate it directly
-        // This is a design limitation - for now return an error
-        Err(crate::Error::runtime_execution_error(
-            "Runtime execution error: Cannot set global value through Arc<Global>",
-        ))
+        #[cfg(feature = "std")]
+        {
+            let mut guard = self.0.write().map_err(|_| {
+                crate::Error::runtime_execution_error("Failed to acquire write lock on global")
+            })?;
+
+            #[cfg(feature = "tracing")]
+            {
+                use wrt_foundation::tracing::debug;
+                let global_type = guard.global_type_descriptor();
+                debug!(
+                    "GlobalWrapper::set - global is mutable: {}, value_type: {:?}, new_value: {:?}",
+                    global_type.mutable, global_type.value_type, value
+                );
+            }
+
+            guard.set(&value)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut guard = self.0.write();
+            guard.set(&value)
+        }
     }
 
-    /// Unwrap to get the Arc<Global>
+    /// Unwrap to get the Arc<RwLock<Global>>
     #[must_use]
-    pub fn into_inner(self) -> Arc<Global> {
+    pub fn into_inner(self) -> Arc<RwLock<Global>> {
         self.0
     }
 
-    /// Get global value
-    #[must_use]
-    pub fn get_value(&self) -> &WrtValue {
-        self.0.get()
+    /// Get global value (returns a clone of the value)
+    pub fn get_value(&self) -> WrtValue {
+        #[cfg(feature = "std")]
+        {
+            let guard = self.0.read().unwrap_or_else(|e| e.into_inner());
+            guard.get().clone()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let guard = self.0.read();
+            guard.get().clone()
+        }
     }
 
     /// Set global value (requires mutable access)
     pub fn set_value(&self, new_value: &WrtValue) -> Result<()> {
-        // Note: This requires unsafe because we can't get mutable access to Arc<Global>
-        // For now, we'll return an error
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            wrt_error::codes::GLOBAL_ACCESS_DENIED,
-            "Cannot set global value through Arc<Global>",
-        ))
+        #[cfg(feature = "std")]
+        {
+            let mut guard = self.0.write().map_err(|_| {
+                crate::Error::runtime_execution_error("Failed to acquire write lock on global")
+            })?;
+            guard.set(new_value)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut guard = self.0.write();
+            guard.set(new_value)
+        }
     }
 
     /// Get global value type
     #[must_use]
     pub fn value_type(&self) -> WrtValueType {
-        self.0.global_type_descriptor().value_type
+        #[cfg(feature = "std")]
+        {
+            let guard = self.0.read().unwrap_or_else(|e| e.into_inner());
+            guard.global_type_descriptor().value_type
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let guard = self.0.read();
+            guard.global_type_descriptor().value_type
+        }
     }
 
     /// Check if global is mutable
     #[must_use]
     pub fn is_mutable(&self) -> bool {
-        self.0.global_type_descriptor().mutable
+        #[cfg(feature = "std")]
+        {
+            let guard = self.0.read().unwrap_or_else(|e| e.into_inner());
+            guard.global_type_descriptor().mutable
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let guard = self.0.read();
+            guard.global_type_descriptor().mutable
+        }
     }
 }
 
@@ -3346,16 +3812,21 @@ fn value_type_to_u8(vt: WrtValueType) -> u8 {
 impl Checksummable for GlobalWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use global value type for checksum
+        #[cfg(feature = "std")]
+        let guard = self.0.read().unwrap_or_else(|e| e.into_inner());
+        #[cfg(not(feature = "std"))]
+        let guard = self.0.read();
+
         checksum.update_slice(
-            &value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(),
+            &value_type_to_u8(guard.global_type_descriptor().value_type).to_le_bytes(),
         );
-        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes());
+        checksum.update_slice(&u8::from(guard.global_type_descriptor().mutable).to_le_bytes());
     }
 }
 
 impl ToBytes for GlobalWrapper {
     fn serialized_size(&self) -> usize {
-        12 // value type (4) + mutable flag (4) + value (4)
+        12 // value type (1) + mutable flag (1) + padding (2) + value (8)
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
@@ -3363,12 +3834,45 @@ impl ToBytes for GlobalWrapper {
         writer: &mut WriteStream,
         _provider: &P,
     ) -> Result<()> {
-        writer.write_all(
-            &value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(),
-        )?;
-        writer.write_all(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes())?;
-        // Simplified value serialization
-        writer.write_all(&0u32.to_le_bytes())?;
+        #[cfg(feature = "std")]
+        let guard = self.0.read().map_err(|_| {
+            wrt_error::Error::runtime_execution_error("Failed to acquire read lock on global")
+        })?;
+        #[cfg(not(feature = "std"))]
+        let guard = self.0.read();
+
+        // Write value type (1 byte)
+        writer.write_u8(value_type_to_u8(guard.global_type_descriptor().value_type))?;
+
+        // Write mutable flag (1 byte)
+        writer.write_u8(if guard.global_type_descriptor().mutable { 1 } else { 0 })?;
+
+        // Write padding (2 bytes)
+        writer.write_u8(0)?;
+        writer.write_u8(0)?;
+
+        // Write value (8 bytes)
+        let value = guard.get();
+        match value {
+            WrtValue::I32(v) => {
+                writer.write_all(&(*v as u32).to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::I64(v) => {
+                writer.write_all(&(*v as u64).to_le_bytes())?;
+            },
+            WrtValue::F32(wrt_foundation::values::FloatBits32(bits)) => {
+                writer.write_all(&bits.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::F64(wrt_foundation::values::FloatBits64(bits)) => {
+                writer.write_all(&bits.to_le_bytes())?;
+            },
+            _ => {
+                // For other types, write zeros
+                writer.write_all(&0u64.to_le_bytes())?;
+            }
+        }
         Ok(())
     }
 }
@@ -3378,16 +3882,51 @@ impl FromBytes for GlobalWrapper {
         reader: &mut ReadStream<'_>,
         _provider: &P,
     ) -> Result<Self> {
-        let mut bytes = [0u8; 12];
-        reader.read_exact(&mut bytes)?;
-
-        // Create a default global (simplified implementation)
+        // Deserialize the global data properly
         use wrt_foundation::{
             types::ValueType,
             values::Value,
         };
 
-        let global = Global::new(ValueType::I32, false, Value::I32(0)).map_err(|_| {
+        // Read value type (1 byte)
+        let value_type_byte = reader.read_u8()?;
+        let value_type = match value_type_byte {
+            0 => ValueType::I32,
+            1 => ValueType::I64,
+            2 => ValueType::F32,
+            3 => ValueType::F64,
+            4 => ValueType::FuncRef,
+            5 => ValueType::ExternRef,
+            6 => ValueType::V128,
+            _ => ValueType::I32, // Default fallback
+        };
+
+        // Read mutable flag (1 byte)
+        let mutable = reader.read_u8()? != 0;
+
+        // Read padding (2 bytes to align to 4)
+        let _ = reader.read_u8()?;
+        let _ = reader.read_u8()?;
+
+        // Read value (8 bytes - i64/f64 size for maximum compatibility)
+        let value_low = reader.read_u32_le()?;
+        let value_high = reader.read_u32_le()?;
+
+        let value = match value_type {
+            ValueType::I32 => Value::I32(value_low as i32),
+            ValueType::I64 => {
+                let v = ((value_high as i64) << 32) | (value_low as i64);
+                Value::I64(v)
+            },
+            ValueType::F32 => Value::F32(wrt_foundation::values::FloatBits32(value_low)),
+            ValueType::F64 => {
+                let v = ((value_high as u64) << 32) | (value_low as u64);
+                Value::F64(wrt_foundation::values::FloatBits64(v))
+            },
+            _ => Value::I32(value_low as i32),
+        };
+
+        let global = Global::new(value_type, mutable, value).map_err(|_| {
             wrt_error::Error::runtime_execution_error("Failed to create global from bytes")
         })?;
 

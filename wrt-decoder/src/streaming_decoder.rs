@@ -656,7 +656,237 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process element section
     fn process_element_section(&mut self, data: &[u8]) -> Result<()> {
-        // Parse elements one at a time
+        use wrt_format::pure_format_types::{PureElementInit, PureElementMode, PureElementSegment};
+
+        let mut offset = 0;
+        let (count, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("[ELEM_SECTION] Parsing {} element segments from {} bytes", count, data.len());
+
+        for elem_idx in 0..count {
+            // Parse element segment flags (see WebAssembly spec 5.5.10)
+            // Flags determine the mode and encoding:
+            // 0: Active, table 0, funcref, func indices
+            // 1: Passive, element type, expressions
+            // 2: Active explicit table, funcref, func indices
+            // 3: Declarative, element type, expressions
+            // 4: Active, table 0, expressions
+            // 5: Passive, expressions with type
+            // 6: Active explicit table, expressions
+            // 7: Declarative, expressions with type
+            let (flags, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            #[cfg(feature = "std")]
+            eprintln!("[ELEM_SECTION] Element {} has flags 0x{:02x}", elem_idx, flags);
+
+            let (mode, offset_expr_bytes, element_type) = match flags {
+                0 => {
+                    // Active, table 0, funcref, func indices
+                    // Parse offset expression (ends with 0x0B = end)
+                    let expr_start = offset;
+                    while offset < data.len() && data[offset] != 0x0B {
+                        offset += 1;
+                    }
+                    if offset < data.len() {
+                        offset += 1; // consume 0x0B
+                    }
+                    let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Active table 0, offset expr {} bytes",
+                             elem_idx, offset_expr_bytes.len());
+
+                    (
+                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        offset_expr_bytes,
+                        wrt_format::types::RefType::Funcref,
+                    )
+                },
+                1 => {
+                    // Passive, element type, expressions
+                    let elem_type = data[offset];
+                    offset += 1;
+                    let ref_type = match elem_type {
+                        0x70 => wrt_format::types::RefType::Funcref,
+                        0x6F => wrt_format::types::RefType::Externref,
+                        _ => wrt_format::types::RefType::Funcref,
+                    };
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Passive with type {:?}", elem_idx, ref_type);
+                    (PureElementMode::Passive, Vec::new(), ref_type)
+                },
+                2 => {
+                    // Active explicit table, funcref, func indices
+                    let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    // Parse offset expression
+                    let expr_start = offset;
+                    while offset < data.len() && data[offset] != 0x0B {
+                        offset += 1;
+                    }
+                    if offset < data.len() {
+                        offset += 1; // consume 0x0B
+                    }
+                    let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes",
+                             elem_idx, table_index, offset_expr_bytes.len());
+
+                    (
+                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        offset_expr_bytes,
+                        wrt_format::types::RefType::Funcref,
+                    )
+                },
+                3 => {
+                    // Declarative, element type, expressions
+                    let elem_type = data[offset];
+                    offset += 1;
+                    let ref_type = match elem_type {
+                        0x70 => wrt_format::types::RefType::Funcref,
+                        0x6F => wrt_format::types::RefType::Externref,
+                        _ => wrt_format::types::RefType::Funcref,
+                    };
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Declarative with type {:?}", elem_idx, ref_type);
+                    (PureElementMode::Declared, Vec::new(), ref_type)
+                },
+                4 => {
+                    // Active, table 0, expressions
+                    let expr_start = offset;
+                    while offset < data.len() && data[offset] != 0x0B {
+                        offset += 1;
+                    }
+                    if offset < data.len() {
+                        offset += 1; // consume 0x0B
+                    }
+                    let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Active table 0 with expressions, offset expr {} bytes",
+                             elem_idx, offset_expr_bytes.len());
+
+                    (
+                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        offset_expr_bytes,
+                        wrt_format::types::RefType::Funcref,
+                    )
+                },
+                5 => {
+                    // Passive, expressions with type
+                    let ref_type_byte = data[offset];
+                    offset += 1;
+                    let ref_type = match ref_type_byte {
+                        0x70 => wrt_format::types::RefType::Funcref,
+                        0x6F => wrt_format::types::RefType::Externref,
+                        _ => wrt_format::types::RefType::Funcref,
+                    };
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Passive with type {:?}", elem_idx, ref_type);
+                    (PureElementMode::Passive, Vec::new(), ref_type)
+                },
+                6 => {
+                    // Active explicit table, expressions
+                    let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    let expr_start = offset;
+                    while offset < data.len() && data[offset] != 0x0B {
+                        offset += 1;
+                    }
+                    if offset < data.len() {
+                        offset += 1; // consume 0x0B
+                    }
+                    let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Active table {} with expressions, offset expr {} bytes",
+                             elem_idx, table_index, offset_expr_bytes.len());
+
+                    (
+                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        offset_expr_bytes,
+                        wrt_format::types::RefType::Funcref,
+                    )
+                },
+                7 => {
+                    // Declarative, expressions with type
+                    let ref_type_byte = data[offset];
+                    offset += 1;
+                    let ref_type = match ref_type_byte {
+                        0x70 => wrt_format::types::RefType::Funcref,
+                        0x6F => wrt_format::types::RefType::Externref,
+                        _ => wrt_format::types::RefType::Funcref,
+                    };
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_SECTION] Element {}: Declarative with type {:?}", elem_idx, ref_type);
+                    (PureElementMode::Declared, Vec::new(), ref_type)
+                },
+                _ => {
+                    return Err(Error::parse_error("Unknown element segment flags"));
+                }
+            };
+
+            // Parse element items
+            let (item_count, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            #[cfg(feature = "std")]
+            eprintln!("[ELEM_SECTION] Element {} has {} items", elem_idx, item_count);
+
+            let init_data = if flags & 0x3 == 0 || flags & 0x3 == 2 {
+                // Function indices (flags 0, 2)
+                let mut func_indices = Vec::with_capacity(item_count as usize);
+                for i in 0..item_count {
+                    let (func_idx, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                    func_indices.push(func_idx);
+                    #[cfg(feature = "std")]
+                    if i < 5 || i == item_count - 1 {
+                        eprintln!("[ELEM_SECTION]   item[{}] = func {}", i, func_idx);
+                    }
+                }
+                PureElementInit::FunctionIndices(func_indices)
+            } else {
+                // Expressions (flags 1, 3, 4, 5, 6, 7)
+                let mut expr_bytes = Vec::with_capacity(item_count as usize);
+                for i in 0..item_count {
+                    let expr_start = offset;
+                    // Find end of expression (0x0B)
+                    while offset < data.len() && data[offset] != 0x0B {
+                        offset += 1;
+                    }
+                    if offset < data.len() {
+                        offset += 1; // consume 0x0B
+                    }
+                    let expr_data: Vec<u8> = data[expr_start..offset].to_vec();
+                    #[cfg(feature = "std")]
+                    if i < 5 {
+                        eprintln!("[ELEM_SECTION]   item[{}] = expr {} bytes: {:02x?}",
+                                 i, expr_data.len(), &expr_data[..expr_data.len().min(10)]);
+                    }
+                    expr_bytes.push(expr_data);
+                }
+                PureElementInit::ExpressionBytes(expr_bytes)
+            };
+
+            let elem_segment = PureElementSegment {
+                mode,
+                element_type,
+                offset_expr_bytes,
+                init_data,
+            };
+
+            self.module.elements.push(elem_segment);
+            #[cfg(feature = "std")]
+            eprintln!("[ELEM_SECTION] Element {} added, module.elements.len()={}",
+                     elem_idx, self.module.elements.len());
+        }
+
+        #[cfg(feature = "std")]
+        eprintln!("[ELEM_SECTION] Complete: {} element segments parsed", count);
+
         Ok(())
     }
 
@@ -744,7 +974,178 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process data section
     fn process_data_section(&mut self, data: &[u8]) -> Result<()> {
-        // Parse data segments one at a time
+        use wrt_format::pure_format_types::{PureDataMode, PureDataSegment};
+
+        let mut offset = 0;
+        let (count, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("[DATA_SECTION] Parsing {} data segments from {} bytes", count, data.len());
+
+        for i in 0..count {
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of data section"));
+            }
+
+            let tag = data[offset];
+            offset += 1;
+
+            let segment = match tag {
+                // Active data segment with implicit memory 0
+                0x00 => {
+                    // Parse offset expression - find the end (0x0B terminator)
+                    let expr_start = offset;
+                    let mut depth = 1u32;
+                    while offset < data.len() {
+                        let opcode = data[offset];
+                        offset += 1;
+
+                        match opcode {
+                            0x02 | 0x03 | 0x04 => depth += 1,
+                            0x0B => {
+                                depth = depth.saturating_sub(1);
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            0x41 | 0x42 | 0x23 => {
+                                // i32.const, i64.const, global.get - skip LEB128
+                                while offset < data.len() && data[offset] & 0x80 != 0 {
+                                    offset += 1;
+                                }
+                                if offset < data.len() {
+                                    offset += 1;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    let offset_expr_bytes = data[expr_start..offset].to_vec();
+
+                    // Parse data byte count and data
+                    let (data_len, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    if offset + data_len as usize > data.len() {
+                        return Err(Error::parse_error("Data segment data exceeds bounds"));
+                    }
+
+                    let data_bytes = data[offset..offset + data_len as usize].to_vec();
+                    offset += data_len as usize;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("[DATA_SECTION] Segment {}: active (mem 0), offset_expr {} bytes, data {} bytes",
+                             i, offset_expr_bytes.len(), data_bytes.len());
+
+                    PureDataSegment {
+                        mode: PureDataMode::Active {
+                            memory_index: 0,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
+                        offset_expr_bytes,
+                        data_bytes,
+                    }
+                }
+                // Passive data segment
+                0x01 => {
+                    // Parse data byte count and data
+                    let (data_len, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    if offset + data_len as usize > data.len() {
+                        return Err(Error::parse_error("Data segment data exceeds bounds"));
+                    }
+
+                    let data_bytes = data[offset..offset + data_len as usize].to_vec();
+                    offset += data_len as usize;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("[DATA_SECTION] Segment {}: passive, data {} bytes", i, data_bytes.len());
+
+                    PureDataSegment {
+                        mode: PureDataMode::Passive,
+                        offset_expr_bytes: Vec::new(),
+                        data_bytes,
+                    }
+                }
+                // Active data segment with explicit memory index
+                0x02 => {
+                    // Parse memory index
+                    let (memory_index, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    // Parse offset expression
+                    let expr_start = offset;
+                    let mut depth = 1u32;
+                    while offset < data.len() {
+                        let opcode = data[offset];
+                        offset += 1;
+
+                        match opcode {
+                            0x02 | 0x03 | 0x04 => depth += 1,
+                            0x0B => {
+                                depth = depth.saturating_sub(1);
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            0x41 | 0x42 | 0x23 => {
+                                while offset < data.len() && data[offset] & 0x80 != 0 {
+                                    offset += 1;
+                                }
+                                if offset < data.len() {
+                                    offset += 1;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    let offset_expr_bytes = data[expr_start..offset].to_vec();
+
+                    // Parse data byte count and data
+                    let (data_len, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    if offset + data_len as usize > data.len() {
+                        return Err(Error::parse_error("Data segment data exceeds bounds"));
+                    }
+
+                    let data_bytes = data[offset..offset + data_len as usize].to_vec();
+                    offset += data_len as usize;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("[DATA_SECTION] Segment {}: active (mem {}), offset_expr {} bytes, data {} bytes",
+                             i, memory_index, offset_expr_bytes.len(), data_bytes.len());
+
+                    PureDataSegment {
+                        mode: PureDataMode::Active {
+                            memory_index,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
+                        offset_expr_bytes,
+                        data_bytes,
+                    }
+                }
+                _ => {
+                    return Err(Error::parse_error("Invalid data segment tag"));
+                }
+            };
+
+            // Add segment to module
+            #[cfg(feature = "std")]
+            self.module.data.push(segment);
+
+            #[cfg(not(feature = "std"))]
+            {
+                let _ = self.module.data.push(segment);
+            }
+        }
+
+        #[cfg(feature = "std")]
+        eprintln!("[DATA_SECTION] Finished parsing {} data segments, module.data.len()={}",
+                 count, self.module.data.len());
+
         Ok(())
     }
 

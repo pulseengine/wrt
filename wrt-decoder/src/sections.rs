@@ -121,14 +121,185 @@ fn parse_data(
     bytes: &[u8],
     offset: usize,
 ) -> Result<(wrt_format::pure_format_types::PureDataSegment, usize)> {
-    // For both std and no_std, implement basic data parsing
-    // This is a simplified version that creates passive data segments
-    let pure_data = wrt_format::pure_format_types::PureDataSegment {
-        mode:              wrt_format::pure_format_types::PureDataMode::Passive,
-        offset_expr_bytes: Vec::new(),
-        data_bytes:        Vec::new(),
-    };
-    Ok((pure_data, offset + 1))
+    use wrt_format::pure_format_types::{PureDataMode, PureDataSegment};
+
+    if offset >= bytes.len() {
+        return Err(Error::parse_error("Unexpected end while parsing data segment"));
+    }
+
+    let tag = bytes[offset];
+    let mut current_offset = offset + 1;
+
+    match tag {
+        // Active data segment with implicit memory 0
+        0x00 => {
+            // Parse offset expression - find the end (0x0B terminator)
+            let expr_start = current_offset;
+            let mut depth = 1u32; // Track block depth for nested blocks
+            while current_offset < bytes.len() {
+                let opcode = bytes[current_offset];
+                current_offset += 1;
+
+                match opcode {
+                    0x02 | 0x03 | 0x04 => depth += 1, // block, loop, if
+                    0x0B => { // end
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    0x41 => { // i32.const
+                        // Skip LEB128 i32
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1; // Final byte
+                        }
+                    }
+                    0x42 => { // i64.const
+                        // Skip LEB128 i64
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1; // Final byte
+                        }
+                    }
+                    0x23 => { // global.get
+                        // Skip LEB128 global index
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1;
+                        }
+                    }
+                    _ => {} // Other opcodes we skip
+                }
+            }
+            let offset_expr_bytes = bytes[expr_start..current_offset].to_vec();
+
+            // Parse data byte count and data
+            let (data_len, new_offset) = binary::read_leb128_u32(bytes, current_offset)?;
+            current_offset = new_offset;
+
+            if current_offset + data_len as usize > bytes.len() {
+                return Err(Error::parse_error("Data segment data exceeds bounds"));
+            }
+
+            let data_bytes = bytes[current_offset..current_offset + data_len as usize].to_vec();
+            current_offset += data_len as usize;
+
+            Ok((
+                PureDataSegment {
+                    mode: PureDataMode::Active {
+                        memory_index: 0,
+                        offset_expr_len: offset_expr_bytes.len() as u32,
+                    },
+                    offset_expr_bytes,
+                    data_bytes,
+                },
+                current_offset,
+            ))
+        }
+        // Passive data segment
+        0x01 => {
+            // Parse data byte count and data
+            let (data_len, new_offset) = binary::read_leb128_u32(bytes, current_offset)?;
+            current_offset = new_offset;
+
+            if current_offset + data_len as usize > bytes.len() {
+                return Err(Error::parse_error("Data segment data exceeds bounds"));
+            }
+
+            let data_bytes = bytes[current_offset..current_offset + data_len as usize].to_vec();
+            current_offset += data_len as usize;
+
+            Ok((
+                PureDataSegment {
+                    mode: PureDataMode::Passive,
+                    offset_expr_bytes: Vec::new(),
+                    data_bytes,
+                },
+                current_offset,
+            ))
+        }
+        // Active data segment with explicit memory index
+        0x02 => {
+            // Parse memory index
+            let (memory_index, new_offset) = binary::read_leb128_u32(bytes, current_offset)?;
+            current_offset = new_offset;
+
+            // Parse offset expression - find the end (0x0B terminator)
+            let expr_start = current_offset;
+            let mut depth = 1u32;
+            while current_offset < bytes.len() {
+                let opcode = bytes[current_offset];
+                current_offset += 1;
+
+                match opcode {
+                    0x02 | 0x03 | 0x04 => depth += 1,
+                    0x0B => {
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    0x41 => {
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1;
+                        }
+                    }
+                    0x42 => {
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1;
+                        }
+                    }
+                    0x23 => {
+                        while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
+                            current_offset += 1;
+                        }
+                        if current_offset < bytes.len() {
+                            current_offset += 1;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let offset_expr_bytes = bytes[expr_start..current_offset].to_vec();
+
+            // Parse data byte count and data
+            let (data_len, new_offset) = binary::read_leb128_u32(bytes, current_offset)?;
+            current_offset = new_offset;
+
+            if current_offset + data_len as usize > bytes.len() {
+                return Err(Error::parse_error("Data segment data exceeds bounds"));
+            }
+
+            let data_bytes = bytes[current_offset..current_offset + data_len as usize].to_vec();
+            current_offset += data_len as usize;
+
+            Ok((
+                PureDataSegment {
+                    mode: PureDataMode::Active {
+                        memory_index,
+                        offset_expr_len: offset_expr_bytes.len() as u32,
+                    },
+                    offset_expr_bytes,
+                    data_bytes,
+                },
+                current_offset,
+            ))
+        }
+        _ => Err(Error::parse_error("Invalid data segment tag")),
+    }
 }
 
 fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limits, usize)> {

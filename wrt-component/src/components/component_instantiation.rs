@@ -3187,6 +3187,13 @@ impl ComponentInstance {
                             println!("[TEST-THREAD] ✗ Failed to create imports: {:?}", e);
                             Error::runtime_execution_error("Failed to create imports")
                         })?,
+                        #[cfg(feature = "std")]
+                        import_order: Vec::new(),
+                        #[cfg(not(feature = "std"))]
+                        import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create import_order: {:?}", e);
+                            Error::runtime_execution_error("Failed to create import_order")
+                        })?,
                         functions: Vec::new(),
                         tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
                             println!("[TEST-THREAD] ✗ Failed to create tables: {:?}", e);
@@ -3197,10 +3204,16 @@ impl ComponentInstance {
                             println!("[TEST-THREAD] ✗ Failed to create globals: {:?}", e);
                             Error::runtime_execution_error("Failed to create globals")
                         })?,
+                        #[cfg(feature = "std")]
+                        elements: Vec::new(),
+                        #[cfg(not(feature = "std"))]
                         elements: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
                             println!("[TEST-THREAD] ✗ Failed to create elements: {:?}", e);
                             Error::runtime_execution_error("Failed to create elements")
                         })?,
+                        #[cfg(feature = "std")]
+                        data: Vec::new(),
+                        #[cfg(not(feature = "std"))]
                         data: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
                             println!("[TEST-THREAD] ✗ Failed to create data: {:?}", e);
                             Error::runtime_execution_error("Failed to create data")
