@@ -1,70 +1,48 @@
 # wrt-runtime
 
-Core runtime implementation for PulseEngine (WRT Edition).
+WebAssembly execution engine for WRT.
 
-This crate provides WebAssembly runtime infrastructure including memory management, type systems, and foundational components for WebAssembly execution. The instruction execution engine is currently under development.
+## Current Status
 
-## Features
+**Working** - Core execution engine is functional:
 
-- **Implemented**: Memory management with safety features and bounds checking
-- **Implemented**: WebAssembly value types and type system
-- **Implemented**: Table operations and global variable infrastructure
-- **In Development**: WebAssembly instruction execution engine
-- **In Development**: Module instantiation and function calling
-- **In Development**: Stackless execution engine for constrained environments
-- **Planned**: Control Flow Integrity (CFI) protection
-- **Implemented**: Support for both `std` and `no_std` environments
+- Module parsing and instantiation
+- Stackless instruction execution
+- Memory management with bounds checking
+- Table and global variable support
+- Host function calls (WASI Preview 2)
 
 ## Architecture
 
 ### Core Components
 
-- **Module**: Represents a parsed WebAssembly module
-- **ModuleInstance**: Runtime instance of a module with its own memory, tables, and globals
-- **Memory**: Linear memory with bounds checking and safety features
-- **Table**: Function and element tables
-- **Global**: Global variables
-- **Execution**: Instruction execution engine
+- **Module** - Parsed WebAssembly module
+- **ModuleInstance** - Runtime instance with memory, tables, globals
+- **StacklessEngine** - Main execution engine using explicit stack frames
+- **Memory** - Linear memory with bounds checking
 
-### Stackless Execution
+### Execution Model
 
-The stackless execution engine allows running WebAssembly in environments with limited stack space:
+The runtime uses a stackless execution model suitable for constrained environments:
 
 ```rust
 use wrt_runtime::stackless::StacklessEngine;
 
-// Create a stackless engine with limited stack frames
-let engine = StacklessEngine::new(max_frames);
+let engine = StacklessEngine::new();
+engine.instantiate_module(&module)?;
+engine.call_function("_start", &[])?;
 ```
 
-### Control Flow Integrity
+## Features
 
-Built-in CFI protection guards against control flow hijacking:
-
-```rust
-use wrt_runtime::cfi_engine::CfiEngine;
-
-// Create an engine with CFI protection
-let engine = CfiEngine::new(policy);
-```
+- `std` - Standard library support (default)
+- `alloc` - Heap allocation without full std
+- `no_std` - Bare metal support with bounded collections
 
 ## no_std Support
 
-This crate supports `no_std` environments with the `alloc` feature. Without `alloc`, bounded alternatives from `wrt-foundation` are used.
-
-## Usage
-
-```rust
-use wrt_runtime::prelude::*;
-
-// Current capabilities - memory and arithmetic operations
-let memory = WrtMemory::new(1024)?;
-let stats = ExecutionStats::new();
-
-// Note: Module instantiation and function execution under development
-// See documentation for current implementation status
-```
+Works in `no_std` environments using bounded collections from `wrt-foundation`. All collections have compile-time capacity limits.
 
 ## License
 
-Licensed under the MIT license. See LICENSE file in the project root for details.
+MIT License

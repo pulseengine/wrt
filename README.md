@@ -1,136 +1,84 @@
-# PulseEngine (WRT Edition)
+# WRT - WebAssembly Runtime
 
-A pure Rust implementation of WebAssembly infrastructure designed for safety-critical systems. Provides foundational components for WebAssembly execution with emphasis on memory safety, deterministic behavior, and formal verification capabilities.
+A Rust implementation of a WebAssembly runtime focusing on the Component Model and WASI Preview 2. Designed with safety-critical systems in mind.
 
-## Features
+## Current Status
 
-- **Memory Operations**: Complete WebAssembly memory management with bounds checking
-- **Arithmetic Instructions**: Full implementation of WebAssembly numeric operations
-- **Type System**: Complete WebAssembly value types and validation infrastructure
-- **`no_std` Compatible**: Works in embedded and bare-metal environments
-- **Safety-Critical Design**: ASIL compliance framework and formal verification support
-- **Development Status**: Core execution engine and Component Model under development
+**Early Development** - Basic WebAssembly component execution is working:
+
+```bash
+# Run a Rust-compiled WASI Preview 2 component
+./target/debug/wrtd hello_rust.wasm --component
+# Output: Hello wasm component world from Rust!
+```
+
+### What Works
+
+- WebAssembly Component Model parsing and instantiation
+- WASI Preview 2 stdout/stderr output (`wasi:cli/stdout`, `wasi:io/streams`)
+- Core WebAssembly module execution
+- Basic memory management with bounds checking
+- `no_std` compatible foundation (for embedded use cases)
+
+### In Progress
+
+- Additional WASI Preview 2 interfaces (filesystem, environment, etc.)
+- Cross-component function calls
+- Full Component Model linking
 
 ## Quick Start
 
-For comprehensive installation instructions, see the [Installation Guide](docs/source/getting_started/installation.rst).
-
-### Prerequisites
-
-- Rust 1.86.0 or newer
-- cargo-wrt (included in this repository)
-
-### Building from Source
-
 ```bash
-# Clone repository
+# Clone and build
 git clone https://github.com/pulseengine/wrt
 cd wrt
+cargo build --bin wrtd --features "std,wrt-execution"
 
-# Install cargo-wrt
-cargo install --path cargo-wrt
-
-# Build everything
-cargo-wrt build
-
-# Run tests
-cargo-wrt test
-
-# Run example (requires setup)
-cargo-wrt wrtd --test
-```
-
-### Usage
-
-**Note**: PulseEngine is currently available only as source code. Add it to your project:
-
-```toml
-[dependencies]
-wrt = { path = "path/to/wrt" }  # Point to local clone
-```
-
-Basic usage:
-
-```rust
-use wrt::prelude::*;
-
-// Note: Core execution engine under development
-// Current example shows memory and arithmetic operations
-let memory = WrtMemory::new(1024)?;
-let value = Value::I32(42);
-let result = ArithmeticOp::I32Add.execute(&[value, Value::I32(8)])?;
+# Run a WebAssembly component
+./target/debug/wrtd your_component.wasm --component
 ```
 
 ## Project Structure
 
-This is a multi-crate workspace:
-
-- **`wrt/`** - Main library facade
-- **`wrt-foundation/`** - Core types and bounded collections  
+- **`wrtd/`** - Runtime daemon (main executable)
 - **`wrt-runtime/`** - Execution engine
-- **`wrt-component/`** - Component Model implementation
+- **`wrt-component/`** - Component Model support
 - **`wrt-decoder/`** - Binary format parsing
-- **`wrtd/`** - Standalone runtime daemon
-- **`example/`** - Example WebAssembly component
+- **`wrt-foundation/`** - Core types and bounded collections
+- **`cargo-wrt/`** - Build tooling
 
-## Documentation
-
-- **[API Documentation](docs/source/)** - Complete API reference and specifications
-- **[Architecture Guide](docs/source/architecture/)** - System design and components
-- **[Developer Guide](docs/source/development/)** - Contributing and development setup
-
-Generate documentation:
+## Building
 
 ```bash
-# Build comprehensive documentation
-cargo-wrt docs --private
+# Install build tool (optional but recommended)
+cargo install --path cargo-wrt
 
-# Open documentation in browser
-cargo-wrt docs --open
+# Build runtime
+cargo build --bin wrtd --features "std,wrt-execution"
 
-# API documentation only  
-cargo doc --workspace --open
-
-# Generate and view coverage reports
-cargo-wrt coverage --html --open
+# Run tests
+cargo test --workspace
 ```
 
-## Development
-
-Setup development environment:
+## Usage
 
 ```bash
-# Check development tool dependencies
-cargo-wrt setup --check
+# Basic component execution
+wrtd component.wasm --component
 
-# Setup git hooks for code quality checks
-cargo-wrt setup --hooks
+# With WASI support
+wrtd component.wasm --component --wasi
 
-# Setup all development tools
-cargo-wrt setup --all
-
-# Manage tool version requirements
-cargo-wrt tool-versions check --verbose    # Check all tool versions
-cargo-wrt tool-versions generate           # Generate tool-versions.toml
+# Set resource limits
+wrtd component.wasm --component --fuel 100000 --memory 1048576
 ```
 
-See the [Developer Guide](docs/source/development/) for detailed development instructions.
+## Design Goals
 
-Common commands:
-
-```bash
-cargo-wrt --help             # Show all available commands
-cargo-wrt check              # Format code and run static analysis
-cargo-wrt ci                 # Run main CI checks
-cargo-wrt verify --asil d    # Run complete verification suite
-
-# Development commands
-cargo-wrt no-std             # Verify no_std compatibility
-cargo-wrt check --strict      # Strict code formatting and linting
-cargo-wrt coverage --html     # Generate code coverage
-cargo-wrt simulate-ci         # Simulate CI workflow locally
-```
+- **WASI Preview 2 focus** - Targeting the modern component-based WASI
+- **Safety-critical awareness** - Bounded allocations, deterministic behavior
+- **`no_std` support** - Usable in embedded/constrained environments
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file.
