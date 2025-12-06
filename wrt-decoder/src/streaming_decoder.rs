@@ -7,6 +7,8 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+use alloc::vec::Vec;
+
 use wrt_format::module::{
     Function,
     Module as WrtModule,
