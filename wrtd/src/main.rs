@@ -89,6 +89,7 @@ use wrt_wasi::{
     ComponentModelProvider,
     WasiCapabilities,
     WasiHostProvider,
+    set_global_wasi_args,
 };
 
 /// Configuration for the runtime daemon
@@ -541,9 +542,12 @@ impl WrtdEngine {
                             eprintln!("Component execution error: {}", e);
                         }
                         let _ = self.logger.handle_minimal_log(
-                            LogLevel::Warn,
+                            LogLevel::Error,
                             "Component execution failed"
                         );
+                        // Propagate the error - don't swallow it!
+                        // Following the project's "fail loud and early" principle.
+                        return Err(e);
                     }
                 }
             } else {
@@ -1019,8 +1023,27 @@ impl SimpleArgs {
                         result.component_interfaces.push(args[i].clone());
                     }
                 },
+                // Everything after "--" goes to wasi_args
+                "--" => {
+                    #[cfg(feature = "wasi")]
+                    {
+                        i += 1;
+                        while i < args.len() {
+                            result.wasi_args.push(args[i].clone());
+                            i += 1;
+                        }
+                    }
+                    break;
+                },
                 arg if !arg.starts_with("--") => {
-                    result.module_path = Some(arg.to_string());
+                    // First non-flag argument is the module path
+                    if result.module_path.is_none() {
+                        result.module_path = Some(arg.to_string());
+                    } else {
+                        // Additional positional arguments go to wasi_args
+                        #[cfg(feature = "wasi")]
+                        result.wasi_args.push(arg.to_string());
+                    }
                 },
                 _ => {}, // Ignore unknown flags
             }
@@ -1168,7 +1191,18 @@ fn main_with_stack() -> Result<()> {
     }
 
     // Create and run engine
-    let mut engine = WrtdEngine::new(config)?;
+    let mut engine = WrtdEngine::new(config.clone())?;
+
+    // Set global WASI args for the dispatcher to use
+    // The first arg should be the program name (like argv[0] in C)
+    #[cfg(feature = "wasi")]
+    {
+        let module_name = config.module_path.clone().unwrap_or_else(|| "module.wasm".to_string());
+        let mut full_args = vec![module_name];
+        full_args.extend(config.wasi_args.clone());
+        set_global_wasi_args(full_args.clone());
+        println!("  - Set {} global WASI args: {:?}", full_args.len(), full_args);
+    }
 
     match engine.execute_module() {
         Ok(()) => {

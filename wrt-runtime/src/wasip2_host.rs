@@ -2,14 +2,572 @@
 //!
 //! This module provides host implementations for WASI preview2 interfaces
 //! that are used by WebAssembly components through the Component Model.
+//!
+//! # Two Interfaces
+//!
+//! This module provides two dispatch interfaces:
+//!
+//! 1. **`dispatch`** - Low-level interface using core WASM values (`Value`)
+//!    - Arguments come directly from WASM operand stack
+//!    - Complex types passed as ptr+len (requires memory access)
+//!    - Used by direct engine execution path
+//!
+//! 2. **`dispatch_component`** - Component Model interface using `ComponentValue`
+//!    - Arguments are proper component values (strings, lists, etc.)
+//!    - Complex types are first-class values, not memory pointers
+//!    - Used when canonical ABI lift/lower is integrated
+
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
 
 use wrt_foundation::values::Value;
 use alloc::vec::Vec;
 use wrt_error::Result;
 
+/// Component Model value types (re-exported for convenience)
+/// These are high-level values that have been lifted from core WASM representation
+#[derive(Debug, Clone, PartialEq)]
+pub enum ComponentValue {
+    /// Boolean
+    Bool(bool),
+    /// Signed 8-bit integer
+    S8(i8),
+    /// Unsigned 8-bit integer
+    U8(u8),
+    /// Signed 16-bit integer
+    S16(i16),
+    /// Unsigned 16-bit integer
+    U16(u16),
+    /// Signed 32-bit integer
+    S32(i32),
+    /// Unsigned 32-bit integer
+    U32(u32),
+    /// Signed 64-bit integer
+    S64(i64),
+    /// Unsigned 64-bit integer
+    U64(u64),
+    /// 32-bit float
+    F32(f32),
+    /// 64-bit float
+    F64(f64),
+    /// Unicode character
+    Char(char),
+    /// UTF-8 string (lifted from memory)
+    String(String),
+    /// List of values (lifted from memory)
+    List(Vec<ComponentValue>),
+    /// Record with named fields
+    Record(Vec<(String, ComponentValue)>),
+    /// Result type (ok or error)
+    Result(core::result::Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
+    /// Option type
+    Option(Option<Box<ComponentValue>>),
+    /// Resource handle (own or borrow)
+    Handle(u32),
+}
+
 /// Resource handle type for wasip2 resources
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResourceHandle(pub u32);
+
+/// Component type for function signatures
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WasiComponentType {
+    /// Primitive types - passed directly on stack
+    Bool,
+    U8,
+    U16,
+    U32,
+    U64,
+    S8,
+    S16,
+    S32,
+    S64,
+    F32,
+    F64,
+    Char,
+    /// String - passed as ptr+len, needs lifting
+    String,
+    /// List<u8> - passed as ptr+len, needs lifting
+    ListU8,
+    /// List<T> - passed as ptr+len, needs lifting
+    List(Box<WasiComponentType>),
+    /// Option<T> - discriminant + optional value
+    Option(Box<WasiComponentType>),
+    /// Result<T, E> - discriminant + payload
+    Result(Option<Box<WasiComponentType>>, Option<Box<WasiComponentType>>),
+    /// Resource handle (own or borrow)
+    Handle,
+    /// Unit type (no value)
+    Unit,
+    /// Tuple of types
+    Tuple(Vec<WasiComponentType>),
+}
+
+/// WASI function signature
+#[derive(Debug, Clone)]
+pub struct WasiFunctionSignature {
+    /// Parameter types
+    pub params: Vec<WasiComponentType>,
+    /// Result types
+    pub results: Vec<WasiComponentType>,
+}
+
+impl WasiFunctionSignature {
+    fn new(params: Vec<WasiComponentType>, results: Vec<WasiComponentType>) -> Self {
+        Self { params, results }
+    }
+}
+
+/// Get the function signature for a WASI function.
+/// Returns None if the function is unknown.
+pub fn get_wasi_function_signature(interface: &str, function: &str) -> Option<WasiFunctionSignature> {
+    // Strip version
+    let base_interface = if let Some(at_pos) = interface.find('@') {
+        &interface[..at_pos]
+    } else {
+        interface
+    };
+
+    match (base_interface, function) {
+        // wasi:cli/stdout.get-stdout() -> own<output-stream>
+        ("wasi:cli/stdout", "get-stdout") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Handle],
+        )),
+
+        // wasi:cli/stderr.get-stderr() -> own<output-stream>
+        ("wasi:cli/stderr", "get-stderr") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Handle],
+        )),
+
+        // wasi:io/streams.[method]output-stream.blocking-write-and-flush
+        // (self: borrow<output-stream>, contents: list<u8>) -> result<_, stream-error>
+        ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") |
+        ("wasi:io/streams", "output-stream.blocking-write-and-flush") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle, WasiComponentType::ListU8],
+            vec![WasiComponentType::Result(None, Some(Box::new(WasiComponentType::String)))],
+        )),
+
+        // wasi:io/streams.[method]output-stream.blocking-flush
+        // (self: borrow<output-stream>) -> result<_, stream-error>
+        ("wasi:io/streams", "[method]output-stream.blocking-flush") |
+        ("wasi:io/streams", "output-stream.blocking-flush") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![WasiComponentType::Result(None, Some(Box::new(WasiComponentType::String)))],
+        )),
+
+        // wasi:cli/exit.exit(status: result<_, _>)
+        ("wasi:cli/exit", "exit") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Result(None, None)],
+            vec![],
+        )),
+
+        // wasi:cli/environment.get-environment() -> list<tuple<string, string>>
+        ("wasi:cli/environment", "get-environment") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::List(Box::new(WasiComponentType::Tuple(vec![
+                WasiComponentType::String,
+                WasiComponentType::String,
+            ])))],
+        )),
+
+        // wasi:cli/environment.get-arguments() -> list<string>
+        ("wasi:cli/environment", "get-arguments") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::List(Box::new(WasiComponentType::String))],
+        )),
+
+        // wasi:cli/environment.initial-cwd() -> option<string>
+        ("wasi:cli/environment", "initial-cwd") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Option(Box::new(WasiComponentType::String))],
+        )),
+
+        // Resource drops
+        ("wasi:io/streams", "[resource-drop]output-stream") |
+        ("wasi:io/streams", "[resource-drop]input-stream") |
+        ("wasi:io/error", "[resource-drop]error") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![],
+        )),
+
+        // wasi:io/error.[method]error.to-debug-string
+        ("wasi:io/error", "[method]error.to-debug-string") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![WasiComponentType::String],
+        )),
+
+        _ => None,
+    }
+}
+
+/// Check if a WASI function needs canonical ABI lifting (has complex types)
+pub fn wasi_function_needs_lifting(interface: &str, function: &str) -> bool {
+    if let Some(sig) = get_wasi_function_signature(interface, function) {
+        // Check if any param or result needs lifting
+        sig.params.iter().any(|t| needs_lifting(t)) ||
+        sig.results.iter().any(|t| needs_lifting(t))
+    } else {
+        // Unknown function - assume it might need lifting
+        false
+    }
+}
+
+fn needs_lifting(ty: &WasiComponentType) -> bool {
+    match ty {
+        WasiComponentType::String |
+        WasiComponentType::ListU8 |
+        WasiComponentType::List(_) => true,
+        WasiComponentType::Option(inner) => needs_lifting(inner),
+        WasiComponentType::Result(ok, err) => {
+            ok.as_ref().map(|t| needs_lifting(t)).unwrap_or(false) ||
+            err.as_ref().map(|t| needs_lifting(t)).unwrap_or(false)
+        },
+        WasiComponentType::Tuple(types) => types.iter().any(|t| needs_lifting(t)),
+        _ => false,
+    }
+}
+
+/// Lift core WASM values to ComponentValues using function signature.
+///
+/// This reads values from the WASM stack and memory, converting them
+/// to proper Component Model values based on the function signature.
+///
+/// # Arguments
+/// * `interface` - WASI interface name (e.g., "wasi:io/streams@0.2.0")
+/// * `function` - Function name (e.g., "blocking-write-and-flush")
+/// * `core_values` - Values from the WASM operand stack
+/// * `memory` - Linear memory for reading strings/lists
+///
+/// # Returns
+/// Vec of lifted ComponentValues ready for dispatch_component
+pub fn lift_wasi_args(
+    interface: &str,
+    function: &str,
+    core_values: &[Value],
+    memory: Option<&[u8]>,
+) -> Result<Vec<ComponentValue>> {
+    let sig = get_wasi_function_signature(interface, function)
+        .ok_or_else(|| wrt_error::Error::runtime_error("Unknown WASI function"))?;
+
+    let mut result = Vec::new();
+    let mut core_idx = 0;
+
+    for param_ty in &sig.params {
+        let (value, consumed) = lift_single_value(param_ty, &core_values[core_idx..], memory)?;
+        result.push(value);
+        core_idx += consumed;
+    }
+
+    Ok(result)
+}
+
+/// Lift a single value from core representation based on type
+fn lift_single_value(
+    ty: &WasiComponentType,
+    core_values: &[Value],
+    memory: Option<&[u8]>,
+) -> Result<(ComponentValue, usize)> {
+    match ty {
+        WasiComponentType::Bool => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::Bool(v != 0), 1))
+        }
+        WasiComponentType::U8 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::U8(v as u8), 1))
+        }
+        WasiComponentType::U16 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::U16(v as u16), 1))
+        }
+        WasiComponentType::U32 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::U32(v as u32), 1))
+        }
+        WasiComponentType::U64 => {
+            let v = get_i64(core_values, 0)?;
+            Ok((ComponentValue::U64(v as u64), 1))
+        }
+        WasiComponentType::S8 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::S8(v as i8), 1))
+        }
+        WasiComponentType::S16 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::S16(v as i16), 1))
+        }
+        WasiComponentType::S32 => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::S32(v), 1))
+        }
+        WasiComponentType::S64 => {
+            let v = get_i64(core_values, 0)?;
+            Ok((ComponentValue::S64(v), 1))
+        }
+        WasiComponentType::F32 => {
+            let v = get_f32(core_values, 0)?;
+            Ok((ComponentValue::F32(v), 1))
+        }
+        WasiComponentType::F64 => {
+            let v = get_f64(core_values, 0)?;
+            Ok((ComponentValue::F64(v), 1))
+        }
+        WasiComponentType::Char => {
+            let v = get_i32(core_values, 0)?;
+            let ch = char::from_u32(v as u32)
+                .ok_or_else(|| wrt_error::Error::runtime_error("Invalid char"))?;
+            Ok((ComponentValue::Char(ch), 1))
+        }
+        WasiComponentType::Handle => {
+            let v = get_i32(core_values, 0)?;
+            Ok((ComponentValue::Handle(v as u32), 1))
+        }
+        WasiComponentType::Unit => {
+            Ok((ComponentValue::Bool(true), 0)) // Unit consumes nothing
+        }
+
+        // String: ptr + len on stack, data in memory
+        WasiComponentType::String => {
+            let ptr = get_i32(core_values, 0)? as u32;
+            let len = get_i32(core_values, 1)? as u32;
+
+            let mem = memory.ok_or_else(||
+                wrt_error::Error::runtime_error("Memory required for string lifting"))?;
+
+            let start = ptr as usize;
+            let end = start + len as usize;
+            if end > mem.len() {
+                return Err(wrt_error::Error::runtime_error("String out of bounds"));
+            }
+
+            let bytes = &mem[start..end];
+            let s = core::str::from_utf8(bytes)
+                .map_err(|_| wrt_error::Error::runtime_error("Invalid UTF-8"))?;
+
+            Ok((ComponentValue::String(s.into()), 2))
+        }
+
+        // List<u8>: ptr + len on stack, bytes in memory
+        WasiComponentType::ListU8 => {
+            let ptr = get_i32(core_values, 0)? as u32;
+            let len = get_i32(core_values, 1)? as u32;
+
+            let mem = memory.ok_or_else(||
+                wrt_error::Error::runtime_error("Memory required for list lifting"))?;
+
+            let start = ptr as usize;
+            let end = start + len as usize;
+            if end > mem.len() {
+                return Err(wrt_error::Error::runtime_error("List out of bounds"));
+            }
+
+            let bytes = &mem[start..end];
+            let list: Vec<ComponentValue> = bytes.iter()
+                .map(|&b| ComponentValue::U8(b))
+                .collect();
+
+            Ok((ComponentValue::List(list), 2))
+        }
+
+        // Generic List<T>: ptr + len on stack, elements in memory
+        WasiComponentType::List(_element_ty) => {
+            // For now, simplified handling - would need recursive lifting
+            let ptr = get_i32(core_values, 0)?;
+            let len = get_i32(core_values, 1)?;
+            #[cfg(feature = "std")]
+            eprintln!("[LIFT] List<T> at ptr={}, len={} (complex lists not fully implemented)", ptr, len);
+            Ok((ComponentValue::List(Vec::new()), 2))
+        }
+
+        // Option<T>: discriminant + optional payload
+        WasiComponentType::Option(inner_ty) => {
+            let discriminant = get_i32(core_values, 0)?;
+            if discriminant == 0 {
+                Ok((ComponentValue::Option(None), 1))
+            } else {
+                let (inner, consumed) = lift_single_value(inner_ty, &core_values[1..], memory)?;
+                Ok((ComponentValue::Option(Some(Box::new(inner))), 1 + consumed))
+            }
+        }
+
+        // Result<T, E>: discriminant + payload
+        WasiComponentType::Result(ok_ty, err_ty) => {
+            let discriminant = get_i32(core_values, 0)?;
+            if discriminant == 0 {
+                // Ok case
+                if let Some(ty) = ok_ty {
+                    let (value, consumed) = lift_single_value(ty, &core_values[1..], memory)?;
+                    Ok((ComponentValue::Result(Ok(Some(Box::new(value)))), 1 + consumed))
+                } else {
+                    Ok((ComponentValue::Result(Ok(None)), 1))
+                }
+            } else {
+                // Err case
+                if let Some(ty) = err_ty {
+                    let (value, consumed) = lift_single_value(ty, &core_values[1..], memory)?;
+                    Ok((ComponentValue::Result(Err(Some(Box::new(value)))), 1 + consumed))
+                } else {
+                    Ok((ComponentValue::Result(Err(None)), 1))
+                }
+            }
+        }
+
+        // Tuple: sequence of values
+        WasiComponentType::Tuple(types) => {
+            let mut values = Vec::new();
+            let mut consumed = 0;
+            for ty in types {
+                let (value, c) = lift_single_value(ty, &core_values[consumed..], memory)?;
+                values.push((format!("_{}", consumed), value));
+                consumed += c;
+            }
+            Ok((ComponentValue::Record(values), consumed))
+        }
+    }
+}
+
+/// Lower ComponentValues to core WASM values based on function signature.
+///
+/// This converts Component Model values back to core WASM values
+/// that can be pushed onto the operand stack.
+///
+/// # Arguments
+/// * `interface` - WASI interface name
+/// * `function` - Function name
+/// * `component_values` - Component values from dispatch_component
+/// * `memory` - Linear memory for writing strings/lists (mutable)
+/// * `alloc_ptr` - Next free address in memory for allocation
+///
+/// # Returns
+/// Vec of core Values to push onto WASM stack
+pub fn lower_wasi_results(
+    interface: &str,
+    function: &str,
+    component_values: &[ComponentValue],
+    _memory: Option<&mut [u8]>,
+    _alloc_ptr: u32,
+) -> Result<Vec<Value>> {
+    let sig = get_wasi_function_signature(interface, function)
+        .ok_or_else(|| wrt_error::Error::runtime_error("Unknown WASI function"))?;
+
+    let mut result = Vec::new();
+
+    for (value, _ty) in component_values.iter().zip(sig.results.iter()) {
+        lower_single_value(value, &mut result)?;
+    }
+
+    Ok(result)
+}
+
+/// Lower a single ComponentValue to core values
+fn lower_single_value(value: &ComponentValue, out: &mut Vec<Value>) -> Result<()> {
+    match value {
+        ComponentValue::Bool(b) => {
+            out.push(Value::I32(if *b { 1 } else { 0 }));
+        }
+        ComponentValue::U8(v) => out.push(Value::I32(*v as i32)),
+        ComponentValue::U16(v) => out.push(Value::I32(*v as i32)),
+        ComponentValue::U32(v) => out.push(Value::I32(*v as i32)),
+        ComponentValue::U64(v) => out.push(Value::I64(*v as i64)),
+        ComponentValue::S8(v) => out.push(Value::I32(*v as i32)),
+        ComponentValue::S16(v) => out.push(Value::I32(*v as i32)),
+        ComponentValue::S32(v) => out.push(Value::I32(*v)),
+        ComponentValue::S64(v) => out.push(Value::I64(*v)),
+        ComponentValue::F32(v) => out.push(Value::F32(wrt_foundation::float_repr::FloatBits32::from_f32(*v))),
+        ComponentValue::F64(v) => out.push(Value::F64(wrt_foundation::float_repr::FloatBits64::from_f64(*v))),
+        ComponentValue::Char(ch) => out.push(Value::I32(*ch as i32)),
+        ComponentValue::Handle(h) => out.push(Value::I32(*h as i32)),
+
+        // String: for now return empty (would need memory allocation)
+        ComponentValue::String(_s) => {
+            // Would need to write to memory and return ptr+len
+            // For now, return 0,0 as placeholder
+            out.push(Value::I32(0));
+            out.push(Value::I32(0));
+        }
+
+        // List: similar to string
+        ComponentValue::List(_) => {
+            out.push(Value::I32(0));
+            out.push(Value::I32(0));
+        }
+
+        // Record: flatten fields
+        ComponentValue::Record(fields) => {
+            for (_, field_value) in fields {
+                lower_single_value(field_value, out)?;
+            }
+        }
+
+        // Option: discriminant + optional payload
+        ComponentValue::Option(None) => {
+            out.push(Value::I32(0));
+        }
+        ComponentValue::Option(Some(inner)) => {
+            out.push(Value::I32(1));
+            lower_single_value(inner, out)?;
+        }
+
+        // Result: discriminant + payload
+        ComponentValue::Result(Ok(None)) => {
+            out.push(Value::I32(0));
+        }
+        ComponentValue::Result(Ok(Some(inner))) => {
+            out.push(Value::I32(0));
+            lower_single_value(inner, out)?;
+        }
+        ComponentValue::Result(Err(None)) => {
+            out.push(Value::I32(1));
+        }
+        ComponentValue::Result(Err(Some(inner))) => {
+            out.push(Value::I32(1));
+            lower_single_value(inner, out)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper functions to extract values
+fn get_i32(values: &[Value], idx: usize) -> Result<i32> {
+    values.get(idx)
+        .and_then(|v| match v {
+            Value::I32(i) => Some(*i),
+            _ => None,
+        })
+        .ok_or_else(|| wrt_error::Error::runtime_error("Expected i32"))
+}
+
+fn get_i64(values: &[Value], idx: usize) -> Result<i64> {
+    values.get(idx)
+        .and_then(|v| match v {
+            Value::I64(i) => Some(*i),
+            _ => None,
+        })
+        .ok_or_else(|| wrt_error::Error::runtime_error("Expected i64"))
+}
+
+fn get_f32(values: &[Value], idx: usize) -> Result<f32> {
+    values.get(idx)
+        .and_then(|v| match v {
+            Value::F32(f) => Some(f.to_f32()),
+            _ => None,
+        })
+        .ok_or_else(|| wrt_error::Error::runtime_error("Expected f32"))
+}
+
+fn get_f64(values: &[Value], idx: usize) -> Result<f64> {
+    values.get(idx)
+        .and_then(|v| match v {
+            Value::F64(f) => Some(f.to_f64()),
+            _ => None,
+        })
+        .ok_or_else(|| wrt_error::Error::runtime_error("Expected f64"))
+}
 
 /// Output stream resource for wasi:io/streams
 pub struct OutputStreamResource {
@@ -122,36 +680,35 @@ impl Wasip2Host {
 
         let data = &memory[start..end];
 
+        // Find the actual content length - some components pass buffer capacity
+        // instead of actual content length. For text output, trim at null byte.
+        let actual_len = data.iter()
+            .position(|&b| b == 0)
+            .unwrap_or(data.len());
+        let trimmed_data = &data[..actual_len];
+
+        #[cfg(feature = "std")]
+        eprintln!("[WASIP2-WRITE] handle={}, ptr={}, len={}, actual_len={}, data={:?}",
+                  handle, data_ptr, data_len, actual_len,
+                  String::from_utf8_lossy(trimmed_data));
+
         // Write to the appropriate target
         match &self.output_streams[stream_idx].target {
             OutputTarget::Stdout => {
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
-                    let _ = io::stdout().write_all(data);
+                    eprintln!("[WASIP2-WRITE] Writing {} bytes to STDOUT", trimmed_data.len());
+                    let _ = io::stdout().write_all(trimmed_data);
                     let _ = io::stdout().flush();
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // In no_std, just print debug output
-                    if let Ok(s) = core::str::from_utf8(data) {
-                        eprintln!("[STDOUT] {}", s);
-                    }
                 }
             },
             OutputTarget::Stderr => {
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
-                    let _ = io::stderr().write_all(data);
+                    let _ = io::stderr().write_all(trimmed_data);
                     let _ = io::stderr().flush();
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // In no_std, just print debug output
-                    if let Ok(s) = core::str::from_utf8(data) {
-                        eprintln!("[STDERR] {}", s);
-                    }
                 }
             },
             OutputTarget::File(_path) => {
@@ -171,10 +728,29 @@ impl Wasip2Host {
         &mut self,
         _handle: u32,
     ) -> Result<Vec<Value>> {
-
         // For now, we don't buffer, so flush is a no-op
         // Return ok variant (0)
         Ok(vec![Value::I32(0)])
+    }
+
+    /// wasi:cli/exit.exit
+    /// This is called when the component wants to exit.
+    /// The status parameter indicates success (ok variant) or failure.
+    pub fn cli_exit(&mut self, status_ok: bool) -> Result<Vec<Value>> {
+        #[cfg(feature = "std")]
+        {
+            // In std mode, actually exit the process
+            let code = if status_ok { 0 } else { 1 };
+            std::process::exit(code);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            if status_ok {
+                Ok(vec![])
+            } else {
+                Err(wrt_error::Error::runtime_error("Component exited with failure status"))
+            }
+        }
     }
 
     /// Extract the base interface name without version suffix
@@ -240,8 +816,206 @@ impl Wasip2Host {
                 };
                 self.io_streams_output_stream_blocking_flush(handle)
             },
+            ("wasi:cli/exit", "exit") => {
+                // Exit takes a result<_, _> as parameter
+                // If the first arg is 0, it's the ok variant (success)
+                // If the first arg is 1, it's the error variant (failure)
+                let status_ok = match args.first() {
+                    Some(Value::I32(0)) => true,  // ok variant
+                    Some(Value::I32(1)) => false, // error variant
+                    _ => true, // Default to success if no args or unknown
+                };
+                self.cli_exit(status_ok)
+            },
             _ => {
                 Err(wrt_error::Error::runtime_error("Unknown wasip2 function"))
+            }
+        }
+    }
+
+    // ========================================================================
+    // COMPONENT MODEL INTERFACE
+    // ========================================================================
+    // These methods work with ComponentValue instead of raw Value + memory.
+    // Complex types (strings, lists) are first-class values, already lifted.
+
+    /// Dispatch a WASI call using Component Model values.
+    ///
+    /// This is the **proper** Component Model interface where:
+    /// - Strings are `ComponentValue::String`, not ptr+len
+    /// - Lists are `ComponentValue::List`, not ptr+len
+    /// - Results are `ComponentValue::Result`, not discriminant+payload
+    ///
+    /// This should be called AFTER canonical ABI lifting has converted
+    /// core WASM values to component values.
+    pub fn dispatch_component(
+        &mut self,
+        interface: &str,
+        function: &str,
+        args: Vec<ComponentValue>,
+    ) -> Result<Vec<ComponentValue>> {
+        let base_interface = Self::strip_version(interface);
+
+        match (base_interface, function) {
+            // wasi:cli/stdout.get-stdout() -> own<output-stream>
+            ("wasi:cli/stdout", "get-stdout") => {
+                Ok(vec![ComponentValue::Handle(1)]) // stdout handle
+            },
+
+            // wasi:cli/stderr.get-stderr() -> own<output-stream>
+            ("wasi:cli/stderr", "get-stderr") => {
+                Ok(vec![ComponentValue::Handle(2)]) // stderr handle
+            },
+
+            // wasi:io/streams.[method]output-stream.blocking-write-and-flush
+            // (self: borrow<output-stream>, contents: list<u8>) -> result<_, stream-error>
+            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") |
+            ("wasi:io/streams", "output-stream.blocking-write-and-flush") => {
+                // Args: [handle, list<u8>]
+                if args.len() < 2 {
+                    return Err(wrt_error::Error::runtime_error(
+                        "blocking-write-and-flush requires 2 args: handle, contents"
+                    ));
+                }
+
+                let handle = match &args[0] {
+                    ComponentValue::Handle(h) => *h,
+                    ComponentValue::U32(h) => *h,
+                    ComponentValue::S32(h) => *h as u32,
+                    _ => return Err(wrt_error::Error::runtime_error("First arg must be handle")),
+                };
+
+                // Get the data - either as a lifted list<u8> or as a string
+                let data: Vec<u8> = match &args[1] {
+                    ComponentValue::List(items) => {
+                        items.iter().filter_map(|v| match v {
+                            ComponentValue::U8(b) => Some(*b),
+                            ComponentValue::S8(b) => Some(*b as u8),
+                            _ => None,
+                        }).collect()
+                    },
+                    ComponentValue::String(s) => s.as_bytes().to_vec(),
+                    _ => return Err(wrt_error::Error::runtime_error("Second arg must be list<u8> or string")),
+                };
+
+                // Perform the write
+                let result = self.write_to_stream(handle, &data);
+
+                // Return result<_, stream-error>
+                match result {
+                    Ok(()) => Ok(vec![ComponentValue::Result(Ok(None))]),
+                    Err(e) => Ok(vec![ComponentValue::Result(Err(Some(Box::new(
+                        ComponentValue::String(e.to_string())
+                    ))))]),
+                }
+            },
+
+            // wasi:io/streams.[method]output-stream.blocking-flush
+            // (self: borrow<output-stream>) -> result<_, stream-error>
+            ("wasi:io/streams", "[method]output-stream.blocking-flush") |
+            ("wasi:io/streams", "output-stream.blocking-flush") => {
+                // Flush is a no-op for now
+                Ok(vec![ComponentValue::Result(Ok(None))])
+            },
+
+            // wasi:cli/exit.exit(status: result<_, _>)
+            ("wasi:cli/exit", "exit") => {
+                let success = match args.first() {
+                    Some(ComponentValue::Result(Ok(_))) => true,
+                    Some(ComponentValue::Result(Err(_))) => false,
+                    Some(ComponentValue::S32(0)) => true,  // Legacy: 0 = ok variant
+                    Some(ComponentValue::S32(1)) => false, // Legacy: 1 = err variant
+                    _ => true,
+                };
+
+                #[cfg(feature = "std")]
+                {
+                    std::process::exit(if success { 0 } else { 1 });
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    if success {
+                        Ok(vec![])
+                    } else {
+                        Err(wrt_error::Error::runtime_error("Component exited with failure"))
+                    }
+                }
+            },
+
+            // wasi:cli/environment.get-environment() -> list<tuple<string, string>>
+            ("wasi:cli/environment", "get-environment") => {
+                // Return empty environment for now
+                Ok(vec![ComponentValue::List(Vec::new())])
+            },
+
+            // wasi:cli/environment.get-arguments() -> list<string>
+            ("wasi:cli/environment", "get-arguments") => {
+                // Return empty arguments for now
+                Ok(vec![ComponentValue::List(Vec::new())])
+            },
+
+            // wasi:cli/environment.initial-cwd() -> option<string>
+            ("wasi:cli/environment", "initial-cwd") => {
+                Ok(vec![ComponentValue::Option(None)])
+            },
+
+            // Resource drops
+            ("wasi:io/streams", "[resource-drop]output-stream") |
+            ("wasi:io/streams", "[resource-drop]input-stream") |
+            ("wasi:io/error", "[resource-drop]error") => {
+                // No-op for now
+                Ok(vec![])
+            },
+
+            // wasi:io/error.[method]error.to-debug-string
+            ("wasi:io/error", "[method]error.to-debug-string") => {
+                Ok(vec![ComponentValue::String("error".into())])
+            },
+
+            _ => {
+                #[cfg(feature = "std")]
+                eprintln!("[WASIP2-COMPONENT] Unknown function: {}::{}", interface, function);
+                Err(wrt_error::Error::runtime_error("Unknown wasip2 component function"))
+            }
+        }
+    }
+
+    /// Write data to a stream (internal helper)
+    fn write_to_stream(&mut self, handle: u32, data: &[u8]) -> Result<()> {
+        let stream_idx = (handle - 1) as usize;
+        if stream_idx >= self.output_streams.len() {
+            return Err(wrt_error::Error::runtime_error("Invalid stream handle"));
+        }
+
+        match &self.output_streams[stream_idx].target {
+            OutputTarget::Stdout => {
+                #[cfg(feature = "std")]
+                {
+                    use std::io::{self, Write};
+                    io::stdout().write_all(data).map_err(|_|
+                        wrt_error::Error::runtime_error("stdout write failed"))?;
+                    io::stdout().flush().map_err(|_|
+                        wrt_error::Error::runtime_error("stdout flush failed"))?;
+                }
+                Ok(())
+            },
+            OutputTarget::Stderr => {
+                #[cfg(feature = "std")]
+                {
+                    use std::io::{self, Write};
+                    io::stderr().write_all(data).map_err(|_|
+                        wrt_error::Error::runtime_error("stderr write failed"))?;
+                    io::stderr().flush().map_err(|_|
+                        wrt_error::Error::runtime_error("stderr flush failed"))?;
+                }
+                Ok(())
+            },
+            OutputTarget::File(_) => {
+                Err(wrt_error::Error::runtime_error("File output not implemented"))
+            },
+            OutputTarget::Memory(_) => {
+                // Would append to buffer
+                Ok(())
             }
         }
     }

@@ -781,6 +781,7 @@ impl ComponentInstance {
     /// - Canonicals: 128 max
     /// - Exports: 256 max
     /// - Imports: 256 max
+    #[cfg(feature = "std")]
     pub fn from_parsed(
         id: InstanceId,
         parsed: &mut wrt_format::component::Component,
@@ -904,6 +905,9 @@ impl ComponentInstance {
         use alloc::collections::BTreeMap;
         use wrt_runtime::engine::InstanceHandle;
         let mut core_instances_map: BTreeMap<usize, InstanceHandle> = BTreeMap::new();
+        // Track which core instance index exports _start (the main executable module)
+        // This is the GENERIC way to find the main module - it's the one that exports _start
+        let mut start_export_instance_idx: Option<u32> = None;
 
         #[cfg(feature = "std")]
         {
@@ -932,6 +936,26 @@ impl ComponentInstance {
                 }
             }
             eprintln!("DEBUG: Alias map built with {} core exports", alias_map.len());
+
+            // Find which core instance exports _start - this is the main executable module
+            // This is the GENERIC way to find the main module regardless of component structure
+            for alias in &parsed.aliases {
+                if let AliasTarget::CoreInstanceExport { instance_idx, name, kind: _ } = &alias.target {
+                    if name == "_start" {
+                        start_export_instance_idx = Some(*instance_idx);
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            instance_idx = instance_idx,
+                            "Found _start export - this is the main module"
+                        );
+                        break;
+                    }
+                }
+            }
+            if start_export_instance_idx.is_none() {
+                #[cfg(feature = "tracing")]
+                tracing::warn!("No _start export found in aliases - component may not be a command");
+            }
 
             // Instantiate modules according to core_instances order
             // core_instances describes WHAT to instantiate and HOW to link imports
@@ -1081,19 +1105,15 @@ impl ComponentInstance {
                                         println!("    ├─ ✓ Instantiated as instance {:?}", instance_handle);
                                         core_instances_map.insert(core_instance_idx, instance_handle);
 
-                                        // Track module 0's instance specifically
-                                        if module_idx == 0 {
+                                        // Check if this is the instance that exports _start
+                                        // (we found this by scanning aliases earlier)
+                                        if start_export_instance_idx == Some(core_instance_idx as u32) {
                                             #[cfg(feature = "tracing")]
-                                            {
-                                                tracing::info!(
-                                                    ?instance_handle,
-                                                    core_instance_idx = core_instance_idx,
-                                                    "MODULE 0 INSTANTIATED - This instance has the initialized globals"
-                                                );
-                                            }
-                                            println!("    ├─ *** MODULE 0 INSTANTIATED AS {:?} at index {} ***", instance_handle, core_instance_idx);
-                                            // Store this for later - we MUST use this instance for execution
-                                            // since it has the initialized globals
+                                            tracing::info!(
+                                                ?instance_handle,
+                                                core_instance_idx = core_instance_idx,
+                                                "Main module (_start exporter) instantiated"
+                                            );
                                         }
 
                                         println!("    └─ Instance ready");
@@ -1287,42 +1307,47 @@ impl ComponentInstance {
             instance.runtime_engine = Some(Box::new(engine));
 
             // Store the main module's instance handle
-            // CoreInstance[13] contains the main module with _initialize
-            // It's instantiated as InstanceHandle(2) based on the mapping
-            // However, due to how the component model works, we need the instance
-            // that actually contains the main module code
+            // The main module is the one that exports _start - we found this earlier
+            // by scanning the aliases. This is GENERIC and works for any component.
+            // NO FALLBACKS - per spec, command components MUST export _start
 
-            // Find the instance that has module 0 - the main module with initialized globals
-            // NO FALLBACKS - we must use the correct instance or fail
-            let main_handle = if let Some(&handle) = core_instances_map.get(&13) {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::info!(
-                        ?handle,
-                        "Found main module instance 13 - this has module 0 with initialized globals"
-                    );
+            let main_handle = match start_export_instance_idx {
+                Some(start_idx) => {
+                    match core_instances_map.get(&(start_idx as usize)) {
+                        Some(&handle) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                ?handle,
+                                core_instance_idx = start_idx,
+                                "Found main module instance - exports _start"
+                            );
+                            instance.main_instance_handle = Some(handle);
+                            handle
+                        }
+                        None => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(
+                                start_idx = start_idx,
+                                available = ?core_instances_map.keys().collect::<Vec<_>>(),
+                                "Instance exporting _start not found in map"
+                            );
+                            return Err(Error::runtime_execution_error(
+                                "Cannot find main module instance (the one exporting _start)"
+                            ));
+                        }
+                    }
                 }
-                println!("[INSTANTIATION] Found instance 13 mapped to: {:?}", handle);
-                println!("[INSTANTIATION] This MUST be the instance with module 0 and its initialized globals");
-                instance.main_instance_handle = Some(handle);
-                handle
-            } else {
-                // NO FALLBACK - if we don't have the right instance, we fail
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::error!(
-                        available_instances = ?core_instances_map.keys().collect::<Vec<_>>(),
-                        "Instance 13 not found - cannot find main module with initialized globals"
-                    );
+                None => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("No _start export found - component does not export an entry point");
+                    return Err(Error::runtime_execution_error(
+                        "No _start export found - command components must export _start"
+                    ));
                 }
-                println!("[INSTANTIATION] ERROR: Instance 13 not found in map!");
-                println!("[INSTANTIATION] Available instances: {:?}", core_instances_map.keys().collect::<Vec<_>>());
-                return Err(Error::runtime_execution_error(
-                    "Cannot find main module instance (instance 13 with module 0)"
-                ));
             };
 
-            println!("[INSTANTIATION] Main instance selected: {:?} (should contain module 0 with _initialize)", main_handle);
+            #[cfg(feature = "tracing")]
+            tracing::info!(?main_handle, "Main instance selected (exports _start)");
         }
 
         Ok(instance)
@@ -2725,7 +2750,7 @@ impl ComponentInstance {
     fn initialize_engine(
         _modules: &[wrt_runtime::module::Module],
         _plan: &[()],
-        _host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
+        _host_registry: Option<()>,
     ) -> Result<()> {
         Ok(())
     }
@@ -3106,11 +3131,10 @@ impl ComponentInstance {
         // through the runtime engine. For now, we'll call the _initialize function
         // which is what the TinyGo component expects
 
-        // Check if this is the wasi:cli/run canonical function
-        // The actual index depends on how the component is structured
-        if func_index == 13 || func_index == 51 {
-            // This is the wasi:cli/run@0.2.0#run function
-            println!("[CALL_NATIVE] Executing wasi:cli/run using existing engine");
+        // Use the existing runtime engine if available
+        // This handles all canonical functions that go through the main module's exported functions
+        if self.runtime_engine.is_some() && self.main_instance_handle.is_some() {
+            println!("[CALL_NATIVE] Using existing runtime engine for function {}", func_index);
 
             // Check if we have a runtime engine stored
             if let (Some(engine), Some(instance_handle)) = (self.runtime_engine.as_mut(), self.main_instance_handle) {
@@ -3123,6 +3147,22 @@ impl ComponentInstance {
                 // 2. Memory properly initialized
                 // 3. WASI host functions registered
                 // 4. All instances linked
+
+                // Pre-allocate memory for WASI arguments using cabi_realloc
+                // This ensures string data is in heap memory owned by the component
+                #[cfg(feature = "std")]
+                {
+                    println!("[CALL_NATIVE] Pre-allocating WASI args memory...");
+                    match engine.pre_allocate_wasi_args(instance_handle) {
+                        Ok(()) => {
+                            println!("[CALL_NATIVE] WASI args memory pre-allocated");
+                        }
+                        Err(e) => {
+                            println!("[CALL_NATIVE] WASI args pre-allocation failed (may be OK): {:?}", e);
+                            // Continue anyway - fallback will be used
+                        }
+                    }
+                }
 
                 println!("[CALL_NATIVE] Calling _initialize function...");
 
@@ -3144,11 +3184,21 @@ impl ComponentInstance {
                         println!("[CALL_NATIVE] _start completed successfully");
                     }
                     Err(e) => {
-                        println!("[CALL_NATIVE] _start not found or failed: {:?}", e);
+                        // Check if this is a "function not found" error vs a trap/execution error
+                        // Function not found is OK (component may not have _start)
+                        // But traps and execution errors must be propagated
+                        let err_msg = format!("{:?}", e);
+                        if err_msg.contains("not found") || err_msg.contains("Function not found") {
+                            println!("[CALL_NATIVE] _start not found (OK - optional)");
+                        } else {
+                            // This is a real execution error - propagate it!
+                            println!("[CALL_NATIVE] _start failed with execution error: {:?}", e);
+                            return Err(e);
+                        }
                     }
                 }
 
-                // Return success
+                // Return success only if we didn't hit an execution error
                 println!("[CALL_NATIVE] Function execution completed successfully");
                 return Ok(vec![ComponentValue::U32(0)]);
             } else {
@@ -3195,6 +3245,9 @@ impl ComponentInstance {
                             Error::runtime_execution_error("Failed to create import_order")
                         })?,
                         functions: Vec::new(),
+                        #[cfg(feature = "std")]
+                        tables: Vec::new(),
+                        #[cfg(not(feature = "std"))]
                         tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
                             println!("[TEST-THREAD] ✗ Failed to create tables: {:?}", e);
                             Error::runtime_execution_error("Failed to create tables")

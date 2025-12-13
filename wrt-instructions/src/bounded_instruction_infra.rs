@@ -18,7 +18,7 @@ pub type InstructionProvider = NoStdProvider<32768>;
 pub const MAX_INSTRUCTIONS_PER_FUNCTION: usize = 8192;
 
 /// Maximum number of branch table targets
-pub const MAX_BR_TABLE_TARGETS: usize = 256;
+pub const MAX_BR_TABLE_TARGETS: usize = 1024;
 
 /// Maximum number of basic blocks in a function
 pub const MAX_BASIC_BLOCKS: usize = 1024;

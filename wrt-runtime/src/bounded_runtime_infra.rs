@@ -138,7 +138,7 @@ pub const MAX_RUNTIME_INSTANCES: usize = 64;
 pub const MAX_MODULES_PER_RUNTIME: usize = 256;
 
 /// Maximum number of function instances
-pub const MAX_FUNCTION_INSTANCES: usize = 8192;
+pub const MAX_FUNCTION_INSTANCES: usize = 16384;
 
 /// Maximum number of memory instances
 pub const MAX_MEMORY_INSTANCES: usize = 64;

@@ -76,7 +76,7 @@ pub mod verify;
 pub mod wasm;
 pub mod wast;
 pub mod wast_execution;
-pub mod wast_test_runner;
+pub mod wast_values;
 
 // Public API
 pub use build::BuildSystem;

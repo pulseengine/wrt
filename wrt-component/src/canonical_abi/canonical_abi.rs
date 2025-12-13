@@ -1474,3 +1474,543 @@ impl MemoryLayout {
 fn align_to(value: usize, alignment: usize) -> usize {
     (value + alignment - 1) & !(alignment - 1)
 }
+
+// ============================================================================
+// BATCH LIFT/LOWER OPERATIONS FOR FUNCTION CALLS
+// ============================================================================
+
+/// Context for canonical ABI operations during a function call
+#[derive(Debug)]
+pub struct CanonicalCallContext {
+    /// Memory index to use (usually 0)
+    pub memory_index: u32,
+    /// Realloc function index for allocation during lowering
+    pub realloc_index: Option<u32>,
+    /// Post-return function index for cleanup
+    pub post_return_index: Option<u32>,
+    /// String encoding to use
+    pub string_encoding: StringEncoding,
+}
+
+impl Default for CanonicalCallContext {
+    fn default() -> Self {
+        Self {
+            memory_index: 0,
+            realloc_index: None,
+            post_return_index: None,
+            string_encoding: StringEncoding::Utf8,
+        }
+    }
+}
+
+/// Result of lifting core values to component values
+#[derive(Debug)]
+pub struct LiftResult {
+    /// The lifted component values
+    pub values: Vec<ComponentValue>,
+    /// Number of core values consumed
+    pub core_values_consumed: usize,
+}
+
+/// Result of lowering component values to core values
+#[derive(Debug)]
+pub struct LowerResult {
+    /// The lowered core values (to push onto WASM stack)
+    pub core_values: Vec<CoreValue>,
+    /// Bytes written to memory (for cleanup tracking)
+    pub bytes_written: u32,
+}
+
+/// Core WebAssembly value (matches wrt_foundation::values::Value)
+#[derive(Debug, Clone, PartialEq)]
+pub enum CoreValue {
+    I32(i32),
+    I64(i64),
+    F32(f32),
+    F64(f64),
+}
+
+impl CanonicalABI {
+    // ========================================================================
+    // BATCH LIFTING: Core WASM values -> Component values
+    // ========================================================================
+
+    /// Lift multiple values from core WASM representation to component values.
+    ///
+    /// This is the main entry point for lifting function arguments.
+    /// Core values come from the WASM operand stack, and complex types
+    /// (strings, lists, etc.) are read from linear memory.
+    ///
+    /// # Arguments
+    /// * `types` - The component types to lift to
+    /// * `core_values` - Core WASM values from the operand stack
+    /// * `memory` - Linear memory for reading complex types
+    /// * `ctx` - Call context with encoding options
+    ///
+    /// # Returns
+    /// The lifted component values and count of core values consumed
+    pub fn lift_values<M: CanonicalMemory>(
+        &self,
+        types: &[ComponentType],
+        core_values: &[CoreValue],
+        memory: &M,
+        _ctx: &CanonicalCallContext,
+    ) -> Result<LiftResult> {
+        let mut result = Vec::new();
+        let mut core_idx = 0;
+
+        for ty in types {
+            let (value, consumed) = self.lift_single_value(ty, &core_values[core_idx..], memory)?;
+            result.push(value);
+            core_idx += consumed;
+        }
+
+        Ok(LiftResult {
+            values: result,
+            core_values_consumed: core_idx,
+        })
+    }
+
+    /// Lift a single value from core representation
+    fn lift_single_value<M: CanonicalMemory>(
+        &self,
+        ty: &ComponentType,
+        core_values: &[CoreValue],
+        memory: &M,
+    ) -> Result<(ComponentValue, usize)> {
+        match ty {
+            // Primitives: direct conversion from single core value
+            ComponentType::Bool => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::Bool(i != 0), 1))
+            }
+            ComponentType::S8 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::S8(i as i8), 1))
+            }
+            ComponentType::U8 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::U8(i as u8), 1))
+            }
+            ComponentType::S16 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::S16(i as i16), 1))
+            }
+            ComponentType::U16 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::U16(i as u16), 1))
+            }
+            ComponentType::S32 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::S32(i), 1))
+            }
+            ComponentType::U32 => {
+                let i = self.expect_i32(core_values, 0)?;
+                Ok((ComponentValue::U32(i as u32), 1))
+            }
+            ComponentType::S64 => {
+                let i = self.expect_i64(core_values, 0)?;
+                Ok((ComponentValue::S64(i), 1))
+            }
+            ComponentType::U64 => {
+                let i = self.expect_i64(core_values, 0)?;
+                Ok((ComponentValue::U64(i as u64), 1))
+            }
+            ComponentType::F32 => {
+                let f = self.expect_f32(core_values, 0)?;
+                Ok((ComponentValue::F32(f), 1))
+            }
+            ComponentType::F64 => {
+                let f = self.expect_f64(core_values, 0)?;
+                Ok((ComponentValue::F64(f), 1))
+            }
+            ComponentType::Char => {
+                let i = self.expect_i32(core_values, 0)?;
+                let ch = char::from_u32(i as u32)
+                    .ok_or_else(|| Error::validation_error("Invalid Unicode code point"))?;
+                Ok((ComponentValue::Char(ch), 1))
+            }
+
+            // String: ptr + len on stack, data in memory
+            ComponentType::String => {
+                let ptr = self.expect_i32(core_values, 0)? as u32;
+                let len = self.expect_i32(core_values, 1)? as u32;
+
+                // Read string data from memory
+                let bytes = memory.read_bytes(ptr, len)?;
+                let string = String::from_utf8(bytes)
+                    .map_err(|_| Error::validation_error("Invalid UTF-8 string"))?;
+
+                Ok((ComponentValue::String(string), 2))
+            }
+
+            // List: ptr + len on stack, elements in memory
+            ComponentType::List(element_ty) => {
+                let ptr = self.expect_i32(core_values, 0)? as u32;
+                let len = self.expect_i32(core_values, 1)? as u32;
+
+                let element_size = self.size_of(element_ty)?;
+                let mut elements = Vec::new();
+
+                for i in 0..len {
+                    let offset = ptr + i * element_size;
+                    let value = self.lift(memory, element_ty, offset)?;
+                    elements.push(value);
+                }
+
+                Ok((ComponentValue::List(elements), 2))
+            }
+
+            // Record: flattened fields on stack or in memory
+            ComponentType::Record(fields) => {
+                // For simplicity, assume record is passed as pointer
+                let ptr = self.expect_i32(core_values, 0)? as u32;
+                let value = self.lift_record(memory, fields, ptr)?;
+                Ok((value, 1))
+            }
+
+            // Tuple: flattened elements
+            ComponentType::Tuple(types) => {
+                let ptr = self.expect_i32(core_values, 0)? as u32;
+                let value = self.lift_tuple(memory, types, ptr)?;
+                Ok((value, 1))
+            }
+
+            // Variant: discriminant + optional payload
+            ComponentType::Variant(cases) => {
+                let ptr = self.expect_i32(core_values, 0)? as u32;
+                let value = self.lift_variant(memory, cases, ptr)?;
+                Ok((value, 1))
+            }
+
+            // Enum: just discriminant
+            ComponentType::Enum(cases) => {
+                let discriminant = self.expect_i32(core_values, 0)? as u32;
+                if discriminant as usize >= cases.len() {
+                    return Err(Error::validation_error("Invalid enum discriminant"));
+                }
+                Ok((ComponentValue::Enum(cases[discriminant as usize].clone()), 1))
+            }
+
+            // Option: discriminant + optional value
+            ComponentType::Option(inner_ty) => {
+                let discriminant = self.expect_i32(core_values, 0)?;
+                if discriminant == 0 {
+                    Ok((ComponentValue::Option(None), 1))
+                } else {
+                    // Payload follows discriminant
+                    let (inner_value, consumed) = self.lift_single_value(inner_ty, &core_values[1..], memory)?;
+                    Ok((ComponentValue::Option(Some(Box::new(inner_value))), 1 + consumed))
+                }
+            }
+
+            // Result: discriminant + ok/err payload
+            ComponentType::Result(ok_ty, err_ty) => {
+                let discriminant = self.expect_i32(core_values, 0)?;
+                if discriminant == 0 {
+                    // Ok case
+                    if let Some(ty) = ok_ty {
+                        let (value, consumed) = self.lift_single_value(ty, &core_values[1..], memory)?;
+                        Ok((ComponentValue::Result(Ok(Some(Box::new(value)))), 1 + consumed))
+                    } else {
+                        Ok((ComponentValue::Result(Ok(None)), 1))
+                    }
+                } else {
+                    // Err case
+                    if let Some(ty) = err_ty {
+                        let (value, consumed) = self.lift_single_value(ty, &core_values[1..], memory)?;
+                        Ok((ComponentValue::Result(Err(Some(Box::new(value)))), 1 + consumed))
+                    } else {
+                        Ok((ComponentValue::Result(Err(None)), 1))
+                    }
+                }
+            }
+
+            // Flags: bit vector
+            ComponentType::Flags(flag_names) => {
+                let bits = self.expect_i32(core_values, 0)? as u32;
+                let mut active = Vec::new();
+                for (i, name) in flag_names.iter().enumerate() {
+                    if (bits >> i) & 1 != 0 {
+                        active.push(name.clone());
+                    }
+                }
+                Ok((ComponentValue::Flags(active), 1))
+            }
+        }
+    }
+
+    // ========================================================================
+    // BATCH LOWERING: Component values -> Core WASM values
+    // ========================================================================
+
+    /// Lower multiple component values to core WASM representation.
+    ///
+    /// This is the main entry point for lowering function results.
+    /// Simple values become core values for the WASM stack, complex types
+    /// are written to linear memory and their ptr+len pushed to stack.
+    ///
+    /// # Arguments
+    /// * `values` - Component values to lower
+    /// * `types` - The component types (for validation)
+    /// * `memory` - Linear memory for writing complex types
+    /// * `next_alloc` - Next free address in memory for allocation
+    /// * `ctx` - Call context with encoding options
+    ///
+    /// # Returns
+    /// Core values to push onto WASM stack
+    pub fn lower_values<M: CanonicalMemory>(
+        &self,
+        values: &[ComponentValue],
+        types: &[ComponentType],
+        memory: &mut M,
+        mut next_alloc: u32,
+        _ctx: &CanonicalCallContext,
+    ) -> Result<LowerResult> {
+        if values.len() != types.len() {
+            return Err(Error::validation_error("Value count doesn't match type count"));
+        }
+
+        let mut core_values = Vec::new();
+        let start_alloc = next_alloc;
+
+        for (value, ty) in values.iter().zip(types.iter()) {
+            let (lowered, bytes_used) = self.lower_single_value(value, ty, memory, next_alloc)?;
+            core_values.extend(lowered);
+            next_alloc += bytes_used;
+        }
+
+        Ok(LowerResult {
+            core_values,
+            bytes_written: next_alloc - start_alloc,
+        })
+    }
+
+    /// Lower a single component value to core representation
+    fn lower_single_value<M: CanonicalMemory>(
+        &self,
+        value: &ComponentValue,
+        ty: &ComponentType,
+        memory: &mut M,
+        alloc_ptr: u32,
+    ) -> Result<(Vec<CoreValue>, u32)> {
+        match (value, ty) {
+            // Primitives: direct conversion to single core value
+            (ComponentValue::Bool(b), ComponentType::Bool) => {
+                Ok((vec![CoreValue::I32(if *b { 1 } else { 0 })], 0))
+            }
+            (ComponentValue::S8(v), ComponentType::S8) => {
+                Ok((vec![CoreValue::I32(*v as i32)], 0))
+            }
+            (ComponentValue::U8(v), ComponentType::U8) => {
+                Ok((vec![CoreValue::I32(*v as i32)], 0))
+            }
+            (ComponentValue::S16(v), ComponentType::S16) => {
+                Ok((vec![CoreValue::I32(*v as i32)], 0))
+            }
+            (ComponentValue::U16(v), ComponentType::U16) => {
+                Ok((vec![CoreValue::I32(*v as i32)], 0))
+            }
+            (ComponentValue::S32(v), ComponentType::S32) => {
+                Ok((vec![CoreValue::I32(*v)], 0))
+            }
+            (ComponentValue::U32(v), ComponentType::U32) => {
+                Ok((vec![CoreValue::I32(*v as i32)], 0))
+            }
+            (ComponentValue::S64(v), ComponentType::S64) => {
+                Ok((vec![CoreValue::I64(*v)], 0))
+            }
+            (ComponentValue::U64(v), ComponentType::U64) => {
+                Ok((vec![CoreValue::I64(*v as i64)], 0))
+            }
+            (ComponentValue::F32(v), ComponentType::F32) => {
+                Ok((vec![CoreValue::F32(*v)], 0))
+            }
+            (ComponentValue::F64(v), ComponentType::F64) => {
+                Ok((vec![CoreValue::F64(*v)], 0))
+            }
+            (ComponentValue::Char(ch), ComponentType::Char) => {
+                Ok((vec![CoreValue::I32(*ch as i32)], 0))
+            }
+
+            // String: write to memory, return ptr + len
+            (ComponentValue::String(s), ComponentType::String) => {
+                let bytes = s.as_bytes();
+                let len = bytes.len() as u32;
+
+                // Write string data to memory
+                memory.write_bytes(alloc_ptr, bytes)?;
+
+                // Return ptr and len as core values
+                Ok((vec![
+                    CoreValue::I32(alloc_ptr as i32),
+                    CoreValue::I32(len as i32),
+                ], len))
+            }
+
+            // List: write elements to memory, return ptr + len
+            (ComponentValue::List(elements), ComponentType::List(element_ty)) => {
+                let element_size = self.size_of(element_ty)?;
+                let total_size = element_size * elements.len() as u32;
+
+                // Write each element
+                for (i, elem) in elements.iter().enumerate() {
+                    let offset = alloc_ptr + (i as u32) * element_size;
+                    self.lower(memory, elem, offset)?;
+                }
+
+                Ok((vec![
+                    CoreValue::I32(alloc_ptr as i32),
+                    CoreValue::I32(elements.len() as i32),
+                ], total_size))
+            }
+
+            // Record: write to memory, return ptr
+            (ComponentValue::Record(fields), ComponentType::Record(_)) => {
+                self.lower_record(memory, fields, alloc_ptr)?;
+                let size = self.calculate_value_layout(value).size as u32;
+                Ok((vec![CoreValue::I32(alloc_ptr as i32)], size))
+            }
+
+            // Tuple: write to memory, return ptr
+            (ComponentValue::Tuple(values), ComponentType::Tuple(_)) => {
+                self.lower_tuple(memory, values, alloc_ptr)?;
+                let size = self.calculate_value_layout(value).size as u32;
+                Ok((vec![CoreValue::I32(alloc_ptr as i32)], size))
+            }
+
+            // Enum: return discriminant
+            (ComponentValue::Enum(case_name), ComponentType::Enum(cases)) => {
+                let discriminant = cases.iter().position(|c| c == case_name)
+                    .ok_or_else(|| Error::validation_error("Unknown enum case"))?;
+                Ok((vec![CoreValue::I32(discriminant as i32)], 0))
+            }
+
+            // Option: discriminant + optional value
+            (ComponentValue::Option(None), ComponentType::Option(_)) => {
+                Ok((vec![CoreValue::I32(0)], 0))
+            }
+            (ComponentValue::Option(Some(inner)), ComponentType::Option(inner_ty)) => {
+                let (mut inner_values, bytes) = self.lower_single_value(inner, inner_ty, memory, alloc_ptr)?;
+                let mut result = vec![CoreValue::I32(1)];
+                result.append(&mut inner_values);
+                Ok((result, bytes))
+            }
+
+            // Result: discriminant + payload
+            (ComponentValue::Result(Ok(payload)), ComponentType::Result(ok_ty, _)) => {
+                let mut result = vec![CoreValue::I32(0)];
+                if let (Some(val), Some(ty)) = (payload, ok_ty) {
+                    let (mut inner_values, bytes) = self.lower_single_value(val, ty, memory, alloc_ptr)?;
+                    result.append(&mut inner_values);
+                    Ok((result, bytes))
+                } else {
+                    Ok((result, 0))
+                }
+            }
+            (ComponentValue::Result(Err(payload)), ComponentType::Result(_, err_ty)) => {
+                let mut result = vec![CoreValue::I32(1)];
+                if let (Some(val), Some(ty)) = (payload, err_ty) {
+                    let (mut inner_values, bytes) = self.lower_single_value(val, ty, memory, alloc_ptr)?;
+                    result.append(&mut inner_values);
+                    Ok((result, bytes))
+                } else {
+                    Ok((result, 0))
+                }
+            }
+
+            // Flags: pack into i32
+            (ComponentValue::Flags(active), ComponentType::Flags(all_flags)) => {
+                let mut bits: u32 = 0;
+                for flag in active {
+                    if let Some(idx) = all_flags.iter().position(|f| f == flag) {
+                        bits |= 1 << idx;
+                    }
+                }
+                Ok((vec![CoreValue::I32(bits as i32)], 0))
+            }
+
+            // Type mismatch
+            _ => Err(Error::validation_error("Value type doesn't match expected type")),
+        }
+    }
+
+    // ========================================================================
+    // HELPER METHODS FOR EXTRACTING CORE VALUES
+    // ========================================================================
+
+    fn expect_i32(&self, values: &[CoreValue], idx: usize) -> Result<i32> {
+        values.get(idx)
+            .and_then(|v| match v {
+                CoreValue::I32(i) => Some(*i),
+                _ => None,
+            })
+            .ok_or_else(|| Error::validation_error("Expected i32 value"))
+    }
+
+    fn expect_i64(&self, values: &[CoreValue], idx: usize) -> Result<i64> {
+        values.get(idx)
+            .and_then(|v| match v {
+                CoreValue::I64(i) => Some(*i),
+                _ => None,
+            })
+            .ok_or_else(|| Error::validation_error("Expected i64 value"))
+    }
+
+    fn expect_f32(&self, values: &[CoreValue], idx: usize) -> Result<f32> {
+        values.get(idx)
+            .and_then(|v| match v {
+                CoreValue::F32(f) => Some(*f),
+                _ => None,
+            })
+            .ok_or_else(|| Error::validation_error("Expected f32 value"))
+    }
+
+    fn expect_f64(&self, values: &[CoreValue], idx: usize) -> Result<f64> {
+        values.get(idx)
+            .and_then(|v| match v {
+                CoreValue::F64(f) => Some(*f),
+                _ => None,
+            })
+            .ok_or_else(|| Error::validation_error("Expected f64 value"))
+    }
+
+    // ========================================================================
+    // CONVERSION BETWEEN CoreValue AND wrt_foundation::values::Value
+    // ========================================================================
+
+    /// Convert wrt_foundation::values::Value to CoreValue
+    pub fn from_runtime_value(value: &wrt_foundation::values::Value) -> CoreValue {
+        use wrt_foundation::values::Value;
+        match value {
+            Value::I32(i) => CoreValue::I32(*i),
+            Value::I64(i) => CoreValue::I64(*i),
+            Value::F32(f) => CoreValue::F32(f.to_f32()),
+            Value::F64(f) => CoreValue::F64(f.to_f64()),
+            // Other types (FuncRef, ExternRef) are not supported in canonical ABI
+            _ => CoreValue::I32(0),
+        }
+    }
+
+    /// Convert CoreValue to wrt_foundation::values::Value
+    pub fn to_runtime_value(value: &CoreValue) -> wrt_foundation::values::Value {
+        use wrt_foundation::values::Value;
+        use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
+        match value {
+            CoreValue::I32(i) => Value::I32(*i),
+            CoreValue::I64(i) => Value::I64(*i),
+            CoreValue::F32(f) => Value::F32(FloatBits32::from_f32(*f)),
+            CoreValue::F64(f) => Value::F64(FloatBits64::from_f64(*f)),
+        }
+    }
+
+    /// Convert a slice of runtime values to core values
+    pub fn from_runtime_values(values: &[wrt_foundation::values::Value]) -> Vec<CoreValue> {
+        values.iter().map(Self::from_runtime_value).collect()
+    }
+
+    /// Convert a slice of core values to runtime values
+    pub fn to_runtime_values(values: &[CoreValue]) -> Vec<wrt_foundation::values::Value> {
+        values.iter().map(Self::to_runtime_value).collect()
+    }
+}

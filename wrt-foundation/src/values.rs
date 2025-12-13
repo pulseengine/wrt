@@ -1072,6 +1072,38 @@ impl Checksummable for Value {
 }
 
 impl ToBytes for Value {
+    fn serialized_size(&self) -> usize {
+        // 1 byte for discriminant + variant-specific size
+        1 + match self {
+            Value::I32(_) => 4,
+            Value::I64(_) => 8,
+            Value::F32(_) => 4,
+            Value::F64(_) => 8,
+            Value::V128(_) | Value::I16x8(_) => 16,
+            // FuncRef: 1 byte for Some/None flag, + 4 bytes for index if Some
+            Value::FuncRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::ExternRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::Ref(_) => 4,
+            Value::StructRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::ArrayRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::Bool(_) => 1,
+            Value::S8(_) | Value::U8(_) => 1,
+            Value::S16(_) | Value::U16(_) => 2,
+            Value::S32(_) | Value::U32(_) => 4,
+            Value::S64(_) | Value::U64(_) => 8,
+            Value::Char(_) => 4,
+            // String: length (4) + content (variable, use a reasonable max)
+            Value::String(s) => 4 + s.len(),
+            // Complex types - use conservative estimate
+            Value::List(_) | Value::Tuple(_) | Value::Record(_) => 64,
+            Value::Variant(_, _) | Value::Enum(_) => 8,
+            Value::Option(_) | Value::Result(_) => 16,
+            Value::Flags(_) => 8,
+            Value::Own(_) | Value::Borrow(_) => 4,
+            Value::Void => 0,
+        }
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,

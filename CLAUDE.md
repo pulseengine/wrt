@@ -25,6 +25,8 @@ cargo-wrt --help
   - `if lookup_fails { use_hardcoded_assumption }` instead of proper lookup
   - "Fallback to instance X" when proper mapping should exist
   - Any code that says "this is a temporary workaround"
+  - "Try instance 0 as fallback" or similar guessing logic
+- **SPEC COMPLIANCE ONLY**: NEVER add fallback behavior that is not part of the WebAssembly or WebAssembly Component Model specification. If the spec says something must exist (like `_start` for command components), then it MUST exist - don't guess or substitute. Fallbacks create a false sense of progress and mask real implementation gaps.
 - **FAIL LOUD AND EARLY**: If data is missing or incorrect, return an error immediately. Don't silently substitute defaults or guess values.
 - **USE TRACING FRAMEWORK**: Always use the wrt_foundation::tracing framework for logging and debugging instead of eprintln! or println!. The tracing framework provides:
   - Structured logging with spans for context (ModuleTrace, ImportTrace, ExecutionTrace, MemoryTrace, etc.)

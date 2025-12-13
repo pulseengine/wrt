@@ -133,7 +133,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
             imports: wrt_foundation::bounded_collections::BoundedMap::new(provider.clone()).expect("Failed to create imports"),
             import_order: Vec::new(),
             functions: Vec::new(),
-            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create tables"),
+            tables: Vec::new(),
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone()).expect("Failed to create globals"),
             elements: Vec::new(),
@@ -399,6 +399,9 @@ impl ModuleBuilder {
             #[cfg(not(feature = "std"))]
             import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
+            #[cfg(feature = "std")]
+            tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,

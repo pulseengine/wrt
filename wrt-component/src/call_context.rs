@@ -1114,7 +1114,7 @@ impl ParameterMarshaler {
     /// Create a new parameter marshaler
     pub fn new(config: MarshalingConfig) -> Self {
         Self {
-            abi: CanonicalABI::new(64),
+            abi: CanonicalABI::new(),
             config,
             #[cfg(feature = "std")]
             type_cache: std::collections::HashMap::new(),

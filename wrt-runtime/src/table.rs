@@ -49,6 +49,12 @@ use crate::prelude::{
     TryFrom,
 };
 
+// Sync primitives for interior mutability
+#[cfg(feature = "std")]
+use std::sync::Mutex;
+#[cfg(not(feature = "std"))]
+use wrt_sync::WrtMutex as Mutex;
+
 /// Invalid index error code
 const INVALID_INDEX: u16 = 4004;
 /// Index too large error code  
@@ -86,39 +92,69 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
     })
 }
 
+/// Type alias for the inner elements storage
+type TableElements = wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider>;
+
 /// A WebAssembly table is a vector of opaque values of a single type.
-#[derive(Debug)]
+/// Uses interior mutability (Mutex) for thread-safe element access.
 pub struct Table {
     /// The table type, using the canonical `WrtTableType`
     pub ty:                 WrtTableType,
-    /// The table elements
-    elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider>,
+    /// The table elements - wrapped in Mutex for interior mutability
+    /// This allows setting elements through Arc<Table> references
+    #[cfg(feature = "std")]
+    elements: Mutex<TableElements>,
+    #[cfg(not(feature = "std"))]
+    elements: Mutex<TableElements>,
     /// A debug name for the table (optional)
     pub debug_name:         Option<RuntimeString>,
     /// Verification level for table operations
     pub verification_level: VerificationLevel,
 }
 
+impl Debug for Table {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        #[cfg(feature = "std")]
+        let elements_len = self.elements.lock().map(|e| e.len()).unwrap_or(0);
+        #[cfg(not(feature = "std"))]
+        let elements_len = self.elements.lock().len();
+
+        f.debug_struct("Table")
+            .field("ty", &self.ty)
+            .field("elements_len", &elements_len)
+            .field("debug_name", &self.debug_name)
+            .field("verification_level", &self.verification_level)
+            .finish()
+    }
+}
+
 impl Clone for Table {
     fn clone(&self) -> Self {
-        let mut new_elements: wrt_foundation::bounded::BoundedVec<
-            Option<WrtValue>,
-            1024,
-            TableProvider,
-        > = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
-        // Note: BoundedVec doesn't have set_verification_level method
-        for i in 0..self.elements.len() {
+        let mut new_elements: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+
+        // Lock the source elements for reading
+        #[cfg(feature = "std")]
+        let source_elements = self.elements.lock().unwrap();
+        #[cfg(not(feature = "std"))]
+        let source_elements = self.elements.lock();
+
+        for i in 0..source_elements.len() {
             // Use BoundedVec get method for safe access
-            if let Ok(elem) = self.elements.get(i) {
+            if let Ok(elem) = source_elements.get(i) {
                 assert!(
                     new_elements.push(elem.clone()).is_ok(),
                     "Failed to clone table: out of memory"
                 );
             }
         }
+
         Self {
             ty:                 self.ty.clone(),
-            elements:           new_elements,
+            #[cfg(feature = "std")]
+            elements:           Mutex::new(new_elements),
+            #[cfg(not(feature = "std"))]
+            elements:           Mutex::new(new_elements),
             debug_name:         self.debug_name.clone(),
             verification_level: self.verification_level,
         }
@@ -133,14 +169,26 @@ impl PartialEq for Table {
         {
             return false;
         }
+
+        // Lock both tables for comparison
+        #[cfg(feature = "std")]
+        let self_elements = self.elements.lock().unwrap();
+        #[cfg(not(feature = "std"))]
+        let self_elements = self.elements.lock();
+
+        #[cfg(feature = "std")]
+        let other_elements = other.elements.lock().unwrap();
+        #[cfg(not(feature = "std"))]
+        let other_elements = other.elements.lock();
+
         // Compare elements manually since BoundedStack doesn't have to_vec()
-        if self.elements.len() != other.elements.len() {
+        if self_elements.len() != other_elements.len() {
             return false;
         }
-        for i in 0..self.elements.len() {
+        for i in 0..self_elements.len() {
             // Use get() method instead of direct indexing for BoundedVec
-            let self_elem = self.elements.get(i).unwrap();
-            let other_elem = other.elements.get(i).unwrap();
+            let self_elem = self_elements.get(i).unwrap();
+            let other_elem = other_elements.get(i).unwrap();
             if self_elem != other_elem {
                 return false;
             }
@@ -243,20 +291,32 @@ impl Table {
         };
 
         let initial_size = wasm_index_to_usize(ty.limits.min)?;
-        let mut elements: wrt_foundation::bounded::BoundedVec<
-            Option<WrtValue>,
-            1024,
-            TableProvider,
-        > = wrt_foundation::bounded::BoundedVec::new(TableProvider::default())?;
+
+        #[cfg(feature = "std")]
+        eprintln!("[Table::new] Creating BoundedVec with capacity 1024 for {} elements", initial_size);
+
+        let mut elements: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).map_err(|e| {
+                #[cfg(feature = "std")]
+                eprintln!("[Table::new] BoundedVec::new failed: {:?}", e);
+                e
+            })?;
         // Note: BoundedVec doesn't have set_verification_level method
 
-        for _ in 0..initial_size {
-            elements.push(init_val.clone())?;
+        #[cfg(feature = "std")]
+        eprintln!("[Table::new] BoundedVec created, now pushing {} elements", initial_size);
+
+        for i in 0..initial_size {
+            if let Err(e) = elements.push(init_val.clone()) {
+                #[cfg(feature = "std")]
+                eprintln!("[Table::new] Failed to push element {}: {:?}", i, e);
+                return Err(e.into());
+            }
         }
 
         Ok(Self {
             ty,
-            elements,
+            elements: Mutex::new(elements),
             verification_level: VerificationLevel::default(),
             debug_name: None,
         })
@@ -294,7 +354,11 @@ impl Table {
     /// The current size of the table
     #[must_use]
     pub fn size(&self) -> u32 {
-        usize_to_wasm_u32(self.elements.len()).unwrap_or(0)
+        #[cfg(feature = "std")]
+        let len = self.elements.lock().map(|e| e.len()).unwrap_or(0);
+        #[cfg(not(feature = "std"))]
+        let len = self.elements.lock().len();
+        usize_to_wasm_u32(len).unwrap_or(0)
     }
 
     /// Gets an element from the table
@@ -311,8 +375,15 @@ impl Table {
     ///
     /// Returns an error if the index is out of bounds
     pub fn get(&self, idx: u32) -> Result<Option<WrtValue>> {
-        let idx = wasm_index_to_usize(idx)?;
-        if idx >= self.elements.len() {
+        let idx_usize = wasm_index_to_usize(idx)?;
+
+        #[cfg(feature = "std")]
+        let elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let elements = self.elements.lock();
+
+        if idx_usize >= elements.len() {
             return Err(Error::invalid_function_index("Table access out of bounds"));
         }
 
@@ -320,7 +391,7 @@ impl Table {
         if self.verification_level.should_verify(128) {
             // Verify table integrity - this is a simplified version
             // In a real implementation, we would do more thorough checks
-            if idx >= self.elements.len() {
+            if idx_usize >= elements.len() {
                 return Err(Error::validation_error(
                     "Table integrity check failed: index out of bounds",
                 ));
@@ -328,8 +399,8 @@ impl Table {
         }
 
         // Use BoundedVec's get method for direct access
-        self.elements
-            .get(idx as usize)
+        elements
+            .get(idx_usize)
             .map_err(|_| Error::invalid_function_index("Table index out of bounds"))
     }
 
@@ -349,8 +420,15 @@ impl Table {
     /// Returns an error if the index is out of bounds or if the value type
     /// doesn't match the table element type
     pub fn set(&mut self, idx: u32, value: Option<WrtValue>) -> Result<()> {
-        let idx = wasm_index_to_usize(idx)?;
-        if idx >= self.elements.len() {
+        let idx_usize = wasm_index_to_usize(idx)?;
+
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        if idx_usize >= elements.len() {
             return Err(Error::invalid_function_index("Table access out of bounds"));
         }
 
@@ -362,7 +440,49 @@ impl Table {
                 ));
             }
         }
-        self.elements.set(idx, value)?;
+        elements.set(idx_usize, value)?;
+        Ok(())
+    }
+
+    /// Sets an element at the specified index through a shared reference.
+    /// This method provides interior mutability for use when the table is
+    /// wrapped in an Arc.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index to set
+    /// * `value` - The value to set
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the set was successful
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index is out of bounds or if the value type
+    /// doesn't match the table element type
+    pub fn set_shared(&self, idx: u32, value: Option<WrtValue>) -> Result<()> {
+        let idx_usize = wasm_index_to_usize(idx)?;
+
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        if idx_usize >= elements.len() {
+            return Err(Error::invalid_function_index("Table access out of bounds"));
+        }
+
+        if let Some(ref val) = value {
+            let val_matches = matches!((&val, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
+            if !val_matches {
+                return Err(Error::validation_error(
+                    "Element value type doesn't match table element type",
+                ));
+            }
+        }
+        elements.set(idx_usize, value)?;
         Ok(())
     }
 
@@ -405,9 +525,15 @@ impl Table {
             }
         }
 
-        // Use SafeStack's grow method or manually push
+        // Lock elements and push new values
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
         for _ in 0..delta {
-            self.elements.push(Some(init_value_from_arg.clone()))?;
+            elements.push(Some(init_value_from_arg.clone()))?;
         }
         // Update the min limit in the table type if it changes due to growth (spec is a
         // bit unclear if ty should reflect current size) For now, ty.limits.min
@@ -458,7 +584,13 @@ impl Table {
     ///
     /// Returns an error if the operation fails
     pub fn init(&mut self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
-        if offset as usize + init_data.len() > self.elements.len() {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        if offset as usize + init_data.len() > elements.len() {
             return Err(Error::runtime_out_of_bounds(
                 "Table initialization out of bounds",
             ));
@@ -470,15 +602,21 @@ impl Table {
                     return Err(Error::validation_error("Table init value type mismatch"));
                 }
             }
-            self.elements.set((offset as usize) + i, val_opt.clone())?;
+            elements.set((offset as usize) + i, val_opt.clone())?;
         }
         Ok(())
     }
 
     /// Copy elements from one region of a table to another
     pub fn copy_elements(&mut self, dst: usize, src: usize, len: usize) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
         // Verify bounds
-        if src + len > self.elements.len() || dst + len > self.elements.len() {
+        if src + len > elements.len() || dst + len > elements.len() {
             return Err(Error::runtime_error("Runtime operation error"));
         }
 
@@ -488,39 +626,33 @@ impl Table {
         }
 
         // Create temporary stack to store elements during copy
-        let mut temp_vec: wrt_foundation::bounded::BoundedVec<
-            Option<WrtValue>,
-            1024,
-            TableProvider,
-        > = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+        let mut temp_vec: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: verification level handled by provider
 
         // Read source elements into temporary stack
         for i in 0..len {
-            temp_vec.push(self.elements.get(src + i)?)?;
+            temp_vec.push(elements.get(src + i)?)?;
         }
 
         // Create a new stack for the full result
-        let mut result_vec: wrt_foundation::bounded::BoundedVec<
-            Option<WrtValue>,
-            1024,
-            TableProvider,
-        > = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+        let mut result_vec: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: verification level handled by provider
 
         // Copy elements with the updated values
-        for i in 0..self.elements.len() {
+        for i in 0..elements.len() {
             if i >= dst && i < dst + len {
                 // This is in the destination range, use value from temp_vec
                 result_vec.push(temp_vec.get(i - dst)?)?;
             } else {
                 // Outside destination range, use original value
-                result_vec.push(self.elements.get(i)?)?;
+                result_vec.push(elements.get(i)?)?;
             }
         }
 
         // Replace the elements stack
-        self.elements = result_vec;
+        *elements = result_vec;
 
         Ok(())
     }
@@ -532,8 +664,14 @@ impl Table {
         value: Option<WrtValue>,
         len: usize,
     ) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
         // Verify bounds
-        if offset + len > self.elements.len() {
+        if offset + len > elements.len() {
             return Err(Error::runtime_error("Runtime operation error"));
         }
 
@@ -543,22 +681,22 @@ impl Table {
         }
 
         // Create a new stack with the filled elements
-        let mut result_vec =
+        let mut result_vec: TableElements =
             wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
 
         // Copy elements with fill applied
-        for i in 0..self.elements.len() {
+        for i in 0..elements.len() {
             if i >= offset && i < offset + len {
                 // This is in the fill range
                 result_vec.push(value.clone())?;
             } else {
                 // Outside fill range, use original value
-                result_vec.push(self.elements.get(i)?)?;
+                result_vec.push(elements.get(i)?)?;
             }
         }
 
         // Replace the elements stack
-        self.elements = result_vec;
+        *elements = result_vec;
 
         Ok(())
     }
@@ -586,30 +724,19 @@ impl Table {
 
     /// Sets an element at the given index.
     pub fn init_element(&mut self, idx: usize, value: Option<WrtValue>) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
         // Check bounds
-        if idx >= self.elements.len() {
+        if idx >= elements.len() {
             return Err(Error::invalid_function_index("Runtime operation error"));
         }
 
-        // Set the element directly without converting to/from Vec
-        self.elements.get(idx)?; // Verify access is valid
-
-        // Create temporary stack to hold all elements
-        let mut temp_vec =
-            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
-        // Note: verification level handled by provider
-
-        // Copy elements, replacing the one at idx
-        for i in 0..self.elements.len() {
-            if i == idx {
-                temp_vec.push(value.clone())?;
-            } else {
-                temp_vec.push(self.elements.get(i)?)?;
-            }
-        }
-
-        // Replace the old stack with the new one
-        self.elements = temp_vec;
+        // Set the element directly using BoundedVec's set method
+        elements.set(idx, value)?;
 
         Ok(())
     }

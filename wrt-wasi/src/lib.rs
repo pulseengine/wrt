@@ -98,6 +98,22 @@ pub const fn wasi_max_allocation_size() -> usize {
 #[cfg(feature = "std")]
 pub mod component_values;
 pub mod value_compat;
+
+// Unified WASI dispatcher
+#[cfg(feature = "preview2")]
+pub mod dispatcher;
+#[cfg(feature = "preview2")]
+pub use dispatcher::WasiDispatcher;
+// Re-export types for two-phase dispatch protocol
+#[cfg(feature = "preview2")]
+pub use dispatcher::{AllocationRequest, DispatchResult};
+// Re-export global args/env functions for use by wrtd
+#[cfg(all(feature = "preview2", feature = "std"))]
+pub use dispatcher::{
+    set_global_wasi_args,
+    get_global_wasi_args,
+    set_global_wasi_env,
+};
 // Capability-aware value system
 pub mod value_capability_aware;
 

@@ -406,7 +406,69 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process table section
     fn process_table_section(&mut self, data: &[u8]) -> Result<()> {
-        // Parse tables one at a time
+        use wrt_format::binary::read_leb128_u32;
+        use wrt_foundation::types::{Limits, RefType, TableType};
+
+        let mut offset = 0;
+        let (count, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+
+        #[cfg(feature = "std")]
+        eprintln!("[TABLE_SECTION] Processing {} tables", count);
+
+        // Process each table one at a time
+        for i in 0..count {
+            // Parse ref_type (element type)
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of table section"));
+            }
+            let ref_type_byte = data[offset];
+            offset += 1;
+
+            let element_type = match ref_type_byte {
+                0x70 => RefType::Funcref,   // funcref
+                0x6F => RefType::Externref, // externref
+                _ => {
+                    return Err(Error::parse_error("Unknown table element type"));
+                }
+            };
+
+            // Parse limits (flags + min, optional max)
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of table limits"));
+            }
+            let flags = data[offset];
+            offset += 1;
+
+            let (min, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            let max = if flags & 0x01 != 0 {
+                let (max_val, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+                Some(max_val)
+            } else {
+                None
+            };
+
+            #[cfg(feature = "std")]
+            eprintln!(
+                "[TABLE_SECTION] Table {}: type={:?}, min={}, max={:?}",
+                i, element_type, min, max
+            );
+
+            // Create table type and add to module
+            let table_type = TableType::new(element_type, Limits { min, max });
+            self.module.tables.push(table_type);
+
+            #[cfg(feature = "std")]
+            eprintln!(
+                "[TABLE_SECTION] Added table {}, total tables: {}",
+                i,
+                self.module.tables.len()
+            );
+        }
+
         Ok(())
     }
 
@@ -511,22 +573,66 @@ impl<'a> StreamingDecoder<'a> {
             let mutable = data[offset] == 0x01;
             offset += 1;
 
-            // Parse init expression - store raw bytes from start to 0x0b end marker
-            // For now, just scan until we find 0x0b at the start of a "line"
-            // A proper implementation would parse the instruction stream
+            // Parse init expression - must properly parse opcodes and their arguments
+            // Cannot just scan for 0x0b because it can appear as a value (e.g., i32.const 11)
             let init_start = offset;
 
-            // Simple scan: just find the first 0x0b
-            // This works for simple init expressions like i32.const
-            while offset < data.len() && data[offset] != 0x0b {
-                offset += 1;
-            }
+            // Parse init expression by understanding opcodes
+            loop {
+                if offset >= data.len() {
+                    return Err(Error::parse_error("Init expression missing end marker"));
+                }
 
-            // Include the 0x0b end marker
-            if offset < data.len() {
+                let opcode = data[offset];
                 offset += 1;
-            } else {
-                return Err(Error::parse_error("Init expression missing end marker"));
+
+                match opcode {
+                    0x0b => {
+                        // End marker - we're done
+                        break;
+                    }
+                    0x41 => {
+                        // i32.const - followed by LEB128 i32
+                        let (_, bytes_read) = wrt_format::binary::read_leb128_i32(data, offset)?;
+                        offset += bytes_read;
+                    }
+                    0x42 => {
+                        // i64.const - followed by LEB128 i64
+                        let (_, bytes_read) = wrt_format::binary::read_leb128_i64(data, offset)?;
+                        offset += bytes_read;
+                    }
+                    0x43 => {
+                        // f32.const - followed by 4 bytes
+                        offset += 4;
+                    }
+                    0x44 => {
+                        // f64.const - followed by 8 bytes
+                        offset += 8;
+                    }
+                    0x23 => {
+                        // global.get - followed by LEB128 global index
+                        let (_, bytes_read) = wrt_format::binary::read_leb128_u32(data, offset)?;
+                        offset += bytes_read;
+                    }
+                    0xd0 => {
+                        // ref.null - followed by heap type (single byte for common types)
+                        if offset < data.len() {
+                            offset += 1; // Skip the heap type byte
+                        }
+                    }
+                    0xd2 => {
+                        // ref.func - followed by LEB128 func index
+                        let (_, bytes_read) = wrt_format::binary::read_leb128_u32(data, offset)?;
+                        offset += bytes_read;
+                    }
+                    _ => {
+                        // Unknown opcode in init expression - skip to find 0x0b
+                        // This is a fallback for any opcodes we don't handle
+                        #[cfg(feature = "std")]
+                        eprintln!("DEBUG global: unknown init opcode 0x{:02x} at offset {}", opcode, offset - 1);
+                        // Continue to next byte
+                    }
+                }
             }
 
             // Extract init expression bytes (including the 0x0b end marker)

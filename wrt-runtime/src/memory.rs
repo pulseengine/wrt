@@ -983,6 +983,12 @@ impl Memory {
             let data_guard = self.data.lock().unwrap();
             let safe_slice = data_guard.get_slice(offset_usize, size)?;
             buffer.copy_from_slice(safe_slice.data()?);
+            // DEBUG: Track reads from allocator region
+            if offset_usize >= 0x1074a0 && offset_usize <= 0x1074b0 && size >= 4 {
+                let val = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
+                let mutex_ptr = &*self.data as *const _;
+                eprintln!("[MEM-READ-RAW] offset={:#x}, value={:#x}, mutex={:p}", offset_usize, val, mutex_ptr);
+            }
         }
         #[cfg(not(feature = "std"))]
         {

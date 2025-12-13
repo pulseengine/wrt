@@ -457,6 +457,43 @@ impl CapabilityAwareEngine {
         // - Random number generation
         Ok(())
     }
+
+    /// Pre-allocate memory for WASI arguments using cabi_realloc
+    ///
+    /// This should be called before executing a component to allocate memory
+    /// for WASI argument strings. The allocated pointers will be stored in the
+    /// WASI dispatcher and used when get-arguments is called.
+    ///
+    /// # Arguments
+    /// * `instance_handle` - The instance handle to allocate memory in
+    ///
+    /// # Returns
+    /// Ok(()) if successful or not needed, Err if allocation fails
+    #[cfg(feature = "wasi")]
+    pub fn pre_allocate_wasi_args(&mut self, instance_handle: InstanceHandle) -> Result<()> {
+        // Get the instance index from the handle
+        let instance_idx = self.handle_to_idx.get(&instance_handle)
+            .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
+
+        // Call the inner engine's pre-allocation
+        self.inner.pre_allocate_wasi_args(*instance_idx)
+    }
+
+    /// Set WASI command-line arguments
+    ///
+    /// These arguments will be returned by `wasi:cli/environment::get-arguments`
+    #[cfg(feature = "wasi")]
+    pub fn set_wasi_args(&mut self, args: Vec<String>) {
+        self.inner.set_wasi_args(args);
+    }
+
+    /// Set WASI environment variables
+    ///
+    /// These will be returned by `wasi:cli/environment::get-environment`
+    #[cfg(feature = "wasi")]
+    pub fn set_wasi_env(&mut self, env_vars: Vec<(String, String)>) {
+        self.inner.set_wasi_env(env_vars);
+    }
 }
 
 impl CapabilityEngine for CapabilityAwareEngine {
@@ -478,10 +515,16 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // This would integrate with the fuel async executor to enforce limits
 
         // Decode the module using wrt-decoder (Box to avoid stack overflow)
+        #[cfg(feature = "std")]
+        eprintln!("[LOAD_MODULE] Decoding module of {} bytes...", binary.len());
         let decoded = Box::new(decode_module(binary)?);
+        #[cfg(feature = "std")]
+        eprintln!("[LOAD_MODULE] Decode successful, converting to runtime module...");
 
         // Convert to runtime module (pass by reference, returns Box<Module>)
         let runtime_module = Module::from_wrt_module(&*decoded)?;
+        #[cfg(feature = "std")]
+        eprintln!("[LOAD_MODULE] Conversion successful");
 
         #[cfg(feature = "std")]
         {
@@ -549,12 +592,25 @@ impl CapabilityEngine for CapabilityAwareEngine {
         debug!("Populating memories from module...");
         instance.populate_memories_from_module()?;
 
+        // Copy tables from module to instance (critical for call_indirect!)
+        #[cfg(feature = "tracing")]
+        debug!("Populating tables from module...");
+        instance.populate_tables_from_module()?;
+
         // Initialize data segments into instance memory (critical for static data!)
         #[cfg(feature = "std")]
         {
             #[cfg(feature = "tracing")]
             debug!("Initializing data segments...");
             instance.initialize_data_segments()?;
+        }
+
+        // Initialize element segments into tables (critical for call_indirect!)
+        #[cfg(feature = "std")]
+        {
+            #[cfg(feature = "tracing")]
+            debug!("Initializing element segments...");
+            instance.initialize_element_segments()?;
         }
 
         // Apply import links if any exist for this module

@@ -103,22 +103,22 @@ pub const MAX_PARAMS_IN_FUNC_TYPE: usize = 128;
 pub const MAX_RESULTS_IN_FUNC_TYPE: usize = 128;
 // Add other MAX constants as they become necessary, e.g. for Instructions,
 // Module fields etc. For BrTable in Instruction:
-pub const MAX_BR_TABLE_TARGETS: usize = 256;
+pub const MAX_BR_TABLE_TARGETS: usize = 1024;
 // For SelectTyped in Instruction: (WASM MVP select is 1 type, or untyped)
 pub const MAX_SELECT_TYPES: usize = 1;
 
 // Constants for Module structure limits
-pub const MAX_TYPES_IN_MODULE: usize = 1024;
-pub const MAX_FUNCS_IN_MODULE: usize = 1024; // Max functions (imports + defined)
-pub const MAX_IMPORTS_IN_MODULE: usize = 1024;
-pub const MAX_EXPORTS_IN_MODULE: usize = 1024;
+pub const MAX_TYPES_IN_MODULE: usize = 16384;
+pub const MAX_FUNCS_IN_MODULE: usize = 16384; // Max functions (imports + defined)
+pub const MAX_IMPORTS_IN_MODULE: usize = 4096;
+pub const MAX_EXPORTS_IN_MODULE: usize = 4096;
 pub const MAX_TABLES_IN_MODULE: usize = 16;
 pub const MAX_MEMORIES_IN_MODULE: usize = 16;
 pub const MAX_GLOBALS_IN_MODULE: usize = 1024;
 pub const MAX_ELEMENT_SEGMENTS_IN_MODULE: usize = 1024;
 pub const MAX_DATA_SEGMENTS_IN_MODULE: usize = 1024;
-pub const MAX_LOCALS_PER_FUNCTION: usize = 512; // Max local entries per function
-pub const MAX_INSTRUCTIONS_PER_FUNCTION: usize = 8192; // Max instructions in a function body/expr
+pub const MAX_LOCALS_PER_FUNCTION: usize = 2048; // Max local entries per function
+pub const MAX_INSTRUCTIONS_PER_FUNCTION: usize = 65536; // Max instructions in a function body/expr
 pub const MAX_ELEMENT_INDICES_PER_SEGMENT: usize = 8192; // Max func indices in an element segment
 pub const MAX_DATA_SEGMENT_LENGTH: usize = 65_536; // Max bytes in a data segment (active/passive)
 pub const MAX_TAGS_IN_MODULE: usize = 1024;

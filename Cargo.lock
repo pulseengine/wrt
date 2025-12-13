@@ -3721,6 +3721,7 @@ dependencies = [
  "wrt-intercept",
  "wrt-platform",
  "wrt-sync",
+ "wrt-wasi",
 ]
 
 [[package]]

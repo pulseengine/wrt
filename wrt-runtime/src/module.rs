@@ -119,7 +119,7 @@ type BoundedExportName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedImportName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedModuleName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedLocalsVec = wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 64, RuntimeProvider>;
-type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 1024, RuntimeProvider>;
+type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 4096, RuntimeProvider>;
 // Data init storage: Vec in std mode for large segments, BoundedVec in no_std
 #[cfg(feature = "std")]
 type BoundedDataInit = Vec<u8>;
@@ -680,6 +680,10 @@ pub struct Module {
     #[cfg(not(feature = "std"))]
     pub functions:       BoundedFunctionVec,
     /// Table instances
+    /// In std mode, use Vec to avoid deserialization issues with Arc<Table>
+    #[cfg(feature = "std")]
+    pub tables:          Vec<TableWrapper>,
+    #[cfg(not(feature = "std"))]
     pub tables:          BoundedTableVec,
     /// Memory instances
     /// In std mode, use Vec to avoid deserialization on every access
@@ -744,6 +748,9 @@ impl Module {
             #[cfg(not(feature = "std"))]
             import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
+            #[cfg(feature = "std")]
+            tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -780,7 +787,7 @@ impl Module {
             imports: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
             import_order: Vec::new(), // Ordered list of imports for index-based lookup
             functions: Vec::new(),
-            tables: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            tables: Vec::new(), // Vec in std mode to avoid serialization issues with Arc<Table>
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
             elements: Vec::new(), // Vec in std mode for variable-size Element items
@@ -1053,6 +1060,41 @@ impl Module {
             eprintln!("DEBUG: Successfully inserted export into map");
         }
 
+        // Convert tables - CRITICAL for call_indirect!
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} tables from wrt_module", wrt_module.tables.len());
+        for (idx, table_type) in wrt_module.tables.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Creating table with type: {:?}", idx, table_type);
+
+            // Create runtime table from the table type
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Calling Table::new...", idx);
+            let table = match Table::new(table_type.clone()) {
+                Ok(t) => t,
+                Err(e) => {
+                    #[cfg(feature = "std")]
+                    eprintln!("DEBUG: [Table {}] Table::new failed: {:?}", idx, e);
+                    return Err(e);
+                }
+            };
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Table::new succeeded, creating wrapper...", idx);
+            let wrapper = TableWrapper::new(table);
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Pushing to runtime_module.tables...", idx);
+            #[cfg(feature = "std")]
+            runtime_module.tables.push(wrapper);
+            #[cfg(not(feature = "std"))]
+            runtime_module.tables.push(wrapper)?;
+
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Successfully added to runtime_module.tables, len={}",
+                     idx, runtime_module.tables.len());
+        }
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Tables converted, runtime_module.tables.len()={}", runtime_module.tables.len());
+
         // Convert memories - NOW ENABLED (stack overflow fixed)
         #[cfg(feature = "std")]
         eprintln!("DEBUG: Converting {} memories from wrt_module", wrt_module.memories.len());
@@ -1074,20 +1116,28 @@ impl Module {
             #[cfg(feature = "std")]
             eprintln!("DEBUG: [Memory {}] Memory::new() succeeded, about to create MemoryWrapper...", mem_idx);
 
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] About to create MemoryWrapper from Box<Memory>", mem_idx);
             let wrapper = MemoryWrapper::new(memory_instance);
 
             #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] MemoryWrapper created, about to push to runtime_module.memories...", mem_idx);
+            eprintln!("DEBUG: [Memory {}] MemoryWrapper created successfully, about to push to runtime_module.memories...", mem_idx);
 
             runtime_module.push_memory(wrapper)?;
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Memory {}] push_memory completed", mem_idx);
 
             #[cfg(feature = "std")]
             eprintln!("DEBUG: [Memory {}] Successfully pushed to runtime_module.memories", mem_idx);
         }
 
         // Convert globals - NOW ENABLED (stack overflow fixed)
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} globals from wrt_module", wrt_module.globals.len());
         debug!("Converting {} globals from wrt_module", wrt_module.globals.len());
         for (global_idx, global) in wrt_module.globals.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Global {}] Processing...", global_idx);
             // Parse the init expression to get the actual initial value
             // The init expression is typically a simple constant instruction like i32.const
             let init_bytes = global.init.as_slice();
@@ -1168,8 +1218,12 @@ impl Module {
         }
 
         // Convert data segments - CRITICAL for memory initialization!
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} data segments from wrt_module", wrt_module.data.len());
         debug!("Converting {} data segments from wrt_module", wrt_module.data.len());
         for (data_idx, data_seg) in wrt_module.data.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Data {}] Processing data segment...", data_idx);
             // Convert PureDataSegment to runtime Data
             use wrt_format::pure_format_types::PureDataMode;
 
@@ -1307,7 +1361,7 @@ impl Module {
 
             // Extract function indices from element init data
             let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
-            let mut items = wrt_foundation::bounded::BoundedVec::<u32, 1024, RuntimeProvider>::new(provider)?;
+            let mut items = BoundedElementItems::new(provider)?;
 
             match &elem_seg.init_data {
                 PureElementInit::FunctionIndices(func_indices) => {
@@ -1521,9 +1575,19 @@ impl Module {
         }
 
         // Convert tables
-        for table in &wrt_module.tables {
-            runtime_module.tables.push(TableWrapper::new(Table::new(table.clone())?))?;
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Converting {} tables from wrt_module", wrt_module.tables.len());
+        for (idx, table) in wrt_module.tables.iter().enumerate() {
+            #[cfg(feature = "std")]
+            eprintln!("DEBUG: [Table {}] Creating table with type: {:?}", idx, table);
+            let wrapper = TableWrapper::new(Table::new(table.clone())?);
+            #[cfg(feature = "std")]
+            runtime_module.tables.push(wrapper);
+            #[cfg(not(feature = "std"))]
+            runtime_module.tables.push(wrapper)?;
         }
+        #[cfg(feature = "std")]
+        eprintln!("DEBUG: Tables converted, runtime_module.tables.len()={}", runtime_module.tables.len());
 
         // Convert memories
         for memory in &wrt_module.memories {
@@ -1751,7 +1815,11 @@ impl Module {
             // For now, runtime tables are created empty and populated by element segments
             // or host. This assumes runtime::table::Table::new can take
             // WrtTableType.
-            runtime_module.tables.push(TableWrapper::new(Table::new(table_def.clone())?))?;
+            let wrapper = TableWrapper::new(Table::new(table_def.clone())?);
+            #[cfg(feature = "std")]
+            runtime_module.tables.push(wrapper);
+            #[cfg(not(feature = "std"))]
+            runtime_module.tables.push(wrapper)?;
         }
 
         for memory_def in &wrt_module.memories {
@@ -1934,9 +2002,19 @@ impl Module {
 
     /// Gets a table by index
     pub fn get_table(&self, idx: usize) -> Result<TableWrapper> {
-        self.tables
-            .get(idx)
-            .map_err(|_| Error::runtime_execution_error("Table index out of bounds"))
+        #[cfg(feature = "std")]
+        {
+            self.tables
+                .get(idx)
+                .cloned()
+                .ok_or_else(|| Error::runtime_execution_error("Table index out of bounds"))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.tables
+                .get(idx)
+                .map_err(|_| Error::runtime_execution_error("Table index out of bounds"))
+        }
     }
 
     /// Adds a function export
@@ -2286,7 +2364,11 @@ impl Module {
 
     /// Add a table to the module
     pub fn add_table(&mut self, table_type: WrtTableType) -> Result<()> {
-        self.tables.push(TableWrapper::new(Table::new(table_type)?))?;
+        let wrapper = TableWrapper::new(Table::new(table_type)?);
+        #[cfg(feature = "std")]
+        self.tables.push(wrapper);
+        #[cfg(not(feature = "std"))]
+        self.tables.push(wrapper)?;
         Ok(())
     }
 
@@ -2803,6 +2885,9 @@ impl Module {
             #[cfg(not(feature = "std"))]
             import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
+            #[cfg(feature = "std")]
+            tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -3218,6 +3303,9 @@ impl wrt_foundation::traits::FromBytes for Module {
             #[cfg(not(feature = "std"))]
             import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
+            #[cfg(feature = "std")]
+            tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,

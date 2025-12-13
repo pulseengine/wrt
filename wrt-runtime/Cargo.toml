@@ -24,6 +24,7 @@ wrt-host = { workspace = true, default-features = false, optional = true }
 wrt-intercept = { workspace = true, default-features = false }
 wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-debug = { workspace = true, default-features = false, optional = true }
+wrt-wasi = { workspace = true, default-features = false, optional = true }
 
 # No-std support (removed invalid alloc dependency)
 
@@ -47,6 +48,9 @@ std = [
 
 # Tracing support for debugging complex execution flows
 tracing = ["wrt-foundation/tracing"]
+
+# WASI support - uses wrt-wasi for WASI host function implementations
+wasi = ["std", "dep:wrt-wasi", "wrt-wasi?/std", "wrt-wasi?/preview2", "wrt-wasi?/wasi-clocks", "wrt-wasi?/wasi-io", "wrt-wasi?/wasi-cli"]
 
 # Allocation support for no_std environments (DEPRECATED - use bounded-allocation instead)
 alloc = [

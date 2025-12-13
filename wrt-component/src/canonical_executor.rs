@@ -5,6 +5,9 @@
 
 extern crate alloc;
 
+#[cfg(feature = "std")]
+use std::eprintln;
+
 use crate::bounded_component_infra::ComponentProvider;
 use crate::canonical_abi::ComponentValue;
 use wrt_error::{Error, Result};
@@ -12,6 +15,12 @@ use wrt_runtime::wasip2_host::Wasip2Host;
 use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
 use alloc::vec::Vec;
 use alloc::string::String;
+
+// Provide a no-op eprintln! for no_std
+#[cfg(not(feature = "std"))]
+macro_rules! eprintln {
+    ($($arg:tt)*) => {};
+}
 
 /// Canonical function types
 #[derive(Debug, Clone)]

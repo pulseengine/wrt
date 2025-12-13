@@ -494,6 +494,49 @@ impl ModuleInstance {
         Ok(())
     }
 
+    /// Populate tables from the module into this instance
+    /// This copies all table instances from the module definition to the instance
+    pub fn populate_tables_from_module(&self) -> Result<()> {
+        use wrt_foundation::tracing::{debug, info};
+
+        info!("Populating tables from module for instance {}", self.instance_id);
+
+        #[cfg(feature = "std")]
+        {
+            let mut tables = self
+                .tables
+                .lock()
+                .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+
+            // In std mode, module.tables is Vec so we can iterate directly
+            for (idx, table_wrapper) in self.module.tables.iter().enumerate() {
+                debug!("Copying table {} to instance (size={})", idx, table_wrapper.size());
+                tables.push(table_wrapper.clone());
+            }
+            info!("Populated {} tables for instance {}", self.module.tables.len(), self.instance_id);
+
+            #[cfg(feature = "std")]
+            eprintln!("[POPULATE_TABLES] Populated {} tables for instance {}",
+                     self.module.tables.len(), self.instance_id);
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            let mut tables = self.tables.lock();
+            for idx in 0..self.module.tables.len() {
+                if let Ok(table_wrapper) = self.module.tables.get(idx) {
+                    debug!("Copying table {} to instance", idx);
+                    tables
+                        .push(table_wrapper.clone())
+                        .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
+                }
+            }
+            info!("Populated tables for instance {}", self.instance_id);
+        }
+
+        Ok(())
+    }
+
     /// Initialize data segments into memory
     /// This copies the static data from data segments into the appropriate memory locations
     pub fn initialize_data_segments(&self) -> Result<()> {
@@ -591,6 +634,109 @@ impl ModuleInstance {
         }
 
         info!("Data segment initialization complete for instance {}", self.instance_id);
+        Ok(())
+    }
+
+    /// Initialize element segments into tables
+    /// This populates table entries from active element segments
+    pub fn initialize_element_segments(&self) -> Result<()> {
+        use wrt_foundation::tracing::{debug, info};
+        use wrt_foundation::types::ElementMode as WrtElementMode;
+        use wrt_foundation::values::{Value as WrtValue, FuncRef as WrtFuncRef};
+
+        info!("Initializing element segments for instance {} - module has {} element segments",
+              self.instance_id, self.module.elements.len());
+
+        #[cfg(feature = "std")]
+        eprintln!("[ELEM_INIT] Instance {} has {} element segments to initialize",
+                 self.instance_id, self.module.elements.len());
+
+        // Get access to tables
+        #[cfg(feature = "std")]
+        let tables = self.tables.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+        #[cfg(not(feature = "std"))]
+        let tables = self.tables.lock();
+
+        // Iterate through all element segments in the module
+        #[cfg(feature = "std")]
+        {
+            for (idx, elem_segment) in self.module.elements.iter().enumerate() {
+                debug!("Processing element segment {}", idx);
+                // Only process active element segments
+                if let WrtElementMode::Active { table_index, offset } = &elem_segment.mode {
+                    debug!("Processing active element segment {}: table={}, offset={}, items={}",
+                           idx, table_index, offset, elem_segment.items.len());
+
+                    #[cfg(feature = "std")]
+                    eprintln!("[ELEM_INIT] Active element segment {}: table={}, offset={}, {} items",
+                             idx, table_index, offset, elem_segment.items.len());
+
+                    // Get the table
+                    let table_idx = *table_index as usize;
+                    if table_idx >= tables.len() {
+                        return Err(Error::runtime_error("Element segment references invalid table index"));
+                    }
+
+                    let table_wrapper = &tables[table_idx];
+                    let table = table_wrapper.inner();
+
+                    // Set each function reference in the table
+                    for (item_idx, func_idx) in elem_segment.items.iter().enumerate() {
+                        let table_offset = *offset + item_idx as u32;
+                        let value = Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx })));
+
+                        // Use set_shared which provides interior mutability
+                        table.set_shared(table_offset, value)?;
+
+                        #[cfg(feature = "std")]
+                        if item_idx < 3 || item_idx == elem_segment.items.len() - 1 {
+                            eprintln!("[ELEM_INIT]   table[{}] = func {}", table_offset, func_idx);
+                        }
+                    }
+
+                    info!("Initialized element segment {} ({} items) into table {} at offset {}",
+                          idx, elem_segment.items.len(), table_index, offset);
+                } else {
+                    debug!("Skipping non-active element segment {}", idx);
+                }
+            }
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            for idx in 0..self.module.elements.len() {
+                if let Ok(elem_segment) = self.module.elements.get(idx) {
+                    debug!("Processing element segment {}", idx);
+                    if let WrtElementMode::Active { table_index, offset } = &elem_segment.mode {
+                        debug!("Processing active element segment {}", idx);
+
+                        let table_idx = *table_index as usize;
+                        if table_idx >= tables.len() {
+                            return Err(Error::runtime_error("Element segment references invalid table index"));
+                        }
+
+                        if let Ok(table_wrapper) = tables.get(table_idx) {
+                            let table = table_wrapper.inner();
+
+                            for item_idx in 0..elem_segment.items.len() {
+                                if let Ok(func_idx) = elem_segment.items.get(item_idx) {
+                                    let table_offset = *offset + item_idx as u32;
+                                    let value = Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx })));
+                                    table.set_shared(table_offset, value)?;
+                                }
+                            }
+                        }
+
+                        info!("Initialized element segment {}", idx);
+                    } else {
+                        debug!("Skipping non-active element segment {}", idx);
+                    }
+                }
+            }
+        }
+
+        info!("Element segment initialization complete for instance {}", self.instance_id);
         Ok(())
     }
 
@@ -823,9 +969,19 @@ impl Default for ModuleInstance {
 
 impl Clone for ModuleInstance {
     fn clone(&self) -> Self {
-        // Create a new instance with the same module and instance ID
-        Self::new(Arc::clone(&self.module), self.instance_id)
-            .expect("Failed to clone ModuleInstance - memory allocation failed")
+        // IMPORTANT: Clone must share the same memories/tables/globals via Arc
+        // A previous buggy implementation called Self::new() which creates fresh
+        // empty containers - this caused memory writes during cabi_realloc to be lost!
+        Self {
+            module: Arc::clone(&self.module),
+            memories: Arc::clone(&self.memories),
+            tables: Arc::clone(&self.tables),
+            globals: Arc::clone(&self.globals),
+            instance_id: self.instance_id,
+            imports: self.imports.clone(),
+            #[cfg(feature = "debug")]
+            debug_info: None, // Debug info is not cloned for simplicity
+        }
     }
 }
 
@@ -985,6 +1141,9 @@ impl FromBytes for ModuleInstance {
             #[cfg(not(feature = "std"))]
             import_order: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             functions: Vec::new(),
+            #[cfg(feature = "std")]
+            tables: Vec::new(),
+            #[cfg(not(feature = "std"))]
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
