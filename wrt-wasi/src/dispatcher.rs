@@ -644,9 +644,10 @@ impl WasiDispatcher {
                     return Err(Error::wasi_permission_denied("Stream write access denied"));
                 }
 
-                // Args: handle (i32), data_ptr (i32), data_len (i32)
+                // Args: handle (i32), data_ptr (i32), data_len (i32), retptr (i32)
+                // The retptr is where we write the result<_, stream-error>
                 if args.len() < 3 {
-                    return Err(Error::wasi_invalid_argument("blocking-write-and-flush requires 3 args"));
+                    return Err(Error::wasi_invalid_argument("blocking-write-and-flush requires 3+ args"));
                 }
 
                 let handle = match &args[0] {
@@ -664,13 +665,23 @@ impl WasiDispatcher {
                     _ => return Err(Error::wasi_invalid_argument("Invalid len type")),
                 };
 
+                // Get retptr if provided (4th argument)
+                let retptr = if args.len() >= 4 {
+                    match &args[3] {
+                        CoreValue::I32(p) => Some(*p as u32),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+
                 // Read data from memory
                 let mem = memory.ok_or_else(||
                     Error::wasi_capability_unavailable("Memory required for write"))?;
 
                 #[cfg(feature = "std")]
-                eprintln!("[WRITE-DISPATCH] handle={}, data_ptr=0x{:x}, data_len={}, mem_size={}",
-                         handle, data_ptr, data_len, mem.len());
+                eprintln!("[WRITE-DISPATCH] handle={}, data_ptr=0x{:x}, data_len={}, retptr={:?}, mem_size={}",
+                         handle, data_ptr, data_len, retptr, mem.len());
 
                 let start = data_ptr as usize;
                 let end = start + data_len as usize;
@@ -703,21 +714,52 @@ impl WasiDispatcher {
                         return Err(Error::wasi_invalid_fd("Invalid stream handle"));
                     };
 
+                    // Write result to retptr if provided
+                    // For result<_, stream-error>:
+                    //   discriminant 0 = ok (no payload)
+                    //   discriminant 1 = err (followed by error info)
+                    if let Some(rp) = retptr {
+                        let rp_idx = rp as usize;
+                        if rp_idx < mem.len() {
+                            match &result {
+                                Ok(()) => {
+                                    // Ok variant: discriminant = 0
+                                    mem[rp_idx] = 0;
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[WRITE-DISPATCH] Wrote Ok discriminant (0) to retptr 0x{:x}", rp);
+                                }
+                                Err(_) => {
+                                    // Err variant: discriminant = 1
+                                    // Note: stream-error payload would need more data, but for now just set discriminant
+                                    mem[rp_idx] = 1;
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[WRITE-DISPATCH] Wrote Err discriminant (1) to retptr 0x{:x}", rp);
+                                }
+                            }
+                        }
+                    }
+
                     match result {
                         Ok(()) => {
                             eprintln!("[WRITE-DISPATCH] Write succeeded!");
-                            Ok(vec![CoreValue::I32(0)]) // Success
+                            Ok(vec![]) // No stack return for functions with retptr
                         }
                         Err(e) => {
                             eprintln!("[WRITE-DISPATCH] Write failed: {:?}", e);
-                            Ok(vec![CoreValue::I32(1)]) // Error
+                            Ok(vec![]) // No stack return for functions with retptr
                         }
                     }
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    // In no_std, we can't write to stdout
-                    Ok(vec![CoreValue::I32(0)])
+                    // In no_std, we can't write to stdout, but still write Ok to retptr
+                    if let Some(rp) = retptr {
+                        let rp_idx = rp as usize;
+                        if rp_idx < mem.len() {
+                            mem[rp_idx] = 0; // Ok discriminant
+                        }
+                    }
+                    Ok(vec![])
                 }
             }
 

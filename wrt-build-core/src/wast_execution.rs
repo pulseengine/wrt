@@ -33,6 +33,8 @@ pub struct WastEngine {
     modules: HashMap<String, Module>,
     /// Current active module for execution
     current_module: Option<Module>,
+    /// Current instance ID for module execution
+    current_instance_id: Option<usize>,
 }
 
 impl WastEngine {
@@ -42,6 +44,7 @@ impl WastEngine {
             engine: StacklessEngine::new(),
             modules: HashMap::new(),
             current_module: None,
+            current_instance_id: None,
         })
     }
 
@@ -52,7 +55,7 @@ impl WastEngine {
 
         // Convert WrtModule to RuntimeModule
         let module =
-            Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?;
+            *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?;
 
         // Create a module instance from the module
         use std::sync::Arc;
@@ -64,10 +67,11 @@ impl WastEngine {
         );
 
         // Set the current module in the engine
-        let _instance_idx = self
+        let instance_idx = self
             .engine
             .set_current_module(module_instance)
             .context("Failed to set current module in engine")?;
+        self.current_instance_id = Some(instance_idx);
 
         // Store the module for later reference
         let module_name = name.unwrap_or("current").to_string();
@@ -82,24 +86,31 @@ impl WastEngine {
     /// Execute a function by name with the given arguments
     pub fn invoke_function(
         &mut self,
-        _module_name: Option<&str>,
+        module_name: Option<&str>,
         function_name: &str,
         args: &[Value],
     ) -> Result<Vec<Value>> {
-        // Get the current module
-        let module = self
-            .current_module
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
+        // Get the module - either the specified one or the current one
+        let module = if let Some(name) = module_name {
+            self.modules
+                .get(name)
+                .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?
+        } else {
+            self.current_module
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?
+        };
 
         // Find the exported function index
         let func_idx = self.find_export_function_index(module, function_name)?;
 
         // Execute the function using StacklessEngine
-        // Use instance index 0 since we only have one instance for now
+        let instance_id = self
+            .current_instance_id
+            .ok_or_else(|| anyhow::anyhow!("No module loaded - cannot execute function"))?;
         let results = self
             .engine
-            .execute(0, func_idx as usize, args.to_vec())
+            .execute(instance_id, func_idx as usize, args.to_vec())
             .context("Function execution failed")?;
 
         Ok(results)

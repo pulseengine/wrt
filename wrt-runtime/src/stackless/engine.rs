@@ -1200,6 +1200,13 @@ impl StacklessEngine {
                         #[cfg(feature = "std")]
                         eprintln!("[CALL_INDIRECT] Resolved to func_idx={}", func_idx);
 
+                        // Validate function index
+                        if func_idx >= module.functions.len() {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "call_indirect: function index out of bounds"
+                            ));
+                        }
+
                         // Get function type to determine parameter count
                         let func = &module.functions[func_idx];
                         let func_type = module.types.get(func.type_idx as usize)
@@ -1507,6 +1514,92 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
 
                             trace!("I64Mul: {} * {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    // I64 division and remainder operations
+                    Instruction::I64DivS => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            if b == 0 {
+                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                            }
+                            let result = a.wrapping_div(b);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64DivS: {} / {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64DivU => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            if b == 0 {
+                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                            }
+                            let result = (a as u64).wrapping_div(b as u64) as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64DivU: {} / {} = {}", a as u64, b as u64, result as u64);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64RemS => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            if b == 0 {
+                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                            }
+                            let result = a.wrapping_rem(b);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64RemS: {} % {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64RemU => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            if b == 0 {
+                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                            }
+                            let result = (a as u64).wrapping_rem(b as u64) as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64RemU: {} % {} = {}", a as u64, b as u64, result as u64);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    // I64 shift and rotate operations
+                    Instruction::I64Shl => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.wrapping_shl((b as u64 % 64) as u32);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Shl: {} << {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64ShrS => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.wrapping_shr((b as u64 % 64) as u32);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64ShrS: {} >> {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64ShrU => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = (a as u64).wrapping_shr((b as u64 % 64) as u32) as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64ShrU: {} >> {} = {}", a as u64, b as u64, result as u64);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Rotl => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.rotate_left((b as u64 % 64) as u32);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Rotl: {} rotl {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Rotr => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.rotate_right((b as u64 % 64) as u32);
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Rotr: {} rotr {} = {}", a, b, result);
                             operand_stack.push(Value::I64(result));
                         }
                     }
@@ -2092,17 +2185,17 @@ impl StacklessEngine {
                             // Get memory from INSTANCE (not module) - instance has initialized data
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
-                                    // Debug: trace writes to args region (0x1076c0-0x1076ff)
+                                    // Debug: trace writes to retptr region (0xffd60-0xffd70)
                                     #[cfg(feature = "std")]
-                                    if offset >= 0x1076c0 && offset < 0x107700 {
-                                        eprintln!("[I32Store-ARGS] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
+                                    if offset >= 0xffd60 && offset <= 0xffd70 {
+                                        eprintln!("[I32Store-RETPTR] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
                                                  func_idx, pc, offset, value, value as u32);
                                     }
-                                    // Only print Arc debug for writes to allocator state region
+                                    // Debug: trace writes to list array region (0x1076c0-0x107710)
                                     #[cfg(feature = "std")]
-                                    if offset >= 0x1074a0 && offset <= 0x1074b0 {
-                                        eprintln!("[I32Store] instance_id={}, offset={:#x}, value={}, Arc={:p}",
-                                                 instance_id, offset, value, std::sync::Arc::as_ptr(&memory_wrapper.0));
+                                    if offset >= 0x1076c0 && offset <= 0x107710 {
+                                        eprintln!("[I32Store-LISTARRAY] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
+                                                 func_idx, pc, offset, value, value as u32);
                                     }
                                     let memory = &memory_wrapper.0;
                                     let bytes = value.to_le_bytes();
@@ -2151,6 +2244,13 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = buffer[0] as i8 as i32; // Sign extend
+                                            #[cfg(feature = "std")]
+                                            {
+                                                if offset >= 0x107700 && offset <= 0x107740 {
+                                                    eprintln!("[I32Load8S-BYTE] offset={:#x}, raw_byte={:#04x} ('{}'), value={}",
+                                                             offset, buffer[0], buffer[0] as char, value);
+                                                }
+                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load8S: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -2982,8 +3082,6 @@ impl StacklessEngine {
             }
 
             #[cfg(feature = "tracing")]
-
-
             trace!("Returning {} results", results.len());
             Ok(results)
         }
@@ -3692,122 +3790,92 @@ impl StacklessEngine {
                                     }
                                 }
 
-                                // Call cabi_realloc to allocate memory
-                                match self.call_cabi_realloc(instance_id, func_idx,
-                                                            0, 0, request.align, request.size) {
-                                    Ok(allocated_ptr) => {
+                                // SEPARATE ALLOCATIONS: Allocate list array and each string separately
+                                        // This prevents dlmalloc free-list corruption when adapter frees strings.
+                                        // When all data is in one block, freeing individual strings causes
+                                        // dlmalloc to coalesce and overwrite the list array with free-list pointers.
                                         #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] cabi_realloc returned ptr=0x{:x}", allocated_ptr);
+                                        eprintln!("[WASI-V2] Using separate allocations for list<string>");
 
-                                        // Debug: Read allocator state AFTER cabi_realloc
+                                        // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
+                                        let list_array_size = (args_to_write.len() * 8) as u32;
+                                        let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
                                         #[cfg(feature = "std")]
-                                        {
-                                            if let Some(inst) = self.instances.get(&instance_id) {
-                                                if let Ok(mw) = inst.memory(0) {
-                                                    let arc_ptr = std::sync::Arc::as_ptr(&mw.0);
-                                                    let mutex_ptr = &*mw.0.data as *const _;
-                                                    eprintln!("[ARC-DEBUG] AFTER cabi_realloc: arc={:p}, mutex={:p}", arc_ptr, mutex_ptr);
-                                                    let mut buf = vec![0u8; 32];
-                                                    // Read from common allocator state locations
-                                                    let _ = mw.0.read(0x1074a8, &mut buf[0..8]);
-                                                    let alloc_ptr = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-                                                    let alloc_end = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-                                                    eprintln!("[ALLOC-DEBUG] AFTER cabi_realloc: state at 0x1074a8 = (0x{:x}, 0x{:x})", alloc_ptr, alloc_end);
+                                        eprintln!("[WASI-V2] Allocated list array: ptr=0x{:x}, size={}", list_ptr, list_array_size);
 
-                                                    // Also check the allocated block contents
-                                                    let expected_end = allocated_ptr + request.size;
-                                                    eprintln!("[ALLOC-DEBUG] Allocated block: 0x{:x} - 0x{:x} ({} bytes)", allocated_ptr, expected_end, request.size);
+                                        // Step 2: Allocate each string separately and write data
+                                        let mut string_entries: Vec<(u32, u32)> = Vec::new();
+                                        for (i, arg) in args_to_write.iter().enumerate() {
+                                            let bytes = arg.as_bytes();
+                                            let len = bytes.len() as u32;
 
-                                                    // Read what's at the start of allocated block
-                                                    let _ = mw.0.read(allocated_ptr, &mut buf[0..16]);
-                                                    eprintln!("[ALLOC-DEBUG] Block header bytes: {:02x} {:02x} {:02x} {:02x}  {:02x} {:02x} {:02x} {:02x}",
-                                                             buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
+                                            // Allocate memory for this string (align=1 for byte data)
+                                            let string_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 1, len)?;
+
+                                            // Write string bytes directly to its own allocation
+                                            if let Some(instance) = self.instances.get(&instance_id) {
+                                                if let Ok(memory_wrapper) = instance.memory(0) {
+                                                    let memory = &memory_wrapper.0;
+                                                    if let Err(e) = memory.write_shared(string_ptr, bytes) {
+                                                        #[cfg(feature = "std")]
+                                                        eprintln!("[WASI-V2] Failed to write string: {:?}", e);
+                                                        return Err(e);
+                                                    }
                                                 }
                                             }
+
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[WASI-V2] String[{}]: '{}' ({} bytes) at 0x{:x}",
+                                                     i, arg, bytes.len(), string_ptr);
+
+                                            string_entries.push((string_ptr, len));
                                         }
 
-                                        // Now read memory, write the data, and write it back
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] Writing to instance_id={}", instance_id);
+                                        // Step 3: Write (ptr, len) entries to list array
                                         if let Some(instance) = self.instances.get(&instance_id) {
                                             if let Ok(memory_wrapper) = instance.memory(0) {
-                                                let mem_size = memory_wrapper.0.size_in_bytes();
-                                                #[cfg(feature = "std")]
-                                                eprintln!("[WASI-V2] Memory size: {} bytes ({} pages)", mem_size, mem_size / 65536);
-                                                let mut mem = vec![0u8; mem_size.min(16 * 1024 * 1024)];
-                                                let _ = memory_wrapper.0.read(0, &mut mem);
+                                                let memory = &memory_wrapper.0;
 
-                                                // Complete the allocation by writing data
-                                                if let Err(e) = temp_dispatcher.complete_allocation(
-                                                    allocated_ptr, &args_to_write, retptr, &mut mem
-                                                ) {
+                                                for (i, (ptr, len)) in string_entries.iter().enumerate() {
+                                                    let offset = list_ptr + (i * 8) as u32;
+                                                    let mut entry_buf = [0u8; 8];
+                                                    entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
+                                                    entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
+
+                                                    if let Err(e) = memory.write_shared(offset, &entry_buf) {
+                                                        #[cfg(feature = "std")]
+                                                        eprintln!("[WASI-V2] Failed to write list entry: {:?}", e);
+                                                        return Err(e);
+                                                    }
+
                                                     #[cfg(feature = "std")]
-                                                    eprintln!("[WASI-V2] complete_allocation failed: {:?}", e);
+                                                    eprintln!("[WASI-V2] list[{}]: ptr=0x{:x}, len={}", i, ptr, len);
+                                                }
+
+                                                // Step 4: Write (list_ptr, count) to retptr
+                                                let mut retptr_buf = [0u8; 8];
+                                                retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
+                                                retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
+
+                                                if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
+                                                    #[cfg(feature = "std")]
+                                                    eprintln!("[WASI-V2] Failed to write retptr: {:?}", e);
                                                     return Err(e);
                                                 }
 
-                                                // Verify what we wrote before writing back
+                                                #[cfg(feature = "std")]
+                                                eprintln!("[WASI-V2] Wrote to retptr 0x{:x}: list_ptr=0x{:x}, count={}",
+                                                         retptr, list_ptr, args_to_write.len());
+
+                                                // Verify by reading back
                                                 #[cfg(feature = "std")]
                                                 {
-                                                    let retptr_usize = retptr as usize;
-                                                    let list_ptr_bytes = &mem[retptr_usize..retptr_usize + 4];
-                                                    let list_len_bytes = &mem[retptr_usize + 4..retptr_usize + 8];
-                                                    let list_ptr = u32::from_le_bytes([list_ptr_bytes[0], list_ptr_bytes[1], list_ptr_bytes[2], list_ptr_bytes[3]]);
-                                                    let list_len = u32::from_le_bytes([list_len_bytes[0], list_len_bytes[1], list_len_bytes[2], list_len_bytes[3]]);
-                                                    eprintln!("[VERIFY] At retptr 0x{:x}: list_ptr=0x{:x}, list_len={}", retptr, list_ptr, list_len);
-
-                                                    // Read first string entry
-                                                    if list_len > 0 {
-                                                        let entry0_ptr_bytes = &mem[list_ptr as usize..list_ptr as usize + 4];
-                                                        let entry0_len_bytes = &mem[list_ptr as usize + 4..list_ptr as usize + 8];
-                                                        let str0_ptr = u32::from_le_bytes([entry0_ptr_bytes[0], entry0_ptr_bytes[1], entry0_ptr_bytes[2], entry0_ptr_bytes[3]]);
-                                                        let str0_len = u32::from_le_bytes([entry0_len_bytes[0], entry0_len_bytes[1], entry0_len_bytes[2], entry0_len_bytes[3]]);
-                                                        eprintln!("[VERIFY] Entry[0]: ptr=0x{:x}, len={}", str0_ptr, str0_len);
-
-                                                        // Read the actual string bytes
-                                                        if str0_len > 0 && str0_len < 1000 {
-                                                            let str_bytes = &mem[str0_ptr as usize..(str0_ptr + str0_len) as usize];
-                                                            if let Ok(s) = std::str::from_utf8(str_bytes) {
-                                                                eprintln!("[VERIFY] Entry[0] content: '{}'", s);
-                                                            } else {
-                                                                eprintln!("[VERIFY] Entry[0] raw bytes: {:?}", str_bytes);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-
-                                                // Write memory back
-                                                if let Err(e) = memory_wrapper.0.write_shared(0, &mem) {
-                                                    #[cfg(feature = "std")]
-                                                    eprintln!("[WASI-V2] Failed to write back memory: {:?}", e);
-                                                } else {
-                                                    #[cfg(feature = "std")]
-                                                    eprintln!("[WASI-V2] Wrote {} bytes back to instance memory", mem.len());
-
-                                                    // Verify by reading back
-                                                    let mut verify_buf = vec![0u8; 100];
-                                                    if memory_wrapper.0.read(retptr, &mut verify_buf[..8]).is_ok() {
-                                                        let list_ptr = u32::from_le_bytes([verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3]]);
-                                                        let list_len = u32::from_le_bytes([verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7]]);
-                                                        eprintln!("[VERIFY-READBACK] At retptr 0x{:x}: list_ptr=0x{:x}, list_len={}", retptr, list_ptr, list_len);
-
-                                                        // Read all 4 entries
-                                                        let mut entries_buf = vec![0u8; 32];
-                                                        if memory_wrapper.0.read(list_ptr, &mut entries_buf).is_ok() {
-                                                            for i in 0..4 {
-                                                                let off = i * 8;
-                                                                let str_ptr = u32::from_le_bytes([entries_buf[off], entries_buf[off+1], entries_buf[off+2], entries_buf[off+3]]);
-                                                                let str_len = u32::from_le_bytes([entries_buf[off+4], entries_buf[off+5], entries_buf[off+6], entries_buf[off+7]]);
-                                                                eprintln!("[VERIFY-READBACK] Entry[{}]: ptr=0x{:x}, len={}", i, str_ptr, str_len);
-                                                            }
-                                                        }
-
-                                                        // Debug: Check allocator state AFTER memory write-back
-                                                        let mut alloc_buf = vec![0u8; 4];
-                                                        if memory_wrapper.0.read(0x1074a8, &mut alloc_buf).is_ok() {
-                                                            let alloc_ptr = u32::from_le_bytes([alloc_buf[0], alloc_buf[1], alloc_buf[2], alloc_buf[3]]);
-                                                            eprintln!("[ALLOC-DEBUG] AFTER memory write-back: allocator state at 0x1074a8 = 0x{:x}", alloc_ptr);
-                                                        }
+                                                    let mut verify_buf = [0u8; 8];
+                                                    if memory.read(retptr, &mut verify_buf).is_ok() {
+                                                        let read_list_ptr = u32::from_le_bytes([verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3]]);
+                                                        let read_list_len = u32::from_le_bytes([verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7]]);
+                                                        eprintln!("[VERIFY-READBACK] At retptr 0x{:x}: list_ptr=0x{:x}, list_len={}",
+                                                                 retptr, read_list_ptr, read_list_len);
                                                     }
                                                 }
 
@@ -3816,13 +3884,6 @@ impl StacklessEngine {
                                             }
                                         }
                                         return Err(wrt_error::Error::memory_error("Could not access instance memory"));
-                                    }
-                                    Err(e) => {
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] cabi_realloc failed: {:?}", e);
-                                        // Fall through to legacy path
-                                    }
-                                }
                             } else {
                                 #[cfg(feature = "std")]
                                 eprintln!("[WASI-V2] cabi_realloc not found, falling back to legacy dispatch");
@@ -4409,7 +4470,7 @@ impl StacklessEngine {
                 };
 
                 // Get the WASI args from the dispatcher or global
-                #[cfg(feature = "std")]
+                #[cfg(all(feature = "std", feature = "wasi"))]
                 let args: Vec<String> = if let Some(ref dispatcher) = self.wasi_dispatcher {
                     let disp_args = dispatcher.args();
                     if disp_args.is_empty() {
@@ -4421,7 +4482,7 @@ impl StacklessEngine {
                     wrt_wasi::get_global_wasi_args()
                 };
 
-                #[cfg(not(feature = "std"))]
+                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
                 let args: Vec<String> = Vec::new();
 
                 let argc = args.len() as u32;
@@ -4469,7 +4530,7 @@ impl StacklessEngine {
                 };
 
                 // Get the WASI args from the dispatcher or global
-                #[cfg(feature = "std")]
+                #[cfg(all(feature = "std", feature = "wasi"))]
                 let args: Vec<String> = if let Some(ref dispatcher) = self.wasi_dispatcher {
                     let disp_args = dispatcher.args();
                     if disp_args.is_empty() {
@@ -4481,7 +4542,7 @@ impl StacklessEngine {
                     wrt_wasi::get_global_wasi_args()
                 };
 
-                #[cfg(not(feature = "std"))]
+                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
                 let args: Vec<String> = Vec::new();
 
                 #[cfg(feature = "std")]

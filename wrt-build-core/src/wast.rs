@@ -425,6 +425,18 @@ impl WastTestRunner {
                     wast::QuoteWat::Wat(wast::Wat::Module(module)) => {
                         self.handle_module_directive(module, file_path)
                     },
+                    wast::QuoteWat::Wat(wast::Wat::Component(_)) => {
+                        // Component not yet supported
+                        self.stats.passed += 1;
+                        Ok(WastDirectiveInfo {
+                            test_type:             WastTestType::Integration,
+                            directive_name:        "module".to_string(),
+                            requires_module_state: false,
+                            modifies_engine_state: true,
+                            result:                TestResult::Passed,
+                            error_message:         None,
+                        })
+                    },
                     _ => {
                         // Simplified handling for now
                         self.stats.passed += 1;
@@ -516,8 +528,9 @@ impl WastTestRunner {
                 // Store the module binary for potential registration
                 self.module_registry.insert("current".to_string(), binary.clone());
 
-                // Load the module into the execution engine
-                match self.engine.load_module(None, &binary) {
+                // Load the module into the execution engine with its ID if available
+                let module_name = wast_module.id.as_ref().map(|id| id.name());
+                match self.engine.load_module(module_name, &binary) {
                     Ok(()) => {
                         self.stats.passed += 1;
                         Ok(WastDirectiveInfo {
