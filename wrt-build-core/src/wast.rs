@@ -263,11 +263,6 @@ impl WastTestRunner {
         self.stats.files_processed = wast_files.len();
 
         for (idx, file_path) in wast_files.iter().enumerate() {
-                "DEBUG: Processing file {}/{}: {:?}",
-                idx + 1,
-                wast_files.len(),
-                file_path
-            );
             match self.run_wast_file(&file_path) {
                 Ok(file_result) => {
                     results.push(file_result);
@@ -313,7 +308,6 @@ impl WastTestRunner {
 
     /// Run a single WAST file
     pub fn run_wast_file(&mut self, file_path: &Path) -> Result<WastFileResult> {
-        println!("🔍 DEBUG: run_wast_file called with {:?}", file_path);
         let start_time = std::time::Instant::now();
         let relative_path = file_path
             .strip_prefix(&self.config.test_directory)
@@ -337,9 +331,6 @@ impl WastTestRunner {
         };
 
         // Parse WAST
-            "DEBUG: About to create ParseBuffer for content length: {}",
-            content.len()
-        );
         let buf = match ParseBuffer::new(&content) {
             Ok(buf) => {
                 buf
@@ -356,12 +347,7 @@ impl WastTestRunner {
             },
         };
         let wast: Wast = match parser::parse::<Wast>(&buf) {
-            Ok(wast) => {
-                    "DEBUG: WAST parsed successfully with {} directives",
-                    wast.directives.len()
-                );
-                wast
-            },
+            Ok(wast) => wast,
             Err(e) => {
 
                 return Ok(WastFileResult {
@@ -527,16 +513,9 @@ impl WastTestRunner {
         // Get the binary from the WAST module
         match wast_module.encode() {
             Ok(binary) => {
-                    "DEBUG: handle_module_directive - Module encoded successfully, {} bytes",
-                    binary.len()
-                );
-
                 // Store the module binary for potential registration
                 self.module_registry.insert("current".to_string(), binary.clone());
 
-                    "DEBUG: handle_module_directive - Binary size to load: {}",
-                    binary.len()
-                );
                 // Load the module into the execution engine
                 match self.engine.load_module(None, &binary) {
                     Ok(()) => {
@@ -1052,38 +1031,73 @@ impl WastTestRunner {
 
         match exec {
             WastExecute::Invoke(invoke) => {
-                let args_result: Result<Vec<_>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect();
+                // Convert arguments to runtime values for execution
+                let args_result: Result<Vec<Value>> =
+                    convert_wast_args_to_values(&invoke.args);
 
                 match args_result {
                     Ok(_args) => {
-                        // In real implementation, would set resource limits and execute
-                        // For now, assume it passes if expected message contains exhaustion
-                        // keywords
-                        let expected_msg = expected_message.to_lowercase();
-                        if contains_exhaustion_keyword(&expected_msg, &expected_msg) {
-                            self.stats.passed += 1;
-                            Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::Resource,
-                                directive_name:        "assert_exhaustion".to_string(),
-                                requires_module_state: true,
-                                modifies_engine_state: false,
-                                result:                TestResult::Passed,
-                                error_message:         None,
-                            })
-                        } else {
-                            self.stats.failed += 1;
-                            Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::Resource,
-                                directive_name:        "assert_exhaustion".to_string(),
-                                requires_module_state: true,
-                                modifies_engine_state: false,
-                                result:                TestResult::Failed,
-                                error_message:         Some(format!(
-                                    "Unrecognized exhaustion message: {}",
-                                    expected_message
-                                )),
-                            })
+                        // Try to execute the function with current resource limits
+                        match execute_wast_invoke(&mut self.engine, invoke) {
+                            Ok(_result) => {
+                                // Function completed without exhaustion - check if that's expected
+                                let expected_msg = expected_message.to_lowercase();
+                                if expected_msg.contains("should not occur") ||
+                                   expected_msg.contains("no exhaustion") {
+                                    self.stats.passed += 1;
+                                    Ok(WastDirectiveInfo {
+                                        test_type:             WastTestType::Resource,
+                                        directive_name:        "assert_exhaustion".to_string(),
+                                        requires_module_state: true,
+                                        modifies_engine_state: false,
+                                        result:                TestResult::Passed,
+                                        error_message:         None,
+                                    })
+                                } else {
+                                    self.stats.failed += 1;
+                                    Ok(WastDirectiveInfo {
+                                        test_type:             WastTestType::Resource,
+                                        directive_name:        "assert_exhaustion".to_string(),
+                                        requires_module_state: true,
+                                        modifies_engine_state: false,
+                                        result:                TestResult::Failed,
+                                        error_message:         Some(format!(
+                                            "Expected exhaustion but function completed: {}",
+                                            expected_message
+                                        )),
+                                    })
+                                }
+                            },
+                            Err(execution_error) => {
+                                // Function execution failed - check if it's due to resource exhaustion
+                                let error_msg = execution_error.to_string().to_lowercase();
+                                let expected_msg = expected_message.to_lowercase();
+
+                                if contains_exhaustion_keyword(&error_msg, &expected_msg) {
+                                    self.stats.passed += 1;
+                                    Ok(WastDirectiveInfo {
+                                        test_type:             WastTestType::Resource,
+                                        directive_name:        "assert_exhaustion".to_string(),
+                                        requires_module_state: true,
+                                        modifies_engine_state: false,
+                                        result:                TestResult::Passed,
+                                        error_message:         None,
+                                    })
+                                } else {
+                                    self.stats.failed += 1;
+                                    Ok(WastDirectiveInfo {
+                                        test_type:             WastTestType::Resource,
+                                        directive_name:        "assert_exhaustion".to_string(),
+                                        requires_module_state: true,
+                                        modifies_engine_state: false,
+                                        result:                TestResult::Failed,
+                                        error_message:         Some(format!(
+                                            "Expected exhaustion '{}' but got: {}",
+                                            expected_message, execution_error
+                                        )),
+                                    })
+                                }
+                            },
                         }
                     },
                     Err(e) => {
@@ -1384,12 +1398,7 @@ impl WastTestRunner {
 
                             if path.is_dir() {
                                 // Continue recursively, but don't fail if subdirectory fails
-                                if let Err(e) = self.collect_wast_files_recursive(&path, files) {
-                                        "Warning: Failed to read subdirectory {}: {}",
-                                        path.display(),
-                                        e
-                                    );
-                                }
+                                let _ = self.collect_wast_files_recursive(&path, files);
                             } else if path.extension().map_or(false, |ext| ext == "wast") {
                                 // Apply filter if specified
                                 if let Some(filter) = &self.config.file_filter {
@@ -1404,11 +1413,8 @@ impl WastTestRunner {
                                 }
                             }
                         },
-                        Err(e) => {
-                                "Warning: Failed to read directory entry in {}: {}",
-                                dir.display(),
-                                e
-                            );
+                        Err(_e) => {
+                            // Silently skip entries that fail to read
                         },
                     }
                 }
