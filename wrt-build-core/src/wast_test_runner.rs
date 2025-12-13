@@ -200,7 +200,7 @@ impl WastTestRunner {
     ) -> Result<()> {
         match directive {
             WastDirective::Module(module) => {
-                let binary = module.encode().unwrap_or_default();
+                let binary = module.encode().context("Failed to encode WAST module to binary")?;
                 engine.load_module(None, &binary).context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => {

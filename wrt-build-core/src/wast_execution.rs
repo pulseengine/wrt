@@ -8,32 +8,14 @@
 
 use std::collections::HashMap;
 
-use anyhow::{
-    Context,
-    Result,
-};
+use anyhow::{Context, Result};
 use wast::{
-    core::{
-        V128Pattern,
-        WastArgCore,
-        WastRetCore,
-    },
-    WastArg,
-    WastExecute,
-    WastInvoke,
-    WastRet,
+    core::{V128Pattern, WastArgCore, WastRetCore},
+    WastArg, WastExecute, WastInvoke, WastRet,
 };
 use wrt_decoder::decoder::decode_module;
-use wrt_foundation::values::{
-    FloatBits32,
-    FloatBits64,
-    Value,
-    V128,
-};
-use wrt_runtime::{
-    module::Module,
-    stackless::StacklessEngine,
-};
+use wrt_foundation::values::{FloatBits32, FloatBits64, Value, V128};
+use wrt_runtime::{module::Module, stackless::StacklessEngine};
 
 /// Minimal WAST execution engine for testing
 ///
@@ -43,9 +25,9 @@ use wrt_runtime::{
 /// - Basic assert_return directive support
 pub struct WastEngine {
     /// The underlying WRT execution engine
-    engine:         StacklessEngine,
+    engine: StacklessEngine,
     /// Registry of loaded modules by name for multi-module tests
-    modules:        HashMap<String, Module>,
+    modules: HashMap<String, Module>,
     /// Current active module for execution
     current_module: Option<Module>,
 }
@@ -54,8 +36,8 @@ impl WastEngine {
     /// Create a new WAST execution engine
     pub fn new() -> Result<Self> {
         Ok(Self {
-            engine:         StacklessEngine::new(),
-            modules:        HashMap::new(),
+            engine: StacklessEngine::new(),
+            modules: HashMap::new(),
             current_module: None,
         })
     }
@@ -74,7 +56,8 @@ impl WastEngine {
 
         use wrt_runtime::module_instance::ModuleInstance;
         let module_instance = Arc::new(
-            ModuleInstance::new(Arc::new(module.clone()), 0).context("Failed to create module instance")?,
+            ModuleInstance::new(Arc::new(module.clone()), 0)
+                .context("Failed to create module instance")?,
         );
 
         // Set the current module in the engine
@@ -120,22 +103,18 @@ impl WastEngine {
     }
 
     /// Find the function index for an exported function
-    fn find_export_function_index(&self, _module: &Module, function_name: &str) -> Result<u32> {
-        // For now, return a simple hard-coded function index for basic testing
-        // This is a minimal implementation to get basic functionality working
-        // A full implementation would properly search through module.exports
-
-        match function_name {
-            "get_five" => Ok(0), // Simple constant function
-            "test" => Ok(0),     // Basic test function
-            "add" => Ok(0),      // Basic arithmetic function
-            _ => {
-                // For now, assume function index 0 for any exported function
-                // This is a temporary workaround for the minimal engine
-                eprintln!("Warning: Using function index 0 for '{}'", function_name);
-                Ok(0)
-            },
-        }
+    fn find_export_function_index(&self, module: &Module, function_name: &str) -> Result<u32> {
+        // Search the module's export table for the function
+        module
+            .get_export(function_name)
+            .filter(|export| {
+                use wrt_runtime::module::ExportKind;
+                export.kind == ExportKind::Function
+            })
+            .map(|export| export.index)
+            .ok_or_else(|| {
+                anyhow::anyhow!("Function '{}' is not exported from module", function_name)
+            })
     }
 
     /// Register a module with a specific name for imports
@@ -346,12 +325,8 @@ pub fn execute_wast_execute(engine: &mut WastEngine, execute: &WastExecute) -> R
 /// Simple WAST runner for basic testing
 pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
     use wast::{
-        parser::{
-            self,
-            ParseBuffer,
-        },
-        Wast,
-        WastDirective,
+        parser::{self, ParseBuffer},
+        Wast, WastDirective,
     };
 
     let buf = ParseBuffer::new(wast_content).context("Failed to create parse buffer")?;
