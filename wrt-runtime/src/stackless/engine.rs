@@ -2137,28 +2137,16 @@ impl StacklessEngine {
                             let offset = (addr as u32).wrapping_add(mem_arg.offset);
                             #[cfg(feature = "tracing")]
                             trace!("I32Load: reading from address {} (base={}, offset={})", offset, addr, mem_arg.offset);
-                            #[cfg(feature = "std")]
-                            eprintln!("[I32Load] instance_id={}, addr={}, offset={:#x}, mem_idx={}", instance_id, addr, offset, mem_arg.memory_index);
-
                             // Get memory from INSTANCE (not module) - instance has initialized data
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
-                                    let mem_size = memory.size();
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[I32Load] Got memory, size={} pages ({} bytes)", mem_size, mem_size as usize * 65536);
                                     let mut buffer = [0u8; 4];
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = i32::from_le_bytes(buffer);
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: read value {} from address {}", value, offset);
-                                            #[cfg(feature = "std")]
-                                            {
-                                                // Always print loaded value to trace where bogus address comes from
-                                                eprintln!("[I32Load] loaded {} (0x{:x}) from offset {:#x}",
-                                                         value, value as u32, offset);
-                                            }
                                             operand_stack.push(Value::I32(value));
                                         }
                                         Err(e) => {
@@ -2246,7 +2234,7 @@ impl StacklessEngine {
                                             let value = buffer[0] as i8 as i32; // Sign extend
                                             #[cfg(feature = "std")]
                                             {
-                                                if offset >= 0x107700 && offset <= 0x107740 {
+                                                if offset >= 0x1076e0 && offset <= 0x107740 {
                                                     eprintln!("[I32Load8S-BYTE] offset={:#x}, raw_byte={:#04x} ('{}'), value={}",
                                                              offset, buffer[0], buffer[0] as char, value);
                                                 }
@@ -3771,37 +3759,16 @@ impl StacklessEngine {
                             let cabi_realloc_idx = self.find_export_index(module, "cabi_realloc");
 
                             if let Ok(func_idx) = cabi_realloc_idx {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-V2] Calling cabi_realloc(0, 0, {}, {}) at func_idx={} in instance_id={}",
-                                         request.align, request.size, func_idx, instance_id);
-
-                                // Debug: Read allocator state before cabi_realloc
-                                #[cfg(feature = "std")]
-                                {
-                                    if let Some(inst) = self.instances.get(&instance_id) {
-                                        if let Ok(mw) = inst.memory(0) {
-                                            eprintln!("[ARC-DEBUG] BEFORE cabi_realloc: Memory Arc ptr = {:p}", std::sync::Arc::as_ptr(&mw.0));
-                                            let mut buf = vec![0u8; 16];
-                                            // Read from common allocator state locations
-                                            let _ = mw.0.read(0x1074a8, &mut buf[0..4]);
-                                            let alloc_ptr = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-                                            eprintln!("[ALLOC-DEBUG] BEFORE cabi_realloc: allocator state at 0x1074a8 = 0x{:x}", alloc_ptr);
-                                        }
-                                    }
-                                }
-
                                 // SEPARATE ALLOCATIONS: Allocate list array and each string separately
                                         // This prevents dlmalloc free-list corruption when adapter frees strings.
                                         // When all data is in one block, freeing individual strings causes
                                         // dlmalloc to coalesce and overwrite the list array with free-list pointers.
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] Using separate allocations for list<string>");
 
                                         // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
                                         let list_array_size = (args_to_write.len() * 8) as u32;
                                         let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
                                         #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] Allocated list array: ptr=0x{:x}, size={}", list_ptr, list_array_size);
+                                        eprintln!("[WASI-V2] list_ptr=0x{:x}", list_ptr);
 
                                         // Step 2: Allocate each string separately and write data
                                         let mut string_entries: Vec<(u32, u32)> = Vec::new();
@@ -3820,6 +3787,20 @@ impl StacklessEngine {
                                                         #[cfg(feature = "std")]
                                                         eprintln!("[WASI-V2] Failed to write string: {:?}", e);
                                                         return Err(e);
+                                                    }
+
+                                                    // Verify the write by reading back
+                                                    #[cfg(feature = "std")]
+                                                    {
+                                                        let mut verify_buf = vec![0u8; bytes.len()];
+                                                        if memory.read(string_ptr, &mut verify_buf).is_ok() {
+                                                            let verify_str = String::from_utf8_lossy(&verify_buf);
+                                                            eprintln!("[WASI-V2] String[{}] verify: wrote '{}' at 0x{:x}, read back '{}'",
+                                                                     i, arg, string_ptr, verify_str);
+                                                            if verify_buf != bytes {
+                                                                eprintln!("[WASI-V2] STRING DATA MISMATCH! wrote {:?}, got {:?}", bytes, verify_buf);
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
