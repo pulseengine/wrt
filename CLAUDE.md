@@ -562,11 +562,32 @@ The JSON output follows LSP (Language Server Protocol) specification for maximum
 - **Diagnostic system**: Use `--output json` for structured output, `--cache --diff-only` for incremental analysis
 - **AI Integration**: JSON output is LSP-compatible for IDE and tooling integration
 - **Performance**: Caching reduces analysis time from 3-4s to ~0.7s on subsequent runs
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+## WAST (WebAssembly Script) Test Format
+
+### Understanding WAST
+WAST is the official WebAssembly test format - a superset of WAT (WebAssembly Text format) used for conformance testing. Key characteristics:
+
+- **Not part of the official spec**: WAST is a testing tool only, defined in the interpreter specification
+- **Quoted modules**: Modules can be defined as `(module quote <string>*)` where the strings are concatenated and parsed as WAT AT EXECUTION TIME
+- **Binary modules**: Also support `(module binary <string>*)` for WASM binaries
+- **Intentional parsing during execution**: This design allows testing for malformed modules with `assert_malformed`
+
+### QuoteModule Handling
+The `wast` crate represents quoted modules as:
+- `QuoteWat::QuoteModule(Span, Vec<(Span, Vec<u8>)>)` - contains the quoted byte strings
+- These must be:
+  1. Concatenated together
+  2. Parsed as WAT text (using `wast::parse()` from the ParseBuffer)
+  3. Encoded to WASM binary
+  4. Loaded and instantiated
+
+This is fundamentally different from inline WAT modules which are already parsed.
+
+### References
+- [WebAssembly Specification 3.0 (2025-12-03)](https://webassembly.github.io/spec/core/)
+- [WABT Test Documentation](https://github.com/WebAssembly/wabt/blob/main/test/README.md)
+- [Official WebAssembly Interpreter](https://github.com/WebAssembly/spec/tree/main/interpreter)
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
