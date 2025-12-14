@@ -420,48 +420,63 @@ impl WastTestRunner {
     ) -> Result<WastDirectiveInfo> {
         match directive {
             WastDirective::Module(wast_module) => {
-                // Handle QuoteWat to extract actual Module
-                match wast_module {
-                    wast::QuoteWat::Wat(wast::Wat::Module(module)) => {
-                        self.handle_module_directive(module, file_path)
+                // Extract module name BEFORE calling encode() (which consumes the value)
+                let module_name = if let wast::QuoteWat::Wat(wast::Wat::Module(module)) = wast_module {
+                    module.id.as_ref().map(|id| id.name())
+                } else {
+                    None
+                };
+
+                // QuoteWat::encode() handles ALL variants:
+                // - QuoteWat::Wat(Wat::Module(_)) - inline WAT
+                // - QuoteWat::Wat(Wat::Component(_)) - inline component
+                // - QuoteWat::QuoteModule(_, _) - quoted WAT text
+                // - QuoteWat::QuoteComponent(_, _) - quoted component text
+                //
+                // The encode() method parses quoted text if needed and returns binary
+                match wast_module.encode() {
+                    Ok(binary) => {
+                        // Store in registry
+                        self.module_registry.insert("current".to_string(), binary.clone());
+
+                        // Load into execution engine
+                        match self.engine.load_module(module_name, &binary) {
+                            Ok(()) => {
+                                self.stats.passed += 1;
+                                Ok(WastDirectiveInfo {
+                                    test_type:             WastTestType::Integration,
+                                    directive_name:        "module".to_string(),
+                                    requires_module_state: false,
+                                    modifies_engine_state: true,
+                                    result:                TestResult::Passed,
+                                    error_message:         None,
+                                })
+                            },
+                            Err(e) => {
+                                self.stats.failed += 1;
+                                Ok(WastDirectiveInfo {
+                                    test_type:             WastTestType::Integration,
+                                    directive_name:        "module".to_string(),
+                                    requires_module_state: false,
+                                    modifies_engine_state: true,
+                                    result:                TestResult::Failed,
+                                    error_message:         Some(format!("Module instantiation failed: {}", e)),
+                                })
+                            }
+                        }
                     },
-                    wast::QuoteWat::Wat(wast::Wat::Component(_)) => {
-                        // Component not yet supported
-                        self.stats.passed += 1;
+                    Err(e) => {
+                        // Encoding/parsing failed - module is malformed or component (not yet supported)
+                        self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
                             test_type:             WastTestType::Integration,
                             directive_name:        "module".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: true,
-                            result:                TestResult::Passed,
-                            error_message:         None,
+                            result:                TestResult::Failed,
+                            error_message:         Some(format!("Module encoding/parsing failed: {}", e)),
                         })
-                    },
-                    wast::QuoteWat::QuoteModule(_span, _quote_parts) => {
-                        // Quoted modules: need to parse WAT strings at runtime
-                        // This requires deeper integration with the wast crate
-                        self.stats.passed += 1;
-                        Ok(WastDirectiveInfo {
-                            test_type: WastTestType::Integration,
-                            directive_name: "module".to_string(),
-                            requires_module_state: false,
-                            modifies_engine_state: true,
-                            result: TestResult::Skipped,
-                            error_message: Some("Quoted module support pending implementation".to_string()),
-                        })
-                    },
-                    _ => {
-                        // Unknown QuoteWat variant - skip
-                        self.stats.passed += 1;
-                        Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Integration,
-                            directive_name:        "module".to_string(),
-                            requires_module_state: false,
-                            modifies_engine_state: true,
-                            result:                TestResult::Skipped,
-                            error_message:         Some("Unknown QuoteWat variant".to_string()),
-                        })
-                    },
+                    }
                 }
             },
             WastDirective::AssertReturn {

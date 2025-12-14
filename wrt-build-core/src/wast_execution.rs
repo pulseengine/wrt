@@ -66,6 +66,28 @@ impl WastEngine {
                 .context("Failed to create module instance")?,
         );
 
+        // Initialize module instance resources (memories, globals, tables, data segments, etc.)
+        module_instance
+            .populate_memories_from_module()
+            .context("Failed to populate memories")?;
+        module_instance
+            .populate_globals_from_module()
+            .context("Failed to populate globals")?;
+        module_instance
+            .populate_tables_from_module()
+            .context("Failed to populate tables")?;
+
+        // Initialize active data segments (writes data to memory)
+        #[cfg(feature = "std")]
+        module_instance
+            .initialize_data_segments()
+            .context("Failed to initialize data segments")?;
+
+        // Initialize element segments
+        module_instance
+            .initialize_element_segments()
+            .context("Failed to initialize element segments")?;
+
         // Set the current module in the engine
         let instance_idx = self
             .engine

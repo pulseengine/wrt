@@ -2145,6 +2145,13 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = i32::from_le_bytes(buffer);
+                                            // Debug: trace reads from retptr/list regions
+                                            #[cfg(feature = "std")]
+                                            if (offset >= 0xffd60 && offset <= 0xffd80) ||
+                                               (offset >= 0x1076c0 && offset <= 0x1077f0) {
+                                                eprintln!("[I32Load-ARGDATA] offset=0x{:x}, value=0x{:x} ({})",
+                                                         offset, value as u32, value);
+                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -2257,25 +2264,19 @@ impl StacklessEngine {
                     Instruction::I32Load8U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
                             let offset = (addr as u32).wrapping_add(mem_arg.offset);
-                            let mem_size_bytes = 2 * 65536; // 2 pages default
-                            #[cfg(feature = "std")]
-                            {
-                                if offset >= mem_size_bytes {  // Log addresses beyond memory
-                                    eprintln!("[I32Load8U] OUT OF BOUNDS! addr={} (0x{:x}), offset={:#x}, mem_size=0x{:x}",
-                                             addr, addr as u32, offset, mem_size_bytes);
-                                }
-                            }
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
-                                    let actual_size = memory.size() as u32 * 65536;
-                                    if offset >= actual_size {
-                                        eprintln!("[I32Load8U] TRAP: offset={:#x} >= mem_size={:#x}. Stack trace needed!", offset, actual_size);
-                                    }
                                     let mut buffer = [0u8; 1];
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = buffer[0] as i32; // Zero extend
+                                            // Debug: trace reads from string data regions
+                                            #[cfg(feature = "std")]
+                                            if (offset >= 0x1076f0 && offset <= 0x107740) {
+                                                eprintln!("[I32Load8U-STR] offset=0x{:x}, char='{}' (0x{:02x})",
+                                                         offset, (buffer[0] as char), buffer[0]);
+                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load8U: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -3779,35 +3780,18 @@ impl StacklessEngine {
                                             // Allocate memory for this string (align=1 for byte data)
                                             let string_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 1, len)?;
 
-                                            // Write string bytes directly to its own allocation
+                                            // Write string bytes
                                             if let Some(instance) = self.instances.get(&instance_id) {
                                                 if let Ok(memory_wrapper) = instance.memory(0) {
                                                     let memory = &memory_wrapper.0;
                                                     if let Err(e) = memory.write_shared(string_ptr, bytes) {
-                                                        #[cfg(feature = "std")]
-                                                        eprintln!("[WASI-V2] Failed to write string: {:?}", e);
                                                         return Err(e);
-                                                    }
-
-                                                    // Verify the write by reading back
-                                                    #[cfg(feature = "std")]
-                                                    {
-                                                        let mut verify_buf = vec![0u8; bytes.len()];
-                                                        if memory.read(string_ptr, &mut verify_buf).is_ok() {
-                                                            let verify_str = String::from_utf8_lossy(&verify_buf);
-                                                            eprintln!("[WASI-V2] String[{}] verify: wrote '{}' at 0x{:x}, read back '{}'",
-                                                                     i, arg, string_ptr, verify_str);
-                                                            if verify_buf != bytes {
-                                                                eprintln!("[WASI-V2] STRING DATA MISMATCH! wrote {:?}, got {:?}", bytes, verify_buf);
-                                                            }
-                                                        }
                                                     }
                                                 }
                                             }
 
                                             #[cfg(feature = "std")]
-                                            eprintln!("[WASI-V2] String[{}]: '{}' ({} bytes) at 0x{:x}",
-                                                     i, arg, bytes.len(), string_ptr);
+                                            eprintln!("[WASI-V2] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
 
                                             string_entries.push((string_ptr, len));
                                         }
@@ -3824,13 +3808,8 @@ impl StacklessEngine {
                                                     entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
 
                                                     if let Err(e) = memory.write_shared(offset, &entry_buf) {
-                                                        #[cfg(feature = "std")]
-                                                        eprintln!("[WASI-V2] Failed to write list entry: {:?}", e);
                                                         return Err(e);
                                                     }
-
-                                                    #[cfg(feature = "std")]
-                                                    eprintln!("[WASI-V2] list[{}]: ptr=0x{:x}, len={}", i, ptr, len);
                                                 }
 
                                                 // Step 4: Write (list_ptr, count) to retptr
@@ -3839,24 +3818,47 @@ impl StacklessEngine {
                                                 retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
 
                                                 if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
-                                                    #[cfg(feature = "std")]
-                                                    eprintln!("[WASI-V2] Failed to write retptr: {:?}", e);
                                                     return Err(e);
                                                 }
 
                                                 #[cfg(feature = "std")]
-                                                eprintln!("[WASI-V2] Wrote to retptr 0x{:x}: list_ptr=0x{:x}, count={}",
-                                                         retptr, list_ptr, args_to_write.len());
-
-                                                // Verify by reading back
-                                                #[cfg(feature = "std")]
                                                 {
-                                                    let mut verify_buf = [0u8; 8];
-                                                    if memory.read(retptr, &mut verify_buf).is_ok() {
-                                                        let read_list_ptr = u32::from_le_bytes([verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3]]);
-                                                        let read_list_len = u32::from_le_bytes([verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7]]);
-                                                        eprintln!("[VERIFY-READBACK] At retptr 0x{:x}: list_ptr=0x{:x}, list_len={}",
-                                                                 retptr, read_list_ptr, read_list_len);
+                                                    eprintln!("[WASI-V2] retptr=0x{:x} -> (0x{:x}, {})",
+                                                             retptr, list_ptr, args_to_write.len());
+
+                                                    // Dump memory around retptr to see what's there
+                                                    let mut retptr_dump = [0u8; 32];
+                                                    if memory.read(retptr, &mut retptr_dump).is_ok() {
+                                                        eprintln!("[RETPTR-DUMP] 0x{:x}: {:02x?}", retptr, &retptr_dump);
+                                                    }
+
+                                                    // Dump memory around list array to see full picture
+                                                    let mut list_dump = [0u8; 64];
+                                                    if memory.read(list_ptr, &mut list_dump).is_ok() {
+                                                        eprintln!("[LIST-DUMP] 0x{:x}: {:02x?}", list_ptr, &list_dump);
+                                                    }
+
+                                                    // Verify: read back the list array
+                                                    for (i, (expected_ptr, expected_len)) in string_entries.iter().enumerate() {
+                                                        let offset = list_ptr + (i * 8) as u32;
+                                                        let mut entry_buf = [0u8; 8];
+                                                        if memory.read(offset, &mut entry_buf).is_ok() {
+                                                            let read_ptr = u32::from_le_bytes([entry_buf[0], entry_buf[1], entry_buf[2], entry_buf[3]]);
+                                                            let read_len = u32::from_le_bytes([entry_buf[4], entry_buf[5], entry_buf[6], entry_buf[7]]);
+                                                            if read_ptr != *expected_ptr || read_len != *expected_len {
+                                                                eprintln!("[VERIFY-FAIL] list[{}] at 0x{:x}: expected (0x{:x}, {}), got (0x{:x}, {})",
+                                                                         i, offset, expected_ptr, expected_len, read_ptr, read_len);
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Also verify the strings themselves
+                                                    for (i, (str_ptr, str_len)) in string_entries.iter().enumerate() {
+                                                        let mut str_buf = vec![0u8; *str_len as usize];
+                                                        if memory.read(*str_ptr, &mut str_buf).is_ok() {
+                                                            let str_val = String::from_utf8_lossy(&str_buf);
+                                                            eprintln!("[VERIFY-STR] str[{}] at 0x{:x}: '{}'", i, str_ptr, str_val);
+                                                        }
                                                     }
                                                 }
 
