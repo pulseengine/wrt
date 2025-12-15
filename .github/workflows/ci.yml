@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Cargo Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -42,7 +42,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Dagger Engine Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/dagger
           key: ${{ runner.os }}-dagger-engine
@@ -110,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Cargo Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -120,7 +120,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Dagger Engine Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/dagger
           key: ${{ runner.os }}-dagger-engine
@@ -171,7 +171,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Cargo Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -226,7 +226,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Cargo Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -236,7 +236,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-extended-${{ hashFiles('**/Cargo.lock') }}
       - name: Dagger Engine Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/dagger
           key: ${{ runner.os }}-dagger-engine-extended
@@ -266,7 +266,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
