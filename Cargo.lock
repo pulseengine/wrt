@@ -3559,6 +3559,7 @@ dependencies = [
  "wat",
  "wrt-decoder",
  "wrt-error",
+ "wrt-format",
  "wrt-foundation",
  "wrt-runtime",
 ]

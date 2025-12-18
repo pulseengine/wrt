@@ -76,6 +76,7 @@ pub mod verify;
 pub mod wasm;
 pub mod wast;
 pub mod wast_execution;
+pub mod wast_validator;
 pub mod wast_values;
 
 // Public API

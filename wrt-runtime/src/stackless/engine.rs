@@ -2463,6 +2463,12 @@ impl StacklessEngine {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
                                     let bytes = value.to_le_bytes();
+                                    // Debug: trace 64-bit writes to retptr region
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffd60 && offset <= 0xffd70 {
+                                        eprintln!("[I64Store-RETPTR] offset=0x{:x}, value=0x{:016x} ({} as i64)",
+                                                 offset, value as u64, value);
+                                    }
                                     // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
                                     match memory.write_shared(offset, &bytes) {
                                         Ok(()) => {

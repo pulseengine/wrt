@@ -38,6 +38,7 @@ wat = "1.232.0"
 # Internal WRT crates
 wrt-error = { workspace = true }
 wrt-foundation = { workspace = true }
+wrt-format = { workspace = true }
 wrt-decoder = { workspace = true }
 wrt-runtime = { workspace = true }
 

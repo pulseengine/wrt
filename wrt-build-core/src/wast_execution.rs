@@ -53,6 +53,10 @@ impl WastEngine {
         // Decode the WASM binary into a WrtModule
         let wrt_module = decode_module(wasm_binary).context("Failed to decode WASM binary")?;
 
+        // Validate the module before proceeding (Phase 1 of WAST conformance)
+        crate::wast_validator::WastModuleValidator::validate(&wrt_module)
+            .context("Module validation failed")?;
+
         // Convert WrtModule to RuntimeModule
         let module =
             *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?;
