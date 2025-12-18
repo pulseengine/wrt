@@ -237,13 +237,25 @@ impl WastModuleValidator {
                 }
                 0x0B => {
                     // end
-                    if frames.len() <= 1 {
-                        return Err(anyhow!("end: no matching control structure"));
+                    if frames.len() == 1 {
+                        // This is the final function-level end - valid termination
+                        // Verify the stack matches the function's return types
+                        let frame = &frames[0];
+                        if frame.reachable {
+                            for &expected in frame.output_types.iter().rev() {
+                                if !Self::pop_type(&mut stack, expected) {
+                                    return Err(anyhow!("function end: return type mismatch"));
+                                }
+                            }
+                        }
+                        // Function validated successfully, exit loop
+                        break;
                     }
 
+                    // Pop block/loop/if frame
                     let frame = frames.pop().unwrap();
 
-                    // Verify stack has expected output types
+                    // Verify stack has expected output types (if reachable)
                     if frame.reachable {
                         for &expected in frame.output_types.iter().rev() {
                             if !Self::pop_type(&mut stack, expected) {
@@ -252,30 +264,36 @@ impl WastModuleValidator {
                         }
                     }
 
-                    // Push output types for subsequent code
+                    // Reset stack to frame height and push output types
+                    stack.truncate(frame.stack_height);
                     stack.extend(frame.output_types.iter());
                 }
                 0x0C => {
-                    // br (branch)
+                    // br (branch) - unconditional, makes following code unreachable
                     let (label_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
                     Self::validate_branch(&stack, label_idx, &frames)?;
+
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        frame.reachable = false;
+                    }
                 }
                 0x0D => {
-                    // br_if (branch if)
-                    // Must pop i32 condition - THIS IS THE KEY FIX FOR LABELS.WAST
+                    // br_if (branch if) - conditional, code after is still reachable
+                    let (label_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Pop i32 condition (top of stack)
                     if !Self::pop_type(&mut stack, StackType::I32) {
                         return Err(anyhow!("br_if: condition must be i32"));
                     }
 
-                    let (label_idx, new_offset) = Self::parse_varuint32(code, offset)?;
-                    offset = new_offset;
-
                     Self::validate_branch(&stack, label_idx, &frames)?;
                 }
                 0x0E => {
-                    // br_table
+                    // br_table - unconditional, makes following code unreachable
                     let (num_targets, mut new_offset) =
                         Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
@@ -294,6 +312,11 @@ impl WastModuleValidator {
                     // Pop operand (condition)
                     if !Self::pop_type(&mut stack, StackType::I32) {
                         return Err(anyhow!("br_table: operand must be i32"));
+                    }
+
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        frame.reachable = false;
                     }
                 }
                 0x0F => {
