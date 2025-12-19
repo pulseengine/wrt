@@ -127,12 +127,8 @@ impl WastModuleValidator {
             local_types.push(*local);
         }
 
-        // Initialize operand stack with parameters
-        let mut stack: Vec<StackType> = func_type
-            .params
-            .iter()
-            .map(|&vt| StackType::from_value_type(vt))
-            .collect();
+        // Initialize operand stack (empty - parameters are accessed via local.get, not on stack)
+        let mut stack: Vec<StackType> = Vec::new();
 
         // Initialize control flow frames
         let mut frames: Vec<ControlFrame> = vec![ControlFrame {
@@ -172,12 +168,16 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
+                    // For blocks with inputs, the inputs are already on the stack
+                    // We record the stack height BEFORE the inputs
+                    let stack_height = stack.len().saturating_sub(input_types.len());
+
                     frames.push(ControlFrame {
                         frame_type: FrameType::Block,
                         input_types: input_types.clone(),
                         output_types: output_types.clone(),
                         reachable: true,
-                        stack_height: stack.len() - input_types.len(),
+                        stack_height,
                     });
                 }
                 0x03 => {
@@ -188,12 +188,14 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
+                    let stack_height = stack.len().saturating_sub(input_types.len());
+
                     frames.push(ControlFrame {
                         frame_type: FrameType::Loop,
                         input_types: input_types.clone(),
                         output_types: output_types.clone(),
                         reachable: true,
-                        stack_height: stack.len() - input_types.len(),
+                        stack_height,
                     });
                 }
                 0x04 => {
@@ -209,12 +211,14 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
+                    let stack_height = stack.len().saturating_sub(input_types.len());
+
                     frames.push(ControlFrame {
                         frame_type: FrameType::If,
                         input_types: input_types.clone(),
                         output_types: output_types.clone(),
                         reachable: true,
-                        stack_height: stack.len() - input_types.len(),
+                        stack_height,
                     });
                 }
                 0x05 => {
@@ -580,6 +584,198 @@ impl WastModuleValidator {
                         return Err(anyhow!("i64 unary operation: operand must be i64"));
                     }
                     stack.push(StackType::I64);
+                }
+
+                // i32.eqz (0x45): i32 -> i32
+                0x45 => {
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i32.eqz: operand must be i32"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // i32 comparison operations (0x46-0x4F): i32 i32 -> i32
+                0x46 | 0x47 | 0x48 | 0x49 | 0x4A | 0x4B | 0x4C | 0x4D | 0x4E | 0x4F => {
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i32 comparison: second operand must be i32"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i32 comparison: first operand must be i32"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // i64.eqz (0x50): i64 -> i32
+                0x50 => {
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i64.eqz: operand must be i64"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // i64 comparison operations (0x51-0x5A): i64 i64 -> i32
+                0x51 | 0x52 | 0x53 | 0x54 | 0x55 | 0x56 | 0x57 | 0x58 | 0x59 | 0x5A => {
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i64 comparison: second operand must be i64"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i64 comparison: first operand must be i64"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // i32 binary operations (0x6A-0x78): i32 i32 -> i32
+                0x6A | 0x6B | 0x6C | 0x6D | 0x6E | 0x6F | 0x70 | 0x71 | 0x72 | 0x73 | 0x74 | 0x75 | 0x76 | 0x77 | 0x78 => {
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i32 binary: second operand must be i32"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i32 binary: first operand must be i32"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // i64 binary operations (0x7C-0x8A): i64 i64 -> i64
+                0x7C | 0x7D | 0x7E | 0x7F | 0x80 | 0x81 | 0x82 | 0x83 | 0x84 | 0x85 | 0x86 | 0x87 | 0x88 | 0x89 | 0x8A | 0x8B => {
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i64 binary: second operand must be i64"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i64 binary: first operand must be i64"));
+                    }
+                    stack.push(StackType::I64);
+                }
+
+                // Conversion operations: i32 -> i64
+                0xac | 0xad => {
+                    // i64.extend_i32_s (0xac), i64.extend_i32_u (0xad)
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("i64.extend_i32: operand must be i32"));
+                    }
+                    stack.push(StackType::I64);
+                }
+
+                // Conversion operations: i64 -> i32
+                0xa7 => {
+                    // i32.wrap_i64
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("i32.wrap_i64: operand must be i64"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // Conversion operations: f32 <-> i32
+                0xa8 | 0xa9 | 0xaa | 0xab => {
+                    // i32.trunc_f32_s (0xa8), i32.trunc_f32_u (0xa9)
+                    // i32.trunc_f64_s (0xaa), i32.trunc_f64_u (0xab)
+                    let is_f64 = opcode >= 0xaa;
+                    if is_f64 {
+                        if !Self::pop_type(&mut stack, StackType::F64) {
+                            return Err(anyhow!("i32.trunc: operand must be f64"));
+                        }
+                    } else {
+                        if !Self::pop_type(&mut stack, StackType::F32) {
+                            return Err(anyhow!("i32.trunc: operand must be f32"));
+                        }
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // Conversion operations: f32/f64 <-> i64
+                0xae | 0xaf | 0xb0 | 0xb1 => {
+                    // i64.trunc_f32_s (0xae), i64.trunc_f32_u (0xaf)
+                    // i64.trunc_f64_s (0xb0), i64.trunc_f64_u (0xb1)
+                    let is_f64 = opcode >= 0xb0;
+                    if is_f64 {
+                        if !Self::pop_type(&mut stack, StackType::F64) {
+                            return Err(anyhow!("i64.trunc: operand must be f64"));
+                        }
+                    } else {
+                        if !Self::pop_type(&mut stack, StackType::F32) {
+                            return Err(anyhow!("i64.trunc: operand must be f32"));
+                        }
+                    }
+                    stack.push(StackType::I64);
+                }
+
+                // Conversion operations: i32/i64 -> f32
+                0xb2 | 0xb3 | 0xb4 | 0xb5 => {
+                    // f32.convert_i32_s (0xb2), f32.convert_i32_u (0xb3)
+                    // f32.convert_i64_s (0xb4), f32.convert_i64_u (0xb5)
+                    let is_i64 = opcode >= 0xb4;
+                    if is_i64 {
+                        if !Self::pop_type(&mut stack, StackType::I64) {
+                            return Err(anyhow!("f32.convert: operand must be i64"));
+                        }
+                    } else {
+                        if !Self::pop_type(&mut stack, StackType::I32) {
+                            return Err(anyhow!("f32.convert: operand must be i32"));
+                        }
+                    }
+                    stack.push(StackType::F32);
+                }
+
+                // Conversion operations: f64.demote_f32
+                0xb6 => {
+                    if !Self::pop_type(&mut stack, StackType::F64) {
+                        return Err(anyhow!("f32.demote_f64: operand must be f64"));
+                    }
+                    stack.push(StackType::F32);
+                }
+
+                // Conversion operations: i32/i64 -> f64
+                0xb7 | 0xb8 | 0xb9 | 0xba => {
+                    // f64.convert_i32_s (0xb7), f64.convert_i32_u (0xb8)
+                    // f64.convert_i64_s (0xb9), f64.convert_i64_u (0xba)
+                    let is_i64 = opcode >= 0xb9;
+                    if is_i64 {
+                        if !Self::pop_type(&mut stack, StackType::I64) {
+                            return Err(anyhow!("f64.convert: operand must be i64"));
+                        }
+                    } else {
+                        if !Self::pop_type(&mut stack, StackType::I32) {
+                            return Err(anyhow!("f64.convert: operand must be i32"));
+                        }
+                    }
+                    stack.push(StackType::F64);
+                }
+
+                // Conversion operations: f64.promote_f32
+                0xbb => {
+                    if !Self::pop_type(&mut stack, StackType::F32) {
+                        return Err(anyhow!("f64.promote_f32: operand must be f32"));
+                    }
+                    stack.push(StackType::F64);
+                }
+
+                // Reinterpret operations (same size, different type)
+                0xbc => {
+                    // i32.reinterpret_f32
+                    if !Self::pop_type(&mut stack, StackType::F32) {
+                        return Err(anyhow!("i32.reinterpret_f32: operand must be f32"));
+                    }
+                    stack.push(StackType::I32);
+                }
+                0xbd => {
+                    // i64.reinterpret_f64
+                    if !Self::pop_type(&mut stack, StackType::F64) {
+                        return Err(anyhow!("i64.reinterpret_f64: operand must be f64"));
+                    }
+                    stack.push(StackType::I64);
+                }
+                0xbe => {
+                    // f32.reinterpret_i32
+                    if !Self::pop_type(&mut stack, StackType::I32) {
+                        return Err(anyhow!("f32.reinterpret_i32: operand must be i32"));
+                    }
+                    stack.push(StackType::F32);
+                }
+                0xbf => {
+                    // f64.reinterpret_i64
+                    if !Self::pop_type(&mut stack, StackType::I64) {
+                        return Err(anyhow!("f64.reinterpret_i64: operand must be i64"));
+                    }
+                    stack.push(StackType::F64);
                 }
 
                 // Skip other opcodes for now (will be handled by instruction executor)

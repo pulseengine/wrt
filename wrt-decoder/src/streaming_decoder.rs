@@ -493,6 +493,9 @@ impl<'a> StreamingDecoder<'a> {
         // Process each memory one at a time
         for i in 0..count {
             // Parse limits flag (0x00 = min only, 0x01 = min and max, 0x03 = min/max/shared)
+            if offset >= data.len() {
+                return Err(Error::parse_error("Memory section truncated: missing limits flag"));
+            }
             let flags = data[offset];
             offset += 1;
 

@@ -372,6 +372,10 @@ impl WastTestRunner {
                 Ok(directive_info) => {
                     if directive_info.result == TestResult::Failed {
                         file_status = TestResult::Failed;
+                        // Print error details for debugging
+                        if let Some(ref err_msg) = directive_info.error_message {
+                            eprintln!("[FAIL] {}: {}", directive_info.directive_name, err_msg);
+                        }
                     }
                     directive_results.push(directive_info);
                 },

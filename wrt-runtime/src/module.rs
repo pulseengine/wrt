@@ -1105,8 +1105,8 @@ impl Module {
             let memory_type = to_core_memory_type(*memory);
 
             #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] Module declares: min={} pages ({}KB), max={:?} pages",
-                mem_idx, memory_type.limits.min, memory_type.limits.min * 64, memory_type.limits.max);
+            eprintln!("DEBUG: [Memory {}] Module declares: min={} pages, max={:?} pages",
+                mem_idx, memory_type.limits.min, memory_type.limits.max);
 
             #[cfg(feature = "std")]
             eprintln!("DEBUG: [Memory {}] About to call Memory::new()...", mem_idx);
