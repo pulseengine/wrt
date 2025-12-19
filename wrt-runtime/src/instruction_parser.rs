@@ -236,11 +236,13 @@ fn parse_instruction_with_provider(
             Instruction::Call(func_idx)
         },
         0x11 => {
-            // CallIndirect
-            let (type_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
-            consumed += bytes;
-            consumed += 1; // Skip table index (always 0 in MVP)
-            Instruction::CallIndirect(type_idx, 0)
+            // CallIndirect: type_idx (LEB128 u32) followed by table_idx (LEB128 u32)
+            // Note: table_idx can be multi-byte LEB128, not always single byte!
+            let (type_idx, type_bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += type_bytes;
+            let (table_idx, table_bytes) = read_leb128_u32(bytecode, offset + 1 + type_bytes)?;
+            consumed += table_bytes;
+            Instruction::CallIndirect(type_idx, table_idx)
         },
 
         // Parametric instructions

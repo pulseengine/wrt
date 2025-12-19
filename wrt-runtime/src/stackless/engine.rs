@@ -714,7 +714,6 @@ impl StacklessEngine {
             // Initialize parameters as locals
             // Need to match the function type signature, not just provided args
             #[cfg(feature = "tracing")]
-
             trace!("Initializing locals: args.len()={}, func.locals.len()={}", args.len(), func.locals.len());
 
             // Get expected parameter count from function type
@@ -798,16 +797,8 @@ impl StacklessEngine {
                     .map_err(|_| wrt_error::Error::runtime_error("Instruction index out of bounds"))?;
 
                 instruction_count += 1;
-                #[cfg(feature = "std")]
-                {
-                    if func_idx == 73 || func_idx == 74 {
-                        eprintln!("[INST] func_idx={}, pc={}, instruction={:?}, stack={:?}", func_idx, pc, instruction, &operand_stack);
-                    }
-                }
                 #[cfg(feature = "tracing")]
                 trace!("pc={}, instruction={:?}", pc, instruction);
-
-                // Debug tracing removed - issue identified as WASM using hardcoded address beyond memory size
 
                 match *instruction {
                     Instruction::Unreachable => {
@@ -816,10 +807,14 @@ impl StacklessEngine {
                         // This can occur in panic paths when the panic hook is NULL,
                         // or after proc_exit is called.
                         #[cfg(feature = "std")]
-                        eprintln!(
-                            "[TRAP] Unreachable instruction at func_idx={}, pc={}",
-                            func_idx, pc
-                        );
+                        {
+                            // Print some context about what led to unreachable
+                            let prev_str = if pc > 0 { format!("{:?}", instructions.get(pc - 1)) } else { "N/A".to_string() };
+                            eprintln!(
+                                "[TRAP] Unreachable instruction at func_idx={}, pc={}, prev_instr={}",
+                                func_idx, pc, prev_str
+                            );
+                        }
                         return Err(wrt_error::Error::runtime_execution_error(
                             "WebAssembly trap: unreachable instruction executed",
                         ));
@@ -1029,6 +1024,38 @@ impl StacklessEngine {
                                 eprintln!("[CALL-ALLOC] func_idx={}, stack top {:?}", func_idx,
                                          operand_stack.iter().rev().take(4).collect::<Vec<_>>());
                             }
+                            // Trace func 235 (free) to see what pointer is being freed
+                            #[cfg(feature = "std")]
+                            if func_idx == 235 || func_idx == 236 {
+                                eprintln!("[FREE-TRACE] func_idx={} called with args: {:?}",
+                                         func_idx, operand_stack.iter().rev().take(1).collect::<Vec<_>>());
+                            }
+                            // Trace func 211 (Args::next) to see iterator state
+                            #[cfg(feature = "std")]
+                            if func_idx == 211 {
+                                // Args::next has params: (out_ptr, iter_ptr) - get both
+                                let stack_len = operand_stack.len();
+                                if stack_len >= 2 {
+                                    let iter_ptr = if let Some(Value::I32(v)) = operand_stack.get(stack_len - 1) { *v as u32 } else { 0 };
+                                    let out_ptr = if let Some(Value::I32(v)) = operand_stack.get(stack_len - 2) { *v as u32 } else { 0 };
+                                    // Read current (offset 4) and end (offset 12) from iterator
+                                    if let Ok(memory_wrapper) = instance.memory(0) {
+                                        let memory = &memory_wrapper.0;
+                                        let mut buf4 = [0u8; 4];
+                                        let mut buf12 = [0u8; 4];
+                                        let mut buf_val = [0u8; 4];
+                                        let _ = memory.read(iter_ptr + 4, &mut buf4);
+                                        let _ = memory.read(iter_ptr + 12, &mut buf12);
+                                        let current = u32::from_le_bytes(buf4);
+                                        let end = u32::from_le_bytes(buf12);
+                                        // Read the value at current pointer (the arg data)
+                                        let _ = memory.read(current, &mut buf_val);
+                                        let val_at_current = i32::from_le_bytes(buf_val);
+                                        eprintln!("[ARGS_NEXT] out_ptr=0x{:x}, iter_ptr=0x{:x}, current=0x{:x}, end=0x{:x}, remaining={}, val_at_current={}",
+                                                 out_ptr, iter_ptr, current, end, (end.saturating_sub(current)) / 12, val_at_current);
+                                    }
+                                }
+                            }
 
                             #[cfg(feature = "tracing")]
 
@@ -1059,6 +1086,39 @@ impl StacklessEngine {
                             trace!("Function returned {} results", results.len());
                             #[cfg(feature = "std")]
                             {
+                                // Always trace func 24 (Vec::len) to debug the comparison issue
+                                if func_idx == 24 {
+                                    eprintln!("[VEC_LEN] func_idx=24 returned {:?}", results);
+                                }
+                                // Trace from_utf8 (func 295) result - it writes to out_ptr (first arg was local 2+16)
+                                if func_idx == 295 {
+                                    eprintln!("[FROM_UTF8] func 295 (from_utf8) returned");
+                                }
+                                // Trace func 211 (Args::next) return value and what was written to out_ptr
+                                if func_idx == 211 {
+                                    // Check the actual out_ptrs we observed (0xffd2c and 0xffcdc)
+                                    if let Ok(memory_wrapper) = instance.memory(0) {
+                                        let memory = &memory_wrapper.0;
+                                        for out_addr in [0xffd2c_u32, 0xffcdc_u32].iter() {
+                                            let mut buf = [0u8; 12]; // Read full Option<String> struct
+                                            if memory.read(*out_addr, &mut buf).is_ok() {
+                                                let discriminant = i32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
+                                                let ptr = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
+                                                let len = u32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]);
+                                                // Read actual string content if ptr looks valid
+                                                let mut str_content = String::new();
+                                                if ptr > 0x10000 && len < 256 {
+                                                    let mut str_buf = vec![0u8; len as usize];
+                                                    if memory.read(ptr, &mut str_buf).is_ok() {
+                                                        str_content = String::from_utf8_lossy(&str_buf).to_string();
+                                                    }
+                                                }
+                                                eprintln!("[ARGS_NEXT_OUT] out=0x{:x} discriminant={} (None={}), ptr=0x{:x}, len={}, str=\"{}\"",
+                                                         out_addr, discriminant, discriminant == -2147483648, ptr, len, str_content);
+                                            }
+                                        }
+                                    }
+                                }
                                 for (i, result) in results.iter().enumerate() {
                                     match result {
                                         Value::I32(v) if (*v as u32) > 0x20000 => {
@@ -1444,11 +1504,14 @@ impl StacklessEngine {
                     Instruction::I32DivS => {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
+                            }
+                            // Check for integer overflow: INT_MIN / -1 would overflow
+                            if a == i32::MIN && b == -1 {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let result = a.wrapping_div(b);
                             #[cfg(feature = "tracing")]
-
                             trace!("I32DivS: {} / {} = {}", a, b, result);
                             operand_stack.push(Value::I32(result));
                         }
@@ -1456,11 +1519,10 @@ impl StacklessEngine {
                     Instruction::I32DivU => {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
                             let result = (a as u32).wrapping_div(b as u32) as i32;
                             #[cfg(feature = "tracing")]
-
                             trace!("I32DivU: {} / {} = {}", a as u32, b as u32, result as u32);
                             operand_stack.push(Value::I32(result));
                         }
@@ -1468,11 +1530,11 @@ impl StacklessEngine {
                     Instruction::I32RemS => {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
+                            // Note: INT_MIN % -1 = 0 (no overflow for remainder)
                             let result = a.wrapping_rem(b);
                             #[cfg(feature = "tracing")]
-
                             trace!("I32RemS: {} % {} = {}", a, b, result);
                             operand_stack.push(Value::I32(result));
                         }
@@ -1480,11 +1542,10 @@ impl StacklessEngine {
                     Instruction::I32RemU => {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
                             let result = (a as u32).wrapping_rem(b as u32) as i32;
                             #[cfg(feature = "tracing")]
-
                             trace!("I32RemU: {} % {} = {}", a as u32, b as u32, result as u32);
                             operand_stack.push(Value::I32(result));
                         }
@@ -1521,7 +1582,11 @@ impl StacklessEngine {
                     Instruction::I64DivS => {
                         if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
+                            }
+                            // Check for integer overflow: INT_MIN / -1 would overflow
+                            if a == i64::MIN && b == -1 {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let result = a.wrapping_div(b);
                             #[cfg(feature = "tracing")]
@@ -1532,7 +1597,7 @@ impl StacklessEngine {
                     Instruction::I64DivU => {
                         if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
                             let result = (a as u64).wrapping_div(b as u64) as i64;
                             #[cfg(feature = "tracing")]
@@ -1543,8 +1608,9 @@ impl StacklessEngine {
                     Instruction::I64RemS => {
                         if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
+                            // Note: INT_MIN % -1 = 0 (no overflow for remainder)
                             let result = a.wrapping_rem(b);
                             #[cfg(feature = "tracing")]
                             trace!("I64RemS: {} % {} = {}", a, b, result);
@@ -1554,7 +1620,7 @@ impl StacklessEngine {
                     Instruction::I64RemU => {
                         if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             if b == 0 {
-                                return Err(wrt_error::Error::runtime_trap("Division by zero"));
+                                return Err(wrt_error::Error::runtime_trap("integer divide by zero"));
                             }
                             let result = (a as u64).wrapping_rem(b as u64) as i64;
                             #[cfg(feature = "tracing")]
@@ -1818,8 +1884,13 @@ impl StacklessEngine {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             let result = if a == b { 1 } else { 0 };
                             #[cfg(feature = "tracing")]
-
                             trace!("I32Eq: {} == {} = {}", a, b, result != 0);
+                            // Trace None checks (comparing to -2147483648 sentinel)
+                            #[cfg(feature = "std")]
+                            if b == -2147483648 || a == -2147483648 {
+                                eprintln!("[NONE_CHECK] func_idx={}, pc={}: {} == {} = {} (None sentinel check!)",
+                                         func_idx, pc, a, b, result != 0);
+                            }
                             operand_stack.push(Value::I32(result));
                         }
                     }
@@ -2016,9 +2087,33 @@ impl StacklessEngine {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
                             let result = a ^ b;
                             #[cfg(feature = "tracing")]
-
                             trace!("I32Xor: {} ^ {} = {}", a, b, result);
                             operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    // I64 bitwise operations
+                    Instruction::I64And => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a & b;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64And: {} & {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Or => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a | b;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Or: {} | {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Xor => {
+                        if let (Some(Value::I64(b)), Some(Value::I64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a ^ b;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Xor: {} ^ {} = {}", a, b, result);
+                            operand_stack.push(Value::I64(result));
                         }
                     }
                     Instruction::I32Shl => {
@@ -2095,9 +2190,33 @@ impl StacklessEngine {
                         if let Some(Value::I32(a)) = operand_stack.pop() {
                             let result = a.count_ones() as i32;
                             #[cfg(feature = "tracing")]
-
                             trace!("I32Popcnt: popcnt({}) = {}", a, result);
                             operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    // I64 unary bit operations
+                    Instruction::I64Clz => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as u64).leading_zeros() as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Clz: clz({}) = {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Ctz => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as u64).trailing_zeros() as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Ctz: ctz({}) = {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Popcnt => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as u64).count_ones() as i64;
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Popcnt: popcnt({}) = {}", a, result);
+                            operand_stack.push(Value::I64(result));
                         }
                     }
                     Instruction::I32Eqz => {
@@ -2129,6 +2248,52 @@ impl StacklessEngine {
                             operand_stack.push(Value::I64(result));
                         }
                     }
+                    // Sign-extension operators (WebAssembly 2.0)
+                    Instruction::I32Extend8S => {
+                        // Sign-extend 8-bit value to 32 bits
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = (a as i8) as i32; // Cast to i8 then sign-extend to i32
+                            #[cfg(feature = "tracing")]
+                            trace!("I32Extend8S: {} -> {}", a, result);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::I32Extend16S => {
+                        // Sign-extend 16-bit value to 32 bits
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = (a as i16) as i32; // Cast to i16 then sign-extend to i32
+                            #[cfg(feature = "tracing")]
+                            trace!("I32Extend16S: {} -> {}", a, result);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::I64Extend8S => {
+                        // Sign-extend 8-bit value to 64 bits
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as i8) as i64; // Cast to i8 then sign-extend to i64
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Extend8S: {} -> {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Extend16S => {
+                        // Sign-extend 16-bit value to 64 bits
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as i16) as i64; // Cast to i16 then sign-extend to i64
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Extend16S: {} -> {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
+                    Instruction::I64Extend32S => {
+                        // Sign-extend 32-bit value to 64 bits
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as i32) as i64; // Cast to i32 then sign-extend to i64
+                            #[cfg(feature = "tracing")]
+                            trace!("I64Extend32S: {} -> {}", a, result);
+                            operand_stack.push(Value::I64(result));
+                        }
+                    }
                     // Memory operations
                     // IMPORTANT: Use instance.memory() for initialized memory, not module.get_memory()
                     // The instance has data segments applied, the module is just a template
@@ -2145,12 +2310,24 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = i32::from_le_bytes(buffer);
-                                            // Debug: trace reads from retptr/list regions
+                                            // Debug: trace reads from retptr/list regions and Vec area
                                             #[cfg(feature = "std")]
-                                            if (offset >= 0xffd60 && offset <= 0xffd80) ||
+                                            if (offset >= 0xffd60 && offset <= 0xffdd0) ||
                                                (offset >= 0x1076c0 && offset <= 0x1077f0) {
                                                 eprintln!("[I32Load-ARGDATA] offset=0x{:x}, value=0x{:x} ({})",
                                                          offset, value as u32, value);
+                                            }
+                                            // Debug: trace ALL reads in dlfree (func 236) to find corruption source
+                                            #[cfg(feature = "std")]
+                                            if func_idx == 236 {
+                                                eprintln!("[DLFREE-READ] pc={}, offset=0x{:x}, value=0x{:x} ({})",
+                                                         pc, offset, value as u32, value);
+                                            }
+                                            // Debug: trace Vec::len loads (offset=8 from Vec pointer)
+                                            #[cfg(feature = "std")]
+                                            if mem_arg.offset == 8 && addr >= 0xffd00 && addr <= 0xffe00 {
+                                                eprintln!("[VEC_LEN_LOAD] base=0x{:x}, offset=8, final=0x{:x}, value={} (0x{:x})",
+                                                         addr as u32, offset, value, value as u32);
                                             }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: read value {} from address {}", value, offset);
@@ -2159,6 +2336,9 @@ impl StacklessEngine {
                                         Err(e) => {
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: memory read failed: {:?}", e);
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[MEM-OOB] I32Load failed: offset=0x{:x} (base=0x{:x}, mem_arg.offset={}), func_idx={}, pc={}",
+                                                     offset, addr as u32, mem_arg.offset, func_idx, pc);
                                             return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
                                         }
                                     }
@@ -2186,10 +2366,22 @@ impl StacklessEngine {
                                         eprintln!("[I32Store-RETPTR] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
                                                  func_idx, pc, offset, value, value as u32);
                                     }
+                                    // Debug: trace writes to Vec structure region (0xffdac-0xffdc0)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffdac && offset <= 0xffdc0 {
+                                        eprintln!("[I32Store-VEC] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
+                                                 func_idx, pc, offset, value, value as u32);
+                                    }
                                     // Debug: trace writes to list array region (0x1076c0-0x107710)
                                     #[cfg(feature = "std")]
                                     if offset >= 0x1076c0 && offset <= 0x107710 {
                                         eprintln!("[I32Store-LISTARRAY] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
+                                                 func_idx, pc, offset, value, value as u32);
+                                    }
+                                    // Debug: trace writes to corrupted region (around 0x110020-0x110040)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0x110020 && offset <= 0x110040 {
+                                        eprintln!("[I32Store-CORRUPT] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
                                                  func_idx, pc, offset, value, value as u32);
                                     }
                                     let memory = &memory_wrapper.0;
@@ -2469,6 +2661,20 @@ impl StacklessEngine {
                                         eprintln!("[I64Store-RETPTR] offset=0x{:x}, value=0x{:016x} ({} as i64)",
                                                  offset, value as u64, value);
                                     }
+                                    // Debug: trace 64-bit writes to Vec region (0xffdac-0xffdbc)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffdac && offset <= 0xffdbc {
+                                        eprintln!("[I64Store-VEC] offset=0x{:x}, value=0x{:016x} ({} as i64), low32=0x{:x}, high32=0x{:x}",
+                                                 offset, value as u64, value,
+                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
+                                    }
+                                    // Debug: trace 64-bit writes to Args::next output region (0xffc00-0xffe00)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffc00 && offset <= 0xffe00 {
+                                        eprintln!("[I64Store-ARGOUT] func_idx={}, pc={}, offset=0x{:x}, value=0x{:016x}, low32(len)={}, high32(ptr)=0x{:x}",
+                                                 func_idx, pc, offset, value as u64,
+                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
+                                    }
                                     // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
                                     match memory.write_shared(offset, &bytes) {
                                         Ok(()) => {
@@ -2486,6 +2692,240 @@ impl StacklessEngine {
                                     return Err(wrt_error::Error::runtime_trap("Memory access error"));
                                 }
                             }
+                        }
+                    }
+                    // ========================================
+                    // F64 Instructions (64-bit floating point)
+                    // ========================================
+                    Instruction::F64Const(bits) => {
+                        #[cfg(feature = "tracing")]
+                        trace!("F64Const: pushing {}", f64::from_bits(bits));
+                        operand_stack.push(Value::F64(FloatBits64(bits)));
+                    }
+                    Instruction::F64Load(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let bits = u64::from_le_bytes(buffer);
+                                            operand_stack.push(Value::F64(FloatBits64(bits)));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::F64Store(mem_arg) => {
+                        if let (Some(Value::F64(bits)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = bits.0.to_le_bytes();
+                                    if memory.write_shared(offset, &bytes).is_err() {
+                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                    }
+                                }
+                                Err(_e) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    // F64 Arithmetic operations
+                    Instruction::F64Add => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = f64::from_bits(a.0) + f64::from_bits(b.0);
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Sub => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = f64::from_bits(a.0) - f64::from_bits(b.0);
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Mul => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = f64::from_bits(a.0) * f64::from_bits(b.0);
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Div => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = f64::from_bits(a.0) / f64::from_bits(b.0);
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    // F64 Comparison operations
+                    Instruction::F64Eq => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) == f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F64Ne => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) != f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F64Lt => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) < f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F64Gt => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) > f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F64Le => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) <= f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F64Ge => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if f64::from_bits(a.0) >= f64::from_bits(b.0) { 1i32 } else { 0i32 };
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    // F64 Unary operations
+                    Instruction::F64Abs => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0).abs();
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Neg => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = -f64::from_bits(a.0);
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Ceil => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0).ceil();
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Floor => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0).floor();
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Trunc => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0).trunc();
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Nearest => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let f = f64::from_bits(a.0);
+                            let result = if f.fract().abs() == 0.5 {
+                                let floor = f.floor();
+                                if floor as i64 % 2 == 0 { floor } else { f.ceil() }
+                            } else {
+                                f.round()
+                            };
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Sqrt => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0).sqrt();
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Min => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let fa = f64::from_bits(a.0);
+                            let fb = f64::from_bits(b.0);
+                            let result = if fa.is_nan() || fb.is_nan() {
+                                f64::NAN
+                            } else if fa == 0.0 && fb == 0.0 {
+                                if fa.is_sign_negative() || fb.is_sign_negative() { -0.0 } else { 0.0 }
+                            } else {
+                                fa.min(fb)
+                            };
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Max => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let fa = f64::from_bits(a.0);
+                            let fb = f64::from_bits(b.0);
+                            let result = if fa.is_nan() || fb.is_nan() {
+                                f64::NAN
+                            } else if fa == 0.0 && fb == 0.0 {
+                                if fa.is_sign_positive() || fb.is_sign_positive() { 0.0 } else { -0.0 }
+                            } else {
+                                fa.max(fb)
+                            };
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64Copysign => {
+                        if let (Some(Value::F64(b)), Some(Value::F64(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = f64::from_bits(a.0).copysign(f64::from_bits(b.0));
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    // F64 Conversion operations
+                    Instruction::F64ConvertI32S => {
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = a as f64;
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64ConvertI32U => {
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = (a as u32) as f64;
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64ConvertI64S => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = a as f64;
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64ConvertI64U => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as u64) as f64;
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64PromoteF32 => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = f32::from_bits(a.0) as f64;
+                            operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
+                        }
+                    }
+                    Instruction::F64ReinterpretI64 => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            operand_stack.push(Value::F64(FloatBits64(a as u64)));
+                        }
+                    }
+                    Instruction::I64ReinterpretF64 => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            operand_stack.push(Value::I64(a.0 as i64));
                         }
                     }
                     Instruction::If { block_type_idx } => {
@@ -2586,22 +3026,38 @@ impl StacklessEngine {
                         block_depth += 1;
                         block_stack.push(("block", pc));
                         #[cfg(feature = "tracing")]
-
                         trace!("Block: block_type_idx={}, depth now {}", block_type_idx, block_depth);
+                        // Trace block entry in func 76
+                        #[cfg(feature = "std")]
+                        if func_idx == 76 {
+                            eprintln!("[BLOCK] func_idx=76, pc={}, block_depth={}", pc, block_depth);
+                        }
                         // Just execute through the block - End will decrement depth
                     }
                     Instruction::Loop { block_type_idx } => {
                         block_depth += 1;
                         block_stack.push(("loop", pc));
                         #[cfg(feature = "tracing")]
-
                         trace!("Loop: block_type_idx={}, depth now {}, start_pc={}", block_type_idx, block_depth, pc);
+                        // Trace loop entry in func 76
+                        #[cfg(feature = "std")]
+                        if func_idx == 76 {
+                            eprintln!("[LOOP] func_idx=76, pc={}, block_depth={}", pc, block_depth);
+                        }
                         // Just execute through - Br will handle jumping back to start
                     }
                     Instruction::Br(label_idx) => {
                         #[cfg(feature = "tracing")]
-
                         trace!("Br: label_idx={} (unconditional branch)", label_idx);
+                        // Trace Br in func 76 (extend_desugared)
+                        #[cfg(feature = "std")]
+                        if func_idx == 76 {
+                            eprintln!("[BR] func_idx=76, pc={}, label_idx={}, block_stack.len()={}",
+                                     pc, label_idx, block_stack.len());
+                            for (i, (btype, bpc)) in block_stack.iter().enumerate() {
+                                eprintln!("[BR]   block_stack[{}]: {} at pc={}", i, btype, bpc);
+                            }
+                        }
 
                         // Get the target block from the block_stack
                         // label_idx=0 means innermost block, 1 means next outer, etc.
@@ -2616,10 +3072,31 @@ impl StacklessEngine {
                                 trace!("Br: jumping backward to loop start at pc={}", start_pc);
                                 pc = start_pc;  // Will +1 at end of iteration, so we execute the Loop instruction again
                             } else {
-                                // For Block/If: jump forward to the End (current behavior)
+                                // For Block/If: jump forward to the End
+                                // IMPORTANT: Pop all inner blocks from the stack since we're
+                                // jumping over their End instructions
+                                let blocks_to_pop = label_idx as usize;
+                                for _ in 0..blocks_to_pop {
+                                    if !block_stack.is_empty() {
+                                        let popped = block_stack.pop();
+                                        block_depth -= 1;
+                                        #[cfg(feature = "std")]
+                                        if func_idx == 76 {
+                                            eprintln!("[BR-FWD] Popping inner block: {:?}, block_depth now {}", popped, block_depth);
+                                        }
+                                    }
+                                }
+
+                                // Scan forward to find the target block's End
+                                // We need to skip past (label_idx + 1) End instructions at depth 0
                                 let mut target_depth = label_idx as i32 + 1;
                                 let mut new_pc = pc + 1;
                                 let mut depth = 0;
+
+                                #[cfg(feature = "std")]
+                                if func_idx == 76 {
+                                    eprintln!("[BR-FWD] Starting scan from pc={}, target_depth={}", new_pc, target_depth);
+                                }
 
                                 while new_pc < instructions.len() && target_depth > 0 {
                                     if let Some(instr) = instructions.get(new_pc) {
@@ -2628,14 +3105,25 @@ impl StacklessEngine {
                                             wrt_foundation::types::Instruction::Loop { .. } |
                                             wrt_foundation::types::Instruction::If { .. } => {
                                                 depth += 1;
+                                                #[cfg(feature = "std")]
+                                                if func_idx == 76 {
+                                                    eprintln!("[BR-FWD] pc={}: Block/Loop/If, depth now {}", new_pc, depth);
+                                                }
                                             }
                                             wrt_foundation::types::Instruction::End => {
+                                                #[cfg(feature = "std")]
+                                                if func_idx == 76 {
+                                                    eprintln!("[BR-FWD] pc={}: End, depth={}, target_depth={}", new_pc, depth, target_depth);
+                                                }
                                                 if depth == 0 {
                                                     target_depth -= 1;
                                                     if target_depth == 0 {
                                                         #[cfg(feature = "tracing")]
-
                                                         trace!("Br: jumping forward to pc={} (end of {} block)", new_pc, block_type);
+                                                        #[cfg(feature = "std")]
+                                                        if func_idx == 76 {
+                                                            eprintln!("[BR-FWD] Jumping to pc={}", new_pc);
+                                                        }
                                                         pc = new_pc - 1;
                                                         break;
                                                     }
@@ -2658,8 +3146,19 @@ impl StacklessEngine {
                     Instruction::BrIf(label_idx) => {
                         if let Some(Value::I32(condition)) = operand_stack.pop() {
                             #[cfg(feature = "tracing")]
-
                             trace!("BrIf: label_idx={}, condition={}", label_idx, condition != 0);
+                            // Trace BrIf in func 76 (extend_desugared) and func 211 (Args::next)
+                            #[cfg(feature = "std")]
+                            if func_idx == 76 {
+                                eprintln!("[BRIF] func_idx=76, pc={}, label_idx={}, condition={}, will_branch={}",
+                                         pc, label_idx, condition, condition != 0);
+                            }
+                            // Trace BrIf in func 211 - check from_utf8 result
+                            #[cfg(feature = "std")]
+                            if func_idx == 211 {
+                                eprintln!("[BRIF-211] pc={}, label_idx={}, condition={} (from_utf8_result), will_branch={}",
+                                         pc, label_idx, condition, condition != 0);
+                            }
                             if condition != 0 {
                                 // Branch conditionally - same logic as Br
                                 if (label_idx as usize) < block_stack.len() {
@@ -2674,6 +3173,15 @@ impl StacklessEngine {
                                         pc = start_pc;
                                     } else {
                                         // For Block/If: jump forward to the End
+                                        // Pop inner blocks from stack first
+                                        let blocks_to_pop = label_idx as usize;
+                                        for _ in 0..blocks_to_pop {
+                                            if !block_stack.is_empty() {
+                                                block_stack.pop();
+                                                block_depth -= 1;
+                                            }
+                                        }
+
                                         let mut target_depth = label_idx as i32 + 1;
                                         let mut new_pc = pc + 1;
                                         let mut depth = 0;
@@ -2691,7 +3199,6 @@ impl StacklessEngine {
                                                             target_depth -= 1;
                                                             if target_depth == 0 {
                                                                 #[cfg(feature = "tracing")]
-
                                                                 trace!("BrIf: jumping forward to pc={} (end of {} block)", new_pc, block_type);
                                                                 pc = new_pc - 1;
                                                                 break;
@@ -2994,14 +3501,16 @@ impl StacklessEngine {
                     }
                     Instruction::Return => {
                         #[cfg(feature = "tracing")]
-
                         trace!("🔙 Return at pc={}", pc);
                         #[cfg(feature = "tracing")]
-
                         trace!("  Operand stack size: {}", operand_stack.len());
                         #[cfg(feature = "tracing")]
-
                         trace!("  Instructions executed: {}", instruction_count);
+                        // Trace return from func 76
+                        #[cfg(feature = "std")]
+                        if func_idx == 76 {
+                            eprintln!("[RETURN] func_idx=76, pc={}, stack_size={}", pc, operand_stack.len());
+                        }
                         break; // Exit function
                     }
                     Instruction::End => {
@@ -3029,11 +3538,14 @@ impl StacklessEngine {
                             if !block_stack.is_empty() {
                                 let (block_type, start_pc) = block_stack.pop().unwrap();
                                 #[cfg(feature = "tracing")]
-
                                 trace!("End at pc={} (closes {} from pc={}, depth now {})", pc, block_type, start_pc, block_depth);
+                                // Trace End in func 76
+                                #[cfg(feature = "std")]
+                                if func_idx == 76 {
+                                    eprintln!("[END] func_idx=76, pc={}, closes {} from pc={}, block_depth={}", pc, block_type, start_pc, block_depth);
+                                }
                             } else {
                                 #[cfg(feature = "tracing")]
-
                                 trace!("End at pc={} (closes block, depth now {})", pc, block_depth);
                             }
                         }
@@ -3041,7 +3553,6 @@ impl StacklessEngine {
                     _ => {
                         // Skip unimplemented instructions for now
                         #[cfg(feature = "tracing")]
-
                         trace!("Unimplemented instruction at pc={}: {:?}", pc, instruction);
                     }
                 }
@@ -3762,117 +4273,174 @@ impl StacklessEngine {
                             eprintln!("[WASI-V2] NeedsAllocation: size={}, align={}, purpose={}",
                                      request.size, request.align, request.purpose);
 
-                            // Find cabi_realloc in this module
-                            let cabi_realloc_idx = self.find_export_index(module, "cabi_realloc");
+                            // BUMP ALLOCATOR FIX: Allocate in grown memory pages to avoid dlmalloc
+                            // corruption. When we use cabi_realloc, dlmalloc manages that memory
+                            // and can overwrite our data with free-list pointers when the adapter
+                            // code frees or reallocates. By growing memory and using new pages
+                            // directly, we bypass dlmalloc entirely.
 
-                            if let Ok(func_idx) = cabi_realloc_idx {
-                                // SEPARATE ALLOCATIONS: Allocate list array and each string separately
-                                        // This prevents dlmalloc free-list corruption when adapter frees strings.
-                                        // When all data is in one block, freeing individual strings causes
-                                        // dlmalloc to coalesce and overwrite the list array with free-list pointers.
+                            // DISABLED: The bump allocator doesn't create dlmalloc headers,
+                            // so when Rust tries to free these strings, dlfree looks for
+                            // headers that don't exist and reads garbage from adjacent strings.
+                            // Instead, we always use cabi_realloc which creates proper headers.
+                            let _use_bump_alloc = false;
+                            if _use_bump_alloc {
+                            if let Some(instance) = self.instances.get(&instance_id) {
+                                if let Ok(memory_wrapper) = instance.memory(0) {
+                                    let memory = &memory_wrapper.0;
 
-                                        // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
-                                        let list_array_size = (args_to_write.len() * 8) as u32;
-                                        let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2] list_ptr=0x{:x}", list_ptr);
-
-                                        // Step 2: Allocate each string separately and write data
-                                        let mut string_entries: Vec<(u32, u32)> = Vec::new();
-                                        for (i, arg) in args_to_write.iter().enumerate() {
-                                            let bytes = arg.as_bytes();
-                                            let len = bytes.len() as u32;
-
-                                            // Allocate memory for this string (align=1 for byte data)
-                                            let string_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 1, len)?;
-
-                                            // Write string bytes
-                                            if let Some(instance) = self.instances.get(&instance_id) {
-                                                if let Ok(memory_wrapper) = instance.memory(0) {
-                                                    let memory = &memory_wrapper.0;
-                                                    if let Err(e) = memory.write_shared(string_ptr, bytes) {
-                                                        return Err(e);
-                                                    }
-                                                }
-                                            }
+                                    // Grow memory by 1 page for our bump allocator region
+                                    match memory.grow_shared(1) {
+                                        Ok(old_pages) => {
+                                            // Bump allocator starts at the old end of memory
+                                            let bump_base = old_pages * 65536; // 64KB pages
+                                            let mut bump_offset = 0u32;
 
                                             #[cfg(feature = "std")]
-                                            eprintln!("[WASI-V2] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
+                                            eprintln!("[BUMP-ALLOC] Grew memory from {} pages, bump_base=0x{:x}", old_pages, bump_base);
 
-                                            string_entries.push((string_ptr, len));
-                                        }
+                                            // Helper to bump-allocate with alignment
+                                            let bump_alloc = |offset: &mut u32, size: u32, align: u32| -> u32 {
+                                                // Align offset
+                                                let aligned = (*offset + align - 1) & !(align - 1);
+                                                let ptr = bump_base + aligned;
+                                                *offset = aligned + size;
+                                                ptr
+                                            };
 
-                                        // Step 3: Write (ptr, len) entries to list array
-                                        if let Some(instance) = self.instances.get(&instance_id) {
-                                            if let Ok(memory_wrapper) = instance.memory(0) {
-                                                let memory = &memory_wrapper.0;
+                                            // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
+                                            let list_array_size = (args_to_write.len() * 8) as u32;
+                                            let list_ptr = bump_alloc(&mut bump_offset, list_array_size, 8);
 
-                                                for (i, (ptr, len)) in string_entries.iter().enumerate() {
-                                                    let offset = list_ptr + (i * 8) as u32;
-                                                    let mut entry_buf = [0u8; 8];
-                                                    entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
-                                                    entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[BUMP-ALLOC] list_ptr=0x{:x} (size={})", list_ptr, list_array_size);
 
-                                                    if let Err(e) = memory.write_shared(offset, &entry_buf) {
-                                                        return Err(e);
-                                                    }
-                                                }
+                                            // Step 2: Allocate each string and write data
+                                            let mut string_entries: Vec<(u32, u32)> = Vec::new();
+                                            for (i, arg) in args_to_write.iter().enumerate() {
+                                                let bytes = arg.as_bytes();
+                                                let len = bytes.len() as u32;
 
-                                                // Step 4: Write (list_ptr, count) to retptr
-                                                let mut retptr_buf = [0u8; 8];
-                                                retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
-                                                retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
+                                                // Bump allocate for this string (align=1 for byte data)
+                                                let string_ptr = bump_alloc(&mut bump_offset, len, 1);
 
-                                                if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
+                                                // Write string bytes
+                                                if let Err(e) = memory.write_shared(string_ptr, bytes) {
                                                     return Err(e);
                                                 }
 
                                                 #[cfg(feature = "std")]
-                                                {
-                                                    eprintln!("[WASI-V2] retptr=0x{:x} -> (0x{:x}, {})",
-                                                             retptr, list_ptr, args_to_write.len());
+                                                eprintln!("[BUMP-ALLOC] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
 
-                                                    // Dump memory around retptr to see what's there
-                                                    let mut retptr_dump = [0u8; 32];
-                                                    if memory.read(retptr, &mut retptr_dump).is_ok() {
-                                                        eprintln!("[RETPTR-DUMP] 0x{:x}: {:02x?}", retptr, &retptr_dump);
-                                                    }
+                                                string_entries.push((string_ptr, len));
+                                            }
 
-                                                    // Dump memory around list array to see full picture
-                                                    let mut list_dump = [0u8; 64];
-                                                    if memory.read(list_ptr, &mut list_dump).is_ok() {
-                                                        eprintln!("[LIST-DUMP] 0x{:x}: {:02x?}", list_ptr, &list_dump);
-                                                    }
+                                            // Step 3: Write (ptr, len) entries to list array
+                                            for (i, (ptr, len)) in string_entries.iter().enumerate() {
+                                                let offset = list_ptr + (i * 8) as u32;
+                                                let mut entry_buf = [0u8; 8];
+                                                entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
+                                                entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
 
-                                                    // Verify: read back the list array
-                                                    for (i, (expected_ptr, expected_len)) in string_entries.iter().enumerate() {
-                                                        let offset = list_ptr + (i * 8) as u32;
-                                                        let mut entry_buf = [0u8; 8];
-                                                        if memory.read(offset, &mut entry_buf).is_ok() {
-                                                            let read_ptr = u32::from_le_bytes([entry_buf[0], entry_buf[1], entry_buf[2], entry_buf[3]]);
-                                                            let read_len = u32::from_le_bytes([entry_buf[4], entry_buf[5], entry_buf[6], entry_buf[7]]);
-                                                            if read_ptr != *expected_ptr || read_len != *expected_len {
-                                                                eprintln!("[VERIFY-FAIL] list[{}] at 0x{:x}: expected (0x{:x}, {}), got (0x{:x}, {})",
-                                                                         i, offset, expected_ptr, expected_len, read_ptr, read_len);
-                                                            }
-                                                        }
-                                                    }
-
-                                                    // Also verify the strings themselves
-                                                    for (i, (str_ptr, str_len)) in string_entries.iter().enumerate() {
-                                                        let mut str_buf = vec![0u8; *str_len as usize];
-                                                        if memory.read(*str_ptr, &mut str_buf).is_ok() {
-                                                            let str_val = String::from_utf8_lossy(&str_buf);
-                                                            eprintln!("[VERIFY-STR] str[{}] at 0x{:x}: '{}'", i, str_ptr, str_val);
-                                                        }
-                                                    }
+                                                if let Err(e) = memory.write_shared(offset, &entry_buf) {
+                                                    return Err(e);
                                                 }
+                                            }
 
-                                                stack.clear();
-                                                return Ok(None);
+                                            // Step 4: Write (list_ptr, count) to retptr
+                                            let mut retptr_buf = [0u8; 8];
+                                            retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
+                                            retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
+
+                                            if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
+                                                return Err(e);
+                                            }
+
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[BUMP-ALLOC] retptr=0x{:x} -> (list=0x{:x}, count={}), total_bump_used={}",
+                                                     retptr, list_ptr, args_to_write.len(), bump_offset);
+
+                                            stack.clear();
+                                            return Ok(None);
+                                        }
+                                        Err(e) => {
+                                            #[cfg(feature = "std")]
+                                            eprintln!("[BUMP-ALLOC] Failed to grow memory: {:?}, falling back to cabi_realloc", e);
+                                            // Fall through to cabi_realloc fallback
+                                        }
+                                    }
+                                }
+                            }
+                            } // end if _use_bump_alloc
+
+                            // Use cabi_realloc for proper heap allocation with dlmalloc headers
+                            let cabi_realloc_idx = self.find_export_index(module, "cabi_realloc");
+
+                            if let Ok(func_idx) = cabi_realloc_idx {
+                                // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
+                                let list_array_size = (args_to_write.len() * 8) as u32;
+                                let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
+
+                                #[cfg(feature = "std")]
+                                eprintln!("[WASI-V2-FALLBACK] list_ptr=0x{:x}", list_ptr);
+
+                                // Step 2: Allocate each string separately and write data
+                                let mut string_entries: Vec<(u32, u32)> = Vec::new();
+                                for (i, arg) in args_to_write.iter().enumerate() {
+                                    let bytes = arg.as_bytes();
+                                    let len = bytes.len() as u32;
+
+                                    let string_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 1, len)?;
+
+                                    if let Some(instance) = self.instances.get(&instance_id) {
+                                        if let Ok(memory_wrapper) = instance.memory(0) {
+                                            let memory = &memory_wrapper.0;
+                                            if let Err(e) = memory.write_shared(string_ptr, bytes) {
+                                                return Err(e);
                                             }
                                         }
-                                        return Err(wrt_error::Error::memory_error("Could not access instance memory"));
+                                    }
+
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[WASI-V2-FALLBACK] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
+
+                                    string_entries.push((string_ptr, len));
+                                }
+
+                                // Step 3: Write (ptr, len) entries to list array
+                                if let Some(instance) = self.instances.get(&instance_id) {
+                                    if let Ok(memory_wrapper) = instance.memory(0) {
+                                        let memory = &memory_wrapper.0;
+
+                                        for (i, (ptr, len)) in string_entries.iter().enumerate() {
+                                            let offset = list_ptr + (i * 8) as u32;
+                                            let mut entry_buf = [0u8; 8];
+                                            entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
+                                            entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
+
+                                            if let Err(e) = memory.write_shared(offset, &entry_buf) {
+                                                return Err(e);
+                                            }
+                                        }
+
+                                        // Step 4: Write (list_ptr, count) to retptr
+                                        let mut retptr_buf = [0u8; 8];
+                                        retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
+                                        retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
+
+                                        if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
+                                            return Err(e);
+                                        }
+
+                                        #[cfg(feature = "std")]
+                                        eprintln!("[WASI-V2-FALLBACK] retptr=0x{:x} -> (0x{:x}, {})",
+                                                 retptr, list_ptr, args_to_write.len());
+
+                                        stack.clear();
+                                        return Ok(None);
+                                    }
+                                }
+                                return Err(wrt_error::Error::memory_error("Could not access instance memory"));
                             } else {
                                 #[cfg(feature = "std")]
                                 eprintln!("[WASI-V2] cabi_realloc not found, falling back to legacy dispatch");
