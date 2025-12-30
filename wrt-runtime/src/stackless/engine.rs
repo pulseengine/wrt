@@ -785,8 +785,10 @@ impl StacklessEngine {
             // Execute instructions - iterate over parsed Instruction enum
             let mut pc = 0;
 
-            // Track block stack: (block_type, start_pc) where block_type is "loop", "block", or "if"
-            let mut block_stack: Vec<(&str, usize)> = Vec::new();
+            // Track block stack: (block_type, start_pc, block_type_idx, stack_height) where block_type is "loop", "block", or "if"
+            // block_type_idx encodes the block's signature: 0x40=empty, 0x7F=i32, 0x7E=i64, 0x7D=f32, 0x7C=f64, or type index
+            // stack_height is the operand_stack length when the block was entered (for unwinding on br)
+            let mut block_stack: Vec<(&str, usize, u32, usize)> = Vec::new();
 
             while pc < instructions.len() {
                 #[cfg(feature = "std")]
@@ -1030,6 +1032,40 @@ impl StacklessEngine {
                                 eprintln!("[FREE-TRACE] func_idx={} called with args: {:?}",
                                          func_idx, operand_stack.iter().rev().take(1).collect::<Vec<_>>());
                             }
+                            // Trace func 244 (format string loop) to see arguments
+                            #[cfg(feature = "std")]
+                            if func_idx == 244 {
+                                eprintln!("[CALL-244] args: {:?}",
+                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
+                            }
+                            // Trace func 116 (format piece getter)
+                            #[cfg(feature = "std")]
+                            if func_idx == 116 {
+                                eprintln!("[CALL-116] args: {:?}",
+                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
+                            }
+                            // Trace func 138 (called before 116)
+                            #[cfg(feature = "std")]
+                            if func_idx == 138 {
+                                eprintln!("[CALL-138] args: {:?}",
+                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
+                                // Dump format pieces array - located at 0x1023c8
+                                if let Ok(mw) = instance.memory(0) {
+                                    let mem = &mw.0;
+                                    // Format pieces is typically at 0x1023c8, each entry is (ptr, len)
+                                    for i in 0..10 {
+                                        let base = 0x1023c8 + i * 8;
+                                        let mut buf = [0u8; 8];
+                                        if mem.read(base, &mut buf).is_ok() {
+                                            let ptr = u32::from_le_bytes(buf[0..4].try_into().unwrap());
+                                            let len = u32::from_le_bytes(buf[4..8].try_into().unwrap());
+                                            if ptr > 0 && ptr < 0x200000 && len < 1000 {
+                                                eprintln!("[PIECES] [{}] ptr=0x{:x}, len={}", i, ptr, len);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             // Trace func 211 (Args::next) to see iterator state
                             #[cfg(feature = "std")]
                             if func_idx == 211 {
@@ -1260,6 +1296,17 @@ impl StacklessEngine {
                         #[cfg(feature = "std")]
                         eprintln!("[CALL_INDIRECT] Resolved to func_idx={}", func_idx);
 
+                        // Track call_indirect to func 138 (iterator next)
+                        static CALL_138_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+                        #[cfg(feature = "std")]
+                        if func_idx == 138 {
+                            let call_num = CALL_138_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            eprintln!("[CALL-138-INDIRECT] Call #{}, FULL operand_stack ({} items):", call_num, operand_stack.len());
+                            for (i, val) in operand_stack.iter().enumerate() {
+                                eprintln!("  stack[{}] = {:?}", i, val);
+                            }
+                        }
+
                         // Validate function index
                         if func_idx >= module.functions.len() {
                             return Err(wrt_error::Error::runtime_trap(
@@ -1303,6 +1350,12 @@ impl StacklessEngine {
                         #[cfg(feature = "std")]
                         eprintln!("[CALL_INDIRECT] Function {} returned {} results", func_idx, results.len());
 
+                        // Trace function 138 return value
+                        #[cfg(feature = "std")]
+                        if func_idx == 138 && !results.is_empty() {
+                            eprintln!("[CALL_INDIRECT-138] Return value: {:?}", results[0]);
+                        }
+
                         // Push results back onto stack
                         for result in results {
                             operand_stack.push(result);
@@ -1326,6 +1379,11 @@ impl StacklessEngine {
 
                         trace!("I64Const: pushing value {}", value);
                         operand_stack.push(Value::I64(value));
+                    }
+                    Instruction::F32Const(bits) => {
+                        #[cfg(feature = "tracing")]
+                        trace!("F32Const: pushing {}", f32::from_bits(bits));
+                        operand_stack.push(Value::F32(FloatBits32(bits)));
                     }
                     Instruction::LocalGet(local_idx) => {
                         if (local_idx as usize) < locals.len() {
@@ -2310,11 +2368,18 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = i32::from_le_bytes(buffer);
-                                            // Debug: trace reads from retptr/list regions and Vec area
+                                            // Debug: trace reads from retptr/list regions, Vec area, and pieces array
                                             #[cfg(feature = "std")]
                                             if (offset >= 0xffd60 && offset <= 0xffdd0) ||
-                                               (offset >= 0x1076c0 && offset <= 0x1077f0) {
+                                               (offset >= 0x1076c0 && offset <= 0x1077f0) ||
+                                               (offset >= 0x1023c0 && offset <= 0x102400) {
                                                 eprintln!("[I32Load-ARGDATA] offset=0x{:x}, value=0x{:x} ({})",
+                                                         offset, value as u32, value);
+                                            }
+                                            // Debug: trace reads from datetime region
+                                            #[cfg(feature = "std")]
+                                            if offset >= 0xffe40 && offset <= 0xffe50 {
+                                                eprintln!("[I32Load-DATETIME] offset=0x{:x}, value=0x{:x} ({})",
                                                          offset, value as u32, value);
                                             }
                                             // Debug: trace ALL reads in dlfree (func 236) to find corruption source
@@ -2382,6 +2447,29 @@ impl StacklessEngine {
                                     #[cfg(feature = "std")]
                                     if offset >= 0x110020 && offset <= 0x110040 {
                                         eprintln!("[I32Store-CORRUPT] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
+                                                 func_idx, pc, offset, value, value as u32);
+                                    }
+                                    // Debug: trace writes to datetime region (0xffe40-0xffe50)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffe40 && offset <= 0xffe50 {
+                                        eprintln!("[I32Store-DATETIME] offset=0x{:x}, value={}", offset, value);
+                                    }
+                                    // Debug: trace writes to stack region (0xffd60-0xffda0) - includes 0xffd80
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffd60 && offset <= 0xffda0 {
+                                        eprintln!("[I32Store-STACK] func_idx={}, offset=0x{:x}, value={} ({:#x})",
+                                                 func_idx, offset, value, value as u32);
+                                    }
+                                    // Debug: trace ALL stores from function 138 (iterator next)
+                                    #[cfg(feature = "std")]
+                                    if func_idx == 138 {
+                                        eprintln!("[I32Store-FUNC138] pc={}, offset=0x{:x}, value={} ({:#x})",
+                                                 pc, offset, value, value as u32);
+                                    }
+                                    // Debug: trace writes to iterator region (0xffdc0-0xffe00)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffdc0 && offset <= 0xffe00 {
+                                        eprintln!("[I32Store-ITER] func_idx={}, pc={}, offset=0x{:x}, value={} ({:#x})",
                                                  func_idx, pc, offset, value, value as u32);
                                     }
                                     let memory = &memory_wrapper.0;
@@ -2634,7 +2722,16 @@ impl StacklessEngine {
                                             #[cfg(feature = "tracing")]
                                             trace!("I64Load: read value {} from address {}", value, offset);
                                             #[cfg(feature = "std")]
-                                            eprintln!("[I64Load] loaded {} (0x{:x}) from offset {:#x}", value, value as u64, offset);
+                                            {
+                                                eprintln!("[I64Load] loaded {} (0x{:x}) from offset {:#x}", value, value as u64, offset);
+                                                // Debug: show memory identity for datetime location
+                                                if offset >= 0xffe40 && offset <= 0xffe50 {
+                                                    // Get pointer to the actual Memory data via Arc::as_ptr
+                                                    use std::sync::Arc;
+                                                    let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
+                                                    eprintln!("[I64Load-DEBUG] instance_id={}, memory_arc_ptr={:p}", instance_id, arc_ptr);
+                                                }
+                                            }
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
@@ -2673,6 +2770,21 @@ impl StacklessEngine {
                                     if offset >= 0xffc00 && offset <= 0xffe00 {
                                         eprintln!("[I64Store-ARGOUT] func_idx={}, pc={}, offset=0x{:x}, value=0x{:016x}, low32(len)={}, high32(ptr)=0x{:x}",
                                                  func_idx, pc, offset, value as u64,
+                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
+                                    }
+                                    // Debug: trace 64-bit writes to datetime region (0xffe40-0xffe50)
+                                    #[cfg(feature = "std")]
+                                    if offset >= 0xffe40 && offset <= 0xffe50 {
+                                        use std::sync::Arc;
+                                        let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
+                                        eprintln!("[I64Store-DATETIME] offset=0x{:x}, value={}, instance_id={}, arc_ptr={:p}",
+                                                 offset, value, instance_id, arc_ptr);
+                                    }
+                                    // Debug: trace ALL 64-bit stores from function 138 (iterator next)
+                                    #[cfg(feature = "std")]
+                                    if func_idx == 138 {
+                                        eprintln!("[I64Store-FUNC138] pc={}, offset=0x{:x}, value=0x{:016x}, low32=0x{:x}, high32=0x{:x}",
+                                                 pc, offset, value as u64,
                                                  (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
                                     }
                                     // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
@@ -2930,10 +3042,12 @@ impl StacklessEngine {
                     }
                     Instruction::If { block_type_idx } => {
                         block_depth += 1;
-                        block_stack.push(("if", pc));
+                        // Record stack height as what it will be AFTER condition is consumed
+                        // The condition is still on stack, so entry height = len() - 1
+                        block_stack.push(("if", pc, block_type_idx, operand_stack.len().saturating_sub(1)));
                         #[cfg(feature = "tracing")]
-
-                        trace!("If: block_type_idx={}, depth now {}", block_type_idx, block_depth);
+                        trace!("If: block_type_idx={}, depth now {}, stack_height={}",
+                               block_type_idx, block_depth, operand_stack.len().saturating_sub(1));
                         // Pop condition
                         if let Some(Value::I32(condition)) = operand_stack.pop() {
                             #[cfg(feature = "tracing")]
@@ -3024,9 +3138,9 @@ impl StacklessEngine {
                     }
                     Instruction::Block { block_type_idx } => {
                         block_depth += 1;
-                        block_stack.push(("block", pc));
+                        block_stack.push(("block", pc, block_type_idx, operand_stack.len()));
                         #[cfg(feature = "tracing")]
-                        trace!("Block: block_type_idx={}, depth now {}", block_type_idx, block_depth);
+                        trace!("Block: block_type_idx={}, depth now {}, stack_height={}", block_type_idx, block_depth, operand_stack.len());
                         // Trace block entry in func 76
                         #[cfg(feature = "std")]
                         if func_idx == 76 {
@@ -3036,9 +3150,9 @@ impl StacklessEngine {
                     }
                     Instruction::Loop { block_type_idx } => {
                         block_depth += 1;
-                        block_stack.push(("loop", pc));
+                        block_stack.push(("loop", pc, block_type_idx, operand_stack.len()));
                         #[cfg(feature = "tracing")]
-                        trace!("Loop: block_type_idx={}, depth now {}, start_pc={}", block_type_idx, block_depth, pc);
+                        trace!("Loop: block_type_idx={}, depth now {}, start_pc={}, stack_height={}", block_type_idx, block_depth, pc, operand_stack.len());
                         // Trace loop entry in func 76
                         #[cfg(feature = "std")]
                         if func_idx == 76 {
@@ -3054,8 +3168,8 @@ impl StacklessEngine {
                         if func_idx == 76 {
                             eprintln!("[BR] func_idx=76, pc={}, label_idx={}, block_stack.len()={}",
                                      pc, label_idx, block_stack.len());
-                            for (i, (btype, bpc)) in block_stack.iter().enumerate() {
-                                eprintln!("[BR]   block_stack[{}]: {} at pc={}", i, btype, bpc);
+                            for (i, (btype, bpc, _, height)) in block_stack.iter().enumerate() {
+                                eprintln!("[BR]   block_stack[{}]: {} at pc={}, height={}", i, btype, bpc, height);
                             }
                         }
 
@@ -3063,7 +3177,48 @@ impl StacklessEngine {
                         // label_idx=0 means innermost block, 1 means next outer, etc.
                         if (label_idx as usize) < block_stack.len() {
                             let stack_idx = block_stack.len() - 1 - (label_idx as usize);
-                            let (block_type, start_pc) = block_stack[stack_idx];
+                            let (block_type, start_pc, block_type_idx, entry_stack_height) = block_stack[stack_idx];
+
+                            // Determine how many values to preserve based on block type
+                            // For loops: branch to beginning preserves nothing (arity 0)
+                            // For blocks: branch to end preserves the block's return values
+                            let values_to_preserve = if block_type == "loop" {
+                                0  // Loop branches to start, no values preserved
+                            } else {
+                                match block_type_idx {
+                                    0x40 => 0, // empty type - no return
+                                    0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 1, // i32, i64, f32, f64, v128
+                                    0x70 | 0x6F => 1, // funcref, externref
+                                    _ => {
+                                        // Type index - look up actual result count from module types
+                                        if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                            func_type.results.len()
+                                        } else {
+                                            1 // Fallback if type not found
+                                        }
+                                    }
+                                }
+                            };
+
+                            // Save the values to preserve from top of stack
+                            let mut preserved_values = Vec::new();
+                            #[cfg(feature = "std")]
+                            eprintln!("[BR-VALUE] pc={}, block_type_idx=0x{:02X}, values_to_preserve={}, stack_len={}, entry_height={}",
+                                     pc, block_type_idx, values_to_preserve, operand_stack.len(), entry_stack_height);
+                            for _ in 0..values_to_preserve {
+                                if let Some(v) = operand_stack.pop() {
+                                    #[cfg(feature = "std")]
+                                    eprintln!("[BR-VALUE]   Saving value: {:?}", v);
+                                    preserved_values.push(v);
+                                }
+                            }
+
+                            // Clear stack down to the entry height
+                            while operand_stack.len() > entry_stack_height {
+                                let _ = operand_stack.pop();
+                            }
+                            #[cfg(feature = "std")]
+                            eprintln!("[BR-VALUE] After clearing, stack_len={}", operand_stack.len());
 
                             if block_type == "loop" {
                                 // For Loop: jump backward to the loop start
@@ -3137,6 +3292,17 @@ impl StacklessEngine {
                                     new_pc += 1;
                                 }
                             }
+
+                            // Restore preserved values back to stack (in reverse order)
+                            #[cfg(feature = "std")]
+                            eprintln!("[BR-VALUE] Restoring {} values", preserved_values.len());
+                            for v in preserved_values.into_iter().rev() {
+                                #[cfg(feature = "std")]
+                                eprintln!("[BR-VALUE]   Restoring value: {:?}", v);
+                                operand_stack.push(v);
+                            }
+                            #[cfg(feature = "std")]
+                            eprintln!("[BR-VALUE] After restore, stack_len={}", operand_stack.len());
                         } else {
                             #[cfg(feature = "tracing")]
 
@@ -3163,7 +3329,39 @@ impl StacklessEngine {
                                 // Branch conditionally - same logic as Br
                                 if (label_idx as usize) < block_stack.len() {
                                     let stack_idx = block_stack.len() - 1 - (label_idx as usize);
-                                    let (block_type, start_pc) = block_stack[stack_idx];
+                                    let (block_type, start_pc, block_type_idx, entry_stack_height) = block_stack[stack_idx];
+
+                                    // Determine how many values to preserve based on block type
+                                    let values_to_preserve = if block_type == "loop" {
+                                        0  // Loop branches to start, no values preserved
+                                    } else {
+                                        match block_type_idx {
+                                            0x40 => 0, // empty type - no return
+                                            0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 1, // i32, i64, f32, f64, v128
+                                            0x70 | 0x6F => 1, // funcref, externref
+                                            _ => {
+                                                // Type index - look up actual result count
+                                                if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                                    func_type.results.len()
+                                                } else {
+                                                    1
+                                                }
+                                            }
+                                        }
+                                    };
+
+                                    // Save the values to preserve from top of stack
+                                    let mut preserved_values = Vec::new();
+                                    for _ in 0..values_to_preserve {
+                                        if let Some(v) = operand_stack.pop() {
+                                            preserved_values.push(v);
+                                        }
+                                    }
+
+                                    // Clear stack down to the entry height
+                                    while operand_stack.len() > entry_stack_height {
+                                        let _ = operand_stack.pop();
+                                    }
 
                                     if block_type == "loop" {
                                         // For Loop: jump backward to the loop start
@@ -3212,6 +3410,11 @@ impl StacklessEngine {
                                             }
                                             new_pc += 1;
                                         }
+                                    }
+
+                                    // Restore preserved values back to stack (in reverse order)
+                                    for v in preserved_values.into_iter().rev() {
+                                        operand_stack.push(v);
                                     }
                                 } else {
                                     #[cfg(feature = "tracing")]
@@ -3335,8 +3538,15 @@ impl StacklessEngine {
                                     }
 
                                     #[cfg(feature = "std")]
-                                    eprintln!("[MemoryCopy] SUCCESS: copied {} bytes from {:#x} to {:#x}",
-                                             size, src, dest);
+                                    {
+                                        eprintln!("[MemoryCopy] SUCCESS: copied {} bytes from {:#x} to {:#x}",
+                                                 size, src, dest);
+                                        // Show copied data as string if ASCII
+                                        if size <= 50 && buffer.iter().all(|&b| b >= 0x20 && b <= 0x7e || b == 0) {
+                                            let s = std::str::from_utf8(&buffer).unwrap_or("<invalid utf8>");
+                                            eprintln!("[MemoryCopy] Data: \"{}\"", s);
+                                        }
+                                    }
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
@@ -3436,17 +3646,49 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
 
                             trace!("BrTable: block_stack contents:");
-                            for (i, (btype, bpc)) in block_stack.iter().enumerate() {
+                            for (i, (btype, bpc, _, _)) in block_stack.iter().enumerate() {
                                 #[cfg(feature = "tracing")]
 
                                 trace!("  [{}]: {} at pc={}", i, btype, bpc);
                             }
                             if (label_idx as usize) < block_stack.len() {
                                 let stack_idx = block_stack.len() - 1 - (label_idx as usize);
-                                let (block_type, start_pc) = block_stack[stack_idx];
+                                let (block_type, start_pc, block_type_idx, entry_stack_height) = block_stack[stack_idx];
                                 #[cfg(feature = "tracing")]
 
                                 trace!("BrTable: accessing block_stack[{}], target block is {} at pc={}", stack_idx, block_type, start_pc);
+
+                                // Determine how many values to preserve based on block type
+                                let values_to_preserve = if block_type == "loop" {
+                                    0  // Loop branches to start, no values preserved
+                                } else {
+                                    match block_type_idx {
+                                        0x40 => 0, // empty type - no return
+                                        0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 1, // i32, i64, f32, f64, v128
+                                        0x70 | 0x6F => 1, // funcref, externref
+                                        _ => {
+                                            // Type index - look up actual result count
+                                            if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                                func_type.results.len()
+                                            } else {
+                                                1
+                                            }
+                                        }
+                                    }
+                                };
+
+                                // Save the values to preserve from top of stack
+                                let mut preserved_values = Vec::new();
+                                for _ in 0..values_to_preserve {
+                                    if let Some(v) = operand_stack.pop() {
+                                        preserved_values.push(v);
+                                    }
+                                }
+
+                                // Clear stack down to the entry height
+                                while operand_stack.len() > entry_stack_height {
+                                    let _ = operand_stack.pop();
+                                }
 
                                 if block_type == "loop" {
                                     // For Loop: jump backward to the loop start
@@ -3487,6 +3729,11 @@ impl StacklessEngine {
                                         }
                                         new_pc += 1;
                                     }
+                                }
+
+                                // Restore preserved values back to stack (in reverse order)
+                                for v in preserved_values.into_iter().rev() {
+                                    operand_stack.push(v);
                                 }
                             } else {
                                 #[cfg(feature = "tracing")]
@@ -3536,7 +3783,7 @@ impl StacklessEngine {
                         } else {
                             // This ends a block/loop/if - continue execution
                             if !block_stack.is_empty() {
-                                let (block_type, start_pc) = block_stack.pop().unwrap();
+                                let (block_type, start_pc, _, _) = block_stack.pop().unwrap();
                                 #[cfg(feature = "tracing")]
                                 trace!("End at pc={} (closes {} from pc={}, depth now {})", pc, block_type, start_pc, block_depth);
                                 // Trace End in func 76
@@ -4474,9 +4721,36 @@ impl StacklessEngine {
                         // Write memory back
                         if let Some(instance) = self.instances.get(&instance_id) {
                             if let Ok(memory_wrapper) = instance.memory(0) {
-                                if let Err(e) = memory_wrapper.0.write_shared(0, &mem) {
+                                let write_memory = &memory_wrapper.0;
+                                // Debug: check what's at the datetime location before write-back
+                                #[cfg(feature = "std")]
+                                {
+                                    use std::sync::Arc;
+                                    let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
+                                    let retptr = 0xffe40usize;
+                                    if retptr + 16 <= mem.len() {
+                                        let seconds = u64::from_le_bytes(mem[retptr..retptr+8].try_into().unwrap_or([0;8]));
+                                        let nanoseconds = u64::from_le_bytes(mem[retptr+8..retptr+16].try_into().unwrap_or([0;8]));
+                                        eprintln!("[WASI-WRITEBACK] Before write: retptr=0x{:x}, seconds={}, nanoseconds={}, instance_id={}, memory_arc_ptr={:p}",
+                                                 retptr, seconds, nanoseconds, instance_id, arc_ptr);
+                                    }
+                                }
+                                if let Err(e) = write_memory.write_shared(0, &mem) {
                                     #[cfg(feature = "std")]
                                     eprintln!("[WASI-FALLBACK] Failed to write back memory: {:?}", e);
+                                } else {
+                                    #[cfg(feature = "std")]
+                                    {
+                                        eprintln!("[WASI-WRITEBACK] Success: wrote {} bytes to instance memory", mem.len());
+                                        // Verify by reading back what we just wrote
+                                        let retptr = 0xffe40usize;
+                                        let mut verify_buf = [0u8; 16];
+                                        if write_memory.read(retptr as u32, &mut verify_buf).is_ok() {
+                                            let read_seconds = u64::from_le_bytes(verify_buf[0..8].try_into().unwrap());
+                                            let read_nanos = u64::from_le_bytes(verify_buf[8..16].try_into().unwrap());
+                                            eprintln!("[WASI-VERIFY] After write_shared: seconds={}, nanoseconds={}", read_seconds, read_nanos);
+                                        }
+                                    }
                                 }
                             }
                         }
