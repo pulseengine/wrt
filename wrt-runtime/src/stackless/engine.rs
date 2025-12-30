@@ -1390,6 +1390,12 @@ impl StacklessEngine {
                             let value = locals[local_idx as usize].clone();
                             #[cfg(feature = "tracing")]
                             trace!("LocalGet: local[{}] = {:?}", local_idx, value);
+                            // Debug: trace LocalGet in function 222 for key locals (0=pieces, 2=Arguments)
+                            #[cfg(feature = "std")]
+                            if func_idx == 222 && (local_idx == 0 || local_idx == 2) {
+                                eprintln!("[LOCALGET-222] pc={}, local[{}] = {:?}",
+                                         pc, local_idx, value);
+                            }
                             #[cfg(feature = "std")]
                             {
                                 // Debug suspicious values that might be bad pointers
@@ -1412,6 +1418,12 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
 
                             trace!("LocalSet: setting local[{}] = {:?}", local_idx, value);
+                            // Debug: trace LocalSet in function 222 (core::fmt::write)
+                            #[cfg(feature = "std")]
+                            if func_idx == 222 {
+                                eprintln!("[LOCALSET-222] pc={}, local[{}] = {:?}",
+                                         pc, local_idx, value);
+                            }
                             if (local_idx as usize) < locals.len() {
                                 locals[local_idx as usize] = value;
                             } else {
@@ -1431,6 +1443,12 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
 
                             trace!("LocalTee: setting local[{}] = {:?} (keeping on stack)", local_idx, value);
+                            // Debug: trace LocalTee in function 222 (core::fmt::write)
+                            #[cfg(feature = "std")]
+                            if func_idx == 222 {
+                                eprintln!("[LOCALTEE-222] pc={}, local[{}] = {:?}",
+                                         pc, local_idx, value);
+                            }
                             if (local_idx as usize) < locals.len() {
                                 locals[local_idx as usize] = value;
                             } else {
@@ -2373,8 +2391,8 @@ impl StacklessEngine {
                                             if (offset >= 0xffd60 && offset <= 0xffdd0) ||
                                                (offset >= 0x1076c0 && offset <= 0x1077f0) ||
                                                (offset >= 0x1023c0 && offset <= 0x102400) {
-                                                eprintln!("[I32Load-ARGDATA] offset=0x{:x}, value=0x{:x} ({})",
-                                                         offset, value as u32, value);
+                                                eprintln!("[I32Load-ARGDATA] func={}, pc={}, offset=0x{:x}, value=0x{:x} ({})",
+                                                         func_idx, pc, offset, value as u32, value);
                                             }
                                             // Debug: trace reads from datetime region
                                             #[cfg(feature = "std")]
@@ -3146,6 +3164,11 @@ impl StacklessEngine {
                         if func_idx == 76 {
                             eprintln!("[BLOCK] func_idx=76, pc={}, block_depth={}", pc, block_depth);
                         }
+                        // Trace block entry in func 222
+                        #[cfg(feature = "std")]
+                        if func_idx == 222 {
+                            eprintln!("[BLOCK-222] pc={}, block_depth={}", pc, block_depth);
+                        }
                         // Just execute through the block - End will decrement depth
                     }
                     Instruction::Loop { block_type_idx } => {
@@ -3158,11 +3181,25 @@ impl StacklessEngine {
                         if func_idx == 76 {
                             eprintln!("[LOOP] func_idx=76, pc={}, block_depth={}", pc, block_depth);
                         }
+                        // Trace loop entry in func 222
+                        #[cfg(feature = "std")]
+                        if func_idx == 222 {
+                            eprintln!("[LOOP-222] pc={}, block_depth={}", pc, block_depth);
+                        }
                         // Just execute through - Br will handle jumping back to start
                     }
                     Instruction::Br(label_idx) => {
                         #[cfg(feature = "tracing")]
                         trace!("Br: label_idx={} (unconditional branch)", label_idx);
+                        // Trace Br in func 222
+                        #[cfg(feature = "std")]
+                        if func_idx == 222 {
+                            eprintln!("[BR-222] pc={}, label_idx={}, block_depth={}, block_stack.len()={}",
+                                     pc, label_idx, block_depth, block_stack.len());
+                            for (i, (btype, bpc, _, _)) in block_stack.iter().enumerate() {
+                                eprintln!("[BR-222]   block_stack[{}]: {} at pc={}", i, btype, bpc);
+                            }
+                        }
                         // Trace Br in func 76 (extend_desugared)
                         #[cfg(feature = "std")]
                         if func_idx == 76 {
@@ -3323,6 +3360,12 @@ impl StacklessEngine {
                             #[cfg(feature = "std")]
                             if func_idx == 211 {
                                 eprintln!("[BRIF-211] pc={}, label_idx={}, condition={} (from_utf8_result), will_branch={}",
+                                         pc, label_idx, condition, condition != 0);
+                            }
+                            // Trace BrIf in func 222 (core::fmt::write)
+                            #[cfg(feature = "std")]
+                            if func_idx == 222 {
+                                eprintln!("[BRIF-222] pc={}, label_idx={}, condition={}, will_branch={}",
                                          pc, label_idx, condition, condition != 0);
                             }
                             if condition != 0 {
@@ -3690,6 +3733,16 @@ impl StacklessEngine {
                                     let _ = operand_stack.pop();
                                 }
 
+                                // Pop all inner blocks from the stack since we're jumping over
+                                // their End instructions (same as Br instruction logic)
+                                let blocks_to_pop = label_idx as usize;
+                                for _ in 0..blocks_to_pop {
+                                    if !block_stack.is_empty() {
+                                        block_stack.pop();
+                                        block_depth -= 1;
+                                    }
+                                }
+
                                 if block_type == "loop" {
                                     // For Loop: jump backward to the loop start
                                     #[cfg(feature = "tracing")]
@@ -3790,6 +3843,12 @@ impl StacklessEngine {
                                 #[cfg(feature = "std")]
                                 if func_idx == 76 {
                                     eprintln!("[END] func_idx=76, pc={}, closes {} from pc={}, block_depth={}", pc, block_type, start_pc, block_depth);
+                                }
+                                // Trace End in func 222
+                                #[cfg(feature = "std")]
+                                if func_idx == 222 {
+                                    eprintln!("[END-222] pc={}, closes {} from pc={}, block_depth={}, block_stack.len()={}",
+                                             pc, block_type, start_pc, block_depth, block_stack.len());
                                 }
                             } else {
                                 #[cfg(feature = "tracing")]
