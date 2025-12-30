@@ -168,9 +168,16 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
-                    // For blocks with inputs, the inputs are already on the stack
-                    // We record the stack height BEFORE the inputs
-                    let stack_height = stack.len().saturating_sub(input_types.len());
+                    // For blocks with inputs, verify and pop the input types
+                    let frame_height = Self::current_frame_height(&frames);
+                    for &expected in input_types.iter().rev() {
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // Record the stack height AFTER popping inputs
+                    let stack_height = stack.len();
 
                     frames.push(ControlFrame {
                         frame_type: FrameType::Block,
@@ -179,6 +186,11 @@ impl WastModuleValidator {
                         reachable: true,
                         stack_height,
                     });
+
+                    // Push inputs back - they're now on the block's stack
+                    for input_type in &input_types {
+                        stack.push(*input_type);
+                    }
                 }
                 0x03 => {
                     // loop
@@ -188,7 +200,16 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
-                    let stack_height = stack.len().saturating_sub(input_types.len());
+                    // For loops with inputs, verify and pop the input types
+                    let frame_height = Self::current_frame_height(&frames);
+                    for &expected in input_types.iter().rev() {
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // Record the stack height AFTER popping inputs
+                    let stack_height = stack.len();
 
                     frames.push(ControlFrame {
                         frame_type: FrameType::Loop,
@@ -197,12 +218,18 @@ impl WastModuleValidator {
                         reachable: true,
                         stack_height,
                     });
+
+                    // Push inputs back - they're now on the loop's stack
+                    for input_type in &input_types {
+                        stack.push(*input_type);
+                    }
                 }
                 0x04 => {
                     // if
                     // Pop condition (must be i32)
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("if: type mismatch on condition"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
 
                     let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
@@ -211,7 +238,15 @@ impl WastModuleValidator {
                     let (input_types, output_types) =
                         Self::block_type_to_stack_types(&block_type, module)?;
 
-                    let stack_height = stack.len().saturating_sub(input_types.len());
+                    // For if with inputs, verify and pop the input types
+                    for &expected in input_types.iter().rev() {
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // Record the stack height AFTER popping inputs
+                    let stack_height = stack.len();
 
                     frames.push(ControlFrame {
                         frame_type: FrameType::If,
@@ -220,6 +255,11 @@ impl WastModuleValidator {
                         reachable: true,
                         stack_height,
                     });
+
+                    // Push inputs back - they're now on the if's stack
+                    for input_type in &input_types {
+                        stack.push(*input_type);
+                    }
                 }
                 0x05 => {
                     // else
@@ -246,9 +286,15 @@ impl WastModuleValidator {
                         // Verify the stack matches the function's return types
                         let frame = &frames[0];
                         if frame.reachable {
+                            let frame_height = frame.stack_height;
+                            // Check stack has exactly the right number of outputs
+                            let expected_height = frame_height + frame.output_types.len();
+                            if stack.len() != expected_height {
+                                return Err(anyhow!("type mismatch"));
+                            }
                             for &expected in frame.output_types.iter().rev() {
-                                if !Self::pop_type(&mut stack, expected) {
-                                    return Err(anyhow!("function end: return type mismatch"));
+                                if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                    return Err(anyhow!("type mismatch"));
                                 }
                             }
                         }
@@ -261,9 +307,15 @@ impl WastModuleValidator {
 
                     // Verify stack has expected output types (if reachable)
                     if frame.reachable {
+                        let frame_height = frame.stack_height;
+                        // Check stack has exactly the right number of outputs
+                        let expected_height = frame_height + frame.output_types.len();
+                        if stack.len() != expected_height {
+                            return Err(anyhow!("type mismatch"));
+                        }
                         for &expected in frame.output_types.iter().rev() {
-                            if !Self::pop_type(&mut stack, expected) {
-                                return Err(anyhow!("end: type mismatch on output"));
+                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                return Err(anyhow!("type mismatch"));
                             }
                         }
                     }
@@ -290,8 +342,9 @@ impl WastModuleValidator {
                     offset = new_offset;
 
                     // Pop i32 condition (top of stack)
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("br_if: condition must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
 
                     Self::validate_branch(&stack, label_idx, &frames)?;
@@ -302,21 +355,55 @@ impl WastModuleValidator {
                         Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
-                    // Pop all branch targets
+                    // Collect all branch targets (including default)
+                    let mut targets: Vec<u32> = Vec::new();
                     for _ in 0..num_targets {
-                        let (_, temp_offset) = Self::parse_varuint32(code, new_offset)?;
+                        let (label_idx, temp_offset) = Self::parse_varuint32(code, new_offset)?;
+                        targets.push(label_idx);
                         new_offset = temp_offset;
                     }
                     offset = new_offset;
 
-                    // Pop default target
-                    let (_, temp_offset) = Self::parse_varuint32(code, offset)?;
+                    // Parse default target
+                    let (default_label, temp_offset) = Self::parse_varuint32(code, offset)?;
+                    targets.push(default_label);
                     offset = temp_offset;
 
-                    // Pop operand (condition)
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("br_table: operand must be i32"));
+                    // Pop operand (i32 condition/index)
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
+
+                    // Validate all targets are in range and have consistent types
+                    let mut expected_arity: Option<usize> = None;
+                    for &label_idx in &targets {
+                        // Validate label is in range
+                        if label_idx as usize >= frames.len() {
+                            return Err(anyhow!("unknown label {}", label_idx));
+                        }
+
+                        let target_frame = &frames[frames.len() - 1 - label_idx as usize];
+                        let branch_types = if target_frame.frame_type == FrameType::Loop {
+                            &target_frame.input_types
+                        } else {
+                            &target_frame.output_types
+                        };
+
+                        match expected_arity {
+                            None => {
+                                expected_arity = Some(branch_types.len());
+                            }
+                            Some(arity) => {
+                                if branch_types.len() != arity {
+                                    return Err(anyhow!("type mismatch"));
+                                }
+                            }
+                        }
+                    }
+
+                    // Validate the stack has the required values for the branch
+                    Self::validate_branch(&stack, default_label, &frames)?;
 
                     // Mark current frame as unreachable
                     if let Some(frame) = frames.last_mut() {
@@ -325,10 +412,11 @@ impl WastModuleValidator {
                 }
                 0x0F => {
                     // return
+                    let frame_height = Self::current_frame_height(&frames);
                     if let Some(frame) = frames.first() {
                         for &expected in frame.output_types.iter().rev() {
-                            if !Self::pop_type(&mut stack, expected) {
-                                return Err(anyhow!("return: type mismatch"));
+                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                return Err(anyhow!("type mismatch"));
                             }
                         }
                     }
@@ -349,10 +437,11 @@ impl WastModuleValidator {
                     // Pop arguments and push results
                     if let Some(func_type) = Self::get_function_type(func_idx, module) {
                         // Pop arguments in reverse order
+                        let frame_height = Self::current_frame_height(&frames);
                         for param in func_type.params.iter().rev() {
                             let expected = StackType::from_value_type(*param);
-                            if !Self::pop_type(&mut stack, expected) {
-                                return Err(anyhow!("call: argument type mismatch"));
+                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                return Err(anyhow!("type mismatch"));
                             }
                         }
                         // Push results
@@ -378,21 +467,18 @@ impl WastModuleValidator {
                     }
 
                     let func_type = &module.types[type_idx as usize];
+                    let frame_height = Self::current_frame_height(&frames);
 
                     // Pop table index (must be i32)
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!(
-                            "call_indirect: table index must be i32"
-                        ));
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
 
                     // Pop arguments in reverse order
                     for param in func_type.params.iter().rev() {
                         let expected = StackType::from_value_type(*param);
-                        if !Self::pop_type(&mut stack, expected) {
-                            return Err(anyhow!(
-                                "call_indirect: argument type mismatch"
-                            ));
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
                         }
                     }
 
@@ -402,17 +488,149 @@ impl WastModuleValidator {
                     }
                 }
 
-                // Memory operations
-                0x28..=0x35 | 0x36..=0x3E => {
-                    // Load/store operations
-                    // For now, simplified: just skip memory and alignment info
+                // Memory operations - Load instructions
+                0x28 => {
+                    // i32.load - pop i32 address, push i32 value
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
-
-                    // Type checking happens at instruction level
-                    // We trust the instruction dispatch handles this
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::I32);
+                }
+                0x29 => {
+                    // i64.load - pop i32 address, push i64 value
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::I64);
+                }
+                0x2A => {
+                    // f32.load - pop i32 address, push f32 value
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::F32);
+                }
+                0x2B => {
+                    // f64.load - pop i32 address, push f64 value
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::F64);
+                }
+                0x2C..=0x35 => {
+                    // Extended load operations (load8, load16, load32, etc.)
+                    // All take i32 address and return the loaded value type
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    // Push result based on opcode
+                    let result_type = match opcode {
+                        0x2C | 0x2D | 0x2E | 0x2F => StackType::I32, // i32.load8_s/u, i32.load16_s/u
+                        0x30 | 0x31 | 0x32 | 0x33 | 0x34 | 0x35 => StackType::I64, // i64 loads
+                        _ => StackType::I32,
+                    };
+                    stack.push(result_type);
+                }
+                0x36 => {
+                    // i32.store - pop i32 value and i32 address
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                }
+                0x37 => {
+                    // i64.store - pop i64 value and i32 address
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                }
+                0x38 => {
+                    // f32.store - pop f32 value and i32 address
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                }
+                0x39 => {
+                    // f64.store - pop f64 value and i32 address
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                }
+                0x3A..=0x3E => {
+                    // Extended store operations (store8, store16, store32)
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+                    let frame_height = Self::current_frame_height(&frames);
+                    // Pop value type based on opcode
+                    let value_type = match opcode {
+                        0x3A | 0x3B => StackType::I32, // i32.store8, i32.store16
+                        0x3C | 0x3D | 0x3E => StackType::I64, // i64.store8/16/32
+                        _ => StackType::I32,
+                    };
+                    if !Self::pop_type(&mut stack, value_type, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
                 }
 
                 // Variable operations
@@ -443,8 +661,9 @@ impl WastModuleValidator {
                     }
 
                     let expected = StackType::from_value_type(local_types[local_idx as usize]);
-                    if !Self::pop_type(&mut stack, expected) {
-                        return Err(anyhow!("local.set: type mismatch"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                 }
                 0x22 => {
@@ -493,8 +712,9 @@ impl WastModuleValidator {
 
                     let global_type = module.globals[global_idx as usize].global_type.value_type;
                     let expected = StackType::from_value_type(global_type);
-                    if !Self::pop_type(&mut stack, expected) {
-                        return Err(anyhow!("global.set: type mismatch"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                 }
 
@@ -531,117 +751,185 @@ impl WastModuleValidator {
                 // Parametric operations
                 0x1A => {
                     // drop
-                    if stack.is_empty() {
-                        return Err(anyhow!("drop: stack underflow"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if stack.len() <= frame_height && !unreachable {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    stack.pop();
+                    if stack.len() > frame_height {
+                        stack.pop();
+                    }
                 }
                 0x1B => {
                     // select
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("select: condition must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    if stack.len() < 2 {
-                        return Err(anyhow!("select: stack underflow"));
+                    if stack.len() <= frame_height + 1 && !unreachable {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    let type2 = stack.pop().unwrap();
-                    let type1 = stack.pop().unwrap();
-                    if type1 != type2 {
-                        return Err(anyhow!("select: operand types must match"));
+                    if stack.len() > frame_height + 1 {
+                        let type2 = stack.pop().unwrap();
+                        let type1 = stack.pop().unwrap();
+                        if type1 != type2 && !unreachable {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                        stack.push(type1);
+                    } else if unreachable {
+                        // In unreachable code, push Unknown type
+                        stack.push(StackType::Unknown);
                     }
-                    stack.push(type1);
                 }
 
-                // Unary floating-point operations (consume and produce specific types)
-                // f32 unary: neg (0x8C), abs, sqrt, ceil, floor, trunc, nearest
-                0x8C | 0x8D | 0x8E | 0x8F | 0x90 | 0x91 | 0x92 => {
-                    // f32 unary operations
-                    if !Self::pop_type(&mut stack, StackType::F32) {
-                        return Err(anyhow!("f32 unary operation: operand must be f32"));
+                // f32 unary operations (0x8B-0x91): abs, neg, ceil, floor, trunc, nearest, sqrt
+                0x8B | 0x8C | 0x8D | 0x8E | 0x8F | 0x90 | 0x91 => {
+                    // f32 unary: f32 -> f32
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F32);
                 }
-                // f64 unary: neg (0x99), abs, sqrt, ceil, floor, trunc, nearest
+                // f32 binary operations (0x92-0x98): add, sub, mul, div, min, max, copysign
+                0x92 | 0x93 | 0x94 | 0x95 | 0x96 | 0x97 | 0x98 => {
+                    // f32 binary: f32 f32 -> f32
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::F32);
+                }
+                // f64 unary operations (0x99-0x9F): abs, neg, ceil, floor, trunc, nearest, sqrt
                 0x99 | 0x9A | 0x9B | 0x9C | 0x9D | 0x9E | 0x9F => {
-                    // f64 unary operations
-                    if !Self::pop_type(&mut stack, StackType::F64) {
-                        return Err(anyhow!("f64 unary operation: operand must be f64"));
+                    // f64 unary: f64 -> f64
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::F64);
+                }
+                // f64 binary operations (0xA0-0xA6): add, sub, mul, div, min, max, copysign
+                0xA0 | 0xA1 | 0xA2 | 0xA3 | 0xA4 | 0xA5 | 0xA6 => {
+                    // f64 binary: f64 f64 -> f64
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F64);
                 }
                 // i32 unary: clz (0x67), ctz, popcnt
                 0x67 | 0x68 | 0x69 => {
                     // i32 unary operations
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32 unary operation: operand must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
                 // i64 unary: clz (0x79), ctz, popcnt
                 0x79 | 0x7A | 0x7B => {
                     // i64 unary operations
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64 unary operation: operand must be i64"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
                 }
 
                 // i32.eqz (0x45): i32 -> i32
                 0x45 => {
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32.eqz: operand must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
 
                 // i32 comparison operations (0x46-0x4F): i32 i32 -> i32
                 0x46 | 0x47 | 0x48 | 0x49 | 0x4A | 0x4B | 0x4C | 0x4D | 0x4E | 0x4F => {
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32 comparison: second operand must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32 comparison: first operand must be i32"));
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
 
                 // i64.eqz (0x50): i64 -> i32
                 0x50 => {
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64.eqz: operand must be i64"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
 
                 // i64 comparison operations (0x51-0x5A): i64 i64 -> i32
                 0x51 | 0x52 | 0x53 | 0x54 | 0x55 | 0x56 | 0x57 | 0x58 | 0x59 | 0x5A => {
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64 comparison: second operand must be i64"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64 comparison: first operand must be i64"));
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // f32 comparison operations (0x5B-0x60): f32 f32 -> i32
+                0x5B | 0x5C | 0x5D | 0x5E | 0x5F | 0x60 => {
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::I32);
+                }
+
+                // f64 comparison operations (0x61-0x66): f64 f64 -> i32
+                0x61 | 0x62 | 0x63 | 0x64 | 0x65 | 0x66 => {
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
 
                 // i32 binary operations (0x6A-0x78): i32 i32 -> i32
                 0x6A | 0x6B | 0x6C | 0x6D | 0x6E | 0x6F | 0x70 | 0x71 | 0x72 | 0x73 | 0x74 | 0x75 | 0x76 | 0x77 | 0x78 => {
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32 binary: second operand must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i32 binary: first operand must be i32"));
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
 
                 // i64 binary operations (0x7C-0x8A): i64 i64 -> i64
                 0x7C | 0x7D | 0x7E | 0x7F | 0x80 | 0x81 | 0x82 | 0x83 | 0x84 | 0x85 | 0x86 | 0x87 | 0x88 | 0x89 | 0x8A | 0x8B => {
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64 binary: second operand must be i64"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i64 binary: first operand must be i64"));
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
                 }
@@ -649,8 +937,9 @@ impl WastModuleValidator {
                 // Conversion operations: i32 -> i64
                 0xac | 0xad => {
                     // i64.extend_i32_s (0xac), i64.extend_i32_u (0xad)
-                    if !Self::pop_type(&mut stack, StackType::I32) {
-                        return Err(anyhow!("i64.extend_i32: operand must be i32"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
                 }
@@ -658,8 +947,9 @@ impl WastModuleValidator {
                 // Conversion operations: i64 -> i32
                 0xa7 => {
                     // i32.wrap_i64
-                    if !Self::pop_type(&mut stack, StackType::I64) {
-                        return Err(anyhow!("i32.wrap_i64: operand must be i64"));
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
                 }
@@ -669,12 +959,14 @@ impl WastModuleValidator {
                     // i32.trunc_f32_s (0xa8), i32.trunc_f32_u (0xa9)
                     // i32.trunc_f64_s (0xaa), i32.trunc_f64_u (0xab)
                     let is_f64 = opcode >= 0xaa;
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
                     if is_f64 {
-                        if !Self::pop_type(&mut stack, StackType::F64) {
+                        if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
                             return Err(anyhow!("i32.trunc: operand must be f64"));
                         }
                     } else {
-                        if !Self::pop_type(&mut stack, StackType::F32) {
+                        if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
                             return Err(anyhow!("i32.trunc: operand must be f32"));
                         }
                     }
@@ -686,12 +978,14 @@ impl WastModuleValidator {
                     // i64.trunc_f32_s (0xae), i64.trunc_f32_u (0xaf)
                     // i64.trunc_f64_s (0xb0), i64.trunc_f64_u (0xb1)
                     let is_f64 = opcode >= 0xb0;
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
                     if is_f64 {
-                        if !Self::pop_type(&mut stack, StackType::F64) {
+                        if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
                             return Err(anyhow!("i64.trunc: operand must be f64"));
                         }
                     } else {
-                        if !Self::pop_type(&mut stack, StackType::F32) {
+                        if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
                             return Err(anyhow!("i64.trunc: operand must be f32"));
                         }
                     }
@@ -703,12 +997,14 @@ impl WastModuleValidator {
                     // f32.convert_i32_s (0xb2), f32.convert_i32_u (0xb3)
                     // f32.convert_i64_s (0xb4), f32.convert_i64_u (0xb5)
                     let is_i64 = opcode >= 0xb4;
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
                     if is_i64 {
-                        if !Self::pop_type(&mut stack, StackType::I64) {
+                        if !Self::pop_type(&mut stack, StackType::I64, frame_height, unreachable) {
                             return Err(anyhow!("f32.convert: operand must be i64"));
                         }
                     } else {
-                        if !Self::pop_type(&mut stack, StackType::I32) {
+                        if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
                             return Err(anyhow!("f32.convert: operand must be i32"));
                         }
                     }
@@ -717,7 +1013,9 @@ impl WastModuleValidator {
 
                 // Conversion operations: f64.demote_f32
                 0xb6 => {
-                    if !Self::pop_type(&mut stack, StackType::F64) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
                         return Err(anyhow!("f32.demote_f64: operand must be f64"));
                     }
                     stack.push(StackType::F32);
@@ -728,12 +1026,14 @@ impl WastModuleValidator {
                     // f64.convert_i32_s (0xb7), f64.convert_i32_u (0xb8)
                     // f64.convert_i64_s (0xb9), f64.convert_i64_u (0xba)
                     let is_i64 = opcode >= 0xb9;
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
                     if is_i64 {
-                        if !Self::pop_type(&mut stack, StackType::I64) {
+                        if !Self::pop_type(&mut stack, StackType::I64, frame_height, unreachable) {
                             return Err(anyhow!("f64.convert: operand must be i64"));
                         }
                     } else {
-                        if !Self::pop_type(&mut stack, StackType::I32) {
+                        if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
                             return Err(anyhow!("f64.convert: operand must be i32"));
                         }
                     }
@@ -742,7 +1042,9 @@ impl WastModuleValidator {
 
                 // Conversion operations: f64.promote_f32
                 0xbb => {
-                    if !Self::pop_type(&mut stack, StackType::F32) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
                         return Err(anyhow!("f64.promote_f32: operand must be f32"));
                     }
                     stack.push(StackType::F64);
@@ -751,28 +1053,36 @@ impl WastModuleValidator {
                 // Reinterpret operations (same size, different type)
                 0xbc => {
                     // i32.reinterpret_f32
-                    if !Self::pop_type(&mut stack, StackType::F32) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
                         return Err(anyhow!("i32.reinterpret_f32: operand must be f32"));
                     }
                     stack.push(StackType::I32);
                 }
                 0xbd => {
                     // i64.reinterpret_f64
-                    if !Self::pop_type(&mut stack, StackType::F64) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
                         return Err(anyhow!("i64.reinterpret_f64: operand must be f64"));
                     }
                     stack.push(StackType::I64);
                 }
                 0xbe => {
                     // f32.reinterpret_i32
-                    if !Self::pop_type(&mut stack, StackType::I32) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
                         return Err(anyhow!("f32.reinterpret_i32: operand must be i32"));
                     }
                     stack.push(StackType::F32);
                 }
                 0xbf => {
                     // f64.reinterpret_i64
-                    if !Self::pop_type(&mut stack, StackType::I64) {
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, unreachable) {
                         return Err(anyhow!("f64.reinterpret_i64: operand must be i64"));
                     }
                     stack.push(StackType::F64);
@@ -802,13 +1112,47 @@ impl WastModuleValidator {
     }
 
     /// Pop a value from the stack, checking its type
-    fn pop_type(stack: &mut Vec<StackType>, expected: StackType) -> bool {
+    /// The `min_height` parameter is the stack height at the current frame's entry -
+    /// we cannot pop below this level (those values belong to the parent frame)
+    /// The `unreachable` parameter indicates if we're in unreachable code (polymorphic stack)
+    fn pop_type(
+        stack: &mut Vec<StackType>,
+        expected: StackType,
+        min_height: usize,
+        unreachable: bool,
+    ) -> bool {
+        // In unreachable code, the stack is polymorphic
+        if unreachable {
+            // Can pop below min_height (polymorphic underflow)
+            if stack.len() <= min_height {
+                return true;
+            }
+            // Values on stack in unreachable code are "garbage" - any type matches
+            stack.pop();
+            return true;
+        }
+
+        // Check if we'd be popping below the current frame's stack base
+        if stack.len() <= min_height {
+            return false;
+        }
+
         if let Some(actual) = stack.pop() {
             // Allow Unknown to match anything, or exact match
             actual == expected || actual == StackType::Unknown || expected == StackType::Unknown
         } else {
             false
         }
+    }
+
+    /// Get the current frame's stack height (the base of the current control frame)
+    fn current_frame_height(frames: &[ControlFrame]) -> usize {
+        frames.last().map_or(0, |f| f.stack_height)
+    }
+
+    /// Check if the current code path is unreachable
+    fn is_unreachable(frames: &[ControlFrame]) -> bool {
+        frames.last().map_or(false, |f| !f.reachable)
     }
 
     /// Parse a variable-length unsigned 32-bit integer
@@ -977,6 +1321,12 @@ impl WastModuleValidator {
     }
 
     /// Validate a branch target
+    ///
+    /// For branches to blocks/if, we validate against output types.
+    /// For branches to loops, we validate against input types.
+    ///
+    /// IMPORTANT: The values for branching must come from the current frame's
+    /// operand stack (above the current frame's stack_height), not from parent frames.
     fn validate_branch(stack: &[StackType], label_idx: u32, frames: &[ControlFrame]) -> Result<()> {
         if label_idx as usize >= frames.len() {
             return Err(anyhow!(
@@ -985,8 +1335,41 @@ impl WastModuleValidator {
             ));
         }
 
-        // Branch target validation would check type stack consistency
-        // Simplified for now
+        // Get the current frame (innermost) to check our available stack values
+        let current_frame = frames.last().ok_or_else(|| anyhow!("no control frame"))?;
+        let current_stack_height = current_frame.stack_height;
+
+        // Get the target frame (counting from innermost)
+        let target_frame = &frames[frames.len() - 1 - label_idx as usize];
+
+        // Determine the expected types for the branch
+        // For loops: branch to input types (jump to loop start)
+        // For blocks/if/else: branch to output types (jump to end)
+        let expected_types = if target_frame.frame_type == FrameType::Loop {
+            &target_frame.input_types
+        } else {
+            &target_frame.output_types
+        };
+
+        // Calculate how many values the CURRENT frame has available on the stack
+        // Values below current_stack_height belong to parent frames and cannot be used
+        let available_values = stack.len().saturating_sub(current_stack_height);
+
+        // Check that the current frame has enough values for the branch
+        if available_values < expected_types.len() {
+            // Not enough values in the current frame's scope
+            return Err(anyhow!("type mismatch"));
+        }
+
+        // Verify the top values match expected types (in reverse order)
+        for (i, expected) in expected_types.iter().rev().enumerate() {
+            let stack_idx = stack.len() - 1 - i;
+            let actual = &stack[stack_idx];
+            if actual != expected && *actual != StackType::Unknown && *expected != StackType::Unknown {
+                return Err(anyhow!("type mismatch"));
+            }
+        }
+
         Ok(())
     }
 }
