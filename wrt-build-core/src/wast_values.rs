@@ -18,8 +18,10 @@ use wast::{
     WastRet,
 };
 use wrt_foundation::values::{
+    ExternRef,
     FloatBits32,
     FloatBits64,
+    FuncRef,
     Value,
     V128,
 };
@@ -45,9 +47,17 @@ pub fn convert_wast_arg_core_to_value(arg: &WastArgCore) -> Result<Value> {
         WastArgCore::F32(x) => Ok(Value::F32(FloatBits32::from_bits(x.bits))),
         WastArgCore::F64(x) => Ok(Value::F64(FloatBits64::from_bits(x.bits))),
         WastArgCore::V128(x) => Ok(Value::V128(V128::new(convert_v128_const_to_bytes(x)?))),
-        WastArgCore::RefNull(_) => Ok(Value::Ref(0)), // Use 0 for null reference
-        WastArgCore::RefExtern(x) => Ok(Value::Ref(*x as u32)),
-        WastArgCore::RefHost(x) => Ok(Value::Ref(*x as u32)),
+        WastArgCore::RefNull(heap_type) => {
+            // ref.null funcref -> FuncRef(None), ref.null externref -> ExternRef(None)
+            use wast::core::AbstractHeapType;
+            match heap_type {
+                wast::core::HeapType::Abstract { ty: AbstractHeapType::Func, .. } => Ok(Value::FuncRef(None)),
+                wast::core::HeapType::Abstract { ty: AbstractHeapType::Extern, .. } => Ok(Value::ExternRef(None)),
+                _ => Ok(Value::FuncRef(None)), // Default to FuncRef for other/unknown heap types
+            }
+        },
+        WastArgCore::RefExtern(x) => Ok(Value::ExternRef(Some(ExternRef { index: *x as u32 }))),
+        WastArgCore::RefHost(x) => Ok(Value::ExternRef(Some(ExternRef { index: *x as u32 }))),
     }
 }
 
@@ -80,16 +90,44 @@ pub fn convert_wast_ret_core_to_value(ret: &WastRetCore) -> Result<Value> {
             NanPattern::ArithmeticNan => Ok(Value::F64(FloatBits64::NAN)),
         },
         WastRetCore::V128(x) => Ok(Value::V128(V128::new(convert_v128_pattern_to_bytes(x)?))),
-        WastRetCore::RefNull(_) => Ok(Value::Ref(0)), // Use 0 for null reference
-        WastRetCore::RefExtern(x) => Ok(Value::Ref(x.unwrap_or(0) as u32)),
-        WastRetCore::RefHost(x) => Ok(Value::Ref(*x as u32)),
+        WastRetCore::RefNull(heap_type) => {
+            // ref.null funcref -> FuncRef(None), ref.null externref -> ExternRef(None)
+            use wast::core::AbstractHeapType;
+            match heap_type {
+                Some(wast::core::HeapType::Abstract { ty: AbstractHeapType::Func, .. }) => Ok(Value::FuncRef(None)),
+                Some(wast::core::HeapType::Abstract { ty: AbstractHeapType::Extern, .. }) => Ok(Value::ExternRef(None)),
+                _ => Ok(Value::FuncRef(None)), // Default to FuncRef for other/unknown heap types
+            }
+        },
+        WastRetCore::RefExtern(x) => {
+            match x {
+                Some(idx) => Ok(Value::ExternRef(Some(ExternRef { index: *idx as u32 }))),
+                None => Ok(Value::ExternRef(None)),
+            }
+        },
+        WastRetCore::RefHost(x) => Ok(Value::ExternRef(Some(ExternRef { index: *x as u32 }))),
         WastRetCore::RefFunc(x) => {
-            // Function references need special handling - use default value for now
-            Ok(Value::Ref(x.is_some() as u32))
+            // ref.func index -> FuncRef(Some(index))
+            // ref.func (no index) -> any non-null funcref (use sentinel u32::MAX)
+            match x {
+                Some(idx) => {
+                    // Extract numeric index from Index enum
+                    let func_index = match idx {
+                        wast::token::Index::Num(n, _) => *n,
+                        wast::token::Index::Id(_) => 0, // Named indices default to 0
+                    };
+                    Ok(Value::FuncRef(Some(FuncRef { index: func_index })))
+                },
+                None => {
+                    // (ref.func) without index means "any non-null funcref"
+                    // Use u32::MAX as a sentinel value for pattern matching
+                    Ok(Value::FuncRef(Some(FuncRef { index: u32::MAX })))
+                },
+            }
         },
         _ => {
-            // Handle other reference types with default values
-            Ok(Value::Ref(0))
+            // Handle other reference types with default FuncRef
+            Ok(Value::FuncRef(None))
         },
     }
 }
@@ -224,6 +262,26 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         },
         (Value::V128(a), Value::V128(b)) => a == b,
         (Value::Ref(a), Value::Ref(b)) => a == b,
+        // FuncRef comparison
+        // Handle "any funcref" pattern (u32::MAX sentinel)
+        (Value::FuncRef(Some(_)), Value::FuncRef(Some(FuncRef { index: u32::MAX }))) => true,
+        (Value::FuncRef(None), Value::FuncRef(Some(FuncRef { index: u32::MAX }))) => false,
+        (Value::FuncRef(a), Value::FuncRef(b)) => a == b,
+        // ExternRef comparison
+        // Handle "any externref" pattern (u32::MAX sentinel)
+        (Value::ExternRef(Some(_)), Value::ExternRef(Some(ExternRef { index: u32::MAX }))) => true,
+        (Value::ExternRef(None), Value::ExternRef(Some(ExternRef { index: u32::MAX }))) => false,
+        (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
+        // Cross-type comparison: FuncRef vs Ref (for backwards compatibility)
+        (Value::FuncRef(Some(func_ref)), Value::Ref(idx)) => func_ref.index == *idx,
+        (Value::Ref(idx), Value::FuncRef(Some(func_ref))) => *idx == func_ref.index,
+        (Value::FuncRef(None), Value::Ref(0)) => true,
+        (Value::Ref(0), Value::FuncRef(None)) => true,
+        // ExternRef vs Ref
+        (Value::ExternRef(Some(ext_ref)), Value::Ref(idx)) => ext_ref.index == *idx,
+        (Value::Ref(idx), Value::ExternRef(Some(ext_ref))) => *idx == ext_ref.index,
+        (Value::ExternRef(None), Value::Ref(0)) => true,
+        (Value::Ref(0), Value::ExternRef(None)) => true,
         _ => false,
     }
 }

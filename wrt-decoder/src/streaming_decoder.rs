@@ -354,12 +354,47 @@ impl<'a> StreamingDecoder<'a> {
                     if offset + 1 >= data.len() {
                         return Err(Error::parse_error("Unexpected end of global import"));
                     }
-                    let _value_type = data[offset];
+                    let value_type_byte = data[offset];
                     offset += 1;
-                    let _mutability = data[offset];
+                    let mutability_byte = data[offset];
                     offset += 1;
+
+                    // WebAssembly spec: only 0x00 (immutable) and 0x01 (mutable) are valid
+                    if mutability_byte != 0x00 && mutability_byte != 0x01 {
+                        return Err(Error::parse_error("malformed mutability"));
+                    }
+
+                    // Parse value type
+                    let value_type = match value_type_byte {
+                        0x7F => wrt_foundation::ValueType::I32,
+                        0x7E => wrt_foundation::ValueType::I64,
+                        0x7D => wrt_foundation::ValueType::F32,
+                        0x7C => wrt_foundation::ValueType::F64,
+                        0x7B => wrt_foundation::ValueType::V128,
+                        0x70 => wrt_foundation::ValueType::FuncRef,
+                        0x6F => wrt_foundation::ValueType::ExternRef,
+                        _ => return Err(Error::parse_error("Invalid global import value type")),
+                    };
+
                     #[cfg(feature = "std")]
-                    eprintln!("DEBUG import #{}: global", i);
+                    eprintln!("DEBUG import #{}: global type={:?} mutable={}", i, value_type, mutability_byte != 0);
+
+                    // Store the global import in module.imports for runtime resolution
+                    #[cfg(feature = "std")]
+                    {
+                        use wrt_format::module::{Import, ImportDesc};
+                        use wrt_format::types::FormatGlobalType;
+                        let global_type = FormatGlobalType {
+                            value_type,
+                            mutable: mutability_byte != 0,
+                        };
+                        let import = Import {
+                            module: module_name.to_string(),
+                            name: field_name.to_string(),
+                            desc: ImportDesc::Global(global_type),
+                        };
+                        self.module.imports.push(import);
+                    }
                 },
                 0x04 => {
                     // Tag import
@@ -386,10 +421,16 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
+        #[cfg(feature = "std")]
+        eprintln!("[FUNC_SECTION] Processing {} functions from {} bytes", count, data.len());
+
         // Reserve space for functions
-        for _ in 0..count {
+        for i in 0..count {
             let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
+
+            #[cfg(feature = "std")]
+            eprintln!("[FUNC_SECTION] Function {} has type_idx={}", i, type_idx);
 
             // Create function with empty body for now
             let func = Function {
@@ -419,8 +460,26 @@ impl<'a> StreamingDecoder<'a> {
         // Process each table one at a time
         for i in 0..count {
             // Parse ref_type (element type)
+            // WebAssembly 2.0 tables can have init expressions with 0x40 0x00 prefix
             if offset >= data.len() {
                 return Err(Error::parse_error("Unexpected end of table section"));
+            }
+            let first_byte = data[offset];
+
+            // Check for table with init expression (0x40 0x00 prefix)
+            let has_init_expr = first_byte == 0x40;
+            if has_init_expr {
+                offset += 1;
+                // Read the reserved 0x00 byte
+                if offset >= data.len() || data[offset] != 0x00 {
+                    return Err(Error::parse_error("Expected 0x00 after 0x40 in table with init expr"));
+                }
+                offset += 1;
+            }
+
+            // Now parse the ref_type
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of table section (ref_type)"));
             }
             let ref_type_byte = data[offset];
             offset += 1;
@@ -450,6 +509,80 @@ impl<'a> StreamingDecoder<'a> {
             } else {
                 None
             };
+
+            // Parse and validate init expression if present (ends with 0x0B)
+            if has_init_expr {
+                // Count global imports - at table section time, only imported globals exist
+                use wrt_format::module::ImportDesc;
+                let num_global_imports = self.module.imports.iter()
+                    .filter(|imp| matches!(imp.desc, ImportDesc::Global(_)))
+                    .count();
+
+                // Scan for the end opcode (0x0B), handling nested blocks
+                let mut block_depth = 0u32;
+                loop {
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of table init expression"));
+                    }
+                    let opcode = data[offset];
+                    offset += 1;
+
+                    match opcode {
+                        // Block-starting opcodes
+                        0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x11 => {
+                            block_depth += 1;
+                        }
+                        // End opcode
+                        0x0B => {
+                            if block_depth == 0 {
+                                break;
+                            }
+                            block_depth -= 1;
+                        }
+                        // global.get - validate global index
+                        0x23 => {
+                            // Read global index (LEB128)
+                            let (global_idx, bytes_read) = read_leb128_u32(data, offset)?;
+                            offset += bytes_read;
+                            // At table section time, only imported globals are available
+                            // Defined globals (section 9) haven't been parsed yet
+                            if global_idx as usize >= num_global_imports {
+                                return Err(Error::validation_error("unknown global"));
+                            }
+                        }
+                        // Skip LEB128 immediates for common opcodes
+                        0x41 => {
+                            // i32.const - skip LEB128
+                            while offset < data.len() && (data[offset] & 0x80) != 0 {
+                                offset += 1;
+                            }
+                            if offset < data.len() {
+                                offset += 1;
+                            }
+                        }
+                        0x42 => {
+                            // i64.const - skip LEB128
+                            while offset < data.len() && (data[offset] & 0x80) != 0 {
+                                offset += 1;
+                            }
+                            if offset < data.len() {
+                                offset += 1;
+                            }
+                        }
+                        0xD0 => {
+                            // ref.null - skip heap type byte
+                            if offset < data.len() {
+                                offset += 1;
+                            }
+                        }
+                        _ => {
+                            // Other opcodes - continue scanning
+                        }
+                    }
+                }
+                #[cfg(feature = "std")]
+                eprintln!("[TABLE_SECTION] Table {} has init expression (validated)", i);
+            }
 
             #[cfg(feature = "std")]
             eprintln!(
@@ -512,8 +645,16 @@ impl<'a> StreamingDecoder<'a> {
 
             let shared = (flags & 0x02) != 0;
 
-            #[cfg(feature = "std")]
-            eprintln!("[MEMORY_SECTION] Memory {}: min={}, max={:?}, shared={}", i, min, max, shared);
+            // WebAssembly spec: memory size must be at most 65536 pages (4GB)
+            const MAX_MEMORY_PAGES: u32 = 65536;
+            if min > MAX_MEMORY_PAGES {
+                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+            }
+            if let Some(max_val) = max {
+                if max_val > MAX_MEMORY_PAGES {
+                    return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                }
+            }
 
             // Create memory type
             let memory_type = wrt_foundation::types::MemoryType {
@@ -565,6 +706,9 @@ impl<'a> StreamingDecoder<'a> {
                 0x7E => ValueType::I64,
                 0x7D => ValueType::F32,
                 0x7C => ValueType::F64,
+                0x7B => ValueType::V128,
+                0x70 => ValueType::FuncRef,
+                0x6F => ValueType::ExternRef,
                 _ => return Err(Error::parse_error("Invalid global value type")),
             };
             offset += 1;
@@ -573,7 +717,12 @@ impl<'a> StreamingDecoder<'a> {
             if offset >= data.len() {
                 return Err(Error::parse_error("Unexpected end of global mutability"));
             }
-            let mutable = data[offset] == 0x01;
+            let mutability_byte = data[offset];
+            // WebAssembly spec: only 0x00 (immutable) and 0x01 (mutable) are valid
+            if mutability_byte != 0x00 && mutability_byte != 0x01 {
+                return Err(Error::parse_error("malformed mutability"));
+            }
+            let mutable = mutability_byte == 0x01;
             offset += 1;
 
             // Parse init expression - must properly parse opcodes and their arguments
@@ -779,14 +928,14 @@ impl<'a> StreamingDecoder<'a> {
         for elem_idx in 0..count {
             // Parse element segment flags (see WebAssembly spec 5.5.10)
             // Flags determine the mode and encoding:
-            // 0: Active, table 0, funcref, func indices
-            // 1: Passive, element type, expressions
-            // 2: Active explicit table, funcref, func indices
-            // 3: Declarative, element type, expressions
-            // 4: Active, table 0, expressions
-            // 5: Passive, expressions with type
-            // 6: Active explicit table, expressions
-            // 7: Declarative, expressions with type
+            // 0: Active, implicit table 0, offset expr, funcidx vec
+            // 1: Passive, reftype, expression vec
+            // 2: Active, explicit table, offset expr, elemkind=0x00, funcidx vec
+            // 3: Declarative, reftype, expression vec
+            // 4: Active, explicit table, offset expr, funcidx vec
+            // 5: Passive, reftype, expression vec
+            // 6: Active, explicit table, offset expr, reftype, expression vec
+            // 7: Declarative, reftype, expression vec
             let (flags, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
@@ -829,11 +978,14 @@ impl<'a> StreamingDecoder<'a> {
                     (PureElementMode::Passive, Vec::new(), ref_type)
                 },
                 2 => {
-                    // Active explicit table, funcref, func indices
+                    // Active, explicit table index, offset expr, elemkind=0x00, funcidx vec
+                    // Per WebAssembly spec: flags=2 is "2:flags x:tableidx e:expr 0x00:elemkind y*:vec(funcidx)"
+
+                    // Parse table index
                     let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
 
-                    // Parse offset expression
+                    // Parse offset expression (ends with 0x0B)
                     let expr_start = offset;
                     while offset < data.len() && data[offset] != 0x0B {
                         offset += 1;
@@ -842,8 +994,13 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1; // consume 0x0B
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+
+                    // Parse elemkind (must be 0x00 = funcref)
+                    let _elemkind = data[offset];
+                    offset += 1;
+
                     #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes",
+                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes (legacy funcidx)",
                              elem_idx, table_index, offset_expr_bytes.len());
 
                     (
@@ -866,7 +1023,12 @@ impl<'a> StreamingDecoder<'a> {
                     (PureElementMode::Declared, Vec::new(), ref_type)
                 },
                 4 => {
-                    // Active, table 0, expressions
+                    // Active, explicit table_idx, no element type (funcref implicit), offset expr, funcidx vec (legacy)
+                    // Per WebAssembly spec: flags=4 has explicit table index
+                    let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+
+                    // Parse offset expression
                     let expr_start = offset;
                     while offset < data.len() && data[offset] != 0x0B {
                         offset += 1;
@@ -876,11 +1038,11 @@ impl<'a> StreamingDecoder<'a> {
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table 0 with expressions, offset expr {} bytes",
-                             elem_idx, offset_expr_bytes.len());
+                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes (legacy)",
+                             elem_idx, table_index, offset_expr_bytes.len());
 
                     (
-                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
                         offset_expr_bytes,
                         wrt_format::types::RefType::Funcref,
                     )
@@ -899,7 +1061,8 @@ impl<'a> StreamingDecoder<'a> {
                     (PureElementMode::Passive, Vec::new(), ref_type)
                 },
                 6 => {
-                    // Active explicit table, expressions
+                    // Active explicit table, expressions with type
+                    // Format: table_idx offset_expr ref_type vec(expr)
                     let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
 
@@ -911,14 +1074,27 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1; // consume 0x0B
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
+
+                    // Parse ref_type (comes after offset expression, before items)
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of element segment (ref_type)"));
+                    }
+                    let ref_type_byte = data[offset];
+                    offset += 1;
+                    let ref_type = match ref_type_byte {
+                        0x70 => wrt_format::types::RefType::Funcref,
+                        0x6F => wrt_format::types::RefType::Externref,
+                        _ => wrt_format::types::RefType::Funcref,
+                    };
+
                     #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table {} with expressions, offset expr {} bytes",
-                             elem_idx, table_index, offset_expr_bytes.len());
+                    eprintln!("[ELEM_SECTION] Element {}: Active table {} with expressions, offset expr {} bytes, type {:?}",
+                             elem_idx, table_index, offset_expr_bytes.len(), ref_type);
 
                     (
                         PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
                         offset_expr_bytes,
-                        wrt_format::types::RefType::Funcref,
+                        ref_type,
                     )
                 },
                 7 => {
@@ -946,8 +1122,8 @@ impl<'a> StreamingDecoder<'a> {
             #[cfg(feature = "std")]
             eprintln!("[ELEM_SECTION] Element {} has {} items", elem_idx, item_count);
 
-            let init_data = if flags & 0x3 == 0 || flags & 0x3 == 2 {
-                // Function indices (flags 0, 2)
+            let init_data = if flags == 0 || flags == 2 || flags == 4 {
+                // Legacy function indices format (flags 0, 2, 4)
                 let mut func_indices = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     let (func_idx, bytes_read) = read_leb128_u32(data, offset)?;
@@ -960,7 +1136,7 @@ impl<'a> StreamingDecoder<'a> {
                 }
                 PureElementInit::FunctionIndices(func_indices)
             } else {
-                // Expressions (flags 1, 3, 4, 5, 6, 7)
+                // Expression format (flags 1, 2, 3, 5, 6, 7)
                 let mut expr_bytes = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     let expr_start = offset;
