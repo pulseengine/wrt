@@ -7,6 +7,7 @@
 #![cfg(feature = "std")]
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use wast::{WastExecute, WastInvoke};
@@ -30,9 +31,10 @@ pub struct WastEngine {
     /// The underlying WRT execution engine
     engine: StacklessEngine,
     /// Registry of loaded modules by name for multi-module tests
-    modules: HashMap<String, Module>,
+    /// Uses Arc to avoid cloning which loses BoundedMap data
+    modules: HashMap<String, Arc<Module>>,
     /// Current active module for execution
-    current_module: Option<Module>,
+    current_module: Option<Arc<Module>>,
     /// Current instance ID for module execution
     current_instance_id: Option<usize>,
 }
@@ -55,18 +57,20 @@ impl WastEngine {
 
         // Validate the module before proceeding (Phase 1 of WAST conformance)
         crate::wast_validator::WastModuleValidator::validate(&wrt_module)
-            .context("Module validation failed")?;
+            .map_err(|e| anyhow::anyhow!("Module validation failed: {:?}", e))?;
 
         // Convert WrtModule to RuntimeModule
-        let module =
-            *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?;
+        // Wrap in Arc immediately to avoid clone() which loses BoundedMap data
+        use wrt_runtime::module_instance::ModuleInstance;
+
+        let module = Arc::new(
+            *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?
+        );
 
         // Create a module instance from the module
-        use std::sync::Arc;
-
-        use wrt_runtime::module_instance::ModuleInstance;
+        // Use Arc::clone to share the module reference without copying data
         let module_instance = Arc::new(
-            ModuleInstance::new(Arc::new(module.clone()), 0)
+            ModuleInstance::new(Arc::clone(&module), 0)
                 .context("Failed to create module instance")?,
         );
 
@@ -77,6 +81,20 @@ impl WastEngine {
         module_instance
             .populate_globals_from_module()
             .context("Failed to populate globals")?;
+
+        // Set spectest import values for global imports
+        Self::resolve_spectest_global_imports(&module, &module_instance)?;
+
+        // Resolve global imports from registered modules
+        self.resolve_registered_module_imports(&module, &module_instance)?;
+
+        // Re-evaluate globals that depend on imported globals
+        // This fixes globals like (global i32 (global.get $import)) that were evaluated
+        // before import values were known
+        module_instance
+            .reevaluate_deferred_globals()
+            .context("Failed to re-evaluate deferred globals")?;
+
         module_instance
             .populate_tables_from_module()
             .context("Failed to populate tables")?;
@@ -101,7 +119,7 @@ impl WastEngine {
 
         // Store the module for later reference
         let module_name = name.unwrap_or("current").to_string();
-        self.modules.insert(module_name, module.clone());
+        self.modules.insert(module_name, Arc::clone(&module));
 
         // Set as current module
         self.current_module = Some(module);
@@ -128,16 +146,19 @@ impl WastEngine {
         };
 
         // Find the exported function index
-        let func_idx = self.find_export_function_index(module, function_name)?;
+        let func_idx = self.find_export_function_index(&**module, function_name)?;
 
         // Execute the function using StacklessEngine
         let instance_id = self
             .current_instance_id
             .ok_or_else(|| anyhow::anyhow!("No module loaded - cannot execute function"))?;
+        // Reset call depth before each top-level invocation to prevent
+        // accumulated errors from previous tests causing false failures
+        self.engine.reset_call_depth();
         let results = self
             .engine
             .execute(instance_id, func_idx as usize, args.to_vec())
-            .context("Function execution failed")?;
+            .map_err(|e| anyhow::anyhow!("execute failed: {:?}", e))?;
 
         Ok(results)
     }
@@ -160,7 +181,7 @@ impl WastEngine {
     /// Register a module with a specific name for imports
     pub fn register_module(&mut self, name: &str, module_name: &str) -> Result<()> {
         if let Some(module) = self.modules.get(module_name) {
-            self.modules.insert(name.to_string(), module.clone());
+            self.modules.insert(name.to_string(), Arc::clone(module));
             Ok(())
         } else {
             Err(anyhow::anyhow!(
@@ -172,7 +193,7 @@ impl WastEngine {
 
     /// Get a module by name
     pub fn get_module(&self, name: &str) -> Option<&Module> {
-        self.modules.get(name)
+        self.modules.get(name).map(|arc| &**arc)
     }
 
     /// Clear all modules and reset the engine
@@ -181,6 +202,137 @@ impl WastEngine {
         self.current_module = None;
         // Create a new engine to reset state
         self.engine = StacklessEngine::new();
+        Ok(())
+    }
+
+    /// Resolve spectest global imports with their expected values
+    /// The spectest module provides:
+    /// - global_i32: i32 = 666
+    /// - global_i64: i64 = 666
+    /// - global_f32: f32 = 666.6
+    /// - global_f64: f64 = 666.6
+    fn resolve_spectest_global_imports(
+        module: &Module,
+        module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
+    ) -> Result<()> {
+        use wrt_foundation::values::{FloatBits32, FloatBits64};
+        use wrt_runtime::global::Global;
+        use wrt_runtime::module::GlobalWrapper;
+        use std::sync::{Arc as StdArc, RwLock};
+
+        // The global_import_types stores global types in order of appearance
+        // We need to match them with the corresponding import names
+        let mut global_import_idx = 0usize;
+
+        for (mod_name, field_name) in module.import_order.iter() {
+            // Check if this import is a global by seeing if we still have global types to process
+            // This assumes global imports are in the same order in import_order as in global_import_types
+            if global_import_idx < module.global_import_types.len() {
+                // Check if this is a global import by looking at the field name pattern
+                // Spectest globals are: global_i32, global_i64, global_f32, global_f64
+                let is_global = field_name.starts_with("global_");
+
+                if is_global && mod_name == "spectest" {
+                    let global_type = &module.global_import_types[global_import_idx];
+
+                    let value = match field_name.as_str() {
+                        "global_i32" => Value::I32(666),
+                        "global_i64" => Value::I64(666),
+                        "global_f32" => Value::F32(FloatBits32(0x4426_999A)), // 666.6 in f32
+                        "global_f64" => Value::F64(FloatBits64(0x4084_D333_3333_3333)), // 666.6 in f64
+                        _ => {
+                            global_import_idx += 1;
+                            continue;
+                        }
+                    };
+
+                    // Create a new global with the spectest value
+                    let global = Global::new(
+                        global_type.value_type,
+                        global_type.mutable,
+                        value,
+                    ).map_err(|e| anyhow::anyhow!("Failed to create spectest global: {:?}", e))?;
+
+                    // Set the global in the module instance
+                    module_instance.set_global(
+                        global_import_idx,
+                        GlobalWrapper(StdArc::new(RwLock::new(global))),
+                    ).map_err(|e| anyhow::anyhow!("Failed to set spectest global: {:?}", e))?;
+
+                    global_import_idx += 1;
+                } else if is_global {
+                    // Non-spectest global import
+                    global_import_idx += 1;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Resolve global imports from registered modules (like "G")
+    fn resolve_registered_module_imports(
+        &self,
+        module: &Module,
+        module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
+    ) -> Result<()> {
+        use wrt_runtime::global::Global;
+        use wrt_runtime::module::GlobalWrapper;
+        use std::sync::{Arc as StdArc, RwLock};
+
+        let mut global_import_idx = 0usize;
+
+        for (mod_name, field_name) in module.import_order.iter() {
+            // Count this if it's a global import
+            if global_import_idx >= module.global_import_types.len() {
+                break;
+            }
+
+            // Check if this is a global import by checking if it matches our expected position
+            let is_global = module.global_import_types.get(global_import_idx).is_some();
+
+            if is_global {
+                // Skip spectest imports (handled separately)
+                if mod_name == "spectest" {
+                    global_import_idx += 1;
+                    continue;
+                }
+
+                // Look up the registered module
+                if let Some(source_module) = self.modules.get(mod_name) {
+                    // Find the exported global in the source module
+                    let bounded_field = wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(field_name)
+                        .map_err(|e| anyhow::anyhow!("Field name too long: {:?}", e))?;
+
+                    if let Some(export) = source_module.exports.get(&bounded_field) {
+                        if export.kind == wrt_runtime::module::ExportKind::Global {
+                            let source_global_idx = export.index as usize;
+
+                            // Get the value from the source module's global
+                            if let Ok(global_wrapper) = source_module.globals.get(source_global_idx) {
+                                if let Ok(guard) = global_wrapper.0.read() {
+                                    let value = guard.get();
+                                    let global_type = &module.global_import_types[global_import_idx];
+
+                                    // Create a new global with the resolved value
+                                    let global = Global::new(global_type.value_type, global_type.mutable, value.clone())
+                                        .map_err(|e| anyhow::anyhow!("Failed to create imported global: {:?}", e))?;
+
+                                    module_instance.set_global(
+                                        global_import_idx,
+                                        GlobalWrapper(StdArc::new(RwLock::new(global))),
+                                    ).map_err(|e| anyhow::anyhow!("Failed to set imported global: {:?}", e))?;
+
+                                }
+                            }
+                        }
+                    }
+                }
+
+                global_import_idx += 1;
+            }
+        }
+
         Ok(())
     }
 }
@@ -281,7 +433,6 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match execute_wast_execute(&mut engine, &exec) {
                     Err(_) => {
                         // Expected trap occurred
-                        eprintln!("AssertTrap: Expected trap occurred - PASS");
                     },
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
@@ -299,7 +450,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match module.encode() {
                     Ok(binary) => match engine.load_module(None, &binary) {
                         Err(_) => {
-                            eprintln!("AssertInvalid: Module correctly rejected - PASS");
+                            // Module correctly rejected
                         },
                         Ok(_) => {
                             return Err(anyhow::anyhow!(
@@ -309,7 +460,6 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                     },
                     Err(_) => {
                         // Module encoding failed, which is expected for invalid modules
-                        eprintln!("AssertInvalid: Module encoding failed as expected - PASS");
                     },
                 }
             },
@@ -321,7 +471,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 // Test that module is malformed
                 match module.encode() {
                     Err(_) => {
-                        eprintln!("AssertMalformed: Module correctly rejected - PASS");
+                        // Module correctly rejected
                     },
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
@@ -340,7 +490,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match module.encode() {
                     Ok(binary) => match engine.load_module(None, &binary) {
                         Err(_) => {
-                            eprintln!("AssertUnlinkable: Module correctly failed to link - PASS");
+                            // Module correctly failed to link
                         },
                         Ok(_) => {
                             return Err(anyhow::anyhow!(
@@ -358,28 +508,15 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 }
             },
             WastDirective::Register { module, name, .. } => {
-                // Register a module instance for import
-                eprintln!(
-                    "Register directive: Registering module '{}' - IMPLEMENTED",
-                    name
-                );
-                // TODO: Implement module registration for imports
+                // Register the current module (or named module) as 'name' for imports
+                let source_name = module.as_ref().map(|id| id.name()).unwrap_or("current");
+                engine.register_module(name, source_name)?;
             },
             WastDirective::Invoke(invoke) => {
                 // Execute function without asserting result
                 let args = convert_wast_args_to_values(&invoke.args)?;
-                match engine.invoke_function(None, invoke.name, &args) {
-                    Ok(results) => {
-                        eprintln!(
-                            "Invoke: Function '{}' executed successfully, returned {} values",
-                            invoke.name,
-                            results.len()
-                        );
-                    },
-                    Err(e) => {
-                        eprintln!("Invoke: Function '{}' failed: {}", invoke.name, e);
-                    },
-                }
+                // Ignore result - invoke is for side effects
+                let _ = engine.invoke_function(None, invoke.name, &args);
             },
             WastDirective::AssertExhaustion { call, message, .. } => {
                 // Test that execution exhausts resources (stack overflow, memory, etc.)
@@ -388,10 +525,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         let args = convert_wast_args_to_values(&args)?;
                         match engine.invoke_function(None, name, &args) {
                             Err(_) => {
-                                eprintln!(
-                                    "AssertExhaustion: Expected resource exhaustion occurred - \
-                                     PASS"
-                                );
+                                // Expected resource exhaustion occurred
                             },
                             Ok(_) => {
                                 return Err(anyhow::anyhow!(
@@ -410,7 +544,6 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
             },
             _ => {
                 // Handle any remaining unsupported directive types
-                eprintln!("Skipping unsupported directive type");
             },
         }
     }
@@ -421,6 +554,8 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wast::core::WastArgCore;
+    use wast::WastArg;
 
     #[test]
     fn test_wast_engine_creation() {
