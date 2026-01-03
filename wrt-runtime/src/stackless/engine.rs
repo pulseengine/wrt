@@ -160,7 +160,20 @@ fn strip_wasi_version(interface: &str) -> &str {
 }
 
 /// Maximum number of concurrent module instances
-const MAX_CONCURRENT_INSTANCES: usize = 16;
+/// Increased to 64 for WAST conformance testing which loads many modules
+const MAX_CONCURRENT_INSTANCES: usize = 64;
+
+/// Maximum call depth to prevent stack overflow from recursive calls
+/// WebAssembly spec recommends supporting at least 1000 levels.
+/// The WAST test suite requires at least 200 for even/odd mutual recursion tests.
+/// Testing shows native stack overflow occurs around ~90-100 calls in debug builds
+/// due to the current recursive implementation of execute().
+/// 250 works in release builds but causes stack overflow in debug.
+/// TODO: Implement trampolining to allow deeper recursion without native stack use.
+#[cfg(debug_assertions)]
+const MAX_CALL_DEPTH: usize = 50;
+#[cfg(not(debug_assertions))]
+const MAX_CALL_DEPTH: usize = 250;
 
 /// Simple execution statistics
 #[derive(Debug, Default)]
@@ -218,6 +231,9 @@ pub struct StacklessEngine {
     /// WASI dispatcher for proper WASI host function implementations
     #[cfg(feature = "wasi")]
     wasi_dispatcher:       Option<wrt_wasi::WasiDispatcher>,
+    /// Generic host import handler for all host function calls
+    #[cfg(feature = "std")]
+    host_handler:          Option<Box<dyn wrt_foundation::HostImportHandler>>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -263,7 +279,15 @@ impl StacklessEngine {
             aliased_functions:   HashMap::new(),
             #[cfg(feature = "wasi")]
             wasi_dispatcher:     wrt_wasi::WasiDispatcher::with_defaults().ok(),
+            #[cfg(feature = "std")]
+            host_handler:        None,
         }
+    }
+
+    /// Set the host import handler for resolving host function calls
+    #[cfg(feature = "std")]
+    pub fn set_host_handler(&mut self, handler: Box<dyn wrt_foundation::HostImportHandler>) {
+        self.host_handler = Some(handler);
     }
 
     /// Set WASI command-line arguments
@@ -551,6 +575,14 @@ impl StacklessEngine {
         Ok(instance_id)
     }
 
+    /// Reset call depth counter to 0
+    ///
+    /// Call this before each top-level function invocation to ensure
+    /// previous errors don't cause false "call stack exhausted" errors.
+    pub fn reset_call_depth(&mut self) {
+        self.call_frames_count = 0;
+    }
+
     /// Execute a function in the specified instance
     ///
     /// # Arguments
@@ -572,6 +604,13 @@ impl StacklessEngine {
 
         #[cfg(feature = "tracing")]
         debug!("Executing function {} in instance {} with {} args", func_idx, instance_id, args.len());
+
+        // Check call depth to prevent native stack overflow
+        // WebAssembly allows deep recursion but native Rust stack is limited
+        if self.call_frames_count >= MAX_CALL_DEPTH {
+            return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
+        }
+        self.call_frames_count += 1;
 
         // Clone the instance to avoid holding a borrow on self.instances
         // This allows us to call &mut self methods (like execute, call_wasi_function)
@@ -629,8 +668,14 @@ impl StacklessEngine {
             } else {
                 0
             };
-            eprintln!("[EXECUTE] instance_id={}, func_idx={}, module.elements.len()={}, first_elem.items.len()={}",
-                     instance_id, func_idx, elem_count, first_elem_items);
+            #[cfg(feature = "tracing")]
+            trace!(
+                instance_id = instance_id,
+                func_idx = func_idx,
+                elem_count = elem_count,
+                first_elem_items = first_elem_items,
+                "[EXECUTE] Starting function execution"
+            );
         }
 
         // TODO: Check if this function index is an import and dispatch to host registry
@@ -697,10 +742,10 @@ impl StacklessEngine {
             debug!("Called with args.len()={}", args.len());
 
             let instructions = &func.body.instructions;
-            #[cfg(feature = "std")]
+            #[cfg(all(feature = "std", feature = "tracing"))]
             {
                 if func_idx == 73 || func_idx == 74 || func_idx == 345 {
-                    eprintln!("[EXEC] func_idx={} CALLED with args={:?}", func_idx, args);
+                    trace!(func_idx = func_idx, args = ?args, "[EXEC] Function called");
                 }
             }
             #[cfg(feature = "tracing")]
@@ -808,13 +853,15 @@ impl StacklessEngine {
                         // The trap should propagate as an error, not be silently ignored.
                         // This can occur in panic paths when the panic hook is NULL,
                         // or after proc_exit is called.
-                        #[cfg(feature = "std")]
+                        #[cfg(all(feature = "std", feature = "tracing"))]
                         {
                             // Print some context about what led to unreachable
                             let prev_str = if pc > 0 { format!("{:?}", instructions.get(pc - 1)) } else { "N/A".to_string() };
-                            eprintln!(
-                                "[TRAP] Unreachable instruction at func_idx={}, pc={}, prev_instr={}",
-                                func_idx, pc, prev_str
+                            error!(
+                                func_idx = func_idx,
+                                pc = pc,
+                                prev_instr = %prev_str,
+                                "[TRAP] Unreachable instruction executed"
                             );
                         }
                         return Err(wrt_error::Error::runtime_execution_error(
@@ -844,8 +891,8 @@ impl StacklessEngine {
                         // Pop condition, then two values, push selected value
                         // Stack: [val1, val2, condition] -> [selected]
                         // WebAssembly spec: if condition != 0, select val1 (deeper), else select val2 (higher)
-                        #[cfg(feature = "std")]
-                        eprintln!("[Select] stack.len()={}", operand_stack.len());
+                        #[cfg(feature = "tracing")]
+                        trace!(stack_len = operand_stack.len(), "[Select] Processing select instruction");
 
                         // WebAssembly select expects: val1, val2, i32
                         // The condition should be the top of stack
@@ -853,15 +900,15 @@ impl StacklessEngine {
                         let val2 = operand_stack.pop();
                         let val1 = operand_stack.pop();
 
-                        #[cfg(feature = "std")]
-                        eprintln!("[Select] cond={:?}, val2={:?}, val1={:?}", cond_val, val2, val1);
+                        #[cfg(feature = "tracing")]
+                        trace!(cond = ?cond_val, val2 = ?val2, val1 = ?val1, "[Select] Popped values");
 
                         // Extract condition as i32
                         let condition = match cond_val {
                             Some(Value::I32(c)) => c,
                             Some(other) => {
-                                #[cfg(feature = "std")]
-                                eprintln!("[Select] ERROR: condition is not i32: {:?}", other);
+                                #[cfg(feature = "tracing")]
+                                error!(condition = ?other, "[Select] ERROR: condition is not i32");
                                 return Err(wrt_error::Error::runtime_trap("Select: condition must be i32"));
                             }
                             None => return Err(wrt_error::Error::runtime_trap("Select: stack underflow (no condition)")),
@@ -873,12 +920,16 @@ impl StacklessEngine {
                             let selected = if condition != 0 { v1 } else { v2 };
                             #[cfg(feature = "tracing")]
                             trace!("Select: condition={}, selected={:?}", condition, selected);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if let Value::I32(v) = &selected {
                                     if (*v as u32) > 0x20000 {
-                                        eprintln!("[Select] SUSPICIOUS: cond={} -> {} (0x{:x})",
-                                                 condition, v, *v as u32);
+                                        warn!(
+                                            condition = condition,
+                                            value = v,
+                                            value_hex = format_args!("0x{:x}", *v as u32),
+                                            "[Select] SUSPICIOUS: large value selected"
+                                        );
                                     }
                                 }
                             }
@@ -915,29 +966,33 @@ impl StacklessEngine {
                         trace!("  Checking {} exports for function name", module.exports.len());
 
                         // Check if this is an import (host function)
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx < 20 {
-                            eprintln!("[CALL_CHECK] func_idx={}, num_imports={}, is_import={}",
-                                func_idx, num_imports, (func_idx as usize) < num_imports);
+                            trace!(
+                                func_idx = func_idx,
+                                num_imports = num_imports,
+                                is_import = (func_idx as usize) < num_imports,
+                                "[CALL_CHECK] Checking function import status"
+                            );
                         }
 
                         if (func_idx as usize) < num_imports {
                             // This is a host function call
-                            #[cfg(feature = "std")]
-                            eprintln!("[HOST_CALL] Calling host function at import index {}", func_idx);
                             #[cfg(feature = "tracing")]
-                            trace!("Calling host function at import index {}", func_idx);
+                            trace!(func_idx = func_idx, "[HOST_CALL] Calling host function at import index");
 
                             // Find the import by index
                             let import_result = self.find_import_by_index(&module, func_idx as usize);
-                            #[cfg(feature = "std")]
-                            eprintln!("[HOST_CALL] find_import_by_index result: {:?}", import_result);
+                            #[cfg(feature = "tracing")]
+                            trace!(result = ?import_result, "[HOST_CALL] find_import_by_index result");
 
                             if let Ok((module_name, field_name)) = import_result {
-                                #[cfg(feature = "std")]
-                                eprintln!("[HOST_CALL] Resolved to {}::{}", module_name, field_name);
                                 #[cfg(feature = "tracing")]
-                                trace!("Host function: {}::{}", module_name, field_name);
+                                trace!(
+                                    module_name = %module_name,
+                                    field_name = %field_name,
+                                    "[HOST_CALL] Resolved to host function"
+                                );
 
                                 // Check if this import is linked to another instance
                                 // Clone the values to avoid holding a borrow during call_exported_function
@@ -965,8 +1020,12 @@ impl StacklessEngine {
                                 }
 
                                 // Dispatch to WASI implementation
-                                #[cfg(feature = "std")]
-                                eprintln!("[HOST_CALL] Calling call_wasi_function for {}::{}", module_name, field_name);
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    module_name = %module_name,
+                                    field_name = %field_name,
+                                    "[HOST_CALL] Calling call_wasi_function"
+                                );
                                 let result = self.call_wasi_function(
                                     &module_name,
                                     &field_name,
@@ -974,16 +1033,22 @@ impl StacklessEngine {
                                     &module,
                                     instance_id,
                                 )?;
-                                #[cfg(feature = "std")]
-                                eprintln!("[HOST_CALL] call_wasi_function returned {:?}", result);
+                                #[cfg(feature = "tracing")]
+                                trace!(result = ?result, "[HOST_CALL] call_wasi_function returned");
 
                                 // Push result onto stack if function returns a value
                                 if let Some(value) = result {
-                                    #[cfg(feature = "std")]
+                                    #[cfg(feature = "tracing")]
                                     {
                                         if let Value::I32(v) = &value {
                                             if (*v as u32) > 0x20000 {
-                                                eprintln!("[WASI_RETURN] SUSPICIOUS: {}::{} returned {} (0x{:x})", module_name, field_name, v, *v as u32);
+                                                warn!(
+                                                    module_name = %module_name,
+                                                    field_name = %field_name,
+                                                    value = v,
+                                                    value_hex = format_args!("0x{:x}", *v as u32),
+                                                    "[WASI_RETURN] SUSPICIOUS: large return value"
+                                                );
                                             }
                                         }
                                     }
@@ -1001,9 +1066,14 @@ impl StacklessEngine {
                             // NOTE: module.functions contains ALL functions (imports + defined)
                             // So we use func_idx directly, NOT (func_idx - num_imports)
                             let local_func_idx = func_idx as usize;
-                            #[cfg(feature = "std")]
-                            eprintln!("[CALL] func_idx={}, num_imports={}, local_func_idx={}, module.functions.len()={}",
-                                func_idx, num_imports, local_func_idx, module.functions.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                func_idx = func_idx,
+                                num_imports = num_imports,
+                                local_func_idx = local_func_idx,
+                                functions_len = module.functions.len(),
+                                "[CALL] Regular function call"
+                            );
                             if local_func_idx >= module.functions.len() {
                                 #[cfg(feature = "tracing")]
 
@@ -1012,91 +1082,51 @@ impl StacklessEngine {
                             }
 
                             let func = &module.functions[local_func_idx];
-                            #[cfg(feature = "std")]
-                            eprintln!("[CALL] func.type_idx={}, module.types.len()={}", func.type_idx, module.types.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                type_idx = func.type_idx,
+                                types_len = module.types.len(),
+                                "[CALL] Function type info"
+                            );
                             let func_type = module.types.get(func.type_idx as usize)
                                 .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
 
                             // Pop the required number of arguments from the stack
                             let param_count = func_type.params.len();
-                            #[cfg(feature = "std")]
-                            eprintln!("[CALL] param_count={}, operand_stack.len()={}", param_count, operand_stack.len());
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                param_count = param_count,
+                                stack_len = operand_stack.len(),
+                                "[CALL] Parameter and stack info"
+                            );
+                            #[cfg(all(feature = "std", feature = "tracing"))]
                             if func_idx == 94 || func_idx == 223 || func_idx == 232 || func_idx == 233 {
-                                eprintln!("[CALL-ALLOC] func_idx={}, stack top {:?}", func_idx,
-                                         operand_stack.iter().rev().take(4).collect::<Vec<_>>());
+                                trace!(
+                                    func_idx = func_idx,
+                                    stack_top = ?operand_stack.iter().rev().take(4).collect::<Vec<_>>(),
+                                    "[CALL-ALLOC] Allocation function call"
+                                );
                             }
                             // Trace func 235 (free) to see what pointer is being freed
-                            #[cfg(feature = "std")]
+                            #[cfg(all(feature = "std", feature = "tracing"))]
                             if func_idx == 235 || func_idx == 236 {
-                                eprintln!("[FREE-TRACE] func_idx={} called with args: {:?}",
-                                         func_idx, operand_stack.iter().rev().take(1).collect::<Vec<_>>());
+                                trace!(
+                                    func_idx = func_idx,
+                                    args = ?operand_stack.iter().rev().take(1).collect::<Vec<_>>(),
+                                    "[FREE-TRACE] Free function call"
+                                );
                             }
                             // Trace func 244 (format string loop) to see arguments
-                            #[cfg(feature = "std")]
+                            #[cfg(all(feature = "std", feature = "tracing"))]
                             if func_idx == 244 {
-                                eprintln!("[CALL-244] args: {:?}",
-                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
-                            }
-                            // Trace func 116 (format piece getter)
-                            #[cfg(feature = "std")]
-                            if func_idx == 116 {
-                                eprintln!("[CALL-116] args: {:?}",
-                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
-                            }
-                            // Trace func 138 (called before 116)
-                            #[cfg(feature = "std")]
-                            if func_idx == 138 {
-                                eprintln!("[CALL-138] args: {:?}",
-                                         operand_stack.iter().rev().take(8).collect::<Vec<_>>());
-                                // Dump format pieces array - located at 0x1023c8
-                                if let Ok(mw) = instance.memory(0) {
-                                    let mem = &mw.0;
-                                    // Format pieces is typically at 0x1023c8, each entry is (ptr, len)
-                                    for i in 0..10 {
-                                        let base = 0x1023c8 + i * 8;
-                                        let mut buf = [0u8; 8];
-                                        if mem.read(base, &mut buf).is_ok() {
-                                            let ptr = u32::from_le_bytes(buf[0..4].try_into().unwrap());
-                                            let len = u32::from_le_bytes(buf[4..8].try_into().unwrap());
-                                            if ptr > 0 && ptr < 0x200000 && len < 1000 {
-                                                eprintln!("[PIECES] [{}] ptr=0x{:x}, len={}", i, ptr, len);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // Trace func 211 (Args::next) to see iterator state
-                            #[cfg(feature = "std")]
-                            if func_idx == 211 {
-                                // Args::next has params: (out_ptr, iter_ptr) - get both
-                                let stack_len = operand_stack.len();
-                                if stack_len >= 2 {
-                                    let iter_ptr = if let Some(Value::I32(v)) = operand_stack.get(stack_len - 1) { *v as u32 } else { 0 };
-                                    let out_ptr = if let Some(Value::I32(v)) = operand_stack.get(stack_len - 2) { *v as u32 } else { 0 };
-                                    // Read current (offset 4) and end (offset 12) from iterator
-                                    if let Ok(memory_wrapper) = instance.memory(0) {
-                                        let memory = &memory_wrapper.0;
-                                        let mut buf4 = [0u8; 4];
-                                        let mut buf12 = [0u8; 4];
-                                        let mut buf_val = [0u8; 4];
-                                        let _ = memory.read(iter_ptr + 4, &mut buf4);
-                                        let _ = memory.read(iter_ptr + 12, &mut buf12);
-                                        let current = u32::from_le_bytes(buf4);
-                                        let end = u32::from_le_bytes(buf12);
-                                        // Read the value at current pointer (the arg data)
-                                        let _ = memory.read(current, &mut buf_val);
-                                        let val_at_current = i32::from_le_bytes(buf_val);
-                                        eprintln!("[ARGS_NEXT] out_ptr=0x{:x}, iter_ptr=0x{:x}, current=0x{:x}, end=0x{:x}, remaining={}, val_at_current={}",
-                                                 out_ptr, iter_ptr, current, end, (end.saturating_sub(current)) / 12, val_at_current);
-                                    }
-                                }
+                                trace!(
+                                    args = ?operand_stack.iter().rev().take(8).collect::<Vec<_>>(),
+                                    "[CALL-244] Format string loop args"
+                                );
                             }
 
                             #[cfg(feature = "tracing")]
-
-
-                            trace!("Call({}): needs {} params, stack has {} values",                                 func_idx, param_count, operand_stack.len());
+                            trace!("Call({}): needs {} params, stack has {} values", func_idx, param_count, operand_stack.len());
 
                             let mut call_args = Vec::new();
                             for _ in 0..param_count {
@@ -1120,50 +1150,6 @@ impl StacklessEngine {
                             let results = self.execute(instance_id, func_idx as usize, call_args)?;
                             #[cfg(feature = "tracing")]
                             trace!("Function returned {} results", results.len());
-                            #[cfg(feature = "std")]
-                            {
-                                // Always trace func 24 (Vec::len) to debug the comparison issue
-                                if func_idx == 24 {
-                                    eprintln!("[VEC_LEN] func_idx=24 returned {:?}", results);
-                                }
-                                // Trace from_utf8 (func 295) result - it writes to out_ptr (first arg was local 2+16)
-                                if func_idx == 295 {
-                                    eprintln!("[FROM_UTF8] func 295 (from_utf8) returned");
-                                }
-                                // Trace func 211 (Args::next) return value and what was written to out_ptr
-                                if func_idx == 211 {
-                                    // Check the actual out_ptrs we observed (0xffd2c and 0xffcdc)
-                                    if let Ok(memory_wrapper) = instance.memory(0) {
-                                        let memory = &memory_wrapper.0;
-                                        for out_addr in [0xffd2c_u32, 0xffcdc_u32].iter() {
-                                            let mut buf = [0u8; 12]; // Read full Option<String> struct
-                                            if memory.read(*out_addr, &mut buf).is_ok() {
-                                                let discriminant = i32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-                                                let ptr = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-                                                let len = u32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]);
-                                                // Read actual string content if ptr looks valid
-                                                let mut str_content = String::new();
-                                                if ptr > 0x10000 && len < 256 {
-                                                    let mut str_buf = vec![0u8; len as usize];
-                                                    if memory.read(ptr, &mut str_buf).is_ok() {
-                                                        str_content = String::from_utf8_lossy(&str_buf).to_string();
-                                                    }
-                                                }
-                                                eprintln!("[ARGS_NEXT_OUT] out=0x{:x} discriminant={} (None={}), ptr=0x{:x}, len={}, str=\"{}\"",
-                                                         out_addr, discriminant, discriminant == -2147483648, ptr, len, str_content);
-                                            }
-                                        }
-                                    }
-                                }
-                                for (i, result) in results.iter().enumerate() {
-                                    match result {
-                                        Value::I32(v) if (*v as u32) > 0x20000 => {
-                                            eprintln!("[CALL_RETURN] func_idx={} result[{}] = {} (0x{:x})", func_idx, i, v, *v as u32);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
 
                             for result in results {
                                 operand_stack.push(result);
@@ -1179,8 +1165,13 @@ impl StacklessEngine {
                             return Err(wrt_error::Error::runtime_trap("CallIndirect: expected i32 function index on stack"));
                         };
 
-                        #[cfg(feature = "std")]
-                        eprintln!("[CALL_INDIRECT] type_idx={}, table_idx={}, table_func_idx={}", type_idx, table_idx, table_func_idx);
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            type_idx = type_idx,
+                            table_idx = table_idx,
+                            table_func_idx = table_func_idx,
+                            "[CALL_INDIRECT] Indirect call"
+                        );
 
                         // Look up the function in the table
                         // For now, we need to get the table from the instance and look up the function
@@ -1206,16 +1197,16 @@ impl StacklessEngine {
                             } else {
                                 // Fall back: use the element segment if tables aren't properly initialized
                                 // Look through element segments to find the function
-                                #[cfg(feature = "std")]
-                                eprintln!("[CALL_INDIRECT] Table {} not found, checking element segments", table_idx);
+                                #[cfg(feature = "tracing")]
+                                trace!(table_idx = table_idx, "[CALL_INDIRECT] Table not found, checking element segments");
 
                                 let mut resolved_func_idx: Option<usize> = None;
 
                                 // Search through element segments
                                 // Element segments have format: (elem (i32.const offset) func f1 f2 f3 ...)
                                 // We need to find which element contains table_func_idx
-                                #[cfg(feature = "std")]
-                                eprintln!("[CALL_INDIRECT] Searching {} element segments", module.elements.len());
+                                #[cfg(feature = "tracing")]
+                                trace!(elements_len = module.elements.len(), "[CALL_INDIRECT] Searching element segments");
                                 for elem_idx in 0..module.elements.len() {
                                     // In std mode, elements is Vec, so get() returns Option<&T>
                                     // In no_std mode, elements is BoundedVec, so get() returns Result<T>
@@ -1249,9 +1240,14 @@ impl StacklessEngine {
                                         };
 
                                         let items_len = elem.items.len();
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[CALL_INDIRECT] Element {}: offset={}, items_len={}, looking for table[{}]",
-                                                 elem_idx, elem_offset, items_len, table_func_idx);
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            elem_idx = elem_idx,
+                                            elem_offset = elem_offset,
+                                            items_len = items_len,
+                                            table_func_idx = table_func_idx,
+                                            "[CALL_INDIRECT] Element segment info"
+                                        );
 
                                         // Check if table_func_idx falls within this element's range
                                         if table_func_idx >= elem_offset && (table_func_idx - elem_offset) < items_len as u32 {
@@ -1259,9 +1255,14 @@ impl StacklessEngine {
                                             // items is BoundedVec<u32>, get() returns Result<u32>
                                             if let Ok(func_ref) = elem.items.get(elem_local_idx) {
                                                 resolved_func_idx = Some(func_ref as usize);
-                                                #[cfg(feature = "std")]
-                                                eprintln!("[CALL_INDIRECT] Found in element {}: table[{}] = elem[{}] = func {}",
-                                                         elem_idx, table_func_idx, elem_local_idx, func_ref);
+                                                #[cfg(feature = "tracing")]
+                                                trace!(
+                                                    elem_idx = elem_idx,
+                                                    table_func_idx = table_func_idx,
+                                                    elem_local_idx = elem_local_idx,
+                                                    func_ref = func_ref,
+                                                    "[CALL_INDIRECT] Found in element segment"
+                                                );
                                                 break;
                                             }
                                         }
@@ -1283,9 +1284,12 @@ impl StacklessEngine {
                                         3 => 14,  // lang_start::{{closure}}
                                         _ => table_func_idx as usize,
                                     };
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[CALL_INDIRECT] No element found, fallback mapping table[{}] -> func {}",
-                                             table_func_idx, fallback_func);
+                                    #[cfg(feature = "tracing")]
+                                    warn!(
+                                        table_func_idx = table_func_idx,
+                                        fallback_func = fallback_func,
+                                        "[CALL_INDIRECT] No element found, using fallback mapping"
+                                    );
                                     fallback_func
                                 })
                             }
@@ -1293,17 +1297,21 @@ impl StacklessEngine {
                             return Err(wrt_error::Error::runtime_trap("CallIndirect: instance not found"));
                         };
 
-                        #[cfg(feature = "std")]
-                        eprintln!("[CALL_INDIRECT] Resolved to func_idx={}", func_idx);
+                        #[cfg(feature = "tracing")]
+                        trace!(func_idx = func_idx, "[CALL_INDIRECT] Resolved to function index");
 
                         // Track call_indirect to func 138 (iterator next)
                         static CALL_138_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-                        #[cfg(feature = "std")]
+                        #[cfg(all(feature = "std", feature = "tracing"))]
                         if func_idx == 138 {
                             let call_num = CALL_138_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                            eprintln!("[CALL-138-INDIRECT] Call #{}, FULL operand_stack ({} items):", call_num, operand_stack.len());
+                            trace!(
+                                call_num = call_num,
+                                stack_len = operand_stack.len(),
+                                "[CALL-138-INDIRECT] Indirect call to func 138"
+                            );
                             for (i, val) in operand_stack.iter().enumerate() {
-                                eprintln!("  stack[{}] = {:?}", i, val);
+                                trace!(index = i, value = ?val, "[CALL-138-INDIRECT] Stack value");
                             }
                         }
 
@@ -1325,10 +1333,14 @@ impl StacklessEngine {
 
                         if func_type.params.len() != expected_type.params.len() ||
                            func_type.results.len() != expected_type.results.len() {
-                            #[cfg(feature = "std")]
-                            eprintln!("[CALL_INDIRECT] Type mismatch! expected {} params, {} results; got {} params, {} results",
-                                     expected_type.params.len(), expected_type.results.len(),
-                                     func_type.params.len(), func_type.results.len());
+                            #[cfg(feature = "tracing")]
+                            warn!(
+                                expected_params = expected_type.params.len(),
+                                expected_results = expected_type.results.len(),
+                                got_params = func_type.params.len(),
+                                got_results = func_type.results.len(),
+                                "[CALL_INDIRECT] Type mismatch"
+                            );
                             // Continue anyway for now - type checking can be strict later
                         }
 
@@ -1347,13 +1359,17 @@ impl StacklessEngine {
                         // Execute the function
                         let results = self.execute(instance_id, func_idx, call_args)?;
 
-                        #[cfg(feature = "std")]
-                        eprintln!("[CALL_INDIRECT] Function {} returned {} results", func_idx, results.len());
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            func_idx = func_idx,
+                            results_len = results.len(),
+                            "[CALL_INDIRECT] Function returned"
+                        );
 
                         // Trace function 138 return value
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 138 && !results.is_empty() {
-                            eprintln!("[CALL_INDIRECT-138] Return value: {:?}", results[0]);
+                            trace!(result = ?results[0], "[CALL_INDIRECT-138] Return value");
                         }
 
                         // Push results back onto stack
@@ -1364,10 +1380,14 @@ impl StacklessEngine {
                     Instruction::I32Const(value) => {
                         #[cfg(feature = "tracing")]
                         trace!("I32Const: pushing value {}", value);
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         {
                             if (value as u32) > 0x200000 {
-                                eprintln!("[I32Const] SUSPICIOUS: value={} (0x{:x})", value, value as u32);
+                                warn!(
+                                    value = value,
+                                    value_hex = format_args!("0x{:x}", value as u32),
+                                    "[I32Const] SUSPICIOUS: large value"
+                                );
                             }
                         }
                         operand_stack.push(Value::I32(value));
@@ -1387,21 +1407,31 @@ impl StacklessEngine {
                     }
                     Instruction::LocalGet(local_idx) => {
                         if (local_idx as usize) < locals.len() {
-                            let value = locals[local_idx as usize].clone();
+                            // Use copy_value() for efficient copying of Copy-like variants
+                            let value = locals[local_idx as usize].copy_value();
                             #[cfg(feature = "tracing")]
                             trace!("LocalGet: local[{}] = {:?}", local_idx, value);
                             // Debug: trace LocalGet in function 222 for key locals (0=pieces, 2=Arguments)
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             if func_idx == 222 && (local_idx == 0 || local_idx == 2) {
-                                eprintln!("[LOCALGET-222] pc={}, local[{}] = {:?}",
-                                         pc, local_idx, value);
+                                trace!(
+                                    pc = pc,
+                                    local_idx = local_idx,
+                                    value = ?value,
+                                    "[LOCALGET-222] Key local access"
+                                );
                             }
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 // Debug suspicious values that might be bad pointers
                                 if let Value::I32(v) = &value {
                                     if (*v as u32) > 0x200000 {
-                                        eprintln!("[LocalGet] SUSPICIOUS: local[{}] = {} (0x{:x})", local_idx, v, *v as u32);
+                                        warn!(
+                                            local_idx = local_idx,
+                                            value = v,
+                                            value_hex = format_args!("0x{:x}", *v as u32),
+                                            "[LocalGet] SUSPICIOUS: large value"
+                                        );
                                     }
                                 }
                             }
@@ -1416,13 +1446,16 @@ impl StacklessEngine {
                     Instruction::LocalSet(local_idx) => {
                         if let Some(value) = operand_stack.pop() {
                             #[cfg(feature = "tracing")]
-
                             trace!("LocalSet: setting local[{}] = {:?}", local_idx, value);
                             // Debug: trace LocalSet in function 222 (core::fmt::write)
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             if func_idx == 222 {
-                                eprintln!("[LOCALSET-222] pc={}, local[{}] = {:?}",
-                                         pc, local_idx, value);
+                                trace!(
+                                    pc = pc,
+                                    local_idx = local_idx,
+                                    value = ?value,
+                                    "[LOCALSET-222] Local set"
+                                );
                             }
                             if (local_idx as usize) < locals.len() {
                                 locals[local_idx as usize] = value;
@@ -1439,15 +1472,20 @@ impl StacklessEngine {
                     }
                     Instruction::LocalTee(local_idx) => {
                         // Like LocalSet but keeps value on stack
-                        if let Some(value) = operand_stack.last().cloned() {
+                        // Use copy_value() for efficient copying of Copy-like variants
+                        if let Some(value) = operand_stack.last().map(|v| v.copy_value()) {
                             #[cfg(feature = "tracing")]
 
                             trace!("LocalTee: setting local[{}] = {:?} (keeping on stack)", local_idx, value);
                             // Debug: trace LocalTee in function 222 (core::fmt::write)
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             if func_idx == 222 {
-                                eprintln!("[LOCALTEE-222] pc={}, local[{}] = {:?}",
-                                         pc, local_idx, value);
+                                trace!(
+                                    pc = pc,
+                                    local_idx = local_idx,
+                                    value = ?value,
+                                    "[LOCALTEE-222] Local tee"
+                                );
                             }
                             if (local_idx as usize) < locals.len() {
                                 locals[local_idx as usize] = value;
@@ -1476,12 +1514,21 @@ impl StacklessEngine {
                                 })?;
                                 #[cfg(feature = "tracing")]
                                 trace!("GlobalGet: global[{}] = {:?} (from instance)", global_idx, value);
-                                #[cfg(feature = "std")]
+                                #[cfg(feature = "tracing")]
                                 {
                                     // Debug all global reads to trace suspicious values
                                     match &value {
-                                        Value::I32(v) => eprintln!("[GlobalGet] global[{}] = {} (0x{:x})", global_idx, v, *v as u32),
-                                        _ => eprintln!("[GlobalGet] global[{}] = {:?}", global_idx, value),
+                                        Value::I32(v) => trace!(
+                                            global_idx = global_idx,
+                                            value = v,
+                                            value_hex = format_args!("0x{:x}", *v as u32),
+                                            "[GlobalGet] Global value"
+                                        ),
+                                        _ => trace!(
+                                            global_idx = global_idx,
+                                            value = ?value,
+                                            "[GlobalGet] Global value"
+                                        ),
                                     }
                                 }
                                 operand_stack.push(value);
@@ -1501,11 +1548,20 @@ impl StacklessEngine {
                         if let Some(value) = operand_stack.pop() {
                             #[cfg(feature = "tracing")]
                             trace!("GlobalSet: setting global[{}] to {:?}", global_idx, value);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 match &value {
-                                    Value::I32(v) => eprintln!("[GlobalSet] global[{}] = {} (0x{:x})", global_idx, v, *v as u32),
-                                    _ => eprintln!("[GlobalSet] global[{}] = {:?}", global_idx, value),
+                                    Value::I32(v) => trace!(
+                                        global_idx = global_idx,
+                                        value = v,
+                                        value_hex = format_args!("0x{:x}", *v as u32),
+                                        "[GlobalSet] Setting global"
+                                    ),
+                                    _ => trace!(
+                                        global_idx = global_idx,
+                                        value = ?value,
+                                        "[GlobalSet] Setting global"
+                                    ),
                                 }
                             }
 
@@ -1538,11 +1594,16 @@ impl StacklessEngine {
                             let result = a.wrapping_add(b);
                             #[cfg(feature = "tracing")]
                             trace!("I32Add: {} + {} = {}", a, b, result);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if (result as u32) > 0x200000 {
-                                    eprintln!("[I32Add] SUSPICIOUS: {} + {} = {} (0x{:x})",
-                                             a, b, result, result as u32);
+                                    warn!(
+                                        a = a,
+                                        b = b,
+                                        result = result,
+                                        result_hex = format_args!("0x{:x}", result as u32),
+                                        "[I32Add] SUSPICIOUS: large result"
+                                    );
                                 }
                             }
                             operand_stack.push(Value::I32(result));
@@ -1553,11 +1614,16 @@ impl StacklessEngine {
                             let result = a.wrapping_sub(b);
                             #[cfg(feature = "tracing")]
                             trace!("I32Sub: {} - {} = {}", a, b, result);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if (result as u32) > 0x200000 {
-                                    eprintln!("[I32Sub] SUSPICIOUS: {} - {} = {} (0x{:x})",
-                                             a, b, result, result as u32);
+                                    warn!(
+                                        a = a,
+                                        b = b,
+                                        result = result,
+                                        result_hex = format_args!("0x{:x}", result as u32),
+                                        "[I32Sub] SUSPICIOUS: large result"
+                                    );
                                 }
                             }
                             operand_stack.push(Value::I32(result));
@@ -1568,10 +1634,16 @@ impl StacklessEngine {
                             let result = a.wrapping_mul(b);
                             #[cfg(feature = "tracing")]
                             trace!("I32Mul: {} * {} = {}", a, b, result);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if (result as u32) > 0x20000 {
-                                    eprintln!("[I32Mul] SUSPICIOUS: {} * {} = {} (0x{:x})", a, b, result, result as u32);
+                                    warn!(
+                                        a = a,
+                                        b = b,
+                                        result = result,
+                                        result_hex = format_args!("0x{:x}", result as u32),
+                                        "[I32Mul] SUSPICIOUS: large result"
+                                    );
                                 }
                             }
                             operand_stack.push(Value::I32(result));
@@ -1751,13 +1823,169 @@ impl StacklessEngine {
                             let result = value as i32;
                             #[cfg(feature = "tracing")]
                             trace!("I32WrapI64: {} -> {}", value, result);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if (result as u32) > 0x20000 {
-                                    eprintln!("[I32WrapI64] SUSPICIOUS: i64({} / 0x{:x}) -> i32({} / 0x{:x})", value, value, result, result as u32);
+                                    warn!(
+                                        i64_value = value,
+                                        i64_hex = format_args!("0x{:x}", value),
+                                        i32_result = result,
+                                        i32_hex = format_args!("0x{:x}", result as u32),
+                                        "[I32WrapI64] SUSPICIOUS: large wrap result"
+                                    );
                                 }
                             }
                             operand_stack.push(Value::I32(result));
+                        }
+                    }
+
+                    // Trapping truncation operations - trap on NaN or overflow
+                    Instruction::I32TruncF32S => {
+                        if let Some(Value::F32(bits)) = operand_stack.pop() {
+                            let f = f32::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f32_s: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [-2147483648, 2147483647]
+                            if f_trunc < -2_147_483_648.0_f32 || f_trunc >= 2_147_483_648.0_f32 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f32_s: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I32(f_trunc as i32));
+                        }
+                    }
+                    Instruction::I32TruncF32U => {
+                        if let Some(Value::F32(bits)) = operand_stack.pop() {
+                            let f = f32::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f32_u: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [0, 4294967295]
+                            if f_trunc < 0.0_f32 || f_trunc >= 4_294_967_296.0_f32 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f32_u: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I32(f_trunc as u32 as i32));
+                        }
+                    }
+                    Instruction::I32TruncF64S => {
+                        if let Some(Value::F64(bits)) = operand_stack.pop() {
+                            let f = f64::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f64_s: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [-2147483648, 2147483647]
+                            if f_trunc < -2_147_483_648.0_f64 || f_trunc >= 2_147_483_648.0_f64 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f64_s: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I32(f_trunc as i32));
+                        }
+                    }
+                    Instruction::I32TruncF64U => {
+                        if let Some(Value::F64(bits)) = operand_stack.pop() {
+                            let f = f64::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f64_u: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [0, 4294967295]
+                            if f_trunc < 0.0_f64 || f_trunc >= 4_294_967_296.0_f64 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i32.trunc_f64_u: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I32(f_trunc as u32 as i32));
+                        }
+                    }
+                    Instruction::I64TruncF32S => {
+                        if let Some(Value::F32(bits)) = operand_stack.pop() {
+                            let f = f32::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f32_s: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [-9223372036854775808, 9223372036854775807]
+                            if f_trunc < -9_223_372_036_854_775_808.0_f32
+                                || f_trunc >= 9_223_372_036_854_775_808.0_f32
+                            {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f32_s: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I64(f_trunc as i64));
+                        }
+                    }
+                    Instruction::I64TruncF32U => {
+                        if let Some(Value::F32(bits)) = operand_stack.pop() {
+                            let f = f32::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f32_u: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [0, 18446744073709551615]
+                            if f_trunc < 0.0_f32 || f_trunc >= 18_446_744_073_709_551_616.0_f32 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f32_u: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I64(f_trunc as u64 as i64));
+                        }
+                    }
+                    Instruction::I64TruncF64S => {
+                        if let Some(Value::F64(bits)) = operand_stack.pop() {
+                            let f = f64::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f64_s: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [-9223372036854775808, 9223372036854775807]
+                            if f_trunc < -9_223_372_036_854_775_808.0_f64
+                                || f_trunc >= 9_223_372_036_854_775_808.0_f64
+                            {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f64_s: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I64(f_trunc as i64));
+                        }
+                    }
+                    Instruction::I64TruncF64U => {
+                        if let Some(Value::F64(bits)) = operand_stack.pop() {
+                            let f = f64::from_bits(bits.0);
+                            if f.is_nan() || f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f64_u: invalid conversion to integer",
+                                ));
+                            }
+                            let f_trunc = f.trunc();
+                            // Range check: must be in [0, 18446744073709551615]
+                            if f_trunc < 0.0_f64 || f_trunc >= 18_446_744_073_709_551_616.0_f64 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "i64.trunc_f64_u: integer overflow",
+                                ));
+                            }
+                            operand_stack.push(Value::I64(f_trunc as u64 as i64));
                         }
                     }
 
@@ -1962,10 +2190,16 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
                             trace!("I32Eq: {} == {} = {}", a, b, result != 0);
                             // Trace None checks (comparing to -2147483648 sentinel)
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             if b == -2147483648 || a == -2147483648 {
-                                eprintln!("[NONE_CHECK] func_idx={}, pc={}: {} == {} = {} (None sentinel check!)",
-                                         func_idx, pc, a, b, result != 0);
+                                trace!(
+                                    func_idx = func_idx,
+                                    pc = pc,
+                                    a = a,
+                                    b = b,
+                                    result = result != 0,
+                                    "[NONE_CHECK] None sentinel check"
+                                );
                             }
                             operand_stack.push(Value::I32(result));
                         }
@@ -2140,6 +2374,55 @@ impl StacklessEngine {
                             operand_stack.push(Value::I32(result));
                         }
                     }
+                    // F32 comparison operations - all produce i32 result
+                    Instruction::F32Eq => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() == b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Eq: {} == {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F32Ne => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() != b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Ne: {} != {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F32Lt => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() < b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Lt: {} < {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F32Gt => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() > b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Gt: {} > {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F32Le => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() <= b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Le: {} <= {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::F32Ge => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = if a.value() >= b.value() { 1i32 } else { 0i32 };
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Ge: {} >= {} = {}", a.value(), b.value(), result != 0);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
                     // Bitwise operations
                     Instruction::I32And => {
                         if let (Some(Value::I32(b)), Some(Value::I32(a))) = (operand_stack.pop(), operand_stack.pop()) {
@@ -2197,11 +2480,16 @@ impl StacklessEngine {
                             let result = a.wrapping_shl((b as u32) % 32);
                             #[cfg(feature = "tracing")]
                             trace!("I32Shl: {} << {} = {}", a, b, result);
-                            #[cfg(feature = "std")]
+                            #[cfg(feature = "tracing")]
                             {
                                 if (result as u32) > 0x200000 {
-                                    eprintln!("[I32Shl] SUSPICIOUS: {} << {} = {} (0x{:x})",
-                                             a, b, result, result as u32);
+                                    warn!(
+                                        a = a,
+                                        b = b,
+                                        result = result,
+                                        result_hex = format_args!("0x{:x}", result as u32),
+                                        "[I32Shl] SUSPICIOUS: large shift result"
+                                    );
                                 }
                             }
                             operand_stack.push(Value::I32(result));
@@ -2386,32 +2674,6 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = i32::from_le_bytes(buffer);
-                                            // Debug: trace reads from retptr/list regions, Vec area, and pieces array
-                                            #[cfg(feature = "std")]
-                                            if (offset >= 0xffd60 && offset <= 0xffdd0) ||
-                                               (offset >= 0x1076c0 && offset <= 0x1077f0) ||
-                                               (offset >= 0x1023c0 && offset <= 0x102400) {
-                                                eprintln!("[I32Load-ARGDATA] func={}, pc={}, offset=0x{:x}, value=0x{:x} ({})",
-                                                         func_idx, pc, offset, value as u32, value);
-                                            }
-                                            // Debug: trace reads from datetime region
-                                            #[cfg(feature = "std")]
-                                            if offset >= 0xffe40 && offset <= 0xffe50 {
-                                                eprintln!("[I32Load-DATETIME] offset=0x{:x}, value=0x{:x} ({})",
-                                                         offset, value as u32, value);
-                                            }
-                                            // Debug: trace ALL reads in dlfree (func 236) to find corruption source
-                                            #[cfg(feature = "std")]
-                                            if func_idx == 236 {
-                                                eprintln!("[DLFREE-READ] pc={}, offset=0x{:x}, value=0x{:x} ({})",
-                                                         pc, offset, value as u32, value);
-                                            }
-                                            // Debug: trace Vec::len loads (offset=8 from Vec pointer)
-                                            #[cfg(feature = "std")]
-                                            if mem_arg.offset == 8 && addr >= 0xffd00 && addr <= 0xffe00 {
-                                                eprintln!("[VEC_LEN_LOAD] base=0x{:x}, offset=8, final=0x{:x}, value={} (0x{:x})",
-                                                         addr as u32, offset, value, value as u32);
-                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -2419,9 +2681,15 @@ impl StacklessEngine {
                                         Err(e) => {
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load: memory read failed: {:?}", e);
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[MEM-OOB] I32Load failed: offset=0x{:x} (base=0x{:x}, mem_arg.offset={}), func_idx={}, pc={}",
-                                                     offset, addr as u32, mem_arg.offset, func_idx, pc);
+                                            #[cfg(feature = "tracing")]
+                                            error!(
+                                                offset = format_args!("0x{:x}", offset),
+                                                base = format_args!("0x{:x}", addr as u32),
+                                                mem_arg_offset = mem_arg.offset,
+                                                func_idx = func_idx,
+                                                pc = pc,
+                                                "[MEM-OOB] I32Load failed"
+                                            );
                                             return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
                                         }
                                     }
@@ -2443,53 +2711,6 @@ impl StacklessEngine {
                             // Get memory from INSTANCE (not module) - instance has initialized data
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
-                                    // Debug: trace writes to retptr region (0xffd60-0xffd70)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffd60 && offset <= 0xffd70 {
-                                        eprintln!("[I32Store-RETPTR] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
-                                                 func_idx, pc, offset, value, value as u32);
-                                    }
-                                    // Debug: trace writes to Vec structure region (0xffdac-0xffdc0)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffdac && offset <= 0xffdc0 {
-                                        eprintln!("[I32Store-VEC] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
-                                                 func_idx, pc, offset, value, value as u32);
-                                    }
-                                    // Debug: trace writes to list array region (0x1076c0-0x107710)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0x1076c0 && offset <= 0x107710 {
-                                        eprintln!("[I32Store-LISTARRAY] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
-                                                 func_idx, pc, offset, value, value as u32);
-                                    }
-                                    // Debug: trace writes to corrupted region (around 0x110020-0x110040)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0x110020 && offset <= 0x110040 {
-                                        eprintln!("[I32Store-CORRUPT] func_idx={}, pc={}, offset={:#x}, value={} ({:#x})",
-                                                 func_idx, pc, offset, value, value as u32);
-                                    }
-                                    // Debug: trace writes to datetime region (0xffe40-0xffe50)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffe40 && offset <= 0xffe50 {
-                                        eprintln!("[I32Store-DATETIME] offset=0x{:x}, value={}", offset, value);
-                                    }
-                                    // Debug: trace writes to stack region (0xffd60-0xffda0) - includes 0xffd80
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffd60 && offset <= 0xffda0 {
-                                        eprintln!("[I32Store-STACK] func_idx={}, offset=0x{:x}, value={} ({:#x})",
-                                                 func_idx, offset, value, value as u32);
-                                    }
-                                    // Debug: trace ALL stores from function 138 (iterator next)
-                                    #[cfg(feature = "std")]
-                                    if func_idx == 138 {
-                                        eprintln!("[I32Store-FUNC138] pc={}, offset=0x{:x}, value={} ({:#x})",
-                                                 pc, offset, value, value as u32);
-                                    }
-                                    // Debug: trace writes to iterator region (0xffdc0-0xffe00)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffdc0 && offset <= 0xffe00 {
-                                        eprintln!("[I32Store-ITER] func_idx={}, pc={}, offset=0x{:x}, value={} ({:#x})",
-                                                 func_idx, pc, offset, value, value as u32);
-                                    }
                                     let memory = &memory_wrapper.0;
                                     let bytes = value.to_le_bytes();
                                     // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
@@ -2497,18 +2718,6 @@ impl StacklessEngine {
                                         Ok(()) => {
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Store: successfully wrote value {} to address {}", value, offset);
-                                            // DEBUG: Verify write by immediate read-back
-                                            #[cfg(feature = "std")]
-                                            if offset >= 0x1074a0 && offset <= 0x1074b0 {
-                                                let mut verify_buf = [0u8; 4];
-                                                if memory.read(offset, &mut verify_buf).is_ok() {
-                                                    let read_back = u32::from_le_bytes(verify_buf);
-                                                    let arc_ptr = std::sync::Arc::as_ptr(&memory_wrapper.0);
-                                                    let mutex_ptr = &*memory_wrapper.0.data as *const _;
-                                                    eprintln!("[I32Store-VERIFY] offset={:#x}, wrote={}, readback={} (match={}), arc={:p}, mutex={:p}",
-                                                             offset, value, read_back as i32, value == read_back as i32, arc_ptr, mutex_ptr);
-                                                }
-                                            }
                                         }
                                         Err(e) => {
                                             #[cfg(feature = "tracing")]
@@ -2528,8 +2737,8 @@ impl StacklessEngine {
                     Instruction::I32Load8S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
                             let offset = (addr as u32).wrapping_add(mem_arg.offset);
-                            #[cfg(feature = "std")]
-                            eprintln!("[I32Load8S] instance_id={}, addr={}, offset={:#x}", instance_id, addr, offset);
+                            #[cfg(feature = "tracing")]
+                            trace!("I32Load8S: reading from address {}", offset);
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -2537,13 +2746,6 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = buffer[0] as i8 as i32; // Sign extend
-                                            #[cfg(feature = "std")]
-                                            {
-                                                if offset >= 0x1076e0 && offset <= 0x107740 {
-                                                    eprintln!("[I32Load8S-BYTE] offset={:#x}, raw_byte={:#04x} ('{}'), value={}",
-                                                             offset, buffer[0], buffer[0] as char, value);
-                                                }
-                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load8S: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -2569,12 +2771,6 @@ impl StacklessEngine {
                                     match memory.read(offset, &mut buffer) {
                                         Ok(()) => {
                                             let value = buffer[0] as i32; // Zero extend
-                                            // Debug: trace reads from string data regions
-                                            #[cfg(feature = "std")]
-                                            if (offset >= 0x1076f0 && offset <= 0x107740) {
-                                                eprintln!("[I32Load8U-STR] offset=0x{:x}, char='{}' (0x{:02x})",
-                                                         offset, (buffer[0] as char), buffer[0]);
-                                            }
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Load8U: read value {} from address {}", value, offset);
                                             operand_stack.push(Value::I32(value));
@@ -2739,15 +2935,24 @@ impl StacklessEngine {
                                             let value = i64::from_le_bytes(buffer);
                                             #[cfg(feature = "tracing")]
                                             trace!("I64Load: read value {} from address {}", value, offset);
-                                            #[cfg(feature = "std")]
+                                            #[cfg(all(feature = "std", feature = "tracing"))]
                                             {
-                                                eprintln!("[I64Load] loaded {} (0x{:x}) from offset {:#x}", value, value as u64, offset);
+                                                trace!(
+                                                    value = value,
+                                                    value_hex = format_args!("0x{:x}", value as u64),
+                                                    offset = format_args!("{:#x}", offset),
+                                                    "[I64Load] 64-bit load"
+                                                );
                                                 // Debug: show memory identity for datetime location
                                                 if offset >= 0xffe40 && offset <= 0xffe50 {
                                                     // Get pointer to the actual Memory data via Arc::as_ptr
                                                     use std::sync::Arc;
                                                     let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
-                                                    eprintln!("[I64Load-DEBUG] instance_id={}, memory_arc_ptr={:p}", instance_id, arc_ptr);
+                                                    trace!(
+                                                        instance_id = instance_id,
+                                                        memory_arc_ptr = format_args!("{:p}", arc_ptr),
+                                                        "[I64Load-DEBUG] Datetime memory access"
+                                                    );
                                                 }
                                             }
                                             operand_stack.push(Value::I64(value));
@@ -2770,41 +2975,6 @@ impl StacklessEngine {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
                                     let bytes = value.to_le_bytes();
-                                    // Debug: trace 64-bit writes to retptr region
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffd60 && offset <= 0xffd70 {
-                                        eprintln!("[I64Store-RETPTR] offset=0x{:x}, value=0x{:016x} ({} as i64)",
-                                                 offset, value as u64, value);
-                                    }
-                                    // Debug: trace 64-bit writes to Vec region (0xffdac-0xffdbc)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffdac && offset <= 0xffdbc {
-                                        eprintln!("[I64Store-VEC] offset=0x{:x}, value=0x{:016x} ({} as i64), low32=0x{:x}, high32=0x{:x}",
-                                                 offset, value as u64, value,
-                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
-                                    }
-                                    // Debug: trace 64-bit writes to Args::next output region (0xffc00-0xffe00)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffc00 && offset <= 0xffe00 {
-                                        eprintln!("[I64Store-ARGOUT] func_idx={}, pc={}, offset=0x{:x}, value=0x{:016x}, low32(len)={}, high32(ptr)=0x{:x}",
-                                                 func_idx, pc, offset, value as u64,
-                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
-                                    }
-                                    // Debug: trace 64-bit writes to datetime region (0xffe40-0xffe50)
-                                    #[cfg(feature = "std")]
-                                    if offset >= 0xffe40 && offset <= 0xffe50 {
-                                        use std::sync::Arc;
-                                        let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
-                                        eprintln!("[I64Store-DATETIME] offset=0x{:x}, value={}, instance_id={}, arc_ptr={:p}",
-                                                 offset, value, instance_id, arc_ptr);
-                                    }
-                                    // Debug: trace ALL 64-bit stores from function 138 (iterator next)
-                                    #[cfg(feature = "std")]
-                                    if func_idx == 138 {
-                                        eprintln!("[I64Store-FUNC138] pc={}, offset=0x{:x}, value=0x{:016x}, low32=0x{:x}, high32=0x{:x}",
-                                                 pc, offset, value as u64,
-                                                 (value as u64) & 0xFFFFFFFF, (value as u64) >> 32);
-                                    }
                                     // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
                                     match memory.write_shared(offset, &bytes) {
                                         Ok(()) => {
@@ -2825,12 +2995,367 @@ impl StacklessEngine {
                         }
                     }
                     // ========================================
+                    // I64 Partial Load Instructions (load narrower value, extend to i64)
+                    // ========================================
+                    Instruction::I64Load8S(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load8S] Signed byte load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = buffer[0] as i8 as i64; // Sign extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load8S: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Load8U(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load8U] Unsigned byte load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = buffer[0] as i64; // Zero extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load8U: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Load16S(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load16S] Signed 16-bit load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = i16::from_le_bytes(buffer) as i64; // Sign extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load16S: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Load16U(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load16U] Unsigned 16-bit load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = u16::from_le_bytes(buffer) as i64; // Zero extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load16U: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Load32S(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load32S] Signed 32-bit load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = i32::from_le_bytes(buffer) as i64; // Sign extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load32S: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Load32U(mem_arg) => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                "[I64Load32U] Unsigned 32-bit load to i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = u32::from_le_bytes(buffer) as i64; // Zero extend
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Load32U: read value {} from address {}", value, offset);
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    // ========================================
+                    // I64 Partial Store Instructions (store lower bits of i64)
+                    // ========================================
+                    Instruction::I64Store8(mem_arg) => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                value = value & 0xFF,
+                                "[I64Store8] Store low 8 bits of i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = [(value & 0xFF) as u8];
+                                    // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
+                                    match memory.write_shared(offset, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Store8: successfully wrote value {} to address {}", value & 0xFF, offset);
+                                        }
+                                        Err(_e) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_e) => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("I64Store8: failed to get memory at index {}", mem_arg.memory_index);
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Store16(mem_arg) => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                value = value & 0xFFFF,
+                                "[I64Store16] Store low 16 bits of i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = (value as u16).to_le_bytes();
+                                    // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
+                                    match memory.write_shared(offset, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Store16: successfully wrote value {} to address {}", value & 0xFFFF, offset);
+                                        }
+                                        Err(_e) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_e) => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("I64Store16: failed to get memory at index {}", mem_arg.memory_index);
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::I64Store32(mem_arg) => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                addr = addr,
+                                offset = format_args!("{:#x}", offset),
+                                value = value & 0xFFFFFFFF,
+                                "[I64Store32] Store low 32 bits of i64"
+                            );
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = (value as u32).to_le_bytes();
+                                    // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
+                                    match memory.write_shared(offset, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!("I64Store32: successfully wrote value {} to address {}", value & 0xFFFFFFFF, offset);
+                                        }
+                                        Err(_e) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_e) => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("I64Store32: failed to get memory at index {}", mem_arg.memory_index);
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+                    // ========================================
                     // F64 Instructions (64-bit floating point)
                     // ========================================
                     Instruction::F64Const(bits) => {
                         #[cfg(feature = "tracing")]
                         trace!("F64Const: pushing {}", f64::from_bits(bits));
                         operand_stack.push(Value::F64(FloatBits64(bits)));
+                    }
+                    Instruction::F32Load(mem_arg) => {
+                        #[cfg(feature = "tracing")]
+                        trace!("F32Load: stack before pop has {} elements", operand_stack.len());
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            #[cfg(feature = "tracing")]
+                            trace!("F32Load: addr={}, offset={}, mem_idx={}", addr, offset, mem_arg.memory_index);
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(offset, &mut buffer) {
+                                        Ok(()) => {
+                                            let bits = u32::from_le_bytes(buffer);
+                                            #[cfg(feature = "tracing")]
+                                            trace!("F32Load: read bytes {:?}, bits={:#x}, pushing F32", buffer, bits);
+                                            operand_stack.push(Value::F32(FloatBits32(bits)));
+                                            #[cfg(feature = "tracing")]
+                                            trace!("F32Load: stack after push has {} elements", operand_stack.len());
+                                        }
+                                        Err(e) => {
+                                            #[cfg(feature = "tracing")]
+                                            error!("F32Load: memory read error: {:?}", e);
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    #[cfg(feature = "tracing")]
+                                    error!("F32Load: memory access error: {:?}", e);
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        } else {
+                            #[cfg(feature = "tracing")]
+                            error!("F32Load: stack was empty or top was not I32!");
+                        }
+                    }
+                    Instruction::F32Store(mem_arg) => {
+                        if let (Some(Value::F32(bits)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            match instance.memory(mem_arg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = bits.0.to_le_bytes();
+                                    if memory.write_shared(offset, &bytes).is_err() {
+                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                    }
+                                }
+                                Err(_e) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
                     }
                     Instruction::F64Load(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
@@ -2870,6 +3395,119 @@ impl StacklessEngine {
                                     return Err(wrt_error::Error::runtime_trap("Memory access error"));
                                 }
                             }
+                        }
+                    }
+                    // F32 Arithmetic operations
+                    Instruction::F32Add => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.value() + b.value();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Sub => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.value() - b.value();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Mul => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.value() * b.value();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Div => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.value() / b.value();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    // F32 Unary operations
+                    Instruction::F32Abs => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = a.value().abs();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Neg => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = -a.value();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Ceil => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = a.value().ceil();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Floor => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = a.value().floor();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Trunc => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = a.value().trunc();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Nearest => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let f = a.value();
+                            // Round to nearest even (banker's rounding)
+                            let result = if f.fract().abs() == 0.5 {
+                                let floor = f.floor();
+                                if floor as i32 % 2 == 0 { floor } else { f.ceil() }
+                            } else {
+                                f.round()
+                            };
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Sqrt => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            let result = a.value().sqrt();
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Min => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let fa = a.value();
+                            let fb = b.value();
+                            // WebAssembly spec: If either operand is NaN, return NaN
+                            // If both are zero with different signs, return -0.0
+                            let result = if fa.is_nan() || fb.is_nan() {
+                                f32::NAN
+                            } else if fa == 0.0 && fb == 0.0 {
+                                if fa.is_sign_negative() || fb.is_sign_negative() { -0.0 } else { 0.0 }
+                            } else {
+                                fa.min(fb)
+                            };
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Max => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let fa = a.value();
+                            let fb = b.value();
+                            // WebAssembly spec: If either operand is NaN, return NaN
+                            // If both are zero with different signs, return +0.0
+                            let result = if fa.is_nan() || fb.is_nan() {
+                                f32::NAN
+                            } else if fa == 0.0 && fb == 0.0 {
+                                if fa.is_sign_positive() || fb.is_sign_positive() { 0.0 } else { -0.0 }
+                            } else {
+                                fa.max(fb)
+                            };
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32Copysign => {
+                        if let (Some(Value::F32(b)), Some(Value::F32(a))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = a.value().copysign(b.value());
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
                         }
                     }
                     // F64 Arithmetic operations
@@ -3017,6 +3655,31 @@ impl StacklessEngine {
                             operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
                         }
                     }
+                    // F32 Conversion operations
+                    Instruction::F32ConvertI32S => {
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = a as f32;
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32ConvertI32U => {
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            let result = (a as u32) as f32;
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32ConvertI64S => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = a as f32;
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
+                    Instruction::F32ConvertI64U => {
+                        if let Some(Value::I64(a)) = operand_stack.pop() {
+                            let result = (a as u64) as f32;
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
                     // F64 Conversion operations
                     Instruction::F64ConvertI32S => {
                         if let Some(Value::I32(a)) = operand_stack.pop() {
@@ -3048,6 +3711,12 @@ impl StacklessEngine {
                             operand_stack.push(Value::F64(FloatBits64(result.to_bits())));
                         }
                     }
+                    Instruction::F32DemoteF64 => {
+                        if let Some(Value::F64(a)) = operand_stack.pop() {
+                            let result = f64::from_bits(a.0) as f32;
+                            operand_stack.push(Value::F32(FloatBits32(result.to_bits())));
+                        }
+                    }
                     Instruction::F64ReinterpretI64 => {
                         if let Some(Value::I64(a)) = operand_stack.pop() {
                             operand_stack.push(Value::F64(FloatBits64(a as u64)));
@@ -3056,6 +3725,16 @@ impl StacklessEngine {
                     Instruction::I64ReinterpretF64 => {
                         if let Some(Value::F64(a)) = operand_stack.pop() {
                             operand_stack.push(Value::I64(a.0 as i64));
+                        }
+                    }
+                    Instruction::I32ReinterpretF32 => {
+                        if let Some(Value::F32(a)) = operand_stack.pop() {
+                            operand_stack.push(Value::I32(a.0 as i32));
+                        }
+                    }
+                    Instruction::F32ReinterpretI32 => {
+                        if let Some(Value::I32(a)) = operand_stack.pop() {
+                            operand_stack.push(Value::F32(FloatBits32(a as u32)));
                         }
                     }
                     Instruction::If { block_type_idx } => {
@@ -3160,14 +3839,14 @@ impl StacklessEngine {
                         #[cfg(feature = "tracing")]
                         trace!("Block: block_type_idx={}, depth now {}, stack_height={}", block_type_idx, block_depth, operand_stack.len());
                         // Trace block entry in func 76
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 76 {
-                            eprintln!("[BLOCK] func_idx=76, pc={}, block_depth={}", pc, block_depth);
+                            trace!(pc = pc, block_depth = block_depth, "[BLOCK] func_idx=76 block entry");
                         }
                         // Trace block entry in func 222
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 222 {
-                            eprintln!("[BLOCK-222] pc={}, block_depth={}", pc, block_depth);
+                            trace!(pc = pc, block_depth = block_depth, "[BLOCK-222] Block entry");
                         }
                         // Just execute through the block - End will decrement depth
                     }
@@ -3177,14 +3856,14 @@ impl StacklessEngine {
                         #[cfg(feature = "tracing")]
                         trace!("Loop: block_type_idx={}, depth now {}, start_pc={}, stack_height={}", block_type_idx, block_depth, pc, operand_stack.len());
                         // Trace loop entry in func 76
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 76 {
-                            eprintln!("[LOOP] func_idx=76, pc={}, block_depth={}", pc, block_depth);
+                            trace!(pc = pc, block_depth = block_depth, "[LOOP] func_idx=76 loop entry");
                         }
                         // Trace loop entry in func 222
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 222 {
-                            eprintln!("[LOOP-222] pc={}, block_depth={}", pc, block_depth);
+                            trace!(pc = pc, block_depth = block_depth, "[LOOP-222] Loop entry");
                         }
                         // Just execute through - Br will handle jumping back to start
                     }
@@ -3192,21 +3871,30 @@ impl StacklessEngine {
                         #[cfg(feature = "tracing")]
                         trace!("Br: label_idx={} (unconditional branch)", label_idx);
                         // Trace Br in func 222
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 222 {
-                            eprintln!("[BR-222] pc={}, label_idx={}, block_depth={}, block_stack.len()={}",
-                                     pc, label_idx, block_depth, block_stack.len());
+                            trace!(
+                                pc = pc,
+                                label_idx = label_idx,
+                                block_depth = block_depth,
+                                block_stack_len = block_stack.len(),
+                                "[BR-222] Branch instruction"
+                            );
                             for (i, (btype, bpc, _, _)) in block_stack.iter().enumerate() {
-                                eprintln!("[BR-222]   block_stack[{}]: {} at pc={}", i, btype, bpc);
+                                trace!(index = i, block_type = btype, block_pc = bpc, "[BR-222] Block stack entry");
                             }
                         }
                         // Trace Br in func 76 (extend_desugared)
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if func_idx == 76 {
-                            eprintln!("[BR] func_idx=76, pc={}, label_idx={}, block_stack.len()={}",
-                                     pc, label_idx, block_stack.len());
+                            trace!(
+                                pc = pc,
+                                label_idx = label_idx,
+                                block_stack_len = block_stack.len(),
+                                "[BR] func_idx=76 branch"
+                            );
                             for (i, (btype, bpc, _, height)) in block_stack.iter().enumerate() {
-                                eprintln!("[BR]   block_stack[{}]: {} at pc={}, height={}", i, btype, bpc, height);
+                                trace!(index = i, block_type = btype, block_pc = bpc, height = height, "[BR] Block stack entry");
                             }
                         }
 
@@ -3239,13 +3927,19 @@ impl StacklessEngine {
 
                             // Save the values to preserve from top of stack
                             let mut preserved_values = Vec::new();
-                            #[cfg(feature = "std")]
-                            eprintln!("[BR-VALUE] pc={}, block_type_idx=0x{:02X}, values_to_preserve={}, stack_len={}, entry_height={}",
-                                     pc, block_type_idx, values_to_preserve, operand_stack.len(), entry_stack_height);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                pc = pc,
+                                block_type_idx = format_args!("0x{:02X}", block_type_idx),
+                                values_to_preserve = values_to_preserve,
+                                stack_len = operand_stack.len(),
+                                entry_height = entry_stack_height,
+                                "[BR-VALUE] Branch value handling"
+                            );
                             for _ in 0..values_to_preserve {
                                 if let Some(v) = operand_stack.pop() {
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[BR-VALUE]   Saving value: {:?}", v);
+                                    #[cfg(feature = "tracing")]
+                                    trace!(value = ?v, "[BR-VALUE] Saving value");
                                     preserved_values.push(v);
                                 }
                             }
@@ -3254,8 +3948,8 @@ impl StacklessEngine {
                             while operand_stack.len() > entry_stack_height {
                                 let _ = operand_stack.pop();
                             }
-                            #[cfg(feature = "std")]
-                            eprintln!("[BR-VALUE] After clearing, stack_len={}", operand_stack.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(stack_len = operand_stack.len(), "[BR-VALUE] After clearing");
 
                             if block_type == "loop" {
                                 // For Loop: jump backward to the loop start
@@ -3272,9 +3966,9 @@ impl StacklessEngine {
                                     if !block_stack.is_empty() {
                                         let popped = block_stack.pop();
                                         block_depth -= 1;
-                                        #[cfg(feature = "std")]
+                                        #[cfg(feature = "tracing")]
                                         if func_idx == 76 {
-                                            eprintln!("[BR-FWD] Popping inner block: {:?}, block_depth now {}", popped, block_depth);
+                                            trace!(popped = ?popped, block_depth = block_depth, "[BR-FWD] Popping inner block");
                                         }
                                     }
                                 }
@@ -3285,9 +3979,9 @@ impl StacklessEngine {
                                 let mut new_pc = pc + 1;
                                 let mut depth = 0;
 
-                                #[cfg(feature = "std")]
+                                #[cfg(feature = "tracing")]
                                 if func_idx == 76 {
-                                    eprintln!("[BR-FWD] Starting scan from pc={}, target_depth={}", new_pc, target_depth);
+                                    trace!(new_pc = new_pc, target_depth = target_depth, "[BR-FWD] Starting scan");
                                 }
 
                                 while new_pc < instructions.len() && target_depth > 0 {
@@ -3297,24 +3991,24 @@ impl StacklessEngine {
                                             wrt_foundation::types::Instruction::Loop { .. } |
                                             wrt_foundation::types::Instruction::If { .. } => {
                                                 depth += 1;
-                                                #[cfg(feature = "std")]
+                                                #[cfg(feature = "tracing")]
                                                 if func_idx == 76 {
-                                                    eprintln!("[BR-FWD] pc={}: Block/Loop/If, depth now {}", new_pc, depth);
+                                                    trace!(pc = new_pc, depth = depth, "[BR-FWD] Block/Loop/If");
                                                 }
                                             }
                                             wrt_foundation::types::Instruction::End => {
-                                                #[cfg(feature = "std")]
+                                                #[cfg(feature = "tracing")]
                                                 if func_idx == 76 {
-                                                    eprintln!("[BR-FWD] pc={}: End, depth={}, target_depth={}", new_pc, depth, target_depth);
+                                                    trace!(pc = new_pc, depth = depth, target_depth = target_depth, "[BR-FWD] End");
                                                 }
                                                 if depth == 0 {
                                                     target_depth -= 1;
                                                     if target_depth == 0 {
                                                         #[cfg(feature = "tracing")]
                                                         trace!("Br: jumping forward to pc={} (end of {} block)", new_pc, block_type);
-                                                        #[cfg(feature = "std")]
+                                                        #[cfg(feature = "tracing")]
                                                         if func_idx == 76 {
-                                                            eprintln!("[BR-FWD] Jumping to pc={}", new_pc);
+                                                            trace!(pc = new_pc, "[BR-FWD] Jumping to");
                                                         }
                                                         pc = new_pc - 1;
                                                         break;
@@ -3331,15 +4025,15 @@ impl StacklessEngine {
                             }
 
                             // Restore preserved values back to stack (in reverse order)
-                            #[cfg(feature = "std")]
-                            eprintln!("[BR-VALUE] Restoring {} values", preserved_values.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(count = preserved_values.len(), "[BR-VALUE] Restoring values");
                             for v in preserved_values.into_iter().rev() {
-                                #[cfg(feature = "std")]
-                                eprintln!("[BR-VALUE]   Restoring value: {:?}", v);
+                                #[cfg(feature = "tracing")]
+                                trace!(value = ?v, "[BR-VALUE] Restoring value");
                                 operand_stack.push(v);
                             }
-                            #[cfg(feature = "std")]
-                            eprintln!("[BR-VALUE] After restore, stack_len={}", operand_stack.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(stack_len = operand_stack.len(), "[BR-VALUE] After restore");
                         } else {
                             #[cfg(feature = "tracing")]
 
@@ -3350,23 +4044,17 @@ impl StacklessEngine {
                         if let Some(Value::I32(condition)) = operand_stack.pop() {
                             #[cfg(feature = "tracing")]
                             trace!("BrIf: label_idx={}, condition={}", label_idx, condition != 0);
-                            // Trace BrIf in func 76 (extend_desugared) and func 211 (Args::next)
-                            #[cfg(feature = "std")]
-                            if func_idx == 76 {
-                                eprintln!("[BRIF] func_idx=76, pc={}, label_idx={}, condition={}, will_branch={}",
-                                         pc, label_idx, condition, condition != 0);
-                            }
-                            // Trace BrIf in func 211 - check from_utf8 result
-                            #[cfg(feature = "std")]
-                            if func_idx == 211 {
-                                eprintln!("[BRIF-211] pc={}, label_idx={}, condition={} (from_utf8_result), will_branch={}",
-                                         pc, label_idx, condition, condition != 0);
-                            }
-                            // Trace BrIf in func 222 (core::fmt::write)
-                            #[cfg(feature = "std")]
-                            if func_idx == 222 {
-                                eprintln!("[BRIF-222] pc={}, label_idx={}, condition={}, will_branch={}",
-                                         pc, label_idx, condition, condition != 0);
+                            // Trace BrIf in specific functions for debugging
+                            #[cfg(feature = "tracing")]
+                            if func_idx == 76 || func_idx == 211 || func_idx == 222 {
+                                trace!(
+                                    func_idx = func_idx,
+                                    pc = pc,
+                                    label_idx = label_idx,
+                                    condition = condition,
+                                    will_branch = (condition != 0),
+                                    "[BRIF] Conditional branch check"
+                                );
                             }
                             if condition != 0 {
                                 // Branch conditionally - same logic as Br
@@ -3479,9 +4167,11 @@ impl StacklessEngine {
                                 let memory = &memory_wrapper.0;
                                 let size_in_pages = memory.size();
                                 #[cfg(feature = "tracing")]
-                                trace!("MemorySize: memory[{}] = {} pages", memory_idx, size_in_pages);
-                                #[cfg(feature = "std")]
-                                eprintln!("[MemorySize] memory[{}] = {} pages", memory_idx, size_in_pages);
+                                trace!(
+                                    memory_idx = memory_idx,
+                                    size_in_pages = size_in_pages,
+                                    "[MemorySize] Retrieved memory size"
+                                );
                                 operand_stack.push(Value::I32(size_in_pages as i32));
                             }
                             Err(e) => {
@@ -3504,24 +4194,32 @@ impl StacklessEngine {
                                 match instance.memory(memory_idx as u32) {
                                     Ok(memory_wrapper) => {
                                         let memory = &memory_wrapper.0;
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[MemoryGrow] Growing memory[{}] by {} pages (current size: {} pages)",
-                                                 memory_idx, delta, memory.size());
+                                        let current_size = memory.size();
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            memory_idx = memory_idx,
+                                            delta = delta,
+                                            current_size = current_size,
+                                            "[MemoryGrow] Attempting to grow memory"
+                                        );
                                         match memory.grow_shared(delta as u32) {
                                             Ok(prev_pages) => {
                                                 #[cfg(feature = "tracing")]
-                                                trace!("MemoryGrow: memory[{}] grew from {} to {} pages",
-                                                      memory_idx, prev_pages, prev_pages + delta as u32);
-                                                #[cfg(feature = "std")]
-                                                eprintln!("[MemoryGrow] Success: grew from {} to {} pages",
-                                                         prev_pages, prev_pages + delta as u32);
+                                                trace!(
+                                                    memory_idx = memory_idx,
+                                                    prev_pages = prev_pages,
+                                                    new_pages = prev_pages + delta as u32,
+                                                    "[MemoryGrow] Success"
+                                                );
                                                 operand_stack.push(Value::I32(prev_pages as i32));
                                             }
                                             Err(e) => {
                                                 #[cfg(feature = "tracing")]
-                                                trace!("MemoryGrow: memory[{}] grow failed: {:?}", memory_idx, e);
-                                                #[cfg(feature = "std")]
-                                                eprintln!("[MemoryGrow] Failed: {:?}", e);
+                                                warn!(
+                                                    memory_idx = memory_idx,
+                                                    error = ?e,
+                                                    "[MemoryGrow] Failed"
+                                                );
                                                 operand_stack.push(Value::I32(-1));
                                             }
                                         }
@@ -3541,11 +4239,14 @@ impl StacklessEngine {
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
                             #[cfg(feature = "tracing")]
-                            trace!("MemoryCopy: dest={:#x}, src={:#x}, size={}, dst_mem={}, src_mem={}",
-                                  dest, src, size, dst_mem_idx, src_mem_idx);
-                            #[cfg(feature = "std")]
-                            eprintln!("[MemoryCopy] dest={:#x}, src={:#x}, size={}, dst_mem={}, src_mem={}",
-                                     dest, src, size, dst_mem_idx, src_mem_idx);
+                            trace!(
+                                dest = format_args!("{:#x}", dest),
+                                src = format_args!("{:#x}", src),
+                                size = size,
+                                dst_mem_idx = dst_mem_idx,
+                                src_mem_idx = src_mem_idx,
+                                "[MemoryCopy] Starting copy operation"
+                            );
 
                             if size == 0 {
                                 // No-op for zero size copy
@@ -3580,14 +4281,19 @@ impl StacklessEngine {
                                         return Err(e);
                                     }
 
-                                    #[cfg(feature = "std")]
+                                    #[cfg(feature = "tracing")]
                                     {
-                                        eprintln!("[MemoryCopy] SUCCESS: copied {} bytes from {:#x} to {:#x}",
-                                                 size, src, dest);
+                                        trace!(
+                                            size = size,
+                                            src = format_args!("{:#x}", src),
+                                            dest = format_args!("{:#x}", dest),
+                                            "[MemoryCopy] SUCCESS"
+                                        );
                                         // Show copied data as string if ASCII
                                         if size <= 50 && buffer.iter().all(|&b| b >= 0x20 && b <= 0x7e || b == 0) {
-                                            let s = std::str::from_utf8(&buffer).unwrap_or("<invalid utf8>");
-                                            eprintln!("[MemoryCopy] Data: \"{}\"", s);
+                                            if let Ok(s) = core::str::from_utf8(&buffer) {
+                                                trace!(data = %s, "[MemoryCopy] Copied ASCII data");
+                                            }
                                         }
                                     }
                                 }
@@ -3608,11 +4314,13 @@ impl StacklessEngine {
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
                             #[cfg(feature = "tracing")]
-                            trace!("MemoryFill: dest={:#x}, value={:#x}, size={}, mem={}",
-                                  dest, value, size, mem_idx);
-                            #[cfg(feature = "std")]
-                            eprintln!("[MemoryFill] dest={:#x}, value={:#x}, size={}, mem={}",
-                                     dest, value, size, mem_idx);
+                            trace!(
+                                dest = format_args!("{:#x}", dest),
+                                value = format_args!("{:#x}", value),
+                                size = size,
+                                mem_idx = mem_idx,
+                                "[MemoryFill] Starting fill operation"
+                            );
 
                             if size == 0 {
                                 // No-op for zero size fill
@@ -3635,9 +4343,13 @@ impl StacklessEngine {
                                         return Err(e);
                                     }
 
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[MemoryFill] SUCCESS: filled {} bytes at {:#x} with {:#x}",
-                                             size, dest, fill_byte);
+                                    #[cfg(feature = "tracing")]
+                                    trace!(
+                                        size = size,
+                                        dest = format_args!("{:#x}", dest),
+                                        fill_byte = format_args!("{:#x}", fill_byte),
+                                        "[MemoryFill] SUCCESS"
+                                    );
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
@@ -3806,10 +4518,15 @@ impl StacklessEngine {
                         trace!("  Operand stack size: {}", operand_stack.len());
                         #[cfg(feature = "tracing")]
                         trace!("  Instructions executed: {}", instruction_count);
-                        // Trace return from func 76
-                        #[cfg(feature = "std")]
+                        // Trace return from specific functions for debugging
+                        #[cfg(feature = "tracing")]
                         if func_idx == 76 {
-                            eprintln!("[RETURN] func_idx=76, pc={}, stack_size={}", pc, operand_stack.len());
+                            trace!(
+                                func_idx = func_idx,
+                                pc = pc,
+                                stack_size = operand_stack.len(),
+                                "[RETURN] Function returning"
+                            );
                         }
                         break; // Exit function
                     }
@@ -3839,16 +4556,18 @@ impl StacklessEngine {
                                 let (block_type, start_pc, _, _) = block_stack.pop().unwrap();
                                 #[cfg(feature = "tracing")]
                                 trace!("End at pc={} (closes {} from pc={}, depth now {})", pc, block_type, start_pc, block_depth);
-                                // Trace End in func 76
-                                #[cfg(feature = "std")]
-                                if func_idx == 76 {
-                                    eprintln!("[END] func_idx=76, pc={}, closes {} from pc={}, block_depth={}", pc, block_type, start_pc, block_depth);
-                                }
-                                // Trace End in func 222
-                                #[cfg(feature = "std")]
-                                if func_idx == 222 {
-                                    eprintln!("[END-222] pc={}, closes {} from pc={}, block_depth={}, block_stack.len()={}",
-                                             pc, block_type, start_pc, block_depth, block_stack.len());
+                                // Trace End in specific functions for debugging
+                                #[cfg(feature = "tracing")]
+                                if func_idx == 76 || func_idx == 222 {
+                                    trace!(
+                                        func_idx = func_idx,
+                                        pc = pc,
+                                        block_type = %block_type,
+                                        start_pc = start_pc,
+                                        block_depth = block_depth,
+                                        block_stack_len = block_stack.len(),
+                                        "[END] Block closing"
+                                    );
                                 }
                             } else {
                                 #[cfg(feature = "tracing")]
@@ -3856,10 +4575,2915 @@ impl StacklessEngine {
                             }
                         }
                     }
-                    _ => {
-                        // Skip unimplemented instructions for now
+
+                    // ========================================
+                    // Reference Type Operations
+                    // ========================================
+                    Instruction::RefNull(ref_type) => {
+                        // Push a null reference of the specified type
+                        use wrt_foundation::types::RefType;
                         #[cfg(feature = "tracing")]
-                        trace!("Unimplemented instruction at pc={}: {:?}", pc, instruction);
+                        trace!("RefNull: type={:?}", ref_type);
+                        match ref_type {
+                            RefType::Funcref => operand_stack.push(Value::FuncRef(None)),
+                            RefType::Externref => operand_stack.push(Value::ExternRef(None)),
+                        }
+                    }
+                    Instruction::RefFunc(func_idx_arg) => {
+                        // Push a reference to the function at func_idx
+                        #[cfg(feature = "tracing")]
+                        trace!("RefFunc: func_idx={}", func_idx_arg);
+                        operand_stack.push(Value::FuncRef(Some(wrt_foundation::values::FuncRef { index: func_idx_arg })));
+                    }
+                    Instruction::RefIsNull => {
+                        // Pop reference, push 1 if null, 0 if not null
+                        if let Some(ref_val) = operand_stack.pop() {
+                            let is_null = match ref_val {
+                                Value::FuncRef(None) => 1i32,
+                                Value::FuncRef(Some(_)) => 0i32,
+                                Value::ExternRef(None) => 1i32,
+                                Value::ExternRef(Some(_)) => 0i32,
+                                _ => {
+                                    #[cfg(feature = "tracing")]
+                                    error!("RefIsNull: expected reference type, got {:?}", ref_val);
+                                    return Err(wrt_error::Error::runtime_type_mismatch(
+                                        "ref.is_null expects a reference type",
+                                    ));
+                                }
+                            };
+                            #[cfg(feature = "tracing")]
+                            trace!("RefIsNull: result={}", is_null);
+                            operand_stack.push(Value::I32(is_null));
+                        }
+                    }
+                    Instruction::RefAsNonNull => {
+                        // Pop reference, trap if null, push back if not null
+                        if let Some(ref_val) = operand_stack.pop() {
+                            match &ref_val {
+                                Value::FuncRef(None) | Value::ExternRef(None) => {
+                                    #[cfg(feature = "tracing")]
+                                    error!("RefAsNonNull: null reference");
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "null reference in ref.as_non_null",
+                                    ));
+                                }
+                                Value::FuncRef(Some(_)) | Value::ExternRef(Some(_)) => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("RefAsNonNull: non-null reference");
+                                    operand_stack.push(ref_val);
+                                }
+                                _ => {
+                                    #[cfg(feature = "tracing")]
+                                    error!("RefAsNonNull: expected reference type, got {:?}", ref_val);
+                                    return Err(wrt_error::Error::runtime_type_mismatch(
+                                        "ref.as_non_null expects a reference type",
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                    Instruction::RefEq => {
+                        // Pop two references, push 1 if equal, 0 if not
+                        if let (Some(ref2), Some(ref1)) = (operand_stack.pop(), operand_stack.pop()) {
+                            let result = match (&ref1, &ref2) {
+                                // Two null funcref/externref are equal
+                                (Value::FuncRef(None), Value::FuncRef(None)) => 1i32,
+                                (Value::ExternRef(None), Value::ExternRef(None)) => 1i32,
+                                // Two non-null funcrefs are equal if they reference the same function
+                                (Value::FuncRef(Some(f1)), Value::FuncRef(Some(f2))) => {
+                                    if f1.index == f2.index { 1i32 } else { 0i32 }
+                                }
+                                // Two non-null externrefs are equal if they're the same object
+                                (Value::ExternRef(Some(e1)), Value::ExternRef(Some(e2))) => {
+                                    if e1 == e2 { 1i32 } else { 0i32 }
+                                }
+                                // Different types or null vs non-null are not equal
+                                _ => 0i32,
+                            };
+                            #[cfg(feature = "tracing")]
+                            trace!("RefEq: {:?} == {:?} => {}", ref1, ref2, result);
+                            operand_stack.push(Value::I32(result));
+                        }
+                    }
+                    Instruction::BrOnNull(br_label_idx) => {
+                        // Pop reference, branch if null, push back if not null
+                        if let Some(ref_val) = operand_stack.pop() {
+                            let is_null = matches!(&ref_val, Value::FuncRef(None) | Value::ExternRef(None));
+                            #[cfg(feature = "tracing")]
+                            trace!("BrOnNull: label={}, is_null={}", br_label_idx, is_null);
+                            if is_null {
+                                // Branch to label - similar to Br instruction
+                                if br_label_idx as usize >= block_stack.len() {
+                                    // Branch out of function
+                                    #[cfg(feature = "tracing")]
+                                    trace!("BrOnNull: branching out of function");
+                                    break;
+                                }
+                                // Find the target block in the stack
+                                let target_depth = block_stack.len() - 1 - br_label_idx as usize;
+                                if let Some((block_type, start_pc, _block_type_idx, entry_stack_height)) = block_stack.get(target_depth).copied() {
+                                    // For loops, branch to start; for blocks, branch to end
+                                    if block_type == "loop" {
+                                        pc = start_pc;
+                                    } else {
+                                        // Skip to end of block
+                                        let mut depth = 1;
+                                        let mut search_pc = pc + 1;
+                                        while depth > 0 && search_pc < instructions.len() {
+                                            #[cfg(feature = "std")]
+                                            if let Some(search_instr) = instructions.get(search_pc) {
+                                                match search_instr {
+                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } => depth += 1,
+                                                    Instruction::End => depth -= 1,
+                                                    _ => {}
+                                                }
+                                            }
+                                            #[cfg(not(feature = "std"))]
+                                            if let Ok(search_instr) = instructions.get(search_pc) {
+                                                match search_instr {
+                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } => depth += 1,
+                                                    Instruction::End => depth -= 1,
+                                                    _ => {}
+                                                }
+                                            }
+                                            if depth > 0 { search_pc += 1; }
+                                        }
+                                        pc = search_pc;
+                                    }
+                                    // Restore stack to entry height
+                                    while operand_stack.len() > entry_stack_height {
+                                        operand_stack.pop();
+                                    }
+                                }
+                                continue;
+                            } else {
+                                // Not null, push reference back
+                                operand_stack.push(ref_val);
+                            }
+                        }
+                    }
+
+                    // ==================== TABLE OPERATIONS ====================
+                    Instruction::TableGet(table_idx) => {
+                        // table.get: [i32] -> [ref]
+                        // Pop index from stack, get element from table at that index
+                        if let Some(Value::I32(elem_idx)) = operand_stack.pop() {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                elem_idx = elem_idx,
+                                "[TableGet] Getting element from table"
+                            );
+
+                            if elem_idx < 0 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "table.get: index cannot be negative",
+                                ));
+                            }
+
+                            // Get the table from the instance
+                            let table = instance.table(table_idx)?;
+                            let elem = table.get(elem_idx as u32)?;
+
+                            // Push the element (or null ref) onto the stack
+                            let value = match elem {
+                                Some(v) => v,
+                                None => {
+                                    // Return null reference based on table element type
+                                    match table.element_type() {
+                                        wrt_foundation::types::RefType::Funcref => Value::FuncRef(None),
+                                        wrt_foundation::types::RefType::Externref => Value::ExternRef(None),
+                                    }
+                                }
+                            };
+                            operand_stack.push(value);
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                elem_idx = elem_idx,
+                                "[TableGet] SUCCESS"
+                            );
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.get: expected i32 index on stack",
+                            ));
+                        }
+                    }
+
+                    Instruction::TableSet(table_idx) => {
+                        // table.set: [i32 ref] -> []
+                        // Pop value, then index from stack; set element in table
+                        let value = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.set: expected value on stack")
+                        })?;
+                        let idx = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.set: expected index on stack")
+                        })?;
+
+                        if let Value::I32(elem_idx) = idx {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                elem_idx = elem_idx,
+                                value = ?value,
+                                "[TableSet] Setting element in table"
+                            );
+
+                            if elem_idx < 0 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "table.set: index cannot be negative",
+                                ));
+                            }
+
+                            // Validate value is a reference type
+                            let table_value = match &value {
+                                Value::FuncRef(fr) => Some(Value::FuncRef(fr.clone())),
+                                Value::ExternRef(er) => Some(Value::ExternRef(er.clone())),
+                                _ => {
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "table.set: value must be a reference type",
+                                    ));
+                                }
+                            };
+
+                            // Get the table and set the element
+                            let table = instance.table(table_idx)?;
+                            table.set(elem_idx as u32, table_value)?;
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                elem_idx = elem_idx,
+                                "[TableSet] SUCCESS"
+                            );
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.set: expected i32 index",
+                            ));
+                        }
+                    }
+
+                    Instruction::TableSize(table_idx) => {
+                        // table.size: [] -> [i32]
+                        // Push current table size onto stack
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            table_idx = table_idx,
+                            "[TableSize] Getting table size"
+                        );
+
+                        let table = instance.table(table_idx)?;
+                        let size = table.size();
+                        operand_stack.push(Value::I32(size as i32));
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            table_idx = table_idx,
+                            size = size,
+                            "[TableSize] SUCCESS"
+                        );
+                    }
+
+                    Instruction::TableGrow(table_idx) => {
+                        // table.grow: [ref i32] -> [i32]
+                        // Pop delta (i32), pop init value (ref), grow table, push old size or -1
+                        let delta = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.grow: expected delta on stack")
+                        })?;
+                        let init_value = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.grow: expected init value on stack")
+                        })?;
+
+                        if let Value::I32(delta_val) = delta {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                delta = delta_val,
+                                init_value = ?init_value,
+                                "[TableGrow] Growing table"
+                            );
+
+                            // Negative delta should return -1 (failure)
+                            if delta_val < 0 {
+                                operand_stack.push(Value::I32(-1));
+                            } else {
+                                // Validate init value is a reference type
+                                match &init_value {
+                                    Value::FuncRef(_) | Value::ExternRef(_) => {}
+                                    _ => {
+                                        return Err(wrt_error::Error::runtime_trap(
+                                            "table.grow: init value must be a reference type",
+                                        ));
+                                    }
+                                }
+
+                                let table = instance.table(table_idx)?;
+                                match table.grow(delta_val as u32, init_value) {
+                                    Ok(old_size) => {
+                                        operand_stack.push(Value::I32(old_size as i32));
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            table_idx = table_idx,
+                                            old_size = old_size,
+                                            "[TableGrow] SUCCESS"
+                                        );
+                                    }
+                                    Err(_) => {
+                                        // Growth failed (e.g., exceeded max size)
+                                        operand_stack.push(Value::I32(-1));
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            table_idx = table_idx,
+                                            "[TableGrow] Failed, returning -1"
+                                        );
+                                    }
+                                }
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.grow: expected i32 delta",
+                            ));
+                        }
+                    }
+
+                    Instruction::TableFill(table_idx) => {
+                        // table.fill: [i32 ref i32] -> []
+                        // Pop size, value, dest; fill table region with value
+                        let size = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.fill: expected size on stack")
+                        })?;
+                        let value = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.fill: expected value on stack")
+                        })?;
+                        let dest = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.fill: expected dest on stack")
+                        })?;
+
+                        if let (Value::I32(dest_idx), Value::I32(fill_size)) = (&dest, &size) {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                dest = dest_idx,
+                                size = fill_size,
+                                value = ?value,
+                                "[TableFill] Filling table region"
+                            );
+
+                            if *dest_idx < 0 || *fill_size < 0 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "table.fill: negative dest or size",
+                                ));
+                            }
+
+                            // Validate value is a reference type
+                            let fill_value = match &value {
+                                Value::FuncRef(fr) => Some(Value::FuncRef(fr.clone())),
+                                Value::ExternRef(er) => Some(Value::ExternRef(er.clone())),
+                                _ => {
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "table.fill: value must be a reference type",
+                                    ));
+                                }
+                            };
+
+                            let table = instance.table(table_idx)?;
+                            table.fill(*dest_idx as u32, *fill_size as u32, fill_value)?;
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                table_idx = table_idx,
+                                dest = dest_idx,
+                                size = fill_size,
+                                "[TableFill] SUCCESS"
+                            );
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.fill: expected i32 values for dest and size",
+                            ));
+                        }
+                    }
+
+                    Instruction::TableCopy(dst_table_idx, src_table_idx) => {
+                        // table.copy: [i32 i32 i32] -> []
+                        // Pop size, src_offset, dst_offset; copy elements between tables
+                        let size = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.copy: expected size on stack")
+                        })?;
+                        let src_offset = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.copy: expected src offset on stack")
+                        })?;
+                        let dst_offset = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.copy: expected dst offset on stack")
+                        })?;
+
+                        if let (Value::I32(dst_idx), Value::I32(src_idx), Value::I32(copy_size)) =
+                            (&dst_offset, &src_offset, &size)
+                        {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                dst_table = dst_table_idx,
+                                src_table = src_table_idx,
+                                dst_offset = dst_idx,
+                                src_offset = src_idx,
+                                size = copy_size,
+                                "[TableCopy] Copying table elements"
+                            );
+
+                            if *dst_idx < 0 || *src_idx < 0 || *copy_size < 0 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "table.copy: negative offset or size",
+                                ));
+                            }
+
+                            // Handle same-table and cross-table copy
+                            if dst_table_idx == src_table_idx {
+                                // Same table copy - use the table's copy method
+                                let table = instance.table(dst_table_idx)?;
+                                table.copy(*dst_idx as u32, *src_idx as u32, *copy_size as u32)?;
+                            } else {
+                                // Cross-table copy - read from src, write to dst
+                                let src_table = instance.table(src_table_idx)?;
+                                let dst_table = instance.table(dst_table_idx)?;
+
+                                // Read all source elements first (to handle any overlap scenarios)
+                                let mut temp_elements = Vec::new();
+                                for i in 0..*copy_size as u32 {
+                                    let elem = src_table.get(*src_idx as u32 + i)?;
+                                    temp_elements.push(elem);
+                                }
+
+                                // Write to destination table
+                                for (i, elem) in temp_elements.into_iter().enumerate() {
+                                    dst_table.set(*dst_idx as u32 + i as u32, elem)?;
+                                }
+                            }
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                dst_table = dst_table_idx,
+                                src_table = src_table_idx,
+                                "[TableCopy] SUCCESS"
+                            );
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.copy: expected i32 values for offsets and size",
+                            ));
+                        }
+                    }
+
+                    Instruction::TableInit(elem_seg_idx, table_idx) => {
+                        // table.init: [i32 i32 i32] -> []
+                        // Pop size, src_offset (in elem segment), dst_offset (in table)
+                        // Initialize table elements from element segment
+                        let size = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.init: expected size on stack")
+                        })?;
+                        let src_offset = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.init: expected src offset on stack")
+                        })?;
+                        let dst_offset = operand_stack.pop().ok_or_else(|| {
+                            wrt_error::Error::runtime_trap("table.init: expected dst offset on stack")
+                        })?;
+
+                        if let (Value::I32(dst_idx), Value::I32(src_idx), Value::I32(init_size)) =
+                            (&dst_offset, &src_offset, &size)
+                        {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                elem_seg_idx = elem_seg_idx,
+                                table_idx = table_idx,
+                                dst_offset = dst_idx,
+                                src_offset = src_idx,
+                                size = init_size,
+                                "[TableInit] Initializing table from element segment"
+                            );
+
+                            if *dst_idx < 0 || *src_idx < 0 || *init_size < 0 {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "table.init: negative offset or size",
+                                ));
+                            }
+
+                            // Handle zero-size init (valid no-op)
+                            if *init_size == 0 {
+                                #[cfg(feature = "tracing")]
+                                trace!("[TableInit] Zero size, no-op");
+                                // Continue to next instruction
+                            } else {
+                                // Get the element segment from the module
+                                #[cfg(feature = "std")]
+                                let elem_segment = module.elements.get(elem_seg_idx as usize)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                        "table.init: invalid element segment index"
+                                    ))?;
+                                #[cfg(not(feature = "std"))]
+                                let elem_segment = module.elements.get(elem_seg_idx as usize)
+                                    .map_err(|_| wrt_error::Error::runtime_trap(
+                                        "table.init: invalid element segment index"
+                                    ))?;
+
+                                // Check bounds in element segment
+                                let src_end = (*src_idx as usize).checked_add(*init_size as usize)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                        "table.init: src index overflow"
+                                    ))?;
+                                if src_end > elem_segment.items.len() {
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "table.init: src out of bounds in element segment",
+                                    ));
+                                }
+
+                                // Get table and check bounds
+                                let table = instance.table(table_idx)?;
+                                let dst_end = (*dst_idx as u32).checked_add(*init_size as u32)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                        "table.init: dst index overflow"
+                                    ))?;
+                                if dst_end > table.size() {
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "table.init: dst out of bounds in table",
+                                    ));
+                                }
+
+                                // Copy elements from segment to table
+                                for i in 0..*init_size as usize {
+                                    let item_idx = *src_idx as usize + i;
+                                    let func_idx = elem_segment.items.get(item_idx)
+                                        .map_err(|_| wrt_error::Error::runtime_trap(
+                                            "table.init: element segment access error"
+                                        ))?;
+
+                                    let value = Some(Value::FuncRef(Some(
+                                        wrt_foundation::values::FuncRef { index: func_idx }
+                                    )));
+                                    table.set(*dst_idx as u32 + i as u32, value)?;
+                                }
+
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    elem_seg_idx = elem_seg_idx,
+                                    table_idx = table_idx,
+                                    "[TableInit] SUCCESS"
+                                );
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "table.init: expected i32 values for offsets and size",
+                            ));
+                        }
+                    }
+
+                    Instruction::ElemDrop(elem_seg_idx) => {
+                        // elem.drop: [] -> []
+                        // Drop (mark as unavailable) an element segment
+                        // Note: This operation marks the segment as dropped so it can't be used
+                        // by future table.init operations. The actual segment data may still exist
+                        // in memory but is logically unavailable.
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            elem_seg_idx = elem_seg_idx,
+                            "[ElemDrop] Dropping element segment"
+                        );
+
+                        // Validate element segment index exists
+                        #[cfg(feature = "std")]
+                        if elem_seg_idx as usize >= module.elements.len() {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "elem.drop: invalid element segment index",
+                            ));
+                        }
+                        #[cfg(not(feature = "std"))]
+                        if module.elements.get(elem_seg_idx as usize).is_err() {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "elem.drop: invalid element segment index",
+                            ));
+                        }
+
+                        // Note: In a full implementation, we would need to track which segments
+                        // have been dropped in the module instance. For now, we acknowledge the
+                        // instruction but don't enforce the "dropped" state since we don't have
+                        // mutable access to the module's element segments at runtime.
+                        // Future improvement: Add a dropped_element_segments bitset to ModuleInstance.
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            elem_seg_idx = elem_seg_idx,
+                            "[ElemDrop] SUCCESS (segment marked as dropped)"
+                        );
+                    }
+
+                    // ===============================================
+                    // Atomic Memory Operations (0xFE prefix)
+                    // WebAssembly Threads and Atomics proposal
+                    // ===============================================
+
+                    // Memory synchronization operations
+                    Instruction::MemoryAtomicNotify { memarg } => {
+                        // memory.atomic.notify: [i32, i32] -> [i32]
+                        // Wake up to count threads waiting on the given address
+                        if let (Some(Value::I32(count)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check alignment - notify requires 4-byte alignment
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                addr = format_args!("0x{:x}", effective_addr),
+                                count = count,
+                                "[AtomicNotify] Notify operation"
+                            );
+                            // For single-threaded runtime, notify always returns 0 (no waiters)
+                            // A full implementation would use futex-like mechanisms
+                            operand_stack.push(Value::I32(0));
+                        }
+                    }
+
+                    Instruction::MemoryAtomicWait32 { memarg } => {
+                        // memory.atomic.wait32: [i32, i32, i64] -> [i32]
+                        // Wait for i32 value at address to change, with timeout
+                        if let (Some(Value::I64(timeout)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check alignment - wait32 requires 4-byte alignment
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                addr = format_args!("0x{:x}", effective_addr),
+                                expected = expected,
+                                timeout = timeout,
+                                "[AtomicWait32] Wait operation"
+                            );
+                            // For single-threaded runtime, return 1 (not equal) or 2 (timed out)
+                            // We'll read the current value and return immediately
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let current = i32::from_le_bytes(buffer);
+                                            // Return 1 if value differs, 2 if would timeout (single-threaded)
+                                            let result = if current != expected { 1 } else { 2 };
+                                            operand_stack.push(Value::I32(result));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::MemoryAtomicWait64 { memarg } => {
+                        // memory.atomic.wait64: [i32, i64, i64] -> [i32]
+                        // Wait for i64 value at address to change, with timeout
+                        if let (Some(Value::I64(timeout)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check alignment - wait64 requires 8-byte alignment
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                addr = format_args!("0x{:x}", effective_addr),
+                                expected = expected,
+                                timeout = timeout,
+                                "[AtomicWait64] Wait operation"
+                            );
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let current = i64::from_le_bytes(buffer);
+                                            let result = if current != expected { 1 } else { 2 };
+                                            operand_stack.push(Value::I32(result));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::AtomicFence => {
+                        // atomic.fence: [] -> []
+                        // Memory fence - ensures ordering of memory operations
+                        #[cfg(feature = "tracing")]
+                        trace!("[AtomicFence] Memory fence");
+                        core::sync::atomic::fence(Ordering::SeqCst);
+                    }
+
+                    // ===============================================
+                    // Atomic Loads
+                    // ===============================================
+
+                    Instruction::I32AtomicLoad { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check 4-byte alignment for i32
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = i32::from_le_bytes(buffer);
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I32AtomicLoad] Loaded"
+                                            );
+                                            operand_stack.push(Value::I32(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicLoad { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check 8-byte alignment for i64
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = i64::from_le_bytes(buffer);
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I64AtomicLoad] Loaded"
+                                            );
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicLoad8U { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // 8-bit loads have natural alignment (1 byte)
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = buffer[0] as i32;
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I32AtomicLoad8U] Loaded"
+                                            );
+                                            operand_stack.push(Value::I32(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicLoad16U { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            // Check 2-byte alignment for i16
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = u16::from_le_bytes(buffer) as i32;
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I32AtomicLoad16U] Loaded"
+                                            );
+                                            operand_stack.push(Value::I32(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicLoad8U { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = buffer[0] as i64;
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I64AtomicLoad8U] Loaded"
+                                            );
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicLoad16U { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = u16::from_le_bytes(buffer) as i64;
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I64AtomicLoad16U] Loaded"
+                                            );
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicLoad32U { memarg } => {
+                        if let Some(Value::I32(addr)) = operand_stack.pop() {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let value = u32::from_le_bytes(buffer) as i64;
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I64AtomicLoad32U] Loaded"
+                                            );
+                                            operand_stack.push(Value::I64(value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic Stores
+                    // ===============================================
+
+                    Instruction::I32AtomicStore { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = value.to_le_bytes();
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I32AtomicStore] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicStore { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = value.to_le_bytes();
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value,
+                                                "[I64AtomicStore] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicStore8 { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = [(value as u8)];
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value as u8,
+                                                "[I32AtomicStore8] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicStore16 { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = (value as u16).to_le_bytes();
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value as u16,
+                                                "[I32AtomicStore16] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicStore8 { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = [(value as u8)];
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value as u8,
+                                                "[I64AtomicStore8] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicStore16 { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = (value as u16).to_le_bytes();
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value as u16,
+                                                "[I64AtomicStore16] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicStore32 { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let bytes = (value as u32).to_le_bytes();
+                                    match memory.write_shared(effective_addr, &bytes) {
+                                        Ok(()) => {
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                value = value as u32,
+                                                "[I64AtomicStore32] Stored"
+                                            );
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW Add Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwAdd { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_add(value);
+                                            let new_bytes = new_value.to_le_bytes();
+                                            match memory.write_shared(effective_addr, &new_bytes) {
+                                                Ok(()) => {
+                                                    #[cfg(feature = "tracing")]
+                                                    trace!(
+                                                        addr = format_args!("0x{:x}", effective_addr),
+                                                        old_value = old_value,
+                                                        add_value = value,
+                                                        new_value = new_value,
+                                                        "[I32AtomicRmwAdd] RMW Add"
+                                                    );
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwAdd { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_add(value);
+                                            let new_bytes = new_value.to_le_bytes();
+                                            match memory.write_shared(effective_addr, &new_bytes) {
+                                                Ok(()) => {
+                                                    #[cfg(feature = "tracing")]
+                                                    trace!(
+                                                        addr = format_args!("0x{:x}", effective_addr),
+                                                        old_value = old_value,
+                                                        "[I64AtomicRmwAdd] RMW Add"
+                                                    );
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8AddU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value.wrapping_add(value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16AddU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_add(value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8AddU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value.wrapping_add(value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16AddU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_add(value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32AddU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_add(value as u32);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW Sub Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwSub { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_sub(value);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwSub { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_sub(value);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8SubU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value.wrapping_sub(value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16SubU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_sub(value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8SubU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value.wrapping_sub(value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16SubU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_sub(value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32SubU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            let new_value = old_value.wrapping_sub(value as u32);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW And Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwAnd { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            let new_value = old_value & value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwAnd { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            let new_value = old_value & value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8AndU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value & (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16AndU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value & (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8AndU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value & (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16AndU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value & (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32AndU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            let new_value = old_value & (value as u32);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW Or Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwOr { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            let new_value = old_value | value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwOr { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            let new_value = old_value | value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8OrU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value | (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16OrU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value | (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8OrU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value | (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16OrU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value | (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32OrU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            let new_value = old_value | (value as u32);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW Xor Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwXor { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            let new_value = old_value ^ value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwXor { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            let new_value = old_value ^ value;
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8XorU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value ^ (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16XorU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value ^ (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8XorU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            let new_value = old_value ^ (value as u8);
+                                            match memory.write_shared(effective_addr, &[new_value]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16XorU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            let new_value = old_value ^ (value as u16);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32XorU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            let new_value = old_value ^ (value as u32);
+                                            match memory.write_shared(effective_addr, &new_value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic RMW Exchange Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwXchg { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            match memory.write_shared(effective_addr, &value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwXchg { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            match memory.write_shared(effective_addr, &value.to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8XchgU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            match memory.write_shared(effective_addr, &[(value as u8)]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16XchgU { memarg } => {
+                        if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            match memory.write_shared(effective_addr, &(value as u16).to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I32(old_value as i32));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8XchgU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            match memory.write_shared(effective_addr, &[(value as u8)]) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16XchgU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            match memory.write_shared(effective_addr, &(value as u16).to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32XchgU { memarg } => {
+                        if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            match memory.write_shared(effective_addr, &(value as u32).to_le_bytes()) {
+                                                Ok(()) => {
+                                                    operand_stack.push(Value::I64(old_value as i64));
+                                                }
+                                                Err(_) => {
+                                                    return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // ===============================================
+                    // Atomic Compare-Exchange Operations
+                    // ===============================================
+
+                    Instruction::I32AtomicRmwCmpxchg { memarg } => {
+                        // cmpxchg: [addr, expected, replacement] -> [old_value]
+                        if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i32::from_le_bytes(buffer);
+                                            // Only write if old_value == expected
+                                            if old_value == expected {
+                                                match memory.write_shared(effective_addr, &replacement.to_le_bytes()) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                addr = format_args!("0x{:x}", effective_addr),
+                                                old_value = old_value,
+                                                expected = expected,
+                                                replacement = replacement,
+                                                swapped = (old_value == expected),
+                                                "[I32AtomicRmwCmpxchg] CmpXchg"
+                                            );
+                                            operand_stack.push(Value::I32(old_value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmwCmpxchg { memarg } => {
+                        if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 8 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 8];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = i64::from_le_bytes(buffer);
+                                            if old_value == expected {
+                                                match memory.write_shared(effective_addr, &replacement.to_le_bytes()) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I64(old_value));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw8CmpxchgU { memarg } => {
+                        if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            if old_value == (expected as u8) {
+                                                match memory.write_shared(effective_addr, &[(replacement as u8)]) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I32(old_value as i32));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I32AtomicRmw16CmpxchgU { memarg } => {
+                        if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            if old_value == (expected as u16) {
+                                                match memory.write_shared(effective_addr, &(replacement as u16).to_le_bytes()) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I32(old_value as i32));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw8CmpxchgU { memarg } => {
+                        if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 1];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = buffer[0];
+                                            if old_value == (expected as u8) {
+                                                match memory.write_shared(effective_addr, &[(replacement as u8)]) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I64(old_value as i64));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw16CmpxchgU { memarg } => {
+                        if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 2 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 2];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u16::from_le_bytes(buffer);
+                                            if old_value == (expected as u16) {
+                                                match memory.write_shared(effective_addr, &(replacement as u16).to_le_bytes()) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I64(old_value as i64));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    Instruction::I64AtomicRmw32CmpxchgU { memarg } => {
+                        if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            if effective_addr % 4 != 0 {
+                                return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
+                            }
+                            match instance.memory(memarg.memory_index as u32) {
+                                Ok(memory_wrapper) => {
+                                    let memory = &memory_wrapper.0;
+                                    let mut buffer = [0u8; 4];
+                                    match memory.read(effective_addr, &mut buffer) {
+                                        Ok(()) => {
+                                            let old_value = u32::from_le_bytes(buffer);
+                                            if old_value == (expected as u32) {
+                                                match memory.write_shared(effective_addr, &(replacement as u32).to_le_bytes()) {
+                                                    Ok(()) => {}
+                                                    Err(_) => {
+                                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                                    }
+                                                }
+                                            }
+                                            operand_stack.push(Value::I64(old_value as i64));
+                                        }
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                }
+                            }
+                        }
+                    }
+
+                    // End of atomic operations
+                    // ===============================================
+
+                    _ => {
+                        // CLAUDE.md: FAIL LOUD AND EARLY - return error instead of silently skipping
+                        #[cfg(feature = "tracing")]
+                        error!("Unimplemented instruction at pc={}: {:?}", pc, instruction);
+                        return Err(wrt_error::Error::runtime_error(
+                            "Unimplemented instruction encountered",
+                        ));
                     }
                 }
 
@@ -3895,6 +7519,9 @@ impl StacklessEngine {
 
             #[cfg(feature = "tracing")]
             trace!("Returning {} results", results.len());
+
+            // Decrement call depth before returning
+            self.call_frames_count = self.call_frames_count.saturating_sub(1);
             Ok(results)
         }
 
@@ -3920,6 +7547,8 @@ impl StacklessEngine {
                 };
                 results.push(default_value)?;
             }
+            // Decrement call depth before returning
+            self.call_frames_count = self.call_frames_count.saturating_sub(1);
             Ok(results)
         }
     }
@@ -4240,17 +7869,22 @@ impl StacklessEngine {
     /// Call cabi_realloc to allocate memory in WASM instance
     fn call_cabi_realloc(&mut self, instance_id: usize, func_idx: usize,
                          old_ptr: u32, old_size: u32, align: u32, new_size: u32) -> Result<u32> {
-        #[cfg(feature = "std")]
-        eprintln!("[CABI_REALLOC] Calling with old_ptr={}, old_size={}, align={}, new_size={}",
-                 old_ptr, old_size, align, new_size);
+        #[cfg(feature = "tracing")]
+        trace!(
+            old_ptr = old_ptr,
+            old_size = old_size,
+            align = align,
+            new_size = new_size,
+            "[CABI_REALLOC] Calling"
+        );
         let args = vec![
             Value::I32(old_ptr as i32),
             Value::I32(old_size as i32),
             Value::I32(align as i32),
             Value::I32(new_size as i32),
         ];
-        #[cfg(feature = "std")]
-        eprintln!("[CABI_REALLOC] Args: {:?}", args);
+        #[cfg(feature = "tracing")]
+        trace!(args = ?args, "[CABI_REALLOC] Arguments prepared");
 
         let results = self.execute(instance_id, func_idx, args)?;
 
@@ -4284,8 +7918,8 @@ impl StacklessEngine {
         let cabi_realloc_idx = match self.find_export_index(&module, "cabi_realloc") {
             Ok(idx) => idx,
             Err(_) => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-ALLOC] cabi_realloc not found, falling back to stack-relative allocation");
+                #[cfg(feature = "tracing")]
+                trace!("[WASI-ALLOC] cabi_realloc not found, falling back to stack-relative allocation");
                 return Ok(None);
             }
         };
@@ -4306,9 +7940,14 @@ impl StacklessEngine {
             return Ok(None);
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASI-ALLOC] Allocating {} bytes for {} args (list={}, strings={})",
-                 total_size, args.len(), list_size, string_total);
+        #[cfg(feature = "tracing")]
+        trace!(
+            total_size = total_size,
+            args_len = args.len(),
+            list_size = list_size,
+            string_total = string_total,
+            "[WASI-ALLOC] Allocating memory for args"
+        );
 
         // Call cabi_realloc to allocate memory
         // cabi_realloc(old_ptr, old_size, align, new_size) -> ptr
@@ -4321,8 +7960,8 @@ impl StacklessEngine {
             total_size as u32,
         )?;
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASI-ALLOC] cabi_realloc returned ptr=0x{:x}", ptr);
+        #[cfg(feature = "tracing")]
+        trace!(ptr = format_args!("0x{:x}", ptr), "[WASI-ALLOC] cabi_realloc returned");
 
         // list_ptr is at the start of allocated memory
         // string_data_ptr is after the (ptr, len) array
@@ -4352,19 +7991,27 @@ impl StacklessEngine {
             .unwrap_or_default();
 
         if args.is_empty() {
-            #[cfg(feature = "std")]
-            eprintln!("[WASI-PREALLOC] No args to pre-allocate");
+            #[cfg(feature = "tracing")]
+            trace!("[WASI-PREALLOC] No args to pre-allocate");
             return Ok(());
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASI-PREALLOC] Pre-allocating memory for {} args: {:?}", args.len(), args);
+        #[cfg(feature = "tracing")]
+        trace!(
+            args_len = args.len(),
+            args = ?args,
+            "[WASI-PREALLOC] Pre-allocating memory for args"
+        );
 
         // Allocate memory
         match self.allocate_wasi_args_memory(instance_id, &args)? {
             Some((list_ptr, string_ptr)) => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-PREALLOC] Allocated: list_ptr=0x{:x}, string_ptr=0x{:x}", list_ptr, string_ptr);
+                #[cfg(feature = "tracing")]
+                trace!(
+                    list_ptr = format_args!("0x{:x}", list_ptr),
+                    string_ptr = format_args!("0x{:x}", string_ptr),
+                    "[WASI-PREALLOC] Allocated successfully"
+                );
 
                 // Store in dispatcher
                 if let Some(ref mut dispatcher) = self.wasi_dispatcher {
@@ -4373,8 +8020,8 @@ impl StacklessEngine {
                 Ok(())
             }
             None => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-PREALLOC] No allocation needed or cabi_realloc not available");
+                #[cfg(feature = "tracing")]
+                trace!("[WASI-PREALLOC] No allocation needed or cabi_realloc not available");
                 Ok(())
             }
         }
@@ -4539,10 +8186,12 @@ impl StacklessEngine {
         // Check if this is a wasip2 canonical function
         let full_name = format!("{}::{}", module_name, field_name);
         if module_name.starts_with("wasi:") && module_name.contains("@0.2") {
-            #[cfg(feature = "std")]
-            eprintln!("[WASIP2-CANONICAL] Detected wasip2 call: {}, stack has {} values", full_name, stack.len());
             #[cfg(feature = "tracing")]
-            trace!("[WASIP2-CANONICAL] Detected wasip2 call: {}", full_name);
+            trace!(
+                full_name = %full_name,
+                stack_len = stack.len(),
+                "[WASIP2-CANONICAL] Detected wasip2 call"
+            );
 
             // ============================================================
             // Two-phase WASI dispatch with proper cabi_realloc support
@@ -4554,8 +8203,13 @@ impl StacklessEngine {
                 // Extract core values from stack for dispatch
                 let core_args: Vec<Value> = stack.iter().cloned().collect();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-V2] Dispatching {}::{} with {} args", module_name, field_name, core_args.len());
+                #[cfg(feature = "tracing")]
+                trace!(
+                    module = %module_name,
+                    field = %field_name,
+                    args_len = core_args.len(),
+                    "[WASI-V2] Dispatching"
+                );
 
                 // Create a temporary dispatcher - we use global args as fallback
                 if let Ok(mut temp_dispatcher) = wrt_wasi::WasiDispatcher::with_defaults() {
@@ -4566,8 +8220,8 @@ impl StacklessEngine {
 
                     match dispatch_result {
                         Ok(wrt_wasi::DispatchResult::Complete(results)) => {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-V2] Complete: {:?}", results);
+                            #[cfg(feature = "tracing")]
+                            trace!(results = ?results, "[WASI-V2] Complete");
                             stack.clear();
                             if let Some(val) = results.first() {
                                 return Ok(Some(val.clone()));
@@ -4575,9 +8229,13 @@ impl StacklessEngine {
                             return Ok(None);
                         }
                         Ok(wrt_wasi::DispatchResult::NeedsAllocation { request, args_to_write, retptr }) => {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-V2] NeedsAllocation: size={}, align={}, purpose={}",
-                                     request.size, request.align, request.purpose);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                size = request.size,
+                                align = request.align,
+                                purpose = %request.purpose,
+                                "[WASI-V2] NeedsAllocation"
+                            );
 
                             // BUMP ALLOCATOR FIX: Allocate in grown memory pages to avoid dlmalloc
                             // corruption. When we use cabi_realloc, dlmalloc manages that memory
@@ -4602,8 +8260,12 @@ impl StacklessEngine {
                                             let bump_base = old_pages * 65536; // 64KB pages
                                             let mut bump_offset = 0u32;
 
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[BUMP-ALLOC] Grew memory from {} pages, bump_base=0x{:x}", old_pages, bump_base);
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                old_pages = old_pages,
+                                                bump_base = format_args!("0x{:x}", bump_base),
+                                                "[BUMP-ALLOC] Grew memory"
+                                            );
 
                                             // Helper to bump-allocate with alignment
                                             let bump_alloc = |offset: &mut u32, size: u32, align: u32| -> u32 {
@@ -4618,8 +8280,12 @@ impl StacklessEngine {
                                             let list_array_size = (args_to_write.len() * 8) as u32;
                                             let list_ptr = bump_alloc(&mut bump_offset, list_array_size, 8);
 
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[BUMP-ALLOC] list_ptr=0x{:x} (size={})", list_ptr, list_array_size);
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                list_ptr = format_args!("0x{:x}", list_ptr),
+                                                size = list_array_size,
+                                                "[BUMP-ALLOC] Allocated list array"
+                                            );
 
                                             // Step 2: Allocate each string and write data
                                             let mut string_entries: Vec<(u32, u32)> = Vec::new();
@@ -4635,8 +8301,14 @@ impl StacklessEngine {
                                                     return Err(e);
                                                 }
 
-                                                #[cfg(feature = "std")]
-                                                eprintln!("[BUMP-ALLOC] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
+                                                #[cfg(feature = "tracing")]
+                                                trace!(
+                                                    idx = i,
+                                                    arg = %arg,
+                                                    ptr = format_args!("0x{:x}", string_ptr),
+                                                    len = len,
+                                                    "[BUMP-ALLOC] String allocated"
+                                                );
 
                                                 string_entries.push((string_ptr, len));
                                             }
@@ -4662,16 +8334,21 @@ impl StacklessEngine {
                                                 return Err(e);
                                             }
 
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[BUMP-ALLOC] retptr=0x{:x} -> (list=0x{:x}, count={}), total_bump_used={}",
-                                                     retptr, list_ptr, args_to_write.len(), bump_offset);
+                                            #[cfg(feature = "tracing")]
+                                            trace!(
+                                                retptr = format_args!("0x{:x}", retptr),
+                                                list_ptr = format_args!("0x{:x}", list_ptr),
+                                                count = args_to_write.len(),
+                                                total_bump_used = bump_offset,
+                                                "[BUMP-ALLOC] Complete"
+                                            );
 
                                             stack.clear();
                                             return Ok(None);
                                         }
                                         Err(e) => {
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[BUMP-ALLOC] Failed to grow memory: {:?}, falling back to cabi_realloc", e);
+                                            #[cfg(feature = "tracing")]
+                                            warn!(error = ?e, "[BUMP-ALLOC] Failed to grow memory, falling back to cabi_realloc");
                                             // Fall through to cabi_realloc fallback
                                         }
                                     }
@@ -4687,8 +8364,8 @@ impl StacklessEngine {
                                 let list_array_size = (args_to_write.len() * 8) as u32;
                                 let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
 
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-V2-FALLBACK] list_ptr=0x{:x}", list_ptr);
+                                #[cfg(feature = "tracing")]
+                                trace!(list_ptr = format_args!("0x{:x}", list_ptr), "[WASI-V2-FALLBACK] Allocated list array");
 
                                 // Step 2: Allocate each string separately and write data
                                 let mut string_entries: Vec<(u32, u32)> = Vec::new();
@@ -4707,8 +8384,14 @@ impl StacklessEngine {
                                         }
                                     }
 
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[WASI-V2-FALLBACK] str[{}]='{}' at 0x{:x} (len={})", i, arg, string_ptr, len);
+                                    #[cfg(feature = "tracing")]
+                                    trace!(
+                                        idx = i,
+                                        arg = %arg,
+                                        ptr = format_args!("0x{:x}", string_ptr),
+                                        len = len,
+                                        "[WASI-V2-FALLBACK] String allocated"
+                                    );
 
                                     string_entries.push((string_ptr, len));
                                 }
@@ -4738,9 +8421,13 @@ impl StacklessEngine {
                                             return Err(e);
                                         }
 
-                                        #[cfg(feature = "std")]
-                                        eprintln!("[WASI-V2-FALLBACK] retptr=0x{:x} -> (0x{:x}, {})",
-                                                 retptr, list_ptr, args_to_write.len());
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            retptr = format_args!("0x{:x}", retptr),
+                                            list_ptr = format_args!("0x{:x}", list_ptr),
+                                            count = args_to_write.len(),
+                                            "[WASI-V2-FALLBACK] Complete"
+                                        );
 
                                         stack.clear();
                                         return Ok(None);
@@ -4748,14 +8435,14 @@ impl StacklessEngine {
                                 }
                                 return Err(wrt_error::Error::memory_error("Could not access instance memory"));
                             } else {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-V2] cabi_realloc not found, falling back to legacy dispatch");
+                                #[cfg(feature = "tracing")]
+                                trace!("[WASI-V2] cabi_realloc not found, falling back to legacy dispatch");
                                 // Fall through to try dispatch_core which has fallback allocation
                             }
                         }
                         Err(e) => {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-V2] dispatch_core_v2 error: {:?}, trying dispatch_core", e);
+                            #[cfg(feature = "tracing")]
+                            warn!(error = ?e, "[WASI-V2] dispatch_core_v2 error, trying dispatch_core");
                             // Fall through to try dispatch_core
                         }
                     }
@@ -4782,7 +8469,7 @@ impl StacklessEngine {
                             if let Ok(memory_wrapper) = instance.memory(0) {
                                 let write_memory = &memory_wrapper.0;
                                 // Debug: check what's at the datetime location before write-back
-                                #[cfg(feature = "std")]
+                                #[cfg(all(feature = "std", feature = "tracing"))]
                                 {
                                     use std::sync::Arc;
                                     let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
@@ -4790,24 +8477,34 @@ impl StacklessEngine {
                                     if retptr + 16 <= mem.len() {
                                         let seconds = u64::from_le_bytes(mem[retptr..retptr+8].try_into().unwrap_or([0;8]));
                                         let nanoseconds = u64::from_le_bytes(mem[retptr+8..retptr+16].try_into().unwrap_or([0;8]));
-                                        eprintln!("[WASI-WRITEBACK] Before write: retptr=0x{:x}, seconds={}, nanoseconds={}, instance_id={}, memory_arc_ptr={:p}",
-                                                 retptr, seconds, nanoseconds, instance_id, arc_ptr);
+                                        trace!(
+                                            retptr = format_args!("0x{:x}", retptr),
+                                            seconds = seconds,
+                                            nanoseconds = nanoseconds,
+                                            instance_id = instance_id,
+                                            memory_arc_ptr = ?arc_ptr,
+                                            "[WASI-WRITEBACK] Before write"
+                                        );
                                     }
                                 }
                                 if let Err(e) = write_memory.write_shared(0, &mem) {
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[WASI-FALLBACK] Failed to write back memory: {:?}", e);
+                                    #[cfg(feature = "tracing")]
+                                    warn!(error = ?e, "[WASI-FALLBACK] Failed to write back memory");
                                 } else {
-                                    #[cfg(feature = "std")]
+                                    #[cfg(feature = "tracing")]
                                     {
-                                        eprintln!("[WASI-WRITEBACK] Success: wrote {} bytes to instance memory", mem.len());
+                                        trace!(bytes = mem.len(), "[WASI-WRITEBACK] Success");
                                         // Verify by reading back what we just wrote
                                         let retptr = 0xffe40usize;
                                         let mut verify_buf = [0u8; 16];
                                         if write_memory.read(retptr as u32, &mut verify_buf).is_ok() {
                                             let read_seconds = u64::from_le_bytes(verify_buf[0..8].try_into().unwrap());
                                             let read_nanos = u64::from_le_bytes(verify_buf[8..16].try_into().unwrap());
-                                            eprintln!("[WASI-VERIFY] After write_shared: seconds={}, nanoseconds={}", read_seconds, read_nanos);
+                                            trace!(
+                                                seconds = read_seconds,
+                                                nanoseconds = read_nanos,
+                                                "[WASI-VERIFY] After write_shared"
+                                            );
                                         }
                                     }
                                 }
@@ -4820,8 +8517,8 @@ impl StacklessEngine {
 
                     match dispatch_result {
                         Ok(results) => {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-FALLBACK] Success: {:?}", results);
+                            #[cfg(feature = "tracing")]
+                            trace!(results = ?results, "[WASI-FALLBACK] Success");
                             stack.clear();
                             if let Some(val) = results.first() {
                                 return Ok(Some(val.clone()));
@@ -4829,8 +8526,8 @@ impl StacklessEngine {
                             return Ok(None);
                         }
                         Err(e) => {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-FALLBACK] Failed: {:?}", e);
+                            #[cfg(feature = "tracing")]
+                            warn!(error = ?e, "[WASI-FALLBACK] Failed");
                             // Fall through to legacy path
                         }
                     }
@@ -4856,8 +8553,12 @@ impl StacklessEngine {
                 args
             };
 
-            #[cfg(feature = "std")]
-            eprintln!("[WASIP2-CANONICAL] Extracted {} core args: {:?}", core_args.len(), core_args);
+            #[cfg(feature = "tracing")]
+            trace!(
+                args_len = core_args.len(),
+                args = ?core_args,
+                "[WASIP2-CANONICAL] Extracted core args"
+            );
 
             // Get memory for lifting complex types
             let memory_slice: Option<Vec<u8>> = if let Some(instance) = self.instances.get(&instance_id) {
@@ -4884,8 +8585,8 @@ impl StacklessEngine {
             // Check if this function needs canonical lifting
             let needs_lifting = crate::wasip2_host::wasi_function_needs_lifting(module_name, field_name);
 
-            #[cfg(feature = "std")]
-            eprintln!("[WASIP2-CANONICAL] needs_lifting={}", needs_lifting);
+            #[cfg(feature = "tracing")]
+            trace!(needs_lifting = needs_lifting, "[WASIP2-CANONICAL] Lifting requirement");
 
             let dispatch_result = if needs_lifting {
                 // === CANONICAL ABI PATH ===
@@ -4901,8 +8602,8 @@ impl StacklessEngine {
 
                 match component_args {
                     Ok(lifted_args) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASIP2-CANONICAL] Lifted to {} component args", lifted_args.len());
+                        #[cfg(feature = "tracing")]
+                        trace!(args_len = lifted_args.len(), "[WASIP2-CANONICAL] Lifted component args");
 
                         // 2. DISPATCH: Call the component-level host function
                         let component_results = wasip2_host.dispatch_component(
@@ -4913,8 +8614,8 @@ impl StacklessEngine {
 
                         match component_results {
                             Ok(results) => {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASIP2-CANONICAL] Component dispatch returned {} results", results.len());
+                                #[cfg(feature = "tracing")]
+                                trace!(results_len = results.len(), "[WASIP2-CANONICAL] Component dispatch returned");
 
                                 // 3. LOWER: Convert component results back to core values
                                 crate::wasip2_host::lower_wasi_results(
@@ -4929,8 +8630,8 @@ impl StacklessEngine {
                         }
                     }
                     Err(e) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASIP2-CANONICAL] Lifting failed: {:?}", e);
+                        #[cfg(feature = "tracing")]
+                        warn!(error = ?e, "[WASIP2-CANONICAL] Lifting failed");
                         Err(e)
                     }
                 }
@@ -4946,16 +8647,16 @@ impl StacklessEngine {
 
             match dispatch_result {
                 Ok(results) => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WASIP2-CANONICAL] Final results: {:?}", results);
+                    #[cfg(feature = "tracing")]
+                    trace!(results = ?results, "[WASIP2-CANONICAL] Final results");
                     if let Some(val) = results.first() {
                         return Ok(Some(val.clone()));
                     }
                     return Ok(None);
                 }
                 Err(e) => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WASIP2-CANONICAL] Function {} FAILED: {:?}", field_name, e);
+                    #[cfg(feature = "tracing")]
+                    warn!(field = %field_name, error = ?e, "[WASIP2-CANONICAL] Function failed");
                     // Fall through to stubs as fallback
                 }
             }
@@ -4970,8 +8671,12 @@ impl StacklessEngine {
         // Strip version from module name to allow any 0.2.x version to match
         let base_module = strip_wasi_version(module_name);
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASI_DISPATCH] base_module='{}', field_name='{}'", base_module, field_name);
+        #[cfg(feature = "tracing")]
+        trace!(
+            base_module = %base_module,
+            field_name = %field_name,
+            "[WASI_DISPATCH] Dispatching"
+        );
 
         match (base_module, field_name) {
             // wasi:cli/environment (any version)
@@ -5062,8 +8767,8 @@ impl StacklessEngine {
                 let seconds = now.as_secs();
                 let nanoseconds = now.subsec_nanos();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI] wall-clock::now() -> seconds={}, nanos={}", seconds, nanoseconds);
+                #[cfg(feature = "tracing")]
+                trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::now()");
 
                 // Return as two i64 values (the component model will handle conversion)
                 // The result is a record { seconds: u64, nanoseconds: u32 }
@@ -5083,8 +8788,8 @@ impl StacklessEngine {
                 let seconds: u64 = 0;
                 let nanoseconds: u32 = 1;
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI] wall-clock::resolution() -> seconds={}, nanos={}", seconds, nanoseconds);
+                #[cfg(feature = "tracing")]
+                trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::resolution()");
 
                 stack.push(Value::I64(seconds as i64));
                 stack.push(Value::I32(nanoseconds as i32));
@@ -5115,13 +8820,12 @@ impl StacklessEngine {
                 };
 
                 #[cfg(feature = "tracing")]
-
-
-                debug!("WASI: blocking-write-and-flush: stream={}, ptr={}, len={}", stream_handle, data_ptr, data_len);
-
-                // Debug unconditionally for now
-                #[cfg(feature = "std")]
-                eprintln!("[WRITE] blocking-write-and-flush: stream={}, ptr={:#x}, len={}", stream_handle, data_ptr, data_len);
+                trace!(
+                    stream_handle = stream_handle,
+                    data_ptr = format_args!("{:#x}", data_ptr),
+                    data_len = data_len,
+                    "[WRITE] blocking-write-and-flush"
+                );
 
                 // Read data from WebAssembly memory and write to stdout/stderr
                 // Use instance memory instead of module memory
@@ -5131,11 +8835,20 @@ impl StacklessEngine {
                         let mut buffer = vec![0u8; data_len as usize];
                         if let Ok(()) = memory_wrapper.0.read(data_ptr as u32, &mut buffer) {
                             #[cfg(feature = "tracing")]
-                            debug!("WASI: Read {} bytes from memory at ptr={}", buffer.len(), data_ptr);
-
-                            // Debug: show actual buffer content
-                            #[cfg(feature = "std")]
-                            eprintln!("[WRITE] Read buffer: {:?} (as string: {:?})", &buffer[..buffer.len().min(64)], String::from_utf8_lossy(&buffer[..buffer.len().min(64)]));
+                            {
+                                trace!(
+                                    bytes = buffer.len(),
+                                    ptr = data_ptr,
+                                    "[WRITE] Read from memory"
+                                );
+                                // Debug: show actual buffer content (limited to 64 bytes)
+                                let preview_len = buffer.len().min(64);
+                                trace!(
+                                    preview = ?&buffer[..preview_len],
+                                    as_string = %String::from_utf8_lossy(&buffer[..preview_len]),
+                                    "[WRITE] Buffer content"
+                                );
+                            }
 
                             // Find the actual content length - some components pass buffer capacity
                             // instead of actual content length. For text output, trim at null byte.
@@ -5265,8 +8978,14 @@ impl StacklessEngine {
                     return Err(wrt_error::Error::runtime_error("fd_write: missing fd"));
                 };
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] fd_write: fd={}, iovs={}, iovs_len={}, nwritten_ptr={}", fd, iovs_ptr, iovs_len, nwritten_ptr);
+                #[cfg(feature = "tracing")]
+                trace!(
+                    fd = fd,
+                    iovs_ptr = iovs_ptr,
+                    iovs_len = iovs_len,
+                    nwritten_ptr = nwritten_ptr,
+                    "[WASI-P1] fd_write"
+                );
 
                 // Get instance memory (read-only access - memory is behind Arc)
                 let total_written = if let Some(instance) = self.instances.get(&instance_id) {
@@ -5281,27 +9000,32 @@ impl StacklessEngine {
                             // Read iovec ptr and len
                             let mut buf = [0u8; 4];
                             if memory_wrapper.0.read(iov_offset, &mut buf).is_err() {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] fd_write: failed to read iovec ptr");
+                                #[cfg(feature = "tracing")]
+                                warn!("[WASI-P1] fd_write: failed to read iovec ptr");
                                 continue;
                             }
                             let buf_ptr = u32::from_le_bytes(buf);
 
                             if memory_wrapper.0.read(iov_offset + 4, &mut buf).is_err() {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] fd_write: failed to read iovec len");
+                                #[cfg(feature = "tracing")]
+                                warn!("[WASI-P1] fd_write: failed to read iovec len");
                                 continue;
                             }
                             let buf_len = u32::from_le_bytes(buf);
 
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-P1] fd_write: iovec[{}]: ptr={}, len={}", i, buf_ptr, buf_len);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                iovec_idx = i,
+                                ptr = buf_ptr,
+                                len = buf_len,
+                                "[WASI-P1] fd_write: iovec"
+                            );
 
                             // Read the data to write
                             let mut data = vec![0u8; buf_len as usize];
                             if memory_wrapper.0.read(buf_ptr, &mut data).is_err() {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] fd_write: failed to read data");
+                                #[cfg(feature = "tracing")]
+                                warn!("[WASI-P1] fd_write: failed to read data");
                                 continue;
                             }
 
@@ -5313,8 +9037,8 @@ impl StacklessEngine {
                                 std::io::stderr().write_all(&data).and_then(|_| std::io::stderr().flush())
                             } else {
                                 // Other FDs not supported in stub
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] fd_write: unsupported fd={}", fd);
+                                #[cfg(feature = "tracing")]
+                                warn!(fd = fd, "[WASI-P1] fd_write: unsupported fd");
                                 Ok(())
                             };
 
@@ -5336,8 +9060,8 @@ impl StacklessEngine {
                     0
                 };
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] fd_write: wrote {} bytes total", total_written);
+                #[cfg(feature = "tracing")]
+                trace!(total_written = total_written, "[WASI-P1] fd_write: complete");
 
                 // Return 0 (success / __WASI_ERRNO_SUCCESS)
                 Ok(Some(Value::I32(0)))
@@ -5381,21 +9105,21 @@ impl StacklessEngine {
                     .map(|s| s.len() as u32 + 1)
                     .sum();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] args_sizes_get: argc={}, argv_buf_size={}", argc, argv_buf_size);
+                #[cfg(feature = "tracing")]
+                trace!(argc = argc, argv_buf_size = argv_buf_size, "[WASI-P1] args_sizes_get");
 
                 // Write the values to memory
                 if let Some(instance) = self.instances.get(&instance_id) {
                     if let Ok(memory_wrapper) = instance.memory(0) {
                         // Write argc
                         if let Err(e) = memory_wrapper.0.write_shared(argc_ptr, &argc.to_le_bytes()) {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-P1] args_sizes_get: failed to write argc: {:?}", e);
+                            #[cfg(feature = "tracing")]
+                            warn!(error = ?e, "[WASI-P1] args_sizes_get: failed to write argc");
                         }
                         // Write argv_buf_size
                         if let Err(e) = memory_wrapper.0.write_shared(argv_buf_size_ptr, &argv_buf_size.to_le_bytes()) {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-P1] args_sizes_get: failed to write argv_buf_size: {:?}", e);
+                            #[cfg(feature = "tracing")]
+                            warn!(error = ?e, "[WASI-P1] args_sizes_get: failed to write argv_buf_size");
                         }
                     }
                 }
@@ -5435,8 +9159,13 @@ impl StacklessEngine {
                 #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
                 let args: Vec<String> = Vec::new();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] args_get: argv_ptr=0x{:x}, argv_buf_ptr=0x{:x}, {} args", argv_ptr, argv_buf_ptr, args.len());
+                #[cfg(feature = "tracing")]
+                trace!(
+                    argv_ptr = format_args!("0x{:x}", argv_ptr),
+                    argv_buf_ptr = format_args!("0x{:x}", argv_buf_ptr),
+                    args_len = args.len(),
+                    "[WASI-P1] args_get"
+                );
 
                 // Write the argument data to memory
                 if let Some(instance) = self.instances.get(&instance_id) {
@@ -5447,24 +9176,29 @@ impl StacklessEngine {
                             // Write pointer to this arg's string data in argv array
                             let ptr_offset = argv_ptr + (i as u32 * 4);
                             if let Err(e) = memory_wrapper.0.write_shared(ptr_offset, &current_buf_offset.to_le_bytes()) {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] args_get: failed to write argv[{}] pointer: {:?}", i, e);
+                                #[cfg(feature = "tracing")]
+                                warn!(idx = i, error = ?e, "[WASI-P1] args_get: failed to write argv pointer");
                             }
 
                             // Write the arg string data (null-terminated)
                             let arg_bytes = arg.as_bytes();
                             if let Err(e) = memory_wrapper.0.write_shared(current_buf_offset, arg_bytes) {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] args_get: failed to write arg[{}] data: {:?}", i, e);
+                                #[cfg(feature = "tracing")]
+                                warn!(idx = i, error = ?e, "[WASI-P1] args_get: failed to write arg data");
                             }
                             // Write null terminator
                             if let Err(e) = memory_wrapper.0.write_shared(current_buf_offset + arg_bytes.len() as u32, &[0u8]) {
-                                #[cfg(feature = "std")]
-                                eprintln!("[WASI-P1] args_get: failed to write null terminator: {:?}", e);
+                                #[cfg(feature = "tracing")]
+                                warn!(error = ?e, "[WASI-P1] args_get: failed to write null terminator");
                             }
 
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-P1] args_get: arg[{}] at 0x{:x} = {:?}", i, current_buf_offset, arg);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                idx = i,
+                                offset = format_args!("0x{:x}", current_buf_offset),
+                                arg = ?arg,
+                                "[WASI-P1] args_get: wrote arg"
+                            );
 
                             current_buf_offset += arg_bytes.len() as u32 + 1;
                         }
@@ -5490,8 +9224,8 @@ impl StacklessEngine {
                 };
 
                 // For now, return empty environment (environc=0, buf_size=0)
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] environ_sizes_get: returning empty environment");
+                #[cfg(feature = "tracing")]
+                trace!("[WASI-P1] environ_sizes_get: returning empty environment");
 
                 if let Some(instance) = self.instances.get(&instance_id) {
                     if let Ok(memory_wrapper) = instance.memory(0) {
@@ -5511,8 +9245,8 @@ impl StacklessEngine {
                 let _environ_buf_ptr = stack.pop();
                 let _environ_ptr = stack.pop();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] environ_get: returning empty environment");
+                #[cfg(feature = "tracing")]
+                trace!("[WASI-P1] environ_get: returning empty environment");
 
                 // Nothing to write since environc = 0
                 Ok(Some(Value::I32(0))) // Success
@@ -5525,8 +9259,8 @@ impl StacklessEngine {
                 } else {
                     0
                 };
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-P1] proc_exit: code={}", _exit_code);
+                #[cfg(feature = "tracing")]
+                trace!(exit_code = _exit_code, "[WASI-P1] proc_exit");
                 // For now, just return - we can't actually exit the process
                 Ok(None)
             }
@@ -5537,8 +9271,8 @@ impl StacklessEngine {
                 debug!("WASI: Stub for {}::{}", module_name, field_name);
                 // Check if this is a __main_module__ import - these need special handling
                 if module_name == "__main_module__" {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WASI] __main_module__::{} - this should be a linked function, not a WASI stub", field_name);
+                    #[cfg(feature = "tracing")]
+                    warn!(field = %field_name, "[WASI] __main_module__ function called as WASI stub - linking error");
                     return Err(wrt_error::Error::runtime_error(
                         "Internal module function called as WASI import - linking error"
                     ));
