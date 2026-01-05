@@ -117,113 +117,36 @@ fn extract_length(args: &[Value]) -> Result<usize> {
 }
 
 /// Generate secure random bytes using platform-specific implementation
+///
+/// Uses wrt-platform's PlatformRandom which provides:
+/// - Linux: /dev/urandom
+/// - macOS: getentropy() system call
+/// - Windows: BCryptGenRandom()
+/// - QNX: /dev/random
+/// - VxWorks: randBytes()
+/// - Others: /dev/urandom fallback or error
 fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
-    #[cfg(all(feature = "std", target_os = "linux"))]
+    #[cfg(feature = "std")]
     {
-        use std::{
-            fs::File,
-            io::Read,
-        };
-
-        let mut file = File::open("/dev/urandom")
-            .map_err(|_| Error::wasi_capability_unavailable("Failed to open /dev/urandom"))?;
+        use wrt_platform::random::PlatformRandom;
 
         let mut buffer = vec![0u8; len];
-        file.read_exact(&mut buffer)
-            .map_err(|_| Error::wasi_capability_unavailable("Failed to read from /dev/urandom"))?;
-
-        Ok(buffer)
-    }
-
-    #[cfg(all(feature = "std", target_os = "macos"))]
-    {
-        // macOS uses arc4random for secure random
-        let mut buffer = vec![0u8; len];
-
-        // Use safe random generation instead of unsafe FFI
-        #[cfg(target_arch = "x86_64")]
-        {
-            // Use platform time as seed for fallback
-            use wrt_platform::time::PlatformTime;
-            let seed = PlatformTime::monotonic_ns();
-
-            // Simple but safe pseudo-random generation
-            let mut state = seed;
-            for byte in &mut buffer {
-                state = state.wrapping_mul(1103515245).wrapping_add(12345);
-                *byte = (state >> 16) as u8;
-            }
-        }
-
-        // Fallback for other architectures
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            // Simple fallback using platform time as seed
-            use wrt_platform::time::PlatformTime;
-            let seed = PlatformTime::monotonic_ns();
-
-            // Simple LCG for demonstration (not cryptographically secure!)
-            let mut state = seed;
-            for byte in &mut buffer {
-                state = state.wrapping_mul(1103515245).wrapping_add(12345);
-                *byte = (state >> 16) as u8;
-            }
-        }
-
-        Ok(buffer)
-    }
-
-    #[cfg(all(feature = "std", windows))]
-    {
-        // Windows uses BCryptGenRandom for secure random
-        // For simplicity, using a fallback implementation
-        let mut buffer = vec![0u8; len];
-
-        // Simple fallback using platform time as seed
-        use wrt_platform::time::PlatformTime;
-        let time = PlatformTime::new();
-        let seed = time.monotonic_now().unwrap_or(0);
-
-        // Simple LCG for demonstration (not cryptographically secure!)
-        let mut state = seed;
-        for byte in &mut buffer {
-            state = state.wrapping_mul(1103515245).wrapping_add(12345);
-            *byte = (state >> 16) as u8;
-        }
+        PlatformRandom::get_secure_bytes(&mut buffer)
+            .map_err(|_| Error::wasi_capability_unavailable(
+                "Failed to generate secure random bytes"
+            ))?;
 
         Ok(buffer)
     }
 
     #[cfg(not(feature = "std"))]
     {
-        // In no_std environment, use platform-specific secure random if available
-        // For now, return an error indicating secure random is not available
+        // no_std environments cannot return Vec<u8>
+        // Platform-specific implementations would need BoundedVec return type
+        let _ = len; // Suppress unused warning
         Err(Error::wasi_capability_unavailable(
-            "Secure random not available in no_std environment",
+            "Secure random requires std feature for Vec allocation",
         ))
-    }
-
-    #[cfg(all(
-        feature = "std",
-        not(any(target_os = "linux", target_os = "macos", windows))
-    ))]
-    {
-        // Other platforms - use fallback
-        let mut buffer = vec![0u8; len];
-
-        // Simple fallback using platform time as seed
-        use wrt_platform::time::PlatformTime;
-        let time = PlatformTime::new();
-        let seed = time.monotonic_now().unwrap_or(0);
-
-        // Simple LCG for demonstration (not cryptographically secure!)
-        let mut state = seed;
-        for byte in &mut buffer {
-            state = state.wrapping_mul(1103515245).wrapping_add(12345);
-            *byte = (state >> 16) as u8;
-        }
-
-        Ok(buffer)
     }
 }
 

@@ -144,6 +144,9 @@ pub mod preview2 {
 
     #[cfg(feature = "wasi-random")]
     pub mod random;
+
+    #[cfg(feature = "wasi-sockets")]
+    pub mod sockets;
 }
 
 // Preview3 preparation layer

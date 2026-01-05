@@ -418,5 +418,3 @@ pub fn create_async_handlers(
 
     handlers
 }
-
-#[cfg(feature = "component-model-async")]

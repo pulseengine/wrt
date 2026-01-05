@@ -19,6 +19,10 @@
 //! let result = dispatcher.dispatch("wasi:clocks/wall-clock", "now", args)?;
 //! ```
 
+// Import tracing utilities for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::{trace, warn};
+
 #[cfg(feature = "std")]
 use std::vec::Vec;
 #[cfg(feature = "std")]
@@ -53,9 +57,29 @@ pub fn set_global_wasi_args(args: Vec<String>) {
 }
 
 /// Get the global WASI arguments
+/// Falls back to std::env::args() if no global args are set
 #[cfg(feature = "std")]
 pub fn get_global_wasi_args() -> Vec<String> {
-    GLOBAL_WASI_ARGS.lock().map(|g| g.clone()).unwrap_or_default()
+    let global_args = GLOBAL_WASI_ARGS.lock().map(|g| g.clone()).unwrap_or_default();
+    if global_args.is_empty() {
+        // Fall back to actual process args
+        std::env::args().collect()
+    } else {
+        global_args
+    }
+}
+
+/// Get the global WASI environment variables
+/// Falls back to std::env::vars() if no global env vars are set
+#[cfg(feature = "std")]
+pub fn get_global_wasi_env() -> Vec<(String, String)> {
+    let global_env = GLOBAL_WASI_ENV.lock().map(|g| g.clone()).unwrap_or_default();
+    if global_env.is_empty() {
+        // Fall back to actual process environment
+        std::env::vars().collect()
+    } else {
+        global_env
+    }
 }
 
 /// Set the global WASI environment variables
@@ -81,17 +105,77 @@ use crate::preview2::io::{
     wasi_stream_check_write,
 };
 
+#[cfg(all(feature = "wasi-sockets", feature = "std"))]
+use crate::preview2::sockets::{
+    wasi_tcp_create,
+    wasi_tcp_connect,
+    wasi_tcp_bind,
+    wasi_tcp_listen,
+    wasi_tcp_accept,
+    wasi_tcp_send,
+    wasi_tcp_recv,
+    wasi_tcp_shutdown,
+    wasi_udp_create,
+    wasi_udp_bind,
+    wasi_udp_send,
+    wasi_udp_recv,
+    wasi_resolve_addresses,
+};
+
+#[cfg(feature = "wasi-random")]
+use crate::preview2::random::{
+    wasi_get_random_bytes,
+    wasi_get_random_u64,
+    wasi_get_insecure_random_bytes,
+    wasi_get_insecure_random_u64,
+};
+
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::path::PathBuf;
+
+/// Type of file descriptor in the WASI filesystem
+#[cfg(feature = "std")]
+#[derive(Debug, Clone)]
+pub enum FileDescriptorType {
+    /// Standard output stream
+    Stdout,
+    /// Standard error stream
+    Stderr,
+    /// Standard input stream
+    Stdin,
+    /// Pre-opened directory with its path
+    PreopenDirectory(PathBuf),
+    /// Regular file with its path
+    RegularFile(PathBuf),
+}
+
+/// A file descriptor entry in the descriptor table
+#[cfg(feature = "std")]
+#[derive(Debug)]
+pub struct FileDescriptorEntry {
+    /// Type of this descriptor
+    pub fd_type: FileDescriptorType,
+    /// Whether this descriptor can be read from
+    pub read: bool,
+    /// Whether this descriptor can be written to
+    pub write: bool,
+}
+
 /// WASI Dispatcher - unified entry point for all WASI function calls
 pub struct WasiDispatcher {
     /// WASI capabilities for this dispatcher
     capabilities: WasiCapabilities,
     /// Next available resource handle
-    #[allow(dead_code)]
     next_handle: u32,
     /// Stdout handle (pre-allocated)
     stdout_handle: u32,
     /// Stderr handle (pre-allocated)
     stderr_handle: u32,
+    /// Stdin handle (pre-allocated)
+    #[allow(dead_code)]
+    stdin_handle: u32,
     /// Command-line arguments
     args: Vec<String>,
     /// Environment variables as (key, value) pairs
@@ -99,6 +183,12 @@ pub struct WasiDispatcher {
     /// Pre-allocated memory for args (list_ptr, string_data_ptr)
     /// Set by the engine after calling cabi_realloc
     args_alloc: Option<(u32, u32)>,
+    /// File descriptor table (maps handle -> descriptor info)
+    #[cfg(feature = "std")]
+    fd_table: HashMap<u32, FileDescriptorEntry>,
+    /// Pre-opened directories (list of (handle, path) pairs)
+    #[cfg(feature = "std")]
+    preopens: Vec<(u32, PathBuf)>,
 }
 
 /// Describes memory that needs to be allocated via cabi_realloc
@@ -132,14 +222,42 @@ pub enum DispatchResult {
 impl WasiDispatcher {
     /// Create a new WASI dispatcher with the given capabilities
     pub fn new(capabilities: WasiCapabilities) -> Result<Self> {
+        #[cfg(feature = "std")]
+        let mut fd_table = HashMap::new();
+
+        // Pre-populate fd_table with stdin/stdout/stderr
+        #[cfg(feature = "std")]
+        {
+            fd_table.insert(0, FileDescriptorEntry {
+                fd_type: FileDescriptorType::Stdin,
+                read: true,
+                write: false,
+            });
+            fd_table.insert(1, FileDescriptorEntry {
+                fd_type: FileDescriptorType::Stdout,
+                read: false,
+                write: true,
+            });
+            fd_table.insert(2, FileDescriptorEntry {
+                fd_type: FileDescriptorType::Stderr,
+                read: false,
+                write: true,
+            });
+        }
+
         Ok(Self {
             capabilities,
-            next_handle: 3, // 1=stdout, 2=stderr, start user handles at 3
+            next_handle: 3, // 0=stdin, 1=stdout, 2=stderr, start user handles at 3
+            stdin_handle: 0,
             stdout_handle: 1,
             stderr_handle: 2,
             args: Vec::new(),
             env_vars: Vec::new(),
             args_alloc: None,
+            #[cfg(feature = "std")]
+            fd_table,
+            #[cfg(feature = "std")]
+            preopens: Vec::new(),
         })
     }
 
@@ -150,15 +268,9 @@ impl WasiDispatcher {
 
     /// Create a dispatcher with arguments
     pub fn with_args(capabilities: WasiCapabilities, args: Vec<String>) -> Result<Self> {
-        Ok(Self {
-            capabilities,
-            next_handle: 3,
-            stdout_handle: 1,
-            stderr_handle: 2,
-            args,
-            env_vars: Vec::new(),
-            args_alloc: None,
-        })
+        let mut dispatcher = Self::new(capabilities)?;
+        dispatcher.args = args;
+        Ok(dispatcher)
     }
 
     /// Create a dispatcher with arguments and environment variables
@@ -167,15 +279,38 @@ impl WasiDispatcher {
         args: Vec<String>,
         env_vars: Vec<(String, String)>,
     ) -> Result<Self> {
-        Ok(Self {
-            capabilities,
-            next_handle: 3,
-            stdout_handle: 1,
-            stderr_handle: 2,
-            args,
-            env_vars,
-            args_alloc: None,
-        })
+        let mut dispatcher = Self::new(capabilities)?;
+        dispatcher.args = args;
+        dispatcher.env_vars = env_vars;
+        Ok(dispatcher)
+    }
+
+    /// Add a pre-opened directory to the WASI sandbox
+    ///
+    /// Returns the file descriptor handle for the directory
+    #[cfg(feature = "std")]
+    pub fn add_preopen(&mut self, path: impl Into<PathBuf>) -> u32 {
+        let path = path.into();
+        let handle = self.next_handle;
+        self.next_handle += 1;
+
+        // Add to fd_table
+        self.fd_table.insert(handle, FileDescriptorEntry {
+            fd_type: FileDescriptorType::PreopenDirectory(path.clone()),
+            read: self.capabilities.filesystem.read_access,
+            write: self.capabilities.filesystem.write_access,
+        });
+
+        // Add to preopens list
+        self.preopens.push((handle, path));
+
+        handle
+    }
+
+    /// Get the list of pre-opened directories
+    #[cfg(feature = "std")]
+    pub fn get_preopens(&self) -> &[(u32, PathBuf)] {
+        &self.preopens
     }
 
     /// Set the command-line arguments
@@ -242,8 +377,8 @@ impl WasiDispatcher {
     ) -> Result<Vec<Value>> {
         let base_interface = Self::strip_version(interface);
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASI-DISPATCH] {}::{} with {} args", base_interface, function, args.len());
+        #[cfg(feature = "tracing")]
+        trace!(interface = %base_interface, function = %function, arg_count = args.len(), "WASI dispatch");
 
         match (base_interface, function) {
             // ================================================================
@@ -274,30 +409,46 @@ impl WasiDispatcher {
                     .map(|s| Value::String(s.clone()))
                     .collect();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-DISPATCH] get-arguments returning {} args: {:?}", args_to_use.len(), args_to_use);
+                #[cfg(feature = "tracing")]
+                trace!(arg_count = args_to_use.len(), args = ?args_to_use, "get-arguments returning");
 
                 Ok(vec![Value::List(arg_values)])
             }
 
             ("wasi:cli/environment", "get-environment") => {
-                // Return the stored environment variables as a list of (string, string) tuples
-                let env_values: Vec<Value> = self.env_vars
+                // Get env vars - prefer local env_vars, fall back to global then process env
+                #[cfg(feature = "std")]
+                let env_to_use: Vec<(String, String)> = if self.env_vars.is_empty() {
+                    get_global_wasi_env()
+                } else {
+                    self.env_vars.clone()
+                };
+                #[cfg(not(feature = "std"))]
+                let env_to_use = &self.env_vars;
+
+                let env_values: Vec<Value> = env_to_use
                     .iter()
                     .map(|(k, v)| Value::Tuple(vec![Value::String(k.clone()), Value::String(v.clone())]))
                     .collect();
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-DISPATCH] get-environment returning {} vars", self.env_vars.len());
+                #[cfg(feature = "tracing")]
+                trace!(var_count = env_to_use.len(), "get-environment returning");
 
                 Ok(vec![Value::List(env_values)])
             }
 
             ("wasi:cli/environment", "initial-cwd") => {
-                // Return None for initial working directory
+                // Return the actual current working directory
                 #[cfg(feature = "std")]
                 {
-                    Ok(vec![Value::Option(None)])
+                    if let Ok(cwd) = std::env::current_dir() {
+                        let cwd_string = cwd.to_string_lossy().to_string();
+                        #[cfg(feature = "tracing")]
+                        trace!(cwd = %cwd_string, "initial-cwd returning");
+                        Ok(vec![Value::Option(Some(Box::new(Value::String(cwd_string))))])
+                    } else {
+                        Ok(vec![Value::Option(None)])
+                    }
                 }
                 #[cfg(not(feature = "std"))]
                 {
@@ -413,11 +564,449 @@ impl WasiDispatcher {
             }
 
             // ================================================================
+            // wasi:filesystem/* - Filesystem interfaces
+            // ================================================================
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/preopens", "get-directories") => {
+                // Check filesystem capability
+                if !self.capabilities.filesystem.directory_access {
+                    return Err(Error::wasi_permission_denied("Filesystem access denied"));
+                }
+
+                // Return list of (descriptor, path) tuples
+                let dirs: Vec<Value> = self.preopens
+                    .iter()
+                    .map(|(handle, path)| {
+                        Value::Tuple(vec![
+                            Value::U32(*handle),
+                            Value::String(path.to_string_lossy().to_string()),
+                        ])
+                    })
+                    .collect();
+
+                #[cfg(feature = "tracing")]
+                trace!(preopen_count = dirs.len(), "get-directories returning");
+                Ok(vec![Value::List(dirs)])
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.open-at") => {
+                // Check filesystem capability
+                if !self.capabilities.filesystem.read_access && !self.capabilities.filesystem.write_access {
+                    return Err(Error::wasi_permission_denied("Filesystem access denied"));
+                }
+
+                // Args: [descriptor_handle, path_flags, path, open_flags, modes]
+                // For now, simplified: [descriptor_handle, path]
+                let base_handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                let path = match args.get(1) {
+                    Some(Value::String(s)) => s.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Invalid path")),
+                };
+
+                // Look up the base descriptor
+                let base_entry = self.fd_table.get(&base_handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                // Get the base path
+                let base_path = match &base_entry.fd_type {
+                    FileDescriptorType::PreopenDirectory(p) => p.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Not a directory descriptor")),
+                };
+
+                // Construct full path
+                let full_path = base_path.join(&path);
+
+                // Check path is within sandbox (no escape via ..)
+                let canonical = match full_path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        // File might not exist yet for write operations
+                        full_path.clone()
+                    }
+                };
+
+                // Basic safety check - path should start with base
+                if !canonical.starts_with(&base_path) && full_path.canonicalize().is_ok() {
+                    return Err(Error::wasi_permission_denied("Path escapes sandbox"));
+                }
+
+                // Allocate new handle
+                let new_handle = self.next_handle;
+                self.next_handle += 1;
+
+                // Add to fd_table
+                self.fd_table.insert(new_handle, FileDescriptorEntry {
+                    fd_type: FileDescriptorType::RegularFile(full_path.clone()),
+                    read: self.capabilities.filesystem.read_access,
+                    write: self.capabilities.filesystem.write_access,
+                });
+
+                #[cfg(feature = "tracing")]
+                trace!(base_path = %base_path.display(), path = %path, handle = new_handle, "open-at completed");
+
+                // Return result<descriptor, error-code> - for now just Ok(handle)
+                Ok(vec![Value::Result(Ok(Box::new(Value::U32(new_handle))))])
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.stat") => {
+                // Check filesystem capability
+                if !self.capabilities.filesystem.metadata_access {
+                    return Err(Error::wasi_permission_denied("Metadata access denied"));
+                }
+
+                // Args: [descriptor_handle]
+                let handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                // Look up the descriptor
+                let entry = self.fd_table.get(&handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                // Get metadata
+                let path = match &entry.fd_type {
+                    FileDescriptorType::RegularFile(p) => p,
+                    FileDescriptorType::PreopenDirectory(p) => p,
+                    _ => return Err(Error::wasi_invalid_argument("Cannot stat this descriptor type")),
+                };
+
+                match std::fs::metadata(path) {
+                    Ok(meta) => {
+                        // Return descriptorstat record:
+                        // type: descriptor-type (0=unknown, 1=block-device, 2=character-device,
+                        //       3=directory, 4=fifo, 5=symbolic-link, 6=regular-file, 7=socket)
+                        let file_type = if meta.is_dir() { 3u8 } else if meta.is_file() { 6u8 } else { 0u8 };
+                        let size = meta.len();
+
+                        // Simplified stat result - just type and size
+                        let stat_record = Value::Record(vec![
+                            ("type".to_string(), Value::U8(file_type)),
+                            ("size".to_string(), Value::U64(size)),
+                        ]);
+
+                        #[cfg(feature = "tracing")]
+                        trace!(path = %path.display(), file_type = file_type, size = size, "stat completed");
+
+                        Ok(vec![Value::Result(Ok(Box::new(stat_record)))])
+                    }
+                    Err(_e) => {
+                        #[cfg(feature = "tracing")]
+                        warn!(error = %_e, "stat failed");
+                        // Return error code
+                        Ok(vec![Value::Result(Err(Box::new(Value::U32(2))))])  // ENOENT
+                    }
+                }
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.read-via-stream") => {
+                // Check read capability
+                if !self.capabilities.filesystem.read_access {
+                    return Err(Error::wasi_permission_denied("Read access denied"));
+                }
+
+                // Args: [descriptor_handle, offset]
+                let handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                // Verify descriptor exists and is readable
+                let entry = self.fd_table.get(&handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                if !entry.read {
+                    return Err(Error::wasi_permission_denied("Descriptor not readable"));
+                }
+
+                // For now, return the same handle as a stream handle
+                // A full implementation would create a separate stream resource
+                #[cfg(feature = "tracing")]
+                trace!(handle = handle, stream_handle = handle, "read-via-stream completed");
+
+                Ok(vec![Value::Result(Ok(Box::new(Value::U32(handle))))])
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.write-via-stream") => {
+                // Check write capability
+                if !self.capabilities.filesystem.write_access {
+                    return Err(Error::wasi_permission_denied("Write access denied"));
+                }
+
+                // Args: [descriptor_handle, offset]
+                let handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                // Verify descriptor exists and is writable
+                let entry = self.fd_table.get(&handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                if !entry.write {
+                    return Err(Error::wasi_permission_denied("Descriptor not writable"));
+                }
+
+                // For now, return the same handle as a stream handle
+                #[cfg(feature = "tracing")]
+                trace!(handle = handle, stream_handle = handle, "write-via-stream completed");
+
+                Ok(vec![Value::Result(Ok(Box::new(Value::U32(handle))))])
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.readdir") => {
+                // Check directory access capability
+                if !self.capabilities.filesystem.directory_access {
+                    return Err(Error::wasi_permission_denied("Directory access denied"));
+                }
+
+                // Args: [descriptor_handle]
+                let handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                let entry = self.fd_table.get(&handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                let path = match &entry.fd_type {
+                    FileDescriptorType::PreopenDirectory(p) => p,
+                    _ => return Err(Error::wasi_invalid_argument("Not a directory descriptor")),
+                };
+
+                match std::fs::read_dir(path) {
+                    Ok(entries) => {
+                        let dir_entries: Vec<Value> = entries
+                            .filter_map(|e| e.ok())
+                            .map(|e| {
+                                let name = e.file_name().to_string_lossy().to_string();
+                                let file_type = if e.path().is_dir() { 3u8 } else { 6u8 };
+                                Value::Record(vec![
+                                    ("name".to_string(), Value::String(name)),
+                                    ("type".to_string(), Value::U8(file_type)),
+                                ])
+                            })
+                            .collect();
+
+                        Ok(vec![Value::Result(Ok(Box::new(Value::List(dir_entries))))])
+                    }
+                    Err(_e) => {
+                        Ok(vec![Value::Result(Err(Box::new(Value::U32(2))))])  // ENOENT
+                    }
+                }
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.create-directory-at") => {
+                // Check write capability
+                if !self.capabilities.filesystem.write_access {
+                    return Err(Error::wasi_permission_denied("Write access denied"));
+                }
+
+                // Args: [descriptor_handle, path]
+                let base_handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                let path = match args.get(1) {
+                    Some(Value::String(s)) => s.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Invalid path")),
+                };
+
+                let base_entry = self.fd_table.get(&base_handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                let base_path = match &base_entry.fd_type {
+                    FileDescriptorType::PreopenDirectory(p) => p.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Not a directory descriptor")),
+                };
+
+                let full_path = base_path.join(&path);
+
+                // Sandbox check
+                if full_path.canonicalize().is_ok() && !full_path.starts_with(&base_path) {
+                    return Err(Error::wasi_permission_denied("Path escapes sandbox"));
+                }
+
+                match std::fs::create_dir(&full_path) {
+                    Ok(()) => Ok(vec![Value::Result(Ok(Box::new(Value::Tuple(vec![]))))]),
+                    Err(_e) => Ok(vec![Value::Result(Err(Box::new(Value::U32(17))))]),  // EEXIST
+                }
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[method]descriptor.unlink-file-at") => {
+                // Check write capability
+                if !self.capabilities.filesystem.write_access {
+                    return Err(Error::wasi_permission_denied("Write access denied"));
+                }
+
+                // Args: [descriptor_handle, path]
+                let base_handle = match args.first() {
+                    Some(Value::U32(h)) => *h,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid descriptor")),
+                };
+
+                let path = match args.get(1) {
+                    Some(Value::String(s)) => s.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Invalid path")),
+                };
+
+                let base_entry = self.fd_table.get(&base_handle)
+                    .ok_or_else(|| Error::wasi_invalid_fd("Bad descriptor"))?;
+
+                let base_path = match &base_entry.fd_type {
+                    FileDescriptorType::PreopenDirectory(p) => p.clone(),
+                    _ => return Err(Error::wasi_invalid_argument("Not a directory descriptor")),
+                };
+
+                let full_path = base_path.join(&path);
+
+                // Sandbox check
+                if let Ok(canonical) = full_path.canonicalize() {
+                    if !canonical.starts_with(&base_path) {
+                        return Err(Error::wasi_permission_denied("Path escapes sandbox"));
+                    }
+                }
+
+                match std::fs::remove_file(&full_path) {
+                    Ok(()) => Ok(vec![Value::Result(Ok(Box::new(Value::Tuple(vec![]))))]),
+                    Err(_e) => Ok(vec![Value::Result(Err(Box::new(Value::U32(2))))]),  // ENOENT
+                }
+            }
+
+            #[cfg(all(feature = "wasi-filesystem", feature = "std"))]
+            ("wasi:filesystem/types", "[resource-drop]descriptor") => {
+                // Remove descriptor from table
+                if let Some(Value::U32(handle)) = args.first() {
+                    self.fd_table.remove(handle);
+                }
+                Ok(vec![])
+            }
+
+            // ================================================================
+            // wasi:sockets/* - Socket interfaces
+            // ================================================================
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "create-tcp-socket") => {
+                wasi_tcp_create(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "start-connect") => {
+                wasi_tcp_connect(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "start-bind") => {
+                wasi_tcp_bind(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "listen") => {
+                wasi_tcp_listen(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "accept") => {
+                wasi_tcp_accept(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "send") => {
+                wasi_tcp_send(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "receive") => {
+                wasi_tcp_recv(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/tcp", "shutdown") => {
+                wasi_tcp_shutdown(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/udp", "create-udp-socket") => {
+                wasi_udp_create(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/udp", "start-bind") => {
+                wasi_udp_bind(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/udp", "send") => {
+                wasi_udp_send(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/udp", "receive") => {
+                wasi_udp_recv(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(all(feature = "wasi-sockets", feature = "std"))]
+            ("wasi:sockets/ip-name-lookup", "resolve-addresses") => {
+                wasi_resolve_addresses(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            // ================================================================
+            // wasi:random/* - Random number generation interfaces
+            // ================================================================
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/random", "get-random-bytes") => {
+                // Check random capability
+                if !self.capabilities.random.secure_random {
+                    return Err(Error::wasi_permission_denied("Secure random access denied"));
+                }
+                wasi_get_random_bytes(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/random", "get-random-u64") => {
+                if !self.capabilities.random.secure_random {
+                    return Err(Error::wasi_permission_denied("Secure random access denied"));
+                }
+                wasi_get_random_u64(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/insecure", "get-insecure-random-bytes") => {
+                if !self.capabilities.random.pseudo_random {
+                    return Err(Error::wasi_permission_denied("Pseudo-random access denied"));
+                }
+                wasi_get_insecure_random_bytes(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/insecure", "get-insecure-random-u64") => {
+                if !self.capabilities.random.pseudo_random {
+                    return Err(Error::wasi_permission_denied("Pseudo-random access denied"));
+                }
+                wasi_get_insecure_random_u64(&mut () as &mut dyn core::any::Any, args)
+            }
+
+            // ================================================================
             // Unknown function - return error
             // ================================================================
             _ => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-DISPATCH] Unknown: {}::{}", base_interface, function);
+                #[cfg(feature = "tracing")]
+                warn!(interface = %base_interface, function = %function, "unknown WASI function");
 
                 Err(Error::runtime_not_implemented(
                     "Unknown WASI function"
@@ -481,19 +1070,24 @@ impl WasiDispatcher {
                 let retptr = match args.first() {
                     Some(CoreValue::I32(ptr)) => *ptr as u32,
                     _ => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] get-arguments: no return pointer provided");
+                        #[cfg(feature = "tracing")]
+                        warn!("get-arguments: no return pointer provided");
                         return Ok(vec![]);
                     }
                 };
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-DISPATCH-CORE] get-arguments: {} args to use, args={:?}, retptr=0x{:x}, args_alloc={:?}",
-                         args_to_use.len(), args_to_use, retptr, self.args_alloc);
+                #[cfg(feature = "tracing")]
+                trace!(
+                    arg_count = args_to_use.len(),
+                    args = ?args_to_use,
+                    retptr = format_args!("0x{:x}", retptr),
+                    args_alloc = ?self.args_alloc,
+                    "get-arguments dispatch"
+                );
 
                 if let Some(mem) = memory {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WASI-DISPATCH-CORE] Memory available, size={} bytes", mem.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(memory_size = mem.len(), "memory available");
 
                     if args_to_use.is_empty() {
                         // Empty list: write (0, 0) to return pointer
@@ -505,22 +1099,23 @@ impl WasiDispatcher {
                         return Ok(vec![]);
                     }
 
-                    // Use pre-allocated memory from cabi_realloc if available,
-                    // otherwise fall back to stack-relative allocation
+                    // Use pre-allocated memory from cabi_realloc - this is required
                     let (list_ptr, mut string_data_ptr) = if let Some((alloc_list, alloc_strings)) = self.args_alloc {
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] Using cabi_realloc memory: list_ptr=0x{:x}, string_ptr=0x{:x}",
-                                 alloc_list, alloc_strings);
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            list_ptr = format_args!("0x{:x}", alloc_list),
+                            string_ptr = format_args!("0x{:x}", alloc_strings),
+                            "using cabi_realloc memory"
+                        );
                         (alloc_list, alloc_strings)
                     } else {
-                        // Fallback: Use memory just after the return pointer (which is on the stack)
-                        // WARNING: This may be overwritten by component execution!
-                        let data_base: u32 = retptr + 16;
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] FALLBACK: Using stack-relative data_base=0x{:x}", data_base);
-                        let list_ptr = data_base;
-                        let string_data_ptr = list_ptr + (args_to_use.len() as u32 * 8);
-                        (list_ptr, string_data_ptr)
+                        // NO FALLBACK - cabi_realloc must have been called
+                        // Per CLAUDE.md: "FAIL LOUD AND EARLY" - no stack-relative hacks
+                        #[cfg(feature = "tracing")]
+                        warn!("args_alloc not set - cabi_realloc was not called");
+                        return Err(wrt_error::Error::runtime_error(
+                            "get-arguments requires cabi_realloc - allocation not performed"
+                        ));
                     };
 
                     // First pass: write string data and collect pointers
@@ -531,8 +1126,8 @@ impl WasiDispatcher {
 
                         // Bounds check
                         if (string_data_ptr as usize + bytes.len()) > mem.len() {
-                            #[cfg(feature = "std")]
-                            eprintln!("[WASI-DISPATCH-CORE] Not enough memory for arg data");
+                            #[cfg(feature = "tracing")]
+                            warn!("not enough memory for arg data");
                             // Write empty list
                             let retptr_usize = retptr as usize;
                             if retptr_usize + 8 <= mem.len() {
@@ -544,8 +1139,13 @@ impl WasiDispatcher {
 
                         // Write string bytes
                         mem[string_data_ptr as usize..(string_data_ptr as usize + bytes.len())].copy_from_slice(bytes);
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] Wrote string '{}' ({} bytes) at 0x{:x}", arg, bytes.len(), string_data_ptr);
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            arg = %arg,
+                            byte_count = bytes.len(),
+                            addr = format_args!("0x{:x}", string_data_ptr),
+                            "wrote string"
+                        );
 
                         string_entries.push((string_data_ptr, len));
                         string_data_ptr += len;
@@ -561,8 +1161,8 @@ impl WasiDispatcher {
                         }
                         mem[offset..offset + 4].copy_from_slice(&ptr.to_le_bytes());
                         mem[offset + 4..offset + 8].copy_from_slice(&len.to_le_bytes());
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] list[{}]: ptr=0x{:x}, len={}", i, ptr, len);
+                        #[cfg(feature = "tracing")]
+                        trace!(index = i, ptr = format_args!("0x{:x}", ptr), len = len, "list entry written");
                     }
 
                     // Write (list_ptr, count) to the return pointer
@@ -570,16 +1170,20 @@ impl WasiDispatcher {
                     if retptr_usize + 8 <= mem.len() {
                         mem[retptr_usize..retptr_usize + 4].copy_from_slice(&list_ptr.to_le_bytes());
                         mem[retptr_usize + 4..retptr_usize + 8].copy_from_slice(&(args_to_use.len() as u32).to_le_bytes());
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-DISPATCH-CORE] Wrote to retptr 0x{:x}: list_ptr=0x{:x}, count={}",
-                                 retptr, list_ptr, args_to_use.len());
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            retptr = format_args!("0x{:x}", retptr),
+                            list_ptr = format_args!("0x{:x}", list_ptr),
+                            count = args_to_use.len(),
+                            "wrote to retptr"
+                        );
                     }
 
                     // Canonical ABI with return pointer returns void (no return values)
                     Ok(vec![])
                 } else {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WASI-DISPATCH-CORE] No memory available for get-arguments");
+                    #[cfg(feature = "tracing")]
+                    warn!("no memory available for get-arguments");
                     Ok(vec![])
                 }
             }
@@ -605,20 +1209,91 @@ impl WasiDispatcher {
                 let seconds = total_ns / 1_000_000_000;
                 let nanoseconds = (total_ns % 1_000_000_000) as u32;
 
-                // Return as two values that will be composed into the datetime record
-                Ok(vec![
-                    CoreValue::I64(seconds as i64),
-                    CoreValue::I32(nanoseconds as i32),
-                ])
+                // Per Canonical ABI: datetime record is written to retptr in memory
+                // datetime = { seconds: u64, nanoseconds: u32 } = 12 bytes
+                // The retptr is passed as the first argument
+                if let Some(mem) = memory {
+                    let retptr = match args.first() {
+                        Some(CoreValue::I32(p)) => *p as u32,
+                        _ => {
+                            // No retptr provided - return flat values for non-indirected ABI
+                            #[cfg(feature = "tracing")]
+                            trace!("wall-clock::now - no retptr, returning flat values");
+                            return Ok(vec![
+                                CoreValue::I64(seconds as i64),
+                                CoreValue::I32(nanoseconds as i32),
+                            ]);
+                        }
+                    };
+
+                    let retptr_idx = retptr as usize;
+                    // Per Canonical ABI: datetime record layout
+                    // seconds: u64 (8 bytes) at offset 0
+                    // nanoseconds: u32 (4 bytes) at offset 8
+                    // Total: 12 bytes (but aligned to 8, so 16 bytes structure size)
+                    // NOTE: Writing only 12 bytes - the extra 4 bytes padding is not our data
+                    if retptr_idx + 12 <= mem.len() {
+                        // Write seconds (u64, 8 bytes) at retptr
+                        mem[retptr_idx..retptr_idx + 8].copy_from_slice(&seconds.to_le_bytes());
+                        // Write nanoseconds as u32 (4 bytes) at retptr + 8
+                        mem[retptr_idx + 8..retptr_idx + 12].copy_from_slice(&nanoseconds.to_le_bytes());
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            retptr = format_args!("0x{:x}", retptr),
+                            seconds = seconds,
+                            nanoseconds = nanoseconds,
+                            "wall-clock::now wrote datetime"
+                        );
+
+                        // Return nothing - datetime was written to memory
+                        Ok(vec![])
+                    } else {
+                        Err(Error::wasi_invalid_argument("retptr out of bounds"))
+                    }
+                } else {
+                    // No memory available - return flat values
+                    #[cfg(feature = "tracing")]
+                    trace!("wall-clock::now - no memory, returning flat values");
+                    Ok(vec![
+                        CoreValue::I64(seconds as i64),
+                        CoreValue::I32(nanoseconds as i32),
+                    ])
+                }
             }
 
             #[cfg(feature = "wasi-clocks")]
             ("wasi:clocks/wall-clock", "resolution") => {
                 // 1 nanosecond resolution
-                Ok(vec![
-                    CoreValue::I64(0), // seconds
-                    CoreValue::I32(1), // nanoseconds
-                ])
+                // Per Canonical ABI: datetime record is written to retptr in memory
+                if let Some(mem) = memory {
+                    let retptr = match args.first() {
+                        Some(CoreValue::I32(p)) => *p as u32,
+                        _ => {
+                            return Ok(vec![
+                                CoreValue::I64(0), // seconds
+                                CoreValue::I32(1), // nanoseconds
+                            ]);
+                        }
+                    };
+
+                    let retptr_idx = retptr as usize;
+                    // Per Canonical ABI: datetime record is 16 bytes (both fields as i64)
+                    if retptr_idx + 16 <= mem.len() {
+                        // Write seconds (0) at retptr
+                        mem[retptr_idx..retptr_idx + 8].copy_from_slice(&0u64.to_le_bytes());
+                        // Write nanoseconds (1) as i64 at retptr + 8
+                        mem[retptr_idx + 8..retptr_idx + 16].copy_from_slice(&1u64.to_le_bytes());
+                        Ok(vec![])
+                    } else {
+                        Err(Error::wasi_invalid_argument("retptr out of bounds"))
+                    }
+                } else {
+                    Ok(vec![
+                        CoreValue::I64(0), // seconds
+                        CoreValue::I32(1), // nanoseconds
+                    ])
+                }
             }
 
             #[cfg(feature = "wasi-clocks")]
@@ -637,8 +1312,8 @@ impl WasiDispatcher {
             #[cfg(feature = "wasi-io")]
             ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") |
             ("wasi:io/streams", "output-stream.blocking-write-and-flush") => {
-                #[cfg(feature = "std")]
-                eprintln!("[WRITE-DISPATCH] blocking-write-and-flush: args={:?}, has_memory={}", args, memory.is_some());
+                #[cfg(feature = "tracing")]
+                trace!(args = ?args, has_memory = memory.is_some(), "blocking-write-and-flush dispatch");
 
                 if !self.capabilities.io.stdout_access {
                     return Err(Error::wasi_permission_denied("Stream write access denied"));
@@ -679,23 +1354,32 @@ impl WasiDispatcher {
                 let mem = memory.ok_or_else(||
                     Error::wasi_capability_unavailable("Memory required for write"))?;
 
-                #[cfg(feature = "std")]
-                eprintln!("[WRITE-DISPATCH] handle={}, data_ptr=0x{:x}, data_len={}, retptr={:?}, mem_size={}",
-                         handle, data_ptr, data_len, retptr, mem.len());
+                #[cfg(feature = "tracing")]
+                trace!(
+                    handle = handle,
+                    data_ptr = format_args!("0x{:x}", data_ptr),
+                    data_len = data_len,
+                    retptr = ?retptr,
+                    mem_size = mem.len(),
+                    "write parameters"
+                );
 
                 let start = data_ptr as usize;
                 let end = start + data_len as usize;
                 if end > mem.len() {
-                    #[cfg(feature = "std")]
-                    eprintln!("[WRITE-DISPATCH] ERROR: out of bounds - end=0x{:x} > mem_len=0x{:x}", end, mem.len());
+                    #[cfg(feature = "tracing")]
+                    warn!(end = format_args!("0x{:x}", end), mem_len = format_args!("0x{:x}", mem.len()), "write out of bounds");
                     return Err(Error::wasi_invalid_argument("Write data out of bounds"));
                 }
 
                 let data = &mem[start..end];
 
-                #[cfg(feature = "std")]
-                eprintln!("[WRITE-DISPATCH] Data to write ({} bytes): {:?}", data.len(),
-                         String::from_utf8_lossy(&data[..data.len().min(100)]));
+                #[cfg(feature = "tracing")]
+                trace!(
+                    byte_count = data.len(),
+                    preview = %String::from_utf8_lossy(&data[..data.len().min(100)]),
+                    "data to write"
+                );
 
                 // Write to stdout or stderr
                 #[cfg(feature = "std")]
@@ -703,14 +1387,21 @@ impl WasiDispatcher {
                     use std::io::{self, Write};
 
                     let result = if handle == self.stdout_handle {
-                        eprintln!("[WRITE-DISPATCH] Writing to STDOUT");
+                        #[cfg(feature = "tracing")]
+                        trace!("writing to stdout");
                         io::stdout().write_all(data).and_then(|_| io::stdout().flush())
                     } else if handle == self.stderr_handle {
-                        eprintln!("[WRITE-DISPATCH] Writing to STDERR");
+                        #[cfg(feature = "tracing")]
+                        trace!("writing to stderr");
                         io::stderr().write_all(data).and_then(|_| io::stderr().flush())
                     } else {
-                        eprintln!("[WRITE-DISPATCH] Invalid handle: {} (stdout={}, stderr={})",
-                                 handle, self.stdout_handle, self.stderr_handle);
+                        #[cfg(feature = "tracing")]
+                        warn!(
+                            handle = handle,
+                            stdout_handle = self.stdout_handle,
+                            stderr_handle = self.stderr_handle,
+                            "invalid handle"
+                        );
                         return Err(Error::wasi_invalid_fd("Invalid stream handle"));
                     };
 
@@ -725,15 +1416,15 @@ impl WasiDispatcher {
                                 Ok(()) => {
                                     // Ok variant: discriminant = 0
                                     mem[rp_idx] = 0;
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[WRITE-DISPATCH] Wrote Ok discriminant (0) to retptr 0x{:x}", rp);
+                                    #[cfg(feature = "tracing")]
+                                    trace!(retptr = format_args!("0x{:x}", rp), "wrote Ok discriminant (0)");
                                 }
                                 Err(_) => {
                                     // Err variant: discriminant = 1
                                     // Note: stream-error payload would need more data, but for now just set discriminant
                                     mem[rp_idx] = 1;
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[WRITE-DISPATCH] Wrote Err discriminant (1) to retptr 0x{:x}", rp);
+                                    #[cfg(feature = "tracing")]
+                                    trace!(retptr = format_args!("0x{:x}", rp), "wrote Err discriminant (1)");
                                 }
                             }
                         }
@@ -741,11 +1432,13 @@ impl WasiDispatcher {
 
                     match result {
                         Ok(()) => {
-                            eprintln!("[WRITE-DISPATCH] Write succeeded!");
+                            #[cfg(feature = "tracing")]
+                            trace!("write succeeded");
                             Ok(vec![]) // No stack return for functions with retptr
                         }
-                        Err(e) => {
-                            eprintln!("[WRITE-DISPATCH] Write failed: {:?}", e);
+                        Err(_e) => {
+                            #[cfg(feature = "tracing")]
+                            warn!(error = ?_e, "write failed");
                             Ok(vec![]) // No stack return for functions with retptr
                         }
                     }
@@ -804,8 +1497,8 @@ impl WasiDispatcher {
             }
 
             _ => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-DISPATCH-CORE] Unknown: {}::{}", base_interface, function);
+                #[cfg(feature = "tracing")]
+                warn!(interface = %base_interface, function = %function, "unknown WASI function (core)");
 
                 Err(Error::runtime_not_implemented("Unknown WASI function"))
             }
@@ -858,15 +1551,19 @@ impl WasiDispatcher {
                 let retptr = match args.first() {
                     Some(CoreValue::I32(ptr)) => *ptr as u32,
                     _ => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[WASI-V2] get-arguments: no return pointer provided");
+                        #[cfg(feature = "tracing")]
+                        warn!("get-arguments v2: no return pointer provided");
                         return Ok(DispatchResult::Complete(vec![]));
                     }
                 };
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-V2] get-arguments: {} args, retptr=0x{:x}, has_alloc={}",
-                         args_to_use.len(), retptr, self.args_alloc.is_some());
+                #[cfg(feature = "tracing")]
+                trace!(
+                    arg_count = args_to_use.len(),
+                    retptr = format_args!("0x{:x}", retptr),
+                    has_alloc = self.args_alloc.is_some(),
+                    "get-arguments v2 dispatch"
+                );
 
                 // If no args, complete immediately with empty list
                 if args_to_use.is_empty() {
@@ -890,9 +1587,13 @@ impl WasiDispatcher {
                 }
                 let total_size = list_size + string_total;
 
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-V2] get-arguments needs allocation: list_size={}, string_total={}, total={}",
-                         list_size, string_total, total_size);
+                #[cfg(feature = "tracing")]
+                trace!(
+                    list_size = list_size,
+                    string_total = string_total,
+                    total = total_size,
+                    "get-arguments v2 needs allocation"
+                );
 
                 Ok(DispatchResult::NeedsAllocation {
                     request: AllocationRequest {
@@ -909,8 +1610,8 @@ impl WasiDispatcher {
             _ => {
                 // For functions that don't need allocation, use regular dispatch
                 // This is a fallback - most functions complete immediately
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-V2] Delegating {}::{} to dispatch_core", base_interface, function);
+                #[cfg(feature = "tracing")]
+                trace!(interface = %base_interface, function = %function, "delegating to dispatch_core");
 
                 // We can't forward memory here since we consumed it, so return error for now
                 // In practice, this path shouldn't be hit for functions needing memory
@@ -939,9 +1640,13 @@ impl WasiDispatcher {
         retptr: u32,
         memory: &mut [u8],
     ) -> Result<()> {
-        #[cfg(feature = "std")]
-        eprintln!("[WASI-COMPLETE] Writing {} args to ptr=0x{:x}, retptr=0x{:x}",
-                 args_to_write.len(), allocated_ptr, retptr);
+        #[cfg(feature = "tracing")]
+        trace!(
+            arg_count = args_to_write.len(),
+            ptr = format_args!("0x{:x}", allocated_ptr),
+            retptr = format_args!("0x{:x}", retptr),
+            "completing allocation"
+        );
 
         if args_to_write.is_empty() {
             // Write empty list
@@ -977,9 +1682,13 @@ impl WasiDispatcher {
             memory[string_data_ptr as usize..(string_data_ptr as usize + bytes.len())]
                 .copy_from_slice(bytes);
 
-            #[cfg(feature = "std")]
-            eprintln!("[WASI-COMPLETE] Wrote '{}' ({} bytes) at 0x{:x}",
-                     arg, bytes.len(), string_data_ptr);
+            #[cfg(feature = "tracing")]
+            trace!(
+                arg = %arg,
+                byte_count = bytes.len(),
+                addr = format_args!("0x{:x}", string_data_ptr),
+                "wrote string (complete)"
+            );
 
             string_entries.push((string_data_ptr, len));
             string_data_ptr += len;
@@ -998,8 +1707,8 @@ impl WasiDispatcher {
             memory[offset..offset + 4].copy_from_slice(&ptr.to_le_bytes());
             memory[offset + 4..offset + 8].copy_from_slice(&len.to_le_bytes());
 
-            #[cfg(feature = "std")]
-            eprintln!("[WASI-COMPLETE] list[{}]: ptr=0x{:x}, len={}", i, ptr, len);
+            #[cfg(feature = "tracing")]
+            trace!(index = i, ptr = format_args!("0x{:x}", ptr), len = len, "list entry written (complete)");
         }
 
         // Write (list_ptr, count) to the return pointer
@@ -1009,21 +1718,45 @@ impl WasiDispatcher {
             memory[retptr_usize + 4..retptr_usize + 8]
                 .copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
 
-            #[cfg(feature = "std")]
-            eprintln!("[WASI-COMPLETE] Wrote to retptr 0x{:x}: list_ptr=0x{:x}, count={}",
-                     retptr, list_ptr, args_to_write.len());
+            #[cfg(feature = "tracing")]
+            trace!(
+                retptr = format_args!("0x{:x}", retptr),
+                list_ptr = format_args!("0x{:x}", list_ptr),
+                count = args_to_write.len(),
+                "wrote to retptr (complete)"
+            );
         }
 
         Ok(())
     }
 }
 
+/// Implementation of HostImportHandler for WasiDispatcher
+///
+/// This allows the engine to call WASI functions through the generic trait
+/// without knowing about WASI specifics.
+#[cfg(feature = "std")]
+impl wrt_foundation::HostImportHandler for WasiDispatcher {
+    fn call_import(
+        &mut self,
+        module: &str,
+        function: &str,
+        args: &[wrt_foundation::Value],
+        memory: Option<&mut [u8]>,
+    ) -> Result<Vec<wrt_foundation::Value>> {
+        // Convert slice to Vec and delegate to dispatch_core
+        self.dispatch_core(module, function, args.to_vec(), memory)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wrt_foundation::memory_init::MemoryInitializer;
 
     #[test]
     fn test_dispatcher_creation() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let caps = WasiCapabilities::minimal()?;
         let dispatcher = WasiDispatcher::new(caps)?;
         assert_eq!(dispatcher.stdout_handle, 1);
@@ -1033,6 +1766,7 @@ mod tests {
 
     #[test]
     fn test_get_stdout() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut dispatcher = WasiDispatcher::with_defaults()?;
         let result = dispatcher.dispatch("wasi:cli/stdout@0.2.4", "get-stdout", vec![])?;
         assert_eq!(result.len(), 1);
@@ -1042,6 +1776,7 @@ mod tests {
 
     #[test]
     fn test_get_stderr() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut dispatcher = WasiDispatcher::with_defaults()?;
         let result = dispatcher.dispatch("wasi:cli/stderr@0.2.4", "get-stderr", vec![])?;
         assert_eq!(result.len(), 1);
@@ -1058,6 +1793,7 @@ mod tests {
     #[cfg(feature = "wasi-clocks")]
     #[test]
     fn test_wall_clock_now() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut dispatcher = WasiDispatcher::with_defaults()?;
         let result = dispatcher.dispatch("wasi:clocks/wall-clock@0.2.4", "now", vec![])?;
         assert_eq!(result.len(), 1);

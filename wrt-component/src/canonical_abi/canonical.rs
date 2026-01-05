@@ -82,7 +82,7 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
 pub struct CanonicalABI {
     /// Binary std/no_std choice
     buffer_pool:        BoundedBufferPool,
-    /// Memory strategy for canonical operations  
+    /// Memory strategy for canonical operations
     memory_strategy:    MemoryStrategy,
     /// Verification level for canonical operations
     verification_level: VerificationLevel,
@@ -92,6 +92,13 @@ pub struct CanonicalABI {
     metrics:            CanonicalMetrics,
     /// String encoding options
     string_options:     CanonicalStringOptions,
+    /// Realloc manager for memory allocation during lowering
+    /// When set, lowering operations will use cabi_realloc to allocate memory
+    #[cfg(feature = "std")]
+    realloc_manager:    Option<Arc<Mutex<super::canonical_realloc::ReallocManager>>>,
+    /// Current component instance ID for realloc operations
+    #[cfg(feature = "std")]
+    current_instance_id: Option<super::canonical_realloc::ComponentInstanceId>,
 }
 
 /// Metrics for canonical operations
@@ -113,7 +120,7 @@ pub struct CanonicalMetrics {
 
 impl CanonicalABI {
     /// Create a new CanonicalABI instance
-    pub fn new(buffer_pool_size: usize) -> Self {
+    pub fn new(_buffer_pool_size: usize) -> Self {
         Self {
             buffer_pool:        BoundedBufferPool::new(),
             memory_strategy:    MemoryStrategy::BoundedCopy,
@@ -121,11 +128,15 @@ impl CanonicalABI {
             interceptor:        None,
             metrics:            CanonicalMetrics::default(),
             string_options:     CanonicalStringOptions::default(),
+            #[cfg(feature = "std")]
+            realloc_manager:    None,
+            #[cfg(feature = "std")]
+            current_instance_id: None,
         }
     }
 
     /// Create a new CanonicalABI instance with default settings
-    pub fn default() -> Self {
+    pub fn default_instance() -> Self {
         Self {
             buffer_pool:        BoundedBufferPool::new(),
             memory_strategy:    MemoryStrategy::BoundedCopy,
@@ -133,7 +144,41 @@ impl CanonicalABI {
             interceptor:        None,
             metrics:            CanonicalMetrics::default(),
             string_options:     CanonicalStringOptions::default(),
+            #[cfg(feature = "std")]
+            realloc_manager:    None,
+            #[cfg(feature = "std")]
+            current_instance_id: None,
         }
+    }
+}
+
+impl Default for CanonicalABI {
+    fn default() -> Self {
+        Self::default_instance()
+    }
+}
+
+impl CanonicalABI {
+    /// Set the realloc manager for memory allocation during lowering
+    ///
+    /// When set, lowering operations for strings/lists will use cabi_realloc
+    /// to allocate memory in the component's linear memory.
+    #[cfg(feature = "std")]
+    pub fn with_realloc_manager(mut self, manager: Arc<Mutex<super::canonical_realloc::ReallocManager>>) -> Self {
+        self.realloc_manager = Some(manager);
+        self
+    }
+
+    /// Set the current instance ID for realloc operations
+    #[cfg(feature = "std")]
+    pub fn set_instance_id(&mut self, id: super::canonical_realloc::ComponentInstanceId) {
+        self.current_instance_id = Some(id);
+    }
+
+    /// Get the realloc manager
+    #[cfg(feature = "std")]
+    pub fn realloc_manager(&self) -> Option<&Arc<Mutex<super::canonical_realloc::ReallocManager>>> {
+        self.realloc_manager.as_ref()
     }
 
     /// Set the memory strategy for canonical operations
@@ -185,7 +230,11 @@ impl CanonicalABI {
         self.lift_value(ty, addr, resource_table, memory_bytes)
     }
 
-    /// Lower a Value into the WebAssembly memory
+    /// Lower a Value into the WebAssembly memory (basic types only)
+    ///
+    /// This is a simplified lower operation for basic types. For full type-aware
+    /// lowering including strings and lists with proper cabi_realloc allocation,
+    /// use [`lower_typed`] instead.
     pub fn lower(
         &self,
         value: &wrt_foundation::values::Value,
@@ -194,7 +243,7 @@ impl CanonicalABI {
         memory_bytes: &mut [u8],
     ) -> Result<()> {
         // Get memory strategy from interceptor or use default
-        let memory_strategy = self.get_strategy_from_interceptor();
+        let _memory_strategy = self.get_strategy_from_interceptor();
 
         // Update metrics
         self.metrics.lower_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
@@ -215,6 +264,45 @@ impl CanonicalABI {
             // This simplified implementation focuses on basic types
             Err(Error::unimplemented("Expected i32 for bool"))
         }
+    }
+
+    /// Lower a Value into the WebAssembly memory with full type support
+    ///
+    /// This performs type-aware lowering including support for strings, lists,
+    /// records, variants, and all other Component Model types. When a
+    /// `ReallocManager` is configured (via [`with_realloc_manager`]), strings
+    /// and lists will be allocated using `cabi_realloc`.
+    ///
+    /// # Arguments
+    /// * `value` - The value to lower
+    /// * `ty` - The Component Model type of the value
+    /// * `addr` - Address in linear memory where to write the value
+    /// * `resource_table` - Resource table for handle types
+    /// * `memory_bytes` - Mutable reference to linear memory
+    ///
+    /// # Example
+    /// ```ignore
+    /// let abi = CanonicalABI::new(1024)
+    ///     .with_realloc_manager(realloc_manager);
+    /// abi.set_instance_id(instance_id);
+    ///
+    /// // Lower a string with proper allocation
+    /// let string_val = Value::String("hello".into());
+    /// abi.lower_typed(&string_val, &ValType::String, addr, &resource_table, &mut memory)?;
+    /// ```
+    pub fn lower_typed(
+        &self,
+        value: &wrt_foundation::values::Value,
+        ty: &ValType,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Update metrics
+        self.metrics.lower_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+
+        // Perform the full type-aware lower operation
+        self.lower_value(value, ty, addr, resource_table, memory_bytes)
     }
 
     fn lift_value(
@@ -400,10 +488,18 @@ impl CanonicalABI {
         }
     }
 
+    /// Lift an owned resource handle from memory
+    ///
+    /// Per Component Model spec: Lifting an `own<T>` reads a handle from memory
+    /// and transfers ownership. The handle should be removed from the caller's
+    /// resource table. This ownership transfer is handled at the component
+    /// instantiation layer, not in this function.
+    ///
+    /// Returns `Value::Own(handle)` which represents ownership of the resource.
     fn lift_resource(
         &self,
         addr: u32,
-        resource_table: &ResourceTable,
+        _resource_table: &ResourceTable,
         memory_bytes: &[u8],
     ) -> Result<Value> {
         // Resource handle is a 32-bit value
@@ -415,9 +511,19 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 3],
         ]);
 
+        // Note: Ownership transfer (removing from caller's table, adding to
+        // callee's table) must be handled by the caller at the component
+        // instantiation layer, where both resource tables are accessible.
         Ok(Value::Own(handle))
     }
 
+    /// Lift a borrowed resource handle from memory
+    ///
+    /// Per Component Model spec: Lifting a `borrow<T>` reads a handle from memory
+    /// without transferring ownership. The resource remains in the original
+    /// owner's table and the borrower gets temporary access.
+    ///
+    /// Returns `Value::Borrow(handle)` which represents a borrowed reference.
     fn lift_borrow(
         &self,
         addr: u32,
@@ -699,23 +805,48 @@ impl CanonicalABI {
         memory_bytes: &[u8],
     ) -> Result<Value> {
         // Variant format in canonical ABI:
-        // - 1 byte discriminant (case index)
-        // - Payload for the selected case (if any)
-        self.check_bounds(addr, 1, memory_bytes)?;
-        let discriminant = memory_bytes[addr as usize];
+        // - Discriminant (size depends on case count)
+        // - Payload for the selected case (if any), aligned to max payload alignment
+        let disc_size = Self::discriminant_size(cases.len());
+        self.check_bounds(addr, disc_size as u32, memory_bytes)?;
+
+        // Read discriminant based on its size
+        let discriminant: usize = match disc_size {
+            1 => memory_bytes[addr as usize] as usize,
+            2 => {
+                let bytes = [
+                    memory_bytes[addr as usize],
+                    memory_bytes[addr as usize + 1],
+                ];
+                u16::from_le_bytes(bytes) as usize
+            },
+            4 => {
+                let bytes = [
+                    memory_bytes[addr as usize],
+                    memory_bytes[addr as usize + 1],
+                    memory_bytes[addr as usize + 2],
+                    memory_bytes[addr as usize + 3],
+                ];
+                u32::from_le_bytes(bytes) as usize
+            },
+            _ => return Err(Error::runtime_error("Invalid discriminant size")),
+        };
 
         // Check if the discriminant is valid
-        if discriminant as usize >= cases.len() {
-            return Err(Error::invalid_type_error("Component not found"));
+        if discriminant >= cases.len() {
+            return Err(Error::invalid_type_error("Variant discriminant out of range"));
         }
 
-        let case_info = &cases[discriminant as usize];
+        let case_info = &cases[discriminant];
         let case_name = case_info.0.clone();
 
         // Handle the payload if this case has one
         if let Some(payload_type) = &case_info.1 {
-            // Payload starts after the discriminant
-            let payload_addr = addr + 1;
+            // Calculate payload offset: aligned after discriminant
+            let payload_layout = self.get_layout_for_type(payload_type);
+            let payload_offset = Self::align_to(disc_size, payload_layout.alignment);
+            let payload_addr = addr + payload_offset as u32;
+
             let payload =
                 self.lift_value(payload_type, payload_addr, resource_table, memory_bytes)?;
 
@@ -926,6 +1057,33 @@ impl CanonicalABI {
         Ok(())
     }
 
+    /// Lower an owned resource handle to memory
+    ///
+    /// Per Component Model spec: Lowering an `own<T>` writes the handle to memory.
+    /// Ownership transfer (adding to callee's table) is handled at the component
+    /// instantiation layer, not here.
+    fn lower_own(&self, handle: u32, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
+        self.check_bounds(addr, 4, memory_bytes)?;
+        let bytes = handle.to_le_bytes();
+        for i in 0..4 {
+            memory_bytes[addr as usize + i] = bytes[i];
+        }
+        Ok(())
+    }
+
+    /// Lower a borrowed resource handle to memory
+    ///
+    /// Per Component Model spec: Lowering a `borrow<T>` writes the handle to memory.
+    /// No ownership transfer occurs - the original owner retains the resource.
+    fn lower_borrow(&self, handle: u32, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
+        self.check_bounds(addr, 4, memory_bytes)?;
+        let bytes = handle.to_le_bytes();
+        for i in 0..4 {
+            memory_bytes[addr as usize + i] = bytes[i];
+        }
+        Ok(())
+    }
+
     fn lower_char(&self, value: char, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = (value as u32).to_le_bytes();
@@ -936,8 +1094,166 @@ impl CanonicalABI {
     }
 
     fn lower_string(&self, value: &str, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
-        // Use the string encoding support
-        lower_string_with_options(value, addr, memory_bytes, &self.string_options)
+        // Empty strings can be lowered without allocation
+        if value.is_empty() {
+            self.check_bounds(addr, 8, memory_bytes)?;
+            for i in 0..8 {
+                memory_bytes[addr as usize + i] = 0;
+            }
+            return Ok(());
+        }
+
+        // Non-empty strings REQUIRE proper cabi_realloc allocation
+        #[cfg(feature = "std")]
+        {
+            let instance_id = self.current_instance_id.ok_or_else(|| {
+                Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::CANONICAL_ABI_ERROR,
+                    "Cannot lower string: no instance ID configured. \
+                     Use CanonicalABI::set_instance_id() before lowering.",
+                )
+            })?;
+            return self.lower_string_with_alloc(value, addr, instance_id, memory_bytes);
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, non-empty string lowering requires external allocation support
+            Err(Error::new(
+                wrt_error::ErrorCategory::Core,
+                wrt_error::codes::CANONICAL_ABI_ERROR,
+                "Cannot lower non-empty string in no_std mode: cabi_realloc not available",
+            ))
+        }
+    }
+
+    /// Lower a string using proper cabi_realloc allocation
+    ///
+    /// This method correctly implements the Component Model Canonical ABI by:
+    /// 1. Allocating memory for the string data using cabi_realloc
+    /// 2. Writing the string bytes at the allocated address
+    /// 3. Writing (ptr, len) at the provided addr
+    ///
+    /// # Arguments
+    /// * `value` - The string to lower
+    /// * `addr` - Address where to write the (ptr, len) pair
+    /// * `instance_id` - Component instance ID for realloc
+    /// * `memory_bytes` - Mutable reference to linear memory
+    #[cfg(feature = "std")]
+    pub fn lower_string_with_alloc(
+        &self,
+        value: &str,
+        addr: u32,
+        instance_id: super::canonical_realloc::ComponentInstanceId,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Encode the string
+        let encoded = crate::string_encoding::encode_string(value, self.string_options.encoding)?;
+        let len = encoded.len() as u32;
+
+        if len == 0 {
+            // Empty string - write null pointer and zero length
+            self.check_bounds(addr, 8, memory_bytes)?;
+            for i in 0..8 {
+                memory_bytes[addr as usize + i] = 0;
+            }
+            return Ok(());
+        }
+
+        // Allocate memory using cabi_realloc - REQUIRED for proper Component Model lowering
+        let ptr = {
+            let realloc_manager = self.realloc_manager.as_ref().ok_or_else(|| {
+                Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::CANONICAL_ABI_ERROR,
+                    "Cannot lower string: no ReallocManager configured. \
+                     Use CanonicalABI::with_realloc_manager() to set up proper memory allocation.",
+                )
+            })?;
+            let mut manager = realloc_manager.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock realloc manager"))?;
+            manager.allocate(instance_id, len as i32, 1)? as u32
+        };
+
+        // Write string bytes at the allocated address
+        self.check_bounds(ptr, len, memory_bytes)?;
+        for (i, byte) in encoded.iter().enumerate() {
+            memory_bytes[ptr as usize + i] = *byte;
+        }
+
+        // Write (ptr, len) at the provided addr
+        self.check_bounds(addr, 8, memory_bytes)?;
+        let ptr_bytes = ptr.to_le_bytes();
+        let len_bytes = len.to_le_bytes();
+        for i in 0..4 {
+            memory_bytes[addr as usize + i] = ptr_bytes[i];
+            memory_bytes[addr as usize + 4 + i] = len_bytes[i];
+        }
+
+        Ok(())
+    }
+
+    /// Lower a list using proper cabi_realloc allocation
+    #[cfg(feature = "std")]
+    pub fn lower_list_with_alloc(
+        &self,
+        values: &Vec<wrt_foundation::values::Value>,
+        inner_ty: &ValType,
+        addr: u32,
+        instance_id: super::canonical_realloc::ComponentInstanceId,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        let length = values.len() as u32;
+
+        if length == 0 {
+            // Empty list - write null pointer and zero length
+            self.check_bounds(addr, 8, memory_bytes)?;
+            for i in 0..8 {
+                memory_bytes[addr as usize + i] = 0;
+            }
+            return Ok(());
+        }
+
+        // Calculate element size and total size
+        let element_size = self.get_layout_for_type(inner_ty).size as u32;
+        let total_size = element_size * length;
+        let align = self.get_layout_for_type(inner_ty).alignment as i32;
+
+        // Allocate memory using cabi_realloc - REQUIRED for proper Component Model lowering
+        let data_ptr = {
+            let realloc_manager = self.realloc_manager.as_ref().ok_or_else(|| {
+                Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::CANONICAL_ABI_ERROR,
+                    "Cannot lower list: no ReallocManager configured. \
+                     Use CanonicalABI::with_realloc_manager() to set up proper memory allocation.",
+                )
+            })?;
+            let mut manager = realloc_manager.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock realloc manager"))?;
+            manager.allocate(instance_id, total_size as i32, align)? as u32
+        };
+
+        // Write list elements at the allocated address
+        self.check_bounds(data_ptr, total_size, memory_bytes)?;
+        let mut current_addr = data_ptr;
+        for value in values {
+            self.lower_value(value, inner_ty, current_addr, resource_table, memory_bytes)?;
+            current_addr += element_size;
+        }
+
+        // Write (ptr, len) at the provided addr
+        self.check_bounds(addr, 8, memory_bytes)?;
+        let ptr_bytes = data_ptr.to_le_bytes();
+        let len_bytes = length.to_le_bytes();
+        for i in 0..4 {
+            memory_bytes[addr as usize + i] = ptr_bytes[i];
+            memory_bytes[addr as usize + 4 + i] = len_bytes[i];
+        }
+
+        Ok(())
     }
 
     fn lower_list(
@@ -948,45 +1264,38 @@ impl CanonicalABI {
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
     ) -> Result<()> {
-        // List format in canonical ABI:
-        // - 4 bytes pointer to data (we'll use addr + 8 for simplicity)
-        // - 4 bytes length
-        self.check_bounds(addr, 8, memory_bytes)?;
-
-        let length = values.len() as u32;
-        let data_ptr = addr + 8; // Data follows the list header
-
-        // Write pointer
-        let ptr_bytes = data_ptr.to_le_bytes();
-        for i in 0..4 {
-            memory_bytes[addr as usize + i] = ptr_bytes[i];
+        // Empty lists can be lowered without allocation
+        if values.is_empty() {
+            self.check_bounds(addr, 8, memory_bytes)?;
+            for i in 0..8 {
+                memory_bytes[addr as usize + i] = 0;
+            }
+            return Ok(());
         }
 
-        // Write length
-        let len_bytes = length.to_le_bytes();
-        for i in 0..4 {
-            memory_bytes[addr as usize + 4 + i] = len_bytes[i];
+        // Non-empty lists REQUIRE proper cabi_realloc allocation
+        #[cfg(feature = "std")]
+        {
+            let instance_id = self.current_instance_id.ok_or_else(|| {
+                Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::CANONICAL_ABI_ERROR,
+                    "Cannot lower list: no instance ID configured. \
+                     Use CanonicalABI::set_instance_id() before lowering.",
+                )
+            })?;
+            return self.lower_list_with_alloc(values, inner_ty, addr, instance_id, resource_table, memory_bytes);
         }
 
-        // Calculate element size
-        let element_size = self.get_layout_for_type(inner_ty).size as u32;
-        let total_size = element_size * length;
-
-        // Check bounds for the list data
-        self.check_bounds(data_ptr, total_size, memory_bytes)?;
-
-        // Lower each element
-        let mut current_addr = data_ptr;
-        for value in values {
-            self.lower_value(value, inner_ty, current_addr, resource_table, memory_bytes)?;
-            current_addr += element_size;
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, non-empty list lowering requires external allocation support
+            Err(Error::new(
+                wrt_error::ErrorCategory::Core,
+                wrt_error::codes::CANONICAL_ABI_ERROR,
+                "Cannot lower non-empty list in no_std mode: cabi_realloc not available",
+            ))
         }
-
-        // Update metrics
-        self.metrics.lower_bytes.fetch_add(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
-        self.metrics.max_lower_bytes.fetch_max(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
-
-        Ok(())
     }
 
     fn lower_value(
@@ -1095,7 +1404,170 @@ impl CanonicalABI {
                     Err(Error::runtime_type_mismatch("Expected list value"))
                 }
             },
-            _ => Err(Error::unimplemented("Component not found")),
+            ValType::Own(_resource_type_idx) => {
+                // Lower an owned resource handle
+                match value {
+                    Value::Own(handle) => self.lower_own(*handle, addr, memory_bytes),
+                    _ => Err(Error::runtime_type_mismatch("Expected own handle value")),
+                }
+            },
+            ValType::Borrow(_resource_type_idx) => {
+                // Lower a borrowed resource handle
+                match value {
+                    Value::Borrow(handle) => self.lower_borrow(*handle, addr, memory_bytes),
+                    _ => Err(Error::runtime_type_mismatch("Expected borrow handle value")),
+                }
+            },
+            ValType::Record(record) => {
+                match value {
+                    Value::Record(fields) => {
+                        #[cfg(feature = "std")]
+                        let field_types: Vec<(String, ValType)> = record.fields.iter()
+                            .map(|f| (f.name.to_string(), (*f.ty).clone()))
+                            .collect();
+                        #[cfg(not(feature = "std"))]
+                        let field_types: Vec<(String, ValType)> = record.fields.iter()
+                            .filter_map(|f| f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone())))
+                            .collect();
+                        self.lower_record(fields, &field_types, addr, resource_table, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected record value")),
+                }
+            },
+            ValType::Tuple(tuple) => {
+                match value {
+                    Value::Tuple(values) => {
+                        let types_slice = tuple.types.as_slice();
+                        self.lower_tuple(types_slice, values, addr, resource_table, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected tuple value")),
+                }
+            },
+            ValType::Variant(variant) => {
+                match value {
+                    Value::Variant(case_name, payload) => {
+                        #[cfg(feature = "std")]
+                        let cases: Vec<(String, Option<ValType>)> = variant.cases.iter()
+                            .map(|c| (c.name.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
+                            .collect();
+                        #[cfg(not(feature = "std"))]
+                        let cases: Vec<(String, Option<ValType>)> = variant.cases.iter()
+                            .filter_map(|c| c.name.as_str().ok().map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone()))))
+                            .collect();
+
+                        // Find case index
+                        let case_idx = cases.iter().position(|(name, _)| name == case_name)
+                            .ok_or_else(|| Error::invalid_type_error("Variant case not found"))?;
+
+                        let payload_ref = payload.as_ref().map(|b| b.as_ref());
+                        self.lower_variant(&cases, case_idx as u32, payload_ref, addr, resource_table, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected variant value")),
+                }
+            },
+            ValType::Enum(enum_) => {
+                match value {
+                    Value::Enum(case_name) => {
+                        #[cfg(feature = "std")]
+                        let cases: Vec<String> = enum_.cases.iter().map(|s| s.to_string()).collect();
+                        #[cfg(not(feature = "std"))]
+                        let cases: Vec<String> = enum_.cases.iter()
+                            .filter_map(|s| s.as_str().ok())
+                            .map(|s| s.to_string())
+                            .collect();
+                        self.lower_enum(&cases, case_name, addr, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected enum value")),
+                }
+            },
+            ValType::Option(inner_ty) => {
+                match value {
+                    Value::Option(opt) => {
+                        self.lower_option(inner_ty, opt, addr, resource_table, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected option value")),
+                }
+            },
+            ValType::Result(result_ty) => {
+                match value {
+                    Value::Result(result_val) => {
+                        match result_val {
+                            Ok(ok_val) => {
+                                // ok_val is Box<Value>, get a reference to it
+                                self.lower_result(
+                                    result_ty.ok.as_ref().map(|t| t.as_ref()),
+                                    result_ty.err.as_ref().map(|t| t.as_ref()),
+                                    true,
+                                    Some(ok_val.as_ref()),
+                                    addr,
+                                    resource_table,
+                                    memory_bytes,
+                                )
+                            },
+                            Err(err_val) => {
+                                // err_val is Box<Value>, get a reference to it
+                                self.lower_result(
+                                    result_ty.ok.as_ref().map(|t| t.as_ref()),
+                                    result_ty.err.as_ref().map(|t| t.as_ref()),
+                                    false,
+                                    Some(err_val.as_ref()),
+                                    addr,
+                                    resource_table,
+                                    memory_bytes,
+                                )
+                            },
+                        }
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected result value")),
+                }
+            },
+            ValType::Flags(flags) => {
+                match value {
+                    Value::Flags(set_flags) => {
+                        #[cfg(feature = "std")]
+                        let labels: Vec<String> = flags.labels.iter().map(|s| s.to_string()).collect();
+                        #[cfg(not(feature = "std"))]
+                        let labels: Vec<String> = flags.labels.iter()
+                            .filter_map(|s| s.as_str().ok())
+                            .map(|s| s.to_string())
+                            .collect();
+                        self.lower_flags(&labels, set_flags, addr, memory_bytes)
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected flags value")),
+                }
+            },
+            ValType::Stream(_element_type) => {
+                // Stream values are lowered as their handle (u32)
+                // In sync lowering mode, we accept I32 values representing stream handles
+                // For full async Component Model support, use async_canonical.rs
+                match value {
+                    wrt_foundation::values::Value::I32(handle) => {
+                        if addr as usize + 4 > memory_bytes.len() {
+                            return Err(Error::memory_out_of_bounds("Stream handle write out of bounds"));
+                        }
+                        let handle_bytes = (*handle as u32).to_le_bytes();
+                        memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_bytes);
+                        Ok(())
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected i32 stream handle")),
+                }
+            },
+            ValType::Future(_value_type) => {
+                // Future values are lowered as their handle (u32)
+                // In sync lowering mode, we accept I32 values representing future handles
+                // For full async Component Model support, use async_canonical.rs
+                match value {
+                    wrt_foundation::values::Value::I32(handle) => {
+                        if addr as usize + 4 > memory_bytes.len() {
+                            return Err(Error::memory_out_of_bounds("Future handle write out of bounds"));
+                        }
+                        let handle_bytes = (*handle as u32).to_le_bytes();
+                        memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_bytes);
+                        Ok(())
+                    },
+                    _ => Err(Error::runtime_type_mismatch("Expected i32 future handle")),
+                }
+            },
         }
     }
 
@@ -1137,14 +1609,210 @@ impl CanonicalABI {
 
     fn lower_variant(
         &self,
-        _case: u32,
-        _value: Option<&Value>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
+        cases: &[(String, Option<ValType>)],
+        case_idx: u32,
+        value: Option<&Value>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
     ) -> Result<()> {
-        // Implementation details - placeholder for now
-        Err(Error::unimplemented("Variant lowering not yet implemented"))
+        // Variant format in canonical ABI:
+        // - Discriminant (size depends on case count)
+        // - Payload for the selected case (if any), aligned to max payload alignment
+        let disc_size = Self::discriminant_size(cases.len());
+
+        // Write discriminant based on its size
+        self.check_bounds(addr, disc_size as u32, memory_bytes)?;
+        match disc_size {
+            1 => {
+                memory_bytes[addr as usize] = case_idx as u8;
+            },
+            2 => {
+                let bytes = (case_idx as u16).to_le_bytes();
+                memory_bytes[addr as usize] = bytes[0];
+                memory_bytes[addr as usize + 1] = bytes[1];
+            },
+            4 => {
+                let bytes = case_idx.to_le_bytes();
+                for i in 0..4 {
+                    memory_bytes[addr as usize + i] = bytes[i];
+                }
+            },
+            _ => return Err(Error::runtime_error("Invalid discriminant size")),
+        }
+
+        // Write payload if present
+        if let Some(payload_value) = value {
+            if case_idx as usize >= cases.len() {
+                return Err(Error::invalid_type_error("Variant case index out of range"));
+            }
+
+            if let Some(payload_type) = &cases[case_idx as usize].1 {
+                // Calculate payload offset: aligned after discriminant
+                let payload_layout = self.get_layout_for_type(payload_type);
+                let payload_offset = Self::align_to(disc_size, payload_layout.alignment);
+                let payload_addr = addr + payload_offset as u32;
+
+                self.lower_value(payload_value, payload_type, payload_addr, resource_table, memory_bytes)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Lower an option value to memory
+    fn lower_option(
+        &self,
+        inner_ty: &ValType,
+        value: &Option<Box<Value>>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Option format: 1-byte discriminant + payload
+        self.check_bounds(addr, 1, memory_bytes)?;
+
+        match value {
+            None => {
+                memory_bytes[addr as usize] = 0;
+            },
+            Some(payload) => {
+                memory_bytes[addr as usize] = 1;
+                let inner_layout = self.get_layout_for_type(inner_ty);
+                let payload_offset = Self::align_to(1, inner_layout.alignment);
+                let payload_addr = addr + payload_offset as u32;
+                self.lower_value(payload, inner_ty, payload_addr, resource_table, memory_bytes)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Lower a result value to memory
+    fn lower_result(
+        &self,
+        ok_ty: Option<&ValType>,
+        err_ty: Option<&ValType>,
+        is_ok: bool,
+        value: Option<&Value>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Result format: 1-byte discriminant (0=ok, 1=err) + payload
+        self.check_bounds(addr, 1, memory_bytes)?;
+
+        let discriminant = if is_ok { 0u8 } else { 1u8 };
+        memory_bytes[addr as usize] = discriminant;
+
+        // Calculate max alignment for payload offset
+        let mut max_align = 1usize;
+        if let Some(ty) = ok_ty {
+            max_align = max_align.max(self.get_layout_for_type(ty).alignment);
+        }
+        if let Some(ty) = err_ty {
+            max_align = max_align.max(self.get_layout_for_type(ty).alignment);
+        }
+
+        let payload_offset = Self::align_to(1, max_align);
+        let payload_addr = addr + payload_offset as u32;
+
+        if let Some(payload) = value {
+            let payload_ty = if is_ok { ok_ty } else { err_ty };
+            if let Some(ty) = payload_ty {
+                self.lower_value(payload, ty, payload_addr, resource_table, memory_bytes)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Lower a tuple value to memory
+    fn lower_tuple(
+        &self,
+        element_types: &[ValType],
+        values: &[Value],
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        if values.len() != element_types.len() {
+            return Err(Error::runtime_type_mismatch("Tuple size mismatch"));
+        }
+
+        let mut current_addr = addr;
+        for (ty, value) in element_types.iter().zip(values.iter()) {
+            let layout = self.get_layout_for_type(ty);
+            // Align to the element's alignment
+            let aligned_offset = Self::align_to(current_addr as usize, layout.alignment);
+            current_addr = aligned_offset as u32;
+
+            self.lower_value(value, ty, current_addr, resource_table, memory_bytes)?;
+            current_addr += layout.size as u32;
+        }
+        Ok(())
+    }
+
+    /// Lower an enum value to memory
+    fn lower_enum(
+        &self,
+        cases: &[String],
+        case_name: &str,
+        addr: u32,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Find the case index
+        let case_idx = cases.iter().position(|c| c == case_name)
+            .ok_or_else(|| Error::invalid_type_error("Enum case not found"))?;
+
+        // Enum discriminant size depends on number of cases
+        if cases.len() <= 256 {
+            self.check_bounds(addr, 1, memory_bytes)?;
+            memory_bytes[addr as usize] = case_idx as u8;
+        } else if cases.len() <= 65536 {
+            self.check_bounds(addr, 2, memory_bytes)?;
+            let bytes = (case_idx as u16).to_le_bytes();
+            memory_bytes[addr as usize] = bytes[0];
+            memory_bytes[addr as usize + 1] = bytes[1];
+        } else {
+            self.check_bounds(addr, 4, memory_bytes)?;
+            let bytes = (case_idx as u32).to_le_bytes();
+            for i in 0..4 {
+                memory_bytes[addr as usize + i] = bytes[i];
+            }
+        }
+        Ok(())
+    }
+
+    /// Lower a flags value to memory
+    fn lower_flags(
+        &self,
+        labels: &[String],
+        set_flags: &[String],
+        addr: u32,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // Flags are stored as a bitmask
+        // Size depends on number of labels: ceil(num_labels / 32) * 4 bytes
+        let num_words = (labels.len() + 31) / 32;
+        let size = (num_words * 4) as u32;
+        self.check_bounds(addr, size, memory_bytes)?;
+
+        // Clear the flags area first
+        for i in 0..size as usize {
+            memory_bytes[addr as usize + i] = 0;
+        }
+
+        // Set each flag
+        for flag_name in set_flags {
+            if let Some(idx) = labels.iter().position(|l| l == flag_name) {
+                let word_idx = idx / 32;
+                let bit_idx = idx % 32;
+                let byte_offset = addr as usize + word_idx * 4 + (bit_idx / 8);
+                let bit_in_byte = bit_idx % 8;
+                memory_bytes[byte_offset] |= 1 << bit_in_byte;
+            }
+        }
+        Ok(())
     }
 
     /// Helper method to check memory bounds
@@ -1164,7 +1832,7 @@ impl CanonicalABI {
     }
 
     /// Get memory layout for a ValType
-    /// This is a simplified layout calculation for component model types
+    /// This calculates the size and alignment per the Component Model Canonical ABI spec
     fn get_layout_for_type(&self, ty: &ValType) -> MemoryLayout {
         use crate::types::ValType::*;
         match ty {
@@ -1174,18 +1842,131 @@ impl CanonicalABI {
             S64 | U64 | F64 => MemoryLayout { size: 8, alignment: 8 },
             String | List(_) => MemoryLayout { size: 8, alignment: 4 }, // ptr + length
             Own(_) | Borrow(_) => MemoryLayout { size: 4, alignment: 4 }, // handle
-            Option(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
-            Result(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
-            Variant(_) => MemoryLayout { size: 8, alignment: 4 }, // discriminant + payload
-            Enum(_) => MemoryLayout { size: 4, alignment: 4 }, // discriminant only
-            Flags(_) => MemoryLayout { size: 4, alignment: 4 }, // bitfield
-            Record(_) | Tuple(_) => {
-                // For composite types, we'd need to calculate based on fields
-                // For now, use a placeholder
-                MemoryLayout { size: 4, alignment: 4 }
+            Option(inner) => {
+                // Option: 1-byte discriminant + max(payload size, 0)
+                let inner_layout = self.get_layout_for_type(inner);
+                let discriminant_size = 1;
+                // Align payload after discriminant
+                let payload_offset = Self::align_to(discriminant_size, inner_layout.alignment);
+                let total_size = payload_offset + inner_layout.size;
+                MemoryLayout {
+                    size: total_size,
+                    alignment: inner_layout.alignment.max(1),
+                }
+            },
+            Result(result_ty) => {
+                // Result<T, E>: 1-byte discriminant + max(ok_size, err_size)
+                let mut max_size = 0usize;
+                let mut max_align = 1usize;
+
+                if let Some(ok_ty) = &result_ty.ok {
+                    let ok_layout = self.get_layout_for_type(ok_ty);
+                    max_size = max_size.max(ok_layout.size);
+                    max_align = max_align.max(ok_layout.alignment);
+                }
+                if let Some(err_ty) = &result_ty.err {
+                    let err_layout = self.get_layout_for_type(err_ty);
+                    max_size = max_size.max(err_layout.size);
+                    max_align = max_align.max(err_layout.alignment);
+                }
+
+                let discriminant_size = 1;
+                let payload_offset = Self::align_to(discriminant_size, max_align);
+                let total_size = if max_size > 0 {
+                    payload_offset + max_size
+                } else {
+                    discriminant_size
+                };
+
+                MemoryLayout {
+                    size: total_size,
+                    alignment: max_align.max(1),
+                }
+            },
+            Variant(variant) => {
+                // Variant: discriminant + max(case payloads)
+                let discriminant_size = Self::discriminant_size(variant.cases.len());
+                let mut max_payload_size = 0usize;
+                let mut max_alignment = discriminant_size;
+
+                for case in variant.cases.iter() {
+                    if let Some(case_ty) = &case.ty {
+                        let layout = self.get_layout_for_type(case_ty);
+                        max_payload_size = max_payload_size.max(layout.size);
+                        max_alignment = max_alignment.max(layout.alignment);
+                    }
+                }
+
+                let payload_offset = Self::align_to(discriminant_size, max_alignment);
+                let total_size = if max_payload_size > 0 {
+                    payload_offset + max_payload_size
+                } else {
+                    discriminant_size
+                };
+
+                MemoryLayout {
+                    size: total_size,
+                    alignment: max_alignment,
+                }
+            },
+            Enum(enum_ty) => {
+                // Enum: discriminant only (size depends on case count)
+                let size = Self::discriminant_size(enum_ty.cases.len());
+                MemoryLayout { size, alignment: size }
+            },
+            Flags(flags) => {
+                // Flags: ceil(count / 32) * 4 bytes
+                let count = flags.labels.len();
+                let num_words = (count + 31) / 32;
+                MemoryLayout { size: num_words.max(1) * 4, alignment: 4 }
+            },
+            Record(record) => {
+                // Record: sum of field sizes with alignment padding
+                let mut current_offset = 0usize;
+                let mut max_alignment = 1usize;
+                for field in record.fields.iter() {
+                    let field_layout = self.get_layout_for_type(&field.ty);
+                    max_alignment = max_alignment.max(field_layout.alignment);
+                    current_offset = Self::align_to(current_offset, field_layout.alignment);
+                    current_offset += field_layout.size;
+                }
+                let final_size = Self::align_to(current_offset, max_alignment);
+                MemoryLayout { size: final_size, alignment: max_alignment.max(1) }
+            },
+            Tuple(tuple) => {
+                // Tuple: same as record but with positional fields
+                let mut current_offset = 0usize;
+                let mut max_alignment = 1usize;
+                for elem_ty in tuple.types.iter() {
+                    let elem_layout = self.get_layout_for_type(elem_ty);
+                    max_alignment = max_alignment.max(elem_layout.alignment);
+                    current_offset = Self::align_to(current_offset, elem_layout.alignment);
+                    current_offset += elem_layout.size;
+                }
+                let final_size = Self::align_to(current_offset, max_alignment);
+                MemoryLayout { size: final_size, alignment: max_alignment.max(1) }
             },
             _ => MemoryLayout { size: 4, alignment: 4 }, // Default fallback
         }
+    }
+
+    /// Calculate discriminant size based on case count per spec
+    fn discriminant_size(case_count: usize) -> usize {
+        if case_count <= 256 {
+            1
+        } else if case_count <= 65536 {
+            2
+        } else {
+            4
+        }
+    }
+
+    /// Align a value up to the given alignment
+    fn align_to(value: usize, alignment: usize) -> usize {
+        if alignment == 0 {
+            return value;
+        }
+        (value + alignment - 1) & !(alignment - 1)
     }
 
     // SIMD-Optimized Bulk Operations for Performance Enhancement

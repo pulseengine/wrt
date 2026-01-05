@@ -51,6 +51,33 @@ use crate::{
 // Placeholder types for missing imports
 pub type Memory = ();
 
+/// Trait for executing cleanup functions
+///
+/// This trait allows the runtime layer to provide function execution capability
+/// to the component layer without creating a dependency cycle.
+pub trait PostReturnExecutor {
+    /// Execute a post-return cleanup function
+    ///
+    /// # Arguments
+    /// * `func_index` - The index of the function to call
+    /// * `args` - The arguments to pass to the function
+    ///
+    /// # Returns
+    /// Ok(()) on success, Err on failure
+    fn execute_cleanup(&mut self, func_index: u32, args: &[Value]) -> Result<()>;
+}
+
+/// No-op executor for when no runtime is available
+#[derive(Debug, Default)]
+pub struct NoOpExecutor;
+
+impl PostReturnExecutor for NoOpExecutor {
+    fn execute_cleanup(&mut self, _func_index: u32, _args: &[Value]) -> Result<()> {
+        // No-op: Used when actual execution is not available
+        Ok(())
+    }
+}
+
 /// Registry for managing post-return cleanup operations
 #[derive(Debug, Default)]
 pub struct PostReturnRegistry {
@@ -251,12 +278,28 @@ impl PostReturnContext {
         Ok(())
     }
 
-    /// Execute all pending post-return cleanup operations
+    /// Execute all pending post-return cleanup operations (legacy, uses no-op executor)
     pub fn execute_post_return(
         &mut self,
         instance: &mut Instance,
         memory: &mut Memory,
         options: &CanonicalOptions,
+    ) -> Result<()> {
+        // Use a no-op executor for backward compatibility
+        let mut executor = NoOpExecutor;
+        self.execute_post_return_with_executor(instance, memory, options, &mut executor)
+    }
+
+    /// Execute all pending post-return cleanup operations with a provided executor
+    ///
+    /// This method allows the runtime layer to provide actual function execution
+    /// capability through the `PostReturnExecutor` trait.
+    pub fn execute_post_return_with_executor<E: PostReturnExecutor>(
+        &mut self,
+        instance: &mut Instance,
+        memory: &mut Memory,
+        options: &CanonicalOptions,
+        executor: &mut E,
     ) -> Result<()> {
         if self.is_executing {
             return Err(Error::runtime_invalid_state(
@@ -277,7 +320,7 @@ impl PostReturnContext {
         for entry in entries {
             let operation_start = current_time_us();
 
-            match self.execute_cleanup_entry(instance, memory, &entry) {
+            match self.execute_cleanup_entry_with_executor(instance, memory, &entry, executor) {
                 Ok(()) => {
                     self.stats.operations_successful += 1;
                 },
@@ -311,12 +354,24 @@ impl PostReturnContext {
         Ok(())
     }
 
-    /// Execute a single cleanup entry
+    /// Execute a single cleanup entry (legacy, uses no-op)
     fn execute_cleanup_entry(
         &self,
         instance: &mut Instance,
         memory: &mut Memory,
         entry: &PostReturnEntry,
+    ) -> Result<()> {
+        let mut executor = NoOpExecutor;
+        self.execute_cleanup_entry_with_executor(instance, memory, entry, &mut executor)
+    }
+
+    /// Execute a single cleanup entry with a provided executor
+    fn execute_cleanup_entry_with_executor<E: PostReturnExecutor>(
+        &self,
+        _instance: &mut Instance,
+        _memory: &mut Memory,
+        entry: &PostReturnEntry,
+        executor: &mut E,
     ) -> Result<()> {
         // Convert ComponentValue args to raw values for function call
         let mut raw_args = Vec::new();
@@ -336,12 +391,8 @@ impl PostReturnContext {
             }
         }
 
-        // Call the post-return function
-        // Note: Instance doesn't have call_function method, would need implementation
-        // For now, return success as a placeholder
-        // TODO: Implement proper function calling mechanism
-
-        Ok(())
+        // Call the cleanup function via the executor
+        executor.execute_cleanup(entry.func_index, &raw_args)
     }
 
     /// Convert ComponentValue to raw value for function calls

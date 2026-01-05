@@ -385,27 +385,20 @@ pub mod binary {
 
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
-        #[cfg(feature = "std")]
-        {
-            eprintln!(
-                "DEBUG read_name: offset={}, data[offset]=0x{:02x}",
-                offset,
-                if offset < data.len() { data[offset] } else { 0 }
-            );
-        }
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(
+            offset = offset,
+            data_byte = format!("0x{:02x}", if offset < data.len() { data[offset] } else { 0 }),
+            "read_name"
+        );
         if offset >= data.len() {
             return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
 
         // Read length as LEB128
         let (length, bytes_consumed) = read_leb_u32(data, offset)?;
-        #[cfg(feature = "std")]
-        {
-            eprintln!(
-                "DEBUG read_name: length={}, bytes_consumed={}",
-                length, bytes_consumed
-            );
-        }
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(length = length, bytes_consumed = bytes_consumed, "read_name length parsed");
         let name_start = offset + bytes_consumed;
 
         if name_start + length as usize > data.len() {
@@ -413,10 +406,8 @@ pub mod binary {
         }
 
         let final_offset = name_start + length as usize;
-        #[cfg(feature = "std")]
-        {
-            eprintln!("DEBUG read_name: returning final_offset={}", final_offset);
-        }
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(final_offset = final_offset, "read_name complete");
         Ok((
             &data[name_start..name_start + length as usize],
             final_offset,

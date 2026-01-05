@@ -893,8 +893,8 @@ impl CfiExecutionEngine {
         self.statistics.violations_detected += 1;
 
         // Log violation details (in real implementation)
-        #[cfg(feature = "std")]
-        eprintln!("CFI Violation detected: {:?}", violation_type);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::error!(violation_type = ?violation_type, "CFI Violation detected");
 
         // Apply violation policy
         match self.violation_policy {

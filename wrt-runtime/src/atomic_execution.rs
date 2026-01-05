@@ -443,13 +443,160 @@ impl AtomicMemoryContext {
                     self.atomic_rmw_u64(addr, value, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?;
                 result_vec![old_value as u32, (old_value >> 32) as u32]
             },
-            _ => {
-                // Handle narrower RMW operations (8-bit, 16-bit, 32-bit variants)
-                // For brevity, implementing just the pattern - full implementation would handle
-                // all variants
-                Err(Error::runtime_execution_error(
-                    "Narrow atomic RMW operations not yet implemented",
-                ))
+            // 8-bit i32 RMW variants (zero-extend to i32)
+            AtomicRMWInstr::I32AtomicRmw8AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw8SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw8AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::And, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw8OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw8XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw8XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            // 16-bit i32 RMW variants (zero-extend to i32)
+            AtomicRMWInstr::I32AtomicRmw16AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw16SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw16AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::And, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw16OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw16XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            AtomicRMWInstr::I32AtomicRmw16XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            // 8-bit i64 RMW variants (zero-extend to i64)
+            AtomicRMWInstr::I64AtomicRmw8AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw8SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw8AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::And, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw8OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw8XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw8XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u8(addr, value as u8, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            // 16-bit i64 RMW variants (zero-extend to i64)
+            AtomicRMWInstr::I64AtomicRmw16AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw16SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw16AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::And, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw16OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw16XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw16XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u16(addr, value as u16, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            // 32-bit i64 RMW variants (zero-extend to i64)
+            AtomicRMWInstr::I64AtomicRmw32AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw32SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw32AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::And, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw32OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw32XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            AtomicRMWInstr::I64AtomicRmw32XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
             },
         }
     }
@@ -480,11 +627,35 @@ impl AtomicMemoryContext {
                     self.atomic_cmpxchg_u64(addr, expected, replacement, MemoryOrdering::SeqCst)?;
                 result_vec![old_value as u32, (old_value >> 32) as u32]
             },
-            _ => {
-                // Handle narrower compare-exchange operations
-                Err(Error::runtime_execution_error(
-                    "Narrow atomic compare-exchange operations not yet implemented",
-                ))
+            // 8-bit i32 cmpxchg (zero-extend to i32)
+            AtomicCmpxchgInstr::I32AtomicRmw8CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_cmpxchg_u8(addr, expected as u8, replacement as u8, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            // 16-bit i32 cmpxchg (zero-extend to i32)
+            AtomicCmpxchgInstr::I32AtomicRmw16CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = self.atomic_cmpxchg_u16(addr, expected as u16, replacement as u16, MemoryOrdering::SeqCst)?;
+                result_vec![u32::from(old)]
+            },
+            // 8-bit i64 cmpxchg (zero-extend to i64)
+            AtomicCmpxchgInstr::I64AtomicRmw8CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_cmpxchg_u8(addr, expected as u8, replacement as u8, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            // 16-bit i64 cmpxchg (zero-extend to i64)
+            AtomicCmpxchgInstr::I64AtomicRmw16CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_cmpxchg_u16(addr, expected as u16, replacement as u16, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
+            },
+            // 32-bit i64 cmpxchg (zero-extend to i64)
+            AtomicCmpxchgInstr::I64AtomicRmw32CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                let old = u64::from(self.atomic_cmpxchg_u32(addr, expected as u32, replacement as u32, MemoryOrdering::SeqCst)?);
+                result_vec![old as u32, (old >> 32) as u32]
             },
         }
     }
@@ -645,6 +816,53 @@ impl AtomicMemoryContext {
         Ok(())
     }
 
+    fn atomic_rmw_u8(
+        &self,
+        addr: usize,
+        value: u8,
+        op: AtomicRMWOp,
+        ordering: MemoryOrdering,
+    ) -> Result<u8> {
+        let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU8 };
+        let atomic_ref = unsafe { &*ptr };
+        let ordering = convert_memory_ordering(ordering);
+
+        Ok(match op {
+            AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
+            AtomicRMWOp::Sub => atomic_ref.fetch_sub(value, ordering),
+            AtomicRMWOp::And => atomic_ref.fetch_and(value, ordering),
+            AtomicRMWOp::Or => atomic_ref.fetch_or(value, ordering),
+            AtomicRMWOp::Xor => atomic_ref.fetch_xor(value, ordering),
+            AtomicRMWOp::Xchg => atomic_ref.swap(value, ordering),
+        })
+    }
+
+    fn atomic_rmw_u16(
+        &self,
+        addr: usize,
+        value: u16,
+        op: AtomicRMWOp,
+        ordering: MemoryOrdering,
+    ) -> Result<u16> {
+        if addr % 2 != 0 {
+            return Err(Error::runtime_execution_error(
+                "Unaligned atomic u16 access",
+            ));
+        }
+        let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU16 };
+        let atomic_ref = unsafe { &*ptr };
+        let ordering = convert_memory_ordering(ordering);
+
+        Ok(match op {
+            AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
+            AtomicRMWOp::Sub => atomic_ref.fetch_sub(value, ordering),
+            AtomicRMWOp::And => atomic_ref.fetch_and(value, ordering),
+            AtomicRMWOp::Or => atomic_ref.fetch_or(value, ordering),
+            AtomicRMWOp::Xor => atomic_ref.fetch_xor(value, ordering),
+            AtomicRMWOp::Xchg => atomic_ref.swap(value, ordering),
+        })
+    }
+
     fn atomic_rmw_u32(
         &self,
         addr: usize,
@@ -695,6 +913,53 @@ impl AtomicMemoryContext {
             AtomicRMWOp::Xor => atomic_ref.fetch_xor(value, ordering),
             AtomicRMWOp::Xchg => atomic_ref.swap(value, ordering),
         })
+    }
+
+    fn atomic_cmpxchg_u8(
+        &self,
+        addr: usize,
+        expected: u8,
+        replacement: u8,
+        ordering: MemoryOrdering,
+    ) -> Result<u8> {
+        let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU8 };
+        let atomic_ref = unsafe { &*ptr };
+
+        match atomic_ref.compare_exchange(
+            expected,
+            replacement,
+            convert_memory_ordering(ordering),
+            convert_memory_ordering(ordering),
+        ) {
+            Ok(old_value) => Ok(old_value),
+            Err(old_value) => Ok(old_value),
+        }
+    }
+
+    fn atomic_cmpxchg_u16(
+        &self,
+        addr: usize,
+        expected: u16,
+        replacement: u16,
+        ordering: MemoryOrdering,
+    ) -> Result<u16> {
+        if addr % 2 != 0 {
+            return Err(Error::runtime_execution_error(
+                "Unaligned atomic u16 access",
+            ));
+        }
+        let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU16 };
+        let atomic_ref = unsafe { &*ptr };
+
+        match atomic_ref.compare_exchange(
+            expected,
+            replacement,
+            convert_memory_ordering(ordering),
+            convert_memory_ordering(ordering),
+        ) {
+            Ok(old_value) => Ok(old_value),
+            Err(old_value) => Ok(old_value),
+        }
     }
 
     fn atomic_cmpxchg_u32(

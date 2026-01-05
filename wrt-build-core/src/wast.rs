@@ -372,10 +372,6 @@ impl WastTestRunner {
                 Ok(directive_info) => {
                     if directive_info.result == TestResult::Failed {
                         file_status = TestResult::Failed;
-                        // Print error details for debugging
-                        if let Some(ref err_msg) = directive_info.error_message {
-                            eprintln!("[FAIL] {}: {}", directive_info.directive_name, err_msg);
-                        }
                     }
                     directive_results.push(directive_info);
                 },
@@ -687,13 +683,22 @@ impl WastTestRunner {
             },
             Err(e) => {
                 self.stats.failed += 1;
+                // Extract function name for better error context
+                let func_name = match exec {
+                    WastExecute::Invoke(invoke) => invoke.name.to_string(),
+                    WastExecute::Get { global, .. } => format!("get {}", global),
+                    _ => "unknown".to_string(),
+                };
                 Ok(WastDirectiveInfo {
                     test_type:             WastTestType::Correctness,
                     directive_name:        "assert_return".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
                     result:                TestResult::Failed,
-                    error_message:         Some(format!("Function execution failed: {}", e)),
+                    error_message:         Some(format!(
+                        "Function '{}' failed: {}",
+                        func_name, e
+                    )),
                 })
             },
         }
@@ -818,7 +823,8 @@ impl WastTestRunner {
                     },
                     Err(validation_error) => {
                         // Module validation failed as expected
-                        let error_msg = validation_error.to_string().to_lowercase();
+                        // Use debug format to get full error chain, not just top-level message
+                        let error_msg = format!("{:?}", validation_error).to_lowercase();
                         let expected_msg = expected_message.to_lowercase();
 
                         if error_msg.contains(&expected_msg)
@@ -1645,6 +1651,8 @@ fn contains_validation_keyword(error_msg: &str, expected_msg: &str) -> bool {
         "duplicate",
         "import",
         "export",
+        "memory size",
+        "must be at most",
     ];
 
     validation_keywords

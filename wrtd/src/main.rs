@@ -88,6 +88,7 @@ use wrt_host::CallbackRegistry;
 use wrt_wasi::{
     ComponentModelProvider,
     WasiCapabilities,
+    WasiDispatcher,
     WasiHostProvider,
     set_global_wasi_args,
 };
@@ -617,7 +618,26 @@ impl WrtdEngine {
             let mut engine = CapabilityAwareEngine::with_preset(preset)
                 .map_err(|_e| Error::runtime_error("Failed to create engine"))?;
 
-            // Enable WASI support if configured
+            // Wire up WASI dispatcher as the host import handler
+            // This is the SINGLE dispatch path for ALL host function calls
+            #[cfg(feature = "wasi")]
+            if self.config.enable_wasi {
+                match WasiDispatcher::with_defaults() {
+                    Ok(dispatcher) => {
+                        engine.set_host_handler(Box::new(dispatcher));
+                        let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI dispatcher connected");
+                    }
+                    Err(_e) => {
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Warn,
+                            "Failed to create WASI dispatcher",
+                        );
+                        return Err(Error::runtime_error("WASI dispatcher creation failed"));
+                    }
+                }
+            }
+
+            // Legacy WASI registration (to be removed once dispatcher is verified working)
             #[cfg(feature = "wasi")]
             if self.config.enable_wasi {
                 if let Err(_e) = engine.enable_wasi() {

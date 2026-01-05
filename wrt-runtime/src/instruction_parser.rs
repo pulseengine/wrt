@@ -66,31 +66,31 @@ pub fn parse_instructions_with_provider(
         FUNC_COUNTER
     };
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "tracing")]
     if func_id == 34 || func_id == 44 {
-        eprintln!("DEBUG: [Func {}] Starting parse, bytecode.len()={}", func_id, bytecode.len());
+        wrt_foundation::tracing::trace!(func_id = func_id, bytecode_len = bytecode.len(), "Starting parse");
     }
 
     // WebAssembly function bodies should end with 0x0B (End)
     // Parse until we reach the end of bytecode - the last byte should be 0x0B
     while offset < bytecode.len() {
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
         {
             instruction_count += 1;
             if instruction_count % 1000 == 0 {
-                eprintln!("DEBUG: [Func {}] Parsed {} instructions so far at offset {}", func_id, instruction_count, offset);
+                wrt_foundation::tracing::trace!(func_id = func_id, instruction_count = instruction_count, offset = offset, "Parsing progress");
             }
             if instruction_count > 50000 {
-                eprintln!("ERROR: Function {} appears stuck - parsed {} instructions!", func_id, instruction_count);
+                wrt_foundation::tracing::error!(func_id = func_id, instruction_count = instruction_count, "Function appears stuck in infinite loop");
                 return Err(Error::parse_error("Function parsing appears stuck in infinite loop"));
             }
         }
 
         let (instruction, consumed) = parse_instruction_with_provider(bytecode, offset, &provider_clone)?;
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
         if consumed == 0 {
-            eprintln!("ERROR: Instruction at offset {} consumed 0 bytes! Opcode: 0x{:02X}", offset, bytecode[offset]);
+            wrt_foundation::tracing::error!(offset = offset, opcode = format!("0x{:02X}", bytecode[offset]), "Instruction consumed 0 bytes");
             return Err(Error::parse_error("Instruction consumed 0 bytes"));
         }
 
@@ -106,9 +106,9 @@ pub fn parse_instructions_with_provider(
         // Check if this was the final End instruction
         // The function body ends when we've consumed all bytecode and the last instruction was End
         if matches!(instruction, Instruction::End) && offset >= bytecode.len() {
-            #[cfg(feature = "std")]
+            #[cfg(feature = "tracing")]
             if func_id == 34 || func_id == 44 {
-                eprintln!("DEBUG: [Func {}] Hit final End at offset {}, done parsing", func_id, offset);
+                wrt_foundation::tracing::trace!(func_id = func_id, offset = offset, "Hit final End, done parsing");
             }
             break;
         }
@@ -190,16 +190,16 @@ fn parse_instruction_with_provider(
         },
         0x0E => {
             // BrTable
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Parsing BrTable instruction at offset {}", offset);
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::trace!(offset = offset, "Parsing BrTable instruction");
             let mut targets = BoundedVec::new(provider.clone())
                 .map_err(|_| Error::parse_error("Failed to create BrTable targets vector"))?;
 
             let (count, mut bytes_consumed) = read_leb128_u32(bytecode, offset + 1)?;
             consumed += bytes_consumed;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: BrTable has {} targets", count);
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::trace!(count = count, "BrTable target count");
 
             // Sanity check - if count is suspiciously large, there's likely an issue
             if count > 10000 {
@@ -210,9 +210,9 @@ fn parse_instruction_with_provider(
             for i in 0..count {
                 let (target, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
                 consumed += bytes;
-                #[cfg(feature = "std")]
+                #[cfg(feature = "tracing")]
                 if i < 3 || i == count - 1 {
-                    eprintln!("DEBUG: BrTable target[{}] = {}", i, target);
+                    wrt_foundation::tracing::trace!(index = i, target = target, "BrTable target");
                 }
                 targets
                     .push(target)
@@ -274,6 +274,20 @@ fn parse_instruction_with_provider(
             let (global_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
             consumed += bytes;
             Instruction::GlobalSet(global_idx)
+        },
+
+        // Table instructions
+        0x25 => {
+            // table.get
+            let (table_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::TableGet(table_idx)
+        },
+        0x26 => {
+            // table.set
+            let (table_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::TableSet(table_idx)
         },
 
         // Memory instructions
@@ -771,18 +785,22 @@ fn parse_instruction_with_provider(
                     Instruction::MemoryFill(mem_idx as u32)
                 }
                 _ => {
-                    eprintln!("[INSTRUCTION_PARSER] Unknown FC subopcode: 0xFC 0x{:02X} at offset {}", subopcode, offset);
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::warn!(subopcode = format!("0xFC 0x{:02X}", subopcode), offset = offset, "Unknown FC subopcode");
                     return Err(Error::parse_error("Unknown multi-byte instruction"));
                 }
             }
         }
         _ => {
             // Show context around the unknown opcode
-            let context_start = offset.saturating_sub(5);
-            let context_end = (offset + 10).min(bytecode.len());
-            let context = &bytecode[context_start..context_end];
-            eprintln!("[INSTRUCTION_PARSER] Unknown opcode: 0x{:02X} at offset {}", opcode, offset);
-            eprintln!("[INSTRUCTION_PARSER] Context: {:02X?}", context);
+            #[cfg(feature = "tracing")]
+            {
+                let context_start = offset.saturating_sub(5);
+                let context_end = (offset + 10).min(bytecode.len());
+                let context = &bytecode[context_start..context_end];
+                wrt_foundation::tracing::warn!(opcode = format!("0x{:02X}", opcode), offset = offset, "Unknown opcode");
+                wrt_foundation::tracing::trace!(context = ?context, "Bytecode context");
+            }
             return Err(Error::parse_error("Unknown instruction opcode"));
         },
     };

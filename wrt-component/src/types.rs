@@ -167,6 +167,15 @@ pub struct ComponentInstance {
     #[cfg(not(any(feature = "std",)))]
     pub module_instances:
         BoundedVec<ModuleInstance, 64>,
+    /// Nested component instances (child components instantiated within this component)
+    /// Maps from component instance index to the instantiated ComponentInstance
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub nested_component_instances: WrtVec<NestedComponentInstance, { CrateId::Component as u8 }, 16>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    pub nested_component_instances: Vec<NestedComponentInstance>,
+    #[cfg(not(any(feature = "std",)))]
+    pub nested_component_instances:
+        BoundedVec<NestedComponentInstance, 16>,
     /// Runtime engine for executing WASM functions (if available)
     #[cfg(feature = "wrt-execution")]
     pub runtime_engine: Option<Box<wrt_runtime::engine::CapabilityAwareEngine>>,
@@ -189,6 +198,7 @@ impl fmt::Debug for ComponentInstance {
             .field("exports", &self.exports.len())
             .field("resource_tables", &self.resource_tables.len())
             .field("module_instances", &self.module_instances.len())
+            .field("nested_component_instances", &self.nested_component_instances.len())
             .finish()
     }
 }
@@ -205,6 +215,35 @@ impl ComponentInstance {
     /// An optional reference to the module instance
     pub fn get_core_module_instance(&self, index: usize) -> Option<&ModuleInstance> {
         self.module_instances.get(index)
+    }
+
+    /// Get a nested component instance by its instance index
+    ///
+    /// Returns the nested component instance at the given index, or None if not found.
+    ///
+    /// # Arguments
+    /// * `instance_index` - The instance index within this component's instance space
+    ///
+    /// # Returns
+    /// An optional reference to the nested component instance
+    #[cfg(feature = "std")]
+    pub fn get_nested_component_instance(&self, instance_index: u32) -> Option<&NestedComponentInstance> {
+        self.nested_component_instances
+            .iter()
+            .find(|n| n.instance_index == instance_index)
+    }
+
+    /// Get a mutable reference to a nested component instance by its instance index
+    #[cfg(feature = "std")]
+    pub fn get_nested_component_instance_mut(&mut self, instance_index: u32) -> Option<&mut NestedComponentInstance> {
+        self.nested_component_instances
+            .iter_mut()
+            .find(|n| n.instance_index == instance_index)
+    }
+
+    /// Get the number of nested component instances
+    pub fn nested_component_instance_count(&self) -> usize {
+        self.nested_component_instances.len()
     }
 }
 
@@ -227,6 +266,57 @@ impl Default for ComponentInstanceState {
     fn default() -> Self {
         Self::Initialized
     }
+}
+
+/// A nested component instance within a parent component
+///
+/// This represents a component that was instantiated as part of another
+/// component's instantiation process. The nested instance has its own
+/// exports that can be aliased by the parent.
+///
+/// Note: This type intentionally does not implement Clone because
+/// ComponentInstance contains runtime state that should not be duplicated.
+#[derive(Debug)]
+pub struct NestedComponentInstance {
+    /// Index of this instance within the parent component's instance space
+    pub instance_index: u32,
+    /// Index of the component definition this instance was created from
+    pub component_index: u32,
+    /// The instantiated component instance (boxed to avoid recursive size issues)
+    #[cfg(feature = "std")]
+    pub instance: Box<ComponentInstance>,
+    /// Placeholder for no_std (nested components not supported without std)
+    #[cfg(not(feature = "std"))]
+    pub instance: (),
+    /// Exports provided by this nested instance that can be aliased by parent
+    #[cfg(feature = "std")]
+    pub exports: std::collections::HashMap<String, NestedExportRef>,
+    #[cfg(not(feature = "std"))]
+    pub exports: (),
+}
+
+/// Reference to an export from a nested component instance
+#[derive(Debug, Clone)]
+pub struct NestedExportRef {
+    /// Kind of the export (function, value, type, instance, etc.)
+    pub kind: NestedExportKind,
+    /// Index within the nested instance's export space
+    pub index: u32,
+}
+
+/// Kind of export from a nested component instance
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NestedExportKind {
+    /// Function export
+    Function,
+    /// Value export
+    Value,
+    /// Type export
+    Type,
+    /// Instance export
+    Instance,
+    /// Component export
+    Component,
 }
 
 /// Component model value type

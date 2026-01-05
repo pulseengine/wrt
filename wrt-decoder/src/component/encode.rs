@@ -150,8 +150,10 @@ mod std_encoding {
                     for arg in arg_refs {
                         // Write argument name
                         data.extend_from_slice(&write_string(&arg.name));
-                        // Write instance index
-                        data.extend_from_slice(&write_leb128_u32(arg.instance_idx));
+                        // Write kind byte
+                        data.push(arg.kind);
+                        // Write index in the corresponding index space
+                        data.extend_from_slice(&write_leb128_u32(arg.idx));
                     }
                 },
                 wrt_format::component::CoreInstanceExpr::InlineExports(exports) => {

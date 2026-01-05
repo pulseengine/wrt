@@ -19,6 +19,9 @@ use crate::{
     WASI_CRATE_ID,
 };
 
+#[cfg(feature = "wasi-sockets")]
+use crate::preview2::sockets::WasiSocketCapabilities;
+
 /// Maximum number of allowed filesystem paths
 const MAX_FILESYSTEM_PATHS: usize = 32;
 /// Maximum number of allowed environment variables  
@@ -81,6 +84,9 @@ pub struct WasiCapabilities {
     /// Neural network capabilities (preview-agnostic)
     #[cfg(feature = "wasi-nn")]
     pub nn:          WasiNeuralNetworkCapabilities,
+    /// Socket capabilities (TCP/UDP network operations)
+    #[cfg(feature = "wasi-sockets")]
+    pub sockets:     WasiSocketCapabilities,
 }
 
 impl WasiCapabilities {
@@ -96,6 +102,8 @@ impl WasiCapabilities {
             network: WasiNetworkCapabilities::none(),
             #[cfg(feature = "wasi-nn")]
             nn: WasiNeuralNetworkCapabilities::minimal()?,
+            #[cfg(feature = "wasi-sockets")]
+            sockets: WasiSocketCapabilities::none(),
         })
     }
 
@@ -111,6 +119,8 @@ impl WasiCapabilities {
             network: WasiNetworkCapabilities::none(),
             #[cfg(feature = "wasi-nn")]
             nn: WasiNeuralNetworkCapabilities::sandboxed()?,
+            #[cfg(feature = "wasi-sockets")]
+            sockets: WasiSocketCapabilities::none(),
         })
     }
 
@@ -126,6 +136,8 @@ impl WasiCapabilities {
             network: WasiNetworkCapabilities::local_only(),
             #[cfg(feature = "wasi-nn")]
             nn: WasiNeuralNetworkCapabilities::full_access()?,
+            #[cfg(feature = "wasi-sockets")]
+            sockets: WasiSocketCapabilities::localhost_only(),
         })
     }
 }
@@ -133,7 +145,12 @@ impl WasiCapabilities {
 /// Filesystem access capabilities
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiFileSystemCapabilities {
-    /// Allowed filesystem paths (bounded for safety)
+    /// Allowed filesystem paths
+    /// Uses Vec<String> for std (simpler, works correctly)
+    /// Uses BoundedVec for no_std (memory-safe, bounded)
+    #[cfg(feature = "std")]
+    allowed_paths: Vec<String>,
+    #[cfg(not(feature = "std"))]
     allowed_paths: BoundedVec<
         BoundedString<MAX_PATH_LENGTH>,
         MAX_FILESYSTEM_PATHS,
@@ -152,55 +169,111 @@ pub struct WasiFileSystemCapabilities {
 impl WasiFileSystemCapabilities {
     /// Create minimal filesystem capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = create_provider()?;
-        Ok(Self {
-            allowed_paths:    BoundedVec::new(provider)?,
-            read_access:      false,
-            write_access:     false,
-            directory_access: false,
-            metadata_access:  false,
-        })
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                allowed_paths:    Vec::new(),
+                read_access:      false,
+                write_access:     false,
+                directory_access: false,
+                metadata_access:  false,
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_provider()?;
+            Ok(Self {
+                allowed_paths:    BoundedVec::new(provider)?,
+                read_access:      false,
+                write_access:     false,
+                directory_access: false,
+                metadata_access:  false,
+            })
+        }
     }
 
     /// Create read-only filesystem capabilities
     pub fn read_only() -> Result<Self> {
-        let provider = create_provider()?;
-        Ok(Self {
-            allowed_paths:    BoundedVec::new(provider)?,
-            read_access:      true,
-            write_access:     false,
-            directory_access: true,
-            metadata_access:  true,
-        })
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                allowed_paths:    Vec::new(),
+                read_access:      true,
+                write_access:     false,
+                directory_access: true,
+                metadata_access:  true,
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_provider()?;
+            Ok(Self {
+                allowed_paths:    BoundedVec::new(provider)?,
+                read_access:      true,
+                write_access:     false,
+                directory_access: true,
+                metadata_access:  true,
+            })
+        }
     }
 
     /// Create full filesystem access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = create_provider()?;
-        Ok(Self {
-            allowed_paths:    BoundedVec::new(provider)?,
-            read_access:      true,
-            write_access:     true,
-            directory_access: true,
-            metadata_access:  true,
-        })
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                allowed_paths:    Vec::new(),
+                read_access:      true,
+                write_access:     true,
+                directory_access: true,
+                metadata_access:  true,
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_provider()?;
+            Ok(Self {
+                allowed_paths:    BoundedVec::new(provider)?,
+                read_access:      true,
+                write_access:     true,
+                directory_access: true,
+                metadata_access:  true,
+            })
+        }
     }
 
     /// Add an allowed filesystem path
     pub fn add_allowed_path(&mut self, path: &str) -> Result<()> {
-        let _provider = create_provider()?;
-        let bounded_path = BoundedString::<256>::try_from_str(path)
-            .map_err(|_| Error::runtime_execution_error("Path too long"))?;
+        #[cfg(feature = "std")]
+        {
+            if path.len() > MAX_PATH_LENGTH {
+                return Err(Error::runtime_execution_error("Path too long"));
+            }
+            if self.allowed_paths.len() >= MAX_FILESYSTEM_PATHS {
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_RESOURCE_LIMIT,
+                    "Too many allowed paths",
+                ));
+            }
+            self.allowed_paths.push(path.to_string());
+            Ok(())
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_path = BoundedString::<256>::try_from_str(path)
+                .map_err(|_| Error::runtime_execution_error("Path too long"))?;
 
-        self.allowed_paths.push(bounded_path).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Resource limit exceeded",
-            )
-        })?;
+            self.allowed_paths.push(bounded_path).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_RESOURCE_LIMIT,
+                    "Resource limit exceeded",
+                )
+            })?;
 
-        Ok(())
+            Ok(())
+        }
     }
 
     /// Check if a path is allowed
@@ -210,13 +283,20 @@ impl WasiFileSystemCapabilities {
             return path.starts_with("./") || !path.starts_with('/');
         }
 
-        self.allowed_paths.iter().any(|allowed_path| {
-            if let Ok(allowed) = allowed_path.as_str() {
-                path.starts_with(allowed)
-            } else {
-                false
-            }
-        })
+        #[cfg(feature = "std")]
+        {
+            self.allowed_paths.iter().any(|allowed| path.starts_with(allowed))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.allowed_paths.iter().any(|allowed_path| {
+                if let Ok(allowed) = allowed_path.as_str() {
+                    path.starts_with(allowed)
+                } else {
+                    false
+                }
+            })
+        }
     }
 }
 
@@ -562,9 +642,11 @@ impl WasiNeuralNetworkCapabilities {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wrt_foundation::memory_init::MemoryInitializer;
 
     #[test]
     fn test_minimal_capabilities() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let caps = WasiCapabilities::minimal()?;
         assert!(!caps.filesystem.read_access);
         assert!(!caps.environment.args_access);
@@ -576,20 +658,22 @@ mod tests {
 
     #[test]
     fn test_filesystem_path_management() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut fs_caps = WasiFileSystemCapabilities::minimal()?;
 
         fs_caps.add_allowed_path("/tmp")?;
         fs_caps.add_allowed_path("/home/user")?;
 
-        assert!(fs_caps.is_path_allowed("/tmp/file.txt"));
-        assert!(fs_caps.is_path_allowed("/home/user/docs"));
-        assert!(!fs_caps.is_path_allowed("/etc/passwd"));
+        assert!(fs_caps.is_path_allowed("/tmp/file.txt"), "/tmp/file.txt should be allowed");
+        assert!(fs_caps.is_path_allowed("/home/user/docs"), "/home/user/docs should be allowed");
+        assert!(!fs_caps.is_path_allowed("/etc/passwd"), "/etc/passwd should NOT be allowed");
 
         Ok(())
     }
 
     #[test]
     fn test_environment_var_management() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut env_caps = WasiEnvironmentCapabilities::full_access()?;
 
         env_caps.add_allowed_var("PATH")?;
@@ -605,6 +689,7 @@ mod tests {
 
     #[test]
     fn test_capability_presets() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let sandboxed = WasiCapabilities::sandboxed()?;
         assert!(sandboxed.filesystem.read_access);
         assert!(!sandboxed.filesystem.write_access);

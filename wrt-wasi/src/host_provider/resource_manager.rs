@@ -3,6 +3,8 @@
 //! This module provides resource management for WASI handles using the proven
 //! Resource<P> patterns from wrt-foundation.
 
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 use wrt_error::Result;
 #[cfg(feature = "std")]
@@ -32,33 +34,17 @@ use crate::prelude::*;
 /// Maximum number of WASI resources per manager
 const MAX_WASI_RESOURCES: usize = 256;
 
-// Type alias for provider
+// Type alias for provider (used for no_std BoundedMap)
 #[cfg(feature = "std")]
-type WasiProvider = CapabilityAwareProvider<NoStdProvider<8192>>;
+type WasiProvider = CapabilityAwareProvider<NoStdProvider<65536>>;
 #[cfg(not(feature = "std"))]
-type WasiProvider = NoStdProvider<8192>;
+type WasiProvider = NoStdProvider<65536>;
 
-// Helper function to create provider
+// Helper function to create provider (for no_std)
+#[cfg(not(feature = "std"))]
 fn create_wasi_provider() -> Result<WasiProvider> {
-    #[cfg(feature = "std")]
-    {
-        let base_provider = safe_managed_alloc!(8192, BudgetCrateId::Wasi)?;
-        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
-            8192,
-            wrt_foundation::CrateId::Wasi,
-            wrt_foundation::verification::VerificationLevel::Standard,
-        ));
-        Ok(CapabilityAwareProvider::new(
-            base_provider,
-            capability,
-            wrt_foundation::CrateId::Wasi,
-        ))
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        let provider = safe_managed_alloc!(8192, BudgetCrateId::Wasi)?;
-        Ok(provider)
-    }
+    let provider = safe_managed_alloc!(65536, BudgetCrateId::Wasi)?;
+    Ok(provider)
 }
 
 /// WASI resource handle type
@@ -146,12 +132,17 @@ pub enum WasiClockType {
 /// patterns
 #[derive(Debug)]
 pub struct WasiResourceManager {
-    /// Resource table using WRT foundation patterns
-    resources:   BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES, WasiProvider>,
+    /// Resource table - uses HashMap for std (simpler, no serialization)
+    #[cfg(feature = "std")]
+    resources: HashMap<WasiHandle, WasiResource>,
+    /// Resource table - uses BoundedMap for no_std (bounded, memory-safe)
+    #[cfg(not(feature = "std"))]
+    resources: BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES, WasiProvider>,
     /// Next available handle ID
     next_handle: WasiHandle,
-    /// Memory provider for allocations
-    _provider:   WasiProvider,
+    /// Memory provider for allocations (only needed for no_std)
+    #[cfg(not(feature = "std"))]
+    _provider: WasiProvider,
 }
 
 /// WASI resource wrapper using WRT Resource<P> pattern
@@ -200,20 +191,25 @@ pub struct WasiResourceCapabilities {
 impl WasiResourceManager {
     /// Create a new WASI resource manager
     pub fn new() -> Result<Self> {
-        let provider = create_wasi_provider()?;
         #[cfg(feature = "std")]
-        let resources = BoundedMap::new(provider.clone())?;
+        {
+            Ok(Self {
+                resources: HashMap::new(),
+                next_handle: 1, // Start at 1, reserve 0 for invalid handle
+            })
+        }
         #[cfg(not(feature = "std"))]
-        let resources = {
+        {
+            let provider = create_wasi_provider()?;
             let provider2 = create_wasi_provider()?;
-            BoundedMap::new(provider2)?
-        };
+            let resources = BoundedMap::new(provider2)?;
 
-        Ok(Self {
-            resources,
-            next_handle: 1, // Start at 1, reserve 0 for invalid handle
-            _provider: provider,
-        })
+            Ok(Self {
+                resources,
+                next_handle: 1, // Start at 1, reserve 0 for invalid handle
+                _provider: provider,
+            })
+        }
     }
 
     /// Create a new WASI resource and return its handle
@@ -245,47 +241,99 @@ impl WasiResourceManager {
         }
 
         // Store resource
-        self.resources
-            .insert(handle, wasi_resource)
-            .map_err(|_| Error::runtime_execution_error("Failed to insert resource into map"))?;
+        #[cfg(feature = "std")]
+        {
+            if self.resources.len() >= MAX_WASI_RESOURCES {
+                return Err(Error::runtime_execution_error("Resource limit exceeded"));
+            }
+            self.resources.insert(handle, wasi_resource);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.resources
+                .insert(handle, wasi_resource)
+                .map_err(|_| Error::runtime_execution_error("Failed to insert resource into map"))?;
+        }
 
         Ok(handle)
     }
 
     /// Get a WASI resource by handle
     pub fn get_resource(&self, handle: WasiHandle) -> Result<WasiResource> {
-        self.resources.get(&handle)?.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_INVALID_FD,
-                "Invalid WASI handle",
-            )
-        })
+        #[cfg(feature = "std")]
+        {
+            self.resources.get(&handle).cloned().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_INVALID_FD,
+                    "Invalid WASI handle",
+                )
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.resources.get(&handle)?.ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_INVALID_FD,
+                    "Invalid WASI handle",
+                )
+            })
+        }
     }
 
     /// Get a WASI resource by handle (for modification via `update_resource`)
     pub fn get_resource_mut(&mut self, handle: WasiHandle) -> Result<WasiResource> {
-        // Note: BoundedMap doesn't support get_mut due to serialization constraints
-        // Use get() and then update_resource() to modify
-        self.resources
-            .get(&handle)?
-            .ok_or_else(|| Error::runtime_execution_error("Resource not found"))
+        #[cfg(feature = "std")]
+        {
+            self.resources.get(&handle).cloned().ok_or_else(|| {
+                Error::runtime_execution_error("Resource not found")
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // Note: BoundedMap doesn't support get_mut due to serialization constraints
+            // Use get() and then update_resource() to modify
+            self.resources
+                .get(&handle)?
+                .ok_or_else(|| Error::runtime_execution_error("Resource not found"))
+        }
     }
 
     /// Remove a WASI resource by handle
     pub fn remove_resource(&mut self, handle: WasiHandle) -> Result<WasiResource> {
-        self.resources.remove(&handle)?.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_INVALID_FD,
-                "Invalid WASI handle",
-            )
-        })
+        #[cfg(feature = "std")]
+        {
+            self.resources.remove(&handle).ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_INVALID_FD,
+                    "Invalid WASI handle",
+                )
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.resources.remove(&handle)?.ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::WASI_INVALID_FD,
+                    "Invalid WASI handle",
+                )
+            })
+        }
     }
 
     /// Check if a handle is valid
     pub fn is_valid_handle(&self, handle: WasiHandle) -> bool {
-        self.resources.contains_key(&handle).unwrap_or(false)
+        #[cfg(feature = "std")]
+        {
+            self.resources.contains_key(&handle)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.resources.contains_key(&handle).unwrap_or(false)
+        }
     }
 
     /// Get the number of active resources
@@ -526,24 +574,52 @@ impl Checksummable for WasiResource {
 
 impl ToBytes for WasiResource {
     fn serialized_size(&self) -> usize {
-        // Simple serialization size estimation
-        64 // Fixed size for simplicity
+        // Estimate: discriminant(1) + capabilities(4) + type-specific data (up to 256+8)
+        270
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'_>,
-        _provider: &P,
+        provider: &P,
     ) -> Result<()> {
-        // Write resource type discriminant
+        // Write capabilities first (4 bools as bytes)
+        writer.write_u8(u8::from(self.capabilities.readable))?;
+        writer.write_u8(u8::from(self.capabilities.writable))?;
+        writer.write_u8(u8::from(self.capabilities.seekable))?;
+        writer.write_u8(u8::from(self.capabilities.metadata_access))?;
+
+        // Write resource type discriminant and data
         match &self.resource_type {
             WasiResourceType::Null => writer.write_u8(0)?,
-            WasiResourceType::FileDescriptor { .. } => writer.write_u8(1)?,
-            WasiResourceType::DirectoryHandle { .. } => writer.write_u8(2)?,
-            WasiResourceType::InputStream { .. } => writer.write_u8(3)?,
-            WasiResourceType::OutputStream { .. } => writer.write_u8(4)?,
-            WasiResourceType::ClockHandle { .. } => writer.write_u8(5)?,
-            WasiResourceType::RandomHandle { .. } => writer.write_u8(6)?,
+            WasiResourceType::FileDescriptor { path, readable, writable } => {
+                writer.write_u8(1)?;
+                path.to_bytes_with_provider(writer, provider)?;
+                writer.write_u8(u8::from(*readable))?;
+                writer.write_u8(u8::from(*writable))?;
+            },
+            WasiResourceType::DirectoryHandle { path } => {
+                writer.write_u8(2)?;
+                path.to_bytes_with_provider(writer, provider)?;
+            },
+            WasiResourceType::InputStream { name, position } => {
+                writer.write_u8(3)?;
+                name.to_bytes_with_provider(writer, provider)?;
+                writer.write_u64_le(*position)?;
+            },
+            WasiResourceType::OutputStream { name, position } => {
+                writer.write_u8(4)?;
+                name.to_bytes_with_provider(writer, provider)?;
+                writer.write_u64_le(*position)?;
+            },
+            WasiResourceType::ClockHandle { clock_type } => {
+                writer.write_u8(5)?;
+                writer.write_u8(*clock_type as u8)?;
+            },
+            WasiResourceType::RandomHandle { secure } => {
+                writer.write_u8(6)?;
+                writer.write_u8(u8::from(*secure))?;
+            },
         }
         Ok(())
     }
@@ -552,12 +628,56 @@ impl ToBytes for WasiResource {
 impl FromBytes for WasiResource {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'_>,
-        _provider: &P,
+        provider: &P,
     ) -> Result<Self> {
+        // Read capabilities first (4 bools as bytes)
+        let capabilities = WasiResourceCapabilities {
+            readable: reader.read_u8()? != 0,
+            writable: reader.read_u8()? != 0,
+            seekable: reader.read_u8()? != 0,
+            metadata_access: reader.read_u8()? != 0,
+        };
+
+        // Read resource type discriminant and data
         let discriminant = reader.read_u8()?;
         let resource_type = match discriminant {
             0 => WasiResourceType::Null,
-            _ => WasiResourceType::Null, // Default for unsupported types
+            1 => {
+                let path = BoundedString::from_bytes_with_provider(reader, provider)?;
+                let readable = reader.read_u8()? != 0;
+                let writable = reader.read_u8()? != 0;
+                WasiResourceType::FileDescriptor { path, readable, writable }
+            },
+            2 => {
+                let path = BoundedString::from_bytes_with_provider(reader, provider)?;
+                WasiResourceType::DirectoryHandle { path }
+            },
+            3 => {
+                let name = BoundedString::from_bytes_with_provider(reader, provider)?;
+                let position = reader.read_u64_le()?;
+                WasiResourceType::InputStream { name, position }
+            },
+            4 => {
+                let name = BoundedString::from_bytes_with_provider(reader, provider)?;
+                let position = reader.read_u64_le()?;
+                WasiResourceType::OutputStream { name, position }
+            },
+            5 => {
+                let clock_byte = reader.read_u8()?;
+                let clock_type = match clock_byte {
+                    0 => WasiClockType::Realtime,
+                    1 => WasiClockType::Monotonic,
+                    2 => WasiClockType::ProcessCpuTime,
+                    3 => WasiClockType::ThreadCpuTime,
+                    _ => WasiClockType::Realtime,
+                };
+                WasiResourceType::ClockHandle { clock_type }
+            },
+            6 => {
+                let secure = reader.read_u8()? != 0;
+                WasiResourceType::RandomHandle { secure }
+            },
+            _ => WasiResourceType::Null,
         };
 
         Ok(WasiResource {
@@ -568,7 +688,7 @@ impl FromBytes for WasiResource {
                 wrt_foundation::verification::VerificationLevel::Standard,
             ),
             resource_type,
-            capabilities: WasiResourceCapabilities::default(),
+            capabilities,
         })
     }
 }
@@ -576,9 +696,11 @@ impl FromBytes for WasiResource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wrt_foundation::memory_init::MemoryInitializer;
 
     #[test]
     fn test_resource_manager_creation() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let manager = WasiResourceManager::new()?;
         assert_eq!(manager.resource_count(), 0);
         Ok(())
@@ -586,6 +708,7 @@ mod tests {
 
     #[test]
     fn test_file_descriptor_creation() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut manager = WasiResourceManager::new()?;
 
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, false)?;
@@ -601,6 +724,7 @@ mod tests {
 
     #[test]
     fn test_stream_creation() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut manager = WasiResourceManager::new()?;
 
         let input = manager.create_input_stream("stdin")?;
@@ -623,6 +747,7 @@ mod tests {
 
     #[test]
     fn test_resource_removal() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut manager = WasiResourceManager::new()?;
 
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, true)?;
@@ -647,6 +772,7 @@ mod tests {
 
     #[test]
     fn test_invalid_handle_access() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let manager = WasiResourceManager::new()?;
 
         let result = manager.get_resource(999);
@@ -661,6 +787,7 @@ mod tests {
 
     #[test]
     fn test_clock_handle_creation() -> Result<()> {
+        MemoryInitializer::ensure_initialized()?;
         let mut manager = WasiResourceManager::new()?;
 
         let monotonic = manager.create_clock_handle(WasiClockType::Monotonic)?;

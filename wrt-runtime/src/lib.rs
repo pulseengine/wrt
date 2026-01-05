@@ -198,28 +198,17 @@ pub use wrt_foundation::platform_abstraction;
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;
 
-/// Component Model implementations of runtime interfaces - temporarily disabled due to syntax errors
-// #[cfg(feature = "std")]
-// pub mod component_impl;
-/// Component Model trait definitions for runtime interfaces - temporarily disabled due to syntax errors
-// #[cfg(feature = "std")]
-// pub mod component_traits;
+/// Component Model trait definitions for runtime interfaces
+#[cfg(feature = "std")]
+pub mod component_traits;
 
 // Internal modules
 #[cfg(test)]
 mod tests;
 
-// Re-export trait definitions - temporarily disabled
-// Re-export implementations - temporarily disabled
-// #[cfg(all(not(feature = "std"), not(feature = "std")))]
-// pub use component_impl::no_alloc::MinimalComponent;
-// #[cfg(feature = "std")]
-// pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
-// #[cfg(feature = "std")]
-// pub use component_traits::{
-//     ComponentInstance, ComponentRuntime, HostFunctionFactory,
-//     HostFunction as ComponentHostFunction,
-// };
+// Re-export trait definitions
+#[cfg(feature = "std")]
+pub use component_traits::HostImportHandler;
 
 // Panic handler is provided by the main binary crate to avoid conflicts
 

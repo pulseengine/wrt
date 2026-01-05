@@ -271,7 +271,7 @@ impl Default for Value {
 }
 
 /// A WebAssembly v128 value used for SIMD operations
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct V128 {
     /// The 128-bit value represented as 16 bytes
     pub bytes: [u8; 16],
@@ -305,7 +305,7 @@ pub fn v128(bytes: [u8; 16]) -> V128 {
 }
 
 /// Function reference type
-#[derive(Debug, Clone, PartialEq, Eq, core::hash::Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, core::hash::Hash)]
 pub struct FuncRef {
     /// Function index
     pub index: u32,
@@ -320,7 +320,7 @@ impl FuncRef {
 }
 
 /// External reference type
-#[derive(Debug, Clone, PartialEq, Eq, core::hash::Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, core::hash::Hash)]
 pub struct ExternRef {
     /// Reference index
     pub index: u32,
@@ -598,6 +598,51 @@ impl Value {
             _ => Err(Error::runtime_execution_error(
                 "Value is not a V128 or I16x8 type",
             )),
+        }
+    }
+
+    /// Efficiently copies the value for simple (Copy-like) variants.
+    ///
+    /// For WebAssembly core types (I32, I64, F32, F64, V128, FuncRef, ExternRef, Ref, I16x8),
+    /// this performs a direct copy without heap allocation. For other variants
+    /// (String, List, etc.), it falls back to clone().
+    ///
+    /// This is an optimization for LocalGet/LocalTee operations where the common
+    /// case is accessing numeric locals which are Copy types internally.
+    #[must_use]
+    #[inline]
+    pub fn copy_value(&self) -> Self {
+        match self {
+            // Core WebAssembly numeric types - all Copy
+            Self::I32(v) => Self::I32(*v),
+            Self::I64(v) => Self::I64(*v),
+            Self::F32(v) => Self::F32(*v),
+            Self::F64(v) => Self::F64(*v),
+            Self::V128(v) => Self::V128(*v),
+            Self::I16x8(v) => Self::I16x8(*v),
+            // Reference types - now Copy
+            Self::FuncRef(v) => Self::FuncRef(*v),
+            Self::ExternRef(v) => Self::ExternRef(*v),
+            Self::Ref(v) => Self::Ref(*v),
+            // Simple Copy types from Component Model
+            Self::Bool(v) => Self::Bool(*v),
+            Self::S8(v) => Self::S8(*v),
+            Self::U8(v) => Self::U8(*v),
+            Self::S16(v) => Self::S16(*v),
+            Self::U16(v) => Self::U16(*v),
+            Self::S32(v) => Self::S32(*v),
+            Self::U32(v) => Self::U32(*v),
+            Self::S64(v) => Self::S64(*v),
+            Self::U64(v) => Self::U64(*v),
+            Self::Char(v) => Self::Char(*v),
+            Self::Own(v) => Self::Own(*v),
+            Self::Borrow(v) => Self::Borrow(*v),
+            Self::Void => Self::Void,
+            // GC types and complex types - fall back to clone
+            Self::StructRef(_) | Self::ArrayRef(_) |
+            Self::String(_) | Self::List(_) | Self::Tuple(_) | Self::Record(_) |
+            Self::Variant(_, _) | Self::Enum(_) | Self::Option(_) | Self::Result(_) |
+            Self::Flags(_) => self.clone(),
         }
     }
 

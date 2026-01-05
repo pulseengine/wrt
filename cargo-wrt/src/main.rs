@@ -3058,7 +3058,6 @@ async fn cmd_testsuite(
     test_timeout_ms: u64,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast);
     if clean {
         println!("{} Cleaning extracted test files...", "🧹".bright_blue());
         // TODO: Implement cleaning through wrt-build-core
@@ -3088,19 +3087,9 @@ async fn cmd_testsuite(
             WastTestRunner,
         };
 
-        eprintln!("DEBUG: run_wast is true, starting WAST test suite...");
-
-        // Initialize the memory system before running WAST tests
-        eprintln!("DEBUG: Initializing memory system...");
-        // The memory system initialization is handled by wrt-build-core internally
-        // No need to initialize it here as the WastEngine will do it when needed
-        eprintln!("DEBUG: Memory system initialization delegated to WastEngine");
-
         println!("{} Running WAST test suite...", "🧪".bright_blue());
 
         let workspace_root = build_system.workspace_root();
-        eprintln!("DEBUG: workspace_root = {:?}", workspace_root);
-        eprintln!("DEBUG: wast_dir = {:?}", wast_dir);
         let test_directory = workspace_root.join(&wast_dir);
 
         if !test_directory.exists() {
@@ -3126,10 +3115,8 @@ async fn cmd_testsuite(
         };
 
         // Create and run WAST test runner
-        eprintln!("DEBUG: About to create WastTestRunner with config...");
         let mut runner =
             WastTestRunner::new(config).context("Failed to create WAST test runner")?;
-        eprintln!("DEBUG: WastTestRunner created successfully");
         let start_time = std::time::Instant::now();
 
         match runner.run_all_tests() {

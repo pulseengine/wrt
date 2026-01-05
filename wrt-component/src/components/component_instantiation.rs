@@ -117,6 +117,10 @@ use crate::{
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{CrateId, WrtVec};
 
+// Tracing imports for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::trace;
+
 /// Maximum number of component instances
 const MAX_COMPONENT_INSTANCES: usize = 1024;
 
@@ -698,8 +702,9 @@ impl ComponentInstance {
     pub fn new(id: InstanceId, component: RuntimeComponent) -> Result<Self> {
         // Initialize empty collections based on feature flags
         #[cfg(all(feature = "std", feature = "safety-critical"))]
-        let (functions, imports, exports, resource_tables, module_instances) = {
+        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
             (
+                WrtVec::new(),
                 WrtVec::new(),
                 WrtVec::new(),
                 WrtVec::new(),
@@ -709,8 +714,9 @@ impl ComponentInstance {
         };
 
         #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-        let (functions, imports, exports, resource_tables, module_instances) = {
+        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
             (
+                Vec::new(),
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
@@ -720,8 +726,9 @@ impl ComponentInstance {
         };
 
         #[cfg(not(feature = "std"))]
-        let (functions, imports, exports, resource_tables, module_instances) = {
+        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
             (
+                BoundedVec::new(),
                 BoundedVec::new(),
                 BoundedVec::new(),
                 BoundedVec::new(),
@@ -746,6 +753,7 @@ impl ComponentInstance {
             exports,
             resource_tables,
             module_instances,
+            nested_component_instances,
             #[cfg(feature = "wrt-execution")]
             runtime_engine: None,
             #[cfg(feature = "wrt-execution")]
@@ -787,72 +795,76 @@ impl ComponentInstance {
         parsed: &mut wrt_format::component::Component,
         host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
     ) -> Result<Self> {
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: ENTERED, Component passed by reference");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: ENTERED, Component passed by reference");
 
         // Component passed by reference to avoid stack overflow (850KB structure)
         // Work with references throughout
 
         // Phase 1: Validate safety limits before processing
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to validate_component_limits");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to validate_component_limits");
         Self::validate_component_limits(parsed)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: validate_component_limits completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: validate_component_limits completed");
 
         // Phase 2: Build type index (streaming) - Steps 1-3
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to build_type_index");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to build_type_index");
         let type_index = Self::build_type_index(&parsed.types)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: build_type_index completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: build_type_index completed");
         // parsed.types can be dropped after indexing (will happen when parsed is dropped)
 
         // Phase 3: Extract and process core modules (streaming) - Step 4
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to extract_core_modules");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to extract_core_modules");
         let module_binaries = Self::extract_core_modules(parsed)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: extract_core_modules completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: extract_core_modules completed");
         // parsed.modules is now empty (moved)
 
         // Phase 4: Parse canonical ABI operations (Step 5)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to parse_canonical_operations");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to parse_canonical_operations");
         Self::parse_canonical_operations(&parsed.canonicals)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: parse_canonical_operations completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: parse_canonical_operations completed");
 
         // Phase 5: Parse exports (Step 6a)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to parse_exports");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to parse_exports");
         Self::parse_exports(&parsed.exports)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: parse_exports completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: parse_exports completed");
         // Save exports for later resolution
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to clone exports");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to clone exports");
         let exports_to_resolve = parsed.exports.clone();
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: exports cloned");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: exports cloned");
 
         // Phase 6: Parse imports (Step 6b)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to parse_imports");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to parse_imports");
         Self::parse_imports(&parsed.imports)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: parse_imports completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: parse_imports completed");
 
-        // Phase 6.5: Link imports to providers
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to create ComponentLinker");
-        use crate::linker::ComponentLinker;
-        let mut linker = ComponentLinker::new()?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to link_imports");
+        // Phase 6.5: Link imports to providers using unified linker
+        // The consolidated ComponentLinker handles:
+        // 1. Internal resolution from registered components
+        // 2. WASI host provider imports
+        // 3. Fails loud on unresolved imports
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to create ComponentLinker (unified)");
+        use crate::components::component_linker::ComponentLinker;
+        let mut linker = ComponentLinker::new();
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to link_imports");
         let resolved_imports = linker.link_imports(&parsed.imports)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: link_imports completed");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: link_imports completed");
 
         // Phase 7: Core modules instantiation following component instructions
         // The component's core_instances tell us which modules to instantiate and in what order.
@@ -866,35 +878,37 @@ impl ComponentInstance {
         use alloc::collections::BTreeMap as HashMap;
         use wrt_format::component::{AliasTarget, CoreSort};
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to build alias map");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to build alias map");
         let mut core_export_sources: HashMap<(CoreSort, u32), u32> = HashMap::new();
         for alias in &parsed.aliases {
             if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
                 // Aliases create new indices in the index space
                 // For now, track that exports of this kind from the source instance
                 // TODO: Track the actual index mapping once we understand the index space better
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS] Core instance {} exports '{}' of kind {:?}", instance_idx, name, kind);
+                #[cfg(feature = "tracing")]
+                trace!(instance_idx = instance_idx, name = %name, kind = ?kind, "Core instance export alias");
             }
         }
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: alias map built");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: alias map built");
 
         // Create capability engine for instantiation
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: About to create CapabilityAwareEngine");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: About to create CapabilityAwareEngine");
         use wrt_runtime::engine::{CapabilityAwareEngine, CapabilityEngine, EnginePreset};
         let mut engine = CapabilityAwareEngine::with_preset(EnginePreset::QM)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG from_parsed: engine created");
+        #[cfg(feature = "tracing")]
+        trace!("from_parsed: engine created");
 
         // Set host registry for WASI and custom host functions
         #[cfg(feature = "std")]
         if let Some(ref registry) = host_registry {
-            eprintln!("DEBUG from_parsed: Setting host registry on engine");
+            #[cfg(feature = "tracing")]
+            trace!("from_parsed: Setting host registry on engine");
             engine.set_host_registry(registry.clone());
-            eprintln!("DEBUG from_parsed: Host registry set successfully");
+            #[cfg(feature = "tracing")]
+            trace!("from_parsed: Host registry set successfully");
         }
 
         // Track instantiated modules by core instance index
@@ -905,16 +919,25 @@ impl ComponentInstance {
         use alloc::collections::BTreeMap;
         use wrt_runtime::engine::InstanceHandle;
         let mut core_instances_map: BTreeMap<usize, InstanceHandle> = BTreeMap::new();
+        // Track InlineExports export names for later use when linking instance imports
+        // Map: core_instance_idx -> Vec of (semantic_name, actual_export_name, sort)
+        // The semantic_name is used for import matching, the actual_export_name is used for calling
+        #[cfg(feature = "std")]
+        let mut inline_exports_map: BTreeMap<usize, Vec<(String, String, CoreSort)>> = BTreeMap::new();
         // Track which core instance index exports _start (the main executable module)
         // This is the GENERIC way to find the main module - it's the one that exports _start
         let mut start_export_instance_idx: Option<u32> = None;
 
         #[cfg(feature = "std")]
         {
-            eprintln!("DEBUG from_parsed: STEP 7 - Core Module Instantiation");
-            eprintln!("DEBUG from_parsed: Module binaries available: {}", module_binaries.len());
+            #[cfg(feature = "tracing")]
+            {
+                trace!("from_parsed: STEP 7 - Core Module Instantiation");
+                trace!(module_count = module_binaries.len(), "Module binaries available");
+            }
             let num_core_instances = parsed.core_instances.len();
-            eprintln!("DEBUG from_parsed: Core instances to instantiate: {}", num_core_instances);
+            #[cfg(feature = "tracing")]
+            trace!(core_instance_count = num_core_instances, "Core instances to instantiate");
 
             // Build alias map: (CoreSort, index) -> (instance_idx, export_name)
             // This maps each aliased item to its source instance
@@ -924,18 +947,53 @@ impl ComponentInstance {
             use wrt_format::component::{AliasTarget, CoreSort};
             let mut alias_map: HashMap<(CoreSort, u32), (u32, String)> = HashMap::new();
 
-            eprintln!("DEBUG: Building alias map from {} aliases", parsed.aliases.len());
+            #[cfg(feature = "tracing")]
+            trace!(alias_count = parsed.aliases.len(), "Building alias map");
             for alias in &parsed.aliases {
                 if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
                     if let Some(dest_idx) = alias.dest_idx {
                         alias_map.insert((*kind, dest_idx), (*instance_idx, name.clone()));
-                        eprintln!("DEBUG: Alias {:?}[{}] -> instance {} export '{}'", kind, dest_idx, instance_idx, name);
+                        #[cfg(feature = "tracing")]
+                        trace!(kind = ?kind, dest_idx = dest_idx, instance_idx = instance_idx, name = %name, "Alias mapping");
                     } else {
-                        eprintln!("WARNING: Alias missing dest_idx: {:?} instance {} export '{}'", kind, instance_idx, name);
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(kind = ?kind, instance_idx = instance_idx, name = %name, "Alias missing dest_idx");
                     }
                 }
             }
-            eprintln!("DEBUG: Alias map built with {} core exports", alias_map.len());
+            #[cfg(feature = "tracing")]
+            trace!(core_export_count = alias_map.len(), "Alias map built");
+
+            // Handle component instance export aliases
+            // Map: (Sort, index) -> (instance_idx, export_name)
+            use wrt_format::component::Sort;
+            let mut component_alias_map: HashMap<(Sort, u32), (u32, String)> = HashMap::new();
+
+            for alias in &parsed.aliases {
+                match &alias.target {
+                    AliasTarget::InstanceExport { instance_idx, name, kind } => {
+                        // Component instance export alias
+                        if let Some(dest_idx) = alias.dest_idx {
+                            component_alias_map.insert((*kind, dest_idx), (*instance_idx, name.clone()));
+                            #[cfg(feature = "tracing")]
+                            trace!(kind = ?kind, dest_idx = dest_idx, instance_idx = instance_idx, name = %name, "Component alias");
+                        }
+                    },
+                    AliasTarget::Outer { count, kind, idx } => {
+                        // Outer alias - references to enclosing component's items
+                        // For now, log that we encountered it; full implementation requires
+                        // tracking parent component context during nested instantiation
+                        #[cfg(feature = "tracing")]
+                        trace!(kind = ?kind, count = count, idx = idx, "Outer alias - requires parent context");
+                        // TODO: Implement outer alias resolution with parent component tracking
+                    },
+                    AliasTarget::CoreInstanceExport { .. } => {
+                        // Already handled above
+                    },
+                }
+            }
+            #[cfg(feature = "tracing")]
+            trace!(instance_export_count = component_alias_map.len(), "Component alias map built");
 
             // Find which core instance exports _start - this is the main executable module
             // This is the GENERIC way to find the main module regardless of component structure
@@ -959,9 +1017,11 @@ impl ComponentInstance {
 
             // Instantiate modules according to core_instances order
             // core_instances describes WHAT to instantiate and HOW to link imports
-            eprintln!("DEBUG from_parsed: About to iterate core_instances");
+            #[cfg(feature = "tracing")]
+            trace!("from_parsed: About to iterate core_instances");
             for (core_instance_idx, core_instance) in parsed.core_instances.iter().enumerate() {
-                eprintln!("DEBUG from_parsed: Processing CoreInstance[{}]", core_instance_idx);
+                #[cfg(feature = "tracing")]
+                trace!(core_instance_idx = core_instance_idx, "Processing CoreInstance");
 
                 // Extract module reference from instance expression
                 use wrt_format::component::CoreInstanceExpr;
@@ -994,7 +1054,8 @@ impl ComponentInstance {
 
                         // Skip diagnostic parsing to avoid stack overflow
                         // TODO: Fix large structure handling in load_wasm_unified
-                        eprintln!("DEBUG: Skipping load_wasm_unified diagnostics to avoid stack overflow");
+                        #[cfg(feature = "tracing")]
+                        trace!("Skipping load_wasm_unified diagnostics to avoid stack overflow");
 
                         // Load module into engine
                         println!("    ├─ Loading module into engine...");
@@ -1007,94 +1068,181 @@ impl ComponentInstance {
                                 println!("    ├─ Module has {} import namespaces: {:?}", import_namespaces.len(), import_namespaces);
 
                                 // Register import links from arg_refs BEFORE instantiation
-                                println!("    ├─ Registering {} import links...", arg_refs.len());
-                                if arg_refs.is_empty() && core_instance_idx == 13 {
-                                    println!("    │  └─ WARNING: Main module has no import args - manually linking memory from adapter");
-                                    // This is the main module that needs memory from the adapter
-                                    // CoreInstance[0] has the adapter with memory, link it to this module
-                                    if let Some(&adapter_handle) = core_instances_map.get(&0) {
-                                        println!("    │  ├─ Found adapter at instance 0: {:?}", adapter_handle);
-                                        // Link memory import from adapter
-                                        // The main module imports memory from "env" namespace
-                                        match engine.link_import(
-                                            module_handle,
-                                            "env",  // Most TinyGo modules import memory from "env"
-                                            "memory",
-                                            adapter_handle,
-                                            "memory",
-                                        ) {
-                                            Ok(()) => println!("    │  │  └─ ✓ Memory linked from adapter"),
-                                            Err(e) => println!("    │  │  └─ ERROR: Memory link failed: {:?}", e),
+                                // NOTE: All imports must be explicitly declared via arg_refs
+                                // NO HARDCODED INSTANCE INDICES - this must work for any component, not just TinyGo
+                                println!("    ├─ Registering {} import links from arg_refs...", arg_refs.len());
+
+                                // Check if this module actually needs imports but has none declared
+                                if arg_refs.is_empty() && !import_namespaces.is_empty() {
+                                    // FAIL LOUD: Module needs imports but none provided in arg_refs
+                                    // This indicates the component's alias/instantiation structure isn't being parsed correctly
+                                    #[cfg(feature = "tracing")]
+                                    {
+                                        tracing::error!(
+                                            core_instance_idx = core_instance_idx,
+                                            import_namespaces = ?import_namespaces,
+                                            available_instances = ?core_instances_map.keys().collect::<Vec<_>>(),
+                                            alias_count = alias_map.len(),
+                                            "Module needs imports but arg_refs is empty"
+                                        );
+                                        for ((sort, idx), (inst, name)) in &alias_map {
+                                            tracing::error!(sort = ?sort, idx = idx, instance = inst, name = %name, "Available alias");
                                         }
-                                    } else {
-                                        println!("    │  └─ ERROR: Adapter instance not found at index 0");
                                     }
 
-                                    // CRITICAL FIX: Link globals from instance 1 (module 1 which has globals)
-                                    // Module 0 (_initialize) needs globals from module 1
-                                    if let Some(&globals_provider) = core_instances_map.get(&1) {
-                                        println!("    │  ├─ Found globals provider at instance 1: {:?}", globals_provider);
-                                        // Link globals - use empty module name for direct imports
-                                        match engine.link_import(
-                                            module_handle,
-                                            "",  // Direct import, no module namespace
-                                            "__stack_pointer",  // Stack pointer global
-                                            globals_provider,
-                                            "__stack_pointer",
-                                        ) {
-                                            Ok(()) => println!("    │  │  └─ ✓ Globals linked from instance 1"),
-                                            Err(e) => println!("    │  │  └─ ERROR: Global link failed: {:?}", e),
-                                        }
-                                    } else {
-                                        println!("    │  └─ ERROR: Globals provider instance not found at index 1");
-                                    }
-                                } else if arg_refs.is_empty() {
-                                    println!("    │  └─ WARNING: No import args provided, module may fail if it needs imports!");
+                                    // TODO: Phase 2.2 - Implement proper alias resolution
+                                    // For now, return error instead of using hardcoded indices
+                                    return Err(wrt_error::Error::component_linking_error(
+                                        "Module requires imports but no arg_refs provided - alias resolution needed"
+                                    ));
                                 }
                                 for arg_ref in arg_refs {
-                                    println!("    │  ├─ Import '{}' from instance {}", arg_ref.name, arg_ref.instance_idx);
+                                    // Handle different kinds of imports based on arg_ref.kind
+                                    // kind: 0x00=Func, 0x01=Table, 0x02=Mem, 0x03=Global, 0x12=Instance
+                                    let kind_name = match arg_ref.kind {
+                                        0x00 => "Func",
+                                        0x01 => "Table",
+                                        0x02 => "Mem",
+                                        0x03 => "Global",
+                                        0x12 => "Instance",
+                                        _ => "Unknown",
+                                    };
+                                    println!("    │  ├─ Import '{}': kind={} (0x{:02x}), idx={}",
+                                             arg_ref.name, kind_name, arg_ref.kind, arg_ref.idx);
 
-                                    // Look up the provider instance handle
-                                    if let Some(&provider_handle) = core_instances_map.get(&(arg_ref.instance_idx as usize)) {
-                                        // Determine the import module name
-                                        // For component model, imports often come from specific namespaces
-                                        // Common patterns: "env" for adapter memory, "" for direct imports
-                                        let import_module = if arg_ref.name == "memory" && !import_namespaces.is_empty() {
-                                            // Memory imports typically come from "env" or the first namespace
-                                            import_namespaces.first().unwrap_or(&String::new()).clone()
-                                        } else {
-                                            // For other imports, use empty string (direct import)
-                                            String::new()
-                                        };
-
-                                        println!("    │  │  ├─ Using import module: '{}'", import_module);
-
-                                        // Register the import link
-                                        match engine.link_import(
-                                            module_handle,
-                                            &import_module,
-                                            &arg_ref.name,
-                                            provider_handle,
-                                            &arg_ref.name,  // export_name (same as import name)
-                                        ) {
-                                            Ok(()) => {
-                                                println!("    │  │  └─ ✓ Linked");
-
-                                                // CRITICAL: Register aliased functions to preserve instance context
-                                                // When a wrapper module imports a function from another instance,
-                                                // we need to track the original instance so execution happens
-                                                // in the correct context (with proper memory/globals)
-                                                if arg_ref.name == "_initialize" || arg_ref.name.starts_with("__wasm_call_") {
-                                                    println!("    │  │  └─ ALIASED FUNCTION DETECTED: {} from instance {}",
-                                                             arg_ref.name, arg_ref.instance_idx);
-                                                    // Note: We'll need to track this for when the instance is created
-                                                    // and register it with the engine's aliased_functions map
+                                    // Resolve the provider based on kind
+                                    let (provider_handle, export_name) = match arg_ref.kind {
+                                        0x12 => {
+                                            // Instance kind: idx is a core instance index
+                                            // For instance imports, we need to link ALL exports from the provider
+                                            // to the module's imports that match by name
+                                            if let Some(&handle) = core_instances_map.get(&(arg_ref.idx as usize)) {
+                                                // Check if this is an InlineExports with stored export names
+                                                if let Some(export_mappings) = inline_exports_map.get(&(arg_ref.idx as usize)) {
+                                                    println!("    │  │  ├─ Instance {} has {} exports to link", arg_ref.idx, export_mappings.len());
+                                                    // Link each export from the InlineExports
+                                                    // Tuple is (semantic_name, actual_export_name, sort)
+                                                    for (semantic_name, actual_export_name, _sort) in export_mappings {
+                                                        println!("    │  │  │  ├─ Linking '{}' -> actual export '{}'", semantic_name, actual_export_name);
+                                                        match engine.link_import(
+                                                            module_handle,
+                                                            &arg_ref.name,     // import module name (e.g., "wasi:io/streams@0.2.4")
+                                                            semantic_name,     // import name (semantic, e.g., "[method]output-stream.blocking-write-and-flush")
+                                                            handle,
+                                                            actual_export_name, // actual export name in target module (e.g., "1")
+                                                        ) {
+                                                            Ok(()) => println!("    │  │  │  └─ ✓ Linked"),
+                                                            Err(e) => println!("    │  │  │  └─ Note: {:?}", e),
+                                                        }
+                                                    }
+                                                    // Skip the normal single-link below since we linked everything
+                                                    continue;
+                                                } else {
+                                                    // No stored exports, use the old behavior
+                                                    (handle, arg_ref.name.clone())
                                                 }
-                                            },
-                                            Err(e) => println!("    │  │  └─ ERROR: Link failed: {:?}", e),
+                                            } else {
+                                                println!("    │  │  └─ ERROR: Instance {} not yet instantiated", arg_ref.idx);
+                                                continue;
+                                            }
+                                        },
+                                        0x01 => {
+                                            // Table kind: look up Table[idx] in alias_map
+                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Table, arg_ref.idx)) {
+                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
+                                                    println!("    │  │  ├─ Resolved Table[{}] -> instance {} export '{}'",
+                                                             arg_ref.idx, inst_idx, exp_name);
+                                                    (handle, exp_name.clone())
+                                                } else {
+                                                    println!("    │  │  └─ ERROR: Table source instance {} not instantiated", inst_idx);
+                                                    continue;
+                                                }
+                                            } else {
+                                                println!("    │  │  └─ ERROR: Table[{}] not found in alias_map", arg_ref.idx);
+                                                continue;
+                                            }
+                                        },
+                                        0x02 => {
+                                            // Memory kind: look up Memory[idx] in alias_map
+                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Memory, arg_ref.idx)) {
+                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
+                                                    println!("    │  │  ├─ Resolved Memory[{}] -> instance {} export '{}'",
+                                                             arg_ref.idx, inst_idx, exp_name);
+                                                    (handle, exp_name.clone())
+                                                } else {
+                                                    println!("    │  │  └─ ERROR: Memory source instance {} not instantiated", inst_idx);
+                                                    continue;
+                                                }
+                                            } else {
+                                                println!("    │  │  └─ ERROR: Memory[{}] not found in alias_map", arg_ref.idx);
+                                                continue;
+                                            }
+                                        },
+                                        0x03 => {
+                                            // Global kind: look up Global[idx] in alias_map
+                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Global, arg_ref.idx)) {
+                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
+                                                    println!("    │  │  ├─ Resolved Global[{}] -> instance {} export '{}'",
+                                                             arg_ref.idx, inst_idx, exp_name);
+                                                    (handle, exp_name.clone())
+                                                } else {
+                                                    println!("    │  │  └─ ERROR: Global source instance {} not instantiated", inst_idx);
+                                                    continue;
+                                                }
+                                            } else {
+                                                println!("    │  │  └─ ERROR: Global[{}] not found in alias_map", arg_ref.idx);
+                                                continue;
+                                            }
+                                        },
+                                        0x00 => {
+                                            // Function kind: look up Function[idx] in alias_map
+                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Function, arg_ref.idx)) {
+                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
+                                                    println!("    │  │  ├─ Resolved Function[{}] -> instance {} export '{}'",
+                                                             arg_ref.idx, inst_idx, exp_name);
+                                                    (handle, exp_name.clone())
+                                                } else {
+                                                    println!("    │  │  └─ ERROR: Function source instance {} not instantiated", inst_idx);
+                                                    continue;
+                                                }
+                                            } else {
+                                                println!("    │  │  └─ ERROR: Function[{}] not found in alias_map", arg_ref.idx);
+                                                continue;
+                                            }
+                                        },
+                                        _ => {
+                                            println!("    │  │  └─ ERROR: Unknown kind 0x{:02x}", arg_ref.kind);
+                                            continue;
                                         }
+                                    };
+
+                                    // Determine the import module name
+                                    let import_module = if arg_ref.name == "memory" && !import_namespaces.is_empty() {
+                                        import_namespaces.first().unwrap_or(&String::new()).clone()
                                     } else {
-                                        println!("    │  │  └─ ERROR: Provider instance {} not yet instantiated", arg_ref.instance_idx);
+                                        String::new()
+                                    };
+
+                                    println!("    │  │  ├─ Linking to instance {:?} export '{}' (import module: '{}')",
+                                             provider_handle, export_name, import_module);
+
+                                    // Register the import link
+                                    match engine.link_import(
+                                        module_handle,
+                                        &import_module,
+                                        &arg_ref.name,
+                                        provider_handle,
+                                        &export_name,
+                                    ) {
+                                        Ok(()) => {
+                                            println!("    │  │  └─ ✓ Linked");
+
+                                            // Track aliased functions for cross-instance calls
+                                            if arg_ref.name == "_initialize" || arg_ref.name.starts_with("__wasm_call_") {
+                                                println!("    │  │  └─ ALIASED FUNCTION DETECTED: {}", arg_ref.name);
+                                            }
+                                        },
+                                        Err(e) => println!("    │  │  └─ ERROR: Link failed: {:?}", e),
                                     }
                                 }
 
@@ -1140,15 +1288,23 @@ impl ComponentInstance {
 
                         // InlineExports re-export items from other instances via aliases
                         // Use the alias_map to find where these exports come from
+                        // Build mapping: (semantic_name, actual_export_name, sort)
                         let mut source_instance_idx: Option<u32> = None;
+                        let mut export_mappings: Vec<(String, String, CoreSort)> = Vec::new();
 
                         for export in exports {
                             // Look up this export in the alias map using (sort, index)
-                            if let Some((instance_idx, export_name)) = alias_map.get(&(export.sort, export.idx)) {
-                                source_instance_idx = Some(*instance_idx);
+                            if let Some((instance_idx, actual_export_name)) = alias_map.get(&(export.sort, export.idx)) {
+                                if source_instance_idx.is_none() {
+                                    source_instance_idx = Some(*instance_idx);
+                                }
                                 println!("    │  ├─ Export[{}] '{}' (sort={:?}) -> instance {} export '{}'",
-                                         export.idx, export.name, export.sort, instance_idx, export_name);
-                                break;  // Found source, stop searching
+                                         export.idx, export.name, export.sort, instance_idx, actual_export_name);
+                                // Store BOTH semantic name (for import matching) and actual export name (for calling)
+                                export_mappings.push((export.name.clone(), actual_export_name.clone(), export.sort));
+                            } else {
+                                // No alias found, use semantic name for both
+                                export_mappings.push((export.name.clone(), export.name.clone(), export.sort));
                             }
                         }
 
@@ -1156,6 +1312,9 @@ impl ComponentInstance {
                             if let Some(&source_handle) = core_instances_map.get(&(src_idx as usize)) {
                                 println!("    ├─ Mapping to source instance {} (handle {:?})", src_idx, source_handle);
                                 core_instances_map.insert(core_instance_idx, source_handle);
+                                // Store the actual export names for later use when linking instance imports
+                                println!("    ├─ Storing {} export names for instance linking", export_mappings.len());
+                                inline_exports_map.insert(core_instance_idx, export_mappings);
                                 println!("    └─ Mapped");
                             } else {
                                 println!("    └─ ERROR: Source instance {} not yet instantiated", src_idx);
@@ -1203,6 +1362,209 @@ impl ComponentInstance {
             println!();
         }
 
+        // Phase 7b: Process nested component instances
+        // Nested components are instantiated and their exports can be aliased
+        #[cfg(feature = "std")]
+        let nested_instances = {
+            use crate::types::{NestedComponentInstance, NestedExportRef, NestedExportKind};
+            use wrt_format::component::{InstanceExpr, Sort};
+
+            println!("=== Phase 7b: Nested Component Instances ===");
+            println!("Nested components defined: {}", parsed.components.len());
+            println!("Component instances to create: {}", parsed.instances.len());
+
+            // Track nested component instances - will be stored in the final ComponentInstance
+            let mut nested_instances: Vec<NestedComponentInstance> = Vec::new();
+
+            // Track component instance exports for alias resolution
+            // Maps: instance_idx -> (export_name -> (sort, idx))
+            let mut component_instance_exports: std::collections::HashMap<usize, std::collections::HashMap<String, (Sort, u32)>> =
+                std::collections::HashMap::new();
+
+            for (inst_idx, instance) in parsed.instances.iter().enumerate() {
+                match &instance.instance_expr {
+                    InstanceExpr::ComponentReference { component_idx, arg_refs } => {
+                        println!("  ├─ Instance[{}]: Instantiate nested component {} with {} args",
+                            inst_idx, component_idx, arg_refs.len());
+
+                        let comp_idx = *component_idx as usize;
+
+                        // Check if component exists
+                        if comp_idx >= parsed.components.len() {
+                            println!("ERROR: Nested component index {} out of range (have {} components)",
+                                component_idx, parsed.components.len());
+                            return Err(Error::new(
+                                wrt_error::ErrorCategory::Validation,
+                                wrt_error::codes::VALIDATION_ERROR,
+                                "Nested component index out of range"
+                            ));
+                        }
+
+                        // Get the nested component definition
+                        let nested_component = &parsed.components[comp_idx];
+
+                        println!("      ├─ Nested component structure:");
+                        println!("      │  ├─ Core modules: {}", nested_component.modules.len());
+                        println!("      │  ├─ Imports: {}", nested_component.imports.len());
+                        println!("      │  ├─ Exports: {}", nested_component.exports.len());
+                        println!("      │  ├─ Types: {}", nested_component.types.len());
+                        println!("      │  └─ Sub-components: {}", nested_component.components.len());
+
+                        // Resolve arguments from arg_refs
+                        // These reference exports from the parent component's index spaces
+                        println!("      ├─ Resolving {} instantiation arguments:", arg_refs.len());
+                        for arg_ref in arg_refs {
+                            println!("        ├─ Arg '{}': sort={:?} idx={}",
+                                arg_ref.name, arg_ref.sort, arg_ref.idx);
+                        }
+
+                        // Check if this is a "passthrough" component with no core modules
+                        // These are typically wrapper components created by wit-component to satisfy
+                        // interface type requirements. They import a function and re-export it.
+                        //
+                        // Pattern: (component (import "x" (func)) (export "y" (func 0)))
+                        // This just wraps the imported function, no actual execution needed.
+                        if nested_component.modules.is_empty() {
+                            println!("      ├─ Passthrough component detected (no core modules)");
+                            println!("      ├─ Handling as function forwarder");
+
+                            // For passthrough components, create a synthetic instance that maps
+                            // the nested component's exports to the parent's provided functions
+                            let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
+                                std::collections::HashMap::new();
+
+                            // The exports from this nested component should map to the provided args
+                            // For now, map each export to the corresponding arg function
+                            for export in &nested_component.exports {
+                                // The export references func 0, which is the imported function,
+                                // which is provided by arg_ref[0]
+                                if !arg_refs.is_empty() {
+                                    let arg = &arg_refs[0];
+                                    let export_name_str = export.name.name.clone();
+                                    println!("        ├─ Export '{}' -> provided func idx {}",
+                                        export_name_str, arg.idx);
+                                    instance_export_map.insert(
+                                        export_name_str,
+                                        (arg.sort, arg.idx)
+                                    );
+                                }
+                            }
+
+                            // Store for alias resolution
+                            component_instance_exports.insert(inst_idx, instance_export_map);
+                            println!("      └─ Passthrough instance {} ready", inst_idx);
+                        } else {
+                            // Full nested component with core modules - requires recursive instantiation
+                            println!("      ├─ Full nested component with {} core modules", nested_component.modules.len());
+
+                            // Check nesting depth
+                            if !nested_component.components.is_empty() {
+                                println!("      ├─ WARNING: Nested component has {} sub-components",
+                                    nested_component.components.len());
+                                println!("      └─ Deep nesting not yet fully supported");
+                            }
+
+                            // Create a unique ID for the nested instance
+                            let nested_id = (id as u64 * 1000 + inst_idx as u64) as u32;
+
+                            // Clone the nested component for instantiation
+                            let mut nested_component_clone = nested_component.clone();
+
+                            // Recursively instantiate the nested component
+                            // Note: We pass None for host_registry - imports should come from args
+                            // TODO: Implement proper import resolution from arg_refs
+                            match Self::from_parsed(nested_id, &mut nested_component_clone, None) {
+                                Ok(child_instance) => {
+                                    println!("      ├─ Successfully instantiated nested component");
+                                    println!("      │  ├─ Child ID: {}", nested_id);
+                                    println!("      │  ├─ Child exports: {}", child_instance.exports.len());
+
+                                    // Build exports map for this nested instance
+                                    let mut exports_map: std::collections::HashMap<String, NestedExportRef> =
+                                        std::collections::HashMap::new();
+                                    let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
+                                        std::collections::HashMap::new();
+
+                                    // The child's exports become accessible to the parent
+                                    for (exp_idx, export) in child_instance.exports.iter().enumerate() {
+                                        let kind = NestedExportKind::Function;
+                                        exports_map.insert(
+                                            export.name.clone(),
+                                            NestedExportRef {
+                                                kind,
+                                                index: exp_idx as u32,
+                                            }
+                                        );
+                                        instance_export_map.insert(
+                                            export.name.clone(),
+                                            (Sort::Function, exp_idx as u32)
+                                        );
+                                        println!("      │  ├─ Export '{}' available for aliasing", export.name);
+                                    }
+
+                                    // Store the instance export map for alias resolution
+                                    component_instance_exports.insert(inst_idx, instance_export_map);
+
+                                    // Create the nested instance wrapper
+                                    let nested = NestedComponentInstance {
+                                        instance_index: inst_idx as u32,
+                                        component_index: *component_idx,
+                                        instance: Box::new(child_instance),
+                                        exports: exports_map,
+                                    };
+
+                                    nested_instances.push(nested);
+                                    println!("      └─ Nested instance {} created successfully", inst_idx);
+                                }
+                                Err(e) => {
+                                    println!("ERROR: Failed to instantiate nested component {}: {}",
+                                        component_idx, e);
+                                    return Err(Error::new(
+                                        wrt_error::ErrorCategory::ComponentRuntime,
+                                        wrt_error::codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
+                                        "Failed to instantiate nested component"
+                                    ));
+                                }
+                            }
+                        }
+                    },
+                    InstanceExpr::InlineExports(exports) => {
+                        println!("  ├─ Instance[{}]: Inline exports ({} items)", inst_idx, exports.len());
+
+                        // Inline exports create a synthetic instance from explicit exports
+                        // These exports reference items from the parent's index spaces
+                        let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
+                            std::collections::HashMap::new();
+
+                        for export in exports {
+                            println!("      ├─ Export: '{}' sort {:?} idx {}",
+                                export.name, export.sort, export.idx);
+                            instance_export_map.insert(
+                                export.name.clone(),
+                                (export.sort, export.idx)
+                            );
+                        }
+
+                        // Store for alias resolution
+                        component_instance_exports.insert(inst_idx, instance_export_map);
+                    },
+                }
+            }
+
+            println!("Nested component instances created: {}", nested_instances.len());
+            println!("Component instances with exports: {}", component_instance_exports.len());
+            println!();
+
+            nested_instances
+        };
+
+        #[cfg(not(feature = "std"))]
+        let nested_instances = {
+            // Nested component instantiation not supported in no_std
+            // Return empty vec equivalent
+            BoundedVec::new()
+        };
+
         // Phase 8-11: DEFERRED - These phases depend on instantiated modules
         // Will be performed lazily during function execution
 
@@ -1235,6 +1597,12 @@ impl ComponentInstance {
         {
             instance.imports = resolved_imports;
             println!("[INSTANTIATION] Stored {} resolved imports in instance", instance.imports.len());
+        }
+
+        // Store nested component instances
+        {
+            instance.nested_component_instances = nested_instances;
+            println!("[INSTANTIATION] Stored {} nested component instances", instance.nested_component_instances.len());
         }
 
         // Execute start functions immediately (Step 12) - DEFERRED
@@ -2830,6 +3198,10 @@ impl ComponentInstance {
     /// - `function_name`: Name of the function to call
     /// - `args`: Arguments to pass to the function
     /// - `host_registry`: Optional reference to host function registry for calling WASI/host functions
+    ///
+    /// # Note
+    /// This method does not support component-to-component calls. Use
+    /// `call_function_with_resolver` if cross-component calls are needed.
     #[cfg(feature = "wrt-execution")]
     pub fn call_function(
         &mut self,
@@ -2837,6 +3209,37 @@ impl ComponentInstance {
         args: &[ComponentValue],
         host_registry: Option<&wrt_host::CallbackRegistry>,
     ) -> Result<Vec<ComponentValue>> {
+        // Define a concrete type for the resolver to satisfy type inference
+        // This is the closure type that matches the resolver signature
+        type NoResolver = fn(InstanceId, &str, &[ComponentValue]) -> Result<Vec<ComponentValue>>;
+        // Delegate to the resolver-enabled version with no resolver
+        self.call_function_with_resolver::<NoResolver>(function_name, args, host_registry, None)
+    }
+
+    /// Call a function in this instance with cross-component call support
+    ///
+    /// # Parameters
+    /// - `function_name`: Name of the function to call
+    /// - `args`: Arguments to pass to the function
+    /// - `host_registry`: Optional reference to host function registry for calling WASI/host functions
+    /// - `cross_component_resolver`: Optional callback for resolving cross-component function calls.
+    ///   The callback receives (target_instance_id, target_function_name, args) and returns the result.
+    ///
+    /// # Cross-Component Calls
+    /// When a function has `FunctionImplementation::Component`, this method will use the
+    /// provided resolver to dispatch the call to the target component instance. The resolver
+    /// is typically provided by the `ComponentLinker` which manages all instances.
+    #[cfg(feature = "wrt-execution")]
+    pub fn call_function_with_resolver<F>(
+        &mut self,
+        function_name: &str,
+        args: &[ComponentValue],
+        host_registry: Option<&wrt_host::CallbackRegistry>,
+        cross_component_resolver: Option<F>,
+    ) -> Result<Vec<ComponentValue>>
+    where
+        F: FnMut(InstanceId, &str, &[ComponentValue]) -> Result<Vec<ComponentValue>>,
+    {
         // Check instance state
         if self.state != ComponentInstanceState::Running {
             return Err(Error::new(
@@ -2891,11 +3294,22 @@ impl ComponentInstance {
                 target_instance,
                 target_function,
             } => {
-                // This would need to go through the linker to call another component
-                // For now, return a placeholder
-                Err(Error::runtime_not_implemented(
-                    "Component-to-component calls not yet implemented",
-                ))
+                // Use the cross-component resolver if provided
+                if let Some(mut resolver) = cross_component_resolver {
+                    #[cfg(feature = "std")]
+                    let target_fn_name = target_function.as_str();
+                    #[cfg(not(feature = "std"))]
+                    let target_fn_name = target_function.as_str()?;
+
+                    resolver(*target_instance, target_fn_name, args)
+                } else {
+                    // No resolver provided - cannot make cross-component calls
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::INVALID_OPERATION,
+                        "Cross-component call requires a resolver. Use ComponentLinker::call_function or provide a resolver.",
+                    ))
+                }
             },
         }
     }
@@ -3142,6 +3556,22 @@ impl ComponentInstance {
                 use wrt_runtime::engine::CapabilityEngine;
                 println!("[CALL_NATIVE] Using stored runtime engine with instance {:?}", instance_handle);
 
+                // DEBUG: Show what exports this instance has
+                #[cfg(feature = "std")]
+                if let Ok(inst_arc) = engine.get_instance(instance_handle) {
+                    let module = inst_arc.module();
+                    println!("[CALL_NATIVE] Instance {:?} has {} exports:", instance_handle, module.exports.len());
+                    for key in module.exports.keys() {
+                        if let Ok(bytes) = key.as_bytes() {
+                            if let Ok(name) = core::str::from_utf8(bytes.as_ref()) {
+                                println!("[CALL_NATIVE]   - '{}'", name);
+                            }
+                        }
+                    }
+                } else {
+                    println!("[CALL_NATIVE] Could not get instance {:?}", instance_handle);
+                }
+
                 // The engine already has:
                 // 1. Modules loaded and instantiated
                 // 2. Memory properly initialized
@@ -3280,6 +3710,13 @@ impl ComponentInstance {
                         name: None,
                         binary: None,
                         validated: false,
+                        num_global_imports: 0,
+                        #[cfg(feature = "std")]
+                        global_import_types: Vec::new(),
+                        #[cfg(feature = "std")]
+                        deferred_global_inits: Vec::new(),
+                        #[cfg(feature = "std")]
+                        import_types: Vec::new(),
                     };
                     m.load_from_binary(&binary_clone)
                 }
@@ -3425,13 +3862,15 @@ impl ComponentInstance {
                                                 Ok(vec![Value::I64(0)]) // Success
                                             }
                                             Err(e) => {
-                                                eprintln!("[WASI] Write error: {:?}", e);
+                                                #[cfg(feature = "tracing")]
+                                                tracing::warn!(error = ?e, "WASI write error");
                                                 Ok(vec![Value::I64(1)]) // Error
                                             }
                                         }
                                     }
                                     Err(e) => {
-                                        eprintln!("[WASI] Memory read error: {}", e);
+                                        #[cfg(feature = "tracing")]
+                                        tracing::warn!(error = %e, "WASI memory read error");
                                         Ok(vec![Value::I64(1)]) // Error - can't read memory yet
                                     }
                                 }
@@ -3637,7 +4076,8 @@ impl ComponentInstance {
     ) -> Result<Vec<ComponentValue>> {
         // Check if this is a wasip2 canonical function
         if crate::canonical_executor::is_wasip2_canonical(callback) {
-            eprintln!("[COMPONENT] Dispatching wasip2 canonical: {}", callback);
+            #[cfg(feature = "tracing")]
+            trace!(callback = %callback, "Dispatching wasip2 canonical");
 
             // Parse the interface and function from the callback string
             // Format: "wasi:io/streams@0.2.0::output-stream.blocking-write-and-flush"

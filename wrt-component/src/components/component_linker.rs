@@ -32,6 +32,10 @@ use wrt_foundation::{
 
 use crate::prelude::*;
 
+// Tracing imports for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::{trace, warn as tracing_warn};
+
 // Type aliases for no_std environment with proper generics
 #[cfg(not(feature = "std"))]
 type String = BoundedString<256>;
@@ -65,6 +69,11 @@ const MAX_LINKED_COMPONENTS: usize = 256;
 pub type ComponentId = String;
 
 /// Component linker for managing multiple components and their dependencies
+///
+/// This is the unified linker that handles:
+/// 1. Internal resolution - imports from registered components
+/// 2. Host providers - WASI imports from WasiInstanceProvider
+/// 3. Component composition - dependency graphs and topological sorting
 #[derive(Debug)]
 pub struct ComponentLinker {
     /// Registered components
@@ -79,6 +88,9 @@ pub struct ComponentLinker {
     config:           LinkerConfig,
     /// Resolution statistics
     stats:            LinkingStats,
+    /// WASI instance provider for host imports
+    #[cfg(feature = "std")]
+    wasi_provider:    Option<crate::linker::WasiInstanceProvider>,
 }
 
 /// Component definition in the linker
@@ -256,6 +268,201 @@ impl ComponentLinker {
             next_instance_id: 1,
             config,
             stats: LinkingStats::default(),
+            #[cfg(feature = "std")]
+            wasi_provider: crate::linker::WasiInstanceProvider::new().ok(),
+        }
+    }
+
+    /// Link component imports to providers using internal-first resolution
+    ///
+    /// Resolution order (per Component Model spec):
+    /// 1. Try to resolve from registered internal components
+    /// 2. Try to resolve from host providers (WASI)
+    /// 3. Fail with clear error if no resolution found
+    #[cfg(feature = "std")]
+    pub fn link_imports(&mut self, imports: &[wrt_format::component::Import]) -> Result<Vec<crate::instantiation::ResolvedImport>> {
+        let mut resolved = Vec::with_capacity(imports.len());
+
+        for import in imports {
+            // Build full import name
+            let name = if import.name.namespace.is_empty() {
+                import.name.name.clone()
+            } else {
+                std::format!("{}:{}", import.name.namespace, import.name.name)
+            };
+
+            // STEP 1: Try internal resolution from registered components
+            if let Some(internal_resolved) = self.resolve_from_internal(&name, import)? {
+                resolved.push(internal_resolved);
+                continue;
+            }
+
+            // STEP 2: Try WASI host provider
+            if name.starts_with("wasi:") || name.contains("wasi:") {
+                if let Some(ref mut wasi_provider) = self.wasi_provider {
+                    let instance_import = wasi_provider.create_instance(&name)?;
+                    resolved.push(crate::instantiation::ResolvedImport::Instance(instance_import));
+                    continue;
+                }
+            }
+
+            // STEP 3: FAIL LOUD - no provider found
+            #[cfg(feature = "tracing")]
+            tracing_warn!(import_name = %name, "Unresolved import - not found in internal components or host providers");
+            return Err(Error::new(
+                ErrorCategory::Core,
+                codes::COMPONENT_LINKING_ERROR,
+                "Unresolved import: no provider registered",
+            ));
+        }
+
+        // Verify all imports were resolved
+        if resolved.len() != imports.len() {
+            #[cfg(feature = "tracing")]
+            tracing_warn!(resolved = resolved.len(), total = imports.len(), "Not all imports resolved");
+            return Err(Error::new(
+                ErrorCategory::Core,
+                codes::COMPONENT_LINKING_ERROR,
+                "Not all imports could be resolved",
+            ));
+        }
+
+        #[cfg(feature = "tracing")]
+        trace!(import_count = resolved.len(), "Successfully resolved imports");
+        self.stats.links_resolved += resolved.len() as u32;
+        Ok(resolved)
+    }
+
+    /// Try to resolve an import from internal registered components
+    ///
+    /// Per Component Model spec, this performs:
+    /// 1. Name matching between import and export
+    /// 2. Type compatibility validation
+    /// 3. Creation of proper ResolvedImport with export reference
+    #[cfg(feature = "std")]
+    fn resolve_from_internal(
+        &self,
+        name: &str,
+        import: &wrt_format::component::Import,
+    ) -> Result<Option<crate::instantiation::ResolvedImport>> {
+        // Check if any registered component exports this interface
+        for (component_id, component) in &self.components {
+            for export in &component.exports {
+                let export_name = &export.name;
+
+                if export_name == name {
+                    // Found a matching export from a registered component
+                    #[cfg(feature = "tracing")]
+                    trace!(export_name = %name, component_id = %component_id, "Found matching export from component");
+
+                    // Validate type compatibility between import and export
+                    if !self.check_import_export_compatibility(import, export) {
+                        #[cfg(feature = "tracing")]
+                        trace!(import_name = %name, "Type mismatch - import incompatible with export");
+                        continue; // Try next matching export
+                    }
+
+                    // Convert ComponentExport to ExportValue for InstanceImport
+                    let export_value = self.convert_export_to_value(export)?;
+
+                    // Create InstanceImport with the export
+                    let mut instance_import = crate::instantiation::InstanceImport {
+                        exports: std::collections::BTreeMap::new(),
+                    };
+                    instance_import.exports.insert(
+                        name.to_string(),
+                        Box::new(export_value),
+                    );
+
+                    #[cfg(feature = "tracing")]
+                    trace!(import_name = %name, component_id = %component_id, "Successfully resolved import from internal component");
+                    return Ok(Some(crate::instantiation::ResolvedImport::Instance(instance_import)));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// Check if an import is compatible with an export
+    #[cfg(feature = "std")]
+    fn check_import_export_compatibility(
+        &self,
+        import: &wrt_format::component::Import,
+        export: &ComponentExport,
+    ) -> bool {
+        use wrt_format::component::ExternType;
+
+        // Check kind compatibility first using the import's type (ty field)
+        match (&import.ty, &export.export_type) {
+            // Function import requires function export
+            (ExternType::Function { .. }, ExportType::Function(_)) => true,
+            // Value import requires memory export
+            (ExternType::Value(_), ExportType::Memory(_)) => true,
+            // Type imports can match type exports
+            (ExternType::Type(_), ExportType::Type(_)) => true,
+            // Instance imports can match component exports
+            (ExternType::Instance { .. }, _) => true,
+            // Component imports need special handling
+            (ExternType::Component { .. }, _) => true,
+            // Module imports
+            (ExternType::Module { .. }, _) => true,
+            // For now, allow mismatches to fall through (will be rejected if no match found)
+            _ => {
+                #[cfg(feature = "tracing")]
+                trace!(
+                    import_type = ?std::mem::discriminant(&import.ty),
+                    export_type = ?std::mem::discriminant(&export.export_type),
+                    "Import/export type comparison"
+                );
+                // Allow to continue searching for better matches
+                false
+            }
+        }
+    }
+
+    /// Convert a ComponentExport to an instantiation ExportValue
+    #[cfg(feature = "std")]
+    fn convert_export_to_value(
+        &self,
+        export: &ComponentExport,
+    ) -> Result<crate::instantiation::ExportValue> {
+        use crate::bounded_component_infra::ComponentProvider;
+        use crate::prelude::{WrtComponentType, WrtComponentValue};
+
+        match &export.export_type {
+            ExportType::Function(_signature) => {
+                // Create a FunctionExport from the signature
+                // TODO: Use signature to create proper function type once type resolution is complete
+                let func_export = crate::instantiation::FunctionExport {
+                    signature: WrtComponentType::unit(ComponentProvider::default())?,
+                    index: 0, // Index will be resolved during actual instantiation
+                };
+                Ok(crate::instantiation::ExportValue::Function(func_export))
+            },
+            ExportType::Memory(_mem_config) => {
+                // Memory exports are handled differently - create a Value placeholder
+                Ok(crate::instantiation::ExportValue::Value(
+                    WrtComponentValue::Unit
+                ))
+            },
+            ExportType::Table { .. } => {
+                // Table exports - placeholder for now
+                Ok(crate::instantiation::ExportValue::Value(
+                    WrtComponentValue::Unit
+                ))
+            },
+            ExportType::Global { .. } => {
+                // Global exports - placeholder for now
+                Ok(crate::instantiation::ExportValue::Value(
+                    WrtComponentValue::Unit
+                ))
+            },
+            ExportType::Type(_) => {
+                // Type exports
+                Ok(crate::instantiation::ExportValue::Type(
+                    WrtComponentType::unit(ComponentProvider::default())?
+                ))
+            },
         }
     }
 
@@ -462,6 +669,14 @@ impl ComponentLinker {
             #[cfg(not(feature = "std"))]
             module_instances: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new()
+            },
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            nested_component_instances: wrt_foundation::allocator::WrtVec::new(),
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            nested_component_instances: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            nested_component_instances: {
                 BoundedVec::new()
             },
         };

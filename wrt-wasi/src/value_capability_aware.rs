@@ -427,9 +427,17 @@ mod tests {
         let u32_value = CapabilityAwareValue::U32(42);
         assert_eq!(u32_value.as_u32(), 42);
         assert_eq!(u32_value.as_u64(), 42);
-        assert!(!u32_value.as_bool()); // 42 != 0, so this should be true, but
-                                       // current impl returns false for
-                                       // non-bool
+        assert!(u32_value.as_bool()); // 42 != 0, so this should be true
+
+        // Zero should return false
+        let zero_value = CapabilityAwareValue::U32(0);
+        assert!(!zero_value.as_bool());
+
+        // Bool values work directly
+        let true_value = CapabilityAwareValue::Bool(true);
+        assert!(true_value.as_bool());
+        let false_value = CapabilityAwareValue::Bool(false);
+        assert!(!false_value.as_bool());
     }
 
     #[test]

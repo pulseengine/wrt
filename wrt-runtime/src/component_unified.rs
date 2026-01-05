@@ -125,10 +125,10 @@ where
         #[cfg(any(feature = "std", feature = "alloc"))]
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024).unwrap_or_else(|e| {
             // Log the error if logging is available
-            #[cfg(feature = "std")]
-            eprintln!(
-                "Warning: Failed to create memory adapter during clone: {}",
-                e
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::warn!(
+                error = %e,
+                "Failed to create memory adapter during clone"
             );
 
             // Create a minimal fallback adapter
@@ -202,11 +202,10 @@ where
     fn default() -> Self {
         Self::new_default().unwrap_or_else(|e| {
             // Log the error if logging is available
-            #[cfg(feature = "std")]
-            eprintln!(
-                "Error creating default component instance: {}. Creating minimal fallback \
-                 instance.",
-                e
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::error!(
+                error = %e,
+                "Error creating default component instance. Creating minimal fallback instance."
             );
 
             // Create a minimal instance with reduced memory requirements

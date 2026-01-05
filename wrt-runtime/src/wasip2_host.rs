@@ -66,11 +66,91 @@ pub enum ComponentValue {
     Option(Option<Box<ComponentValue>>),
     /// Resource handle (own or borrow)
     Handle(u32),
+    /// Unit type (no value)
+    Unit,
 }
 
 /// Resource handle type for wasip2 resources
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResourceHandle(pub u32);
+
+/// Callback type for cabi_realloc invocation
+///
+/// Parameters: (old_ptr, old_size, align, new_size) -> Result<new_ptr>
+#[cfg(feature = "std")]
+pub type ReallocCallback<'a> = &'a mut dyn FnMut(i32, i32, i32, i32) -> Result<i32>;
+
+/// Context for lowering ComponentValues to core WASM values
+///
+/// This provides access to memory and allocation facilities needed
+/// for lowering complex types like strings and lists.
+pub struct LoweringContext<'a> {
+    /// Mutable reference to linear memory
+    pub memory: &'a mut [u8],
+    /// Callback to invoke cabi_realloc for memory allocation
+    #[cfg(feature = "std")]
+    pub realloc: Option<ReallocCallback<'a>>,
+    /// Current allocation offset (for no_std fallback)
+    pub alloc_offset: u32,
+}
+
+impl<'a> LoweringContext<'a> {
+    /// Create a new lowering context with memory and optional realloc
+    #[cfg(feature = "std")]
+    pub fn new(memory: &'a mut [u8], realloc: Option<ReallocCallback<'a>>) -> Self {
+        Self {
+            memory,
+            realloc,
+            alloc_offset: 0,
+        }
+    }
+
+    /// Create a new lowering context (no_std version)
+    #[cfg(not(feature = "std"))]
+    pub fn new(memory: &'a mut [u8]) -> Self {
+        Self {
+            memory,
+            alloc_offset: 0,
+        }
+    }
+
+    /// Allocate memory and return the pointer
+    ///
+    /// Uses cabi_realloc callback if available, otherwise falls back to
+    /// simple bump allocation starting at alloc_offset.
+    pub fn allocate(&mut self, size: u32, align: u32) -> Result<u32> {
+        #[cfg(feature = "std")]
+        if let Some(ref mut realloc) = self.realloc {
+            // Call cabi_realloc(0, 0, align, size) for new allocation
+            return realloc(0, 0, align as i32, size as i32).map(|p| p as u32);
+        }
+
+        // Fallback: bump allocation (for testing or no_std)
+        // Align the offset
+        let aligned = (self.alloc_offset + align - 1) & !(align - 1);
+        let ptr = aligned;
+        self.alloc_offset = aligned + size;
+
+        if (self.alloc_offset as usize) > self.memory.len() {
+            return Err(wrt_error::Error::runtime_error("Out of memory for lowering"));
+        }
+
+        Ok(ptr)
+    }
+
+    /// Write bytes to memory at the given offset
+    pub fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
+        let start = offset as usize;
+        let end = start + data.len();
+
+        if end > self.memory.len() {
+            return Err(wrt_error::Error::runtime_error("Memory write out of bounds"));
+        }
+
+        self.memory[start..end].copy_from_slice(data);
+        Ok(())
+    }
+}
 
 /// Component type for function signatures
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -375,13 +455,39 @@ fn lift_single_value(
         }
 
         // Generic List<T>: ptr + len on stack, elements in memory
-        WasiComponentType::List(_element_ty) => {
-            // For now, simplified handling - would need recursive lifting
+        WasiComponentType::List(element_ty) => {
             let ptr = get_i32(core_values, 0)?;
             let len = get_i32(core_values, 1)?;
-            #[cfg(feature = "std")]
-            eprintln!("[LIFT] List<T> at ptr={}, len={} (complex lists not fully implemented)", ptr, len);
-            Ok((ComponentValue::List(Vec::new()), 2))
+
+            // Empty list is always valid
+            if len == 0 {
+                return Ok((ComponentValue::List(Vec::new()), 2));
+            }
+
+            // For non-empty lists, we need memory access
+            let mem = memory.ok_or_else(||
+                wrt_error::Error::runtime_error("Memory required for list lifting"))?;
+
+            // Calculate element size based on type
+            let element_size = get_element_size(element_ty);
+
+            let start = ptr as usize;
+            let total_size = len as usize * element_size;
+            let end = start + total_size;
+
+            if end > mem.len() {
+                return Err(wrt_error::Error::runtime_error("List out of bounds"));
+            }
+
+            // Lift each element from memory
+            let mut elements = Vec::with_capacity(len as usize);
+            for i in 0..len as usize {
+                let offset = start + i * element_size;
+                let element = lift_element_from_memory(element_ty, mem, offset)?;
+                elements.push(element);
+            }
+
+            Ok((ComponentValue::List(elements), 2))
         }
 
         // Option<T>: discriminant + optional payload
@@ -483,16 +589,33 @@ fn lower_single_value(value: &ComponentValue, out: &mut Vec<Value>) -> Result<()
         ComponentValue::Char(ch) => out.push(Value::I32(*ch as i32)),
         ComponentValue::Handle(h) => out.push(Value::I32(*h as i32)),
 
-        // String: for now return empty (would need memory allocation)
-        ComponentValue::String(_s) => {
-            // Would need to write to memory and return ptr+len
-            // For now, return 0,0 as placeholder
+        // String: FAIL LOUD - proper lowering requires memory allocation via cabi_realloc
+        ComponentValue::String(s) => {
+            // Phase 4 TODO: Call cabi_realloc to allocate memory, write string, return ptr+len
+            // For now, FAIL if we actually try to lower a non-empty string
+            if !s.is_empty() {
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::warn!(len = s.len(), "String lowering not implemented");
+                return Err(wrt_error::Error::runtime_error(
+                    "String lowering requires memory allocation - not implemented"
+                ));
+            }
+            // Empty string can be represented as (0, 0)
             out.push(Value::I32(0));
             out.push(Value::I32(0));
         }
 
-        // List: similar to string
-        ComponentValue::List(_) => {
+        // List: FAIL LOUD - proper lowering requires memory allocation
+        ComponentValue::List(items) => {
+            // Phase 4 TODO: Allocate memory, recursively lower elements, return ptr+len
+            if !items.is_empty() {
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::warn!(len = items.len(), "List lowering not implemented");
+                return Err(wrt_error::Error::runtime_error(
+                    "List lowering requires memory allocation - not implemented"
+                ));
+            }
+            // Empty list can be represented as (0, 0)
             out.push(Value::I32(0));
             out.push(Value::I32(0));
         }
@@ -528,8 +651,206 @@ fn lower_single_value(value: &ComponentValue, out: &mut Vec<Value>) -> Result<()
             out.push(Value::I32(1));
             lower_single_value(inner, out)?;
         }
+
+        // Unit: no values
+        ComponentValue::Unit => {
+            // Unit produces no values
+        }
     }
     Ok(())
+}
+
+/// Lower WASI results with a context for memory allocation
+///
+/// This is the preferred lowering function when you have access to memory
+/// and a realloc callback. It properly handles strings and lists by
+/// allocating memory and writing the data.
+pub fn lower_wasi_results_with_context(
+    interface: &str,
+    function: &str,
+    component_values: &[ComponentValue],
+    ctx: &mut LoweringContext<'_>,
+) -> Result<Vec<Value>> {
+    let sig = get_wasi_function_signature(interface, function)
+        .ok_or_else(|| wrt_error::Error::runtime_error("Unknown WASI function"))?;
+
+    let mut result = Vec::new();
+
+    for (value, ty) in component_values.iter().zip(sig.results.iter()) {
+        lower_single_value_with_context(value, ty, &mut result, ctx)?;
+    }
+
+    Ok(result)
+}
+
+/// Lower a single ComponentValue to core values with memory context
+fn lower_single_value_with_context(
+    value: &ComponentValue,
+    ty: &WasiComponentType,
+    out: &mut Vec<Value>,
+    ctx: &mut LoweringContext<'_>,
+) -> Result<()> {
+    match (value, ty) {
+        // Primitives - same as before, no memory needed
+        (ComponentValue::Bool(b), _) => {
+            out.push(Value::I32(if *b { 1 } else { 0 }));
+        }
+        (ComponentValue::U8(v), _) => out.push(Value::I32(*v as i32)),
+        (ComponentValue::U16(v), _) => out.push(Value::I32(*v as i32)),
+        (ComponentValue::U32(v), _) => out.push(Value::I32(*v as i32)),
+        (ComponentValue::U64(v), _) => out.push(Value::I64(*v as i64)),
+        (ComponentValue::S8(v), _) => out.push(Value::I32(*v as i32)),
+        (ComponentValue::S16(v), _) => out.push(Value::I32(*v as i32)),
+        (ComponentValue::S32(v), _) => out.push(Value::I32(*v)),
+        (ComponentValue::S64(v), _) => out.push(Value::I64(*v)),
+        (ComponentValue::F32(v), _) => out.push(Value::F32(wrt_foundation::float_repr::FloatBits32::from_f32(*v))),
+        (ComponentValue::F64(v), _) => out.push(Value::F64(wrt_foundation::float_repr::FloatBits64::from_f64(*v))),
+        (ComponentValue::Char(ch), _) => out.push(Value::I32(*ch as i32)),
+        (ComponentValue::Handle(h), _) => out.push(Value::I32(*h as i32)),
+
+        // String: Allocate memory, write UTF-8 bytes, return ptr+len
+        (ComponentValue::String(s), _) => {
+            if s.is_empty() {
+                out.push(Value::I32(0));
+                out.push(Value::I32(0));
+            } else {
+                let bytes = s.as_bytes();
+                let len = bytes.len() as u32;
+                // Allocate with alignment 1 (byte alignment)
+                let ptr = ctx.allocate(len, 1)?;
+                ctx.write_bytes(ptr, bytes)?;
+                out.push(Value::I32(ptr as i32));
+                out.push(Value::I32(len as i32));
+            }
+        }
+
+        // List: Allocate memory, write elements, return ptr+len
+        (ComponentValue::List(items), WasiComponentType::List(element_ty)) => {
+            if items.is_empty() {
+                out.push(Value::I32(0));
+                out.push(Value::I32(0));
+            } else {
+                let element_size = get_element_size(element_ty) as u32;
+                let total_size = items.len() as u32 * element_size;
+                // Allocate with element alignment (at least 1)
+                let align = core::cmp::max(1, element_size);
+                let ptr = ctx.allocate(total_size, align)?;
+
+                // Write each element
+                for (i, item) in items.iter().enumerate() {
+                    let offset = ptr + (i as u32 * element_size);
+                    write_element_to_memory(item, element_ty, ctx.memory, offset as usize)?;
+                }
+
+                out.push(Value::I32(ptr as i32));
+                out.push(Value::I32(items.len() as i32));
+            }
+        }
+
+        // ListU8: Special case for byte arrays
+        (ComponentValue::List(items), WasiComponentType::ListU8) => {
+            if items.is_empty() {
+                out.push(Value::I32(0));
+                out.push(Value::I32(0));
+            } else {
+                let len = items.len() as u32;
+                let ptr = ctx.allocate(len, 1)?;
+
+                // Extract bytes from the list
+                let bytes: Vec<u8> = items.iter().filter_map(|v| {
+                    if let ComponentValue::U8(b) = v { Some(*b) } else { None }
+                }).collect();
+
+                if bytes.len() != items.len() {
+                    return Err(wrt_error::Error::runtime_error("ListU8 contains non-byte elements"));
+                }
+
+                ctx.write_bytes(ptr, &bytes)?;
+                out.push(Value::I32(ptr as i32));
+                out.push(Value::I32(len as i32));
+            }
+        }
+
+        // Record: flatten fields (recursive)
+        (ComponentValue::Record(fields), WasiComponentType::Tuple(types)) => {
+            for ((_, field_value), field_ty) in fields.iter().zip(types.iter()) {
+                lower_single_value_with_context(field_value, field_ty, out, ctx)?;
+            }
+        }
+
+        // Option: discriminant + optional payload
+        (ComponentValue::Option(None), _) => {
+            out.push(Value::I32(0));
+        }
+        (ComponentValue::Option(Some(inner)), WasiComponentType::Option(inner_ty)) => {
+            out.push(Value::I32(1));
+            lower_single_value_with_context(inner, inner_ty, out, ctx)?;
+        }
+
+        // Result: discriminant + payload
+        (ComponentValue::Result(Ok(None)), _) => {
+            out.push(Value::I32(0));
+        }
+        (ComponentValue::Result(Ok(Some(inner))), WasiComponentType::Result(Some(ok_ty), _)) => {
+            out.push(Value::I32(0));
+            lower_single_value_with_context(inner, ok_ty, out, ctx)?;
+        }
+        (ComponentValue::Result(Err(None)), _) => {
+            out.push(Value::I32(1));
+        }
+        (ComponentValue::Result(Err(Some(inner))), WasiComponentType::Result(_, Some(err_ty))) => {
+            out.push(Value::I32(1));
+            lower_single_value_with_context(inner, err_ty, out, ctx)?;
+        }
+
+        // Unit: no values
+        (ComponentValue::Unit, _) => {
+            // Unit produces no values
+        }
+
+        // Fallback for mismatched types (delegate to simple lowering)
+        _ => {
+            lower_single_value(value, out)?;
+        }
+    }
+    Ok(())
+}
+
+/// Write a single element to memory at the given offset
+fn write_element_to_memory(
+    value: &ComponentValue,
+    ty: &WasiComponentType,
+    memory: &mut [u8],
+    offset: usize,
+) -> Result<()> {
+    let write_bytes = |mem: &mut [u8], off: usize, data: &[u8]| -> Result<()> {
+        if off + data.len() > mem.len() {
+            return Err(wrt_error::Error::runtime_error("Memory write out of bounds"));
+        }
+        mem[off..off + data.len()].copy_from_slice(data);
+        Ok(())
+    };
+
+    match (value, ty) {
+        (ComponentValue::Bool(b), _) => {
+            write_bytes(memory, offset, &[if *b { 1 } else { 0 }])
+        }
+        (ComponentValue::U8(v), _) => write_bytes(memory, offset, &[*v]),
+        (ComponentValue::S8(v), _) => write_bytes(memory, offset, &[*v as u8]),
+        (ComponentValue::U16(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::S16(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::U32(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::S32(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::U64(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::S64(v), _) => write_bytes(memory, offset, &v.to_le_bytes()),
+        (ComponentValue::F32(v), _) => write_bytes(memory, offset, &v.to_bits().to_le_bytes()),
+        (ComponentValue::F64(v), _) => write_bytes(memory, offset, &v.to_bits().to_le_bytes()),
+        (ComponentValue::Char(ch), _) => write_bytes(memory, offset, &(*ch as u32).to_le_bytes()),
+        (ComponentValue::Handle(h), _) => write_bytes(memory, offset, &h.to_le_bytes()),
+        _ => Err(wrt_error::Error::runtime_error(
+            "Cannot write complex type directly to memory"
+        )),
+    }
 }
 
 // Helper functions to extract values
@@ -567,6 +888,191 @@ fn get_f64(values: &[Value], idx: usize) -> Result<f64> {
             _ => None,
         })
         .ok_or_else(|| wrt_error::Error::runtime_error("Expected f64"))
+}
+
+/// Get the byte size of an element in memory for a given type
+fn get_element_size(ty: &WasiComponentType) -> usize {
+    match ty {
+        WasiComponentType::Bool => 1,
+        WasiComponentType::U8 | WasiComponentType::S8 => 1,
+        WasiComponentType::U16 | WasiComponentType::S16 => 2,
+        WasiComponentType::U32 | WasiComponentType::S32 => 4,
+        WasiComponentType::U64 | WasiComponentType::S64 => 8,
+        WasiComponentType::F32 => 4,
+        WasiComponentType::F64 => 8,
+        WasiComponentType::Char => 4, // UTF-32 code point
+        WasiComponentType::String => 8, // ptr (4) + len (4)
+        WasiComponentType::ListU8 => 8, // ptr (4) + len (4)
+        WasiComponentType::List(_) => 8, // ptr (4) + len (4)
+        WasiComponentType::Option(_) => 8, // discriminant + max(payload)
+        WasiComponentType::Result(_, _) => 8, // discriminant + max(ok, err)
+        WasiComponentType::Tuple(types) => {
+            types.iter().map(|t| get_element_size(t)).sum()
+        }
+        WasiComponentType::Handle => 4, // u32 handle
+        WasiComponentType::Unit => 0, // no size
+    }
+}
+
+/// Lift a single element from memory at a given offset
+fn lift_element_from_memory(
+    ty: &WasiComponentType,
+    memory: &[u8],
+    offset: usize,
+) -> Result<ComponentValue> {
+    match ty {
+        WasiComponentType::Bool => {
+            if offset >= memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            Ok(ComponentValue::Bool(memory[offset] != 0))
+        }
+        WasiComponentType::U8 => {
+            if offset >= memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            Ok(ComponentValue::U8(memory[offset]))
+        }
+        WasiComponentType::S8 => {
+            if offset >= memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            Ok(ComponentValue::S8(memory[offset] as i8))
+        }
+        WasiComponentType::U16 => {
+            if offset + 2 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = u16::from_le_bytes([memory[offset], memory[offset + 1]]);
+            Ok(ComponentValue::U16(value))
+        }
+        WasiComponentType::S16 => {
+            if offset + 2 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = i16::from_le_bytes([memory[offset], memory[offset + 1]]);
+            Ok(ComponentValue::S16(value))
+        }
+        WasiComponentType::U32 => {
+            if offset + 4 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = u32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]);
+            Ok(ComponentValue::U32(value))
+        }
+        WasiComponentType::S32 => {
+            if offset + 4 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = i32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]);
+            Ok(ComponentValue::S32(value))
+        }
+        WasiComponentType::U64 => {
+            if offset + 8 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = u64::from_le_bytes([
+                memory[offset], memory[offset + 1], memory[offset + 2], memory[offset + 3],
+                memory[offset + 4], memory[offset + 5], memory[offset + 6], memory[offset + 7],
+            ]);
+            Ok(ComponentValue::U64(value))
+        }
+        WasiComponentType::S64 => {
+            if offset + 8 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = i64::from_le_bytes([
+                memory[offset], memory[offset + 1], memory[offset + 2], memory[offset + 3],
+                memory[offset + 4], memory[offset + 5], memory[offset + 6], memory[offset + 7],
+            ]);
+            Ok(ComponentValue::S64(value))
+        }
+        WasiComponentType::F32 => {
+            if offset + 4 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let bits = u32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]);
+            Ok(ComponentValue::F32(f32::from_bits(bits)))
+        }
+        WasiComponentType::F64 => {
+            if offset + 8 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let bits = u64::from_le_bytes([
+                memory[offset], memory[offset + 1], memory[offset + 2], memory[offset + 3],
+                memory[offset + 4], memory[offset + 5], memory[offset + 6], memory[offset + 7],
+            ]);
+            Ok(ComponentValue::F64(f64::from_bits(bits)))
+        }
+        WasiComponentType::Char => {
+            if offset + 4 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let code = u32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]);
+            let ch = char::from_u32(code)
+                .ok_or_else(|| wrt_error::Error::runtime_error("Invalid char code point"))?;
+            Ok(ComponentValue::Char(ch))
+        }
+        WasiComponentType::String => {
+            // String is ptr + len in memory
+            if offset + 8 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let ptr = u32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]) as usize;
+            let len = u32::from_le_bytes([
+                memory[offset + 4], memory[offset + 5],
+                memory[offset + 6], memory[offset + 7],
+            ]) as usize;
+
+            if len == 0 {
+                return Ok(ComponentValue::String(String::new()));
+            }
+
+            if ptr + len > memory.len() {
+                return Err(wrt_error::Error::runtime_error("String data out of bounds"));
+            }
+
+            let bytes = &memory[ptr..ptr + len];
+            let s = core::str::from_utf8(bytes)
+                .map_err(|_| wrt_error::Error::runtime_error("Invalid UTF-8 in string"))?;
+            Ok(ComponentValue::String(s.to_string()))
+        }
+        WasiComponentType::Handle => {
+            if offset + 4 > memory.len() {
+                return Err(wrt_error::Error::runtime_error("Memory access out of bounds"));
+            }
+            let value = u32::from_le_bytes([
+                memory[offset], memory[offset + 1],
+                memory[offset + 2], memory[offset + 3],
+            ]);
+            Ok(ComponentValue::Handle(value))
+        }
+        // Unit has no size, nothing to read
+        WasiComponentType::Unit => Ok(ComponentValue::Unit),
+        // For complex types, we would need recursive lifting
+        WasiComponentType::ListU8 | WasiComponentType::List(_) |
+        WasiComponentType::Option(_) | WasiComponentType::Result(_, _) |
+        WasiComponentType::Tuple(_) => {
+            Err(wrt_error::Error::runtime_error(
+                "Nested complex types in lists not yet supported"
+            ))
+        }
+    }
 }
 
 /// Output stream resource for wasi:io/streams
@@ -687,10 +1193,15 @@ impl Wasip2Host {
             .unwrap_or(data.len());
         let trimmed_data = &data[..actual_len];
 
-        #[cfg(feature = "std")]
-        eprintln!("[WASIP2-WRITE] handle={}, ptr={}, len={}, actual_len={}, data={:?}",
-                  handle, data_ptr, data_len, actual_len,
-                  String::from_utf8_lossy(trimmed_data));
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(
+            handle = handle,
+            ptr = data_ptr,
+            len = data_len,
+            actual_len = actual_len,
+            data = %String::from_utf8_lossy(trimmed_data),
+            "WASIP2 write"
+        );
 
         // Write to the appropriate target
         match &self.output_streams[stream_idx].target {
@@ -698,7 +1209,8 @@ impl Wasip2Host {
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
-                    eprintln!("[WASIP2-WRITE] Writing {} bytes to STDOUT", trimmed_data.len());
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::trace!(bytes = trimmed_data.len(), "Writing to STDOUT");
                     let _ = io::stdout().write_all(trimmed_data);
                     let _ = io::stdout().flush();
                 }
@@ -973,8 +1485,8 @@ impl Wasip2Host {
             },
 
             _ => {
-                #[cfg(feature = "std")]
-                eprintln!("[WASIP2-COMPONENT] Unknown function: {}::{}", interface, function);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::warn!(interface = interface, function = function, "Unknown WASIP2 component function");
                 Err(wrt_error::Error::runtime_error("Unknown wasip2 component function"))
             }
         }

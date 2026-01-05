@@ -5,8 +5,9 @@
 
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::eprintln;
+// Tracing imports for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::{trace, warn as tracing_warn};
 
 use crate::bounded_component_infra::ComponentProvider;
 use crate::canonical_abi::ComponentValue;
@@ -16,11 +17,6 @@ use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
 use alloc::vec::Vec;
 use alloc::string::String;
 
-// Provide a no-op eprintln! for no_std
-#[cfg(not(feature = "std"))]
-macro_rules! eprintln {
-    ($($arg:tt)*) => {};
-}
 
 /// Canonical function types
 #[derive(Debug, Clone)]
@@ -93,7 +89,8 @@ impl CanonicalExecutor {
         args: Vec<ComponentValue>,
         memory: Option<&mut [u8]>,
     ) -> Result<Vec<ComponentValue>> {
-        eprintln!("[CANON_EXECUTOR] Executing canon.lower: {}::{}", interface, function);
+        #[cfg(feature = "tracing")]
+        trace!(interface = %interface, function = %function, "Executing canon.lower");
 
         // Convert ComponentValue to wasip2 Value format
         let wasip2_args = self.convert_to_wasip2_values(args)?;
@@ -104,7 +101,8 @@ impl CanonicalExecutor {
         // Convert results back to ComponentValue
         let results = self.convert_from_wasip2_values(wasip2_results)?;
 
-        eprintln!("[CANON_EXECUTOR] Canon.lower completed with {} results", results.len());
+        #[cfg(feature = "tracing")]
+        trace!(result_count = results.len(), "Canon.lower completed");
         Ok(results)
     }
 
@@ -115,7 +113,8 @@ impl CanonicalExecutor {
         args: Vec<ComponentValue>,
         _opts: &CanonicalOptions,
     ) -> Result<Vec<ComponentValue>> {
-        eprintln!("[CANON_EXECUTOR] Executing canon.lift: func_idx={}", func_idx);
+        #[cfg(feature = "tracing")]
+        trace!(func_idx = func_idx, "Executing canon.lift");
 
         // Canon.lift would call the underlying core WASM function
         // This requires integration with the core WASM engine
@@ -143,7 +142,8 @@ impl CanonicalExecutor {
                 ComponentValue::F32(f) => Value::F32(FloatBits32::from_f32(f)),
                 ComponentValue::F64(f) => Value::F64(FloatBits64::from_f64(f)),
                 _ => {
-                    eprintln!("[CANON_EXECUTOR] Unsupported ComponentValue type for conversion");
+                    #[cfg(feature = "tracing")]
+                    tracing_warn!("Unsupported ComponentValue type for conversion");
                     return Err(Error::runtime_error("Unsupported value type"));
                 }
             };
@@ -164,7 +164,8 @@ impl CanonicalExecutor {
                 Value::F32(f) => ComponentValue::F32(f.to_f32()),
                 Value::F64(f) => ComponentValue::F64(f.to_f64()),
                 _ => {
-                    eprintln!("[CANON_EXECUTOR] Unsupported Value type for conversion");
+                    #[cfg(feature = "tracing")]
+                    tracing_warn!("Unsupported Value type for conversion");
                     return Err(Error::runtime_error("Unsupported value type"));
                 }
             };

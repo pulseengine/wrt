@@ -302,8 +302,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
         let (section_size, size_len) = wrt_format::binary::read_leb128_u32(data, offset)?;
         offset += size_len;
 
-        #[cfg(feature = "std")]
-        eprintln!("[SECTION_PARSER] Section 0x{:02x} at offset {} (size {} bytes)", section_id, offset - size_len - 1, section_size);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(section_id = format!("0x{:02x}", section_id), offset = offset - size_len - 1, size = section_size, "Section parsed");
 
         // Ensure the section size is valid
         if offset + section_size as usize > data.len() {
@@ -339,27 +339,25 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x01 => {
                 // Section 1: Core Module
                 let (modules, _) = parse::parse_core_module_section(section_data)?;
-                #[cfg(feature = "std")]
-                println!("[DECODER] Section 0x01 (Core Module): parsed {} modules", modules.len());
                 component.modules.extend(modules);
-                #[cfg(feature = "std")]
-                println!("[DECODER] Total modules in component: {}", component.modules.len());
             },
             0x02 => {
                 // Section 2: Core Instances
                 match parse::parse_core_instance_section(section_data) {
                     Ok((instances, _)) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[COMPONENT_PARSER] Extending core_instances from {} to {} (+{} instances)",
-                                 component.core_instances.len(),
-                                 component.core_instances.len() + instances.len(),
-                                 instances.len());
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::trace!(
+                            from = component.core_instances.len(),
+                            to = component.core_instances.len() + instances.len(),
+                            added = instances.len(),
+                            "Extending core_instances"
+                        );
                         component.core_instances.extend(instances);
                     },
                     Err(e) => {
                         // Continue parsing other sections
-                        #[cfg(feature = "std")]
-                        eprintln!("[COMPONENT_PARSER] ERROR parsing core instances: {:?}", e);
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::warn!(error = ?e, "ERROR parsing core instances");
                     }
                 }
             },
@@ -377,12 +375,16 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x04 => {
                 // Section 4: Component (nested component definitions)
                 match parse::parse_component_section(section_data) {
-                    Ok((components, _)) => {
+                    Ok((components, _bytes_consumed)) => {
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::trace!(count = components.len(), "Parsed nested components");
                         component.components.extend(components);
                     },
-                    Err(_) => {
-                        // Continue parsing other sections
-                        // Nested components are advanced feature
+                    Err(e) => {
+                        // Following "FAIL LOUD AND EARLY" principle - propagate nested component parse errors
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::error!(error = %e, "Failed to parse nested component section");
+                        return Err(e);
                     }
                 }
             },
@@ -401,8 +403,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 6: Aliases
                 match parse::parse_alias_section(section_data) {
                     Ok((mut aliases, _)) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[SECTION_PARSER] Section 0x06 (Aliases): parsed {} aliases", aliases.len());
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::trace!(count = aliases.len(), "Parsed aliases section");
 
                         // Assign dest_idx to each alias based on its sort and current counter
                         for alias in &mut aliases {
@@ -420,8 +422,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                                         CoreSort::Instance => { let i = core_instance_counter; core_instance_counter += 1; i },
                                     };
                                     alias.dest_idx = Some(idx);
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Assigned CoreInstanceExport {:?}[{}]", kind, idx);
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!(kind = ?kind, idx = idx, "Assigned CoreInstanceExport");
                                 },
                                 AliasTarget::InstanceExport { kind, .. } => {
                                     // Component-level aliases use component counters
@@ -433,20 +435,20 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                                         Sort::Type => { let i = component_type_counter; component_type_counter += 1; i },
                                         Sort::Core(_) => {
                                             // Core sorts in InstanceExport are unusual, skip for now
-                                            #[cfg(feature = "std")]
-                                            eprintln!("[SECTION_PARSER] WARNING: InstanceExport with Core sort");
+                                            #[cfg(feature = "tracing")]
+                                            wrt_foundation::tracing::warn!("InstanceExport with Core sort");
                                             continue;
                                         },
                                     };
                                     alias.dest_idx = Some(idx);
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Assigned InstanceExport {:?}[{}]", kind, idx);
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!(kind = ?kind, idx = idx, "Assigned InstanceExport");
                                 },
                                 AliasTarget::Outer { .. } => {
                                     // Outer aliases reference parent component's index space
                                     // These don't consume indices in the current component
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Outer alias (no index assigned)");
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!("Outer alias (no index assigned)");
                                 }
                             }
                         }
@@ -454,8 +456,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                         component.aliases.extend(aliases);
                     },
                     Err(e) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[SECTION_PARSER] ERROR parsing alias section: {:?}", e);
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::warn!(error = ?e, "ERROR parsing alias section");
                         // Continue parsing other sections
                     }
                 }
@@ -476,28 +478,28 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                 // Section 8: Canonical (Canon ABI operations: lift, lower, resource)
                 match parse::parse_canon_section(section_data) {
                     Ok((canons, _)) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[SECTION_PARSER] Section 0x08 (Canonicals): parsed {} canons", canons.len());
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::trace!(count = canons.len(), "Parsed canonicals section");
 
                         // Increment counters for canon definitions that create items
                         for canon in &canons {
                             match &canon.operation {
                                 CanonOperation::Lower { .. } => {
                                     // Canon lower creates a CORE function
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Canon lower creates core func[{}]", core_func_counter);
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!(idx = core_func_counter, "Canon lower creates core func");
                                     core_func_counter += 1;
                                 },
                                 CanonOperation::Lift { .. } => {
                                     // Canon lift creates a COMPONENT function
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Canon lift creates component func[{}]", component_func_counter);
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!(idx = component_func_counter, "Canon lift creates component func");
                                     component_func_counter += 1;
                                 },
                                 CanonOperation::Resource(_) => {
                                     // Resource operations (like resource.drop) create CORE functions
-                                    #[cfg(feature = "std")]
-                                    eprintln!("[SECTION_PARSER] Canon resource creates core func[{}]", core_func_counter);
+                                    #[cfg(feature = "tracing")]
+                                    wrt_foundation::tracing::trace!(idx = core_func_counter, "Canon resource creates core func");
                                     core_func_counter += 1;
                                 },
                                 _ => {
@@ -509,8 +511,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                         component.canonicals.extend(canons);
                     },
                     Err(e) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[SECTION_PARSER] ERROR parsing canon section: {:?}", e);
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::warn!(error = ?e, "ERROR parsing canon section");
                         // Continue parsing other sections
                     }
                 }

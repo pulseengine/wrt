@@ -292,24 +292,24 @@ impl Table {
 
         let initial_size = wasm_index_to_usize(ty.limits.min)?;
 
-        #[cfg(feature = "std")]
-        eprintln!("[Table::new] Creating BoundedVec with capacity 1024 for {} elements", initial_size);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(capacity = 1024, elements = initial_size, "Creating Table BoundedVec");
 
         let mut elements: TableElements =
             wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).map_err(|e| {
-                #[cfg(feature = "std")]
-                eprintln!("[Table::new] BoundedVec::new failed: {:?}", e);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::error!(error = ?e, "BoundedVec::new failed");
                 e
             })?;
         // Note: BoundedVec doesn't have set_verification_level method
 
-        #[cfg(feature = "std")]
-        eprintln!("[Table::new] BoundedVec created, now pushing {} elements", initial_size);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(elements = initial_size, "Pushing elements to table");
 
         for i in 0..initial_size {
             if let Err(e) = elements.push(init_val.clone()) {
-                #[cfg(feature = "std")]
-                eprintln!("[Table::new] Failed to push element {}: {:?}", i, e);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::error!(index = i, error = ?e, "Failed to push element");
                 return Err(e.into());
             }
         }
@@ -483,6 +483,183 @@ impl Table {
             }
         }
         elements.set(idx_usize, value)?;
+        Ok(())
+    }
+
+    /// Grows the table by the given number of elements through a shared reference.
+    /// This method provides interior mutability for use when the table is
+    /// wrapped in an Arc.
+    ///
+    /// # Arguments
+    ///
+    /// * `delta` - The number of elements to grow by
+    /// * `init_value` - The value to initialize new elements with
+    ///
+    /// # Returns
+    ///
+    /// The previous size of the table
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the table cannot be grown
+    pub fn grow_shared(&self, delta: u32, init_value_from_arg: WrtValue) -> Result<u32> {
+        let init_val_matches = matches!((&init_value_from_arg, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
+        if !init_val_matches {
+            return Err(Error::validation_error(
+                "Grow operation init value type doesn't match table element type",
+            ));
+        }
+
+        let old_size = self.size();
+        let new_size = old_size
+            .checked_add(delta)
+            .ok_or_else(|| Error::runtime_execution_error("Table size overflow"))?;
+
+        if let Some(max) = self.ty.limits.max {
+            if new_size > max {
+                // As per spec, grow should return -1 (or an error indicating failure)
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    wrt_error::codes::CAPACITY_EXCEEDED,
+                    "Table size exceeds maximum limit",
+                ));
+            }
+        }
+
+        // Lock elements and push new values
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        for _ in 0..delta {
+            elements.push(Some(init_value_from_arg.clone()))?;
+        }
+
+        Ok(old_size)
+    }
+
+    /// Fill a range of elements with a given value through a shared reference.
+    /// This method provides interior mutability for use when the table is
+    /// wrapped in an Arc.
+    pub fn fill_elements_shared(
+        &self,
+        offset: usize,
+        value: Option<WrtValue>,
+        len: usize,
+    ) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        // Verify bounds
+        if offset + len > elements.len() {
+            return Err(Error::runtime_error("Table fill out of bounds"));
+        }
+
+        // Handle empty fill
+        if len == 0 {
+            return Ok(());
+        }
+
+        // Create a new stack with the filled elements
+        let mut result_vec: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+
+        // Copy elements with fill applied
+        for i in 0..elements.len() {
+            if i >= offset && i < offset + len {
+                // This is in the fill range
+                result_vec.push(value.clone())?;
+            } else {
+                // Outside fill range, use original value
+                result_vec.push(elements.get(i)?)?;
+            }
+        }
+
+        // Replace the elements stack
+        *elements = result_vec;
+
+        Ok(())
+    }
+
+    /// Copy elements from one region of a table to another through a shared reference.
+    /// This method provides interior mutability for use when the table is
+    /// wrapped in an Arc.
+    pub fn copy_elements_shared(&self, dst: usize, src: usize, len: usize) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        // Verify bounds
+        if src + len > elements.len() || dst + len > elements.len() {
+            return Err(Error::runtime_error("Table copy out of bounds"));
+        }
+
+        // Handle the case where no elements to copy
+        if len == 0 {
+            return Ok(());
+        }
+
+        // Create temporary stack to store elements during copy
+        let mut temp_vec: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+
+        // Read source elements into temporary stack
+        for i in 0..len {
+            temp_vec.push(elements.get(src + i)?)?;
+        }
+
+        // Create a new stack for the full result
+        let mut result_vec: TableElements =
+            wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
+
+        // Copy elements with the updated values
+        for i in 0..elements.len() {
+            if i >= dst && i < dst + len {
+                // This is in the destination range, use value from temp_vec
+                result_vec.push(temp_vec.get(i - dst)?)?;
+            } else {
+                // Outside destination range, use original value
+                result_vec.push(elements.get(i)?)?;
+            }
+        }
+
+        // Replace the elements stack
+        *elements = result_vec;
+
+        Ok(())
+    }
+
+    /// Initialize a range of elements in the table through a shared reference.
+    /// This method provides interior mutability for use when the table is
+    /// wrapped in an Arc.
+    pub fn init_shared(&self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
+        #[cfg(feature = "std")]
+        let mut elements = self.elements.lock()
+            .map_err(|_| Error::runtime_error("Failed to lock table elements"))?;
+        #[cfg(not(feature = "std"))]
+        let mut elements = self.elements.lock();
+
+        if offset as usize + init_data.len() > elements.len() {
+            return Err(Error::runtime_out_of_bounds(
+                "Table initialization out of bounds",
+            ));
+        }
+        for (i, val_opt) in init_data.iter().enumerate() {
+            if let Some(val) = val_opt {
+                let val_matches = matches!((&val, &self.ty.element_type), (WrtValue::FuncRef(_), WrtRefType::Funcref) | (WrtValue::ExternRef(_), WrtRefType::Externref));
+                if !val_matches {
+                    return Err(Error::validation_error("Table init value type mismatch"));
+                }
+            }
+            elements.set((offset as usize) + i, val_opt.clone())?;
+        }
         Ok(())
     }
 

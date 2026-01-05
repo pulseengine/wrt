@@ -458,14 +458,116 @@ mod component_binary_parser {
             Ok(())
         }
 
-        /// Parse component section (placeholder implementation)
+        /// Parse component section (nested component definitions)
+        ///
+        /// The component section contains one or more nested component binaries.
+        /// Each nested component is a complete component binary with magic bytes,
+        /// version, and all sections. We recursively parse each one and add it
+        /// to the parent component's `components` vector.
         fn parse_component_section(
             &mut self,
-            _data: &[u8],
-            _component: &mut Component,
+            data: &[u8],
+            component: &mut Component,
         ) -> Result<()> {
-            // This would parse nested component definitions
+            // Component section format:
+            // - count: u32 (LEB128) - number of nested components
+            // - for each component:
+            //   - size: u32 (LEB128) - size of component binary
+            //   - bytes: [u8; size] - complete component binary
+
+            let mut offset = 0;
+
+            // Read count of nested components
+            let (count, count_bytes) = Self::read_leb128_u32_from_slice(&data[offset..])?;
+            offset += count_bytes;
+
+            #[cfg(feature = "tracing")]
+            {
+                use wrt_foundation::tracing::trace;
+                trace!("Parsing {} nested component(s)", count);
+            }
+
+            for i in 0..count {
+                // Read the size of this nested component binary
+                let (comp_size, size_bytes) = Self::read_leb128_u32_from_slice(&data[offset..])?;
+                offset += size_bytes;
+
+                // Validate we have enough data
+                if offset + comp_size as usize > data.len() {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Nested component size exceeds section data"
+                    ));
+                }
+
+                // Extract the nested component binary
+                let nested_binary = &data[offset..offset + comp_size as usize];
+                offset += comp_size as usize;
+
+                #[cfg(feature = "tracing")]
+                {
+                    use wrt_foundation::tracing::trace;
+                    trace!("Parsing nested component {} ({} bytes)", i, comp_size);
+                }
+
+                // Recursively parse the nested component
+                let mut nested_parser = ComponentBinaryParser::with_validation_level(
+                    self.validation_level,
+                );
+
+                let nested_component = nested_parser.parse(nested_binary)?;
+
+                // Add to parent's components vector
+                component.components.push(nested_component);
+
+                #[cfg(feature = "tracing")]
+                {
+                    use wrt_foundation::tracing::trace;
+                    trace!("Successfully parsed nested component {}", i);
+                }
+            }
+
             Ok(())
+        }
+
+        /// Read LEB128 u32 from a slice (helper for section parsing)
+        fn read_leb128_u32_from_slice(data: &[u8]) -> Result<(u32, usize)> {
+            let mut result = 0u32;
+            let mut shift = 0;
+            let mut bytes_read = 0;
+
+            for &byte in data.iter() {
+                bytes_read += 1;
+                result |= ((byte & 0x7F) as u32) << shift;
+
+                if (byte & 0x80) == 0 {
+                    return Ok((result, bytes_read));
+                }
+
+                shift += 7;
+                if shift >= 32 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "LEB128 value too large for u32"
+                    ));
+                }
+
+                if bytes_read > 5 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "LEB128 encoding too long"
+                    ));
+                }
+            }
+
+            Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of data while reading LEB128"
+            ))
         }
 
         /// Parse instance section (placeholder implementation)

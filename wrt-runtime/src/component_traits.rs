@@ -8,7 +8,7 @@ use wrt_foundation::{
 pub type ComponentType = wrt_foundation::component::ComponentType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 pub type ExternType = wrt_foundation::component::ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 pub type SafeStackValue = wrt_foundation::safe_memory::SafeStack<Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
-pub type FuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type FuncType = wrt_foundation::types::FuncType;
 
 /// Represents a runtime component instance
 #[cfg(feature = "std")]
@@ -46,6 +46,10 @@ pub trait HostFunctionFactory {
     fn create_function(&self, name: &str, ty: &FuncType) -> Result<Box<dyn HostFunction>>;
 }
 
+// Re-export HostImportHandler from wrt-foundation for convenience
+#[cfg(feature = "std")]
+pub use wrt_foundation::HostImportHandler;
+
 /// Represents a component runtime environment
 #[cfg(feature = "std")]
 pub trait ComponentRuntime {
@@ -55,7 +59,7 @@ pub trait ComponentRuntime {
         Self: Sized;
 
     /// Register a host function factory
-    fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>;
+    fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>);
 
     /// Instantiate a component
     fn instantiate(&self, component_type: &ComponentType) -> Result<Box<dyn ComponentInstance>>;

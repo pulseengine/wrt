@@ -182,15 +182,9 @@ impl MemoryFactory {
         // The capability verification above ensures this allocation is authorized
         // FIX: Use heap allocation for large providers to avoid stack overflow
         let provider = if N > 8192 {
-            eprintln!("DEBUG: Using heap allocation for provider size N = {}", N);
-            let heap_provider = NoStdProvider::<N>::new_heap_allocated();
-            eprintln!("DEBUG: Heap provider created with size = {}", heap_provider.size());
-            heap_provider
+            NoStdProvider::<N>::new_heap_allocated()
         } else {
-            eprintln!("DEBUG: Using default allocation for provider size N = {}", N);
-            let default_provider = NoStdProvider::<N>::default();
-            eprintln!("DEBUG: Default provider created with size = {}", default_provider.size());
-            default_provider
+            NoStdProvider::<N>::default()
         };
 
         // Wrap with capability verification

@@ -268,10 +268,16 @@ pub enum CoreInstanceExpr {
 /// Core WebAssembly argument reference (format representation only)
 #[derive(Debug, Clone)]
 pub struct CoreArgReference {
-    /// Name of the argument
+    /// Name of the argument (import module/name as specified in the wasm module)
     pub name:         String,
-    /// Instance index reference (format-only)
-    pub instance_idx: u32,
+    /// Sort/kind of the argument (0x00=Func, 0x01=Table, 0x02=Mem, 0x03=Global, 0x12=Instance, ...)
+    /// This determines which index space `idx` refers to in the component.
+    pub kind:         u8,
+    /// Index in the corresponding component index space (not the instance index!)
+    /// For kind=0x12 (Instance), this IS the instance index.
+    /// For kind=0x00 (Func), this is a function index in the component's core func space.
+    /// For kind=0x01 (Table), this is a table index in the component's core table space.
+    pub idx:          u32,
 }
 
 /// Core WebAssembly inlined export
@@ -457,7 +463,7 @@ pub struct InlineExport {
 }
 
 /// Component sort kinds
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Sort {
     /// Core reference
     Core(CoreSort),

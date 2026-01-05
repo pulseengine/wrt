@@ -102,6 +102,18 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run clippy checks
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Check for WASI stub implementations in engine (architectural invariant)
+        run: |
+          # Engine must NOT contain hardcoded WASI function implementations
+          # Per CLAUDE.md: Engine has ZERO WASI-specific stub code - all dispatch goes through wrt-wasi
+          # Pattern matches: match arms like ("wasi:cli/stdout", "get-stdout") => { ... }
+          if grep -nE '^\s*\("wasi:' wrt-runtime/src/stackless/engine.rs; then
+            echo "ERROR: Hardcoded WASI function implementations found in engine.rs"
+            echo "All WASI dispatch must go through wrt-wasi/src/dispatcher.rs"
+            echo "Engine should only use WasiDispatcher, not implement WASI functions directly"
+            exit 1
+          fi
+          echo "Engine architecture check passed - no hardcoded WASI stubs in engine"
 
   core_tests_and_analysis:
     name: Core Tests, Analysis & Coverage

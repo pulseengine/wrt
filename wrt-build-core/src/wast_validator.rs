@@ -71,9 +71,21 @@ enum FrameType {
 /// Validator for WebAssembly modules
 pub struct WastModuleValidator;
 
+/// WebAssembly memory limits
+/// Max memory pages is 65536 (4GB with 64KB pages)
+const WASM_MAX_MEMORY_PAGES: u32 = 65536;
+
 impl WastModuleValidator {
     /// Validate a module
     pub fn validate(module: &Module) -> Result<()> {
+        // Validate memory limits
+        Self::validate_memory_limits(module)?;
+
+        // Validate data segments - they require at least one memory to be defined
+        if !module.data.is_empty() && !Self::has_memory(module) {
+            return Err(anyhow!("unknown memory"));
+        }
+
         // Validate functions
         for (func_idx, func) in module.functions.iter().enumerate() {
             if let Err(e) = Self::validate_function(func_idx, func, module) {
@@ -85,6 +97,51 @@ impl WastModuleValidator {
         for (global_idx, global) in module.globals.iter().enumerate() {
             Self::validate_global(global_idx, global, module)
                 .context(format!("Global {} validation failed", global_idx))?;
+        }
+
+        Ok(())
+    }
+
+    /// Validate memory section limits
+    fn validate_memory_limits(module: &Module) -> Result<()> {
+        // Check imported memories
+        for import in &module.imports {
+            if let ImportDesc::Memory(memory) = &import.desc {
+                // Check that min <= max if max is specified
+                if let Some(max) = memory.limits.max {
+                    if memory.limits.min > max {
+                        return Err(anyhow!("size minimum must not be greater than maximum"));
+                    }
+                }
+                // Check memory size bounds (65536 pages max)
+                if memory.limits.min > WASM_MAX_MEMORY_PAGES {
+                    return Err(anyhow!("memory size"));
+                }
+                if let Some(max) = memory.limits.max {
+                    if max > WASM_MAX_MEMORY_PAGES {
+                        return Err(anyhow!("memory size"));
+                    }
+                }
+            }
+        }
+
+        // Check defined memories
+        for memory in &module.memories {
+            // Check that min <= max if max is specified
+            if let Some(max) = memory.limits.max {
+                if memory.limits.min > max {
+                    return Err(anyhow!("size minimum must not be greater than maximum"));
+                }
+            }
+            // Check memory size bounds (65536 pages max)
+            if memory.limits.min > WASM_MAX_MEMORY_PAGES {
+                return Err(anyhow!("memory size"));
+            }
+            if let Some(max) = memory.limits.max {
+                if max > WASM_MAX_MEMORY_PAGES {
+                    return Err(anyhow!("memory size"));
+                }
+            }
         }
 
         Ok(())
@@ -523,8 +580,12 @@ impl WastModuleValidator {
                 }
 
                 // Memory operations - Load instructions
+                // All memory operations require at least one memory to be defined
                 0x28 => {
                     // i32.load - pop i32 address, push i32 value
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -537,6 +598,9 @@ impl WastModuleValidator {
                 }
                 0x29 => {
                     // i64.load - pop i32 address, push i64 value
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -549,6 +613,9 @@ impl WastModuleValidator {
                 }
                 0x2A => {
                     // f32.load - pop i32 address, push f32 value
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -561,6 +628,9 @@ impl WastModuleValidator {
                 }
                 0x2B => {
                     // f64.load - pop i32 address, push f64 value
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -574,6 +644,9 @@ impl WastModuleValidator {
                 0x2C..=0x35 => {
                     // Extended load operations (load8, load16, load32, etc.)
                     // All take i32 address and return the loaded value type
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -592,6 +665,9 @@ impl WastModuleValidator {
                 }
                 0x36 => {
                     // i32.store - pop i32 value and i32 address
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -606,6 +682,9 @@ impl WastModuleValidator {
                 }
                 0x37 => {
                     // i64.store - pop i64 value and i32 address
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -620,6 +699,9 @@ impl WastModuleValidator {
                 }
                 0x38 => {
                     // f32.store - pop f32 value and i32 address
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -634,6 +716,9 @@ impl WastModuleValidator {
                 }
                 0x39 => {
                     // f64.store - pop f64 value and i32 address
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -648,6 +733,9 @@ impl WastModuleValidator {
                 }
                 0x3A..=0x3E => {
                     // Extended store operations (store8, store16, store32)
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -665,6 +753,32 @@ impl WastModuleValidator {
                     if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
                         return Err(anyhow!("type mismatch"));
                     }
+                }
+                0x3F => {
+                    // memory.size - push i32 (current memory size in pages)
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
+                    // Skip reserved byte (memory index, always 0x00 in MVP)
+                    if offset < code.len() {
+                        offset += 1;
+                    }
+                    stack.push(StackType::I32);
+                }
+                0x40 => {
+                    // memory.grow - pop i32 (delta pages), push i32 (previous size or -1)
+                    if !Self::has_memory(module) {
+                        return Err(anyhow!("unknown memory"));
+                    }
+                    // Skip reserved byte (memory index, always 0x00 in MVP)
+                    if offset < code.len() {
+                        offset += 1;
+                    }
+                    let frame_height = Self::current_frame_height(&frames);
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    stack.push(StackType::I32);
                 }
 
                 // Variable operations
@@ -1501,6 +1615,21 @@ impl WastModuleValidator {
     fn count_global_imports(module: &Module) -> usize {
         // wrt_format::Module has imports as a Vec, so iteration works correctly
         module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Global(_))).count()
+    }
+
+    /// Count the number of memory imports in a module
+    fn count_memory_imports(module: &Module) -> usize {
+        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Memory(_))).count()
+    }
+
+    /// Get the total number of memories (imports + defined)
+    fn total_memories(module: &Module) -> usize {
+        Self::count_memory_imports(module) + module.memories.len()
+    }
+
+    /// Check if module has any memory defined (imported or local)
+    fn has_memory(module: &Module) -> bool {
+        Self::total_memories(module) > 0
     }
 
     /// Get the global type for a global index (accounting for imports)

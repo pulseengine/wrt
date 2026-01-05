@@ -144,6 +144,10 @@ impl RuntimeModuleBuilder for ModuleBuilder {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
+            global_import_types: Vec::new(),
+            deferred_global_inits: Vec::new(),
+            import_types: Vec::new(),
         };
         #[cfg(not(feature = "std"))]
         let module = Module {
@@ -162,6 +166,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
         };
         Self {
             module,
@@ -419,6 +424,13 @@ impl ModuleBuilder {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
+            #[cfg(feature = "std")]
+            global_import_types: Vec::new(),
+            #[cfg(feature = "std")]
+            deferred_global_inits: Vec::new(),
+            #[cfg(feature = "std")]
+            import_types: Vec::new(),
         };
         Ok(Self {
             module,

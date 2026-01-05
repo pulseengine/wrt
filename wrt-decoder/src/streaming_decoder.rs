@@ -9,6 +9,9 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::trace;
+
 use wrt_format::module::{
     Function,
     Module as WrtModule,
@@ -155,8 +158,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG process_type_section: count={}, data.len()={}", count, data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), "process_type_section");
 
         // Process each type one at a time
         for i in 0..count {
@@ -223,12 +226,12 @@ impl<'a> StreamingDecoder<'a> {
                 let _ = self.module.types.push(func_type);
             }
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG process_type_section: parsed type #{}", i);
+            #[cfg(feature = "tracing")]
+            trace!(type_index = i, "process_type_section: parsed type");
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG process_type_section: module.types.len()={}", self.module.types.len());
+        #[cfg(feature = "tracing")]
+        trace!(types_count = self.module.types.len(), "process_type_section: complete");
 
         Ok(())
     }
@@ -241,8 +244,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG process_import_section: count={}, data.len()={}", count, data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), "process_import_section");
 
         // Process each import one at a time
         for i in 0..count {
@@ -261,9 +264,8 @@ impl<'a> StreamingDecoder<'a> {
             let kind = data[offset];
             offset += 1;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG import #{}: module='{}', field='{}', kind=0x{:02x}",
-                     i, module_name, field_name, kind);
+            #[cfg(feature = "tracing")]
+            trace!(import_index = i, module = module_name, field = field_name, kind = kind, "import parsed");
 
             // Parse import description and handle based on kind
             match kind {
@@ -272,8 +274,8 @@ impl<'a> StreamingDecoder<'a> {
                     let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("DEBUG import #{}: function type_idx={}", i, type_idx);
+                    #[cfg(feature = "tracing")]
+                    trace!(import_index = i, type_idx = type_idx, "import: function");
 
                     // Create placeholder function for imported function
                     // This ensures function index space includes imports
@@ -299,8 +301,8 @@ impl<'a> StreamingDecoder<'a> {
                         self.module.imports.push(import);
                     }
 
-                    eprintln!("DEBUG: Recorded import {}::{} at function index {}",
-                             module_name, field_name, self.num_function_imports - 1);
+                    #[cfg(feature = "tracing")]
+                    trace!(module = module_name, name = field_name, func_index = self.num_function_imports - 1, "recorded import");
                 },
                 0x01 => {
                     // Table import - need to parse table type
@@ -308,7 +310,7 @@ impl<'a> StreamingDecoder<'a> {
                     if offset >= data.len() {
                         return Err(Error::parse_error("Unexpected end of table import"));
                     }
-                    let _ref_type = data[offset];
+                    let ref_type_byte = data[offset];
                     offset += 1;
 
                     // Parse limits
@@ -319,14 +321,45 @@ impl<'a> StreamingDecoder<'a> {
                     offset += 1;
                     let (min, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
-                    if flags & 0x01 != 0 {
+                    let max = if flags & 0x01 != 0 {
                         let (max, bytes_read) = read_leb128_u32(data, offset)?;
                         offset += bytes_read;
-                        #[cfg(feature = "std")]
-                        eprintln!("DEBUG import #{}: table min={}, max={}", i, min, max);
+                        Some(max)
                     } else {
-                        #[cfg(feature = "std")]
-                        eprintln!("DEBUG import #{}: table min={}", i, min);
+                        None
+                    };
+                    #[cfg(feature = "tracing")]
+                    trace!(import_index = i, min = min, max = ?max, "import: table");
+
+                    // Store the table import in module.imports for runtime resolution
+                    #[cfg(feature = "std")]
+                    {
+                        use wrt_format::module::{Import, ImportDesc};
+                        use wrt_foundation::types::{TableType, Limits, RefType};
+
+                        // Convert ref_type byte to RefType
+                        let ref_type = match ref_type_byte {
+                            0x70 => RefType::Funcref,
+                            0x6F => RefType::Externref,
+                            _ => RefType::Funcref, // Default for unknown
+                        };
+
+                        let limits = Limits {
+                            min,
+                            max,
+                        };
+
+                        let table_type = TableType {
+                            element_type: ref_type,
+                            limits,
+                        };
+
+                        let import = Import {
+                            module: module_name.to_string(),
+                            name: field_name.to_string(),
+                            desc: ImportDesc::Table(table_type),
+                        };
+                        self.module.imports.push(import);
                     }
                 },
                 0x02 => {
@@ -338,14 +371,38 @@ impl<'a> StreamingDecoder<'a> {
                     offset += 1;
                     let (min, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
-                    if flags & 0x01 != 0 {
+                    let max = if flags & 0x01 != 0 {
                         let (max, bytes_read) = read_leb128_u32(data, offset)?;
                         offset += bytes_read;
-                        #[cfg(feature = "std")]
-                        eprintln!("DEBUG import #{}: memory min={} pages, max={} pages", i, min, max);
+                        Some(max)
                     } else {
-                        #[cfg(feature = "std")]
-                        eprintln!("DEBUG import #{}: memory min={} pages", i, min);
+                        None
+                    };
+                    #[cfg(feature = "tracing")]
+                    trace!(import_index = i, min_pages = min, max_pages = ?max, "import: memory");
+
+                    // Store the memory import in module.imports for runtime resolution
+                    #[cfg(feature = "std")]
+                    {
+                        use wrt_format::module::{Import, ImportDesc};
+                        use wrt_foundation::types::{MemoryType, Limits};
+
+                        let limits = Limits {
+                            min,
+                            max,
+                        };
+
+                        let memory_type = MemoryType {
+                            limits,
+                            shared: flags & 0x02 != 0, // bit 1 = shared
+                        };
+
+                        let import = Import {
+                            module: module_name.to_string(),
+                            name: field_name.to_string(),
+                            desc: ImportDesc::Memory(memory_type),
+                        };
+                        self.module.imports.push(import);
                     }
                 },
                 0x03 => {
@@ -376,8 +433,8 @@ impl<'a> StreamingDecoder<'a> {
                         _ => return Err(Error::parse_error("Invalid global import value type")),
                     };
 
-                    #[cfg(feature = "std")]
-                    eprintln!("DEBUG import #{}: global type={:?} mutable={}", i, value_type, mutability_byte != 0);
+                    #[cfg(feature = "tracing")]
+                    trace!(import_index = i, value_type = ?value_type, mutable = (mutability_byte != 0), "import: global");
 
                     // Store the global import in module.imports for runtime resolution
                     #[cfg(feature = "std")]
@@ -400,8 +457,8 @@ impl<'a> StreamingDecoder<'a> {
                     // Tag import
                     let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
-                    #[cfg(feature = "std")]
-                    eprintln!("DEBUG import #{}: tag type_idx={}", i, type_idx);
+                    #[cfg(feature = "tracing")]
+                    trace!(import_index = i, type_idx = type_idx, "import: tag");
                 },
                 _ => {
                     return Err(Error::parse_error("Invalid import kind"));
@@ -409,8 +466,8 @@ impl<'a> StreamingDecoder<'a> {
             }
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG process_import_section: done, functions.len()={}", self.module.functions.len());
+        #[cfg(feature = "tracing")]
+        trace!(functions_count = self.module.functions.len(), "process_import_section: complete");
 
         Ok(())
     }
@@ -421,16 +478,16 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[FUNC_SECTION] Processing {} functions from {} bytes", count, data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), "process_function_section");
 
         // Reserve space for functions
         for i in 0..count {
             let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
-            #[cfg(feature = "std")]
-            eprintln!("[FUNC_SECTION] Function {} has type_idx={}", i, type_idx);
+            #[cfg(feature = "tracing")]
+            trace!(func_index = i, type_idx = type_idx, "process_function_section: function parsed");
 
             // Create function with empty body for now
             let func = Function {
@@ -454,8 +511,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[TABLE_SECTION] Processing {} tables", count);
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "process_table_section");
 
         // Process each table one at a time
         for i in 0..count {
@@ -580,26 +637,19 @@ impl<'a> StreamingDecoder<'a> {
                         }
                     }
                 }
-                #[cfg(feature = "std")]
-                eprintln!("[TABLE_SECTION] Table {} has init expression (validated)", i);
+                #[cfg(feature = "tracing")]
+                trace!(table_index = i, "table has init expression (validated)");
             }
 
-            #[cfg(feature = "std")]
-            eprintln!(
-                "[TABLE_SECTION] Table {}: type={:?}, min={}, max={:?}",
-                i, element_type, min, max
-            );
+            #[cfg(feature = "tracing")]
+            trace!(table_index = i, element_type = ?element_type, min = min, max = ?max, "table parsed");
 
             // Create table type and add to module
             let table_type = TableType::new(element_type, Limits { min, max });
             self.module.tables.push(table_type);
 
-            #[cfg(feature = "std")]
-            eprintln!(
-                "[TABLE_SECTION] Added table {}, total tables: {}",
-                i,
-                self.module.tables.len()
-            );
+            #[cfg(feature = "tracing")]
+            trace!(table_index = i, total_tables = self.module.tables.len(), "table added");
         }
 
         Ok(())
@@ -613,8 +663,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[MEMORY_SECTION] Processing {} memories", count);
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "process_memory_section");
 
         // Check memory count against platform limits
         if count > 1 && !self.platform_limits.max_components > 0 {
@@ -665,8 +715,8 @@ impl<'a> StreamingDecoder<'a> {
             // Add to module
             self.module.memories.push(memory_type);
 
-            #[cfg(feature = "std")]
-            eprintln!("[MEMORY_SECTION] Added memory {}, total memories: {}", i, self.module.memories.len());
+            #[cfg(feature = "tracing")]
+            trace!(memory_index = i, total_memories = self.module.memories.len(), "memory added");
         }
 
         Ok(())
@@ -681,19 +731,12 @@ impl<'a> StreamingDecoder<'a> {
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
-        #[cfg(feature = "std")]
-        {
-            eprintln!("DEBUG process_global_section: count={}, data.len()={}, offset after count={}", count, data.len(), offset);
-            eprint!("DEBUG first 20 bytes: ");
-            for i in 0..data.len().min(20) {
-                eprint!("{:02x} ", data[i]);
-            }
-            eprintln!();
-        }
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), offset = offset, "process_global_section");
 
         for i in 0..count {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG global #{}: starting at offset {}", i, offset);
+            #[cfg(feature = "tracing")]
+            trace!(global_index = i, offset = offset, "parsing global");
 
             // Parse global type: value_type + mutability
             if offset >= data.len() {
@@ -780,8 +823,8 @@ impl<'a> StreamingDecoder<'a> {
                     _ => {
                         // Unknown opcode in init expression - skip to find 0x0b
                         // This is a fallback for any opcodes we don't handle
-                        #[cfg(feature = "std")]
-                        eprintln!("DEBUG global: unknown init opcode 0x{:02x} at offset {}", opcode, offset - 1);
+                        #[cfg(feature = "tracing")]
+                        trace!(opcode = opcode, offset = offset - 1, "global: unknown init opcode");
                         // Continue to next byte
                     }
                 }
@@ -802,8 +845,8 @@ impl<'a> StreamingDecoder<'a> {
 
             self.module.globals.push(global);
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG global #{}: type={:?}, mutable={}, init_len={}", i, value_type, mutable, offset - init_start);
+            #[cfg(feature = "tracing")]
+            trace!(global_index = i, value_type = ?value_type, mutable = mutable, init_len = offset - init_start, "global parsed");
         }
 
         Ok(())
@@ -817,33 +860,18 @@ impl<'a> StreamingDecoder<'a> {
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
-        #[cfg(feature = "std")]
-        {
-            eprintln!("DEBUG process_export_section: count={}, initial_offset={}, data.len()={}", count, offset, data.len());
-            eprintln!("DEBUG first 20 bytes: {:02x?}", &data[..20.min(data.len())]);
-        }
+        #[cfg(feature = "tracing")]
+        trace!(count = count, offset = offset, data_len = data.len(), "process_export_section");
 
         for i in 0..count {
             // Parse export name - use validate_utf8_name for std builds to avoid
             // BoundedString issues
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG export #{}: before validate_utf8_name, offset={}", i, offset);
-            }
+            #[cfg(feature = "tracing")]
+            trace!(export_index = i, offset = offset, "parsing export name");
             let (export_name_str, new_offset) = validate_utf8_name(data, offset)?;
-            #[cfg(feature = "std")]
-            {
-                eprintln!(
-                    "DEBUG export #{}: after validate_utf8_name, name='{}', new_offset={}",
-                    i, export_name_str, new_offset
-                );
-            }
+            #[cfg(feature = "tracing")]
+            trace!(export_index = i, name = export_name_str, new_offset = new_offset, "export name parsed");
             offset = new_offset;
-
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG export #{}: after name, offset now = {}", i, offset);
-            }
 
             if offset >= data.len() {
                 return Err(Error::parse_error("Unexpected end of export kind"));
@@ -853,20 +881,16 @@ impl<'a> StreamingDecoder<'a> {
             let kind_byte = data[offset];
             offset += 1;
 
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG export #{}: after kind, offset now = {}, kind_byte = 0x{:02x}", i, offset, kind_byte);
-            }
+            #[cfg(feature = "tracing")]
+            trace!(export_index = i, kind_byte = kind_byte, offset = offset, "export kind parsed");
             let kind = match kind_byte {
                 0x00 => wrt_format::module::ExportKind::Function,
                 0x01 => wrt_format::module::ExportKind::Table,
                 0x02 => wrt_format::module::ExportKind::Memory,
                 0x03 => wrt_format::module::ExportKind::Global,
                 _ => {
-                    #[cfg(feature = "std")]
-                    {
-                        eprintln!("DEBUG: Invalid export kind byte: 0x{:02x}", kind_byte);
-                    }
+                    #[cfg(feature = "tracing")]
+                    trace!(kind_byte = kind_byte, "invalid export kind");
                     return Err(Error::parse_error("Invalid export kind"));
                 },
             };
@@ -875,10 +899,8 @@ impl<'a> StreamingDecoder<'a> {
             let (index, bytes_consumed) = read_leb128_u32(data, offset)?;
             offset += bytes_consumed;
 
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG export #{}: after index, offset now = {}, index={}", i, offset, index);
-            }
+            #[cfg(feature = "tracing")]
+            trace!(export_index = i, index = index, offset = offset, "export index parsed");
 
             // Add export to module
             #[cfg(feature = "std")]
@@ -922,8 +944,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[ELEM_SECTION] Parsing {} element segments from {} bytes", count, data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), "process_element_section");
 
         for elem_idx in 0..count {
             // Parse element segment flags (see WebAssembly spec 5.5.10)
@@ -939,8 +961,8 @@ impl<'a> StreamingDecoder<'a> {
             let (flags, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
-            #[cfg(feature = "std")]
-            eprintln!("[ELEM_SECTION] Element {} has flags 0x{:02x}", elem_idx, flags);
+            #[cfg(feature = "tracing")]
+            trace!(elem_idx = elem_idx, flags = flags, "element segment flags");
 
             let (mode, offset_expr_bytes, element_type) = match flags {
                 0 => {
@@ -954,9 +976,8 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1; // consume 0x0B
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table 0, offset expr {} bytes",
-                             elem_idx, offset_expr_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active table 0");
 
                     (
                         PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
@@ -973,8 +994,8 @@ impl<'a> StreamingDecoder<'a> {
                         0x6F => wrt_format::types::RefType::Externref,
                         _ => wrt_format::types::RefType::Funcref,
                     };
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Passive with type {:?}", elem_idx, ref_type);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, ref_type = ?ref_type, "element: passive");
                     (PureElementMode::Passive, Vec::new(), ref_type)
                 },
                 2 => {
@@ -999,9 +1020,8 @@ impl<'a> StreamingDecoder<'a> {
                     let _elemkind = data[offset];
                     offset += 1;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes (legacy funcidx)",
-                             elem_idx, table_index, offset_expr_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), "element: active legacy funcidx");
 
                     (
                         PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
@@ -1018,8 +1038,8 @@ impl<'a> StreamingDecoder<'a> {
                         0x6F => wrt_format::types::RefType::Externref,
                         _ => wrt_format::types::RefType::Funcref,
                     };
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Declarative with type {:?}", elem_idx, ref_type);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, ref_type = ?ref_type, "element: declarative");
                     (PureElementMode::Declared, Vec::new(), ref_type)
                 },
                 4 => {
@@ -1037,9 +1057,8 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1; // consume 0x0B
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table {}, offset expr {} bytes (legacy)",
-                             elem_idx, table_index, offset_expr_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), "element: active legacy");
 
                     (
                         PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
@@ -1056,8 +1075,8 @@ impl<'a> StreamingDecoder<'a> {
                         0x6F => wrt_format::types::RefType::Externref,
                         _ => wrt_format::types::RefType::Funcref,
                     };
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Passive with type {:?}", elem_idx, ref_type);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, ref_type = ?ref_type, "element: passive with type");
                     (PureElementMode::Passive, Vec::new(), ref_type)
                 },
                 6 => {
@@ -1087,9 +1106,8 @@ impl<'a> StreamingDecoder<'a> {
                         _ => wrt_format::types::RefType::Funcref,
                     };
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Active table {} with expressions, offset expr {} bytes, type {:?}",
-                             elem_idx, table_index, offset_expr_bytes.len(), ref_type);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), ref_type = ?ref_type, "element: active with expressions");
 
                     (
                         PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
@@ -1106,8 +1124,8 @@ impl<'a> StreamingDecoder<'a> {
                         0x6F => wrt_format::types::RefType::Externref,
                         _ => wrt_format::types::RefType::Funcref,
                     };
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_SECTION] Element {}: Declarative with type {:?}", elem_idx, ref_type);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, ref_type = ?ref_type, "element: declarative with type");
                     (PureElementMode::Declared, Vec::new(), ref_type)
                 },
                 _ => {
@@ -1119,8 +1137,8 @@ impl<'a> StreamingDecoder<'a> {
             let (item_count, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
-            #[cfg(feature = "std")]
-            eprintln!("[ELEM_SECTION] Element {} has {} items", elem_idx, item_count);
+            #[cfg(feature = "tracing")]
+            trace!(elem_idx = elem_idx, item_count = item_count, "element items");
 
             let init_data = if flags == 0 || flags == 2 || flags == 4 {
                 // Legacy function indices format (flags 0, 2, 4)
@@ -1129,9 +1147,9 @@ impl<'a> StreamingDecoder<'a> {
                     let (func_idx, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
                     func_indices.push(func_idx);
-                    #[cfg(feature = "std")]
+                    #[cfg(feature = "tracing")]
                     if i < 5 || i == item_count - 1 {
-                        eprintln!("[ELEM_SECTION]   item[{}] = func {}", i, func_idx);
+                        trace!(item_index = i, func_idx = func_idx, "element item: func index");
                     }
                 }
                 PureElementInit::FunctionIndices(func_indices)
@@ -1148,10 +1166,9 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1; // consume 0x0B
                     }
                     let expr_data: Vec<u8> = data[expr_start..offset].to_vec();
-                    #[cfg(feature = "std")]
+                    #[cfg(feature = "tracing")]
                     if i < 5 {
-                        eprintln!("[ELEM_SECTION]   item[{}] = expr {} bytes: {:02x?}",
-                                 i, expr_data.len(), &expr_data[..expr_data.len().min(10)]);
+                        trace!(item_index = i, expr_len = expr_data.len(), "element item: expression");
                     }
                     expr_bytes.push(expr_data);
                 }
@@ -1166,13 +1183,12 @@ impl<'a> StreamingDecoder<'a> {
             };
 
             self.module.elements.push(elem_segment);
-            #[cfg(feature = "std")]
-            eprintln!("[ELEM_SECTION] Element {} added, module.elements.len()={}",
-                     elem_idx, self.module.elements.len());
+            #[cfg(feature = "tracing")]
+            trace!(elem_idx = elem_idx, total_elements = self.module.elements.len(), "element added");
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("[ELEM_SECTION] Complete: {} element segments parsed", count);
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "process_element_section: complete");
 
         Ok(())
     }
@@ -1183,16 +1199,15 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[CODE_SECTION] Processing {} function bodies", count);
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "process_code_section");
 
         // Code bodies are for module-defined functions only (not imports)
         // So code[i] goes to function[num_imports + i]
         let num_imports = self.num_function_imports;
 
-        #[cfg(feature = "std")]
-        eprintln!("[CODE_SECTION] num_function_imports={}, total functions={}",
-            num_imports, self.module.functions.len());
+        #[cfg(feature = "tracing")]
+        trace!(num_imports = num_imports, total_functions = self.module.functions.len(), "code section function mapping");
 
         // Process each function body one at a time
         for i in 0..count {
@@ -1210,8 +1225,8 @@ impl<'a> StreamingDecoder<'a> {
             let (local_count, local_bytes) = read_leb128_u32(&data[body_start..body_end], body_offset)?;
             body_offset += local_bytes;
 
-            #[cfg(feature = "std")]
-            eprintln!("[CODE_SECTION] Function {}: {} local groups", i, local_count);
+            #[cfg(feature = "tracing")]
+            trace!(func_index = i, local_groups = local_count, "code section: function locals");
 
             // Code section index i corresponds to module-defined function at index (num_imports + i)
             let func_index = num_imports + i as usize;
@@ -1248,9 +1263,8 @@ impl<'a> StreamingDecoder<'a> {
                 let instructions_data = &data[instructions_start..body_end];
                 func.code.extend_from_slice(instructions_data);
 
-                #[cfg(feature = "std")]
-                eprintln!("[CODE_SECTION] Function {}: {} locals, {} instruction bytes",
-                         i, func.locals.len(), func.code.len());
+                #[cfg(feature = "tracing")]
+                trace!(func_index = i, locals_count = func.locals.len(), instruction_bytes = func.code.len(), "code section: function parsed");
             }
 
             offset = body_end;
@@ -1267,8 +1281,8 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
-        #[cfg(feature = "std")]
-        eprintln!("[DATA_SECTION] Parsing {} data segments from {} bytes", count, data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, data_len = data.len(), "process_data_section");
 
         for i in 0..count {
             if offset >= data.len() {
@@ -1321,9 +1335,8 @@ impl<'a> StreamingDecoder<'a> {
                     let data_bytes = data[offset..offset + data_len as usize].to_vec();
                     offset += data_len as usize;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[DATA_SECTION] Segment {}: active (mem 0), offset_expr {} bytes, data {} bytes",
-                             i, offset_expr_bytes.len(), data_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(segment_index = i, memory_index = 0, offset_expr_len = offset_expr_bytes.len(), data_len = data_bytes.len(), "data segment: active");
 
                     PureDataSegment {
                         mode: PureDataMode::Active {
@@ -1347,8 +1360,8 @@ impl<'a> StreamingDecoder<'a> {
                     let data_bytes = data[offset..offset + data_len as usize].to_vec();
                     offset += data_len as usize;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[DATA_SECTION] Segment {}: passive, data {} bytes", i, data_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(segment_index = i, data_len = data_bytes.len(), "data segment: passive");
 
                     PureDataSegment {
                         mode: PureDataMode::Passive,
@@ -1401,9 +1414,8 @@ impl<'a> StreamingDecoder<'a> {
                     let data_bytes = data[offset..offset + data_len as usize].to_vec();
                     offset += data_len as usize;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[DATA_SECTION] Segment {}: active (mem {}), offset_expr {} bytes, data {} bytes",
-                             i, memory_index, offset_expr_bytes.len(), data_bytes.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(segment_index = i, memory_index = memory_index, offset_expr_len = offset_expr_bytes.len(), data_len = data_bytes.len(), "data segment: active explicit");
 
                     PureDataSegment {
                         mode: PureDataMode::Active {
@@ -1429,9 +1441,8 @@ impl<'a> StreamingDecoder<'a> {
             }
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("[DATA_SECTION] Finished parsing {} data segments, module.data.len()={}",
-                 count, self.module.data.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, total_segments = self.module.data.len(), "process_data_section: complete");
 
         Ok(())
     }
@@ -1452,9 +1463,8 @@ impl<'a> StreamingDecoder<'a> {
     /// Finish decoding and return the module (std version)
     #[cfg(feature = "std")]
     pub fn finish(self) -> Result<WrtModule> {
-        #[cfg(feature = "std")]
-        eprintln!("[StreamingDecoder::finish] Returning module with {} imports",
-            self.module.imports.len());
+        #[cfg(feature = "tracing")]
+        trace!(imports_count = self.module.imports.len(), "StreamingDecoder::finish");
         Ok(self.module)
     }
 

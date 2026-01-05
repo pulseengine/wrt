@@ -1087,14 +1087,21 @@ impl CanonicalABI {
         Ok(())
     }
 
-    /// Lower a list value (simplified implementation)
+    /// Lower a list value to memory
+    ///
+    /// According to the Component Model Canonical ABI, lists are stored as:
+    /// - (pointer: i32, length: i32) pair at the given offset
+    /// - Element data stored contiguously starting at the pointer location
+    ///
+    /// This simplified implementation writes element data immediately after the
+    /// pointer/length pair (similar to lower_string). A full implementation
+    /// would use cabi_realloc to allocate memory in the component's linear memory.
     pub fn lower_list<M: CanonicalMemory>(
         &self,
         memory: &mut M,
         values: &[ComponentValue],
         offset: u32,
     ) -> Result<()> {
-        // This is a simplified implementation
         let len = values.len() as u32;
 
         // Safety check
@@ -1102,12 +1109,54 @@ impl CanonicalABI {
             return Err(Error::validation_error("Error occurred: List too long"));
         }
 
-        // For this simplified implementation, we'll write a basic representation
-        memory.write_u32_le(offset, offset + 8)?; // pointer
-        memory.write_u32_le(offset + 4, len)?; // length
+        // Handle empty list case
+        if values.is_empty() {
+            // For empty lists, pointer can be 0 (null) with length 0
+            memory.write_u32_le(offset, 0)?;
+            memory.write_u32_le(offset + 4, 0)?;
+            return Ok(());
+        }
 
-        // This would need proper element size calculation and layout
-        // For now, just return OK as a placeholder
+        // Calculate element layout based on the first element
+        // (all elements in a list have the same type)
+        let element_layout = self.calculate_value_layout(&values[0]);
+        let element_size = element_layout.size as u32;
+        let element_alignment = element_layout.alignment as u32;
+
+        // Data starts after the (pointer, length) pair (8 bytes)
+        // Align the data start to the element's alignment requirement
+        let data_start_unaligned = offset + 8;
+        let data_start = if element_alignment > 1 {
+            let remainder = data_start_unaligned % element_alignment;
+            if remainder == 0 {
+                data_start_unaligned
+            } else {
+                data_start_unaligned + (element_alignment - remainder)
+            }
+        } else {
+            data_start_unaligned
+        };
+
+        // Write pointer and length
+        memory.write_u32_le(offset, data_start)?;
+        memory.write_u32_le(offset + 4, len)?;
+
+        // Write each element to memory
+        let mut current_offset = data_start;
+        for value in values {
+            // Align current offset to element alignment
+            let remainder = current_offset % element_alignment;
+            if remainder != 0 {
+                current_offset += element_alignment - remainder;
+            }
+
+            // Lower the element value to memory
+            self.lower(memory, value, current_offset)?;
+
+            // Move to next element position
+            current_offset += element_size;
+        }
+
         Ok(())
     }
 

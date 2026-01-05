@@ -374,73 +374,80 @@ impl ComponentLoader {
     }
 
     /// Convert parsed component to runtime component
-    pub fn to_runtime_component(&self, _parsed: &ParsedComponent) -> wrt_error::Result<Component> {
-        // TODO: This method is incomplete - Component struct doesn't have these helper methods
-        // Component construction needs to be refactored to use direct field access
-        // or builder pattern
-        let component = Component::new(WrtComponentType::new()?);
+    pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> wrt_error::Result<Component> {
+        let mut component = Component::new(WrtComponentType::new()?);
 
-        // // Convert types
-        // for component_type in &parsed.types {
-        //     component.add_type(component_type.clone())?;
-        // }
+        // NOTE: Type conversion is not implemented because ParsedComponent stores
+        // wrt_foundation::ComponentType<P> but Component::add_type expects
+        // wrt_format::component::ComponentTypeDefinition. These are fundamentally
+        // different types that would need a conversion function.
+        // TODO: Implement type conversion from wrt_foundation::ComponentType to
+        // wrt_format::component::ComponentTypeDefinition
 
-        // // Convert imports
-        // for import in &parsed.imports {
-        //     self.convert_import(&mut component, import)?;
-        // }
+        // Convert imports
+        for import in &parsed.imports {
+            self.convert_import(&mut component, import)?;
+        }
 
-        // // Convert exports
-        // for export in &parsed.exports {
-        //     self.convert_export(&mut component, export)?;
-        // }
+        // Convert exports
+        for export in &parsed.exports {
+            self.convert_export(&mut component, export)?;
+        }
 
-        // // Convert modules to adapters
-        // for module in &parsed.modules {
-        //     let adapter = self.create_module_adapter(module)?;
-        //     component.add_module_adapter(adapter)?;
-        // }
+        // Convert modules to adapters
+        for module in &parsed.modules {
+            let adapter = self.create_module_adapter(module)?;
+            component.add_module_adapter(adapter)?;
+        }
 
         Ok(component)
     }
 
     /// Convert parsed import to runtime import
-    #[allow(dead_code)]
-    fn convert_import(&self, _component: &mut Component, import: &ParsedImport) -> wrt_error::Result<()> {
-        // TODO: Component doesn't have these helper methods - needs refactoring
+    fn convert_import(&self, component: &mut Component, import: &ParsedImport) -> wrt_error::Result<()> {
+        #[cfg(feature = "std")]
+        let name: &str = import.name.as_str();
+        #[cfg(not(any(feature = "std", )))]
+        let name: &str = import.name.as_str()
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to get import name as string"))?;
+
         match &import.import_type {
-            ImportKind::Function { type_index: _ } => {
-                // component.add_function_import(&import.name, *type_index)?;
+            ImportKind::Function { type_index } => {
+                component.add_function_import(name, *type_index)?;
             }
-            ImportKind::Value { type_index: _ } => {
-                // component.add_value_import(&import.name, *type_index)?;
+            ImportKind::Value { type_index } => {
+                component.add_value_import(name, *type_index)?;
             }
-            ImportKind::Instance { type_index: _ } => {
-                // component.add_instance_import(&import.name, *type_index)?;
+            ImportKind::Instance { type_index } => {
+                component.add_instance_import(name, *type_index)?;
             }
             ImportKind::Type { bounds: _ } => {
-                // component.add_type_import(&import.name)?;
+                component.add_type_import(name)?;
             }
         }
         Ok(())
     }
 
     /// Convert parsed export to runtime export
-    #[allow(dead_code)]
-    fn convert_export(&self, _component: &mut Component, export: &ParsedExport) -> wrt_error::Result<()> {
-        // TODO: Component doesn't have these helper methods - needs refactoring
+    fn convert_export(&self, component: &mut Component, export: &ParsedExport) -> wrt_error::Result<()> {
+        #[cfg(feature = "std")]
+        let name: &str = export.name.as_str();
+        #[cfg(not(any(feature = "std", )))]
+        let name: &str = export.name.as_str()
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to get export name as string"))?;
+
         match &export.export_kind {
-            ExportKind::Function { function_index: _ } => {
-                // component.add_function_export(&export.name, *function_index)?;
+            ExportKind::Function { function_index } => {
+                component.add_function_export(name, *function_index)?;
             }
-            ExportKind::Value { value_index: _ } => {
-                // component.add_value_export(&export.name, *value_index)?;
+            ExportKind::Value { value_index } => {
+                component.add_value_export(name, *value_index)?;
             }
-            ExportKind::Instance { instance_index: _ } => {
-                // component.add_instance_export(&export.name, *instance_index)?;
+            ExportKind::Instance { instance_index } => {
+                component.add_instance_export(name, *instance_index)?;
             }
-            ExportKind::Type { type_index: _ } => {
-                // component.add_type_export(&export.name, *type_index)?;
+            ExportKind::Type { type_index } => {
+                component.add_type_export(name, *type_index)?;
             }
         }
         Ok(())

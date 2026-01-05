@@ -332,6 +332,13 @@ impl StacklessEngine {
         export_name: &str,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
+        #[cfg(feature = "tracing")]
+        trace!(
+            target_instance_id = target_instance_id,
+            export_name = %export_name,
+            "[CROSS_CALL] call_exported_function"
+        );
+
         // Get the target instance
         let target_instance = self.instances.get(&target_instance_id)
             .ok_or_else(|| wrt_error::Error::resource_not_found("Target instance not found"))?
@@ -340,9 +347,9 @@ impl StacklessEngine {
         // Access module via public API
         let module = target_instance.module();
 
-        // Debug: Check memory status
         #[cfg(feature = "tracing")]
         {
+            trace!(exports_len = module.exports.len(), "[CROSS_CALL] Target module exports");
             debug!("Module has {} memories", module.memories.len());
             if module.memories.is_empty() {
                 warn!("Module has no memories! This will cause memory access errors.");
@@ -372,8 +379,12 @@ impl StacklessEngine {
         })?;
 
         #[cfg(feature = "tracing")]
-        info!("Cross-instance call: Calling {}() in instance {} at function index {}",
-              export_name, target_instance_id, func_idx);
+        trace!(
+            export_name = %export_name,
+            func_idx = func_idx,
+            target_instance_id = target_instance_id,
+            "[CROSS_CALL] Export mapped to function"
+        );
 
         // Execute the function in the target instance
         self.execute(target_instance_id, func_idx, args)
@@ -603,7 +614,12 @@ impl StacklessEngine {
         let _span = ExecutionTrace::function(func_idx, instance_id).entered();
 
         #[cfg(feature = "tracing")]
-        debug!("Executing function {} in instance {} with {} args", func_idx, instance_id, args.len());
+        debug!(
+            instance_id = instance_id,
+            func_idx = func_idx,
+            args_len = args.len(),
+            "[INNER_EXEC] Executing function"
+        );
 
         // Check call depth to prevent native stack overflow
         // WebAssembly allows deep recursion but native Rust stack is limited
@@ -616,11 +632,15 @@ impl StacklessEngine {
         // This allows us to call &mut self methods (like execute, call_wasi_function)
         // during execution without borrow checker conflicts.
         #[cfg(any(feature = "std", feature = "alloc"))]
-        let instance = self
-            .instances
-            .get(&instance_id)
-            .ok_or_else(|| wrt_error::Error::runtime_execution_error("Instance not found"))?
-            .clone();
+        let instance = {
+            let found = self.instances.get(&instance_id);
+            if found.is_none() {
+                #[cfg(feature = "tracing")]
+                trace!(instance_id = instance_id, "[INNER_EXEC] Instance not found");
+                return Err(wrt_error::Error::runtime_execution_error("Instance not found"));
+            }
+            found.unwrap().clone()
+        };
 
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let instance = self
@@ -742,15 +762,13 @@ impl StacklessEngine {
             debug!("Called with args.len()={}", args.len());
 
             let instructions = &func.body.instructions;
-            #[cfg(all(feature = "std", feature = "tracing"))]
-            {
-                if func_idx == 73 || func_idx == 74 || func_idx == 345 {
-                    trace!(func_idx = func_idx, args = ?args, "[EXEC] Function called");
-                }
-            }
             #[cfg(feature = "tracing")]
-
-            trace!("Starting execution: {} instructions", instructions.len());
+            trace!(
+                func_idx = func_idx,
+                instance_id = instance_id,
+                instructions_len = instructions.len(),
+                "[EXEC] Starting execution"
+            );
             let mut operand_stack: Vec<Value> = Vec::new();
             let mut locals: Vec<Value> = Vec::new();
             let mut instruction_count = 0usize;
@@ -762,14 +780,19 @@ impl StacklessEngine {
             trace!("Initializing locals: args.len()={}, func.locals.len()={}", args.len(), func.locals.len());
 
             // Get expected parameter count from function type
-            let expected_param_count = module.types.get(func.type_idx as usize)
-                .map(|ft| ft.params.len())
-                .unwrap_or(0);
+            // Per CLAUDE.md: FAIL LOUD AND EARLY - don't silently substitute defaults
+            let func_type = module.types.get(func.type_idx as usize)
+                .ok_or_else(|| wrt_error::Error::runtime_error(
+                    "Function type not found - module corrupted"
+                ))?;
+            let expected_param_count = func_type.params.len();
 
             #[cfg(feature = "tracing")]
-
-
-            trace!("Function expects {} parameters, got {} args", expected_param_count, args.len());
+            trace!(
+                expected_param_count = expected_param_count,
+                args_len = args.len(),
+                "[EXEC] Function parameter info"
+            );
 
             // Add provided arguments
             for (i, arg) in args.iter().enumerate() {
@@ -779,19 +802,22 @@ impl StacklessEngine {
             }
 
             // Pad with default values for missing parameters
+            // Use func_type we already have from above
             if args.len() < expected_param_count {
-                if let Some(func_type) = module.types.get(func.type_idx as usize) {
-                    for i in args.len()..expected_param_count {
-                        let param_type = func_type.params.get(i).unwrap_or(&wrt_foundation::ValueType::I32);
-                        let default_value = match param_type {
-                            wrt_foundation::ValueType::I32 => Value::I32(0),
-                            wrt_foundation::ValueType::I64 => Value::I64(0),
-                            wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
-                            wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
-                            _ => Value::I32(0),
-                        };
-                        locals.push(default_value);
-                    }
+                for i in args.len()..expected_param_count {
+                    // Per CLAUDE.md: FAIL LOUD - param index must be valid
+                    let param_type = func_type.params.get(i)
+                        .ok_or_else(|| wrt_error::Error::runtime_error(
+                            "Parameter index out of bounds - type corrupted"
+                        ))?;
+                    let default_value = match param_type {
+                        wrt_foundation::ValueType::I32 => Value::I32(0),
+                        wrt_foundation::ValueType::I64 => Value::I64(0),
+                        wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                        wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                        _ => Value::I32(0),
+                    };
+                    locals.push(default_value);
                 }
             }
 
@@ -950,31 +976,12 @@ impl StacklessEngine {
                         let num_imports = self.count_total_imports(&module);
 
                         #[cfg(feature = "tracing")]
-
-
-                        trace!("  Total import modules: {}", module.imports.len());
-                        #[cfg(feature = "tracing")]
-
-                        trace!("  Total individual imports: {}", num_imports);
-                        #[cfg(feature = "tracing")]
-
-                        trace!("  Total functions: {}", module.functions.len());
-
-                        // Try to get function name from exports
-                        #[cfg(feature = "tracing")]
-
-                        trace!("  Checking {} exports for function name", module.exports.len());
-
-                        // Check if this is an import (host function)
-                        #[cfg(feature = "tracing")]
-                        if func_idx < 20 {
-                            trace!(
-                                func_idx = func_idx,
-                                num_imports = num_imports,
-                                is_import = (func_idx as usize) < num_imports,
-                                "[CALL_CHECK] Checking function import status"
-                            );
-                        }
+                        trace!(
+                            func_idx = func_idx,
+                            num_imports = num_imports,
+                            is_import = (func_idx as usize) < num_imports,
+                            "[CALL] Checking function call"
+                        );
 
                         if (func_idx as usize) < num_imports {
                             // This is a host function call
@@ -995,28 +1002,44 @@ impl StacklessEngine {
                                 );
 
                                 // Check if this import is linked to another instance
-                                // Clone the values to avoid holding a borrow during call_exported_function
+                                // NOTE: Component adapter modules handle P2→P1 translation.
+                                // ALL imports (including WASI) should use cross-instance linking when linked.
                                 #[cfg(feature = "std")]
                                 {
+                                    // Clone the values to avoid holding a borrow during call_exported_function
                                     let import_key = (instance_id, module_name.clone(), field_name.clone());
                                     let linked = self.import_links.get(&import_key)
                                         .map(|(ti, en)| (*ti, en.clone()));
 
+                                    #[cfg(feature = "tracing")]
+                                    trace!(
+                                        instance_id = instance_id,
+                                        is_linked = linked.is_some(),
+                                        "[HOST_CALL] Checking cross-instance link"
+                                    );
+
                                     if let Some((target_instance, export_name)) = linked {
                                         #[cfg(feature = "tracing")]
-                                        trace!("Import linked! Calling instance {}.{}", target_instance, export_name);
+                                        trace!(
+                                            target_instance = target_instance,
+                                            export_name = %export_name,
+                                            "[HOST_CALL] Linked to target instance"
+                                        );
+
+                                        // Collect args from operand stack based on function signature
+                                        let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
 
                                         // Call the linked function in the target instance
-                                        // For now, assume no parameters (will need to handle this properly)
-                                        let result = self.call_exported_function(target_instance, &export_name, vec![])?;
+                                        let result = self.call_exported_function(target_instance, &export_name, args)?;
 
                                         // Push result onto stack if function returns a value
                                         if let Some(value) = result.first() {
                                             operand_stack.push(value.clone());
                                         }
 
-                                        continue; // Skip WASI dispatch
+                                        continue; // Linked call handled - skip WASI dispatch
                                     }
+                                    // Not linked - fall through to WASI dispatch
                                 }
 
                                 // Dispatch to WASI implementation
@@ -1269,29 +1292,12 @@ impl StacklessEngine {
                                     }
                                 }
 
-                                resolved_func_idx.unwrap_or_else(|| {
-                                    // Workaround: If no element found, use knowledge of typical Rust WASM layout:
-                                    // For this component (hello_rust_host.wasm):
-                                    // table[1] -> func 11 (main)
-                                    // table[2] -> func 18 (vtable.shim)
-                                    // table[3] -> func 14 (lang_start::{{closure}})
-                                    //
-                                    // This is a hack for the specific hello_rust component
-                                    // Proper fix requires loading element segments into tables
-                                    let fallback_func = match table_func_idx {
-                                        1 => 11,  // main
-                                        2 => 18,  // vtable.shim
-                                        3 => 14,  // lang_start::{{closure}}
-                                        _ => table_func_idx as usize,
-                                    };
-                                    #[cfg(feature = "tracing")]
-                                    warn!(
-                                        table_func_idx = table_func_idx,
-                                        fallback_func = fallback_func,
-                                        "[CALL_INDIRECT] No element found, using fallback mapping"
-                                    );
-                                    fallback_func
-                                })
+                                // NO FALLBACK: Per CLAUDE.md, fail loud and early if element not found
+                                resolved_func_idx.ok_or_else(|| {
+                                    wrt_error::Error::runtime_trap(
+                                        "CallIndirect: function not found in element segments"
+                                    )
+                                })?
                             }
                         } else {
                             return Err(wrt_error::Error::runtime_trap("CallIndirect: instance not found"));
@@ -1356,8 +1362,89 @@ impl StacklessEngine {
                         }
                         call_args.reverse();
 
-                        // Execute the function
-                        let results = self.execute(instance_id, func_idx, call_args)?;
+                        // Check if the function is an imported function that's linked to another instance
+                        // Imported functions have empty body and locals
+                        let is_import = func.body.is_empty() && func.locals.is_empty();
+
+                        let results = if is_import {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                func_idx = func_idx,
+                                "[CALL_INDIRECT] Target is imported function, checking cross-instance links"
+                            );
+
+                            // Try to find the import's module/field name
+                            if let Ok((module_name, field_name)) = self.find_import_by_index(&module, func_idx) {
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    module_name = %module_name,
+                                    field_name = %field_name,
+                                    "[CALL_INDIRECT] Resolved import"
+                                );
+
+                                // Check if this import is linked to another instance
+                                #[cfg(feature = "std")]
+                                {
+                                    let import_key = (instance_id, module_name.clone(), field_name.clone());
+                                    let linked = self.import_links.get(&import_key)
+                                        .map(|(ti, en)| (*ti, en.clone()));
+
+                                    if let Some((target_instance, export_name)) = linked {
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            target_instance = target_instance,
+                                            export_name = %export_name,
+                                            "[CALL_INDIRECT] Import linked to another instance"
+                                        );
+
+                                        // Call the linked function in the target instance
+                                        self.call_exported_function(target_instance, &export_name, call_args)?
+                                    } else {
+                                        // Not linked - dispatch to WASI if applicable
+                                        #[cfg(feature = "tracing")]
+                                        trace!(
+                                            module_name = %module_name,
+                                            field_name = %field_name,
+                                            "[CALL_INDIRECT] Import not linked, trying WASI dispatch"
+                                        );
+
+                                        // Call WASI function (need to push args back for call_wasi_function)
+                                        for arg in call_args.iter().rev() {
+                                            operand_stack.push(arg.clone());
+                                        }
+                                        let result = self.call_wasi_function(
+                                            &module_name,
+                                            &field_name,
+                                            &mut operand_stack,
+                                            &module,
+                                            instance_id,
+                                        )?;
+                                        if let Some(val) = result {
+                                            vec![val]
+                                        } else {
+                                            vec![]
+                                        }
+                                    }
+                                }
+
+                                #[cfg(not(feature = "std"))]
+                                {
+                                    // In no_std mode, just try to execute directly
+                                    self.execute(instance_id, func_idx, call_args)?
+                                }
+                            } else {
+                                // Couldn't resolve import - try to execute directly
+                                #[cfg(feature = "tracing")]
+                                warn!(
+                                    func_idx = func_idx,
+                                    "[CALL_INDIRECT] Could not resolve import, executing directly"
+                                );
+                                self.execute(instance_id, func_idx, call_args)?
+                            }
+                        } else {
+                            // Regular function - execute directly
+                            self.execute(instance_id, func_idx, call_args)?
+                        };
 
                         #[cfg(feature = "tracing")]
                         trace!(
@@ -7836,6 +7923,30 @@ impl StacklessEngine {
         Err(wrt_error::Error::runtime_error("Import not found"))
     }
 
+    /// Collect function arguments from operand stack based on function signature
+    fn collect_function_args(module: &crate::module::Module, func_idx: usize, operand_stack: &mut Vec<Value>) -> Vec<Value> {
+        // Get the function's type signature to determine param count
+        let param_count = if let Some(func) = module.functions.get(func_idx) {
+            if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                func_type.params.len()
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        // Pop arguments from stack in reverse order
+        let mut args = Vec::with_capacity(param_count);
+        for _ in 0..param_count {
+            if let Some(val) = operand_stack.pop() {
+                args.push(val);
+            }
+        }
+        args.reverse(); // Reverse to get correct order
+        args
+    }
+
     /// Find export function index by name
     fn find_export_index(&self, module: &crate::module::Module, name: &str) -> Result<usize> {
         #[cfg(feature = "std")]
@@ -8183,489 +8294,12 @@ impl StacklessEngine {
             }
         }
 
-        // Check if this is a wasip2 canonical function
-        let full_name = format!("{}::{}", module_name, field_name);
-        if module_name.starts_with("wasi:") && module_name.contains("@0.2") {
-            #[cfg(feature = "tracing")]
-            trace!(
-                full_name = %full_name,
-                stack_len = stack.len(),
-                "[WASIP2-CANONICAL] Detected wasip2 call"
-            );
+        // NOTE: WASIP2-CANONICAL interception block REMOVED per CLAUDE.md
+        // Component adapter modules do P2→P1 translation - calls flow to P1 handlers
 
-            // ============================================================
-            // Two-phase WASI dispatch with proper cabi_realloc support
-            // This follows the Canonical ABI spec where the HOST calls
-            // cabi_realloc during lowering for functions returning lists.
-            // ============================================================
-            #[cfg(feature = "wasi")]
-            {
-                // Extract core values from stack for dispatch
-                let core_args: Vec<Value> = stack.iter().cloned().collect();
-
-                #[cfg(feature = "tracing")]
-                trace!(
-                    module = %module_name,
-                    field = %field_name,
-                    args_len = core_args.len(),
-                    "[WASI-V2] Dispatching"
-                );
-
-                // Create a temporary dispatcher - we use global args as fallback
-                if let Ok(mut temp_dispatcher) = wrt_wasi::WasiDispatcher::with_defaults() {
-                    // Use dispatch_core_v2 which returns DispatchResult
-                    let dispatch_result = temp_dispatcher.dispatch_core_v2(
-                        module_name, field_name, core_args.clone(), None
-                    );
-
-                    match dispatch_result {
-                        Ok(wrt_wasi::DispatchResult::Complete(results)) => {
-                            #[cfg(feature = "tracing")]
-                            trace!(results = ?results, "[WASI-V2] Complete");
-                            stack.clear();
-                            if let Some(val) = results.first() {
-                                return Ok(Some(val.clone()));
-                            }
-                            return Ok(None);
-                        }
-                        Ok(wrt_wasi::DispatchResult::NeedsAllocation { request, args_to_write, retptr }) => {
-                            #[cfg(feature = "tracing")]
-                            trace!(
-                                size = request.size,
-                                align = request.align,
-                                purpose = %request.purpose,
-                                "[WASI-V2] NeedsAllocation"
-                            );
-
-                            // BUMP ALLOCATOR FIX: Allocate in grown memory pages to avoid dlmalloc
-                            // corruption. When we use cabi_realloc, dlmalloc manages that memory
-                            // and can overwrite our data with free-list pointers when the adapter
-                            // code frees or reallocates. By growing memory and using new pages
-                            // directly, we bypass dlmalloc entirely.
-
-                            // DISABLED: The bump allocator doesn't create dlmalloc headers,
-                            // so when Rust tries to free these strings, dlfree looks for
-                            // headers that don't exist and reads garbage from adjacent strings.
-                            // Instead, we always use cabi_realloc which creates proper headers.
-                            let _use_bump_alloc = false;
-                            if _use_bump_alloc {
-                            if let Some(instance) = self.instances.get(&instance_id) {
-                                if let Ok(memory_wrapper) = instance.memory(0) {
-                                    let memory = &memory_wrapper.0;
-
-                                    // Grow memory by 1 page for our bump allocator region
-                                    match memory.grow_shared(1) {
-                                        Ok(old_pages) => {
-                                            // Bump allocator starts at the old end of memory
-                                            let bump_base = old_pages * 65536; // 64KB pages
-                                            let mut bump_offset = 0u32;
-
-                                            #[cfg(feature = "tracing")]
-                                            trace!(
-                                                old_pages = old_pages,
-                                                bump_base = format_args!("0x{:x}", bump_base),
-                                                "[BUMP-ALLOC] Grew memory"
-                                            );
-
-                                            // Helper to bump-allocate with alignment
-                                            let bump_alloc = |offset: &mut u32, size: u32, align: u32| -> u32 {
-                                                // Align offset
-                                                let aligned = (*offset + align - 1) & !(align - 1);
-                                                let ptr = bump_base + aligned;
-                                                *offset = aligned + size;
-                                                ptr
-                                            };
-
-                                            // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
-                                            let list_array_size = (args_to_write.len() * 8) as u32;
-                                            let list_ptr = bump_alloc(&mut bump_offset, list_array_size, 8);
-
-                                            #[cfg(feature = "tracing")]
-                                            trace!(
-                                                list_ptr = format_args!("0x{:x}", list_ptr),
-                                                size = list_array_size,
-                                                "[BUMP-ALLOC] Allocated list array"
-                                            );
-
-                                            // Step 2: Allocate each string and write data
-                                            let mut string_entries: Vec<(u32, u32)> = Vec::new();
-                                            for (i, arg) in args_to_write.iter().enumerate() {
-                                                let bytes = arg.as_bytes();
-                                                let len = bytes.len() as u32;
-
-                                                // Bump allocate for this string (align=1 for byte data)
-                                                let string_ptr = bump_alloc(&mut bump_offset, len, 1);
-
-                                                // Write string bytes
-                                                if let Err(e) = memory.write_shared(string_ptr, bytes) {
-                                                    return Err(e);
-                                                }
-
-                                                #[cfg(feature = "tracing")]
-                                                trace!(
-                                                    idx = i,
-                                                    arg = %arg,
-                                                    ptr = format_args!("0x{:x}", string_ptr),
-                                                    len = len,
-                                                    "[BUMP-ALLOC] String allocated"
-                                                );
-
-                                                string_entries.push((string_ptr, len));
-                                            }
-
-                                            // Step 3: Write (ptr, len) entries to list array
-                                            for (i, (ptr, len)) in string_entries.iter().enumerate() {
-                                                let offset = list_ptr + (i * 8) as u32;
-                                                let mut entry_buf = [0u8; 8];
-                                                entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
-                                                entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
-
-                                                if let Err(e) = memory.write_shared(offset, &entry_buf) {
-                                                    return Err(e);
-                                                }
-                                            }
-
-                                            // Step 4: Write (list_ptr, count) to retptr
-                                            let mut retptr_buf = [0u8; 8];
-                                            retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
-                                            retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
-
-                                            if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
-                                                return Err(e);
-                                            }
-
-                                            #[cfg(feature = "tracing")]
-                                            trace!(
-                                                retptr = format_args!("0x{:x}", retptr),
-                                                list_ptr = format_args!("0x{:x}", list_ptr),
-                                                count = args_to_write.len(),
-                                                total_bump_used = bump_offset,
-                                                "[BUMP-ALLOC] Complete"
-                                            );
-
-                                            stack.clear();
-                                            return Ok(None);
-                                        }
-                                        Err(e) => {
-                                            #[cfg(feature = "tracing")]
-                                            warn!(error = ?e, "[BUMP-ALLOC] Failed to grow memory, falling back to cabi_realloc");
-                                            // Fall through to cabi_realloc fallback
-                                        }
-                                    }
-                                }
-                            }
-                            } // end if _use_bump_alloc
-
-                            // Use cabi_realloc for proper heap allocation with dlmalloc headers
-                            let cabi_realloc_idx = self.find_export_index(module, "cabi_realloc");
-
-                            if let Ok(func_idx) = cabi_realloc_idx {
-                                // Step 1: Allocate list array (N * 8 bytes for N (ptr, len) pairs)
-                                let list_array_size = (args_to_write.len() * 8) as u32;
-                                let list_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 8, list_array_size)?;
-
-                                #[cfg(feature = "tracing")]
-                                trace!(list_ptr = format_args!("0x{:x}", list_ptr), "[WASI-V2-FALLBACK] Allocated list array");
-
-                                // Step 2: Allocate each string separately and write data
-                                let mut string_entries: Vec<(u32, u32)> = Vec::new();
-                                for (i, arg) in args_to_write.iter().enumerate() {
-                                    let bytes = arg.as_bytes();
-                                    let len = bytes.len() as u32;
-
-                                    let string_ptr = self.call_cabi_realloc(instance_id, func_idx, 0, 0, 1, len)?;
-
-                                    if let Some(instance) = self.instances.get(&instance_id) {
-                                        if let Ok(memory_wrapper) = instance.memory(0) {
-                                            let memory = &memory_wrapper.0;
-                                            if let Err(e) = memory.write_shared(string_ptr, bytes) {
-                                                return Err(e);
-                                            }
-                                        }
-                                    }
-
-                                    #[cfg(feature = "tracing")]
-                                    trace!(
-                                        idx = i,
-                                        arg = %arg,
-                                        ptr = format_args!("0x{:x}", string_ptr),
-                                        len = len,
-                                        "[WASI-V2-FALLBACK] String allocated"
-                                    );
-
-                                    string_entries.push((string_ptr, len));
-                                }
-
-                                // Step 3: Write (ptr, len) entries to list array
-                                if let Some(instance) = self.instances.get(&instance_id) {
-                                    if let Ok(memory_wrapper) = instance.memory(0) {
-                                        let memory = &memory_wrapper.0;
-
-                                        for (i, (ptr, len)) in string_entries.iter().enumerate() {
-                                            let offset = list_ptr + (i * 8) as u32;
-                                            let mut entry_buf = [0u8; 8];
-                                            entry_buf[0..4].copy_from_slice(&ptr.to_le_bytes());
-                                            entry_buf[4..8].copy_from_slice(&len.to_le_bytes());
-
-                                            if let Err(e) = memory.write_shared(offset, &entry_buf) {
-                                                return Err(e);
-                                            }
-                                        }
-
-                                        // Step 4: Write (list_ptr, count) to retptr
-                                        let mut retptr_buf = [0u8; 8];
-                                        retptr_buf[0..4].copy_from_slice(&list_ptr.to_le_bytes());
-                                        retptr_buf[4..8].copy_from_slice(&(args_to_write.len() as u32).to_le_bytes());
-
-                                        if let Err(e) = memory.write_shared(retptr, &retptr_buf) {
-                                            return Err(e);
-                                        }
-
-                                        #[cfg(feature = "tracing")]
-                                        trace!(
-                                            retptr = format_args!("0x{:x}", retptr),
-                                            list_ptr = format_args!("0x{:x}", list_ptr),
-                                            count = args_to_write.len(),
-                                            "[WASI-V2-FALLBACK] Complete"
-                                        );
-
-                                        stack.clear();
-                                        return Ok(None);
-                                    }
-                                }
-                                return Err(wrt_error::Error::memory_error("Could not access instance memory"));
-                            } else {
-                                #[cfg(feature = "tracing")]
-                                trace!("[WASI-V2] cabi_realloc not found, falling back to legacy dispatch");
-                                // Fall through to try dispatch_core which has fallback allocation
-                            }
-                        }
-                        Err(e) => {
-                            #[cfg(feature = "tracing")]
-                            warn!(error = ?e, "[WASI-V2] dispatch_core_v2 error, trying dispatch_core");
-                            // Fall through to try dispatch_core
-                        }
-                    }
-
-                    // Fallback: try dispatch_core which uses stack-relative allocation
-                    let memory_result: Option<Vec<u8>> = if let Some(instance) = self.instances.get(&instance_id) {
-                        if let Ok(memory_wrapper) = instance.memory(0) {
-                            let mem_size = memory_wrapper.0.size_in_bytes();
-                            let mut temp_buffer = vec![0u8; mem_size.min(16 * 1024 * 1024)];
-                            let _ = memory_wrapper.0.read(0, &mut temp_buffer);
-                            Some(temp_buffer)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-
-                    let dispatch_result = if let Some(mut mem) = memory_result {
-                        let result = temp_dispatcher.dispatch_core(module_name, field_name, core_args, Some(&mut mem));
-
-                        // Write memory back
-                        if let Some(instance) = self.instances.get(&instance_id) {
-                            if let Ok(memory_wrapper) = instance.memory(0) {
-                                let write_memory = &memory_wrapper.0;
-                                // Debug: check what's at the datetime location before write-back
-                                #[cfg(all(feature = "std", feature = "tracing"))]
-                                {
-                                    use std::sync::Arc;
-                                    let arc_ptr = Arc::as_ptr(&memory_wrapper.0);
-                                    let retptr = 0xffe40usize;
-                                    if retptr + 16 <= mem.len() {
-                                        let seconds = u64::from_le_bytes(mem[retptr..retptr+8].try_into().unwrap_or([0;8]));
-                                        let nanoseconds = u64::from_le_bytes(mem[retptr+8..retptr+16].try_into().unwrap_or([0;8]));
-                                        trace!(
-                                            retptr = format_args!("0x{:x}", retptr),
-                                            seconds = seconds,
-                                            nanoseconds = nanoseconds,
-                                            instance_id = instance_id,
-                                            memory_arc_ptr = ?arc_ptr,
-                                            "[WASI-WRITEBACK] Before write"
-                                        );
-                                    }
-                                }
-                                if let Err(e) = write_memory.write_shared(0, &mem) {
-                                    #[cfg(feature = "tracing")]
-                                    warn!(error = ?e, "[WASI-FALLBACK] Failed to write back memory");
-                                } else {
-                                    #[cfg(feature = "tracing")]
-                                    {
-                                        trace!(bytes = mem.len(), "[WASI-WRITEBACK] Success");
-                                        // Verify by reading back what we just wrote
-                                        let retptr = 0xffe40usize;
-                                        let mut verify_buf = [0u8; 16];
-                                        if write_memory.read(retptr as u32, &mut verify_buf).is_ok() {
-                                            let read_seconds = u64::from_le_bytes(verify_buf[0..8].try_into().unwrap());
-                                            let read_nanos = u64::from_le_bytes(verify_buf[8..16].try_into().unwrap());
-                                            trace!(
-                                                seconds = read_seconds,
-                                                nanoseconds = read_nanos,
-                                                "[WASI-VERIFY] After write_shared"
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        result
-                    } else {
-                        temp_dispatcher.dispatch_core(module_name, field_name, core_args, None)
-                    };
-
-                    match dispatch_result {
-                        Ok(results) => {
-                            #[cfg(feature = "tracing")]
-                            trace!(results = ?results, "[WASI-FALLBACK] Success");
-                            stack.clear();
-                            if let Some(val) = results.first() {
-                                return Ok(Some(val.clone()));
-                            }
-                            return Ok(None);
-                        }
-                        Err(e) => {
-                            #[cfg(feature = "tracing")]
-                            warn!(error = ?e, "[WASI-FALLBACK] Failed");
-                            // Fall through to legacy path
-                        }
-                    }
-                }
-            }
-
-            // ============================================================
-            // Legacy path: wasip2_host (kept for backward compatibility)
-            // ============================================================
-
-            // Create wasip2 host
-            let mut wasip2_host = crate::wasip2_host::Wasip2Host::new();
-
-            // Extract core values from stack
-            let core_args: Vec<Value> = {
-                let mut args = Vec::new();
-                for _ in 0..stack.len() {
-                    if let Some(val) = stack.pop() {
-                        args.push(val);
-                    }
-                }
-                args.reverse(); // Reverse to get correct order
-                args
-            };
-
-            #[cfg(feature = "tracing")]
-            trace!(
-                args_len = core_args.len(),
-                args = ?core_args,
-                "[WASIP2-CANONICAL] Extracted core args"
-            );
-
-            // Get memory for lifting complex types
-            let memory_slice: Option<Vec<u8>> = if let Some(instance) = self.instances.get(&instance_id) {
-                if instance.memory(0).is_ok() {
-                    let mem_size = if let Ok(memory_wrapper) = instance.memory(0) {
-                        memory_wrapper.0.size_in_bytes()
-                    } else {
-                        65536
-                    };
-
-                    let mut temp_buffer = vec![0u8; mem_size.min(16 * 1024 * 1024)];
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        let read_size = temp_buffer.len().min(mem_size);
-                        let _ = memory_wrapper.0.read(0, &mut temp_buffer[..read_size]);
-                    }
-                    Some(temp_buffer)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            // Check if this function needs canonical lifting
-            let needs_lifting = crate::wasip2_host::wasi_function_needs_lifting(module_name, field_name);
-
-            #[cfg(feature = "tracing")]
-            trace!(needs_lifting = needs_lifting, "[WASIP2-CANONICAL] Lifting requirement");
-
-            let dispatch_result = if needs_lifting {
-                // === CANONICAL ABI PATH ===
-                // Lift core values to component values, dispatch, lower results
-
-                // 1. LIFT: Convert core values to component values
-                let component_args = crate::wasip2_host::lift_wasi_args(
-                    module_name,
-                    field_name,
-                    &core_args,
-                    memory_slice.as_deref(),
-                );
-
-                match component_args {
-                    Ok(lifted_args) => {
-                        #[cfg(feature = "tracing")]
-                        trace!(args_len = lifted_args.len(), "[WASIP2-CANONICAL] Lifted component args");
-
-                        // 2. DISPATCH: Call the component-level host function
-                        let component_results = wasip2_host.dispatch_component(
-                            module_name,
-                            field_name,
-                            lifted_args,
-                        );
-
-                        match component_results {
-                            Ok(results) => {
-                                #[cfg(feature = "tracing")]
-                                trace!(results_len = results.len(), "[WASIP2-CANONICAL] Component dispatch returned");
-
-                                // 3. LOWER: Convert component results back to core values
-                                crate::wasip2_host::lower_wasi_results(
-                                    module_name,
-                                    field_name,
-                                    &results,
-                                    None, // TODO: pass mutable memory for complex return types
-                                    0,
-                                )
-                            }
-                            Err(e) => Err(e),
-                        }
-                    }
-                    Err(e) => {
-                        #[cfg(feature = "tracing")]
-                        warn!(error = ?e, "[WASIP2-CANONICAL] Lifting failed");
-                        Err(e)
-                    }
-                }
-            } else {
-                // === DIRECT PATH (primitives only) ===
-                // No lifting needed, use the old direct dispatch
-                if let Some(mut mem_buffer) = memory_slice {
-                    wasip2_host.dispatch(module_name, field_name, core_args, Some(&mut mem_buffer))
-                } else {
-                    wasip2_host.dispatch(module_name, field_name, core_args, None)
-                }
-            };
-
-            match dispatch_result {
-                Ok(results) => {
-                    #[cfg(feature = "tracing")]
-                    trace!(results = ?results, "[WASIP2-CANONICAL] Final results");
-                    if let Some(val) = results.first() {
-                        return Ok(Some(val.clone()));
-                    }
-                    return Ok(None);
-                }
-                Err(e) => {
-                    #[cfg(feature = "tracing")]
-                    warn!(field = %field_name, error = ?e, "[WASIP2-CANONICAL] Function failed");
-                    // Fall through to stubs as fallback
-                }
-            }
-        }
-
-        // Fallback to stub implementations if host_registry not available
+        // WASI dispatch - adapter modules in component translate P2 calls to P1 handlers
         #[cfg(feature = "tracing")]
-
-        debug!("WASI: Using stub implementation for {}::{}", module_name, field_name);
+        debug!("WASI dispatch: {}::{}", module_name, field_name);
         let stub_mem = self.wasi_stubs.get(&instance_id);
 
         // Strip version from module name to allow any 0.2.x version to match

@@ -84,6 +84,23 @@ impl Global {
         Ok(())
     }
 
+    /// Set the initial value of the global during instantiation.
+    /// Unlike `set()`, this method does not check mutability since
+    /// immutable globals can still be initialized once with computed values
+    /// (e.g., via `global.get` of imported globals).
+    ///
+    /// This should only be called during module instantiation, not at runtime.
+    pub fn set_initial_value(&mut self, new_value: &WrtValue) -> Result<()> {
+        if !new_value.matches_type(&self.ty.value_type) {
+            return Err(Error::type_error(
+                "Value type does not match global variable type",
+            ));
+        }
+
+        self.value = new_value.clone();
+        Ok(())
+    }
+
     /// Get the `WrtGlobalType` descriptor (`value_type`, mutability, and
     /// original `initial_value`).
     pub fn global_type_descriptor(&self) -> &WrtGlobalType {

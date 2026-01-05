@@ -24,17 +24,18 @@
 extern crate alloc;
 
 // Debug macro for both std and no_std environments
-#[cfg(feature = "std")]
+// When tracing is enabled, use tracing::trace! for structured logging
+#[cfg(feature = "tracing")]
 macro_rules! debug_println {
     ($($arg:tt)*) => {
-        eprintln!($($arg)*);
+        wrt_foundation::tracing::trace!($($arg)*);
     };
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "tracing"))]
 macro_rules! debug_println {
     ($($arg:tt)*) => {
-        // No-op in no_std environments
+        // No-op when tracing is not enabled
     };
 }
 
@@ -177,28 +178,6 @@ pub use types::{
     ComponentInstanceState,
 };
 
-// Debug printing macro for both std and no_std environments
-#[cfg(feature = "std")]
-macro_rules! debug_println {
-    ($($arg:tt)*) => {
-        #[cfg(debug_assertions)]
-        {
-            println!($($arg)*);
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            // Do nothing in release mode
-        }
-    };
-}
-
-#[cfg(not(feature = "std"))]
-macro_rules! debug_println {
-    ($($arg:tt)*) => {
-        // In no_std, we'll just discard debug output for now
-        // In a real implementation, this might write to a debug buffer
-    };
-}
-
-// Make the macro available to submodules
+// Make the debug_println macro available to submodules
+// (Defined above using tracing::trace! when tracing feature is enabled)
 pub(crate) use debug_println;

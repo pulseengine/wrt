@@ -11,6 +11,8 @@
 use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 use wrt_error::{
     codes,
@@ -1292,4 +1294,47 @@ pub mod importance {
 
     /// Importance for internal state management
     pub const INTERNAL: u8 = 120;
+}
+
+/// Handler for host imports (WASI, custom host functions, etc.)
+///
+/// This trait provides the ONLY interface for the engine to call host functions.
+/// The engine must NOT have any knowledge of specific host implementations (like WASI).
+/// All host-specific logic must be implemented behind this trait.
+///
+/// # Architectural Invariant
+///
+/// The engine module must NOT:
+/// - Import wrt-wasi directly
+/// - Match on "wasi:" prefixes
+/// - Have hardcoded implementations of any host functions
+///
+/// All host calls go through this trait, ensuring clean separation.
+#[cfg(feature = "std")]
+pub trait HostImportHandler: Send + Sync {
+    /// Call a host import function
+    ///
+    /// # Arguments
+    /// * `module` - The module name (e.g., "wasi:cli/stdout@0.2.0")
+    /// * `function` - The function name (e.g., "get-stdout")
+    /// * `args` - The arguments from the operand stack
+    /// * `memory` - Optional mutable access to instance memory for reading/writing
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Value>)` - The return values to push onto the operand stack
+    /// * `Err(Error)` - If the function fails or is not implemented
+    ///
+    /// # Errors
+    /// Must return an error (not a fallback value) if:
+    /// - The function is not implemented
+    /// - Arguments are invalid
+    /// - A capability check fails
+    /// - Any operation fails
+    fn call_import(
+        &mut self,
+        module: &str,
+        function: &str,
+        args: &[crate::Value],
+        memory: Option<&mut [u8]>,
+    ) -> Result<Vec<crate::Value>>;
 }

@@ -5,6 +5,9 @@
 // Component parsing requires std for Box and complex recursive structures
 #[cfg(feature = "std")]
 mod std_parsing {
+    #[cfg(feature = "tracing")]
+    use wrt_foundation::tracing::trace;
+
     use wrt_error::{
         kinds,
         Error,
@@ -86,14 +89,14 @@ mod std_parsing {
 
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
         {
-            println!("[PARSE] parse_core_module_section: section size={}, count={}", bytes.len(), count);
+            trace!(section_size = bytes.len(), count = count, "parse_core_module_section");
             if count == 0 && bytes.len() > 8 {
-                println!("[PARSE] Count is 0 but section has data - checking if inline format");
+                trace!("count is 0 but section has data - checking if inline format");
                 // Check for WASM magic at start
                 if bytes.len() >= 8 && &bytes[0..4] == b"\0asm" {
-                    println!("[PARSE] Found inline core module (WASM magic at offset 0)");
+                    trace!("found inline core module (WASM magic at offset 0)");
                 }
             }
         }
@@ -102,8 +105,8 @@ mod std_parsing {
 
         // Handle inline format: if count is 0 and we have WASM magic, treat entire section as one module
         if count == 0 && bytes.len() >= 8 && &bytes[0..4] == b"\0asm" {
-            #[cfg(feature = "std")]
-            println!("[PARSE] Parsing inline core module format");
+            #[cfg(feature = "tracing")]
+            trace!("parsing inline core module format");
 
             // The entire section is one module
             let module = binary::parse_binary(bytes)?;
@@ -139,14 +142,14 @@ mod std_parsing {
     pub fn parse_core_instance_section(bytes: &[u8]) -> Result<(Vec<CoreInstance>, usize)> {
         // Read a vector of core instances
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        #[cfg(feature = "std")]
-        eprintln!("[PARSE_CORE_INSTANCE_SECTION] Parsing {} core instances", count);
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "parse_core_instance_section");
         let mut instances = Vec::with_capacity(count as usize);
 
         for idx in 0..count {
             // Parse the instance expression
-            #[cfg(feature = "std")]
-            eprintln!("[PARSE_CORE_INSTANCE_SECTION] Parsing core instance {}/{}", idx, count);
+            #[cfg(feature = "tracing")]
+            trace!(idx = idx, total = count, "parsing core instance");
             let (instance_expr, bytes_read) = parse_core_instance_expr(&bytes[offset..])?;
             offset += bytes_read;
 
@@ -175,8 +178,8 @@ mod std_parsing {
             0x00 => {
                 // Instantiate a module
                 let (module_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                #[cfg(feature = "std")]
-                eprintln!("[PARSE_CORE_INSTANCE] tag=0x00 (instantiate), module_idx={}, bytes_read={}", module_idx, bytes_read);
+                #[cfg(feature = "tracing")]
+                trace!(tag = 0x00u8, module_idx = module_idx, bytes_read = bytes_read, "core instance: instantiate");
                 offset += bytes_read;
 
                 // Read argument vector
@@ -192,17 +195,21 @@ mod std_parsing {
 
                     // Read sort/kind byte (e.g., instance, module, func, etc.)
                     // According to Component Model spec: modulearg := name:string kind:byte idx:u32
+                    // kind: 0x00=Func, 0x01=Table, 0x02=Mem, 0x03=Global, 0x12=Instance
                     if offset >= bytes.len() {
                         return Err(Error::parse_error("Unexpected end of input while parsing arg kind"));
                     }
-                    let _kind_byte = bytes[offset];
+                    let kind_byte = bytes[offset];
                     offset += 1;
 
-                    // Read instance index
-                    let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                    // Read index in the corresponding component index space
+                    let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                     offset += bytes_read;
 
-                    args.push(wrt_format::component::CoreArgReference { name, instance_idx });
+                    #[cfg(feature = "tracing")]
+                    trace!(arg_name = %name, kind = kind_byte, idx = idx, "core instance arg");
+
+                    args.push(wrt_format::component::CoreArgReference { name, kind: kind_byte, idx });
                 }
 
                 Ok((
@@ -585,7 +592,7 @@ mod std_parsing {
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid global value type")));
+                        return Err(Error::from(kinds::ParseError("Invalid global value type (component import)")));
                     },
                 };
                 offset += 1;
@@ -615,40 +622,41 @@ mod std_parsing {
     }
 
     /// Parse a component section
+    ///
+    /// According to the WebAssembly Component Model binary format, a component
+    /// section (0x04) contains exactly ONE nested component binary directly.
+    /// The section data IS the component binary (starting with `\x00asm` magic).
+    /// Each component section defines one nested component.
+    ///
+    /// See: https://docs.rs/wasmparser/latest/wasmparser/enum.Payload.html
     pub fn parse_component_section(bytes: &[u8]) -> Result<(Vec<Component>, usize)> {
-        // Read a vector of components
-        let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut components = Vec::with_capacity(count as usize);
+        // The section data is the complete nested component binary
+        // No count prefix, no size prefix - just the raw component bytes
 
-        for _ in 0..count {
-            // Read component size
-            let (component_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-
-            if offset + component_size as usize > bytes.len() {
-                return Err(Error::from(kinds::ParseError(
-                    "Component size exceeds section size",
-                )));
-            }
-
-            // Extract the component binary
-            let component_end = offset + component_size as usize;
-            let component_bytes = &bytes[offset..component_end];
-
-            // Parse the component binary using the decoder
-            match crate::component::decode_component(component_bytes) {
-                Ok(component) => components.push(component),
-                Err(_e) => {
-                    return Err(Error::from(kinds::ParseError(
-                        "Failed to parse nested component",
-                    )));
-                },
-            }
-
-            offset = component_end;
+        if bytes.len() < 8 {
+            return Err(Error::from(kinds::ParseError(
+                "Component section too small for component binary",
+            )));
         }
 
-        Ok((components, offset))
+        // Verify component magic
+        if &bytes[0..4] != b"\x00asm" {
+            return Err(Error::from(kinds::ParseError(
+                "Component section does not start with WebAssembly magic",
+            )));
+        }
+
+        // Parse the component binary using the decoder
+        match crate::component::decode_component(bytes) {
+            Ok(component) => {
+                Ok((vec![component], bytes.len()))
+            },
+            Err(_e) => {
+                Err(Error::from(kinds::ParseError(
+                    "Failed to parse nested component",
+                )))
+            },
+        }
     }
 
     /// Parse an instance section
@@ -1244,8 +1252,8 @@ mod std_parsing {
                         0x00 => {
                             // Core type: 0x00 t:<core:type>
                             // This is an inline core type definition
-                            #[cfg(feature = "std")]
-                            eprintln!("[INSTANCEDECL] Parsing inline core type at offset {}", offset);
+                            #[cfg(feature = "tracing")]
+                            trace!(offset = offset, "instancedecl: parsing inline core type");
 
                             let (_core_type_def, bytes_read) = parse_core_type_definition(&bytes[offset..])?;
                             offset += bytes_read;
@@ -1254,19 +1262,13 @@ mod std_parsing {
                             // Type: 0x01 t:<type>
                             // According to spec: type ::= dt:<deftype>
                             // This is an inline type definition (deftype)
-                            #[cfg(feature = "std")]
-                            eprintln!("[INSTANCEDECL] Parsing inline type at offset {} (bytes: {:02x} {:02x} {:02x} {:02x})",
-                                offset,
-                                bytes.get(offset).copied().unwrap_or(0),
-                                bytes.get(offset+1).copied().unwrap_or(0),
-                                bytes.get(offset+2).copied().unwrap_or(0),
-                                bytes.get(offset+3).copied().unwrap_or(0));
+                            #[cfg(feature = "tracing")]
+                            trace!(offset = offset, "instancedecl: parsing inline type");
 
                             let (_type_def, bytes_read) = parse_component_type_definition(&bytes[offset..])?;
 
-                            #[cfg(feature = "std")]
-                            eprintln!("[INSTANCEDECL] Inline type consumed {} bytes, next offset {}, next byte: {:02x}",
-                                bytes_read, offset + bytes_read, bytes.get(offset + bytes_read).copied().unwrap_or(0));
+                            #[cfg(feature = "tracing")]
+                            trace!(bytes_read = bytes_read, new_offset = offset + bytes_read, "instancedecl: inline type consumed");
 
                             offset += bytes_read;
                         },
@@ -1392,8 +1394,8 @@ mod std_parsing {
                 // primvaltype ranges from 0x64-0x7f
                 // defvaltype opcodes are 0x65-0x72
 
-                #[cfg(feature = "std")]
-                eprintln!("[TYPE_DEF] Attempting to parse form 0x{:02x} as defvaltype", form);
+                #[cfg(feature = "tracing")]
+                trace!(form = form, "type_def: attempting to parse as defvaltype");
 
                 // Note: parse_val_type expects bytes[0] to be the type tag/opcode
                 // The form byte at bytes[0] IS the defvaltype opcode in this case
@@ -1817,31 +1819,26 @@ mod std_parsing {
             },
             0x6F => {
                 // Tuple type: 0x6f t*:vec(<valtype>) => (tuple t+)
-                #[cfg(feature = "std")]
-                eprintln!("[PARSE_VAL_TYPE] Parsing tuple at offset {}, bytes: {:02x} {:02x} {:02x} {:02x}",
-                    offset,
-                    bytes.get(offset).copied().unwrap_or(0),
-                    bytes.get(offset+1).copied().unwrap_or(0),
-                    bytes.get(offset+2).copied().unwrap_or(0),
-                    bytes.get(offset+3).copied().unwrap_or(0));
+                #[cfg(feature = "tracing")]
+                trace!(offset = offset, "parse_val_type: parsing tuple");
 
                 let (elem_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                #[cfg(feature = "std")]
-                eprintln!("[PARSE_VAL_TYPE] Tuple has {} elements, offset now {}", elem_count, offset);
+                #[cfg(feature = "tracing")]
+                trace!(elem_count = elem_count, offset = offset, "parse_val_type: tuple element count");
 
                 let mut elements = Vec::with_capacity(elem_count as usize);
                 for i in 0..elem_count {
                     let (elem_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                    #[cfg(feature = "std")]
-                    eprintln!("[PARSE_VAL_TYPE] Tuple element {} consumed {} bytes, offset now {}", i, bytes_read, offset + bytes_read);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_index = i, bytes_read = bytes_read, new_offset = offset + bytes_read, "parse_val_type: tuple element");
                     offset += bytes_read;
                     elements.push(elem_type);
                 }
 
-                #[cfg(feature = "std")]
-                eprintln!("[PARSE_VAL_TYPE] Tuple complete, returning offset {}", offset);
+                #[cfg(feature = "tracing")]
+                trace!(offset = offset, "parse_val_type: tuple complete");
 
                 Ok((wrt_format::component::FormatValType::Tuple(elements), offset))
             },
@@ -1957,16 +1954,16 @@ mod std_parsing {
             // Note: 0x66 (stream) and 0x65 (future) are part of the async proposal (🔀)
             // We don't have these in FormatValType yet, so skip them for now
             0x66 | 0x65 => {
-                #[cfg(feature = "std")]
-                eprintln!("[VAL_TYPE] Skipping async type 0x{:02x} (stream/future not yet implemented)", tag);
+                #[cfg(feature = "tracing")]
+                trace!(tag = tag, "val_type: skipping async type (stream/future not yet implemented)");
                 // For now, treat as Void
                 Ok((wrt_format::component::FormatValType::Void, offset))
             },
 
             _ => {
                 // Not a known opcode - try to parse as a type index (unsigned LEB128)
-                #[cfg(feature = "std")]
-                eprintln!("[VAL_TYPE] Tag 0x{:02x} not a known opcode, parsing as type index", tag);
+                #[cfg(feature = "tracing")]
+                trace!(tag = tag, "val_type: not a known opcode, parsing as type index");
 
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, 0)?;
                 Ok((wrt_format::component::FormatValType::Ref(idx), bytes_read))
@@ -2419,12 +2416,12 @@ mod std_parsing {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         let mut aliases = Vec::with_capacity(count as usize);
 
-        #[cfg(feature = "std")]
-        eprintln!("[ALIAS_SECTION] Section has {} aliases, section size {} bytes", count, bytes.len());
+        #[cfg(feature = "tracing")]
+        trace!(count = count, section_size = bytes.len(), "parse_alias_section");
 
         for i in 0..count {
-            #[cfg(feature = "std")]
-            eprintln!("[ALIAS_SECTION] Parsing alias {} at offset {}", i, offset);
+            #[cfg(feature = "tracing")]
+            trace!(alias_index = i, offset = offset, "parsing alias");
 
             // Parse complete alias (sort + aliastarget)
             let (alias, bytes_read) = parse_alias(&bytes[offset..])?;
@@ -2457,8 +2454,8 @@ mod std_parsing {
         let sort_byte = bytes[0];
         let mut offset = 1;
 
-        #[cfg(feature = "std")]
-        eprintln!("[ALIAS_TARGET] Parsing alias with sort: 0x{:02x}", sort_byte);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(sort_byte = format!("0x{:02x}", sort_byte), "Parsing alias");
 
         // Parse the sort - this may be a CoreSort (if sort_byte == 0x00) or a full Sort
         let parsed_sort: wrt_format::component::Sort;
@@ -2473,8 +2470,8 @@ mod std_parsing {
             let core_sort_byte = bytes[offset];
             offset += 1;
 
-            #[cfg(feature = "std")]
-            eprintln!("[ALIAS_TARGET] Core sort byte: 0x{:02x}", core_sort_byte);
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::trace!(core_sort_byte = format!("0x{:02x}", core_sort_byte), "Core sort byte");
 
             let core_sort = match core_sort_byte {
                 binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
@@ -2485,8 +2482,8 @@ mod std_parsing {
                 binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
                 binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
                 _ => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[ALIAS_TARGET] Invalid core sort byte: 0x{:02x}", core_sort_byte);
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::warn!(core_sort_byte = format!("0x{:02x}", core_sort_byte), "Invalid core sort byte");
                     return Err(Error::from(kinds::ParseError("Invalid core sort byte")));
                 },
             };
@@ -2501,8 +2498,8 @@ mod std_parsing {
                 binary::COMPONENT_SORT_INSTANCE => wrt_format::component::Sort::Instance,
                 binary::COMPONENT_SORT_MODULE => wrt_format::component::Sort::Component,
                 _ => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[ALIAS_TARGET] Invalid sort byte: 0x{:02x}", sort_byte);
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::warn!(sort_byte = format!("0x{:02x}", sort_byte), "Invalid sort byte");
                     return Err(Error::from(kinds::ParseError("Invalid sort byte")));
                 },
             };
@@ -2517,8 +2514,8 @@ mod std_parsing {
         let tag = bytes[offset];
         offset += 1;
 
-        #[cfg(feature = "std")]
-        eprintln!("[ALIAS_TARGET] Alias target tag: 0x{:02x}", tag);
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(tag = format!("0x{:02x}", tag), "Alias target tag");
 
         match tag {
             0x00 => {
@@ -2533,8 +2530,8 @@ mod std_parsing {
                 offset += bytes_read;
                 let name = bytes_to_string(name_bytes);
 
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Component export alias: instance {} exports '{}' (sort: {:?})", instance_idx, name, parsed_sort);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(instance_idx = instance_idx, name = %name, sort = ?parsed_sort, "Component export alias");
 
                 Ok((
                     wrt_format::component::AliasTarget::InstanceExport {
@@ -2552,8 +2549,8 @@ mod std_parsing {
                 let core_sort = match parsed_sort {
                     wrt_format::component::Sort::Core(cs) => cs,
                     _ => {
-                        #[cfg(feature = "std")]
-                        eprintln!("[ALIAS_TARGET] Core export must have CoreSort, got: {:?}", parsed_sort);
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::warn!(parsed_sort = ?parsed_sort, "Core export must have CoreSort");
                         return Err(Error::from(kinds::ParseError("Core export must have CoreSort")));
                     }
                 };
@@ -2567,9 +2564,8 @@ mod std_parsing {
                 offset += bytes_read;
                 let name = bytes_to_string(name_bytes);
 
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Core export alias: instance {} exports '{}' as {:?}",
-                         instance_idx, name, core_sort);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(instance_idx = instance_idx, name = %name, core_sort = ?core_sort, "Core export alias");
 
                 Ok((
                     wrt_format::component::AliasTarget::CoreInstanceExport {
@@ -2591,8 +2587,8 @@ mod std_parsing {
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Outer alias: count {}, idx {} (sort: {:?})", count, idx, parsed_sort);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(count = count, idx = idx, sort = ?parsed_sort, "Outer alias");
 
                 Ok((
                     wrt_format::component::AliasTarget::Outer {
@@ -2604,8 +2600,8 @@ mod std_parsing {
                 ))
             },
             _ => {
-                #[cfg(feature = "std")]
-                eprintln!("[ALIAS_TARGET] Unsupported alias target tag: 0x{:02x}", tag);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::warn!(tag = format!("0x{:02x}", tag), "Unsupported alias target tag");
                 Err(Error::from(kinds::ParseError("Invalid alias target tag")))
             },
         }

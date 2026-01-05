@@ -20,4 +20,3 @@ pub use thread_builtins::*;
 pub use thread_spawn::*;
 pub use thread_spawn_fuel::*;
 pub use waitable_set_builtins::*;
-    }

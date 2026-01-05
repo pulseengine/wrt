@@ -6,7 +6,7 @@
 
 // Import tracing utilities
 #[cfg(feature = "tracing")]
-use wrt_foundation::tracing::debug;
+use wrt_foundation::tracing::{debug, trace, warn};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::sync::Arc;
@@ -205,11 +205,27 @@ use crate::bounded_runtime_infra::{
     RUNTIME_MEMORY_SIZE,
 };
 
+/// Kind of import for proper ordering during instantiation
+/// Tables, memories, and globals must be applied BEFORE element segment initialization
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ImportKind {
+    /// Function import - can be resolved lazily at call time
+    Function,
+    /// Table import - must be applied before element segments
+    Table,
+    /// Memory import - must be applied before data segments
+    Memory,
+    /// Global import - must be applied before start function
+    Global,
+}
+
 /// Import link describes how to resolve an import
 #[derive(Debug, Clone)]
 struct ImportLink {
     provider_instance: InstanceHandle,
-    export_name: String,
+    export_name:       String,
+    /// What kind of import this is (function, table, memory, global)
+    import_kind:       ImportKind,
 }
 
 /// Capability-aware WebAssembly execution engine
@@ -306,6 +322,16 @@ impl CapabilityAwareEngine {
         self.inner.set_host_registry(registry);
     }
 
+    /// Set the host import handler for resolving all host function calls
+    ///
+    /// This handler will be used for ALL host function calls including WASI.
+    /// The engine has no knowledge of specific host interfaces - it delegates
+    /// all import resolution to this handler.
+    #[cfg(feature = "std")]
+    pub fn set_host_handler(&mut self, handler: Box<dyn wrt_foundation::HostImportHandler>) {
+        self.inner.set_host_handler(handler);
+    }
+
     /// Convert engine preset to ASIL execution mode
     fn preset_to_asil_mode(&self) -> ASILExecutionMode {
         match self.preset {
@@ -391,7 +417,8 @@ impl CapabilityAwareEngine {
                 // Register with the CallbackRegistry
                 registry.register_host_function(module_name, func_name, handler);
 
-                eprintln!("[ENGINE] Registered host function: {}::{}", module_name, func_name);
+                #[cfg(feature = "tracing")]
+                trace!(module = module_name, function = func_name, "Registered host function");
                 Ok(())
             } else {
                 Err(Error::not_supported_unsupported_operation(
@@ -515,18 +542,24 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // This would integrate with the fuel async executor to enforce limits
 
         // Decode the module using wrt-decoder (Box to avoid stack overflow)
-        #[cfg(feature = "std")]
-        eprintln!("[LOAD_MODULE] Decoding module of {} bytes...", binary.len());
+        #[cfg(feature = "tracing")]
+        trace!(binary_size = binary.len(), "Decoding module");
         let decoded = Box::new(decode_module(binary)?);
-        #[cfg(feature = "std")]
-        eprintln!("[LOAD_MODULE] Decode successful, converting to runtime module...");
+        #[cfg(feature = "tracing")]
+        trace!("Decode successful, converting to runtime module");
 
         // Convert to runtime module (pass by reference, returns Box<Module>)
         let runtime_module = Module::from_wrt_module(&*decoded)?;
-        #[cfg(feature = "std")]
-        eprintln!("[LOAD_MODULE] Conversion successful");
+        #[cfg(feature = "tracing")]
+        trace!("Conversion successful");
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
+        trace!(
+            exports_count = runtime_module.exports.len(),
+            "[LOAD_MODULE] Module loaded"
+        );
+
+        #[cfg(feature = "tracing")]
         {
             let elem_count = runtime_module.elements.len();
             let first_elem_items = if elem_count > 0 {
@@ -539,8 +572,11 @@ impl CapabilityEngine for CapabilityAwareEngine {
             } else {
                 0
             };
-            eprintln!("[LOAD_MODULE] After from_wrt_module: elements.len()={}, first_elem.items.len()={}",
-                     elem_count, first_elem_items);
+            trace!(
+                element_count = elem_count,
+                first_element_items = first_elem_items,
+                "After from_wrt_module"
+            );
         }
 
         // TODO: Initialize data segments into memory
@@ -552,14 +588,14 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
         // Create and store with unique handle (wrapped in Arc to avoid deep clones)
         let handle = ModuleHandle::new();
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG load_module: About to Arc::new(*runtime_module)");
+        #[cfg(feature = "tracing")]
+        trace!("About to Arc::new(*runtime_module)");
         let module_arc = Arc::new(*runtime_module);
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG load_module: About to insert into modules map");
+        #[cfg(feature = "tracing")]
+        trace!("About to insert into modules map");
         self.modules.insert(handle, module_arc)?;
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG load_module: Insert completed, returning handle");
+        #[cfg(feature = "tracing")]
+        trace!("Insert completed, returning handle");
 
         Ok(handle)
     }
@@ -597,6 +633,99 @@ impl CapabilityEngine for CapabilityAwareEngine {
         debug!("Populating tables from module...");
         instance.populate_tables_from_module()?;
 
+        // Get pending import links EARLY - we need to apply table/memory/global imports
+        // BEFORE element segment initialization
+        #[cfg(feature = "std")]
+        let pending_links = self.import_links.get(&module_handle).cloned();
+
+        // CRITICAL: Apply table/memory/global imports BEFORE element segments!
+        // Tables must be available before element segments try to populate them.
+        // Function imports can be applied later (resolved at call time).
+        #[cfg(feature = "std")]
+        if let Some(ref links) = pending_links {
+            #[cfg(feature = "tracing")]
+            trace!(
+                total_links = links.len(),
+                "Applying non-function imports BEFORE element segments"
+            );
+            for (import_key, link) in links {
+                match link.import_kind {
+                    ImportKind::Table => {
+                        // Get table from provider instance
+                        let provider_arc = self
+                            .instances
+                            .get(&link.provider_instance)
+                            .ok_or_else(|| {
+                                Error::resource_not_found("Provider instance not found for table import")
+                            })?;
+                        let provider_table = provider_arc.table_by_name(&link.export_name)?;
+
+                        // Find the table import index in this module
+                        let table_idx =
+                            self.find_import_index(&module_arc, import_key, ImportKind::Table)?;
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            import_key = import_key.as_str(),
+                            export_name = link.export_name.as_str(),
+                            table_idx = table_idx,
+                            "Table import applied"
+                        );
+                        instance.set_table(table_idx, provider_table)?;
+                    }
+                    ImportKind::Memory => {
+                        // Get memory from provider instance
+                        let provider_arc = self
+                            .instances
+                            .get(&link.provider_instance)
+                            .ok_or_else(|| {
+                                Error::resource_not_found("Provider instance not found for memory import")
+                            })?;
+                        let provider_memory = provider_arc.memory_by_name(&link.export_name)?;
+
+                        // Find the memory import index in this module
+                        let memory_idx =
+                            self.find_import_index(&module_arc, import_key, ImportKind::Memory)?;
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            import_key = import_key.as_str(),
+                            export_name = link.export_name.as_str(),
+                            memory_idx = memory_idx,
+                            "Memory import applied"
+                        );
+                        instance.set_memory(memory_idx, provider_memory)?;
+                    }
+                    ImportKind::Global => {
+                        // Get global from provider instance
+                        let provider_arc = self
+                            .instances
+                            .get(&link.provider_instance)
+                            .ok_or_else(|| {
+                                Error::resource_not_found("Provider instance not found for global import")
+                            })?;
+                        let provider_global = provider_arc.global_by_name(&link.export_name)?;
+
+                        // Find the global import index in this module
+                        let global_idx =
+                            self.find_import_index(&module_arc, import_key, ImportKind::Global)?;
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            import_key = import_key.as_str(),
+                            export_name = link.export_name.as_str(),
+                            global_idx = global_idx,
+                            "Global import applied"
+                        );
+                        instance.set_global(global_idx, provider_global)?;
+                    }
+                    ImportKind::Function => {
+                        // Functions are resolved at call time, skip for now
+                    }
+                }
+            }
+        }
+
         // Initialize data segments into instance memory (critical for static data!)
         #[cfg(feature = "std")]
         {
@@ -606,16 +735,13 @@ impl CapabilityEngine for CapabilityAwareEngine {
         }
 
         // Initialize element segments into tables (critical for call_indirect!)
+        // IMPORTANT: This MUST come AFTER table imports are applied above
         #[cfg(feature = "std")]
         {
             #[cfg(feature = "tracing")]
             debug!("Initializing element segments...");
             instance.initialize_element_segments()?;
         }
-
-        // Apply import links if any exist for this module
-        // We need the instance_idx before we can register links, so we'll do it after registration
-        let pending_links = self.import_links.get(&module_handle).cloned();
 
         // Don't clone! Cloning creates a fresh empty instance, losing all our populate work
         let instance_arc = Arc::new(instance);
@@ -632,25 +758,43 @@ impl CapabilityEngine for CapabilityAwareEngine {
         #[cfg(feature = "std")]
         self.handle_to_idx.insert(handle, instance_idx);
 
-        // Register import links with the inner engine
+        // Register FUNCTION import links with the inner engine (for call-time resolution)
         #[cfg(feature = "std")]
         if let Some(links) = pending_links {
-            eprintln!("[INSTANTIATE] Applying {} import links for instance {}", links.len(), instance_idx);
+            #[cfg(feature = "tracing")]
+            trace!(
+                instance_idx = instance_idx,
+                "Registering function import links for instance"
+            );
             for (import_key, link) in links {
+                // Only register function imports - table/memory/global already applied above
+                if link.import_kind != ImportKind::Function {
+                    continue;
+                }
+
                 // Parse import_key (format: "module::name" or just "name")
                 let (import_module, import_name) = if let Some(pos) = import_key.rfind("::") {
-                    (import_key[..pos].to_string(), import_key[pos+2..].to_string())
+                    (import_key[..pos].to_string(), import_key[pos + 2..].to_string())
                 } else {
                     (String::new(), import_key.clone())
                 };
 
                 // Get the target instance_idx from our mapping
-                let target_idx = self.handle_to_idx.get(&link.provider_instance)
+                let target_idx = self
+                    .handle_to_idx
+                    .get(&link.provider_instance)
                     .copied()
                     .ok_or_else(|| Error::resource_not_found("Provider instance not found"))?;
 
-                eprintln!("[INSTANTIATE]   Linking {}::{} (in instance {}) -> instance {}.{}",
-                         import_module, import_name, instance_idx, target_idx, link.export_name);
+                #[cfg(feature = "tracing")]
+                trace!(
+                    import_module = import_module.as_str(),
+                    import_name = import_name.as_str(),
+                    source_instance = instance_idx,
+                    target_instance = target_idx,
+                    export_name = link.export_name.as_str(),
+                    "Function link registered"
+                );
 
                 self.inner.register_import_link(
                     instance_idx,
@@ -664,14 +808,17 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
         // Run start function if present
         if let Some(start_idx) = module_arc.start {
-            #[cfg(feature = "std")]
-            eprintln!("[INSTANTIATE] Module has start function at index {}. Running automatically...", start_idx);
+            #[cfg(feature = "tracing")]
+            trace!(
+                start_idx = start_idx,
+                "Module has start function, running automatically"
+            );
             self.inner.execute(instance_idx, start_idx as usize, vec![])?;
-            #[cfg(feature = "std")]
-            eprintln!("[INSTANTIATE] Start function completed");
+            #[cfg(feature = "tracing")]
+            trace!("Start function completed");
         } else {
-            #[cfg(feature = "std")]
-            eprintln!("[INSTANTIATE] No start function in module");
+            #[cfg(feature = "tracing")]
+            trace!("No start function in module");
         }
 
         Ok(handle)
@@ -691,6 +838,9 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let module_id = module.0 as usize;
         let provider_id = provider_instance.0 as usize;
 
+        // Determine import kind from module's import declarations
+        let import_kind = self.determine_import_kind(module, import_module, import_name)?;
+
         // Add to inner StacklessEngine's import_links
         // Key: (instance_id, import_module, import_name)
         // Value: (target_instance_id, export_name)
@@ -701,7 +851,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
                 import_module.to_string(),
                 import_name.to_string(),
                 provider_id,
-                export_name.to_string()
+                export_name.to_string(),
             );
         }
 
@@ -715,6 +865,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let link = ImportLink {
             provider_instance,
             export_name: export_name.to_string(),
+            import_kind,
         };
 
         self.import_links
@@ -722,9 +873,15 @@ impl CapabilityEngine for CapabilityAwareEngine {
             .or_insert_with(std::collections::HashMap::new)
             .insert(import_key, link);
 
-        #[cfg(feature = "std")]
-        eprintln!("[LINK_IMPORT] Linked {}::{} -> instance {:?}.{}",
-                 import_module, import_name, provider_instance, export_name);
+        #[cfg(feature = "tracing")]
+        trace!(
+            import_module = import_module,
+            import_name = import_name,
+            import_kind = ?import_kind,
+            provider_instance = ?provider_instance,
+            export_name = export_name,
+            "Linked import"
+        );
 
         Ok(())
     }
@@ -767,7 +924,12 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
                     if let Some(ref registry) = self.host_registry {
                         if registry.has_host_function(module_str, &func_str) {
-                            eprintln!("[DISPATCH] Direct call to host function: {}::{}", module_str, func_str);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                module = module_str,
+                                function = func_str,
+                                "Direct call to host function"
+                            );
 
                             let mut dummy_engine = ();
                             let results = registry.call_host_function(
@@ -777,7 +939,8 @@ impl CapabilityEngine for CapabilityAwareEngine {
                                 args.to_vec()
                             )?;
 
-                            eprintln!("[DISPATCH] Host function returned {} values", results.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(result_count = results.len(), "Host function returned");
                             return Ok(results);
                         }
                     }
@@ -793,7 +956,12 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
                     if let Some(ref registry) = self.host_registry {
                         if registry.has_host_function(module_part, func_part) {
-                            eprintln!("[DISPATCH] WASI host function call: {}#{}", module_part, func_part);
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                module = module_part,
+                                function = func_part,
+                                "WASI host function call"
+                            );
 
                             let mut dummy_engine = ();
                             let results = registry.call_host_function(
@@ -803,7 +971,8 @@ impl CapabilityEngine for CapabilityAwareEngine {
                                 args.to_vec()
                             )?;
 
-                            eprintln!("[DISPATCH] Host function returned {} values", results.len());
+                            #[cfg(feature = "tracing")]
+                            trace!(result_count = results.len(), "Host function returned");
                             return Ok(results);
                         }
                     }
@@ -815,24 +984,147 @@ impl CapabilityEngine for CapabilityAwareEngine {
         // Find the function by name using the new function resolution
         let func_idx = instance.module().validate_function_call(func_name)?;
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG CapabilityEngine::execute: func_idx={}", func_idx);
+        #[cfg(feature = "tracing")]
+        trace!(
+            func_name = func_name,
+            func_idx = func_idx,
+            instance_idx = instance_handle.index(),
+            "[CAP_ENGINE] Executing function"
+        );
 
         // Set current module for execution (instance is already &Arc<ModuleInstance>)
         self.inner.set_current_module(Arc::clone(instance))?;
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG CapabilityEngine::execute: about to call inner.execute");
-
         // Execute the function
         let results =
             self.inner.execute(instance_handle.index(), func_idx as usize, args.to_vec())?;
+
+        #[cfg(feature = "tracing")]
+        trace!(results_len = results.len(), "[CAP_ENGINE] Execution completed");
 
         Ok(results)
     }
 }
 
 impl CapabilityAwareEngine {
+    /// Get an instance by handle (for debugging)
+    #[cfg(feature = "std")]
+    pub fn get_instance(&self, handle: InstanceHandle) -> Result<&Arc<ModuleInstance>> {
+        self.instances.get(&handle)
+            .ok_or_else(|| Error::resource_not_found("Instance not found"))
+    }
+
+    /// Find the index of an imported item (table, memory, or global) in the module
+    #[cfg(feature = "std")]
+    fn find_import_index(
+        &self,
+        module: &Arc<Module>,
+        import_key: &str,
+        expected_kind: ImportKind,
+    ) -> Result<usize> {
+        use crate::module::RuntimeImportDesc;
+
+        // Parse import_key to get module::name
+        let (import_module, import_name) = if let Some(pos) = import_key.rfind("::") {
+            (&import_key[..pos], &import_key[pos + 2..])
+        } else {
+            ("", import_key)
+        };
+
+        // Count imports of the expected kind to find the index
+        // Use import_order and import_types for reliable lookup
+        let mut kind_index = 0usize;
+        for (i, (mod_name, field_name)) in module.import_order.iter().enumerate() {
+            let mod_str = mod_name.as_str();
+            let field_str = field_name.as_str();
+
+            // Get the import type from the parallel import_types vector
+            let item_kind = if let Some(import_desc) = module.import_types.get(i) {
+                match import_desc {
+                    RuntimeImportDesc::Function(_) => ImportKind::Function,
+                    RuntimeImportDesc::Table(_) => ImportKind::Table,
+                    RuntimeImportDesc::Memory(_) => ImportKind::Memory,
+                    RuntimeImportDesc::Global(_) => ImportKind::Global,
+                    _ => ImportKind::Function, // Treat other types as function
+                }
+            } else {
+                continue; // Skip if no import type found
+            };
+
+            if mod_str == import_module && field_str == import_name {
+                // Found the import - return the kind-specific index
+                if item_kind == expected_kind {
+                    return Ok(kind_index);
+                } else {
+                    // Found the import but wrong kind
+                    return Err(Error::runtime_error("Import kind mismatch"));
+                }
+            }
+
+            // Count imports of the same kind
+            if item_kind == expected_kind {
+                kind_index += 1;
+            }
+        }
+
+        Err(Error::resource_not_found("Import not found in module"))
+    }
+
+    /// Determine the kind of import (function, table, memory, global) from the module's import
+    /// declarations
+    #[cfg(feature = "std")]
+    fn determine_import_kind(
+        &self,
+        module_handle: ModuleHandle,
+        import_module: &str,
+        import_name: &str,
+    ) -> Result<ImportKind> {
+        use crate::module::RuntimeImportDesc;
+
+        // Get the module
+        let module_arc = self
+            .modules
+            .get(&module_handle)
+            .ok_or_else(|| Error::resource_not_found("Module not found for import kind detection"))?;
+
+        // Use the parallel import_types vector for fast lookup
+        // import_order[i] corresponds to import_types[i]
+        for (i, (mod_name, field_name)) in module_arc.import_order.iter().enumerate() {
+            let mod_str = mod_name.as_str();
+            let field_str = field_name.as_str();
+
+            if mod_str == import_module && field_str == import_name {
+                // Found the import - get its type from the parallel vector
+                if let Some(import_desc) = module_arc.import_types.get(i) {
+                    let kind = match import_desc {
+                        RuntimeImportDesc::Function(_) => ImportKind::Function,
+                        RuntimeImportDesc::Table(_) => ImportKind::Table,
+                        RuntimeImportDesc::Memory(_) => ImportKind::Memory,
+                        RuntimeImportDesc::Global(_) => ImportKind::Global,
+                        _ => ImportKind::Function, // Treat extern, resource, etc. as function
+                    };
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        import_module = import_module,
+                        import_name = import_name,
+                        kind = ?kind,
+                        "Determined import kind from import_types"
+                    );
+                    return Ok(kind);
+                }
+            }
+        }
+
+        // Default to function for backward compatibility (most imports are functions)
+        #[cfg(feature = "tracing")]
+        warn!(
+            import_module = import_module,
+            import_name = import_name,
+            "Import not found in import_order, defaulting to Function"
+        );
+        Ok(ImportKind::Function)
+    }
+
     /// Get the import namespaces from a loaded module
     /// Returns a list of unique module names from the import section
     pub fn get_module_import_namespaces(&self, module_handle: ModuleHandle) -> Vec<String> {

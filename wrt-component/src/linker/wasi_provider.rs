@@ -20,6 +20,7 @@ use alloc::boxed::Box;
 ///
 /// This implementation creates instances with actual exported functions that call
 /// the WASI host implementations.
+#[derive(Debug)]
 pub struct WasiInstanceProvider {
     /// Next instance ID to allocate
     /// Starting at 100 to avoid conflicts with component-internal instances

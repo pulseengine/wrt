@@ -70,22 +70,24 @@ pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: Vec<Value>) -> R
 
 /// WASI process CPU time operation
 ///
-/// Implements CPU time measurement for the current process
+/// Implements CPU time measurement for the current process.
+/// Returns the CPU time consumed by the process (user + system time) in nanoseconds.
 pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
     // Get process CPU time using platform abstraction
-    // TODO: Implement when platform support is available
-    let cpu_time = 0u64;
+    let cpu_time = PlatformTime::process_cpu_time_ns()
+        .map_err(|_| Error::wasi_capability_unavailable("Process CPU time not available"))?;
 
     Ok(vec![Value::U64(cpu_time)])
 }
 
 /// WASI thread CPU time operation
 ///
-/// Implements CPU time measurement for the current thread
+/// Implements CPU time measurement for the current thread.
+/// Returns the CPU time consumed by the current thread (user + system time) in nanoseconds.
 pub fn wasi_thread_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
     // Get thread CPU time using platform abstraction
-    // TODO: Implement when platform support is available
-    let cpu_time = 0u64;
+    let cpu_time = PlatformTime::thread_cpu_time_ns()
+        .map_err(|_| Error::wasi_capability_unavailable("Thread CPU time not available"))?;
 
     Ok(vec![Value::U64(cpu_time)])
 }
@@ -173,8 +175,8 @@ pub fn get_time_with_capabilities(
                 ));
             }
 
-            // TODO: Implement when platform support is available
-            Ok(0u64)
+            PlatformTime::process_cpu_time_ns()
+                .map_err(|_| Error::wasi_capability_unavailable("Process CPU time not available"))
         },
         WasiClockType::ThreadCpuTime => {
             if !capabilities.thread_cputime_access {
@@ -183,8 +185,8 @@ pub fn get_time_with_capabilities(
                 ));
             }
 
-            // TODO: Implement when platform support is available
-            Ok(0u64)
+            PlatformTime::thread_cpu_time_ns()
+                .map_err(|_| Error::wasi_capability_unavailable("Thread CPU time not available"))
         },
     }
 }

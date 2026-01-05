@@ -16,9 +16,8 @@ use alloc::{
 };
 
 // Import tracing utilities
-use wrt_foundation::tracing::{debug, trace};
 #[cfg(feature = "tracing")]
-use wrt_foundation::tracing::{ModuleTrace, ImportTrace};
+use wrt_foundation::tracing::{debug, trace, warn, ModuleTrace, ImportTrace};
 
 use wrt_foundation::MemoryProvider;
 use wrt_format::{
@@ -59,7 +58,7 @@ use wrt_foundation::{
 use crate::prelude::CoreMemoryType;
 
 // Type alias for the runtime ImportDesc
-type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
+pub type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
 
 // HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::{
@@ -454,6 +453,9 @@ pub struct Element {
     pub element_type: WrtRefType,
     /// Element items (function indices or expressions)
     pub items:        BoundedElementItems,
+    /// Deferred item expressions that need global evaluation (e.g., global.get $gf)
+    #[cfg(feature = "std")]
+    pub item_exprs:   Vec<(u32, WrtExpr)>, // (item_index, expression)
 }
 
 impl wrt_foundation::traits::Checksummable for Element {
@@ -552,6 +554,8 @@ impl wrt_foundation::traits::FromBytes for Element {
             offset_expr: None,
             element_type: WrtRefType::Funcref,
             items,
+            #[cfg(feature = "std")]
+            item_exprs: Vec::new(),
         })
     }
 }
@@ -718,6 +722,20 @@ pub struct Module {
     pub binary:          Option<BoundedBinary>,
     /// Execution validation flag
     pub validated:       bool,
+    /// Number of global imports (for proper global indexing)
+    pub num_global_imports: usize,
+    /// Types of imported globals (for creating placeholders during instantiation)
+    /// This bypasses the broken nested BoundedMap serialization issue
+    #[cfg(feature = "std")]
+    pub global_import_types: Vec<wrt_foundation::types::GlobalType>,
+    /// Raw init expression bytes for defined globals (for deferred evaluation)
+    /// Stored as (global_type, init_bytes) for each defined global
+    #[cfg(feature = "std")]
+    pub deferred_global_inits: Vec<(wrt_foundation::types::GlobalType, Vec<u8>)>,
+    /// Types of imports in order (parallels import_order)
+    /// This provides fast lookup for import kind detection during linking
+    #[cfg(feature = "std")]
+    pub import_types: Vec<RuntimeImportDesc>,
 }
 
 impl Module {
@@ -730,6 +748,409 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         self.memories.push(memory)
+    }
+
+    /// Evaluate a constant expression and return its value.
+    /// Supports both simple const expressions and extended const expressions (WebAssembly 2.0).
+    /// Extended const expressions allow i32/i64 add, sub, mul operations.
+    #[cfg(feature = "std")]
+    fn evaluate_const_expr(
+        init_bytes: &[u8],
+        num_global_imports: usize,
+        global_import_types: &[wrt_foundation::types::GlobalType],
+        defined_globals: &BoundedGlobalVec,
+        current_global_idx: usize,
+    ) -> Result<wrt_foundation::values::Value> {
+        use wrt_foundation::values::{Value, FloatBits32, FloatBits64};
+
+        let mut stack: Vec<Value> = Vec::new();
+        let mut pos = 0;
+
+        while pos < init_bytes.len() {
+            let opcode = init_bytes[pos];
+            pos += 1;
+
+            match opcode {
+                // end - return top of stack
+                0x0B => {
+                    return stack.pop().ok_or_else(|| Error::parse_error(
+                        "Empty stack at end of constant expression"
+                    ));
+                }
+                // i32.const
+                0x41 => {
+                    let (value, consumed) = crate::instruction_parser::read_leb128_i32(init_bytes, pos)?;
+                    pos += consumed;
+                    stack.push(Value::I32(value));
+                }
+                // i64.const
+                0x42 => {
+                    let (value, consumed) = crate::instruction_parser::read_leb128_i64(init_bytes, pos)?;
+                    pos += consumed;
+                    stack.push(Value::I64(value));
+                }
+                // f32.const
+                0x43 => {
+                    if pos + 4 > init_bytes.len() {
+                        return Err(Error::parse_error("Truncated f32.const"));
+                    }
+                    let mut bytes = [0u8; 4];
+                    bytes.copy_from_slice(&init_bytes[pos..pos + 4]);
+                    pos += 4;
+                    stack.push(Value::F32(FloatBits32(u32::from_le_bytes(bytes))));
+                }
+                // f64.const
+                0x44 => {
+                    if pos + 8 > init_bytes.len() {
+                        return Err(Error::parse_error("Truncated f64.const"));
+                    }
+                    let mut bytes = [0u8; 8];
+                    bytes.copy_from_slice(&init_bytes[pos..pos + 8]);
+                    pos += 8;
+                    stack.push(Value::F64(FloatBits64(u64::from_le_bytes(bytes))));
+                }
+                // global.get
+                0x23 => {
+                    let (ref_idx, consumed) = crate::instruction_parser::read_leb128_u32(init_bytes, pos)?;
+                    pos += consumed;
+                    let ref_idx = ref_idx as usize;
+
+                    if ref_idx < num_global_imports {
+                        // Referenced global is an import - use placeholder with correct type
+                        // (actual value will be linked later during instantiation)
+                        if ref_idx < global_import_types.len() {
+                            let global_type = &global_import_types[ref_idx];
+                            let placeholder = match global_type.value_type {
+                                wrt_foundation::types::ValueType::I32 => Value::I32(0),
+                                wrt_foundation::types::ValueType::I64 => Value::I64(0),
+                                wrt_foundation::types::ValueType::F32 => Value::F32(FloatBits32(0)),
+                                wrt_foundation::types::ValueType::F64 => Value::F64(FloatBits64(0)),
+                                wrt_foundation::types::ValueType::FuncRef => Value::FuncRef(None),
+                                wrt_foundation::types::ValueType::ExternRef => Value::ExternRef(None),
+                                wrt_foundation::types::ValueType::V128 => Value::V128(wrt_foundation::values::V128 { bytes: [0; 16] }),
+                                // Unsupported types for now
+                                _ => return Err(Error::not_supported_unsupported_operation(
+                                    "Unsupported global import type for constant expression",
+                                )),
+                            };
+                            stack.push(placeholder);
+                        } else {
+                            return Err(Error::validation_error("global.get references unknown import"));
+                        }
+                    } else {
+                        let defined_idx = ref_idx - num_global_imports;
+                        if defined_idx < current_global_idx && defined_idx < defined_globals.len() {
+                            match defined_globals.get(defined_idx) {
+                                Ok(ref_global) => {
+                                    let value = ref_global.get()?;
+                                    stack.push(value);
+                                },
+                                Err(_) => return Err(Error::validation_error("global.get references non-existent global")),
+                            }
+                        } else {
+                            return Err(Error::validation_error("global.get forward reference"));
+                        }
+                    }
+                }
+                // ref.null
+                0xD0 => {
+                    if pos >= init_bytes.len() {
+                        return Err(Error::parse_error("Truncated ref.null"));
+                    }
+                    let heap_type = init_bytes[pos];
+                    pos += 1;
+                    match heap_type {
+                        0x70 => stack.push(Value::FuncRef(None)),
+                        0x6F => stack.push(Value::ExternRef(None)),
+                        _ => return Err(Error::parse_error("Unknown heap type in ref.null")),
+                    }
+                }
+                // ref.func
+                0xD2 => {
+                    let (func_idx, consumed) = crate::instruction_parser::read_leb128_u32(init_bytes, pos)?;
+                    pos += consumed;
+                    // ref.func creates a FuncRef with the function index
+                    stack.push(Value::FuncRef(Some(wrt_foundation::values::FuncRef { index: func_idx })));
+                }
+                // i32.add
+                0x6A => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.add"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.add"))?;
+                    match (a, b) {
+                        (Value::I32(a), Value::I32(b)) => stack.push(Value::I32(a.wrapping_add(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i32.add")),
+                    }
+                }
+                // i32.sub
+                0x6B => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.sub"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.sub"))?;
+                    match (a, b) {
+                        (Value::I32(a), Value::I32(b)) => stack.push(Value::I32(a.wrapping_sub(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i32.sub")),
+                    }
+                }
+                // i32.mul
+                0x6C => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.mul"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i32.mul"))?;
+                    match (a, b) {
+                        (Value::I32(a), Value::I32(b)) => stack.push(Value::I32(a.wrapping_mul(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i32.mul")),
+                    }
+                }
+                // i64.add
+                0x7C => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.add"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.add"))?;
+                    match (a, b) {
+                        (Value::I64(a), Value::I64(b)) => stack.push(Value::I64(a.wrapping_add(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i64.add")),
+                    }
+                }
+                // i64.sub
+                0x7D => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.sub"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.sub"))?;
+                    match (a, b) {
+                        (Value::I64(a), Value::I64(b)) => stack.push(Value::I64(a.wrapping_sub(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i64.sub")),
+                    }
+                }
+                // i64.mul
+                0x7E => {
+                    let b = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.mul"))?;
+                    let a = stack.pop().ok_or_else(|| Error::parse_error("Stack underflow in i64.mul"))?;
+                    match (a, b) {
+                        (Value::I64(a), Value::I64(b)) => stack.push(Value::I64(a.wrapping_mul(b))),
+                        _ => return Err(Error::parse_error("Type mismatch in i64.mul")),
+                    }
+                }
+                _ => {
+                    return Err(Error::parse_error("Unknown opcode in constant expression"));
+                }
+            }
+        }
+
+        Err(Error::parse_error("Constant expression missing end opcode"))
+    }
+
+    /// Re-evaluate globals that depend on imported globals.
+    /// This should be called after import values have been set in the instance globals.
+    ///
+    /// # Arguments
+    /// * `instance_globals` - The instance's globals vector (with correct import values)
+    ///
+    /// # Returns
+    /// A vector of (defined_global_idx, new_value) pairs for globals that were re-evaluated
+    #[cfg(feature = "std")]
+    pub fn reevaluate_deferred_globals(
+        &self,
+        instance_globals: &[GlobalWrapper],
+    ) -> Result<Vec<(usize, wrt_foundation::values::Value)>> {
+        use wrt_foundation::values::Value;
+
+        let mut updates = Vec::new();
+
+        for (defined_idx, (global_type, init_bytes)) in self.deferred_global_inits.iter().enumerate() {
+            // Check if this global's init expression contains global.get of an import
+            // global.get opcode is 0x23, followed by the global index
+            let mut needs_reevaluation = false;
+            let mut pos = 0;
+            while pos < init_bytes.len() {
+                if init_bytes[pos] == 0x23 {
+                    // global.get - check if it references an import
+                    if pos + 1 < init_bytes.len() {
+                        let (ref_idx, _) = crate::instruction_parser::read_leb128_u32(init_bytes, pos + 1)?;
+                        if (ref_idx as usize) < self.num_global_imports {
+                            needs_reevaluation = true;
+                            break;
+                        }
+                    }
+                }
+                pos += 1;
+            }
+
+            if needs_reevaluation {
+                // Re-evaluate this global using the instance's globals (which have correct import values)
+                // Build a temporary globals vec for evaluation
+                let eval_result = Self::evaluate_const_expr_with_instance_globals(
+                    init_bytes,
+                    self.num_global_imports,
+                    instance_globals,
+                )?;
+
+                let global_idx = self.num_global_imports + defined_idx;
+                #[cfg(feature = "tracing")]
+                trace!(global_idx = global_idx, value = ?eval_result, "Re-evaluated deferred global");
+                updates.push((global_idx, eval_result));
+            }
+        }
+
+        Ok(updates)
+    }
+
+    /// Evaluate a constant expression using instance globals (for deferred evaluation)
+    #[cfg(feature = "std")]
+    fn evaluate_const_expr_with_instance_globals(
+        init_bytes: &[u8],
+        num_global_imports: usize,
+        instance_globals: &[GlobalWrapper],
+    ) -> Result<wrt_foundation::values::Value> {
+        use wrt_foundation::values::{Value, FloatBits32, FloatBits64};
+
+        let mut stack: Vec<Value> = Vec::new();
+        let mut pos = 0;
+
+        while pos < init_bytes.len() {
+            let opcode = init_bytes[pos];
+            pos += 1;
+
+            match opcode {
+                0x41 => {
+                    // i32.const
+                    let (value, consumed) = crate::instruction_parser::read_leb128_i32(init_bytes, pos)?;
+                    pos += consumed;
+                    stack.push(Value::I32(value));
+                }
+                0x42 => {
+                    // i64.const
+                    let (value, consumed) = crate::instruction_parser::read_leb128_i64(init_bytes, pos)?;
+                    pos += consumed;
+                    stack.push(Value::I64(value));
+                }
+                0x43 => {
+                    // f32.const
+                    if pos + 4 > init_bytes.len() {
+                        return Err(Error::parse_error("Unexpected end of f32.const"));
+                    }
+                    let mut bytes = [0u8; 4];
+                    bytes.copy_from_slice(&init_bytes[pos..pos + 4]);
+                    pos += 4;
+                    stack.push(Value::F32(FloatBits32(u32::from_le_bytes(bytes))));
+                }
+                0x44 => {
+                    // f64.const
+                    if pos + 8 > init_bytes.len() {
+                        return Err(Error::parse_error("Unexpected end of f64.const"));
+                    }
+                    let mut bytes = [0u8; 8];
+                    bytes.copy_from_slice(&init_bytes[pos..pos + 8]);
+                    pos += 8;
+                    stack.push(Value::F64(FloatBits64(u64::from_le_bytes(bytes))));
+                }
+                0x23 => {
+                    // global.get
+                    let (ref_idx, consumed) = crate::instruction_parser::read_leb128_u32(init_bytes, pos)?;
+                    pos += consumed;
+
+                    // Get value from instance globals
+                    if (ref_idx as usize) < instance_globals.len() {
+                        if let Ok(guard) = instance_globals[ref_idx as usize].0.read() {
+                            stack.push(guard.get().clone());
+                        } else {
+                            return Err(Error::runtime_error("Failed to read global for deferred evaluation"));
+                        }
+                    } else {
+                        return Err(Error::runtime_error("Global index out of bounds in deferred evaluation"));
+                    }
+                }
+                0x6A => {
+                    // i32.add
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i32.add"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I32(va), Value::I32(vb)) = (a, b) {
+                        stack.push(Value::I32(va.wrapping_add(vb)));
+                    }
+                }
+                0x6B => {
+                    // i32.sub
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i32.sub"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I32(va), Value::I32(vb)) = (a, b) {
+                        stack.push(Value::I32(va.wrapping_sub(vb)));
+                    }
+                }
+                0x6C => {
+                    // i32.mul
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i32.mul"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I32(va), Value::I32(vb)) = (a, b) {
+                        stack.push(Value::I32(va.wrapping_mul(vb)));
+                    }
+                }
+                0x7C => {
+                    // i64.add
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i64.add"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I64(va), Value::I64(vb)) = (a, b) {
+                        stack.push(Value::I64(va.wrapping_add(vb)));
+                    }
+                }
+                0x7D => {
+                    // i64.sub
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i64.sub"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I64(va), Value::I64(vb)) = (a, b) {
+                        stack.push(Value::I64(va.wrapping_sub(vb)));
+                    }
+                }
+                0x7E => {
+                    // i64.mul
+                    if stack.len() < 2 {
+                        return Err(Error::parse_error("Stack underflow in i64.mul"));
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    if let (Value::I64(va), Value::I64(vb)) = (a, b) {
+                        stack.push(Value::I64(va.wrapping_mul(vb)));
+                    }
+                }
+                0x0B => {
+                    // end - done
+                    break;
+                }
+                0xD2 => {
+                    // ref.func
+                    let (func_idx, consumed) = crate::instruction_parser::read_leb128_u32(init_bytes, pos)?;
+                    pos += consumed;
+                    stack.push(Value::FuncRef(Some(wrt_foundation::values::FuncRef { index: func_idx })));
+                }
+                0xD0 => {
+                    // ref.null
+                    if pos >= init_bytes.len() {
+                        return Err(Error::parse_error("Unexpected end of ref.null"));
+                    }
+                    let heap_type = init_bytes[pos];
+                    pos += 1;
+                    match heap_type {
+                        0x70 => stack.push(Value::FuncRef(None)),
+                        0x6F => stack.push(Value::ExternRef(None)),
+                        _ => stack.push(Value::FuncRef(None)),
+                    }
+                }
+                _ => {
+                    // Skip unknown opcodes for now
+                }
+            }
+        }
+
+        stack.pop().ok_or_else(|| Error::parse_error("Empty stack after deferred global evaluation"))
     }
 
     /// REMOVED: All Module::empty(), try_empty(), bootstrap_empty(), etc.
@@ -768,6 +1189,13 @@ impl Module {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
+            #[cfg(feature = "std")]
+            global_import_types: Vec::new(),
+            #[cfg(feature = "std")]
+            deferred_global_inits: Vec::new(),
+            #[cfg(feature = "std")]
+            import_types: Vec::new(),
         })
     }
 
@@ -798,21 +1226,19 @@ impl Module {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0, // Will be updated when processing imports
+            global_import_types: Vec::new(), // Will be populated when processing imports
+            deferred_global_inits: Vec::new(), // Will be populated when processing globals
+            import_types: Vec::new(), // Will be populated when processing imports
         };
 
         // Convert types
         #[cfg(feature = "tracing")]
-        debug!("Converting {} types from wrt_module", wrt_module.types.len());
-        #[cfg(all(feature = "std", not(feature = "tracing")))]
-        eprintln!("DEBUG: Converting {} types from wrt_module", wrt_module.types.len());
+        debug!(type_count = wrt_module.types.len(), "Converting types from wrt_module");
 
         for (i, func_type) in wrt_module.types.iter().enumerate() {
             #[cfg(feature = "tracing")]
-            trace!("Converting type {}: params.len()={}, results.len()={}",
-                     i, func_type.params.len(), func_type.results.len());
-            #[cfg(all(feature = "std", not(feature = "tracing")))]
-            eprintln!("DEBUG: Converting type {}: params.len()={}, results.len()={}",
-                     i, func_type.params.len(), func_type.results.len());
+            trace!(type_idx = i, params_len = func_type.params.len(), results_len = func_type.results.len(), "Converting type");
 
             let param_types: Vec<_> = func_type.params.to_vec();
             let result_types: Vec<_> = func_type.results.to_vec();
@@ -827,37 +1253,36 @@ impl Module {
             runtime_module.types.push(wrt_func_type)?;
 
             #[cfg(feature = "tracing")]
-            trace!("Pushed type {}, runtime_module.types.len()={}", i, runtime_module.types.len());
-            #[cfg(all(feature = "std", not(feature = "tracing")))]
-            eprintln!("DEBUG: Pushed type {}, runtime_module.types.len()={}", i, runtime_module.types.len());
+            trace!(type_idx = i, total_types = runtime_module.types.len(), "Pushed type");
         }
 
         #[cfg(feature = "tracing")]
-        debug!("Done converting types, runtime_module.types.len()={}", runtime_module.types.len());
-        #[cfg(all(feature = "std", not(feature = "tracing")))]
-        eprintln!("DEBUG: Done converting types, runtime_module.types.len()={}", runtime_module.types.len());
+        debug!(total_types = runtime_module.types.len(), "Done converting types");
 
         // Convert imports
         #[cfg(feature = "tracing")]
         let import_span = ImportTrace::registering("", "", wrt_module.imports.len()).entered();
         #[cfg(feature = "tracing")]
-        debug!("Processing {} imports from wrt_module", wrt_module.imports.len());
-        #[cfg(all(feature = "std", not(feature = "tracing")))]
-        eprintln!("[from_wrt_module] Processing {} imports from wrt_module, wrt_module.data.len()={}",
-                 wrt_module.imports.len(), wrt_module.data.len());
+        debug!(import_count = wrt_module.imports.len(), data_count = wrt_module.data.len(), "Processing imports from wrt_module");
 
         use wrt_format::module::ImportDesc as FormatImportDesc;
 
+        let mut global_import_count = 0usize;
         for import in &wrt_module.imports {
             let desc = match &import.desc {
                 FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
                 FormatImportDesc::Table(tt) => RuntimeImportDesc::Table(tt.clone()),
                 FormatImportDesc::Memory(mt) => RuntimeImportDesc::Memory(*mt),
                 FormatImportDesc::Global(gt) => {
-                    RuntimeImportDesc::Global(wrt_foundation::types::GlobalType {
+                    global_import_count += 1;
+                    let global_type = wrt_foundation::types::GlobalType {
                         value_type: gt.value_type,
                         mutable:    gt.mutable,
-                    })
+                    };
+                    // Store the global type for direct access during instantiation
+                    // This bypasses the broken nested BoundedMap serialization
+                    runtime_module.global_import_types.push(global_type.clone());
+                    RuntimeImportDesc::Global(global_type)
                 },
                 FormatImportDesc::Tag(_tag_idx) => {
                     // Handle Tag import - convert to appropriate runtime representation
@@ -901,7 +1326,21 @@ impl Module {
 
             // Track import order for index-based lookup
             #[cfg(feature = "std")]
-            runtime_module.import_order.push((import.module.to_string(), import.name.to_string()));
+            {
+                runtime_module.import_order.push((import.module.to_string(), import.name.to_string()));
+                // Also store the import type for fast lookup during linking
+                let import_desc = match &import.desc {
+                    FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
+                    FormatImportDesc::Table(tt) => RuntimeImportDesc::Table(tt.clone()),
+                    FormatImportDesc::Memory(mt) => RuntimeImportDesc::Memory(*mt),
+                    FormatImportDesc::Global(gt) => RuntimeImportDesc::Global(wrt_foundation::types::GlobalType {
+                        value_type: gt.value_type,
+                        mutable: gt.mutable,
+                    }),
+                    FormatImportDesc::Tag(_) => RuntimeImportDesc::Function(0), // Fallback
+                };
+                runtime_module.import_types.push(import_desc);
+            }
             #[cfg(not(feature = "std"))]
             {
                 let order_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module)?;
@@ -910,23 +1349,26 @@ impl Module {
             }
 
             #[cfg(feature = "tracing")]
-            trace!("Added import to module (tracing enabled)");
-            #[cfg(all(feature = "std", not(feature = "tracing")))]
-            eprintln!("[from_wrt_module] Added import: {}::{}", import.module, import.name);
+            trace!(module = %import.module, name = %import.name, "Added import");
         }
 
+        #[cfg(feature = "tracing")]
+        debug!(imports_len = runtime_module.imports.len(), num_global_imports = global_import_count, "After import loop");
+
+        // Set the count of global imports for proper index space mapping
+        runtime_module.num_global_imports = global_import_count;
+
         // Convert functions
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} functions from wrt_module", wrt_module.functions.len());
+        #[cfg(feature = "tracing")]
+        debug!(function_count = wrt_module.functions.len(), "Converting functions from wrt_module");
         for (func_idx, func) in wrt_module.functions.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Processing function {}, type_idx={}, locals.len()={}, code.len()={}",
-                     func_idx, func.type_idx, func.locals.len(), func.code.len());
+            #[cfg(feature = "tracing")]
+            trace!(func_idx = func_idx, type_idx = func.type_idx, locals_len = func.locals.len(), code_len = func.code.len(), "Processing function");
 
             // Handle imported functions (they have no code, but still need to be in the function table)
             let (locals, body) = if func.code.is_empty() {
-                #[cfg(feature = "std")]
-                eprintln!("DEBUG: Function {} is imported (no code) - creating stub entry", func_idx);
+                #[cfg(feature = "tracing")]
+                trace!(func_idx = func_idx, "Function is imported (no code) - creating stub entry");
 
                 // Imported function: create with empty locals and empty body
                 let empty_locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&[], shared_provider.clone())?;
@@ -938,51 +1380,51 @@ impl Module {
                 (empty_locals, WrtExpr { instructions: empty_instructions })
             } else {
                 // Local function: convert locals and parse code
-                #[cfg(feature = "std")]
-                eprintln!("DEBUG: About to convert locals for function {}", func_idx);
+                #[cfg(feature = "tracing")]
+                trace!(func_idx = func_idx, "About to convert locals for function");
                 let locals = crate::type_conversion::convert_locals_to_bounded_with_provider(&func.locals, shared_provider.clone())?;
 
-                #[cfg(feature = "std")]
-                eprintln!("DEBUG: About to parse instructions for function {}, func.code.len()={}", func_idx, func.code.len());
+                #[cfg(feature = "tracing")]
+                trace!(func_idx = func_idx, code_len = func.code.len(), "About to parse instructions for function");
 
                 // Debug: show the raw bytecode
-                #[cfg(feature = "std")]
+                #[cfg(feature = "tracing")]
                 if !func.code.is_empty() {
-                    eprintln!("DEBUG: Raw bytecode for function {}: {:02x?}", func_idx, &func.code[..func.code.len().min(20)]);
+                    trace!(func_idx = func_idx, bytecode_preview = ?&func.code[..func.code.len().min(20)], "Raw bytecode for function");
                 } else {
-                    eprintln!("DEBUG: WARNING - Function {} has empty code!", func_idx);
+                    trace!(func_idx = func_idx, "Warning - Function has empty code");
                 }
 
                 let instructions = crate::instruction_parser::parse_instructions_with_provider(&func.code, shared_provider.clone())?;
 
-                #[cfg(feature = "std")]
-                eprintln!("DEBUG: Parsed {} instructions for function {}", instructions.len(), func_idx);
+                #[cfg(feature = "tracing")]
+                trace!(func_idx = func_idx, instruction_count = instructions.len(), "Parsed instructions for function");
                 (locals, WrtExpr { instructions })
             };
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: About to create runtime function for function {}", func_idx);
+            #[cfg(feature = "tracing")]
+            trace!(func_idx = func_idx, "About to create runtime function");
             let runtime_func = Function {
                 type_idx: func.type_idx,
                 locals,
                 body,
             };
             // CRITICAL DEBUG: Test provider directly before using BoundedVec
-            #[cfg(feature = "std")]
+            #[cfg(feature = "tracing")]
             {
-                eprintln!("DEBUG: Testing RuntimeProvider directly before BoundedVec usage");
+                trace!(func_idx = func_idx, "Testing RuntimeProvider directly before BoundedVec usage");
 
                 // Test 1: Check provider size
-                eprintln!("DEBUG: Provider size = {} bytes", shared_provider.size());
+                trace!(provider_size = shared_provider.size(), "Provider size");
 
                 // Test 2: Try basic write_data directly
                 let mut test_provider = shared_provider.clone();
                 match test_provider.write_data(0, &[42u8, 43u8, 44u8, 45u8]) {
                     Ok(()) => {
-                        eprintln!("SUCCESS: Provider write_data works directly!");
+                        trace!("Provider write_data works directly");
                     },
                     Err(e) => {
-                        eprintln!("ERROR: Provider write_data fails: {:?}", e);
+                        warn!(error = ?e, "Provider write_data fails");
                         return Err(Error::foundation_bounded_capacity_exceeded("Provider write_data broken"));
                     }
                 }
@@ -990,36 +1432,36 @@ impl Module {
                 // Test 3: Try verify_access
                 match test_provider.verify_access(0, 8) {
                     Ok(()) => {
-                        eprintln!("SUCCESS: Provider verify_access works!");
+                        trace!("Provider verify_access works");
                     },
                     Err(e) => {
-                        eprintln!("ERROR: Provider verify_access fails: {:?}", e);
+                        warn!(error = ?e, "Provider verify_access fails");
                         return Err(Error::foundation_bounded_capacity_exceeded("Provider verify_access broken"));
                     }
                 }
 
                 // Now try the function push
-                eprintln!("DEBUG: Now testing Function push - this will likely fail due to Function::default() complexity");
+                trace!(func_idx = func_idx, "Now testing Function push");
             }
             runtime_module.push_function(runtime_func)?;
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Successfully pushed runtime function {}", func_idx);
+            #[cfg(feature = "tracing")]
+            trace!(func_idx = func_idx, "Successfully pushed runtime function");
         }
 
         // Convert exports
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} exports from wrt_module", wrt_module.exports.len());
+        #[cfg(feature = "tracing")]
+        debug!(export_count = wrt_module.exports.len(), "Converting exports from wrt_module");
         for export in &wrt_module.exports {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Processing export name='{}', kind={:?}, index={}", export.name, export.kind, export.index);
+            #[cfg(feature = "tracing")]
+            trace!(name = %export.name, kind = ?export.kind, index = export.index, "Processing export");
 
             // Create the export name with correct provider size (8192)
             let name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name
             )?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Created export name BoundedString");
+            #[cfg(feature = "tracing")]
+            trace!("Created export name BoundedString");
 
             // Create key with correct type for ExportMap (BoundedString<256,
             // RuntimeProvider>)
@@ -1027,8 +1469,8 @@ impl Module {
                 &export.name
             )?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Created map_key BoundedString");
+            #[cfg(feature = "tracing")]
+            trace!("Created map_key BoundedString");
 
             let kind = match export.kind {
                 FormatExportKind::Function => ExportKind::Function,
@@ -1047,167 +1489,132 @@ impl Module {
                 index: export.index,
             };
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Created Export struct, about to insert into exports map");
+            #[cfg(feature = "tracing")]
+            trace!("Created Export struct, about to insert into exports map");
 
             runtime_module.exports.insert(map_key, runtime_export).map_err(|e| {
-                #[cfg(feature = "std")]
-                eprintln!("DEBUG: exports.insert failed with error: {:?}", e);
+                #[cfg(feature = "tracing")]
+                warn!(error = ?e, "exports.insert failed");
                 e
             })?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: Successfully inserted export into map");
+            #[cfg(feature = "tracing")]
+            trace!("Successfully inserted export into map");
         }
 
         // Convert tables - CRITICAL for call_indirect!
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} tables from wrt_module", wrt_module.tables.len());
+        #[cfg(feature = "tracing")]
+        debug!(table_count = wrt_module.tables.len(), "Converting tables from wrt_module");
         for (idx, table_type) in wrt_module.tables.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Creating table with type: {:?}", idx, table_type);
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, table_type = ?table_type, "Creating table");
 
             // Create runtime table from the table type
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Calling Table::new...", idx);
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, "Calling Table::new");
             let table = match Table::new(table_type.clone()) {
                 Ok(t) => t,
                 Err(e) => {
-                    #[cfg(feature = "std")]
-                    eprintln!("DEBUG: [Table {}] Table::new failed: {:?}", idx, e);
+                    #[cfg(feature = "tracing")]
+                    warn!(table_idx = idx, error = ?e, "Table::new failed");
                     return Err(e);
                 }
             };
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Table::new succeeded, creating wrapper...", idx);
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, "Table::new succeeded, creating wrapper");
             let wrapper = TableWrapper::new(table);
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Pushing to runtime_module.tables...", idx);
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, "Pushing to runtime_module.tables");
             #[cfg(feature = "std")]
             runtime_module.tables.push(wrapper);
             #[cfg(not(feature = "std"))]
             runtime_module.tables.push(wrapper)?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Successfully added to runtime_module.tables, len={}",
-                     idx, runtime_module.tables.len());
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, total_tables = runtime_module.tables.len(), "Successfully added to runtime_module.tables");
         }
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Tables converted, runtime_module.tables.len()={}", runtime_module.tables.len());
+        #[cfg(feature = "tracing")]
+        debug!(total_tables = runtime_module.tables.len(), "Tables converted");
 
         // Convert memories - NOW ENABLED (stack overflow fixed)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} memories from wrt_module", wrt_module.memories.len());
+        #[cfg(feature = "tracing")]
+        debug!(memory_count = wrt_module.memories.len(), "Converting memories from wrt_module");
         for (mem_idx, memory) in wrt_module.memories.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] Converting memory type...", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "Converting memory type");
 
             let memory_type = to_core_memory_type(*memory);
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] Module declares: min={} pages, max={:?} pages",
-                mem_idx, memory_type.limits.min, memory_type.limits.max);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, min_pages = memory_type.limits.min, max_pages = ?memory_type.limits.max, "Module declares memory");
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] About to call Memory::new()...", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "About to call Memory::new()");
 
             let memory_instance = Memory::new(memory_type)?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] Memory::new() succeeded, about to create MemoryWrapper...", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "Memory::new() succeeded, about to create MemoryWrapper");
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] About to create MemoryWrapper from Box<Memory>", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "About to create MemoryWrapper from Box<Memory>");
             let wrapper = MemoryWrapper::new(memory_instance);
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] MemoryWrapper created successfully, about to push to runtime_module.memories...", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "MemoryWrapper created successfully, about to push to runtime_module.memories");
 
             runtime_module.push_memory(wrapper)?;
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] push_memory completed", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "push_memory completed");
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Memory {}] Successfully pushed to runtime_module.memories", mem_idx);
+            #[cfg(feature = "tracing")]
+            trace!(mem_idx = mem_idx, "Successfully pushed to runtime_module.memories");
         }
 
         // Convert globals - NOW ENABLED (stack overflow fixed)
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} globals from wrt_module", wrt_module.globals.len());
-        debug!("Converting {} globals from wrt_module", wrt_module.globals.len());
+        #[cfg(feature = "tracing")]
+        debug!(global_count = wrt_module.globals.len(), "Converting globals from wrt_module");
         for (global_idx, global) in wrt_module.globals.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Global {}] Processing...", global_idx);
+            #[cfg(feature = "tracing")]
+            trace!(global_idx = global_idx, "Processing global");
             // Parse the init expression to get the actual initial value
             // The init expression is typically a simple constant instruction like i32.const
             let init_bytes = global.init.as_slice();
 
             // Debug output to see what's in the init expression
-            trace!("Global[{}] init bytes: {:?}", global_idx, init_bytes);
+            #[cfg(feature = "tracing")]
+            trace!(global_idx = global_idx, init_bytes = ?init_bytes, "Global init bytes");
+
+            // Store init bytes for potential deferred evaluation
+            // This is needed when globals use global.get of imported globals
+            let global_type = wrt_foundation::types::GlobalType {
+                value_type: global.global_type.value_type,
+                mutable: global.global_type.mutable,
+            };
+            runtime_module.deferred_global_inits.push((global_type, init_bytes.to_vec()));
 
             let initial_value = if !init_bytes.is_empty() {
-                // Parse the init expression
-                // Common patterns:
-                // [0x41, value_bytes, 0x0b] = i32.const value
-                // [0x42, value_bytes, 0x0b] = i64.const value
-                // [0x43, value_bytes, 0x0b] = f32.const value
-                // [0x44, value_bytes, 0x0b] = f64.const value
-                // [0x23, global_idx, 0x0b] = global.get global_idx
-
-                match init_bytes[0] {
-                    0x41 => {
-                        // i32.const - parse LEB128 encoded i32
-                        let (value, _) = crate::instruction_parser::read_leb128_i32(&init_bytes, 1)?;
-                        debug!("Global[{}] initialized with i32.const {}", global_idx, value);
-                        wrt_foundation::values::Value::I32(value)
-                    },
-                    0x42 => {
-                        // i64.const - parse LEB128 encoded i64
-                        let (value, _) = crate::instruction_parser::read_leb128_i64(&init_bytes, 1)?;
-                        wrt_foundation::values::Value::I64(value)
-                    },
-                    0x43 => {
-                        // f32.const - 4 bytes little-endian
-                        if init_bytes.len() < 5 {
-                            return Err(Error::parse_error("Invalid f32.const init expression"));
-                        }
-                        let mut bytes = [0u8; 4];
-                        bytes.copy_from_slice(&init_bytes[1..5]);
-                        let value = u32::from_le_bytes(bytes);
-                        wrt_foundation::values::Value::F32(wrt_foundation::values::FloatBits32(value))
-                    },
-                    0x44 => {
-                        // f64.const - 8 bytes little-endian
-                        if init_bytes.len() < 9 {
-                            return Err(Error::parse_error("Invalid f64.const init expression"));
-                        }
-                        let mut bytes = [0u8; 8];
-                        bytes.copy_from_slice(&init_bytes[1..9]);
-                        let value = u64::from_le_bytes(bytes);
-                        wrt_foundation::values::Value::F64(wrt_foundation::values::FloatBits64(value))
-                    },
-                    0x23 => {
-                        // global.get - need to reference another global's value
-                        // For now this is not implemented
-                        return Err(Error::not_supported_unsupported_operation(
-                            "global.get init expression not yet implemented"
-                        ));
-                    },
-                    _ => {
-                        return Err(Error::parse_error(
-                            "Unknown init expression opcode in global initializer"
-                        ));
-                    }
-                }
+                // Evaluate the init expression using a stack-based evaluator
+                // This supports both simple const expressions and extended const expressions (WebAssembly 2.0)
+                Self::evaluate_const_expr(
+                    init_bytes,
+                    runtime_module.num_global_imports,
+                    &runtime_module.global_import_types,
+                    &runtime_module.globals,
+                    global_idx,
+                )?
             } else {
                 // No init expression - this is an error, globals must be initialized
                 return Err(Error::parse_error(
                     "Global has no init expression"
                 ))
             };
+            #[cfg(feature = "tracing")]
             debug!(
-                "Global[{}] from wrt_format: value_type={:?}, mutable={}",
-                global_idx, global.global_type.value_type, global.global_type.mutable
+                global_idx = global_idx,
+                value_type = ?global.global_type.value_type,
+                mutable = global.global_type.mutable,
+                "Global from wrt_format"
             );
             let new_global = Global::new(
                 global.global_type.value_type,
@@ -1218,12 +1625,11 @@ impl Module {
         }
 
         // Convert data segments - CRITICAL for memory initialization!
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} data segments from wrt_module", wrt_module.data.len());
-        debug!("Converting {} data segments from wrt_module", wrt_module.data.len());
+        #[cfg(feature = "tracing")]
+        debug!(data_count = wrt_module.data.len(), "Converting data segments from wrt_module");
         for (data_idx, data_seg) in wrt_module.data.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Data {}] Processing data segment...", data_idx);
+            #[cfg(feature = "tracing")]
+            trace!(data_idx = data_idx, "Processing data segment");
             // Convert PureDataSegment to runtime Data
             use wrt_format::pure_format_types::PureDataMode;
 
@@ -1239,7 +1645,8 @@ impl Module {
                     } else {
                         0
                     };
-                    debug!("Data segment {} is active: memory={}, offset={}", data_idx, memory_index, offset);
+                    #[cfg(feature = "tracing")]
+                    debug!(data_idx = data_idx, memory_index = memory_index, offset = offset, "Data segment is active");
 
                     // Also create the offset expression for the Data struct
                     let instructions = if !offset_bytes.is_empty() {
@@ -1264,14 +1671,16 @@ impl Module {
                     )
                 },
                 PureDataMode::Passive => {
-                    debug!("Data segment {} is passive", data_idx);
+                    #[cfg(feature = "tracing")]
+                    debug!(data_idx = data_idx, "Data segment is passive");
                     (WrtDataMode::Passive, None, None)
                 },
             };
 
             // Convert init data bytes
             let init_bytes = &data_seg.data_bytes;
-            debug!("Data segment {} has {} init bytes", data_idx, init_bytes.len());
+            #[cfg(feature = "tracing")]
+            debug!(data_idx = data_idx, init_bytes_len = init_bytes.len(), "Data segment init bytes");
 
             // Create init data - Vec in std mode, BoundedVec in no_std
             #[cfg(feature = "std")]
@@ -1286,8 +1695,9 @@ impl Module {
                         Error::capacity_limit_exceeded("Data segment init too large")
                     })?;
                 }
+                #[cfg(feature = "tracing")]
                 if init_bytes.len() > 16384 {
-                    debug!("Warning: Data segment {} truncated from {} to 16384 bytes", data_idx, init_bytes.len());
+                    warn!(data_idx = data_idx, original_len = init_bytes.len(), truncated_len = 16384, "Data segment truncated");
                 }
                 bounded_init
             };
@@ -1301,7 +1711,8 @@ impl Module {
 
             #[cfg(feature = "std")]
             {
-                eprintln!("DEBUG: Pushing data segment {} to runtime_module.data (current len: {})", data_idx, runtime_module.data.len());
+                #[cfg(feature = "tracing")]
+                trace!(data_idx = data_idx, current_len = runtime_module.data.len(), "Pushing data segment to runtime_module.data");
                 runtime_module.data.push(runtime_data);
             }
             #[cfg(not(feature = "std"))]
@@ -1310,14 +1721,15 @@ impl Module {
                     Error::capacity_limit_exceeded("Too many data segments")
                 })?;
             }
-            debug!("Successfully converted data segment {}", data_idx);
+            #[cfg(feature = "tracing")]
+            debug!(data_idx = data_idx, "Successfully converted data segment");
         }
-        debug!("Data segment conversion complete: {} segments", runtime_module.data.len());
+        #[cfg(feature = "tracing")]
+        debug!(total_data_segments = runtime_module.data.len(), "Data segment conversion complete");
 
         // Convert element segments - CRITICAL for call_indirect and table initialization!
-        debug!("Converting {} element segments from wrt_module", wrt_module.elements.len());
-        #[cfg(feature = "std")]
-        eprintln!("[from_wrt_module] Converting {} element segments", wrt_module.elements.len());
+        #[cfg(feature = "tracing")]
+        debug!(element_count = wrt_module.elements.len(), "Converting element segments from wrt_module");
 
         for (elem_idx, elem_seg) in wrt_module.elements.iter().enumerate() {
             use wrt_format::pure_format_types::{PureElementInit, PureElementMode};
@@ -1334,9 +1746,8 @@ impl Module {
                     } else {
                         0
                     };
-                    #[cfg(feature = "std")]
-                    eprintln!("[from_wrt_module] Element segment {} is active: table={}, offset={}",
-                             elem_idx, table_index, offset);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, table_index = table_index, offset = offset, "Element segment is active");
 
                     (
                         WrtElementMode::Active {
@@ -1348,13 +1759,13 @@ impl Module {
                     )
                 },
                 PureElementMode::Passive => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[from_wrt_module] Element segment {} is passive", elem_idx);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, "Element segment is passive");
                     (WrtElementMode::Passive, None, 0)
                 },
                 PureElementMode::Declared => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[from_wrt_module] Element segment {} is declared", elem_idx);
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, "Element segment is declared");
                     (WrtElementMode::Declarative, None, 0)
                 },
             };
@@ -1362,38 +1773,61 @@ impl Module {
             // Extract function indices from element init data
             let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
             let mut items = BoundedElementItems::new(provider)?;
+            #[cfg(feature = "std")]
+            let mut deferred_item_exprs: Vec<(u32, WrtExpr)> = Vec::new();
 
             match &elem_seg.init_data {
                 PureElementInit::FunctionIndices(func_indices) => {
-                    #[cfg(feature = "std")]
-                    eprintln!("[from_wrt_module] Element segment {} has {} function indices",
-                             elem_idx, func_indices.len());
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, count = func_indices.len(), "Element segment has function indices");
                     for (i, func_idx) in func_indices.iter().enumerate() {
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if i < 5 || i == func_indices.len() - 1 {
-                            eprintln!("[from_wrt_module]   elem[{}] = func {}", offset_value + i as u32, func_idx);
+                            trace!(elem_offset = offset_value + i as u32, func_idx = func_idx, "Element item = func");
                         }
                         items.push(*func_idx)?;
                     }
                 },
                 PureElementInit::ExpressionBytes(expr_bytes) => {
                     // For expression bytes, we'd need to evaluate them
-                    // For now, try to parse ref.func instructions
-                    #[cfg(feature = "std")]
-                    eprintln!("[from_wrt_module] Element segment {} has {} expression items",
-                             elem_idx, expr_bytes.len());
+                    // Handle ref.func and global.get instructions
+                    #[cfg(feature = "tracing")]
+                    trace!(elem_idx = elem_idx, count = expr_bytes.len(), "Element segment has expression items");
                     for (i, expr) in expr_bytes.iter().enumerate() {
-                        // Try to parse ref.func instruction (0xD2 followed by funcidx)
-                        if !expr.is_empty() && expr[0] == 0xD2 {
-                            // Parse LEB128 function index
-                            if expr.len() > 1 {
-                                let (func_idx, _) = crate::instruction_parser::read_leb128_u32(expr, 1)?;
-                                #[cfg(feature = "std")]
-                                if i < 5 {
-                                    eprintln!("[from_wrt_module]   elem[{}] = func {} (from ref.func)",
-                                             offset_value + i as u32, func_idx);
+                        if expr.is_empty() {
+                            continue;
+                        }
+                        match expr[0] {
+                            0xD2 => {
+                                // ref.func instruction (0xD2 followed by funcidx)
+                                if expr.len() > 1 {
+                                    let (func_idx, _) = crate::instruction_parser::read_leb128_u32(expr, 1)?;
+                                    #[cfg(feature = "tracing")]
+                                    if i < 5 {
+                                        trace!(elem_offset = offset_value + i as u32, func_idx = func_idx, "Element item = func (from ref.func)");
+                                    }
+                                    items.push(func_idx)?;
                                 }
-                                items.push(func_idx)?;
+                            }
+                            0x23 => {
+                                // global.get instruction - defer evaluation
+                                // Store the expression for later evaluation during element init
+                                #[cfg(feature = "std")]
+                                {
+                                    let (global_idx, _) = crate::instruction_parser::read_leb128_u32(expr, 1)?;
+                                    #[cfg(feature = "tracing")]
+                                    trace!(elem_offset = offset_value + i as u32, global_idx = global_idx, "Element item = global.get (deferred)");
+                                    let expr_insts = crate::instruction_parser::parse_instructions_with_provider(
+                                        expr.as_slice(),
+                                        shared_provider.clone()
+                                    )?;
+                                    deferred_item_exprs.push((i as u32, WrtExpr { instructions: expr_insts }));
+                                }
+                            }
+                            _ => {
+                                // Unknown expression type - skip
+                                #[cfg(feature = "tracing")]
+                                trace!(elem_offset = offset_value + i as u32, opcode = format_args!("0x{:02X}", expr[0]), "Element item = unknown opcode");
                             }
                         }
                     }
@@ -1411,9 +1845,8 @@ impl Module {
                 None
             };
 
-            #[cfg(feature = "std")]
-            eprintln!("[from_wrt_module] Element segment {} has {} items after conversion, mode={:?}",
-                     elem_idx, items.len(), mode);
+            #[cfg(feature = "tracing")]
+            trace!(elem_idx = elem_idx, items_len = items.len(), mode = ?mode, "Element segment after conversion");
 
             let runtime_elem = Element {
                 mode,
@@ -1421,34 +1854,36 @@ impl Module {
                 offset_expr,
                 element_type: elem_seg.element_type,
                 items,
+                #[cfg(feature = "std")]
+                item_exprs: deferred_item_exprs,
             };
 
             #[cfg(feature = "std")]
             {
                 runtime_module.elements.push(runtime_elem);
-                eprintln!("[from_wrt_module] Element segment {} converted, runtime_module.elements.len()={}",
-                         elem_idx, runtime_module.elements.len());
+                #[cfg(feature = "tracing")]
+                trace!(elem_idx = elem_idx, total_elements = runtime_module.elements.len(), "Element segment converted");
             }
             #[cfg(not(feature = "std"))]
             runtime_module.elements.push(runtime_elem)?;
         }
-        debug!("Element segment conversion complete: {} segments", runtime_module.elements.len());
+        #[cfg(feature = "tracing")]
+        debug!(total_elements = runtime_module.elements.len(), "Element segment conversion complete");
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "tracing")]
         {
             // Final check: verify element items are retained
             let elem_count = runtime_module.elements.len();
             if elem_count > 0 {
                 let elem = &runtime_module.elements[0];
-                eprintln!("[from_wrt_module] FINAL: elements.len()={}, first_elem.items.len()={}, mode={:?}",
-                         elem_count, elem.items.len(), elem.mode);
+                trace!(elem_count = elem_count, first_elem_items_len = elem.items.len(), mode = ?elem.mode, "FINAL: element segments");
             } else {
-                eprintln!("[from_wrt_module] FINAL: elements.len()=0");
+                trace!("FINAL: elements.len()=0");
             }
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Bootstrap module conversion complete, returning runtime_module");
+        #[cfg(feature = "tracing")]
+        debug!("Bootstrap module conversion complete, returning runtime_module");
         Ok(Box::new(runtime_module))
     }
 
@@ -1467,15 +1902,14 @@ impl Module {
         runtime_module.start = wrt_module.start;
 
         // Convert types
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG Module::from_format: Converting {} types", wrt_module.types.len());
+        #[cfg(feature = "tracing")]
+        debug!(type_count = wrt_module.types.len(), "Module::from_format: Converting types");
 
         for (i, func_type) in wrt_module.types.iter().enumerate() {
             let _provider = create_runtime_provider()?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG Module::from_format: Converting type {}: params.len()={}, results.len()={}",
-                     i, func_type.params.len(), func_type.results.len());
+            #[cfg(feature = "tracing")]
+            trace!(type_idx = i, params_len = func_type.params.len(), results_len = func_type.results.len(), "Module::from_format: Converting type");
 
             let wrt_func_type = WrtFuncType::new(
                 func_type.params.iter().copied(),
@@ -1484,24 +1918,25 @@ impl Module {
 
             runtime_module.types.push(wrt_func_type)?;
 
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG Module::from_format: Pushed type {}, runtime_module.types.len()={}",
-                     i, runtime_module.types.len());
+            #[cfg(feature = "tracing")]
+            trace!(type_idx = i, total_types = runtime_module.types.len(), "Module::from_format: Pushed type");
         }
 
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG Module::from_format: Done converting types, final len={}", runtime_module.types.len());
+        #[cfg(feature = "tracing")]
+        debug!(total_types = runtime_module.types.len(), "Module::from_format: Done converting types");
 
         // Convert imports
-        #[cfg(feature = "std")]
-        eprintln!("[from_wrt_module] Processing {} imports from wrt_module", wrt_module.imports.len());
+        #[cfg(feature = "tracing")]
+        debug!(import_count = wrt_module.imports.len(), "Processing imports from wrt_module");
 
+        let mut global_import_count = 0usize;
         for import in &wrt_module.imports {
             let desc = match &import.desc {
                 FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
                 FormatImportDesc::Table(tt) => RuntimeImportDesc::Table(tt.clone()),
                 FormatImportDesc::Memory(mt) => RuntimeImportDesc::Memory(*mt),
                 FormatImportDesc::Global(gt) => {
+                    global_import_count += 1;
                     RuntimeImportDesc::Global(wrt_foundation::types::GlobalType {
                         value_type: gt.value_type,
                         mutable:    gt.mutable,
@@ -1559,10 +1994,11 @@ impl Module {
             }
 
             #[cfg(feature = "tracing")]
-            trace!("Added import to module (tracing enabled)");
-            #[cfg(all(feature = "std", not(feature = "tracing")))]
-            eprintln!("[from_wrt_module] Added import: {}::{}", import.module, import.name);
+            trace!(module = %import.module, name = %import.name, "Added import");
         }
+
+        // Set the count of global imports for proper index space mapping
+        runtime_module.num_global_imports = global_import_count;
 
         // Convert functions
         for function in &wrt_module.functions {
@@ -1575,19 +2011,19 @@ impl Module {
         }
 
         // Convert tables
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Converting {} tables from wrt_module", wrt_module.tables.len());
+        #[cfg(feature = "tracing")]
+        debug!(table_count = wrt_module.tables.len(), "Converting tables from wrt_module");
         for (idx, table) in wrt_module.tables.iter().enumerate() {
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG: [Table {}] Creating table with type: {:?}", idx, table);
+            #[cfg(feature = "tracing")]
+            trace!(table_idx = idx, table_type = ?table, "Creating table");
             let wrapper = TableWrapper::new(Table::new(table.clone())?);
             #[cfg(feature = "std")]
             runtime_module.tables.push(wrapper);
             #[cfg(not(feature = "std"))]
             runtime_module.tables.push(wrapper)?;
         }
-        #[cfg(feature = "std")]
-        eprintln!("DEBUG: Tables converted, runtime_module.tables.len()={}", runtime_module.tables.len());
+        #[cfg(feature = "tracing")]
+        debug!(total_tables = runtime_module.tables.len(), "Tables converted");
 
         // Convert memories
         for memory in &wrt_module.memories {
@@ -2478,6 +2914,8 @@ impl Module {
             offset_expr: None, // Would need to convert from element.mode offset_expr
             element_type: element.element_type,
             items,
+            #[cfg(feature = "std")]
+            item_exprs: Vec::new(),
         };
 
         #[cfg(feature = "std")]
@@ -2720,6 +3158,7 @@ impl Module {
             offset_expr:  None, // Element segment doesn't have direct offset_expr field
             element_type: element_segment.element_type,
             items:        items_resolved,
+            item_exprs:   Vec::new(),
         });
         #[cfg(not(feature = "std"))]
         self.elements.push(crate::module::Element {
@@ -2843,14 +3282,18 @@ impl Module {
             ));
         }
 
-        eprintln!("[LOAD_FROM_BINARY] About to call require_module_info");
+        #[cfg(feature = "tracing")]
+        trace!("About to call require_module_info");
         let module_info = wasm_info.require_module_info()?;
-        eprintln!("[LOAD_FROM_BINARY] Got module_info successfully");
+        #[cfg(feature = "tracing")]
+        trace!("Got module_info successfully");
 
         // Create runtime module from unified API data
-        eprintln!("[LOAD_FROM_BINARY] About to call from_module_info");
+        #[cfg(feature = "tracing")]
+        trace!("About to call from_module_info");
         let runtime_module = Self::from_module_info(module_info, binary)?;
-        eprintln!("[LOAD_FROM_BINARY] from_module_info completed successfully");
+        #[cfg(feature = "tracing")]
+        trace!("from_module_info completed successfully");
 
         // Store the binary for later use
         #[cfg(feature = "std")]
@@ -2905,6 +3348,13 @@ impl Module {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
+            #[cfg(feature = "std")]
+            global_import_types: Vec::new(),
+            #[cfg(feature = "std")]
+            deferred_global_inits: Vec::new(),
+            #[cfg(feature = "std")]
+            import_types: Vec::new(),
         };
 
         // Set start function if present
@@ -2975,44 +3425,51 @@ impl Module {
             )?;
 
             // Add to imports map
-            eprintln!("[FROM_MODULE_INFO] Creating module_key from '{}'", &import.module);
+            #[cfg(feature = "tracing")]
+            trace!(module = %import.module, "Creating module_key");
             let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.module)
                 .map_err(|e| {
-                    eprintln!("[FROM_MODULE_INFO] ✗ Failed to create module_key: {:?}", e);
+                    #[cfg(feature = "tracing")]
+                    warn!(error = ?e, "Failed to create module_key");
                     Error::foundation_bounded_capacity_exceeded("Failed to convert module name")
                 })?;
-            eprintln!("[FROM_MODULE_INFO] Creating item_key from '{}'", &import.name);
+            #[cfg(feature = "tracing")]
+            trace!(name = %import.name, "Creating item_key");
             let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.name)
                 .map_err(|e| {
-                    eprintln!("[FROM_MODULE_INFO] ✗ Failed to create item_key: {:?}", e);
+                    #[cfg(feature = "tracing")]
+                    warn!(error = ?e, "Failed to create item_key");
                     Error::foundation_bounded_capacity_exceeded("Failed to convert import name")
                 })?;
 
             // Get or create inner map
-            eprintln!("[FROM_MODULE_INFO] Getting or creating inner map for module_key");
+            #[cfg(feature = "tracing")]
+            trace!("Getting or creating inner map for module_key");
             let mut inner_map = match runtime_module.imports.get(&module_key)? {
                 Some(existing) => {
-                    eprintln!("[FROM_MODULE_INFO] Found existing inner map");
+                    #[cfg(feature = "tracing")]
+                    trace!("Found existing inner map");
                     existing
                 },
                 None => {
-                    eprintln!("[FROM_MODULE_INFO] Creating new inner map");
+                    #[cfg(feature = "tracing")]
+                    trace!("Creating new inner map");
                     ImportMap::new(create_runtime_provider()?)?
                 },
             };
 
             // Insert the import
-            eprintln!("[FROM_MODULE_INFO] Inserting import into inner map");
-            eprintln!("[FROM_MODULE_INFO] Import: module='{}', name='{}'",
-                import_struct.module.as_str().unwrap_or("<error>"),
-                import_struct.name.as_str().unwrap_or("<error>"));
+            #[cfg(feature = "tracing")]
+            trace!(module = ?import_struct.module.as_str(), name = ?import_struct.name.as_str(), "Inserting import into inner map");
             inner_map.insert(item_key, import_struct).map_err(|e| {
-                eprintln!("[FROM_MODULE_INFO] ✗ Insert failed: {:?}", e);
+                #[cfg(feature = "tracing")]
+                warn!(error = ?e, "Insert failed");
                 e
             })?;
-            eprintln!("[FROM_MODULE_INFO] Inserting inner map into imports");
+            #[cfg(feature = "tracing")]
+            trace!("Inserting inner map into imports");
             runtime_module.imports.insert(module_key, inner_map)?;
 
             // Track import order for index-based lookup
@@ -3025,7 +3482,8 @@ impl Module {
                 runtime_module.import_order.push((order_module, order_name))?;
             }
 
-            eprintln!("[FROM_MODULE_INFO] ✓ Import processed successfully");
+            #[cfg(feature = "tracing")]
+            trace!("Import processed successfully");
         }
 
         // Process exports
@@ -3079,40 +3537,22 @@ impl Module {
 
     /// Find a function export by name
     pub fn find_function_by_name(&self, name: &str) -> Option<u32> {
+        #[cfg(feature = "tracing")]
+        trace!(name = name, exports_len = self.exports.len(), "[FIND_FUNC] Looking up export");
+
         let bounded_name =
             wrt_foundation::bounded::BoundedString::from_str_truncate(name).ok()?;
 
-        #[cfg(feature = "std")]
-        {
-            eprintln!("DEBUG find_function_by_name: looking for '{}', exports.len()={}", name, self.exports.len());
-            let keys_debug: Vec<String> = self.exports.keys()
-                .map(|k| {
-                    k.as_bytes()
-                        .ok()
-                        .and_then(|slice| {
-                            let bytes: &[u8] = slice.as_ref();
-                            std::str::from_utf8(bytes).ok().map(|s| s.to_string())
-                        })
-                        .unwrap_or_else(|| "Error: failed to read key".to_string())
-                })
-                .collect();
-            eprintln!("DEBUG find_function_by_name: exports keys: {:?}", keys_debug);
-        }
-
         if let Some(export) = self.exports.get(&bounded_name) {
-            #[cfg(feature = "std")]
-            {
-                eprintln!("DEBUG find_function_by_name: found export kind={:?}, index={}", export.kind, export.index);
-            }
+            #[cfg(feature = "tracing")]
+            trace!(kind = ?export.kind, index = export.index, "[FIND_FUNC] Found export");
             if export.kind == ExportKind::Function {
                 return Some(export.index);
             }
         }
 
-        #[cfg(feature = "std")]
-        {
-            eprintln!("DEBUG find_function_by_name: '{}' not found or not a function", name);
-        }
+        #[cfg(feature = "tracing")]
+        trace!(name = name, "[FIND_FUNC] Export not found or not a function");
         None
     }
 
@@ -3323,6 +3763,13 @@ impl wrt_foundation::traits::FromBytes for Module {
             name,
             binary: None,
             validated,
+            num_global_imports: 0,
+            #[cfg(feature = "std")]
+            global_import_types: Vec::new(),
+            #[cfg(feature = "std")]
+            deferred_global_inits: Vec::new(),
+            #[cfg(feature = "std")]
+            import_types: Vec::new(),
         };
 
         Ok(module)
@@ -3392,33 +3839,35 @@ impl TableWrapper {
         self.0.get(idx)
     }
 
-    /// Set table element (requires mutable access)
+    /// Set table element using interior mutability
     pub fn set(&self, idx: u32, value: Option<WrtValue>) -> Result<()> {
-        // Note: This requires unsafe because we can't get mutable access to Arc<Table>
-        // For now, we'll return an error
-        Err(Error::runtime_execution_error(
-            "Runtime execution error: Cannot set table value through Arc<Table>",
-        ))
+        // Use set_shared which uses the internal Mutex for interior mutability
+        self.0.set_shared(idx, value)
     }
 
-    /// Grow table (requires mutable access)
+    /// Grow table using interior mutability
     pub fn grow(&self, delta: u32, init_value: WrtValue) -> Result<u32> {
-        // Note: This requires unsafe because we can't get mutable access to Arc<Table>
-        // For now, we'll return an error
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            wrt_error::codes::TABLE_ACCESS_DENIED,
-            "Cannot grow table through Arc<Table>",
-        ))
+        self.0.grow_shared(delta, init_value)
     }
 
-    /// Initialize table (requires mutable access)
+    /// Initialize table using interior mutability
     pub fn init(&self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
-        // Note: This requires unsafe because we can't get mutable access to Arc<Table>
-        // For now, we'll return an error
-        Err(Error::runtime_execution_error(
-            "Runtime execution error: Cannot initialize table through Arc<Table>",
-        ))
+        self.0.init_shared(offset, init_data)
+    }
+
+    /// Fill a range of table elements with a value
+    pub fn fill(&self, offset: u32, len: u32, value: Option<WrtValue>) -> Result<()> {
+        self.0.fill_elements_shared(offset as usize, value, len as usize)
+    }
+
+    /// Copy elements from one region to another
+    pub fn copy(&self, dst: u32, src: u32, len: u32) -> Result<()> {
+        self.0.copy_elements_shared(dst as usize, src as usize, len as usize)
+    }
+
+    /// Get the table element type
+    pub fn element_type(&self) -> wrt_foundation::types::RefType {
+        self.0.ty.element_type
     }
 }
 
@@ -3956,6 +4405,24 @@ impl ToBytes for GlobalWrapper {
             WrtValue::F64(wrt_foundation::values::FloatBits64(bits)) => {
                 writer.write_all(&bits.to_le_bytes())?;
             },
+            WrtValue::FuncRef(ref_opt) => {
+                // FuncRef: store 0xFFFFFFFF for None, or the index for Some
+                let value = match ref_opt {
+                    Some(func_ref) => func_ref.index,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::ExternRef(ref_opt) => {
+                // ExternRef: store 0xFFFFFFFF for None, or the index for Some
+                let value = match ref_opt {
+                    Some(extern_ref) => extern_ref.index,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
             _ => {
                 // For other types, write zeros
                 writer.write_all(&0u64.to_le_bytes())?;
@@ -4010,6 +4477,22 @@ impl FromBytes for GlobalWrapper {
             ValueType::F64 => {
                 let v = ((value_high as u64) << 32) | (value_low as u64);
                 Value::F64(wrt_foundation::values::FloatBits64(v))
+            },
+            ValueType::FuncRef => {
+                // 0xFFFFFFFF means None, otherwise it's an index
+                if value_low == 0xFFFFFFFF {
+                    Value::FuncRef(None)
+                } else {
+                    Value::FuncRef(Some(wrt_foundation::values::FuncRef { index: value_low }))
+                }
+            },
+            ValueType::ExternRef => {
+                // 0xFFFFFFFF means None, otherwise it's an index
+                if value_low == 0xFFFFFFFF {
+                    Value::ExternRef(None)
+                } else {
+                    Value::ExternRef(Some(wrt_foundation::values::ExternRef { index: value_low }))
+                }
             },
             _ => Value::I32(value_low as i32),
         };

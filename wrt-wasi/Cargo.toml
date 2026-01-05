@@ -27,10 +27,13 @@ once_cell = { version = "1.19", optional = true }
 [features]
 default = ["std", "preview2", "wasi-filesystem", "wasi-cli", "wasi-clocks", "wasi-io", "wasi-random"]
 
+# Tracing support for structured logging
+tracing = ["wrt-foundation/tracing"]
+
 # Standard library support
 std = [
     "wrt-error/std",
-    "wrt-foundation/std", 
+    "wrt-foundation/std",
     "wrt-host/std",
     # "wrt-component/std",
     "wrt-platform/std",

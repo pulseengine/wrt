@@ -106,6 +106,30 @@ pub struct HandleLifetimeTracker;
 /// Post-return function signature: () -> ()
 pub type PostReturnFn = fn();
 
+/// Callback for invoking WebAssembly cleanup functions
+///
+/// The callback receives:
+/// - `instance_id`: The component instance containing the function
+/// - `func_idx`: The function index to call
+/// - `args`: Arguments to pass to the function (as i32 values)
+///
+/// Returns: Ok(result) on success, where result is the optional i32 return value
+#[cfg(feature = "std")]
+pub type CleanupCallback = Box<dyn FnMut(u32, u32, &[i32]) -> wrt_error::Result<Option<i32>> + Send>;
+
+/// Callback for invoking cabi_realloc for memory deallocation
+///
+/// The callback receives:
+/// - `instance_id`: The component instance containing cabi_realloc
+/// - `old_ptr`: The pointer to free
+/// - `old_size`: The size of the allocation
+/// - `align`: Alignment (typically 1 for free operations)
+/// - `new_size`: New size (0 for free operations)
+///
+/// Returns: Ok(new_ptr) on success
+#[cfg(feature = "std")]
+pub type ReallocCleanupCallback = Box<dyn FnMut(u32, i32, i32, i32, i32) -> wrt_error::Result<i32> + Send>;
+
 /// Maximum number of cleanup tasks per instance in no_std
 const MAX_CLEANUP_TASKS_NO_STD: usize = 256;
 
@@ -113,7 +137,14 @@ const MAX_CLEANUP_TASKS_NO_STD: usize = 256;
 const MAX_CLEANUP_HANDLERS: usize = 64;
 
 /// Post-return cleanup registry with async support
-#[derive(Debug)]
+///
+/// The registry manages cleanup operations for component instances, including:
+/// - Memory deallocation via cabi_realloc
+/// - Resource destructor invocation
+/// - Post-return function calls
+///
+/// All actual WebAssembly function invocations go through registered callbacks,
+/// allowing the runtime engine to integrate with the cleanup system.
 pub struct PostReturnRegistry {
     /// Registered post-return functions per instance
     #[cfg(feature = "std")]
@@ -126,27 +157,51 @@ pub struct PostReturnRegistry {
     pending_cleanups: BTreeMap<ComponentInstanceId, Vec<CleanupTask>>,
     #[cfg(not(any(feature = "std", )))]
     pending_cleanups: BoundedVec<(ComponentInstanceId, BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD>), MAX_CLEANUP_TASKS_NO_STD>,
-    
+
     /// Async execution engine for async cleanup
     async_engine: Option<Arc<AsyncExecutionEngine>>,
-    
+
     /// Task cancellation manager
     cancellation_manager: Option<Arc<SubtaskManager>>,
-    
+
     /// Handle lifetime tracker for resource cleanup
     handle_tracker: Option<Arc<HandleLifetimeTracker>>,
-    
+
     /// Resource lifecycle manager
     resource_manager: Option<Arc<ResourceLifecycleManager>>,
-    
+
     /// Resource representation manager
     representation_manager: Option<Arc<HandleRepresentationManager>>,
-    
+
     /// Execution metrics
     metrics: PostReturnMetrics,
-    
+
     /// Maximum cleanup tasks per instance
     max_cleanup_tasks: usize,
+
+    /// Callback for invoking WebAssembly functions during cleanup
+    #[cfg(feature = "std")]
+    cleanup_callback: Option<CleanupCallback>,
+
+    /// Callback for invoking cabi_realloc for memory deallocation
+    #[cfg(feature = "std")]
+    realloc_callback: Option<ReallocCleanupCallback>,
+}
+
+impl core::fmt::Debug for PostReturnRegistry {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut s = f.debug_struct("PostReturnRegistry");
+        s.field("functions", &self.functions)
+            .field("pending_cleanups", &"<pending>")
+            .field("metrics", &self.metrics)
+            .field("max_cleanup_tasks", &self.max_cleanup_tasks);
+        #[cfg(feature = "std")]
+        {
+            s.field("cleanup_callback", &self.cleanup_callback.as_ref().map(|_| "<callback>"));
+            s.field("realloc_callback", &self.realloc_callback.as_ref().map(|_| "<callback>"));
+        }
+        s.finish()
+    }
 }
 
 #[derive(Clone, Default)]
@@ -614,7 +669,40 @@ impl PostReturnRegistry {
             representation_manager: None,
             metrics: PostReturnMetrics::default(),
             max_cleanup_tasks,
+            #[cfg(feature = "std")]
+            cleanup_callback: None,
+            #[cfg(feature = "std")]
+            realloc_callback: None,
         })
+    }
+
+    /// Set the callback for invoking WebAssembly functions during cleanup
+    ///
+    /// The callback should:
+    /// 1. Find the function in the component instance
+    /// 2. Call it with the provided arguments
+    /// 3. Return the result (if any)
+    #[cfg(feature = "std")]
+    pub fn set_cleanup_callback(&mut self, callback: CleanupCallback) {
+        self.cleanup_callback = Some(callback);
+    }
+
+    /// Set the callback for invoking cabi_realloc for memory deallocation
+    ///
+    /// The callback should call the component's cabi_realloc export with:
+    /// - old_ptr: The pointer to free
+    /// - old_size: The size of the allocation
+    /// - align: Alignment (typically 1)
+    /// - new_size: 0 (to indicate free operation)
+    #[cfg(feature = "std")]
+    pub fn set_realloc_callback(&mut self, callback: ReallocCleanupCallback) {
+        self.realloc_callback = Some(callback);
+    }
+
+    /// Check if cleanup callbacks are registered
+    #[cfg(feature = "std")]
+    pub fn has_callbacks(&self) -> bool {
+        self.cleanup_callback.is_some() || self.realloc_callback.is_some()
     }
     
     /// Create new registry with async support
@@ -648,6 +736,10 @@ impl PostReturnRegistry {
             representation_manager,
             metrics: PostReturnMetrics::default(),
             max_cleanup_tasks,
+            #[cfg(feature = "std")]
+            cleanup_callback: None,
+            #[cfg(feature = "std")]
+            realloc_callback: None,
         })
     }
 
@@ -918,33 +1010,68 @@ impl PostReturnRegistry {
         }
     }
 
-    /// Binary std/no_std choice
+    /// Free memory by calling cabi_realloc(ptr, size, align, 0)
+    ///
+    /// Per the Component Model spec, calling cabi_realloc with new_size=0
+    /// frees the previously allocated memory.
     fn cleanup_memory(
-        &self,
+        &mut self,
         task: &CleanupTask,
-        context: &mut PostReturnContext,
+        _context: &mut PostReturnContext,
     ) -> Result<()> {
         if let CleanupData::Memory { ptr, size, align } = &task.data {
-            if let Some(realloc_manager) = &context.realloc_manager {
-                // Binary std/no_std choice
-                // For now, we just acknowledge the cleanup
+            #[cfg(feature = "std")]
+            {
+                // Use the realloc callback to actually free memory
+                if let Some(ref mut callback) = self.realloc_callback {
+                    // Call cabi_realloc(ptr, size, align, 0) to free
+                    // The instance_id comes from the task's source_instance
+                    let instance_id = task.source_instance.0;
+                    let _ = callback(instance_id, *ptr, *size, *align, 0)?;
+                }
+                // If no callback registered, we can't actually free memory.
+                // This is fine for stub implementations but should be logged.
+            }
+
+            #[cfg(not(feature = "std"))]
+            {
+                // In no_std mode, memory management is more limited
+                // For now, we just acknowledge the cleanup task
             }
         }
         Ok(())
     }
 
-    /// Clean up resource handle
+    /// Clean up resource handle by invoking its destructor
+    ///
+    /// If a cleanup callback is registered, this will invoke the resource's
+    /// destructor function (if any) via the callback.
     fn cleanup_resource(
         &mut self,
         task: &CleanupTask,
         _context: &mut PostReturnContext,
     ) -> Result<()> {
-        if let CleanupData::Resource { handle, resource_type: _ } = &task.data {
+        if let CleanupData::Resource { handle, resource_type } = &task.data {
             self.metrics.resource_cleanups += 1;
 
-            // Use resource manager if available
-            if let Some(resource_manager) = &self.resource_manager {
-                // In a real implementation, this would drop the resource
+            #[cfg(feature = "std")]
+            {
+                // Use the cleanup callback to invoke the destructor
+                // The destructor function index would typically be stored in the resource type
+                // For now, we use a convention where the destructor is at a known function index
+                // In a full implementation, this would look up the destructor from resource metadata
+                if let Some(ref mut callback) = self.cleanup_callback {
+                    let instance_id = task.source_instance.0;
+                    // Call the resource destructor with the handle as the argument
+                    // The destructor signature is: (handle: i32) -> ()
+                    let _ = callback(instance_id, resource_type.0, &[*handle as i32])?;
+                }
+            }
+
+            // Use resource manager if available for additional cleanup
+            if let Some(_resource_manager) = &self.resource_manager {
+                // The resource manager might need to update its internal state
+                // after the destructor has been called
             }
         }
         Ok(())

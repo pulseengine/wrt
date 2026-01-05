@@ -18,6 +18,9 @@ pub mod io;
 #[cfg(feature = "wasi-random")]
 pub mod random;
 
+#[cfg(feature = "wasi-sockets")]
+pub mod sockets;
+
 // Re-export main functions for convenience
 // Note: Filesystem operations are implemented directly in component_model_provider.rs
 // #[cfg(feature = "wasi-filesystem")]
@@ -34,3 +37,6 @@ pub use io::{wasi_stream_read, wasi_stream_write};
 
 #[cfg(feature = "wasi-random")]
 pub use random::{wasi_get_random_bytes, wasi_get_insecure_random_bytes};
+
+#[cfg(feature = "wasi-sockets")]
+pub use sockets::WasiSocketCapabilities;

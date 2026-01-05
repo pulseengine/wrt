@@ -109,8 +109,8 @@ pub fn create_runtime_provider_with_context(
 /// This creates a new context which can cause recursion. Use
 /// create_runtime_provider_with_context instead.
 pub fn create_runtime_provider() -> wrt_error::Result<RuntimeProvider> {
-    #[cfg(feature = "std")]
-    eprintln!("DEBUG: create_runtime_provider() called");
+    #[cfg(feature = "tracing")]
+    wrt_foundation::tracing::trace!("create_runtime_provider() called");
 
     // For small sizes, use the normal capability system
     #[cfg(any(feature = "std", feature = "alloc"))]

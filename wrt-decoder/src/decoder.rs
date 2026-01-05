@@ -217,22 +217,26 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     .filter(|import| matches!(import.desc, ImportDesc::Function(..)))
                     .count();
 
-                #[cfg(feature = "std")]
-                eprintln!("[DECODER] Code section: {} bodies, {} function imports, {} total functions",
-                    code_bodies.len(), num_imports, module.functions.len());
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(
+                    code_bodies = code_bodies.len(),
+                    num_imports = num_imports,
+                    total_functions = module.functions.len(),
+                    "Code section parsed"
+                );
 
                 for (idx, body) in code_bodies.into_iter().enumerate() {
                     // The actual function index is num_imports + idx
                     let func_idx = num_imports + idx;
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[DECODER] Assigning code body {} to function {}", idx, func_idx);
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::trace!(idx = idx, func_idx = func_idx, "Assigning code body to function");
 
                     if let Some(func) = module.functions.get_mut(func_idx) {
                         func.code = body.into_iter().collect();
                     } else {
-                        #[cfg(feature = "std")]
-                        eprintln!("[DECODER] WARNING: Function index {} not found in functions vector", func_idx);
+                        #[cfg(feature = "tracing")]
+                        wrt_foundation::tracing::warn!(func_idx = func_idx, "Function index not found in functions vector");
                     }
                 }
             },

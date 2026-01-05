@@ -200,6 +200,40 @@ impl ModuleInstance {
         }
     }
 
+    /// Set a memory at a specific index (for imported memories)
+    /// This is used during instantiation to replace placeholder memories with imported ones
+    #[cfg(feature = "std")]
+    pub fn set_memory(&self, idx: usize, memory: MemoryWrapper) -> Result<()> {
+        let mut memories = self
+            .memories
+            .lock()
+            .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
+        if idx < memories.len() {
+            memories[idx] = memory;
+            Ok(())
+        } else if idx == memories.len() {
+            memories.push(memory);
+            Ok(())
+        } else {
+            Err(Error::runtime_error("Memory index out of bounds for set_memory"))
+        }
+    }
+
+    /// Get a memory by export name from this instance
+    #[cfg(feature = "std")]
+    pub fn memory_by_name(&self, name: &str) -> Result<MemoryWrapper> {
+        use crate::module::ExportKind;
+
+        // Find the export in module.exports (DirectMap iteration)
+        for (_key, export) in self.module.exports.iter() {
+            let export_name = export.name.as_str().unwrap_or("");
+            if export_name == name && export.kind == ExportKind::Memory {
+                return self.memory(export.index);
+            }
+        }
+        Err(Error::resource_not_found("Memory export not found"))
+    }
+
     /// Get a table from this instance
     pub fn table(&self, idx: u32) -> Result<TableWrapper> {
         #[cfg(feature = "std")]
@@ -220,6 +254,40 @@ impl ModuleInstance {
                 .map_err(|_| Error::resource_table_not_found("Runtime operation error"))?;
             Ok(table.clone())
         }
+    }
+
+    /// Set a table at a specific index (for imported tables)
+    /// This is used during instantiation to replace placeholder tables with imported ones
+    #[cfg(feature = "std")]
+    pub fn set_table(&self, idx: usize, table: TableWrapper) -> Result<()> {
+        let mut tables = self
+            .tables
+            .lock()
+            .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
+        if idx < tables.len() {
+            tables[idx] = table;
+            Ok(())
+        } else if idx == tables.len() {
+            tables.push(table);
+            Ok(())
+        } else {
+            Err(Error::runtime_error("Table index out of bounds for set_table"))
+        }
+    }
+
+    /// Get a table by export name from this instance
+    #[cfg(feature = "std")]
+    pub fn table_by_name(&self, name: &str) -> Result<TableWrapper> {
+        use crate::module::ExportKind;
+
+        // Find the export in module.exports (DirectMap iteration)
+        for (_key, export) in self.module.exports.iter() {
+            let export_name = export.name.as_str().unwrap_or("");
+            if export_name == name && export.kind == ExportKind::Table {
+                return self.table(export.index);
+            }
+        }
+        Err(Error::resource_not_found("Table export not found"))
     }
 
     /// Get a global from this instance
@@ -244,6 +312,82 @@ impl ModuleInstance {
                 .map_err(|_| Error::resource_global_not_found("Runtime operation error"))?;
             Ok(global.clone())
         }
+    }
+
+    /// Set a global at a specific index (for imported globals)
+    /// This is used during instantiation to replace placeholder globals with imported ones
+    #[cfg(feature = "std")]
+    pub fn set_global(&self, idx: usize, global: GlobalWrapper) -> Result<()> {
+        let mut globals = self
+            .globals
+            .lock()
+            .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+        if idx < globals.len() {
+            globals[idx] = global;
+            Ok(())
+        } else if idx == globals.len() {
+            globals.push(global);
+            Ok(())
+        } else {
+            Err(Error::runtime_error("Global index out of bounds for set_global"))
+        }
+    }
+
+    /// Re-evaluate globals that depend on imported globals after import values are set.
+    /// This fixes the deferred initialization problem where globals using global.get
+    /// of imported globals were evaluated before import values were known.
+    #[cfg(feature = "std")]
+    pub fn reevaluate_deferred_globals(&self) -> Result<()> {
+        use crate::module::GlobalWrapper;
+        use crate::global::Global;
+        use std::sync::{Arc as StdArc, RwLock};
+
+        // Lock globals to get the current values (including resolved imports)
+        let globals_guard = self
+            .globals
+            .lock()
+            .map_err(|_| Error::runtime_error("Failed to lock globals for deferred evaluation"))?;
+
+        // Convert to slice for the reevaluate function
+        let globals_slice: &[GlobalWrapper] = &globals_guard;
+
+        // Call the module's reevaluate function
+        let updates = self.module.reevaluate_deferred_globals(globals_slice)?;
+
+        // Drop the immutable borrow to allow mutable access
+        drop(globals_guard);
+
+        // Apply the updates using set_initial_value (bypasses mutability check)
+        for (idx, new_value) in updates {
+            let global_wrapper = {
+                let globals = self.globals.lock()
+                    .map_err(|_| Error::runtime_error("Failed to lock globals for update"))?;
+                globals.get(idx).cloned()
+            };
+
+            if let Some(wrapper) = global_wrapper {
+                if let Ok(mut guard) = wrapper.0.write() {
+                    guard.set_initial_value(&new_value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get a global by export name from this instance
+    #[cfg(feature = "std")]
+    pub fn global_by_name(&self, name: &str) -> Result<GlobalWrapper> {
+        use crate::module::ExportKind;
+
+        // Find the export in module.exports (DirectMap iteration)
+        for (_key, export) in self.module.exports.iter() {
+            let export_name = export.name.as_str().unwrap_or("");
+            if export_name == name && export.kind == ExportKind::Global {
+                return self.global(export.index);
+            }
+        }
+        Err(Error::resource_not_found("Global export not found"))
     }
 
     /// Get the function type for a function
@@ -409,11 +553,19 @@ impl ModuleInstance {
     }
 
     /// Populate globals from the module into this instance
-    /// This copies all global variables from the module definition to the instance
+    /// This copies all global variables from the module definition to the instance,
+    /// accounting for imported globals in the index space.
+    ///
+    /// Global indices in WebAssembly are:
+    /// - Indices 0..N-1 are imported globals
+    /// - Indices N+ are defined globals
     pub fn populate_globals_from_module(&self) -> Result<()> {
         use wrt_foundation::tracing::{debug, info};
 
         info!("Populating globals from module for instance {}", self.instance_id);
+
+        // Use the pre-computed count of global imports from the module
+        let num_global_imports = self.module.num_global_imports;
 
         #[cfg(feature = "std")]
         {
@@ -422,25 +574,89 @@ impl ModuleInstance {
                 .lock()
                 .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
 
-            // In std mode, module.globals is BoundedVec so we iterate using index
+            // First, create placeholder globals for imports using the direct global_import_types vector
+            // This bypasses the broken nested BoundedMap serialization issue
+            for (idx, global_type) in self.module.global_import_types.iter().enumerate() {
+                use wrt_foundation::values::{Value, FloatBits32, FloatBits64};
+
+                // Create a placeholder global with default value
+                let default_value = match global_type.value_type {
+                    wrt_foundation::ValueType::I32 => Value::I32(0),
+                    wrt_foundation::ValueType::I64 => Value::I64(0),
+                    wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                    wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                    wrt_foundation::ValueType::FuncRef => Value::FuncRef(None),
+                    wrt_foundation::ValueType::ExternRef => Value::ExternRef(None),
+                    _ => Value::I32(0),
+                };
+                let placeholder = Global::new(global_type.value_type, global_type.mutable, default_value)
+                    .map_err(|_| Error::runtime_error("Failed to create placeholder global"))?;
+                debug!(
+                    "Creating placeholder for imported global {} ({:?}) - is_mutable: {}",
+                    idx,
+                    global_type.value_type,
+                    global_type.mutable
+                );
+                globals.push(GlobalWrapper::new(placeholder));
+            }
+
+            debug!("Created {} placeholder globals for imports", num_global_imports);
+
+            // Now copy defined globals
             for idx in 0..self.module.globals.len() {
                 if let Ok(global_wrapper) = self.module.globals.get(idx) {
                     debug!(
-                        "Copying global {} to instance - is_mutable: {}, value_type: {:?}, value: {:?}",
+                        "Copying defined global {} (global index {}) to instance",
                         idx,
-                        global_wrapper.is_mutable(),
-                        global_wrapper.value_type(),
-                        global_wrapper.get_value()
+                        globals.len()
                     );
                     globals.push(global_wrapper.clone());
                 }
             }
-            info!("Populated {} globals for instance {}", self.module.globals.len(), self.instance_id);
+            info!(
+                "Populated {} globals for instance {} ({} imports + {} defined)",
+                globals.len(),
+                self.instance_id,
+                num_global_imports,
+                self.module.globals.len()
+            );
         }
 
         #[cfg(not(feature = "std"))]
         {
             let mut globals = self.globals.lock();
+
+            // First, create placeholder globals for imports by iterating import_order
+            for idx in 0..self.module.import_order.len() {
+                if let Ok((module_name, item_name)) = self.module.import_order.get(idx) {
+                    // Look up the module's import map
+                    if let Ok(Some(import_map)) = self.module.imports.get(&module_name) {
+                        // Look up the specific import
+                        if let Ok(Some(import)) = import_map.get(&item_name) {
+                            if let ImportDesc::Global(global_type) = &import.desc {
+                                use wrt_foundation::values::{Value, FloatBits32, FloatBits64};
+
+                                let default_value = match global_type.value_type {
+                                    wrt_foundation::ValueType::I32 => Value::I32(0),
+                                    wrt_foundation::ValueType::I64 => Value::I64(0),
+                                    wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                                    wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                                    wrt_foundation::ValueType::FuncRef => Value::FuncRef(None),
+                                    wrt_foundation::ValueType::ExternRef => Value::ExternRef(None),
+                                    _ => Value::I32(0),
+                                };
+                                let placeholder = Global::new(global_type.value_type, global_type.mutable, default_value)
+                                    .map_err(|_| Error::runtime_error("Failed to create placeholder global"))?;
+                                globals
+                                    .push(GlobalWrapper::new(placeholder))
+                                    .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Now copy defined globals
             for idx in 0..self.module.globals.len() {
                 if let Ok(global_wrapper) = self.module.globals.get(idx) {
                     debug!("Copying global {} to instance", idx);
@@ -515,9 +731,12 @@ impl ModuleInstance {
             }
             info!("Populated {} tables for instance {}", self.module.tables.len(), self.instance_id);
 
-            #[cfg(feature = "std")]
-            eprintln!("[POPULATE_TABLES] Populated {} tables for instance {}",
-                     self.module.tables.len(), self.instance_id);
+            #[cfg(feature = "tracing")]
+            wrt_foundation::tracing::trace!(
+                table_count = self.module.tables.len(),
+                instance_id = self.instance_id,
+                "Populated tables for instance"
+            );
         }
 
         #[cfg(not(feature = "std"))]
@@ -546,9 +765,12 @@ impl ModuleInstance {
         info!("Initializing data segments for instance {} - module has {} data segments",
               self.instance_id, self.module.data.len());
 
-        #[cfg(feature = "std")]
-        eprintln!("[DATA_INIT] Instance {} has {} data segments to initialize",
-                 self.instance_id, self.module.data.len());
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(
+            instance_id = self.instance_id,
+            segment_count = self.module.data.len(),
+            "Initializing data segments"
+        );
 
         // Iterate through all data segments in the module
         for (idx, data_segment) in self.module.data.iter().enumerate() {
@@ -568,12 +790,47 @@ impl ModuleInstance {
                     // WrtExpr has instructions field that contains parsed Instructions
                     let expr_instructions = &offset_expr.instructions;
 
-                    // Check if we have an I32Const instruction (common for data segment offsets)
+                    // Check if we have an I32Const or GlobalGet instruction
                     if !expr_instructions.is_empty() {
                         match &expr_instructions[0] {
                             wrt_foundation::types::Instruction::I32Const(value) => {
                                 debug!("Data segment {} has I32Const offset: {}", idx, value);
                                 *value as u32
+                            }
+                            wrt_foundation::types::Instruction::GlobalGet(global_idx) => {
+                                // Look up the global value for the offset
+                                debug!("Data segment {} has GlobalGet({}) offset", idx, global_idx);
+
+                                #[cfg(feature = "std")]
+                                let globals = self.globals.lock()
+                                    .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
+                                #[cfg(not(feature = "std"))]
+                                let globals = self.globals.lock();
+
+                                // Get the global value
+                                if let Some(global_wrapper) = globals.iter().nth(*global_idx as usize) {
+                                    match global_wrapper.0.read() {
+                                        Ok(global) => {
+                                            match global.get() {
+                                                wrt_foundation::values::Value::I32(v) => {
+                                                    debug!("Data segment {} global offset value: {}", idx, v);
+                                                    *v as u32
+                                                },
+                                                _ => {
+                                                    debug!("Data segment {} global has non-i32 type, using 0", idx);
+                                                    0
+                                                }
+                                            }
+                                        },
+                                        Err(_) => {
+                                            debug!("Data segment {} failed to read global, using 0", idx);
+                                            0
+                                        }
+                                    }
+                                } else {
+                                    debug!("Data segment {} global index {} out of range, using 0", idx, global_idx);
+                                    0
+                                }
                             }
                             _ => {
                                 // For other instructions, default to 0
@@ -617,15 +874,19 @@ impl ModuleInstance {
                     .map_err(|_e| Error::runtime_error("Failed to get data segment bytes"))?;
                 debug!("Writing {} bytes of data to memory at offset {:#x}", init_data.len(), offset);
 
-                #[cfg(feature = "std")]
-                eprintln!("[DATA_INIT] Writing {} bytes to memory {} at offset {:#x}",
-                         init_data.len(), memory_idx, offset);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(
+                    bytes = init_data.len(),
+                    memory_idx = memory_idx,
+                    offset = format!("{:#x}", offset),
+                    "Writing data to memory"
+                );
 
                 // Use the thread-safe write_shared method for Arc<Memory>
                 memory.write_shared(offset, init_data)?;
 
-                #[cfg(feature = "std")]
-                eprintln!("[DATA_INIT] Successfully wrote data segment {}", idx);
+                #[cfg(feature = "tracing")]
+                wrt_foundation::tracing::trace!(segment_idx = idx, "Successfully wrote data segment");
 
                 info!("Successfully initialized data segment {} ({} bytes)", idx, init_data.len());
             } else {
@@ -647,9 +908,12 @@ impl ModuleInstance {
         info!("Initializing element segments for instance {} - module has {} element segments",
               self.instance_id, self.module.elements.len());
 
-        #[cfg(feature = "std")]
-        eprintln!("[ELEM_INIT] Instance {} has {} element segments to initialize",
-                 self.instance_id, self.module.elements.len());
+        #[cfg(feature = "tracing")]
+        wrt_foundation::tracing::trace!(
+            instance_id = self.instance_id,
+            segment_count = self.module.elements.len(),
+            "Initializing element segments"
+        );
 
         // Get access to tables
         #[cfg(feature = "std")]
@@ -661,16 +925,63 @@ impl ModuleInstance {
         // Iterate through all element segments in the module
         #[cfg(feature = "std")]
         {
+            // Get access to globals for evaluating offset expressions
+            let globals = self.globals.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock globals for element init"))?;
+
             for (idx, elem_segment) in self.module.elements.iter().enumerate() {
                 debug!("Processing element segment {}", idx);
                 // Only process active element segments
-                if let WrtElementMode::Active { table_index, offset } = &elem_segment.mode {
-                    debug!("Processing active element segment {}: table={}, offset={}, items={}",
-                           idx, table_index, offset, elem_segment.items.len());
+                if let WrtElementMode::Active { table_index, offset: mode_offset } = &elem_segment.mode {
+                    // Evaluate the actual offset - check offset_expr for GlobalGet
+                    let actual_offset = if let Some(ref offset_expr) = elem_segment.offset_expr {
+                        let instructions = &offset_expr.instructions;
+                        if !instructions.is_empty() {
+                            match &instructions[0] {
+                                wrt_foundation::types::Instruction::I32Const(value) => {
+                                    debug!("Element segment {} has I32Const offset: {}", idx, value);
+                                    *value as u32
+                                }
+                                wrt_foundation::types::Instruction::GlobalGet(global_idx) => {
+                                    // Look up the global value for the offset
+                                    debug!("Element segment {} has GlobalGet({}) offset", idx, global_idx);
+                                    if let Some(global_wrapper) = globals.iter().nth(*global_idx as usize) {
+                                        match global_wrapper.0.read() {
+                                            Ok(global) => {
+                                                match global.get() {
+                                                    wrt_foundation::values::Value::I32(v) => {
+                                                        debug!("Element segment {} global offset value: {}", idx, v);
+                                                        *v as u32
+                                                    },
+                                                    _ => *mode_offset
+                                                }
+                                            },
+                                            Err(_) => *mode_offset
+                                        }
+                                    } else {
+                                        *mode_offset
+                                    }
+                                }
+                                _ => *mode_offset
+                            }
+                        } else {
+                            *mode_offset
+                        }
+                    } else {
+                        *mode_offset
+                    };
 
-                    #[cfg(feature = "std")]
-                    eprintln!("[ELEM_INIT] Active element segment {}: table={}, offset={}, {} items",
-                             idx, table_index, offset, elem_segment.items.len());
+                    debug!("Processing active element segment {}: table={}, offset={}, items={}",
+                           idx, table_index, actual_offset, elem_segment.items.len());
+
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::trace!(
+                        segment_idx = idx,
+                        table_index = table_index,
+                        offset = actual_offset,
+                        items = elem_segment.items.len(),
+                        "Processing active element segment"
+                    );
 
                     // Get the table
                     let table_idx = *table_index as usize;
@@ -683,20 +994,58 @@ impl ModuleInstance {
 
                     // Set each function reference in the table
                     for (item_idx, func_idx) in elem_segment.items.iter().enumerate() {
-                        let table_offset = *offset + item_idx as u32;
+                        let table_offset = actual_offset + item_idx as u32;
                         let value = Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx })));
 
                         // Use set_shared which provides interior mutability
                         table.set_shared(table_offset, value)?;
 
-                        #[cfg(feature = "std")]
+                        #[cfg(feature = "tracing")]
                         if item_idx < 3 || item_idx == elem_segment.items.len() - 1 {
-                            eprintln!("[ELEM_INIT]   table[{}] = func {}", table_offset, func_idx);
+                            wrt_foundation::tracing::trace!(table_offset = table_offset, func_idx = func_idx, "Set table element");
+                        }
+                    }
+
+                    // Evaluate and set deferred item expressions (e.g., global.get $gf)
+                    #[cfg(feature = "std")]
+                    for (item_idx, expr) in elem_segment.item_exprs.iter() {
+                        let table_offset = actual_offset + *item_idx;
+                        // Evaluate the expression to get the funcref
+                        if let Some(instr) = expr.instructions.first() {
+                            if let wrt_foundation::types::Instruction::GlobalGet(global_idx) = instr {
+                                // Look up the global value
+                                if let Some(global_wrapper) = globals.iter().nth(*global_idx as usize) {
+                                    match global_wrapper.0.read() {
+                                        Ok(global) => {
+                                            match global.get() {
+                                                WrtValue::FuncRef(func_ref_opt) => {
+                                                    #[cfg(feature = "tracing")]
+                                                    wrt_foundation::tracing::trace!(
+                                                        table_offset = table_offset,
+                                                        func_ref = ?func_ref_opt,
+                                                        global_idx = global_idx,
+                                                        "Set table element from global.get"
+                                                    );
+                                                    table.set_shared(table_offset, Some(WrtValue::FuncRef(func_ref_opt.clone())))?;
+                                                },
+                                                _ => {
+                                                    #[cfg(feature = "tracing")]
+                                                    wrt_foundation::tracing::warn!(table_offset = table_offset, global_idx = global_idx, "Global has non-funcref type");
+                                                }
+                                            }
+                                        },
+                                        Err(_) => {
+                                            #[cfg(feature = "tracing")]
+                                            wrt_foundation::tracing::warn!(table_offset = table_offset, global_idx = global_idx, "Failed to read global");
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
                     info!("Initialized element segment {} ({} items) into table {} at offset {}",
-                          idx, elem_segment.items.len(), table_index, offset);
+                          idx, elem_segment.items.len(), table_index, actual_offset);
                 } else {
                     debug!("Skipping non-active element segment {}", idx);
                 }
@@ -1161,6 +1510,13 @@ impl FromBytes for ModuleInstance {
             name: None,
             binary: None,
             validated: false,
+            num_global_imports: 0,
+            #[cfg(feature = "std")]
+            global_import_types: Vec::new(),
+            #[cfg(feature = "std")]
+            deferred_global_inits: Vec::new(),
+            #[cfg(feature = "std")]
+            import_types: Vec::new(),
         };
 
         // Create the instance using the new method

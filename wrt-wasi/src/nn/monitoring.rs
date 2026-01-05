@@ -5,6 +5,10 @@
 //! development debugging and production monitoring with ASIL-compliant logging
 //! levels.
 
+// Import tracing utilities for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::info;
+
 use core::fmt;
 use std::{
     collections::VecDeque,
@@ -543,16 +547,23 @@ impl Logger {
             entry.to_human_readable()
         };
 
-        // For now, output to stderr
-        // In production, this could be directed to proper logging infrastructure
-        #[cfg(feature = "std")]
-        eprintln!("{}", output);
+        // Output to tracing framework
+        // In production, this is directed to proper logging infrastructure
+        #[cfg(feature = "tracing")]
+        info!(entry = %output, "WASI-NN log entry");
 
-        #[cfg(not(feature = "std"))]
+        #[cfg(all(feature = "std", not(feature = "tracing")))]
         {
-            // For no_std environments, we might use a different output
+            // Fallback to stderr when tracing is not enabled
+            std::eprintln!("{}", output);
+        }
+
+        #[cfg(not(any(feature = "std", feature = "tracing")))]
+        {
+            // For no_std environments without tracing, we might use a different output
             // mechanism or simply store in the buffer for later
             // retrieval
+            let _ = output; // Suppress unused variable warning
         }
     }
 }

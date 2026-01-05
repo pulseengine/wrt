@@ -9,6 +9,10 @@ use wrt_error::Result;
 #[cfg(feature = "std")]
 use std::io::Write;
 
+// Tracing imports for structured logging
+#[cfg(feature = "tracing")]
+use wrt_foundation::tracing::trace;
+
 /// WASI stdout handle (file descriptor 1)
 const STDOUT_HANDLE: u32 = 1;
 
@@ -16,8 +20,8 @@ const STDOUT_HANDLE: u32 = 1;
 ///
 /// Returns a handle to stdout that can be used with write operations
 pub fn wasi_get_stdout() -> Result<u32> {
-    #[cfg(feature = "std")]
-    eprintln!("[WASI-STDOUT] wasi_get_stdout() called!");
+    #[cfg(feature = "tracing")]
+    trace!("wasi_get_stdout called");
     Ok(STDOUT_HANDLE)
 }
 
@@ -31,8 +35,8 @@ pub fn wasi_get_stdout() -> Result<u32> {
 /// Number of bytes written
 #[cfg(feature = "std")]
 pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
-    eprintln!("[WASI-STDOUT] wasi_blocking_write_and_flush() called with {} bytes", bytes.len());
-    eprintln!("[WASI-STDOUT] Data: {:?}", String::from_utf8_lossy(bytes));
+    #[cfg(feature = "tracing")]
+    trace!(byte_count = bytes.len(), "wasi_blocking_write_and_flush called");
 
     if handle == STDOUT_HANDLE {
         std::io::stdout().write_all(bytes)
@@ -41,7 +45,8 @@ pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
         std::io::stdout().flush()
             .map_err(|_| wrt_error::Error::runtime_error("Flush failed"))?;
 
-        eprintln!("[WASI-STDOUT] Successfully wrote {} bytes to stdout", bytes.len());
+        #[cfg(feature = "tracing")]
+        trace!(byte_count = bytes.len(), "Successfully wrote to stdout");
         Ok(bytes.len() as u64)
     } else {
         Err(wrt_error::Error::runtime_error("Invalid output stream handle"))

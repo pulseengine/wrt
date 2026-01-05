@@ -575,6 +575,8 @@ pub use traits::{
     ToFormat,
     Validatable,
 };
+#[cfg(feature = "std")]
+pub use traits::HostImportHandler;
 // Re-export type factory types - only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use type_factory::{

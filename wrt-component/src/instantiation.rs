@@ -439,6 +439,45 @@ impl InstantiationContext {
         self.next_instance_id += 1;
         id
     }
+
+    /// Configure the canonical ABI with a ReallocManager for proper memory allocation
+    ///
+    /// This should be called after instantiating a component to set up the
+    /// cabi_realloc callback for string and list lowering operations.
+    ///
+    /// # Arguments
+    /// * `manager` - A properly configured ReallocManager with callback set
+    /// * `instance_id` - The component instance ID for realloc operations
+    ///
+    /// # Example
+    /// ```ignore
+    /// use wrt_component::canonical_abi::engine_integration::*;
+    ///
+    /// // After instantiation, set up realloc
+    /// let realloc_manager = setup_realloc_manager(engine.clone(), instance_id)?;
+    /// context.configure_realloc(Arc::new(Mutex::new(realloc_manager)), instance_id);
+    /// ```
+    #[cfg(feature = "std")]
+    pub fn configure_realloc(
+        &mut self,
+        manager: std::sync::Arc<std::sync::Mutex<crate::canonical_abi::ReallocManager>>,
+        instance_id: u32,
+    ) {
+        use crate::types::ComponentInstanceId;
+        self.canonical_abi = std::mem::take(&mut self.canonical_abi)
+            .with_realloc_manager(manager);
+        self.canonical_abi.set_instance_id(ComponentInstanceId::new(instance_id));
+    }
+
+    /// Get a reference to the canonical ABI processor
+    pub fn canonical_abi(&self) -> &CanonicalABI {
+        &self.canonical_abi
+    }
+
+    /// Get a mutable reference to the canonical ABI processor
+    pub fn canonical_abi_mut(&mut self) -> &mut CanonicalABI {
+        &mut self.canonical_abi
+    }
 }
 
 impl Default for InstantiationContext {
@@ -535,6 +574,21 @@ impl Component {
             exports,
             resource_tables,
             module_instances,
+            nested_component_instances: {
+                #[cfg(all(feature = "std", feature = "safety-critical"))]
+                {
+                    use wrt_foundation::allocator::WrtVec;
+                    WrtVec::new()
+                }
+                #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+                {
+                    Vec::new()
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    BoundedVec::new()
+                }
+            },
         };
 
         Ok(instance)
