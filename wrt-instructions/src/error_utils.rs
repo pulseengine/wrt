@@ -195,5 +195,7 @@ pub fn type_name(value: &crate::prelude::Value) -> &'static str {
         crate::prelude::Value::Own(_) => "Own",
         crate::prelude::Value::Borrow(_) => "Borrow",
         crate::prelude::Value::Void => "Void",
+        crate::prelude::Value::Stream(_) => "Stream",
+        crate::prelude::Value::Future(_) => "Future",
     }
 }

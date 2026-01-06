@@ -219,6 +219,8 @@ mod types;
 // Runtime debug modules
 #[cfg(feature = "memory-profiling")]
 mod memory_profiling;
+#[cfg(feature = "runtime-traits")]
+pub mod runtime_traits;
 #[cfg(feature = "runtime-inspection")]
 pub mod runtime_api;
 #[cfg(feature = "runtime-breakpoints")]

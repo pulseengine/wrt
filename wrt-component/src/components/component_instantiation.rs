@@ -1457,11 +1457,41 @@ impl ComponentInstance {
                             // Full nested component with core modules - requires recursive instantiation
                             println!("      ├─ Full nested component with {} core modules", nested_component.modules.len());
 
-                            // Check nesting depth
+                            // =====================================================================
+                            // Circular Dependency and Nesting Depth Validation
+                            // =====================================================================
+
+                            // Check nesting depth to prevent infinite recursion
+                            // The ID encoding uses id * 1000 + inst_idx, so we can decode depth
+                            let current_depth = {
+                                let mut depth = 0usize;
+                                let mut test_id = id as u64;
+                                while test_id >= 1000 {
+                                    depth += 1;
+                                    test_id /= 1000;
+                                }
+                                depth
+                            };
+
+                            if current_depth >= MAX_COMPONENT_NESTING_DEPTH {
+                                println!("ERROR: Maximum component nesting depth ({}) exceeded at depth {}",
+                                    MAX_COMPONENT_NESTING_DEPTH, current_depth);
+                                return Err(Error::new(
+                                    wrt_error::ErrorCategory::Validation,
+                                    wrt_error::codes::VALIDATION_ERROR,
+                                    "Maximum component nesting depth exceeded - possible circular dependency"
+                                ));
+                            }
+
+                            // Check for sub-components that could create circular dependencies
                             if !nested_component.components.is_empty() {
-                                println!("      ├─ WARNING: Nested component has {} sub-components",
-                                    nested_component.components.len());
-                                println!("      └─ Deep nesting not yet fully supported");
+                                println!("      ├─ Nested component has {} sub-components (depth {})",
+                                    nested_component.components.len(), current_depth + 1);
+
+                                // Warn about potential deep nesting
+                                if current_depth + 1 >= MAX_COMPONENT_NESTING_DEPTH / 2 {
+                                    println!("      ├─ WARNING: Approaching max nesting depth limit");
+                                }
                             }
 
                             // Create a unique ID for the nested instance
@@ -1517,12 +1547,28 @@ impl ComponentInstance {
                                     println!("      └─ Nested instance {} created successfully", inst_idx);
                                 }
                                 Err(e) => {
-                                    println!("ERROR: Failed to instantiate nested component {}: {}",
-                                        component_idx, e);
+                                    // Provide detailed error context for debugging via println
+                                    // (the static error message is complemented by this output)
+                                    println!("ERROR: Failed to instantiate nested component {}: {}", component_idx, e);
+                                    println!("       ├─ Parent instance ID: {}", id);
+                                    println!("       ├─ Nested instance index: {}", inst_idx);
+                                    println!("       ├─ Component index: {}", component_idx);
+                                    println!("       ├─ Nesting depth: {}", current_depth);
+                                    println!("       └─ Original error: {}", e);
+
+                                    // Use static error message - dynamic details are already printed
+                                    // Check if this looks like a circular dependency
+                                    let is_circular = e.to_string().contains("nesting depth");
+                                    let static_msg = if is_circular {
+                                        "Failed to instantiate nested component: possible circular dependency"
+                                    } else {
+                                        "Failed to instantiate nested component"
+                                    };
+
                                     return Err(Error::new(
                                         wrt_error::ErrorCategory::ComponentRuntime,
                                         wrt_error::codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
-                                        "Failed to instantiate nested component"
+                                        static_msg
                                     ));
                                 }
                             }
@@ -3545,98 +3591,11 @@ impl ComponentInstance {
         // through the runtime engine. For now, we'll call the _initialize function
         // which is what the TinyGo component expects
 
-        // Use the existing runtime engine if available
-        // This handles all canonical functions that go through the main module's exported functions
-        if self.runtime_engine.is_some() && self.main_instance_handle.is_some() {
-            println!("[CALL_NATIVE] Using existing runtime engine for function {}", func_index);
-
-            // Check if we have a runtime engine stored
-            if let (Some(engine), Some(instance_handle)) = (self.runtime_engine.as_mut(), self.main_instance_handle) {
-                // Import the trait to use execute method
-                use wrt_runtime::engine::CapabilityEngine;
-                println!("[CALL_NATIVE] Using stored runtime engine with instance {:?}", instance_handle);
-
-                // DEBUG: Show what exports this instance has
-                #[cfg(feature = "std")]
-                if let Ok(inst_arc) = engine.get_instance(instance_handle) {
-                    let module = inst_arc.module();
-                    println!("[CALL_NATIVE] Instance {:?} has {} exports:", instance_handle, module.exports.len());
-                    for key in module.exports.keys() {
-                        if let Ok(bytes) = key.as_bytes() {
-                            if let Ok(name) = core::str::from_utf8(bytes.as_ref()) {
-                                println!("[CALL_NATIVE]   - '{}'", name);
-                            }
-                        }
-                    }
-                } else {
-                    println!("[CALL_NATIVE] Could not get instance {:?}", instance_handle);
-                }
-
-                // The engine already has:
-                // 1. Modules loaded and instantiated
-                // 2. Memory properly initialized
-                // 3. WASI host functions registered
-                // 4. All instances linked
-
-                // Pre-allocate memory for WASI arguments using cabi_realloc
-                // This ensures string data is in heap memory owned by the component
-                #[cfg(feature = "std")]
-                {
-                    println!("[CALL_NATIVE] Pre-allocating WASI args memory...");
-                    match engine.pre_allocate_wasi_args(instance_handle) {
-                        Ok(()) => {
-                            println!("[CALL_NATIVE] WASI args memory pre-allocated");
-                        }
-                        Err(e) => {
-                            println!("[CALL_NATIVE] WASI args pre-allocation failed (may be OK): {:?}", e);
-                            // Continue anyway - fallback will be used
-                        }
-                    }
-                }
-
-                println!("[CALL_NATIVE] Calling _initialize function...");
-
-                // Call _initialize to set up the runtime
-                match engine.execute(instance_handle, "_initialize", &[]) {
-                    Ok(_) => {
-                        println!("[CALL_NATIVE] _initialize completed successfully");
-                    }
-                    Err(e) => {
-                        println!("[CALL_NATIVE] _initialize failed: {:?}", e);
-                        // Continue anyway - might not be required
-                    }
-                }
-
-                // Try calling _start as well
-                println!("[CALL_NATIVE] Calling _start function...");
-                match engine.execute(instance_handle, "_start", &[]) {
-                    Ok(_) => {
-                        println!("[CALL_NATIVE] _start completed successfully");
-                    }
-                    Err(e) => {
-                        // Check if this is a "function not found" error vs a trap/execution error
-                        // Function not found is OK (component may not have _start)
-                        // But traps and execution errors must be propagated
-                        let err_msg = format!("{:?}", e);
-                        if err_msg.contains("not found") || err_msg.contains("Function not found") {
-                            println!("[CALL_NATIVE] _start not found (OK - optional)");
-                        } else {
-                            // This is a real execution error - propagate it!
-                            println!("[CALL_NATIVE] _start failed with execution error: {:?}", e);
-                            return Err(e);
-                        }
-                    }
-                }
-
-                // Return success only if we didn't hit an execution error
-                println!("[CALL_NATIVE] Function execution completed successfully");
-                return Ok(vec![ComponentValue::U32(0)]);
-            } else {
-                println!("[CALL_NATIVE] No runtime engine available, using simplified execution");
-                // Fall back to returning success directly
-                return Ok(vec![ComponentValue::U32(0)]);
-            }
-        }
+        // TODO: Runtime engine integration for canonical function execution
+        // When runtime_engine and main_instance_handle are added to ComponentInstance,
+        // this path should use the stored engine to execute canonical functions through
+        // the already-instantiated module.
+        // For now, fall through to the module loading path below.
 
         // Get the module binary for other functions
         let module_binary = self.component.modules.get(module_index as usize)

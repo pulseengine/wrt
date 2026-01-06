@@ -233,6 +233,12 @@ pub enum Value {
     Own(u32),
     Borrow(u32),
     Void,
+    /// Stream handle (Component Model async)
+    /// The u32 represents a handle ID that can be used with async operations
+    Stream(u32),
+    /// Future handle (Component Model async)
+    /// The u32 represents a handle ID that can be used with async operations
+    Future(u32),
 }
 
 // Manual PartialEq implementation for Value
@@ -255,6 +261,8 @@ impl PartialEq for Value {
             (Value::I16x8(a), Value::I16x8(b)) => a == b,
             (Value::StructRef(a), Value::StructRef(b)) => a == b,
             (Value::ArrayRef(a), Value::ArrayRef(b)) => a == b,
+            (Value::Stream(a), Value::Stream(b)) => a == b,
+            (Value::Future(a), Value::Future(b)) => a == b,
             _ => false, // Different types are not equal
         }
     }
@@ -365,11 +373,13 @@ impl Value {
             Self::ArrayRef(Some(a)) => ValueType::ArrayRef(a.type_index),
             Self::ArrayRef(None) => ValueType::ArrayRef(0), // Default type index for null
             // Component Model types - these are not standard WebAssembly types
+            // Stream/Future handles are represented as I32 in the canonical ABI
             Self::Bool(_) | Self::S8(_) | Self::U8(_) | Self::S16(_) | Self::U16(_) |
             Self::S32(_) | Self::U32(_) | Self::S64(_) | Self::U64(_) | Self::Char(_) |
             Self::String(_) | Self::List(_) | Self::Tuple(_) | Self::Record(_) |
             Self::Variant(_, _) | Self::Enum(_) | Self::Option(_) | Self::Result(_) |
-            Self::Flags(_) | Self::Own(_) | Self::Borrow(_) | Self::Void => ValueType::I32,
+            Self::Flags(_) | Self::Own(_) | Self::Borrow(_) | Self::Void |
+            Self::Stream(_) | Self::Future(_) => ValueType::I32,
         }
     }
 
@@ -638,6 +648,9 @@ impl Value {
             Self::Own(v) => Self::Own(*v),
             Self::Borrow(v) => Self::Borrow(*v),
             Self::Void => Self::Void,
+            // Stream/Future handles are Copy (u32)
+            Self::Stream(v) => Self::Stream(*v),
+            Self::Future(v) => Self::Future(*v),
             // GC types and complex types - fall back to clone
             Self::StructRef(_) | Self::ArrayRef(_) |
             Self::String(_) | Self::List(_) | Self::Tuple(_) | Self::Record(_) |
@@ -734,7 +747,7 @@ impl Value {
                 // For complex types, write as 0 (handle would go here in full implementation)
                 writer.write_all(&0u32.to_le_bytes())
             },
-            Value::Own(v) | Value::Borrow(v) => {
+            Value::Own(v) | Value::Borrow(v) | Value::Stream(v) | Value::Future(v) => {
                 // Write handle value
                 writer.write_all(&v.to_le_bytes())
             },
@@ -880,6 +893,8 @@ impl fmt::Display for Value {
             Value::Own(h) => write!(f, "own:{h}"),
             Value::Borrow(h) => write!(f, "borrow:{h}"),
             Value::Void => write!(f, "void"),
+            Value::Stream(h) => write!(f, "stream:{h}"),
+            Value::Future(h) => write!(f, "future:{h}"),
         }
     }
 }
@@ -1050,6 +1065,8 @@ impl Checksummable for Value {
             Value::Own(_) => 30u8,
             Value::Borrow(_) => 31u8,
             Value::Void => 32u8,
+            Value::Stream(_) => 33u8,
+            Value::Future(_) => 34u8,
         };
         checksum.update(discriminant_byte);
 
@@ -1110,7 +1127,9 @@ impl Checksummable for Value {
                 flags.len().update_checksum(checksum);
                 flags.iter().for_each(|f| f.as_bytes().iter().for_each(|b| b.update_checksum(checksum)));
             },
-            Value::Own(h) | Value::Borrow(h) => h.update_checksum(checksum),
+            Value::Own(h) | Value::Borrow(h) | Value::Stream(h) | Value::Future(h) => {
+                h.update_checksum(checksum);
+            },
             Value::Void => {},
         }
     }
@@ -1144,7 +1163,7 @@ impl ToBytes for Value {
             Value::Variant(_, _) | Value::Enum(_) => 8,
             Value::Option(_) | Value::Result(_) => 16,
             Value::Flags(_) => 8,
-            Value::Own(_) | Value::Borrow(_) => 4,
+            Value::Own(_) | Value::Borrow(_) | Value::Stream(_) | Value::Future(_) => 4,
             Value::Void => 0,
         }
     }
@@ -1190,6 +1209,8 @@ impl ToBytes for Value {
             Value::Own(_) => 30u8,
             Value::Borrow(_) => 31u8,
             Value::Void => 32u8,
+            Value::Stream(_) => 33u8,
+            Value::Future(_) => 34u8,
         };
         writer.write_u8(discriminant)?;
 
@@ -1246,7 +1267,9 @@ impl ToBytes for Value {
                 // Complex types - not fully serializable in this simplified form
                 writer.write_u32_le(0)?
             },
-            Value::Own(h) | Value::Borrow(h) => writer.write_u32_le(*h)?,
+            Value::Own(h) | Value::Borrow(h) | Value::Stream(h) | Value::Future(h) => {
+                writer.write_u32_le(*h)?;
+            },
             Value::Void => {},
         }
         Ok(())
@@ -1332,6 +1355,31 @@ impl FromBytes for Value {
                 } else {
                     Ok(Value::ArrayRef(None))
                 }
+            },
+            // Component Model simple types (handles are u32)
+            30 => {
+                // Own handle
+                let h = reader.read_u32_le()?;
+                Ok(Value::Own(h))
+            },
+            31 => {
+                // Borrow handle
+                let h = reader.read_u32_le()?;
+                Ok(Value::Borrow(h))
+            },
+            32 => {
+                // Void
+                Ok(Value::Void)
+            },
+            33 => {
+                // Stream handle
+                let h = reader.read_u32_le()?;
+                Ok(Value::Stream(h))
+            },
+            34 => {
+                // Future handle
+                let h = reader.read_u32_le()?;
+                Ok(Value::Future(h))
             },
             _ => Err(Error::runtime_execution_error(
                 "Unknown discriminant byte in Value deserialization",

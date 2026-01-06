@@ -114,41 +114,19 @@ where
     pub state: ComponentExecutionState,
 }
 
-// Remove Clone from UnifiedComponentInstance and implement traits manually
-impl<Provider> Clone for UnifiedComponentInstance<Provider>
+// NOTE: Clone is intentionally NOT implemented for UnifiedComponentInstance
+// because cloning requires memory allocation which can fail. Use try_clone() instead.
+impl<Provider> UnifiedComponentInstance<Provider>
 where
     Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
 {
-    fn clone(&self) -> Self {
-        // Note: This creates a placeholder memory adapter since Box<dyn Trait> can't be
-        // cloned
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024).unwrap_or_else(|e| {
-            // Log the error if logging is available
-            #[cfg(feature = "tracing")]
-            wrt_foundation::tracing::warn!(
-                error = %e,
-                "Failed to create memory adapter during clone"
-            );
+    /// Try to clone this instance, returning an error if memory allocation fails.
+    /// This is the fallible alternative to Clone trait which cannot express fallibility.
+    pub fn try_clone(&self) -> Result<Self> {
+        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
+            .map_err(|_| Error::memory_error("Failed to allocate memory adapter during clone"))?;
 
-            // Create a minimal fallback adapter
-            PlatformMemoryAdapter::new(1024 * 1024) // Try with 1MB
-                .unwrap_or_else(|_| {
-                    panic!("Critical: Unable to allocate even minimal memory adapter")
-                })
-        });
-
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024).unwrap_or_else(|_| {
-            // Fallback to cloning the existing adapter
-            match PlatformMemoryAdapter::new(1024 * 1024) {
-                Ok(adapter) => adapter,
-                Err(_) => PlatformMemoryAdapter::new(64 * 1024)
-                    .unwrap_or_else(|_| panic!("Critical: Cannot create minimal memory adapter")),
-            }
-        });
-
-        Self {
+        Ok(Self {
             id: self.id,
             component_type: self.component_type.clone(),
             memory_adapter,
@@ -156,7 +134,7 @@ where
             imports: self.imports.clone(),
             linear_memory: self.linear_memory.clone(),
             state: self.state.clone(),
-        }
+        })
     }
 }
 
@@ -195,53 +173,9 @@ impl<Provider> Eq for UnifiedComponentInstance<Provider> where
 {
 }
 
-impl<Provider> Default for UnifiedComponentInstance<Provider>
-where
-    Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
-{
-    fn default() -> Self {
-        Self::new_default().unwrap_or_else(|e| {
-            // Log the error if logging is available
-            #[cfg(feature = "tracing")]
-            wrt_foundation::tracing::error!(
-                error = %e,
-                "Error creating default component instance. Creating minimal fallback instance."
-            );
-
-            // Create a minimal instance with reduced memory requirements
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024) // 1MB fallback
-                .unwrap_or_else(|_| {
-                    panic!("Critical: Cannot create even minimal component instance")
-                });
-
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024)
-                .unwrap_or_else(|_| panic!("Critical: Cannot create component instance in no_std"));
-
-            Self {
-                id: ComponentId::default(),
-                component_type: ComponentType::default(),
-                memory_adapter,
-                exports: ExportMap::new(
-                    create_runtime_provider().unwrap_or_else(|_| DefaultRuntimeProvider::default()),
-                )
-                .unwrap_or_else(|_| ExportMap::default()),
-                imports: ImportMap::new(
-                    create_runtime_provider().unwrap_or_else(|_| DefaultRuntimeProvider::default()),
-                )
-                .unwrap_or_else(|_| ImportMap::default()),
-                linear_memory: None,
-                state: ComponentExecutionState::Failed(
-                    RuntimeString::from_str_truncate(
-                        "Failed to create component"
-                    )
-                    .unwrap_or_else(|_| RuntimeString::default()),
-                ), // Mark as failed state
-            }
-        })
-    }
-}
+// NOTE: Default is intentionally NOT implemented for UnifiedComponentInstance
+// because creating a default instance requires memory allocation which can fail.
+// Use UnifiedComponentInstance::new_default() which returns Result<Self> instead.
 
 impl<Provider> wrt_foundation::traits::Checksummable for UnifiedComponentInstance<Provider>
 where

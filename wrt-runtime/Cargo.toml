@@ -61,6 +61,8 @@ alloc = [
     "wrt-intercept/alloc"]
 # Debug support features
 debug = ["dep:wrt-debug", "wrt-debug/line-info"]
+# Debugger callback support - enables profiling and debugging via RuntimeDebugger trait
+debugger = ["std", "dep:wrt-debug", "wrt-debug/runtime-traits"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []

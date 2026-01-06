@@ -33,6 +33,8 @@ pub struct WastEngine {
     /// Registry of loaded modules by name for multi-module tests
     /// Uses Arc to avoid cloning which loses BoundedMap data
     modules: HashMap<String, Arc<Module>>,
+    /// Registry of instance IDs by module name for cross-module linking
+    instance_ids: HashMap<String, usize>,
     /// Current active module for execution
     current_module: Option<Arc<Module>>,
     /// Current instance ID for module execution
@@ -45,6 +47,7 @@ impl WastEngine {
         Ok(Self {
             engine: StacklessEngine::new(),
             modules: HashMap::new(),
+            instance_ids: HashMap::new(),
             current_module: None,
             current_instance_id: None,
         })
@@ -117,9 +120,13 @@ impl WastEngine {
             .context("Failed to set current module in engine")?;
         self.current_instance_id = Some(instance_idx);
 
-        // Store the module for later reference
+        // Link function imports from registered modules
+        self.link_function_imports(&module, instance_idx)?;
+
+        // Store the module and instance ID for later reference
         let module_name = name.unwrap_or("current").to_string();
-        self.modules.insert(module_name, Arc::clone(&module));
+        self.modules.insert(module_name.clone(), Arc::clone(&module));
+        self.instance_ids.insert(module_name, instance_idx);
 
         // Set as current module
         self.current_module = Some(module);
@@ -182,6 +189,10 @@ impl WastEngine {
     pub fn register_module(&mut self, name: &str, module_name: &str) -> Result<()> {
         if let Some(module) = self.modules.get(module_name) {
             self.modules.insert(name.to_string(), Arc::clone(module));
+            // Also copy the instance ID for cross-module linking
+            if let Some(&instance_id) = self.instance_ids.get(module_name) {
+                self.instance_ids.insert(name.to_string(), instance_id);
+            }
             Ok(())
         } else {
             Err(anyhow::anyhow!(
@@ -199,7 +210,9 @@ impl WastEngine {
     /// Clear all modules and reset the engine
     pub fn reset(&mut self) -> Result<()> {
         self.modules.clear();
+        self.instance_ids.clear();
         self.current_module = None;
+        self.current_instance_id = None;
         // Create a new engine to reset state
         self.engine = StacklessEngine::new();
         Ok(())
@@ -330,6 +343,57 @@ impl WastEngine {
                 }
 
                 global_import_idx += 1;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Link function imports from registered modules
+    ///
+    /// This method sets up cross-instance function linking for imports
+    /// from modules that have been registered (e.g., via `register "M"`).
+    fn link_function_imports(&mut self, module: &Module, instance_id: usize) -> Result<()> {
+        use wrt_runtime::module::RuntimeImportDesc;
+
+        // Use import_types Vec which parallels import_order (more reliable than BoundedMap)
+        let import_types = &module.import_types;
+        let import_order = &module.import_order;
+
+        if import_types.len() != import_order.len() {
+            // Mismatch - this shouldn't happen but fall back gracefully
+            return Ok(());
+        }
+
+        for (i, (mod_name, field_name)) in import_order.iter().enumerate() {
+            // Skip spectest imports (handled by WASI stubs)
+            if mod_name == "spectest" {
+                continue;
+            }
+
+            // Check if this is a function import
+            if let Some(RuntimeImportDesc::Function(_type_idx)) = import_types.get(i) {
+                // Check if we have a registered module with this name
+                if let Some(&source_instance_id) = self.instance_ids.get(mod_name) {
+                    // Check if the source module exports this function
+                    if let Some(source_module) = self.modules.get(mod_name) {
+                        let bounded_field = wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(field_name)
+                            .map_err(|e| anyhow::anyhow!("Field name too long: {:?}", e))?;
+
+                        if let Some(export) = source_module.exports.get(&bounded_field) {
+                            if export.kind == wrt_runtime::module::ExportKind::Function {
+                                // Set up the import link
+                                self.engine.register_import_link(
+                                    instance_id,
+                                    mod_name.clone(),
+                                    field_name.clone(),
+                                    source_instance_id,
+                                    field_name.clone(),
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
 

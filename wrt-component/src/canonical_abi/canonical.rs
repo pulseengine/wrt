@@ -376,8 +376,55 @@ impl CanonicalABI {
             },
             ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
             ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
-            _ => Err(Error::unimplemented("Component not found")),
+            ValType::Stream(_element_type) => {
+                // Stream values are lifted as a StreamHandle
+                // The handle can be used with the async module's stream operations
+                self.lift_stream_handle(addr, memory_bytes)
+            },
+            ValType::Future(_value_type) => {
+                // Future values are lifted as a FutureHandle
+                // The handle can be used with the async module's future operations
+                self.lift_future_handle(addr, memory_bytes)
+            },
         }
+    }
+
+    /// Lift a stream handle from memory
+    ///
+    /// Streams are represented as u32 handles in the canonical ABI.
+    /// The returned Value::Stream contains the handle ID that can be used
+    /// with AsyncCanonicalAbi for stream operations (read, write, close).
+    /// Convert to StreamHandle via `StreamHandle::new(handle_id)` when needed.
+    fn lift_stream_handle(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
+        if addr as usize + 4 > memory_bytes.len() {
+            return Err(Error::memory_out_of_bounds(
+                "Stream handle read out of bounds"
+            ));
+        }
+        let bytes: [u8; 4] = memory_bytes[addr as usize..addr as usize + 4]
+            .try_into()
+            .map_err(|_| Error::memory_out_of_bounds("Failed to read stream handle bytes"))?;
+        let handle_id = u32::from_le_bytes(bytes);
+        Ok(Value::Stream(handle_id))
+    }
+
+    /// Lift a future handle from memory
+    ///
+    /// Futures are represented as u32 handles in the canonical ABI.
+    /// The returned Value::Future contains the handle ID that can be used
+    /// with AsyncCanonicalAbi for future operations (read, write, cancel).
+    /// Convert to FutureHandle via `FutureHandle::new(handle_id)` when needed.
+    fn lift_future_handle(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
+        if addr as usize + 4 > memory_bytes.len() {
+            return Err(Error::memory_out_of_bounds(
+                "Future handle read out of bounds"
+            ));
+        }
+        let bytes: [u8; 4] = memory_bytes[addr as usize..addr as usize + 4]
+            .try_into()
+            .map_err(|_| Error::memory_out_of_bounds("Failed to read future handle bytes"))?;
+        let handle_id = u32::from_le_bytes(bytes);
+        Ok(Value::Future(handle_id))
     }
 
     fn lift_tuple(
@@ -1538,35 +1585,31 @@ impl CanonicalABI {
             },
             ValType::Stream(_element_type) => {
                 // Stream values are lowered as their handle (u32)
-                // In sync lowering mode, we accept I32 values representing stream handles
-                // For full async Component Model support, use async_canonical.rs
-                match value {
-                    wrt_foundation::values::Value::I32(handle) => {
-                        if addr as usize + 4 > memory_bytes.len() {
-                            return Err(Error::memory_out_of_bounds("Stream handle write out of bounds"));
-                        }
-                        let handle_bytes = (*handle as u32).to_le_bytes();
-                        memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_bytes);
-                        Ok(())
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected i32 stream handle")),
+                // Accepts Value::Stream (u32 handle) and Value::I32 (legacy)
+                let handle_id = match value {
+                    wrt_foundation::values::Value::Stream(handle) => *handle,
+                    wrt_foundation::values::Value::I32(handle) => *handle as u32,
+                    _ => return Err(Error::runtime_type_mismatch("Expected stream handle")),
+                };
+                if addr as usize + 4 > memory_bytes.len() {
+                    return Err(Error::memory_out_of_bounds("Stream handle write out of bounds"));
                 }
+                memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_id.to_le_bytes());
+                Ok(())
             },
             ValType::Future(_value_type) => {
                 // Future values are lowered as their handle (u32)
-                // In sync lowering mode, we accept I32 values representing future handles
-                // For full async Component Model support, use async_canonical.rs
-                match value {
-                    wrt_foundation::values::Value::I32(handle) => {
-                        if addr as usize + 4 > memory_bytes.len() {
-                            return Err(Error::memory_out_of_bounds("Future handle write out of bounds"));
-                        }
-                        let handle_bytes = (*handle as u32).to_le_bytes();
-                        memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_bytes);
-                        Ok(())
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected i32 future handle")),
+                // Accepts Value::Future (u32 handle) and Value::I32 (legacy)
+                let handle_id = match value {
+                    wrt_foundation::values::Value::Future(handle) => *handle,
+                    wrt_foundation::values::Value::I32(handle) => *handle as u32,
+                    _ => return Err(Error::runtime_type_mismatch("Expected future handle")),
+                };
+                if addr as usize + 4 > memory_bytes.len() {
+                    return Err(Error::memory_out_of_bounds("Future handle write out of bounds"));
                 }
+                memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_id.to_le_bytes());
+                Ok(())
             },
         }
     }
@@ -1946,7 +1989,8 @@ impl CanonicalABI {
                 let final_size = Self::align_to(current_offset, max_alignment);
                 MemoryLayout { size: final_size, alignment: max_alignment.max(1) }
             },
-            _ => MemoryLayout { size: 4, alignment: 4 }, // Default fallback
+            // Async types (stream/future) are represented as i32 handles
+            Stream(_) | Future(_) => MemoryLayout { size: 4, alignment: 4 },
         }
     }
 
@@ -2156,6 +2200,102 @@ impl CanonicalABI {
         self.metrics.max_lift_bytes.fetch_max(bytes_processed as u64, core::sync::atomic::Ordering::Relaxed);
 
         // Could add timing metrics here if needed
+    }
+
+    // =========================================================================
+    // Canonical Memory Operations (Component Model canon memory.* builtins)
+    // =========================================================================
+
+    /// Canonical memory.copy operation
+    ///
+    /// Copies a region of memory from one location to another within component
+    /// linear memory. This is the Component Model equivalent of memory.copy
+    /// instruction but operates through the canonical ABI layer.
+    ///
+    /// # Arguments
+    /// * `memory_bytes` - The linear memory to operate on
+    /// * `dst_addr` - Destination address (u32 per canonical ABI)
+    /// * `src_addr` - Source address (u32 per canonical ABI)
+    /// * `len` - Number of bytes to copy
+    ///
+    /// # Errors
+    /// Returns error if source or destination range is out of bounds
+    pub fn canon_memory_copy(
+        &self,
+        memory_bytes: &mut [u8],
+        dst_addr: u32,
+        src_addr: u32,
+        len: u32,
+    ) -> Result<()> {
+        let dst = dst_addr as usize;
+        let src = src_addr as usize;
+        let length = len as usize;
+
+        // Bounds checking
+        if src.saturating_add(length) > memory_bytes.len() {
+            return Err(Error::memory_out_of_bounds(
+                "canon memory.copy: source range exceeds memory bounds"
+            ));
+        }
+        if dst.saturating_add(length) > memory_bytes.len() {
+            return Err(Error::memory_out_of_bounds(
+                "canon memory.copy: destination range exceeds memory bounds"
+            ));
+        }
+
+        // Handle overlapping regions correctly
+        if src < dst && src + length > dst {
+            // Overlapping: copy backwards to avoid overwriting source
+            for i in (0..length).rev() {
+                memory_bytes[dst + i] = memory_bytes[src + i];
+            }
+        } else {
+            // Non-overlapping or forward overlap: copy forwards
+            for i in 0..length {
+                memory_bytes[dst + i] = memory_bytes[src + i];
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Canonical memory.fill operation
+    ///
+    /// Fills a region of memory with a specified byte value. This is the
+    /// Component Model equivalent of memory.fill instruction but operates
+    /// through the canonical ABI layer.
+    ///
+    /// # Arguments
+    /// * `memory_bytes` - The linear memory to operate on
+    /// * `addr` - Start address (u32 per canonical ABI)
+    /// * `value` - Byte value to fill with
+    /// * `len` - Number of bytes to fill
+    ///
+    /// # Errors
+    /// Returns error if the fill range is out of bounds
+    pub fn canon_memory_fill(
+        &self,
+        memory_bytes: &mut [u8],
+        addr: u32,
+        value: u8,
+        len: u32,
+    ) -> Result<()> {
+        let start = addr as usize;
+        let length = len as usize;
+
+        // Bounds checking
+        if start.saturating_add(length) > memory_bytes.len() {
+            return Err(Error::memory_out_of_bounds(
+                "canon memory.fill: fill range exceeds memory bounds"
+            ));
+        }
+
+        // Fill the memory region
+        for i in 0..length {
+            memory_bytes[start + i] = value;
+        }
+
+        Ok(())
     }
 }
 

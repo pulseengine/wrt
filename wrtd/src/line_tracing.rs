@@ -322,6 +322,15 @@ struct FileInfo {
 ///
 /// This owns the WASM data and DWARF sections, allowing it to be used
 /// as a boxed trait object for the engine's debug callbacks.
+/// Profiling mode for the debugger
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DebuggerMode {
+    /// Print source locations as execution happens
+    Trace,
+    /// Collect hit counts and print summary at end
+    Profile,
+}
+
 pub struct LineTracingDebugger {
     /// Owned WASM bytes
     wasm_bytes: Vec<u8>,
@@ -337,6 +346,11 @@ pub struct LineTracingDebugger {
     has_debug_info: bool,
     /// Instruction counter for less verbose output
     instruction_count: std::sync::atomic::AtomicU64,
+    /// Debugger mode (trace or profile)
+    mode: DebuggerMode,
+    /// Hit counts per (file_index, line) for profiling mode
+    /// Uses a simple approach: file_index << 32 | line as key
+    hit_counts: std::collections::HashMap<u64, u64>,
 }
 
 impl LineTracingDebugger {
@@ -403,7 +417,56 @@ impl LineTracingDebugger {
             last_line: std::sync::atomic::AtomicU32::new(u32::MAX),
             has_debug_info,
             instruction_count: std::sync::atomic::AtomicU64::new(0),
+            mode: DebuggerMode::Trace,
+            hit_counts: std::collections::HashMap::new(),
         })
+    }
+
+    /// Create a new debugger in profiling mode
+    pub fn new_profiler(wasm_bytes: Vec<u8>) -> Result<Self> {
+        let mut debugger = Self::new(wasm_bytes)?;
+        debugger.mode = DebuggerMode::Profile;
+        Ok(debugger)
+    }
+
+    /// Set the debugger mode
+    pub fn set_mode(&mut self, mode: DebuggerMode) {
+        self.mode = mode;
+    }
+
+    /// Record a hit for profiling mode
+    fn record_hit(&mut self, file_index: u16, line: u32) {
+        let key = ((file_index as u64) << 32) | (line as u64);
+        *self.hit_counts.entry(key).or_insert(0) += 1;
+    }
+
+    /// Print profiling summary sorted by hit count
+    pub fn print_profile_summary(&self) {
+        if self.hit_counts.is_empty() {
+            eprintln!("=== Execution Profile ===");
+            eprintln!("(No source-level hits recorded - DWARF info may be unavailable)");
+            return;
+        }
+
+        // Collect and sort by hit count (descending)
+        let mut hits: Vec<_> = self.hit_counts.iter().collect();
+        hits.sort_by(|a, b| b.1.cmp(a.1));
+
+        eprintln!("=== Execution Profile ===");
+        eprintln!("{} unique source locations hit", hits.len());
+        eprintln!();
+
+        // Print top 20
+        for (key, count) in hits.iter().take(20) {
+            let file_idx = (*key >> 32) as u16;
+            let line = *key as u32;
+            let filename = self.get_filename(file_idx).unwrap_or("<unknown>");
+            eprintln!("{:>10} hits  {}:{}", count, filename, line);
+        }
+
+        if hits.len() > 20 {
+            eprintln!("  ... and {} more locations", hits.len() - 20);
+        }
     }
 
     /// Get filename for a file index (1-based as per DWARF spec)
@@ -474,12 +537,34 @@ impl RuntimeDebugger for LineTracingDebugger {
     fn on_instruction(&mut self, pc: u32, _state: &dyn RuntimeState) -> DebugAction {
         let count = self.instruction_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        // Always trace, but the trace_instruction method will deduplicate
-        self.trace_instruction(pc);
+        match self.mode {
+            DebuggerMode::Trace => {
+                // Always trace, but the trace_instruction method will deduplicate
+                self.trace_instruction(pc);
 
-        // Print progress every 10000 instructions
-        if count > 0 && count % 10000 == 0 {
-            eprintln!("[trace-lines] {} instructions executed", count);
+                // Print progress every 10000 instructions
+                if count > 0 && count % 10000 == 0 {
+                    eprintln!("[trace-lines] {} instructions executed", count);
+                }
+            }
+            DebuggerMode::Profile => {
+                // In profile mode, collect hit counts silently
+                if self.has_debug_info {
+                    if let Ok(mut debug_info) = wrt_debug::DwarfDebugInfo::new(&self.wasm_bytes) {
+                        for (name, offset, size) in &self.dwarf_sections {
+                            debug_info.add_section(name, *offset, *size);
+                        }
+                        if let Ok(Some(info)) = debug_info.find_line_info(pc) {
+                            self.record_hit(info.file_index, info.line);
+                        }
+                    }
+                }
+
+                // Print progress every 100000 instructions in profile mode (less verbose)
+                if count > 0 && count % 100000 == 0 {
+                    eprintln!("[profile] {} instructions executed", count);
+                }
+            }
         }
 
         DebugAction::Continue

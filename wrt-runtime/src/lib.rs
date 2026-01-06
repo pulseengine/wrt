@@ -88,7 +88,6 @@ pub mod memory_config_adapter;
 pub mod memory_helpers;
 /// WebAssembly module representation and management
 pub mod module;
-pub mod module_builder;
 pub mod module_instance;
 pub mod prelude;
 pub mod stackless;
@@ -183,7 +182,6 @@ pub use prelude::FuncType;
 // pub use module::{
 //     Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
 // };
-// pub use module_builder::{load_module_from_binary, ModuleBuilder}; // Temporarily disabled
 // pub use module_instance::ModuleInstance;
 // pub use stackless::{
 //     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,

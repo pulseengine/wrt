@@ -28,6 +28,17 @@ cargo-wrt --help
   - "Try instance 0 as fallback" or similar guessing logic
 - **SPEC COMPLIANCE ONLY**: NEVER add fallback behavior that is not part of the WebAssembly or WebAssembly Component Model specification. If the spec says something must exist (like `_start` for command components), then it MUST exist - don't guess or substitute. Fallbacks create a false sense of progress and mask real implementation gaps.
 - **FAIL LOUD AND EARLY**: If data is missing or incorrect, return an error immediately. Don't silently substitute defaults or guess values.
+- **NO DEAD CODE**: Remove unused code rather than leaving it "for later". Dead code:
+  - Increases cognitive load and maintenance burden
+  - Creates false confidence when stubs silently return success
+  - Accumulates as technical debt that becomes harder to remove
+  - Skews test coverage metrics
+  - Rules for dead code:
+    - If code is unused and has no clear immediate purpose → **DELETE IT**
+    - If a trait requires methods you can't implement → **Return explicit `Error::not_implemented_error()`**, never silent `Ok()`
+    - If exports are commented out (e.g., `// pub use foo::...`) → **Either implement fully or delete entirely**
+    - If entire modules are unused → **Delete the module and its `mod` declaration**
+    - Stub methods that return `Ok(0)` or `Ok(())` without doing anything are **BANNED**
 - **USE TRACING FRAMEWORK**: Always use the wrt_foundation::tracing framework for logging and debugging instead of eprintln! or println!. The tracing framework provides:
   - Structured logging with spans for context (ModuleTrace, ImportTrace, ExecutionTrace, MemoryTrace, etc.)
   - Proper log levels (trace!, debug!, info!, warn!, error!)

@@ -60,7 +60,12 @@ pub fn set_global_wasi_args(args: Vec<String>) {
 /// Falls back to std::env::args() if no global args are set
 #[cfg(feature = "std")]
 pub fn get_global_wasi_args() -> Vec<String> {
-    let global_args = GLOBAL_WASI_ARGS.lock().map(|g| g.clone()).unwrap_or_default();
+    // Per CLAUDE.md: fail loud and early. A poisoned mutex means a thread panicked
+    // while holding the lock - the data may be in an inconsistent state.
+    let global_args = GLOBAL_WASI_ARGS
+        .lock()
+        .expect("GLOBAL_WASI_ARGS mutex poisoned - a thread panicked while holding the lock")
+        .clone();
     if global_args.is_empty() {
         // Fall back to actual process args
         std::env::args().collect()
@@ -73,7 +78,12 @@ pub fn get_global_wasi_args() -> Vec<String> {
 /// Falls back to std::env::vars() if no global env vars are set
 #[cfg(feature = "std")]
 pub fn get_global_wasi_env() -> Vec<(String, String)> {
-    let global_env = GLOBAL_WASI_ENV.lock().map(|g| g.clone()).unwrap_or_default();
+    // Per CLAUDE.md: fail loud and early. A poisoned mutex means a thread panicked
+    // while holding the lock - the data may be in an inconsistent state.
+    let global_env = GLOBAL_WASI_ENV
+        .lock()
+        .expect("GLOBAL_WASI_ENV mutex poisoned - a thread panicked while holding the lock")
+        .clone();
     if global_env.is_empty() {
         // Fall back to actual process environment
         std::env::vars().collect()

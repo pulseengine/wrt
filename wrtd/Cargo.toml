@@ -28,6 +28,7 @@ wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-host = { workspace = true, default-features = false, optional = true }
 wrt-component = { workspace = true, default-features = false, optional = true }
 wrt-decoder = { workspace = true, default-features = false, optional = true }
+wrt-debug = { workspace = true, default-features = false, optional = true }
 
 # WASI support
 wrt-wasi = { path = "../wrt-wasi", default-features = false, optional = true }
@@ -81,6 +82,9 @@ wasi-nn = ["wasi", "wrt-wasi/wasi-nn"]
 
 # Component model support
 component-model = ["wrt-execution", "dep:wrt-component", "dep:wrt-decoder", "wrt-component/std", "wrt-component/wrt-execution", "wrt-decoder/std"]
+
+# Debugger and profiler support - enables runtime debugging callbacks
+debugger = ["wrt-execution", "dep:wrt-debug", "wrt-debug/runtime-traits", "wrt-runtime/debugger"]
 
 # Safety level presets using capability-based features
 # wrtd with wrt-wasi supports QM to ASIL-B (daemon/service use cases)

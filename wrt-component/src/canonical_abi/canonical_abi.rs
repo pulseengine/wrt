@@ -934,6 +934,337 @@ impl CanonicalABI {
         }
     }
 
+    /// Lower a value to memory with type information
+    ///
+    /// This version uses type information to correctly compute discriminants
+    /// for variants/enums and bit patterns for flags.
+    pub fn lower_typed<M: CanonicalMemory>(
+        &self,
+        memory: &mut M,
+        value: &ComponentValue,
+        val_type: &ComponentType,
+        offset: u32,
+    ) -> Result<()> {
+        match (value, val_type) {
+            // Primitive types delegate to untyped version
+            (ComponentValue::Bool(v), ComponentType::Bool) => self.lower_bool(memory, *v, offset),
+            (ComponentValue::S8(v), ComponentType::S8) => self.lower_s8(memory, *v, offset),
+            (ComponentValue::U8(v), ComponentType::U8) => self.lower_u8(memory, *v, offset),
+            (ComponentValue::S16(v), ComponentType::S16) => self.lower_s16(memory, *v, offset),
+            (ComponentValue::U16(v), ComponentType::U16) => self.lower_u16(memory, *v, offset),
+            (ComponentValue::S32(v), ComponentType::S32) => self.lower_s32(memory, *v, offset),
+            (ComponentValue::U32(v), ComponentType::U32) => self.lower_u32(memory, *v, offset),
+            (ComponentValue::S64(v), ComponentType::S64) => self.lower_s64(memory, *v, offset),
+            (ComponentValue::U64(v), ComponentType::U64) => self.lower_u64(memory, *v, offset),
+            (ComponentValue::F32(v), ComponentType::F32) => self.lower_f32(memory, *v, offset),
+            (ComponentValue::F64(v), ComponentType::F64) => self.lower_f64(memory, *v, offset),
+            (ComponentValue::Char(v), ComponentType::Char) => self.lower_char(memory, *v, offset),
+            (ComponentValue::String(v), ComponentType::String) => self.lower_string(memory, v, offset),
+
+            // List with element type
+            (ComponentValue::List(v), ComponentType::List(_elem_type)) => {
+                self.lower_list(memory, v, offset)
+            },
+
+            // Record with field types
+            (ComponentValue::Record(fields), ComponentType::Record(field_types)) => {
+                self.lower_record_typed(memory, fields, field_types, offset)
+            },
+
+            // Tuple with element types
+            (ComponentValue::Tuple(values), ComponentType::Tuple(elem_types)) => {
+                self.lower_tuple_typed(memory, values, elem_types, offset)
+            },
+
+            // Variant: compute discriminant from case name position in type
+            (ComponentValue::Variant(case_name, payload), ComponentType::Variant(cases)) => {
+                let discriminant = cases.iter()
+                    .position(|(name, _)| name == case_name)
+                    .ok_or_else(|| Error::validation_error("Unknown variant case"))?;
+
+                // Discriminant size depends on number of cases
+                let disc_size = self.discriminant_size(cases.len());
+                self.write_discriminant(memory, offset, discriminant as u32, disc_size)?;
+
+                // Write payload if present
+                if let Some(payload_value) = payload {
+                    // Find payload type from cases
+                    if let Some(payload_type) = &cases[discriminant].1 {
+                        // Payload offset: discriminant + alignment padding
+                        let payload_offset = offset + disc_size + self.payload_alignment_padding(disc_size, payload_type);
+                        self.lower_typed(memory, payload_value, payload_type, payload_offset)?;
+                    }
+                }
+                Ok(())
+            },
+
+            // Enum: compute discriminant from case name position in type
+            (ComponentValue::Enum(case_name), ComponentType::Enum(cases)) => {
+                let discriminant = cases.iter()
+                    .position(|name| name == case_name)
+                    .ok_or_else(|| Error::validation_error("Unknown enum case"))?;
+
+                // Enum discriminant size depends on number of cases
+                let disc_size = self.discriminant_size(cases.len());
+                self.write_discriminant(memory, offset, discriminant as u32, disc_size)
+            },
+
+            // Option: discriminant 0/1 + optional payload
+            (ComponentValue::Option(opt_value), ComponentType::Option(inner_type)) => {
+                match opt_value {
+                    None => memory.write_u8(offset, 0),
+                    Some(inner) => {
+                        memory.write_u8(offset, 1)?;
+                        // Payload at offset + 1 (aligned appropriately)
+                        let payload_offset = offset + 1 + self.payload_alignment_padding(1, inner_type);
+                        self.lower_typed(memory, inner, inner_type, payload_offset)
+                    }
+                }
+            },
+
+            // Result: discriminant 0=ok/1=err + payload
+            (ComponentValue::Result(result), ComponentType::Result(ok_type, err_type)) => {
+                match result {
+                    Ok(payload) => {
+                        memory.write_u8(offset, 0)?;
+                        if let (Some(val), Some(ty)) = (payload, ok_type) {
+                            let payload_offset = offset + 1 + self.payload_alignment_padding(1, ty);
+                            self.lower_typed(memory, val, ty, payload_offset)?;
+                        }
+                        Ok(())
+                    }
+                    Err(payload) => {
+                        memory.write_u8(offset, 1)?;
+                        if let (Some(val), Some(ty)) = (payload, err_type) {
+                            let payload_offset = offset + 1 + self.payload_alignment_padding(1, ty);
+                            self.lower_typed(memory, val, ty, payload_offset)?;
+                        }
+                        Ok(())
+                    }
+                }
+            },
+
+            // Flags: compute bit pattern from active flag names
+            (ComponentValue::Flags(active_flags), ComponentType::Flags(all_flags)) => {
+                let byte_count = all_flags.len().div_ceil(8);
+                let mut bytes = vec![0u8; byte_count];
+
+                for flag_name in active_flags {
+                    if let Some(idx) = all_flags.iter().position(|f| f == flag_name) {
+                        let byte_index = idx / 8;
+                        let bit_index = idx % 8;
+                        bytes[byte_index] |= 1 << bit_index;
+                    }
+                }
+
+                // Write all bytes
+                for (i, byte) in bytes.iter().enumerate() {
+                    memory.write_u8(offset + i as u32, *byte)?;
+                }
+                Ok(())
+            },
+
+            // Type mismatch
+            _ => Err(Error::validation_error("Value type doesn't match expected type")),
+        }
+    }
+
+    /// Calculate discriminant size based on number of cases
+    fn discriminant_size(&self, num_cases: usize) -> u32 {
+        if num_cases <= 256 {
+            1
+        } else if num_cases <= 65536 {
+            2
+        } else {
+            4
+        }
+    }
+
+    /// Write discriminant value with appropriate size
+    fn write_discriminant<M: CanonicalMemory>(
+        &self,
+        memory: &mut M,
+        offset: u32,
+        discriminant: u32,
+        disc_size: u32,
+    ) -> Result<()> {
+        match disc_size {
+            1 => memory.write_u8(offset, discriminant as u8),
+            2 => memory.write_u16_le(offset, discriminant as u16),
+            4 => memory.write_u32_le(offset, discriminant),
+            _ => Err(Error::validation_error("Invalid discriminant size")),
+        }
+    }
+
+    /// Calculate alignment padding for payload after discriminant
+    fn payload_alignment_padding(&self, disc_size: u32, payload_type: &ComponentType) -> u32 {
+        let payload_align = self.type_alignment(payload_type);
+        let current_pos = disc_size;
+        let remainder = current_pos % payload_align;
+        if remainder == 0 {
+            0
+        } else {
+            payload_align - remainder
+        }
+    }
+
+    /// Get alignment requirement for a type
+    fn type_alignment(&self, ty: &ComponentType) -> u32 {
+        match ty {
+            ComponentType::Bool | ComponentType::S8 | ComponentType::U8 => 1,
+            ComponentType::S16 | ComponentType::U16 => 2,
+            ComponentType::S32 | ComponentType::U32 | ComponentType::F32 | ComponentType::Char => 4,
+            ComponentType::S64 | ComponentType::U64 | ComponentType::F64 => 8,
+            ComponentType::String | ComponentType::List(_) => 4, // ptr + len
+            ComponentType::Record(fields) => fields.iter()
+                .map(|(_, ft)| self.type_alignment(ft))
+                .max()
+                .unwrap_or(1),
+            ComponentType::Tuple(types) => types.iter()
+                .map(|t| self.type_alignment(t))
+                .max()
+                .unwrap_or(1),
+            ComponentType::Variant(cases) => {
+                let disc_align = self.discriminant_size(cases.len());
+                let payload_align = cases.iter()
+                    .filter_map(|(_, ty)| ty.as_ref())
+                    .map(|t| self.type_alignment(t))
+                    .max()
+                    .unwrap_or(1);
+                disc_align.max(payload_align)
+            },
+            ComponentType::Enum(cases) => self.discriminant_size(cases.len()),
+            ComponentType::Option(inner) => self.type_alignment(inner).max(1),
+            ComponentType::Result(ok, err) => {
+                let ok_align = ok.as_ref().map(|t| self.type_alignment(t)).unwrap_or(1);
+                let err_align = err.as_ref().map(|t| self.type_alignment(t)).unwrap_or(1);
+                ok_align.max(err_align).max(1)
+            },
+            ComponentType::Flags(flags) => {
+                let byte_count = flags.len().div_ceil(8);
+                if byte_count <= 1 { 1 }
+                else if byte_count <= 2 { 2 }
+                else { 4 }
+            },
+        }
+    }
+
+    /// Lower a record with type information
+    fn lower_record_typed<M: CanonicalMemory>(
+        &self,
+        memory: &mut M,
+        fields: &[(String, ComponentValue)],
+        field_types: &[(String, ComponentType)],
+        offset: u32,
+    ) -> Result<()> {
+        let mut current_offset = offset;
+
+        for (field_name, field_type) in field_types {
+            // Align to field type
+            let align = self.type_alignment(field_type);
+            let remainder = current_offset % align;
+            if remainder != 0 {
+                current_offset += align - remainder;
+            }
+
+            // Find matching value
+            let value = fields.iter()
+                .find(|(name, _)| name == field_name)
+                .map(|(_, v)| v)
+                .ok_or_else(|| Error::validation_error("Missing record field"))?;
+
+            self.lower_typed(memory, value, field_type, current_offset)?;
+
+            // Move to next field
+            current_offset += self.type_size(field_type);
+        }
+
+        Ok(())
+    }
+
+    /// Lower a tuple with type information
+    fn lower_tuple_typed<M: CanonicalMemory>(
+        &self,
+        memory: &mut M,
+        values: &[ComponentValue],
+        types: &[ComponentType],
+        offset: u32,
+    ) -> Result<()> {
+        if values.len() != types.len() {
+            return Err(Error::validation_error("Tuple value/type length mismatch"));
+        }
+
+        let mut current_offset = offset;
+
+        for (value, ty) in values.iter().zip(types.iter()) {
+            // Align to element type
+            let align = self.type_alignment(ty);
+            let remainder = current_offset % align;
+            if remainder != 0 {
+                current_offset += align - remainder;
+            }
+
+            self.lower_typed(memory, value, ty, current_offset)?;
+
+            // Move to next element
+            current_offset += self.type_size(ty);
+        }
+
+        Ok(())
+    }
+
+    /// Get size of a type in bytes
+    fn type_size(&self, ty: &ComponentType) -> u32 {
+        match ty {
+            ComponentType::Bool | ComponentType::S8 | ComponentType::U8 => 1,
+            ComponentType::S16 | ComponentType::U16 => 2,
+            ComponentType::S32 | ComponentType::U32 | ComponentType::F32 | ComponentType::Char => 4,
+            ComponentType::S64 | ComponentType::U64 | ComponentType::F64 => 8,
+            ComponentType::String | ComponentType::List(_) => 8, // ptr (4) + len (4)
+            ComponentType::Record(fields) => {
+                let mut size = 0u32;
+                for (_, ft) in fields {
+                    let align = self.type_alignment(ft);
+                    let remainder = size % align;
+                    if remainder != 0 {
+                        size += align - remainder;
+                    }
+                    size += self.type_size(ft);
+                }
+                size
+            },
+            ComponentType::Tuple(types) => {
+                let mut size = 0u32;
+                for t in types {
+                    let align = self.type_alignment(t);
+                    let remainder = size % align;
+                    if remainder != 0 {
+                        size += align - remainder;
+                    }
+                    size += self.type_size(t);
+                }
+                size
+            },
+            ComponentType::Variant(cases) => {
+                let disc_size = self.discriminant_size(cases.len());
+                let max_payload = cases.iter()
+                    .filter_map(|(_, ty)| ty.as_ref())
+                    .map(|t| self.type_size(t))
+                    .max()
+                    .unwrap_or(0);
+                disc_size + max_payload
+            },
+            ComponentType::Enum(cases) => self.discriminant_size(cases.len()),
+            ComponentType::Option(inner) => 1 + self.type_size(inner),
+            ComponentType::Result(ok, err) => {
+                let ok_size = ok.as_ref().map(|t| self.type_size(t)).unwrap_or(0);
+                let err_size = err.as_ref().map(|t| self.type_size(t)).unwrap_or(0);
+                1 + ok_size.max(err_size)
+            },
+            ComponentType::Flags(flags) => flags.len().div_ceil(8) as u32,
+        }
+    }
+
     /// Lower a boolean value
     pub fn lower_bool<M: CanonicalMemory>(
         &self,

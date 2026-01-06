@@ -725,6 +725,33 @@ fn parse_instruction_with_provider(
         0xC3 => Instruction::I64Extend16S,  // Sign-extend 16-bit to 64-bit
         0xC4 => Instruction::I64Extend32S,  // Sign-extend 32-bit to 64-bit
 
+        // Reference types (WebAssembly 2.0)
+        0xD0 => {
+            // ref.null ht - create a null reference of the specified heap type
+            if offset + 1 >= bytecode.len() {
+                return Err(Error::parse_error("Unexpected end of bytecode in ref.null"));
+            }
+            let heap_type = bytecode[offset + 1];
+            consumed += 1;
+            // Map heap type to RefType
+            let ref_type = match heap_type {
+                0x70 => wrt_foundation::types::RefType::Funcref,
+                0x6F => wrt_foundation::types::RefType::Externref,
+                _ => {
+                    // For other heap types, default to Externref for now
+                    wrt_foundation::types::RefType::Externref
+                }
+            };
+            Instruction::RefNull(ref_type)
+        },
+        0xD1 => Instruction::RefIsNull,
+        0xD2 => {
+            // ref.func x - create a reference to function x
+            let (func_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::RefFunc(func_idx)
+        },
+
         // Multi-byte opcodes (bulk memory, SIMD, etc.)
         0xFC => {
             // Read the second byte to determine the actual instruction

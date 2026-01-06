@@ -30,7 +30,8 @@ function-info = ["debug-info"] # Function discovery and mapping
 static-debug = ["line-info", "debug-info", "function-info"] # All static features
 
 # Runtime debug features (requires runtime integration)
-runtime-inspection = ["static-debug"]  # Read runtime state
+runtime-traits = []  # Core runtime debugger traits (RuntimeState, RuntimeDebugger, etc.)
+runtime-inspection = ["static-debug", "runtime-traits"]  # Read runtime state
 runtime-variables = ["runtime-inspection"]  # Variable value inspection
 runtime-memory = ["runtime-inspection"]  # Memory inspection
 memory-profiling = ["runtime-memory"]  # Memory profiling and leak detection

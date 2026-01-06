@@ -32,6 +32,10 @@ use std::{
     vec::Vec,
 };
 
+// Debug support - only available with std and wrt-debug crate
+#[cfg(all(feature = "std", feature = "debugger"))]
+use wrt_debug::runtime_traits::{RuntimeDebugger, RuntimeState, DebugAction};
+
 // For pure no_std without alloc, use bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 use wrt_foundation::{
@@ -234,6 +238,9 @@ pub struct StacklessEngine {
     /// Generic host import handler for all host function calls
     #[cfg(feature = "std")]
     host_handler:          Option<Box<dyn wrt_foundation::HostImportHandler>>,
+    /// Optional runtime debugger for profiling and debugging
+    #[cfg(all(feature = "std", feature = "debugger"))]
+    debugger:              Option<Box<dyn RuntimeDebugger>>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -255,6 +262,59 @@ pub struct StacklessEngine {
     fuel:                  AtomicU64,
     /// Current instruction pointer
     instruction_pointer:   AtomicU64,
+}
+
+/// Simple RuntimeState implementation for debugger callbacks
+#[cfg(all(feature = "std", feature = "debugger"))]
+pub struct ExecutionState<'a> {
+    pc: u32,
+    func_idx: u32,
+    operand_stack: &'a [Value],
+    locals: &'a [Value],
+}
+
+#[cfg(all(feature = "std", feature = "debugger"))]
+impl<'a> RuntimeState for ExecutionState<'a> {
+    fn pc(&self) -> u32 {
+        self.pc
+    }
+
+    fn sp(&self) -> u32 {
+        self.operand_stack.len() as u32
+    }
+
+    fn fp(&self) -> Option<u32> {
+        Some(0) // WebAssembly doesn't have a traditional frame pointer
+    }
+
+    fn read_local(&self, index: u32) -> Option<u64> {
+        self.locals.get(index as usize).map(|v| match v {
+            Value::I32(x) => *x as u64,
+            Value::I64(x) => *x as u64,
+            Value::F32(x) => x.to_bits() as u64,
+            Value::F64(x) => x.to_bits(),
+            _ => 0,
+        })
+    }
+
+    fn read_stack(&self, offset: u32) -> Option<u64> {
+        let len = self.operand_stack.len();
+        if offset as usize >= len {
+            return None;
+        }
+        let idx = len - 1 - offset as usize;
+        self.operand_stack.get(idx).map(|v| match v {
+            Value::I32(x) => *x as u64,
+            Value::I64(x) => *x as u64,
+            Value::F32(x) => x.to_bits() as u64,
+            Value::F64(x) => x.to_bits(),
+            _ => 0,
+        })
+    }
+
+    fn current_function(&self) -> Option<u32> {
+        Some(self.func_idx)
+    }
 }
 
 impl StacklessEngine {
@@ -281,7 +341,32 @@ impl StacklessEngine {
             wasi_dispatcher:     wrt_wasi::WasiDispatcher::with_defaults().ok(),
             #[cfg(feature = "std")]
             host_handler:        None,
+            #[cfg(all(feature = "std", feature = "debugger"))]
+            debugger:            None,
         }
+    }
+
+    /// Set a runtime debugger for profiling and debugging
+    ///
+    /// When a debugger is attached, it will receive callbacks for each instruction,
+    /// function entry/exit, and traps. This is useful for profiling and debugging.
+    ///
+    /// Note: This has performance overhead - only use when needed.
+    #[cfg(all(feature = "std", feature = "debugger"))]
+    pub fn set_debugger(&mut self, debugger: Box<dyn RuntimeDebugger>) {
+        self.debugger = Some(debugger);
+    }
+
+    /// Remove the attached debugger
+    #[cfg(all(feature = "std", feature = "debugger"))]
+    pub fn clear_debugger(&mut self) {
+        self.debugger = None;
+    }
+
+    /// Check if a debugger is attached
+    #[cfg(all(feature = "std", feature = "debugger"))]
+    pub fn has_debugger(&self) -> bool {
+        self.debugger.is_some()
     }
 
     /// Set the host import handler for resolving host function calls
@@ -772,6 +857,10 @@ impl StacklessEngine {
             let mut operand_stack: Vec<Value> = Vec::new();
             let mut locals: Vec<Value> = Vec::new();
             let mut instruction_count = 0usize;
+
+            // Take debugger out of self to use during execution (avoids borrow issues)
+            #[cfg(all(feature = "std", feature = "debugger"))]
+            let mut debugger_opt = self.debugger.take();
             let mut block_depth = 0i32; // Track nesting depth during execution
 
             // Initialize parameters as locals
@@ -872,6 +961,21 @@ impl StacklessEngine {
                 instruction_count += 1;
                 #[cfg(feature = "tracing")]
                 trace!("pc={}, instruction={:?}", pc, instruction);
+
+                // Debugger callback - notify debugger of instruction execution
+                #[cfg(all(feature = "std", feature = "debugger"))]
+                if let Some(ref mut debugger) = debugger_opt {
+                    let state = ExecutionState {
+                        pc: pc as u32,
+                        func_idx: func_idx as u32,
+                        operand_stack: &operand_stack,
+                        locals: &locals,
+                    };
+                    let action = debugger.on_instruction(pc as u32, &state);
+                    if action == DebugAction::Break {
+                        return Err(wrt_error::Error::runtime_execution_error("Debugger break requested"));
+                    }
+                }
 
                 match *instruction {
                     Instruction::Unreachable => {
@@ -1037,6 +1141,8 @@ impl StacklessEngine {
                                             operand_stack.push(value.clone());
                                         }
 
+                                        // Advance pc before continue (continue skips the pc += 1 at end of match)
+                                        pc += 1;
                                         continue; // Linked call handled - skip WASI dispatch
                                     }
                                     // Not linked - fall through to WASI dispatch
@@ -4040,9 +4146,17 @@ impl StacklessEngine {
 
                             if block_type == "loop" {
                                 // For Loop: jump backward to the loop start
+                                // IMPORTANT: Pop all inner blocks from the stack since we're
+                                // jumping out of them
+                                let blocks_to_pop = label_idx as usize;
+                                for _ in 0..blocks_to_pop {
+                                    if !block_stack.is_empty() {
+                                        block_stack.pop();
+                                        block_depth -= 1;
+                                    }
+                                }
                                 #[cfg(feature = "tracing")]
-
-                                trace!("Br: jumping backward to loop start at pc={}", start_pc);
+                                trace!("Br: jumping backward to loop start at pc={}, popped {} inner blocks", start_pc, blocks_to_pop);
                                 pc = start_pc;  // Will +1 at end of iteration, so we execute the Loop instruction again
                             } else {
                                 // For Block/If: jump forward to the End
@@ -4122,9 +4236,36 @@ impl StacklessEngine {
                             #[cfg(feature = "tracing")]
                             trace!(stack_len = operand_stack.len(), "[BR-VALUE] After restore");
                         } else {
+                            // Branch targets the function level (return from function)
+                            // This happens when label_idx >= block_stack.len()
                             #[cfg(feature = "tracing")]
+                            trace!("Br: label_idx {} targeting function level (return)", label_idx);
 
-                            trace!("Br: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                            // Determine how many values to preserve based on function's return type
+                            let values_to_preserve = if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                                func_type.results.len()
+                            } else {
+                                0
+                            };
+
+                            // Save the values to preserve from top of stack
+                            let mut preserved_values = Vec::new();
+                            for _ in 0..values_to_preserve {
+                                if let Some(v) = operand_stack.pop() {
+                                    preserved_values.push(v);
+                                }
+                            }
+
+                            // Clear the rest of the stack
+                            operand_stack.clear();
+
+                            // Restore preserved values (in reverse order)
+                            for v in preserved_values.into_iter().rev() {
+                                operand_stack.push(v);
+                            }
+
+                            // Return from function
+                            break;
                         }
                     }
                     Instruction::BrIf(label_idx) => {
@@ -4183,9 +4324,17 @@ impl StacklessEngine {
 
                                     if block_type == "loop" {
                                         // For Loop: jump backward to the loop start
+                                        // IMPORTANT: Pop all inner blocks from the stack since we're
+                                        // jumping out of them
+                                        let blocks_to_pop = label_idx as usize;
+                                        for _ in 0..blocks_to_pop {
+                                            if !block_stack.is_empty() {
+                                                block_stack.pop();
+                                                block_depth -= 1;
+                                            }
+                                        }
                                         #[cfg(feature = "tracing")]
-
-                                        trace!("BrIf: jumping backward to loop start at pc={}", start_pc);
+                                        trace!("BrIf: jumping backward to loop start at pc={}, popped {} inner blocks", start_pc, blocks_to_pop);
                                         pc = start_pc;
                                     } else {
                                         // For Block/If: jump forward to the End
@@ -4235,9 +4384,36 @@ impl StacklessEngine {
                                         operand_stack.push(v);
                                     }
                                 } else {
+                                    // Branch targets the function level (return from function)
+                                    // This happens when label_idx >= block_stack.len()
                                     #[cfg(feature = "tracing")]
+                                    trace!("BrIf: label_idx {} targeting function level (return)", label_idx);
 
-                                    trace!("BrIf: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                                    // Determine how many values to preserve based on function's return type
+                                    let values_to_preserve = if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                                        func_type.results.len()
+                                    } else {
+                                        0
+                                    };
+
+                                    // Save the values to preserve from top of stack
+                                    let mut preserved_values = Vec::new();
+                                    for _ in 0..values_to_preserve {
+                                        if let Some(v) = operand_stack.pop() {
+                                            preserved_values.push(v);
+                                        }
+                                    }
+
+                                    // Clear the rest of the stack
+                                    operand_stack.clear();
+
+                                    // Restore preserved values (in reverse order)
+                                    for v in preserved_values.into_iter().rev() {
+                                        operand_stack.push(v);
+                                    }
+
+                                    // Return from function
+                                    break;
                                 }
                             } else {
                                 #[cfg(feature = "tracing")]
@@ -4588,9 +4764,36 @@ impl StacklessEngine {
                                     operand_stack.push(v);
                                 }
                             } else {
+                                // Branch targets the function level (return from function)
+                                // This happens when label_idx >= block_stack.len()
                                 #[cfg(feature = "tracing")]
+                                trace!("BrTable: label_idx {} targeting function level (return)", label_idx);
 
-                                trace!("BrTable: label_idx {} out of range (block_stack.len={})", label_idx, block_stack.len());
+                                // Determine how many values to preserve based on function's return type
+                                let values_to_preserve = if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                                    func_type.results.len()
+                                } else {
+                                    0
+                                };
+
+                                // Save the values to preserve from top of stack
+                                let mut preserved_values = Vec::new();
+                                for _ in 0..values_to_preserve {
+                                    if let Some(v) = operand_stack.pop() {
+                                        preserved_values.push(v);
+                                    }
+                                }
+
+                                // Clear the rest of the stack
+                                operand_stack.clear();
+
+                                // Restore preserved values (in reverse order)
+                                for v in preserved_values.into_iter().rev() {
+                                    operand_stack.push(v);
+                                }
+
+                                // Return from function
+                                break;
                             }
                         } else {
                             #[cfg(feature = "tracing")]
@@ -7606,6 +7809,12 @@ impl StacklessEngine {
 
             #[cfg(feature = "tracing")]
             trace!("Returning {} results", results.len());
+
+            // Restore debugger back to self
+            #[cfg(all(feature = "std", feature = "debugger"))]
+            {
+                self.debugger = debugger_opt;
+            }
 
             // Decrement call depth before returning
             self.call_frames_count = self.call_frames_count.saturating_sub(1);

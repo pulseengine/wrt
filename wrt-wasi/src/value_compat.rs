@@ -160,7 +160,10 @@ impl wrt_foundation::traits::ToBytes for Value {
         match self {
             Value::Bool(v) => writer.write_u8(u8::from(*v)),
             Value::U8(v) => writer.write_u8(*v),
-            _ => Ok(()), // Placeholder for other types
+            // Per CLAUDE.md: fail loud and early for unsupported types
+            _ => Err(wrt_error::Error::not_implemented_error(
+                "ToBytes not implemented for this Value variant"
+            )),
         }
     }
 }
@@ -183,7 +186,10 @@ impl wrt_foundation::traits::FromBytes for Value {
                 let b3 = u32::from(reader.read_u8()?);
                 Ok(Value::U32(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)))
             },
-            _ => Ok(Value::U32(0)), // Default fallback
+            // Per CLAUDE.md: fail loud and early for unknown discriminants
+            _ => Err(wrt_error::Error::parse_error(
+                "Unknown Value discriminant in FromBytes deserialization"
+            )),
         }
     }
 }

@@ -739,6 +739,122 @@ impl AsyncCanonicalAbi {
         }
     }
 
+    /// Cancel read operation on a future
+    ///
+    /// This cancels any pending read operation on the future. After this call,
+    /// the future handle is no longer valid for reading.
+    pub fn future_cancel_read(&mut self, future_handle: FutureHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if let Some(future) = self.futures.get_mut(&future_handle) {
+                future.cancel_read()
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, future) in &mut self.futures {
+                if *handle == future_handle {
+                    return match future {
+                        FutureValueEnum::Value(f) => {
+                            f.cancel();
+                            Ok(())
+                        }
+                    };
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+        }
+    }
+
+    /// Cancel write operation on a future
+    ///
+    /// This cancels any pending write operation on the future. After this call,
+    /// the future handle is no longer valid for writing.
+    pub fn future_cancel_write(&mut self, future_handle: FutureHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if let Some(future) = self.futures.get_mut(&future_handle) {
+                future.cancel_write()
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, future) in &mut self.futures {
+                if *handle == future_handle {
+                    return match future {
+                        FutureValueEnum::Value(f) => {
+                            f.cancel();
+                            Ok(())
+                        }
+                    };
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+        }
+    }
+
+    /// Drop the readable end of a future
+    ///
+    /// This releases the readable side of the future. The writer may still complete
+    /// but the result will be discarded.
+    pub fn future_drop_readable(&mut self, future_handle: FutureHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if let Some(future) = self.futures.get_mut(&future_handle) {
+                future.close_readable()
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, future) in &mut self.futures {
+                if *handle == future_handle {
+                    return match future {
+                        FutureValueEnum::Value(f) => {
+                            f.readable_closed = true;
+                            Ok(())
+                        }
+                    };
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+        }
+    }
+
+    /// Drop the writable end of a future
+    ///
+    /// This releases the writable side of the future. Any pending reader will
+    /// receive an error or empty result.
+    pub fn future_drop_writable(&mut self, future_handle: FutureHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if let Some(future) = self.futures.get_mut(&future_handle) {
+                future.close_writable()
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, future) in &mut self.futures {
+                if *handle == future_handle {
+                    return match future {
+                        FutureValueEnum::Value(f) => {
+                            f.writable_closed = true;
+                            Ok(())
+                        }
+                    };
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+        }
+    }
+
     /// Create a new error context
     pub fn error_context_new(&mut self, message: &str) -> Result<ErrorContextHandle> {
         let handle = ErrorContextHandle(self.next_error_context_handle);

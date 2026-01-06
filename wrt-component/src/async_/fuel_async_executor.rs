@@ -3678,6 +3678,12 @@ impl FuelAsyncExecutor {
                 wrt_foundation::Value::Borrow(v) => {
                     result.extend_from_slice(&v.to_le_bytes());
                 },
+                wrt_foundation::Value::Stream(v) => {
+                    result.extend_from_slice(&v.to_le_bytes());
+                },
+                wrt_foundation::Value::Future(v) => {
+                    result.extend_from_slice(&v.to_le_bytes());
+                },
                 wrt_foundation::Value::Void => {
                     // Void has no data representation
                 },

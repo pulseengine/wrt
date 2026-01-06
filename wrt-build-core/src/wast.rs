@@ -637,6 +637,11 @@ impl WastTestRunner {
                                 })
                             } else {
                                 self.stats.failed += 1;
+                                let func_name = match exec {
+                                    WastExecute::Invoke(invoke) => invoke.name.to_string(),
+                                    WastExecute::Get { global, .. } => format!("get {}", global),
+                                    _ => "unknown".to_string(),
+                                };
                                 Ok(WastDirectiveInfo {
                                     test_type:             WastTestType::Correctness,
                                     directive_name:        "assert_return".to_string(),
@@ -644,8 +649,8 @@ impl WastTestRunner {
                                     modifies_engine_state: false,
                                     result:                TestResult::Failed,
                                     error_message:         Some(format!(
-                                        "Results don't match: actual={:?}, expected={:?}",
-                                        actual_results, expected_results
+                                        "Function '{}': actual={:?}, expected={:?}",
+                                        func_name, actual_results, expected_results
                                     )),
                                 })
                             }
@@ -714,6 +719,13 @@ impl WastTestRunner {
         self.stats.assert_trap_count += 1;
 
         // Execute the function - it should trap
+        // Extract function name for debug output
+        let func_name = match exec {
+            WastExecute::Invoke(invoke) => invoke.name.to_string(),
+            WastExecute::Get { global, .. } => format!("get {}", global),
+            _ => "unknown".to_string(),
+        };
+
         match execute_wast_execute(&mut self.engine, exec) {
             Ok(_results) => {
                 // Function executed successfully, but we expected a trap

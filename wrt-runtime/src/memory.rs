@@ -2401,67 +2401,22 @@ impl AtomicOperations for Memory {
             return Ok(1); // Value mismatch, return immediately
         }
 
-        // Convert timeout to Duration if provided
-        let timeout = timeout_ns.map(Duration::from_nanos);
-
-        // Use platform-specific futex implementation for std builds
-        #[cfg(all(target_os = "linux", feature = "std"))]
-        {
-            // Note: For now we use a simplified fallback since the futex integration
-            // requires more complex lifetime management
-            match timeout {
-                Some(duration) => {
-                    std::thread::sleep(duration);
-                    Ok(2) // Timeout
-                },
-                None => {
-                    // Infinite wait - just spin until value changes
-                    loop {
-                        let current = self.read_i32(addr)?;
-                        if current != expected {
-                            return Ok(0); // Value changed
-                        }
-                        std::thread::yield_now();
-                    }
-                },
-            }
-        }
-
-        #[cfg(not(all(target_os = "linux", feature = "std")))]
-        {
-            // Fallback implementation using basic timeout
-            match timeout {
-                Some(duration) => {
-                    // Simple timeout implementation - for no_std we use a different approach
-                    #[cfg(feature = "std")]
-                    {
-                        std::thread::sleep(duration);
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // Simple busy wait for no_std
-                        let start = core::time::Duration::from_nanos(0); // Placeholder
-                        let _end = start + duration;
-                        // In real implementation, would need platform-specific
-                        // timer
-                    }
-                    Ok(2) // Timeout
-                },
-                None => {
-                    // Infinite wait - just spin until value changes
-                    loop {
-                        let current = self.read_i32(addr)?;
-                        if current != expected {
-                            return Ok(0); // Value changed
-                        }
-                        #[cfg(feature = "std")]
-                        std::thread::yield_now();
-                        #[cfg(not(feature = "std"))]
-                        core::hint::spin_loop(); // CPU hint for busy waiting
-                    }
-                },
-            }
-        }
+        // atomic.wait requires proper futex support to implement correctly.
+        // The WebAssembly threads proposal specifies that atomic.wait must block
+        // until either:
+        // 1. The memory location is notified via atomic.notify
+        // 2. The timeout expires
+        //
+        // A sleep-based fallback does NOT satisfy this because:
+        // - It doesn't wake when the value changes via atomic.notify
+        // - It always times out even if notified early
+        //
+        // Per CLAUDE.md: Return an error rather than masking with broken fallback.
+        // To use atomic.wait, integrate with wrt-platform's futex infrastructure.
+        let _ = timeout_ns; // Acknowledge parameter to avoid warning
+        Err(Error::runtime_unsupported_operation(
+            "atomic.wait32 requires platform futex support - integrate wrt-platform crate"
+        ))
     }
 
     fn atomic_wait64(&mut self, addr: u32, expected: i64, timeout_ns: Option<u64>) -> Result<i32> {
@@ -2474,53 +2429,31 @@ impl AtomicOperations for Memory {
             return Ok(1); // Value mismatch, return immediately
         }
 
-        // Convert timeout to Duration if provided
-        let timeout = timeout_ns.map(Duration::from_nanos);
-
-        // Similar implementation to atomic_wait32 but for 64-bit values
-        // For now, use the same fallback approach as 32-bit operations
-        match timeout {
-            Some(duration) => {
-                #[cfg(feature = "std")]
-                {
-                    std::thread::sleep(duration);
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // Simple busy wait for no_std
-                    let start = core::time::Duration::from_nanos(0); // Placeholder
-                    let _end = start + duration;
-                    // In real implementation, would need platform-specific
-                    // timer
-                }
-                Ok(2) // Timeout
-            },
-            None => {
-                loop {
-                    let current = self.read_i64(addr)?;
-                    if current != expected {
-                        return Ok(0); // Value changed
-                    }
-                    #[cfg(feature = "std")]
-                    std::thread::yield_now();
-                    #[cfg(not(feature = "std"))]
-                    core::hint::spin_loop();
-                }
-            },
-        }
+        // atomic.wait64 has the same requirements as atomic.wait32.
+        // See atomic_wait32 for detailed explanation.
+        let _ = timeout_ns; // Acknowledge parameter to avoid warning
+        Err(Error::runtime_unsupported_operation(
+            "atomic.wait64 requires platform futex support - integrate wrt-platform crate"
+        ))
     }
 
     fn atomic_notify(&mut self, addr: u32, count: u32) -> Result<u32> {
         // Check alignment
         self.check_alignment(addr, 4, 4)?;
 
-        // Use platform-specific futex implementation to wake waiters
-        // For now, use simplified fallback since we don't track actual waiters
-        let _current = self.read_i32(addr)?; // Validate address is accessible
+        // Validate address is accessible
+        let _current = self.read_i32(addr)?;
 
-        // In a real implementation, this would wake actual waiting threads
-        // For now, return 0 indicating no waiters were woken
-        Ok(0)
+        // atomic.notify requires platform futex support to work correctly.
+        // Without proper futex tracking, we cannot know which threads are waiting
+        // on this address. Returning 0 (no waiters) is technically correct when
+        // no threads are actually blocked via atomic.wait (which now returns error),
+        // but we should be explicit about the limitation.
+        //
+        // When atomic.wait is properly implemented via wrt-platform futex,
+        // this function should also use the same futex infrastructure to wake waiters.
+        let _ = count; // Acknowledge parameter
+        Ok(0) // Correct: no waiters since atomic.wait returns error
     }
 
     fn atomic_load_i32(&self, addr: u32) -> Result<i32> {
