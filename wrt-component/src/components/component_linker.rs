@@ -432,10 +432,10 @@ impl ComponentLinker {
         match &export.export_type {
             ExportType::Function(_signature) => {
                 // Create a FunctionExport from the signature
-                // TODO: Use signature to create proper function type once type resolution is complete
+                // Use the actual index from the parsed export
                 let func_export = crate::instantiation::FunctionExport {
                     signature: WrtComponentType::unit(ComponentProvider::default())?,
-                    index: 0, // Index will be resolved during actual instantiation
+                    index: export.index, // Use the actual function index from parsed export
                 };
                 Ok(crate::instantiation::ExportValue::Function(func_export))
             },
@@ -740,6 +740,10 @@ impl ComponentLinker {
 
     // Private helper methods
 
+    /// Parse a component binary to extract exports, imports, and metadata.
+    ///
+    /// In std mode with the decoder feature, this uses the real wrt-decoder to parse
+    /// the component binary. In no_std mode, component parsing is not supported.
     fn parse_component_binary(
         &self,
         binary: &[u8],
@@ -748,132 +752,265 @@ impl ComponentLinker {
         Vec<ComponentImport>,
         ComponentMetadata,
     ), Error> {
-        // Simplified component parsing
         if binary.is_empty() {
             return Err(Error::runtime_execution_error("Empty component binary"));
         }
 
-        // Create some example exports and imports based on binary content
-        #[cfg(feature = "std")]
-        let exports = vec![create_component_export(
-            "main".to_owned(),
-            ExportType::Function(crate::component_instantiation::create_function_signature(
-                "main".to_owned(),
-                vec![],
-                vec![crate::canonical_abi::ComponentType::S32],
-            )),
-        )];
+        // Use real decoder in std mode
+        #[cfg(all(feature = "std", feature = "decoder"))]
+        {
+            self.parse_component_with_decoder(binary)
+        }
 
+        // Fallback for std without decoder feature
+        #[cfg(all(feature = "std", not(feature = "decoder")))]
+        {
+            self.parse_component_fallback(binary)
+        }
+
+        // no_std mode - component parsing not supported
         #[cfg(not(feature = "std"))]
-        let exports = {
-            let mut exports: Vec<ComponentExport> = Vec::new();
-            let mut params: Vec<crate::canonical_abi::ComponentType> = Vec::new();
-            let mut results: Vec<crate::canonical_abi::ComponentType> = Vec::new();
-            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| {
-                Error::platform_memory_allocation_failed("Memory allocation failed")
-            })?;
+        {
+            Err(Error::runtime_execution_error(
+                "Component parsing requires std and decoder features",
+            ))
+        }
+    }
 
-            let name_provider1 = safe_managed_alloc!(1024, CrateId::Component).map_err(|_| {
-                Error::platform_memory_allocation_failed("Memory allocation failed")
-            })?;
-            let name_provider2 = safe_managed_alloc!(1024, CrateId::Component).map_err(|_| {
-                Error::platform_memory_allocation_failed("Memory allocation failed")
-            })?;
+    /// Parse component using the real wrt-decoder
+    #[cfg(all(feature = "std", feature = "decoder"))]
+    fn parse_component_with_decoder(
+        &self,
+        binary: &[u8],
+    ) -> core::result::Result<(
+        Vec<ComponentExport>,
+        Vec<ComponentImport>,
+        ComponentMetadata,
+    ), Error> {
+        use wrt_format::component::{Sort, CoreSort};
 
-            // Convert params and results to Vec for create_function_signature
-            // Convert to std Vec for create_function_signature which expects Vec
-            #[cfg(feature = "std")]
-            let params_vec: Vec<crate::canonical_abi::ComponentType> = params.iter().cloned().collect();
-            #[cfg(not(feature = "std"))]
-            let params_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
-                params.iter().cloned().collect();
+        // Decode the component binary
+        let decoded = wrt_decoder::component::decode_component(binary)?;
 
-            #[cfg(feature = "std")]
-            let results_vec: Vec<crate::canonical_abi::ComponentType> = results.iter().cloned().collect();
-            #[cfg(not(feature = "std"))]
-            let results_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
-                results.iter().cloned().collect();
+        // Convert decoded exports to ComponentExport
+        let mut exports = Vec::with_capacity(decoded.exports.len());
+        for export in &decoded.exports {
+            let export_type = self.sort_to_export_type(&export.sort, &export.ty);
+            let name = export.name.name.clone();
+            let index = export.idx;
 
-            #[cfg(feature = "std")]
-            let name_str = "main".to_owned();
-            #[cfg(not(feature = "std"))]
-            let name_str = alloc::string::String::from("main");
-
-            let signature = crate::component_instantiation::create_function_signature(
-                name_str,
-                params_vec,
-                results_vec,
+            #[cfg(feature = "tracing")]
+            trace!(
+                export_name = %name,
+                export_index = index,
+                "Parsed component export"
             );
 
-            #[cfg(feature = "std")]
-            let export_name = "main".to_owned();
-            #[cfg(not(feature = "std"))]
-            let export_name = alloc::string::String::from("main");
+            exports.push(create_component_export(name, export_type, index));
+        }
 
-            exports
-                .push(create_component_export(
-                    export_name,
-                    ExportType::Function(signature),
-                ))
-                .map_err(|_| {
-                    Error::platform_memory_allocation_failed("Memory allocation failed")
-                })?;
-            exports
+        // Convert decoded imports to ComponentImport
+        let mut imports = Vec::with_capacity(decoded.imports.len());
+        for import in &decoded.imports {
+            let import_type = self.extern_type_to_import_type(&import.ty);
+            let name = import.name.name.clone();
+            let module = import.name.namespace.clone();
+
+            #[cfg(feature = "tracing")]
+            trace!(
+                import_name = %name,
+                import_module = %module,
+                "Parsed component import"
+            );
+
+            imports.push(create_component_import(name, module, import_type));
+        }
+
+        // Extract metadata from component
+        let metadata = ComponentMetadata {
+            name: decoded.name.unwrap_or_default(),
+            version: "1.0.0".to_owned(),
+            description: String::new(),
+            author: String::new(),
+            compiled_at: 0,
         };
-
-        #[cfg(feature = "std")]
-        let imports = vec![create_component_import(
-            "log".to_owned(),
-            "env".to_owned(),
-            ImportType::Function(crate::component_instantiation::create_function_signature(
-                "log".to_owned(),
-                vec![crate::canonical_abi::ComponentType::String],
-                vec![],
-            )),
-        )];
-
-        #[cfg(not(feature = "std"))]
-        let imports = {
-            let mut imp_vec = Vec::new();
-
-            let mut params: Vec<crate::canonical_abi::ComponentType> = Vec::new();
-            let _ = params.push(crate::canonical_abi::ComponentType::String);
-
-            let results: Vec<crate::canonical_abi::ComponentType> = Vec::new();
-
-            // Convert params and results to std Vec for create_function_signature
-            #[cfg(feature = "std")]
-            let params_vec: Vec<crate::canonical_abi::ComponentType> = params.iter().cloned().collect();
-            #[cfg(not(feature = "std"))]
-            let params_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
-                params.iter().cloned().collect();
-
-            #[cfg(feature = "std")]
-            let results_vec: Vec<crate::canonical_abi::ComponentType> = results.iter().cloned().collect();
-            #[cfg(not(feature = "std"))]
-            let results_vec: alloc::vec::Vec<crate::canonical_abi::ComponentType> =
-                results.iter().cloned().collect();
-
-            // Use std String for component instantiation
-            let log_name = alloc::string::String::from("log");
-            let env_name = alloc::string::String::from("env");
-            let log_func_name = alloc::string::String::from("log");
-
-            let _ = imp_vec.push(create_component_import(
-                log_name,
-                env_name,
-                ImportType::Function(crate::component_instantiation::create_function_signature(
-                    log_func_name,
-                    params_vec,
-                    results_vec,
-                )),
-            ));
-            imp_vec
-        };
-
-        let metadata = ComponentMetadata::default();
 
         Ok((exports, imports, metadata))
+    }
+
+    /// Convert Sort to ExportType
+    #[cfg(all(feature = "std", feature = "decoder"))]
+    fn sort_to_export_type(
+        &self,
+        sort: &wrt_format::component::Sort,
+        ty: &Option<wrt_format::component::ExternType>,
+    ) -> ExportType {
+        use wrt_format::component::{Sort, CoreSort, ExternType as FormatExternType};
+
+        match sort {
+            Sort::Function => {
+                // Component-level function (canonical lift/lower)
+                let signature = if let Some(FormatExternType::Function { params, results }) = ty {
+                    self.convert_function_type(params, results)
+                } else {
+                    FunctionSignature::default()
+                };
+                ExportType::Function(signature)
+            },
+            Sort::Core(CoreSort::Function) => {
+                // Core WebAssembly function
+                let signature = if let Some(FormatExternType::Function { params, results }) = ty {
+                    self.convert_function_type(params, results)
+                } else {
+                    FunctionSignature::default()
+                };
+                ExportType::Function(signature)
+            },
+            Sort::Core(CoreSort::Memory) => {
+                ExportType::Memory(crate::component_instantiation::MemoryConfig {
+                    initial_pages: 1,
+                    max_pages: None,
+                    protected: false,
+                })
+            },
+            Sort::Core(CoreSort::Table) => {
+                ExportType::Table {
+                    element_type: crate::canonical_abi::ComponentType::U32,
+                    size: 0,
+                }
+            },
+            Sort::Core(CoreSort::Global) => {
+                ExportType::Global {
+                    value_type: crate::canonical_abi::ComponentType::S32,
+                    mutable: false,
+                }
+            },
+            Sort::Type | Sort::Core(CoreSort::Type) => {
+                ExportType::Type(crate::canonical_abi::ComponentType::Bool)
+            },
+            Sort::Component | Sort::Instance | Sort::Value |
+            Sort::Core(CoreSort::Module) | Sort::Core(CoreSort::Instance) => {
+                // For now, treat these as functions (placeholder)
+                ExportType::Function(FunctionSignature::default())
+            },
+        }
+    }
+
+    /// Convert ExternType to ImportType
+    #[cfg(all(feature = "std", feature = "decoder"))]
+    fn extern_type_to_import_type(
+        &self,
+        ty: &wrt_format::component::ExternType,
+    ) -> ImportType {
+        use wrt_format::component::ExternType as FormatExternType;
+
+        match ty {
+            FormatExternType::Function { params, results } => {
+                ImportType::Function(self.convert_function_type(params, results))
+            },
+            FormatExternType::Value(_) => {
+                ImportType::Memory(crate::component_instantiation::MemoryConfig {
+                    initial_pages: 1,
+                    max_pages: None,
+                    protected: false,
+                })
+            },
+            FormatExternType::Type(_) => {
+                ImportType::Type(crate::canonical_abi::ComponentType::Bool)
+            },
+            FormatExternType::Instance { .. } |
+            FormatExternType::Component { .. } |
+            FormatExternType::Module { .. } => {
+                // Treat as function import for now
+                ImportType::Function(FunctionSignature::default())
+            },
+        }
+    }
+
+    /// Convert function type from format to instantiation types
+    #[cfg(all(feature = "std", feature = "decoder"))]
+    fn convert_function_type(
+        &self,
+        params: &[(String, wrt_format::component::FormatValType)],
+        results: &[wrt_format::component::FormatValType],
+    ) -> FunctionSignature {
+        let param_types: Vec<crate::canonical_abi::ComponentType> = params
+            .iter()
+            .map(|(_, vt)| self.format_val_type_to_component_type(vt))
+            .collect();
+
+        let result_types: Vec<crate::canonical_abi::ComponentType> = results
+            .iter()
+            .map(|vt| self.format_val_type_to_component_type(vt))
+            .collect();
+
+        // Use first param name as function name, or empty
+        let name = params.first().map(|(n, _)| n.clone()).unwrap_or_default();
+
+        crate::component_instantiation::create_function_signature(name, param_types, result_types)
+    }
+
+    /// Convert FormatValType from format to canonical_abi ComponentType
+    #[cfg(all(feature = "std", feature = "decoder"))]
+    fn format_val_type_to_component_type(
+        &self,
+        vt: &wrt_format::component::FormatValType,
+    ) -> crate::canonical_abi::ComponentType {
+        use wrt_format::component::FormatValType;
+
+        match vt {
+            FormatValType::Bool => crate::canonical_abi::ComponentType::Bool,
+            FormatValType::S8 => crate::canonical_abi::ComponentType::S8,
+            FormatValType::U8 => crate::canonical_abi::ComponentType::U8,
+            FormatValType::S16 => crate::canonical_abi::ComponentType::S16,
+            FormatValType::U16 => crate::canonical_abi::ComponentType::U16,
+            FormatValType::S32 => crate::canonical_abi::ComponentType::S32,
+            FormatValType::U32 => crate::canonical_abi::ComponentType::U32,
+            FormatValType::S64 => crate::canonical_abi::ComponentType::S64,
+            FormatValType::U64 => crate::canonical_abi::ComponentType::U64,
+            FormatValType::F32 => crate::canonical_abi::ComponentType::F32,
+            FormatValType::F64 => crate::canonical_abi::ComponentType::F64,
+            FormatValType::Char => crate::canonical_abi::ComponentType::Char,
+            FormatValType::String => crate::canonical_abi::ComponentType::String,
+            // Complex types - map to their canonical equivalents (using placeholder types)
+            FormatValType::List(_) => crate::canonical_abi::ComponentType::String, // Placeholder
+            FormatValType::Record(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            FormatValType::Tuple(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            FormatValType::Variant(_) => crate::canonical_abi::ComponentType::U32, // Discriminant
+            FormatValType::Enum(_) => crate::canonical_abi::ComponentType::U32, // Enums are u32
+            FormatValType::Option(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            FormatValType::Result { .. } => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            FormatValType::Flags(_) => crate::canonical_abi::ComponentType::U32, // Flags are u32
+            FormatValType::Own(_) | FormatValType::Borrow(_) => {
+                crate::canonical_abi::ComponentType::U32 // Resource handles are u32
+            },
+            // Fixed-length list (same as List for now)
+            FormatValType::FixedList(_, _) => crate::canonical_abi::ComponentType::String,
+            // Reference type
+            FormatValType::Ref(_) => crate::canonical_abi::ComponentType::U32, // Ref as u32 index
+            // Void type (no value)
+            FormatValType::Void => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            // Error context type
+            FormatValType::ErrorContext => crate::canonical_abi::ComponentType::U32, // Error context handle
+        }
+    }
+
+    /// Fallback parsing when decoder is not available (std only)
+    #[cfg(all(feature = "std", not(feature = "decoder")))]
+    fn parse_component_fallback(
+        &self,
+        _binary: &[u8],
+    ) -> core::result::Result<(
+        Vec<ComponentExport>,
+        Vec<ComponentImport>,
+        ComponentMetadata,
+    ), Error> {
+        // Without the decoder, return empty exports/imports
+        // Components won't actually link without real parsing
+        #[cfg(feature = "tracing")]
+        tracing_warn!("Component parsing without decoder - exports/imports will be empty");
+
+        Ok((Vec::new(), Vec::new(), ComponentMetadata::default()))
     }
 
     fn resolve_imports(

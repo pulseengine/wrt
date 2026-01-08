@@ -740,9 +740,10 @@ impl ExecutionLimitsConfig {
         #[cfg(feature = "decoder")]
         {
             use wrt_decoder::resource_limits_section::ResourceLimitsSection;
+            use wrt_foundation::safe_memory::NoStdProvider;
 
             // Parse the resource limits custom section
-            let resource_limits = ResourceLimitsSection::decode(custom_section_data)
+            let resource_limits: ResourceLimitsSection<NoStdProvider<4096>> = ResourceLimitsSection::decode(custom_section_data)
                 .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
 
             // Validate the resource limits

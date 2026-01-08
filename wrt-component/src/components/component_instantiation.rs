@@ -217,6 +217,9 @@ pub struct ComponentExport {
     pub name:        String,
     /// Export type
     pub export_type: ExportType,
+    /// Index of the exported item within its sort (function index, table index, etc.)
+    /// This is the actual index needed for function dispatch.
+    pub index:       u32,
 }
 
 /// Component import definition
@@ -4332,8 +4335,8 @@ pub fn create_function_signature(
 }
 
 /// Create a component export
-pub fn create_component_export(name: String, export_type: ExportType) -> ComponentExport {
-    ComponentExport { name, export_type }
+pub fn create_component_export(name: String, export_type: ExportType, index: u32) -> ComponentExport {
+    ComponentExport { name, export_type, index }
 }
 
 /// Create a component import

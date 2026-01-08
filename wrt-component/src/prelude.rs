@@ -94,8 +94,7 @@ pub use wrt_decoder::decoder_no_alloc;
 #[cfg(feature = "decoder")]
 pub use wrt_decoder::{
     component::decode::decode_component,
-    // component::decode::Component as DecodedComponent, // Commented out - causing import issues
-    component::parse,
+    // Note: component::parse is private, use decode_component() instead
     component::validation,
 };
 
