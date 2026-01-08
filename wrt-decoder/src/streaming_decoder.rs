@@ -572,7 +572,7 @@ impl<'a> StreamingDecoder<'a> {
                 // Count global imports - at table section time, only imported globals exist
                 use wrt_format::module::ImportDesc;
                 let num_global_imports = self.module.imports.iter()
-                    .filter(|imp| matches!(imp.desc, ImportDesc::Global(_)))
+                    .filter(|imp| matches!(imp.desc, ImportDesc::Global(..)))
                     .count();
 
                 // Scan for the end opcode (0x0B), handling nested blocks
@@ -1043,11 +1043,8 @@ impl<'a> StreamingDecoder<'a> {
                     (PureElementMode::Declared, Vec::new(), ref_type)
                 },
                 4 => {
-                    // Active, explicit table_idx, no element type (funcref implicit), offset expr, funcidx vec (legacy)
-                    // Per WebAssembly spec: flags=4 has explicit table index
-                    let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
-                    offset += bytes_read;
-
+                    // Active, table 0 (implicit), offset expr, vec<expr>
+                    // Per WebAssembly spec: flags=4 has NO explicit table index (table 0 implicit)
                     // Parse offset expression
                     let expr_start = offset;
                     while offset < data.len() && data[offset] != 0x0B {
@@ -1058,10 +1055,10 @@ impl<'a> StreamingDecoder<'a> {
                     }
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
-                    trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), "element: active legacy");
+                    trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active expressions table 0");
 
                     (
-                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
                         offset_expr_bytes,
                         wrt_format::types::RefType::Funcref,
                     )
@@ -1140,8 +1137,8 @@ impl<'a> StreamingDecoder<'a> {
             #[cfg(feature = "tracing")]
             trace!(elem_idx = elem_idx, item_count = item_count, "element items");
 
-            let init_data = if flags == 0 || flags == 2 || flags == 4 {
-                // Legacy function indices format (flags 0, 2, 4)
+            let init_data = if flags == 0 || flags == 1 || flags == 2 || flags == 3 {
+                // Function indices format (flags 0, 1, 2, 3 use elemkind + funcidx)
                 let mut func_indices = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     let (func_idx, bytes_read) = read_leb128_u32(data, offset)?;
@@ -1154,7 +1151,7 @@ impl<'a> StreamingDecoder<'a> {
                 }
                 PureElementInit::FunctionIndices(func_indices)
             } else {
-                // Expression format (flags 1, 2, 3, 5, 6, 7)
+                // Expression format (flags 4, 5, 6, 7 use reftype + expressions)
                 let mut expr_bytes = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     let expr_start = offset;

@@ -1504,7 +1504,24 @@ impl WastTestRunner {
         let passed_files = results.iter().filter(|r| r.status == TestResult::Passed).count();
         let failed_files = results.iter().filter(|r| r.status == TestResult::Failed).count();
 
-        format!(
+        // Collect failure details
+        let mut failure_details = String::new();
+        for result in results {
+            for directive in &result.directive_results {
+                if directive.result == TestResult::Failed {
+                    if let Some(ref msg) = directive.error_message {
+                        failure_details.push_str(&format!(
+                            "\n  [{}] {}: {}",
+                            result.file_path,
+                            directive.directive_name,
+                            msg
+                        ));
+                    }
+                }
+            }
+        }
+
+        let mut summary = format!(
             "WAST Test Summary:
 Files processed: {}
 Files passed: {}
@@ -1520,7 +1537,14 @@ Total execution time: {}ms",
             self.stats.passed,
             self.stats.failed,
             self.stats.total_execution_time_ms
-        )
+        );
+
+        if !failure_details.is_empty() {
+            summary.push_str("\n\nFailure Details:");
+            summary.push_str(&failure_details);
+        }
+
+        summary
     }
 }
 
