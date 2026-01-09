@@ -101,6 +101,7 @@
 //! ```
 
 // Import BorrowMut for SafeMemoryHandler
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Core/std library imports

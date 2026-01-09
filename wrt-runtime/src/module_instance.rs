@@ -560,8 +560,10 @@ impl ModuleInstance {
     /// - Indices 0..N-1 are imported globals
     /// - Indices N+ are defined globals
     pub fn populate_globals_from_module(&self) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, info};
 
+        #[cfg(feature = "tracing")]
         info!("Populating globals from module for instance {}", self.instance_id);
 
         // Use the pre-computed count of global imports from the module
@@ -591,6 +593,7 @@ impl ModuleInstance {
                 };
                 let placeholder = Global::new(global_type.value_type, global_type.mutable, default_value)
                     .map_err(|_| Error::runtime_error("Failed to create placeholder global"))?;
+                #[cfg(feature = "tracing")]
                 debug!(
                     "Creating placeholder for imported global {} ({:?}) - is_mutable: {}",
                     idx,
@@ -600,11 +603,13 @@ impl ModuleInstance {
                 globals.push(GlobalWrapper::new(placeholder));
             }
 
+            #[cfg(feature = "tracing")]
             debug!("Created {} placeholder globals for imports", num_global_imports);
 
             // Now copy defined globals
             for idx in 0..self.module.globals.len() {
                 if let Ok(global_wrapper) = self.module.globals.get(idx) {
+                    #[cfg(feature = "tracing")]
                     debug!(
                         "Copying defined global {} (global index {}) to instance",
                         idx,
@@ -613,6 +618,7 @@ impl ModuleInstance {
                     globals.push(global_wrapper.clone());
                 }
             }
+            #[cfg(feature = "tracing")]
             info!(
                 "Populated {} globals for instance {} ({} imports + {} defined)",
                 globals.len(),
@@ -659,12 +665,14 @@ impl ModuleInstance {
             // Now copy defined globals
             for idx in 0..self.module.globals.len() {
                 if let Ok(global_wrapper) = self.module.globals.get(idx) {
+                    #[cfg(feature = "tracing")]
                     debug!("Copying global {} to instance", idx);
                     globals
                         .push(global_wrapper.clone())
                         .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
                 }
             }
+            #[cfg(feature = "tracing")]
             info!("Populated globals for instance {}", self.instance_id);
         }
 
@@ -674,8 +682,10 @@ impl ModuleInstance {
     /// Populate memories from the module into this instance
     /// This copies all memory instances from the module definition to the instance
     pub fn populate_memories_from_module(&self) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, info};
 
+        #[cfg(feature = "tracing")]
         info!("Populating memories from module for instance {}", self.instance_id);
 
         #[cfg(feature = "std")]
@@ -687,9 +697,11 @@ impl ModuleInstance {
 
             // In std mode, module.memories is Vec so we can iterate directly
             for (idx, memory_wrapper) in self.module.memories.iter().enumerate() {
+                #[cfg(feature = "tracing")]
                 debug!("Copying memory {} to instance", idx);
                 memories.push(memory_wrapper.clone());
             }
+            #[cfg(feature = "tracing")]
             info!("Populated {} memories for instance {}", self.module.memories.len(), self.instance_id);
         }
 
@@ -698,12 +710,14 @@ impl ModuleInstance {
             let mut memories = self.memories.lock();
             for idx in 0..self.module.memories.len() {
                 if let Ok(memory_wrapper) = self.module.memories.get(idx) {
+                    #[cfg(feature = "tracing")]
                     debug!("Copying memory {} to instance", idx);
                     memories
                         .push(memory_wrapper.clone())
                         .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
                 }
             }
+            #[cfg(feature = "tracing")]
             info!("Populated memories for instance {}", self.instance_id);
         }
 
@@ -713,8 +727,10 @@ impl ModuleInstance {
     /// Populate tables from the module into this instance
     /// This copies all table instances from the module definition to the instance
     pub fn populate_tables_from_module(&self) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, info};
 
+        #[cfg(feature = "tracing")]
         info!("Populating tables from module for instance {}", self.instance_id);
 
         #[cfg(feature = "std")]
@@ -726,9 +742,11 @@ impl ModuleInstance {
 
             // In std mode, module.tables is Vec so we can iterate directly
             for (idx, table_wrapper) in self.module.tables.iter().enumerate() {
+                #[cfg(feature = "tracing")]
                 debug!("Copying table {} to instance (size={})", idx, table_wrapper.size());
                 tables.push(table_wrapper.clone());
             }
+            #[cfg(feature = "tracing")]
             info!("Populated {} tables for instance {}", self.module.tables.len(), self.instance_id);
 
             #[cfg(feature = "tracing")]
@@ -744,12 +762,14 @@ impl ModuleInstance {
             let mut tables = self.tables.lock();
             for idx in 0..self.module.tables.len() {
                 if let Ok(table_wrapper) = self.module.tables.get(idx) {
+                    #[cfg(feature = "tracing")]
                     debug!("Copying table {} to instance", idx);
                     tables
                         .push(table_wrapper.clone())
                         .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
                 }
             }
+            #[cfg(feature = "tracing")]
             info!("Populated tables for instance {}", self.instance_id);
         }
 
@@ -759,9 +779,11 @@ impl ModuleInstance {
     /// Initialize data segments into memory
     /// This copies the static data from data segments into the appropriate memory locations
     pub fn initialize_data_segments(&self) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, info};
         use wrt_foundation::DataMode as WrtDataMode;
 
+        #[cfg(feature = "tracing")]
         info!("Initializing data segments for instance {} - module has {} data segments",
               self.instance_id, self.module.data.len());
 
@@ -774,9 +796,11 @@ impl ModuleInstance {
 
         // Iterate through all data segments in the module
         for (idx, data_segment) in self.module.data.iter().enumerate() {
+            #[cfg(feature = "tracing")]
             debug!("Processing data segment {}", idx);
             // Only process active data segments
             if let WrtDataMode::Active { .. } = &data_segment.mode {
+                #[cfg(feature = "tracing")]
                 debug!("Processing active data segment {}", idx);
 
                 // Get the memory index (default to 0 if not specified)
@@ -794,11 +818,13 @@ impl ModuleInstance {
                     if !expr_instructions.is_empty() {
                         match &expr_instructions[0] {
                             wrt_foundation::types::Instruction::I32Const(value) => {
+                                #[cfg(feature = "tracing")]
                                 debug!("Data segment {} has I32Const offset: {}", idx, value);
                                 *value as u32
                             }
                             wrt_foundation::types::Instruction::GlobalGet(global_idx) => {
                                 // Look up the global value for the offset
+                                #[cfg(feature = "tracing")]
                                 debug!("Data segment {} has GlobalGet({}) offset", idx, global_idx);
 
                                 #[cfg(feature = "std")]
@@ -813,33 +839,39 @@ impl ModuleInstance {
                                         Ok(global) => {
                                             match global.get() {
                                                 wrt_foundation::values::Value::I32(v) => {
+                                                    #[cfg(feature = "tracing")]
                                                     debug!("Data segment {} global offset value: {}", idx, v);
                                                     *v as u32
                                                 },
                                                 _ => {
+                                                    #[cfg(feature = "tracing")]
                                                     debug!("Data segment {} global has non-i32 type, using 0", idx);
                                                     0
                                                 }
                                             }
                                         },
                                         Err(_) => {
+                                            #[cfg(feature = "tracing")]
                                             debug!("Data segment {} failed to read global, using 0", idx);
                                             0
                                         }
                                     }
                                 } else {
+                                    #[cfg(feature = "tracing")]
                                     debug!("Data segment {} global index {} out of range, using 0", idx, global_idx);
                                     0
                                 }
                             }
                             _ => {
                                 // For other instructions, default to 0
+                                #[cfg(feature = "tracing")]
                                 debug!("Data segment {} has non-constant offset expression, using 0", idx);
                                 0
                             }
                         }
                     } else {
                         // Empty expression means offset 0
+                        #[cfg(feature = "tracing")]
                         debug!("Data segment {} has empty offset expression, using 0", idx);
                         0
                     }
@@ -847,6 +879,7 @@ impl ModuleInstance {
                     0
                 };
 
+                #[cfg(feature = "tracing")]
                 debug!("Data segment {} targets memory {} at offset {:#x}", idx, memory_idx, offset);
 
                 // Get the memory instance
@@ -872,6 +905,7 @@ impl ModuleInstance {
                 #[cfg(not(feature = "std"))]
                 let init_data = data_segment.init.as_slice()
                     .map_err(|_e| Error::runtime_error("Failed to get data segment bytes"))?;
+                #[cfg(feature = "tracing")]
                 debug!("Writing {} bytes of data to memory at offset {:#x}", init_data.len(), offset);
 
                 #[cfg(feature = "tracing")]
@@ -888,12 +922,15 @@ impl ModuleInstance {
                 #[cfg(feature = "tracing")]
                 wrt_foundation::tracing::trace!(segment_idx = idx, "Successfully wrote data segment");
 
+                #[cfg(feature = "tracing")]
                 info!("Successfully initialized data segment {} ({} bytes)", idx, init_data.len());
             } else {
+                #[cfg(feature = "tracing")]
                 debug!("Skipping passive data segment {}", idx);
             }
         }
 
+        #[cfg(feature = "tracing")]
         info!("Data segment initialization complete for instance {}", self.instance_id);
         Ok(())
     }
@@ -901,10 +938,12 @@ impl ModuleInstance {
     /// Initialize element segments into tables
     /// This populates table entries from active element segments
     pub fn initialize_element_segments(&self) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, info};
         use wrt_foundation::types::ElementMode as WrtElementMode;
         use wrt_foundation::values::{Value as WrtValue, FuncRef as WrtFuncRef};
 
+        #[cfg(feature = "tracing")]
         info!("Initializing element segments for instance {} - module has {} element segments",
               self.instance_id, self.module.elements.len());
 
@@ -930,6 +969,7 @@ impl ModuleInstance {
                 .map_err(|_| Error::runtime_error("Failed to lock globals for element init"))?;
 
             for (idx, elem_segment) in self.module.elements.iter().enumerate() {
+                #[cfg(feature = "tracing")]
                 debug!("Processing element segment {}", idx);
                 // Only process active element segments
                 if let WrtElementMode::Active { table_index, offset: mode_offset } = &elem_segment.mode {
@@ -939,17 +979,20 @@ impl ModuleInstance {
                         if !instructions.is_empty() {
                             match &instructions[0] {
                                 wrt_foundation::types::Instruction::I32Const(value) => {
+                                    #[cfg(feature = "tracing")]
                                     debug!("Element segment {} has I32Const offset: {}", idx, value);
                                     *value as u32
                                 }
                                 wrt_foundation::types::Instruction::GlobalGet(global_idx) => {
                                     // Look up the global value for the offset
+                                    #[cfg(feature = "tracing")]
                                     debug!("Element segment {} has GlobalGet({}) offset", idx, global_idx);
                                     if let Some(global_wrapper) = globals.iter().nth(*global_idx as usize) {
                                         match global_wrapper.0.read() {
                                             Ok(global) => {
                                                 match global.get() {
                                                     wrt_foundation::values::Value::I32(v) => {
+                                                        #[cfg(feature = "tracing")]
                                                         debug!("Element segment {} global offset value: {}", idx, v);
                                                         *v as u32
                                                     },
@@ -971,6 +1014,7 @@ impl ModuleInstance {
                         *mode_offset
                     };
 
+                    #[cfg(feature = "tracing")]
                     debug!("Processing active element segment {}: table={}, offset={}, items={}",
                            idx, table_index, actual_offset, elem_segment.items.len());
 
@@ -1044,9 +1088,11 @@ impl ModuleInstance {
                         }
                     }
 
+                    #[cfg(feature = "tracing")]
                     info!("Initialized element segment {} ({} items) into table {} at offset {}",
                           idx, elem_segment.items.len(), table_index, actual_offset);
                 } else {
+                    #[cfg(feature = "tracing")]
                     debug!("Skipping non-active element segment {}", idx);
                 }
             }
@@ -1056,8 +1102,10 @@ impl ModuleInstance {
         {
             for idx in 0..self.module.elements.len() {
                 if let Ok(elem_segment) = self.module.elements.get(idx) {
+                    #[cfg(feature = "tracing")]
                     debug!("Processing element segment {}", idx);
                     if let WrtElementMode::Active { table_index, offset } = &elem_segment.mode {
+                        #[cfg(feature = "tracing")]
                         debug!("Processing active element segment {}", idx);
 
                         let table_idx = *table_index as usize;
@@ -1077,14 +1125,17 @@ impl ModuleInstance {
                             }
                         }
 
+                        #[cfg(feature = "tracing")]
                         info!("Initialized element segment {}", idx);
                     } else {
+                        #[cfg(feature = "tracing")]
                         debug!("Skipping non-active element segment {}", idx);
                     }
                 }
             }
         }
 
+        #[cfg(feature = "tracing")]
         info!("Element segment initialization complete for instance {}", self.instance_id);
         Ok(())
     }

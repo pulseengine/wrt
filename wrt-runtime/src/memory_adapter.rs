@@ -333,15 +333,18 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::{debug, trace};
 
         // Check that the range is valid
         self.check_range(offset, bytes.len() as u32)?;
 
         // Use the thread-safe write_shared method designed for Arc<Memory>
+        #[cfg(feature = "tracing")]
         trace!("Writing {} bytes to memory at offset {:#x}", bytes.len(), offset);
         self.memory.write_shared(offset, bytes)?;
 
+        #[cfg(feature = "tracing")]
         debug!("Successfully wrote {} bytes to memory at offset {:#x}", bytes.len(), offset);
         Ok(())
     }
@@ -352,6 +355,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn grow(&self, pages: u32) -> Result<u32> {
+        #[cfg(feature = "tracing")]
         use wrt_foundation::tracing::warn;
 
         // Get the current size
@@ -362,6 +366,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         // 1. Adding interior mutability to Memory for the grow operation
         // 2. Refactoring to use Arc<Mutex<Memory>> or Arc<RwLock<Memory>>
         // 3. Adding a new grow method that takes &self and uses interior mutability
+        #[cfg(feature = "tracing")]
         warn!("Memory grow operation requested but not yet implemented for Arc<Memory> (needs {} pages)", pages);
         Err(Error::runtime_execution_error(
             "Grow operation not yet implemented for Arc<Memory> - requires interior mutability",

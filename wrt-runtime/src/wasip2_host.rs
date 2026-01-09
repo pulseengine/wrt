@@ -20,9 +20,14 @@
 #[cfg(feature = "std")]
 use std::string::String;
 #[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
 
 use wrt_foundation::values::Value;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 use wrt_error::Result;
 

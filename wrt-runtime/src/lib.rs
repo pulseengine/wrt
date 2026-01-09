@@ -76,7 +76,8 @@ pub mod simd_runtime;
 pub mod simple_types;
 pub mod unified_types;
 
-// WASI Preview2 host implementation
+// WASI Preview2 host implementation (std-only due to OS dependencies)
+#[cfg(feature = "std")]
 pub mod wasip2_host;
 
 // Component model integration

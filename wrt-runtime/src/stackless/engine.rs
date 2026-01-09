@@ -4524,6 +4524,7 @@ impl StacklessEngine {
                                 return Err(wrt_error::Error::runtime_error("Cross-memory copy not yet implemented"));
                             }
 
+                            #[cfg(any(feature = "std", feature = "alloc"))]
                             match instance.memory(dst_mem_idx) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -4566,6 +4567,8 @@ impl StacklessEngine {
                                     return Err(e);
                                 }
                             }
+                            #[cfg(not(any(feature = "std", feature = "alloc")))]
+                            return Err(wrt_error::Error::runtime_error("MemoryCopy requires std or alloc feature"));
                         } else {
                             #[cfg(feature = "tracing")]
                             trace!("MemoryCopy: insufficient values on stack");
@@ -8187,6 +8190,7 @@ impl StacklessEngine {
     }
 
     /// Call cabi_realloc to allocate memory in WASM instance
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn call_cabi_realloc(&mut self, instance_id: usize, func_idx: usize,
                          old_ptr: u32, old_size: u32, align: u32, new_size: u32) -> Result<u32> {
         #[cfg(feature = "tracing")]
@@ -8457,11 +8461,10 @@ impl StacklessEngine {
         module: &crate::module::Module,
         instance_id: usize,
     ) -> Result<Option<Value>> {
+        #[cfg(feature = "std")]
         use std::io::Write;
 
         #[cfg(feature = "tracing")]
-
-
         debug!("WASI: Calling {}::{}", module_name, field_name);
 
         // NOTE: We skip the host_registry path for WASI functions because it doesn't
@@ -8592,37 +8595,50 @@ impl StacklessEngine {
                 };
 
                 #[cfg(feature = "tracing")]
-
-
                 debug!("WASI: exit called with code: {}", exit_code);
+
+                #[cfg(feature = "std")]
                 std::process::exit(exit_code);
+
+                #[cfg(not(feature = "std"))]
+                return Err(wrt_error::Error::runtime_error("WASI exit not supported in no_std"));
             }
 
             // wasi:clocks/wall-clock@0.2.x::now() -> datetime
             // Returns (seconds: u64, nanoseconds: u32) as a record
             ("wasi:clocks/wall-clock", "now") => {
-                use std::time::{SystemTime, UNIX_EPOCH};
+                #[cfg(feature = "std")]
+                {
+                    use std::time::{SystemTime, UNIX_EPOCH};
 
-                let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default();
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default();
 
-                let seconds = now.as_secs();
-                let nanoseconds = now.subsec_nanos();
+                    let seconds = now.as_secs();
+                    let nanoseconds = now.subsec_nanos();
 
-                #[cfg(feature = "tracing")]
-                trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::now()");
+                    #[cfg(feature = "tracing")]
+                    trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::now()");
 
-                // Return as two i64 values (the component model will handle conversion)
-                // The result is a record { seconds: u64, nanoseconds: u32 }
-                // For the core WASM ABI, this is returned as (i64, i32) or written to memory
-                // depending on the calling convention.
+                    // Return as two i64 values (the component model will handle conversion)
+                    // The result is a record { seconds: u64, nanoseconds: u32 }
+                    // For the core WASM ABI, this is returned as (i64, i32) or written to memory
+                    // depending on the calling convention.
 
-                // For now, push both values to the stack (caller will handle them)
-                // Note: This is a simplification - proper implementation depends on ABI
-                stack.push(Value::I64(seconds as i64));
-                stack.push(Value::I32(nanoseconds as i32));
-                Ok(None) // No single return value, results are on stack
+                    // For now, push both values to the stack (caller will handle them)
+                    // Note: This is a simplification - proper implementation depends on ABI
+                    stack.push(Value::I64(seconds as i64));
+                    stack.push(Value::I32(nanoseconds as i32));
+                    Ok(None) // No single return value, results are on stack
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    // no_std: return stub time values
+                    stack.push(Value::I64(0));
+                    stack.push(Value::I32(0));
+                    Ok(None)
+                }
             }
 
             // wasi:clocks/wall-clock@0.2.x::resolution() -> datetime
@@ -8672,6 +8688,7 @@ impl StacklessEngine {
 
                 // Read data from WebAssembly memory and write to stdout/stderr
                 // Use instance memory instead of module memory
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 if let Some(instance) = self.instances.get(&instance_id) {
                     if let Ok(memory_wrapper) = instance.memory(0) {
                         // Read data from instance memory into a buffer
@@ -8701,30 +8718,33 @@ impl StacklessEngine {
                             let write_buffer = &buffer[..actual_len];
 
                             // Write directly to stdout/stderr instead of using the memory-based function
-                            use std::io::Write;
-                            let result = if stream_handle == 1 {
-                                // Stdout
-                                let mut stdout = std::io::stdout();
-                                stdout.write_all(write_buffer)
-                                    .and_then(|_| stdout.flush())
-                                    .map(|_| 0)
-                                    .unwrap_or(1)
-                            } else if stream_handle == 2 {
-                                // Stderr
-                                let mut stderr = std::io::stderr();
-                                stderr.write_all(write_buffer)
-                                    .and_then(|_| stderr.flush())
-                                    .map(|_| 0)
-                                    .unwrap_or(1)
-                            } else {
-                                #[cfg(feature = "tracing")]
-                                debug!("WASI: Invalid stream handle: {}", stream_handle);
-                                1 // Error
+                            #[cfg(feature = "std")]
+                            let result = {
+                                use std::io::Write;
+                                if stream_handle == 1 {
+                                    // Stdout
+                                    let mut stdout = std::io::stdout();
+                                    stdout.write_all(write_buffer)
+                                        .and_then(|_| stdout.flush())
+                                        .map(|_| 0)
+                                        .unwrap_or(1)
+                                } else if stream_handle == 2 {
+                                    // Stderr
+                                    let mut stderr = std::io::stderr();
+                                    stderr.write_all(write_buffer)
+                                        .and_then(|_| stderr.flush())
+                                        .map(|_| 0)
+                                        .unwrap_or(1)
+                                } else {
+                                    #[cfg(feature = "tracing")]
+                                    debug!("WASI: Invalid stream handle: {}", stream_handle);
+                                    1 // Error
+                                }
                             };
+                            #[cfg(not(feature = "std"))]
+                            let result = 1i32; // no_std: cannot write
 
                             #[cfg(feature = "tracing")]
-
-
                             debug!("WASI: Write result: {}", result);
                             Ok(Some(Value::I64(result as i64))) // WASI Preview 2 returns i64 for result types
                         } else {
@@ -8741,8 +8761,12 @@ impl StacklessEngine {
                     }
                 } else {
                     #[cfg(feature = "tracing")]
-
                     debug!("WASI: No instance available for id={}", instance_id);
+                    Ok(Some(Value::I64(1))) // Error
+                }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                {
+                    // no_std without alloc: cannot allocate buffer for WASI I/O
                     Ok(Some(Value::I64(1))) // Error
                 }
             }
@@ -8779,14 +8803,19 @@ impl StacklessEngine {
                 #[cfg(feature = "tracing")]
                 debug!("WASI: blocking-flush: stream={}", stream_handle);
 
-                use std::io::Write;
-                let result = if stream_handle == 1 {
-                    std::io::stdout().flush().map(|_| 0).unwrap_or(1)
-                } else if stream_handle == 2 {
-                    std::io::stderr().flush().map(|_| 0).unwrap_or(1)
-                } else {
-                    1
+                #[cfg(feature = "std")]
+                let result = {
+                    use std::io::Write;
+                    if stream_handle == 1 {
+                        std::io::stdout().flush().map(|_| 0).unwrap_or(1)
+                    } else if stream_handle == 2 {
+                        std::io::stderr().flush().map(|_| 0).unwrap_or(1)
+                    } else {
+                        1
+                    }
                 };
+                #[cfg(not(feature = "std"))]
+                let result = 1i32; // no_std: cannot flush
                 Ok(Some(Value::I64(result as i64)))
             }
 
@@ -8795,6 +8824,7 @@ impl StacklessEngine {
             // ============================================
 
             // fd_write(fd: i32, iovs: i32, iovs_len: i32, nwritten: i32) -> errno
+            #[cfg(any(feature = "std", feature = "alloc"))]
             ("wasi_snapshot_preview1", "fd_write") => {
                 // Pop arguments in reverse order (they were pushed left to right)
                 let nwritten_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
@@ -8873,17 +8903,22 @@ impl StacklessEngine {
                             }
 
                             // Write to stdout (fd=1) or stderr (fd=2)
-                            use std::io::Write;
-                            let write_result = if fd == 1 {
-                                std::io::stdout().write_all(&data).and_then(|_| std::io::stdout().flush())
-                            } else if fd == 2 {
-                                std::io::stderr().write_all(&data).and_then(|_| std::io::stderr().flush())
-                            } else {
-                                // Other FDs not supported in stub
-                                #[cfg(feature = "tracing")]
-                                warn!(fd = fd, "[WASI-P1] fd_write: unsupported fd");
-                                Ok(())
+                            #[cfg(feature = "std")]
+                            let write_result = {
+                                use std::io::Write;
+                                if fd == 1 {
+                                    std::io::stdout().write_all(&data).and_then(|_| std::io::stdout().flush())
+                                } else if fd == 2 {
+                                    std::io::stderr().write_all(&data).and_then(|_| std::io::stderr().flush())
+                                } else {
+                                    // Other FDs not supported in stub
+                                    #[cfg(feature = "tracing")]
+                                    warn!(fd = fd, "[WASI-P1] fd_write: unsupported fd");
+                                    Ok(())
+                                }
                             };
+                            #[cfg(not(feature = "std"))]
+                            let write_result: core::result::Result<(), ()> = Ok(()); // no_std: silent no-op
 
                             if write_result.is_ok() {
                                 total += buf_len;
