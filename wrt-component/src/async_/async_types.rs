@@ -149,6 +149,47 @@ impl FromBytes for FutureHandle {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ErrorContextHandle(pub u32);
 
+/// Handle to a waitable set
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct WaitableSetHandle(pub u32);
+
+impl WaitableSetHandle {
+    /// Create a new waitable set handle
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Extract the inner value
+    pub const fn into_inner(self) -> u32 {
+        self.0
+    }
+}
+
+impl Checksummable for WaitableSetHandle {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for WaitableSetHandle {
+    fn to_bytes_with_provider<'a, P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for WaitableSetHandle {
+    fn from_bytes_with_provider<'a, P: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_error::Result<Self> {
+        Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
+    }
+}
+
 /// Stream type for incremental value passing
 #[derive(Debug, Clone)]
 pub struct Stream<T>

@@ -61,6 +61,7 @@ use crate::{
         StreamState,
         Waitable,
         WaitableSet,
+        WaitableSetHandle,
     },
     prelude::{
         ResourceHandle,
@@ -352,10 +353,34 @@ pub struct AsyncCanonicalAbi {
         32,
     >,
 
+    /// Waitable set registry
+    #[cfg(feature = "std")]
+    waitable_sets: BTreeMap<WaitableSetHandle, WaitableSet>,
+    #[cfg(not(any(feature = "std",)))]
+    waitable_sets: BoundedVec<
+        (WaitableSetHandle, WaitableSet),
+        32,
+    >,
+
+    /// Thread/task context storage (per-component implicit parameters)
+    /// Keys are context slot indices, values are the stored context values
+    #[cfg(feature = "std")]
+    context_slots: BTreeMap<u32, Value>,
+    #[cfg(not(any(feature = "std",)))]
+    context_slots: BoundedVec<(u32, Value), 64>,
+
+    /// Backpressure state for the current component
+    /// When true, the component is signaling it cannot accept more work
+    backpressure_enabled: bool,
+
+    /// Backpressure refcount - incremented by callers, decremented when work completes
+    backpressure_count: u32,
+
     /// Next handle IDs
     next_stream_handle:        u32,
     next_future_handle:        u32,
     next_error_context_handle: u32,
+    next_waitable_set_handle:  u32,
 }
 
 /// Stream value trait for type erasure
@@ -444,9 +469,24 @@ impl AsyncCanonicalAbi {
             error_contexts: {
                 BoundedVec::new()
             },
+            #[cfg(feature = "std")]
+            waitable_sets: BTreeMap::new(),
+            #[cfg(not(any(feature = "std",)))]
+            waitable_sets: {
+                BoundedVec::new()
+            },
+            #[cfg(feature = "std")]
+            context_slots: BTreeMap::new(),
+            #[cfg(not(any(feature = "std",)))]
+            context_slots: {
+                BoundedVec::new()
+            },
+            backpressure_enabled: false,
+            backpressure_count: 0,
             next_stream_handle: 0,
             next_future_handle: 0,
             next_error_context_handle: 0,
+            next_waitable_set_handle: 0,
         })
     }
 
@@ -921,6 +961,464 @@ impl AsyncCanonicalAbi {
         }
         Ok(())
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Waitable Set Operations (canon.waitable-set.*)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Create a new waitable set (canon waitable-set.new)
+    ///
+    /// Creates an empty waitable set that can be used to wait on multiple
+    /// async resources (streams, futures) simultaneously.
+    ///
+    /// Returns a handle to the newly created waitable set.
+    pub fn waitable_set_new(&mut self) -> Result<WaitableSetHandle> {
+        let handle = WaitableSetHandle::new(self.next_waitable_set_handle);
+        self.next_waitable_set_handle += 1;
+
+        let waitable_set = WaitableSet::new()?;
+
+        #[cfg(feature = "std")]
+        {
+            self.waitable_sets.insert(handle, waitable_set);
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            self.waitable_sets
+                .push((handle, waitable_set))
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many waitable sets"))?;
+        }
+
+        Ok(handle)
+    }
+
+    /// Add a waitable to a waitable set (canon waitable.join)
+    ///
+    /// Adds the specified waitable (stream or future endpoint) to the set.
+    /// Returns the index of the waitable within the set, which can be used
+    /// to identify which waitable became ready after wait/poll.
+    pub fn waitable_join(
+        &mut self,
+        set_handle: WaitableSetHandle,
+        waitable: Waitable,
+    ) -> Result<u32> {
+        #[cfg(feature = "std")]
+        {
+            // Check readiness before borrowing waitable_sets mutably
+            let is_ready = self.check_waitable_ready(&waitable)?;
+
+            if let Some(set) = self.waitable_sets.get_mut(&set_handle) {
+                let index = set.add(waitable)?;
+                if is_ready {
+                    set.mark_ready(index);
+                }
+                Ok(index)
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            // Check readiness before borrowing waitable_sets mutably
+            let is_ready = self.check_waitable_ready_no_std(&waitable);
+
+            for (handle, set) in &mut self.waitable_sets {
+                if *handle == set_handle {
+                    let index = set.add(waitable)?;
+                    if is_ready {
+                        set.mark_ready(index);
+                    }
+                    return Ok(index);
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+        }
+    }
+
+    /// Wait for any waitable in the set to become ready (canon waitable-set.wait)
+    ///
+    /// Blocks until at least one waitable in the set is ready. Returns the
+    /// index of a ready waitable. If multiple waitables are ready, any one
+    /// of them may be returned.
+    ///
+    /// This is the blocking version - use `waitable_set_poll` for non-blocking.
+    pub fn waitable_set_wait(&mut self, set_handle: WaitableSetHandle) -> Result<u32> {
+        // First, update the ready state of all waitables in the set
+        self.update_waitable_set_ready_state(set_handle)?;
+
+        #[cfg(feature = "std")]
+        {
+            if let Some(set) = self.waitable_sets.get(&set_handle) {
+                if let Some(ready_index) = set.first_ready() {
+                    Ok(ready_index)
+                } else {
+                    // In a real implementation, this would suspend the current task
+                    // and resume when a waitable becomes ready. For now, return an error.
+                    Err(wrt_error::Error::runtime_execution_error(
+                        "No waitables ready and blocking not yet implemented",
+                    ))
+                }
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, set) in &self.waitable_sets {
+                if *handle == set_handle {
+                    if let Some(ready_index) = set.first_ready() {
+                        return Ok(ready_index);
+                    } else {
+                        return Err(wrt_error::Error::runtime_execution_error(
+                            "No waitables ready and blocking not yet implemented",
+                        ));
+                    }
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+        }
+    }
+
+    /// Poll a waitable set for ready waitables (canon waitable-set.poll)
+    ///
+    /// Non-blocking check for ready waitables. Returns `Some(index)` if a
+    /// waitable is ready, `None` if no waitables are currently ready.
+    pub fn waitable_set_poll(&mut self, set_handle: WaitableSetHandle) -> Result<Option<u32>> {
+        // Update ready state before checking
+        self.update_waitable_set_ready_state(set_handle)?;
+
+        #[cfg(feature = "std")]
+        {
+            if let Some(set) = self.waitable_sets.get(&set_handle) {
+                Ok(set.first_ready())
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (handle, set) in &self.waitable_sets {
+                if *handle == set_handle {
+                    return Ok(set.first_ready());
+                }
+            }
+            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+        }
+    }
+
+    /// Drop a waitable set (canon waitable-set.drop)
+    ///
+    /// Releases the waitable set and all its resources. The waitables
+    /// themselves are not affected - only the set's tracking of them.
+    pub fn waitable_set_drop(&mut self, set_handle: WaitableSetHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if self.waitable_sets.remove(&set_handle).is_some() {
+                Ok(())
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            }
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            let initial_len = self.waitable_sets.len();
+            self.waitable_sets.retain(|(h, _)| *h != set_handle);
+            if self.waitable_sets.len() < initial_len {
+                Ok(())
+            } else {
+                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Waitable Set Helper Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Check if a waitable is currently ready (std version)
+    #[cfg(feature = "std")]
+    fn check_waitable_ready(&self, waitable: &Waitable) -> Result<bool> {
+        match waitable {
+            Waitable::StreamReadable(handle) => {
+                if let Some(stream) = self.streams.get(handle) {
+                    Ok(stream.is_readable())
+                } else {
+                    Ok(false)
+                }
+            }
+            Waitable::StreamWritable(handle) => {
+                if let Some(stream) = self.streams.get(handle) {
+                    Ok(stream.is_writable())
+                } else {
+                    Ok(false)
+                }
+            }
+            Waitable::FutureReadable(handle) => {
+                if let Some(future) = self.futures.get(handle) {
+                    Ok(future.is_readable())
+                } else {
+                    Ok(false)
+                }
+            }
+            Waitable::FutureWritable(handle) => {
+                if let Some(future) = self.futures.get(handle) {
+                    Ok(future.is_writable())
+                } else {
+                    Ok(false)
+                }
+            }
+        }
+    }
+
+    /// Check if a waitable is currently ready (no_std version)
+    #[cfg(not(any(feature = "std",)))]
+    fn check_waitable_ready_no_std(&self, waitable: &Waitable) -> bool {
+        match waitable {
+            Waitable::StreamReadable(handle) => {
+                for (h, stream) in &self.streams {
+                    if h == handle {
+                        return match stream {
+                            StreamValueEnum::Values(s) => !s.buffer.is_empty() || s.writable_closed,
+                        };
+                    }
+                }
+                false
+            }
+            Waitable::StreamWritable(handle) => {
+                for (h, stream) in &self.streams {
+                    if h == handle {
+                        return match stream {
+                            StreamValueEnum::Values(s) => !s.writable_closed,
+                        };
+                    }
+                }
+                false
+            }
+            Waitable::FutureReadable(handle) => {
+                for (h, future) in &self.futures {
+                    if h == handle {
+                        return match future {
+                            FutureValueEnum::Value(f) => f.state == FutureState::Ready,
+                        };
+                    }
+                }
+                false
+            }
+            Waitable::FutureWritable(handle) => {
+                for (h, future) in &self.futures {
+                    if h == handle {
+                        return match future {
+                            FutureValueEnum::Value(f) => f.state == FutureState::Pending && !f.writable_closed,
+                        };
+                    }
+                }
+                false
+            }
+        }
+    }
+
+    /// Update the ready state of all waitables in a set
+    fn update_waitable_set_ready_state(&mut self, set_handle: WaitableSetHandle) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            // Clone waitables to avoid borrow issues
+            let waitables: Vec<Waitable> = if let Some(set) = self.waitable_sets.get(&set_handle) {
+                set.waitables.clone()
+            } else {
+                return Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"));
+            };
+
+            // Check each waitable and update ready mask
+            let mut new_ready_mask: u64 = 0;
+            for (index, waitable) in waitables.iter().enumerate() {
+                if self.check_waitable_ready(waitable)? {
+                    new_ready_mask |= 1u64 << index;
+                }
+            }
+
+            // Update the set's ready mask
+            if let Some(set) = self.waitable_sets.get_mut(&set_handle) {
+                set.ready_mask = new_ready_mask;
+            }
+
+            Ok(())
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            // For no_std, we need to be more careful with borrows
+            let mut waitables_snapshot: BoundedVec<Waitable, 64> = BoundedVec::new();
+            let mut found = false;
+
+            for (handle, set) in &self.waitable_sets {
+                if *handle == set_handle {
+                    found = true;
+                    for w in &set.waitables {
+                        let _ = waitables_snapshot.push(w.clone());
+                    }
+                    break;
+                }
+            }
+
+            if !found {
+                return Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"));
+            }
+
+            // Check each waitable
+            let mut new_ready_mask: u64 = 0;
+            for (index, waitable) in waitables_snapshot.iter().enumerate() {
+                if self.check_waitable_ready_no_std(waitable) {
+                    new_ready_mask |= 1u64 << index;
+                }
+            }
+
+            // Update ready mask
+            for (handle, set) in &mut self.waitable_sets {
+                if *handle == set_handle {
+                    set.ready_mask = new_ready_mask;
+                    break;
+                }
+            }
+
+            Ok(())
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Context Operations (canon.context.*)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get a value from the thread/task context (canon context.get)
+    ///
+    /// Retrieves the value stored in the specified context slot. Context slots
+    /// provide implicit parameter passing through the call stack without
+    /// explicitly threading values through every function call.
+    ///
+    /// # Arguments
+    /// * `slot` - The context slot index to retrieve from
+    ///
+    /// # Returns
+    /// * `Ok(Some(value))` - If a value is stored in the slot
+    /// * `Ok(None)` - If the slot is empty (no value set)
+    /// * `Err(...)` - If an error occurs
+    pub fn context_get(&self, slot: u32) -> Result<Option<Value>> {
+        #[cfg(feature = "std")]
+        {
+            Ok(self.context_slots.get(&slot).cloned())
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            for (s, value) in &self.context_slots {
+                if *s == slot {
+                    return Ok(Some(value.clone()));
+                }
+            }
+            Ok(None)
+        }
+    }
+
+    /// Set a value in the thread/task context (canon context.set)
+    ///
+    /// Stores a value in the specified context slot. Setting `None` removes
+    /// any existing value from the slot. Context values are inherited by
+    /// child tasks and can be overridden by callees.
+    ///
+    /// # Arguments
+    /// * `slot` - The context slot index to store into
+    /// * `value` - The value to store, or `None` to clear the slot
+    ///
+    /// # Returns
+    /// * `Ok(())` - On success
+    /// * `Err(...)` - If an error occurs (e.g., too many slots in no_std)
+    pub fn context_set(&mut self, slot: u32, value: Option<Value>) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            match value {
+                Some(v) => {
+                    self.context_slots.insert(slot, v);
+                }
+                None => {
+                    self.context_slots.remove(&slot);
+                }
+            }
+            Ok(())
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            match value {
+                Some(v) => {
+                    // Try to update existing slot first
+                    for (s, existing) in &mut self.context_slots {
+                        if *s == slot {
+                            *existing = v;
+                            return Ok(());
+                        }
+                    }
+                    // Not found, add new
+                    self.context_slots
+                        .push((slot, v))
+                        .map_err(|_| wrt_error::Error::resource_exhausted("Too many context slots"))?;
+                    Ok(())
+                }
+                None => {
+                    self.context_slots.retain(|(s, _)| *s != slot);
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Backpressure Operations (canon.backpressure.*)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enable or disable backpressure (canon backpressure.set)
+    ///
+    /// When backpressure is enabled, callers should avoid sending more work
+    /// to this component until backpressure is released. This is used for
+    /// flow control in async component compositions.
+    ///
+    /// # Arguments
+    /// * `enabled` - Whether to enable (true) or disable (false) backpressure
+    pub fn backpressure_set(&mut self, enabled: bool) -> Result<()> {
+        self.backpressure_enabled = enabled;
+        Ok(())
+    }
+
+    /// Check if backpressure is currently enabled
+    ///
+    /// Returns true if the component is signaling that it cannot accept
+    /// more work at the moment.
+    pub fn backpressure_get(&self) -> bool {
+        self.backpressure_enabled
+    }
+
+    /// Increment the backpressure count (canon backpressure.inc)
+    ///
+    /// Used by callers to indicate they have pending work for this component.
+    /// The component uses this count to decide when to enable/disable
+    /// backpressure based on its capacity.
+    pub fn backpressure_inc(&mut self) -> Result<u32> {
+        self.backpressure_count = self.backpressure_count.saturating_add(1);
+        Ok(self.backpressure_count)
+    }
+
+    /// Decrement the backpressure count (canon backpressure.dec)
+    ///
+    /// Used by callers when work completes. When the count reaches zero,
+    /// the component may choose to disable backpressure.
+    pub fn backpressure_dec(&mut self) -> Result<u32> {
+        self.backpressure_count = self.backpressure_count.saturating_sub(1);
+        Ok(self.backpressure_count)
+    }
+
+    /// Get the current backpressure count
+    pub fn backpressure_count(&self) -> u32 {
+        self.backpressure_count
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Task Operations (wrappers around TaskManager)
+    // ─────────────────────────────────────────────────────────────────────────
 
     /// Task return operation
     pub fn task_return(&mut self, values: ComponentVec<Value>) -> Result<()> {
