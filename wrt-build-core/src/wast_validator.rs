@@ -11,7 +11,9 @@
 //! immediately, which is required for WAST conformance testing.
 
 use anyhow::{anyhow, Context, Result};
+use std::collections::HashSet;
 use wrt_format::module::{Function, Global, ImportDesc, Module};
+use wrt_format::pure_format_types::{PureElementInit, PureElementSegment};
 use wrt_foundation::ValueType;
 
 /// Type of a value on the stack
@@ -86,16 +88,19 @@ impl WastModuleValidator {
             return Err(anyhow!("unknown memory"));
         }
 
+        // Collect declared functions for ref.func validation
+        let declared_functions = Self::collect_declared_functions(module);
+
         // Validate functions
         for (func_idx, func) in module.functions.iter().enumerate() {
-            if let Err(e) = Self::validate_function(func_idx, func, module) {
+            if let Err(e) = Self::validate_function(func_idx, func, module, &declared_functions) {
                 return Err(e.context(format!("Function {} validation failed", func_idx)));
             }
         }
 
         // Validate globals
         for (global_idx, global) in module.globals.iter().enumerate() {
-            Self::validate_global(global_idx, global, module)
+            Self::validate_global(global_idx, global, module, &declared_functions)
                 .context(format!("Global {} validation failed", global_idx))?;
         }
 
@@ -148,7 +153,12 @@ impl WastModuleValidator {
     }
 
     /// Validate a single function
-    fn validate_function(func_idx: usize, func: &Function, module: &Module) -> Result<()> {
+    fn validate_function(
+        func_idx: usize,
+        func: &Function,
+        module: &Module,
+        declared_functions: &HashSet<u32>,
+    ) -> Result<()> {
         // Get the function's type signature
         if func.type_idx as usize >= module.types.len() {
             return Err(anyhow!(
@@ -162,7 +172,7 @@ impl WastModuleValidator {
 
         // Parse and validate the function body
         // Note: CleanCoreFuncType has the same structure as FuncType (params, results)
-        Self::validate_function_body(&func.code, func_type_clean, &func.locals, module)
+        Self::validate_function_body(&func.code, func_type_clean, &func.locals, module, declared_functions)
     }
 
     /// Validate a function body bytecode
@@ -171,6 +181,7 @@ impl WastModuleValidator {
         func_type: &wrt_foundation::CleanCoreFuncType,
         locals: &[ValueType],
         module: &Module,
+        declared_functions: &HashSet<u32>,
     ) -> Result<()> {
         // Build local variable types: parameters first, then locals
         let mut local_types = Vec::new();
@@ -1327,8 +1338,20 @@ impl WastModuleValidator {
                 // ref.func (0xD2)
                 0xD2 => {
                     // Read function index
-                    let (_func_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (func_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+
+                    // Validate function index is within bounds
+                    let total_funcs = Self::total_functions(module);
+                    if func_idx as usize >= total_funcs {
+                        return Err(anyhow!("unknown function {}", func_idx));
+                    }
+
+                    // Validate function is declared (imported or in element segment)
+                    if !declared_functions.contains(&func_idx) {
+                        return Err(anyhow!("undeclared function reference"));
+                    }
+
                     stack.push(StackType::FuncRef);
                 }
 
@@ -1381,11 +1404,12 @@ impl WastModuleValidator {
         global_idx: usize,
         global: &Global,
         module: &Module,
+        declared_functions: &HashSet<u32>,
     ) -> Result<()> {
         // Validate that the initialization expression is a valid constant expression
         // and produces a value of the correct type
         let expected_type = StackType::from_value_type(global.global_type.value_type);
-        Self::validate_const_expr_typed(&global.init, module, global_idx, expected_type)
+        Self::validate_const_expr_typed(&global.init, module, global_idx, expected_type, declared_functions)
             .with_context(|| format!("Invalid constant expression in global {}", global_idx))
     }
 
@@ -1395,6 +1419,7 @@ impl WastModuleValidator {
         module: &Module,
         context_global_idx: usize,
         expected_type: StackType,
+        declared_functions: &HashSet<u32>,
     ) -> Result<()> {
         let num_global_imports = Self::count_global_imports(module);
         let mut pos = 0;
@@ -1489,7 +1514,20 @@ impl WastModuleValidator {
                 }
                 // ref.func
                 0xD2 => {
-                    pos = Self::skip_leb128_unsigned(init_bytes, pos)?;
+                    let (func_idx, new_pos) = Self::read_leb128_unsigned(init_bytes, pos)?;
+                    pos = new_pos;
+
+                    // Validate function index is within bounds
+                    let total_funcs = Self::total_functions(module);
+                    if func_idx as usize >= total_funcs {
+                        return Err(anyhow!("unknown function {}", func_idx));
+                    }
+
+                    // Validate function is declared (imported or in element segment)
+                    if !declared_functions.contains(&func_idx) {
+                        return Err(anyhow!("undeclared function reference"));
+                    }
+
                     stack.push(StackType::FuncRef);
                 }
                 // Extended constant expressions (WebAssembly 2.0)
@@ -1685,6 +1723,117 @@ impl WastModuleValidator {
     /// Get the total number of globals (imports + defined)
     fn total_globals(module: &Module) -> usize {
         Self::count_global_imports(module) + module.globals.len()
+    }
+
+    /// Count the number of function imports in a module
+    fn count_function_imports(module: &Module) -> usize {
+        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Function(_))).count()
+    }
+
+    /// Get the total number of functions (imports + defined)
+    fn total_functions(module: &Module) -> usize {
+        Self::count_function_imports(module) + module.functions.len()
+    }
+
+    /// Collect all function indices that are "declared" for ref.func validation
+    /// According to WebAssembly spec, C.refs includes function indices from:
+    /// 1. Element segments (active, passive, or declarative)
+    /// 2. Exports
+    /// 3. Start function
+    /// 4. Global initializer expressions (ref.func in globals)
+    /// 5. Imported functions (implicitly declared)
+    fn collect_declared_functions(module: &Module) -> HashSet<u32> {
+        let mut declared = HashSet::new();
+
+        // All imported functions are implicitly declared
+        let num_func_imports = Self::count_function_imports(module);
+        for i in 0..num_func_imports {
+            declared.insert(i as u32);
+        }
+
+        // Collect function indices from element segments
+        for elem in &module.elements {
+            Self::collect_functions_from_element(&elem, &mut declared);
+        }
+
+        // Collect function indices from exports
+        for export in &module.exports {
+            if export.kind == wrt_format::module::ExportKind::Function {
+                declared.insert(export.index);
+            }
+        }
+
+        // Note: The start function is NOT included in C.refs per the spec
+        // It specifies which function to call at startup, but doesn't "declare" it for ref.func
+
+        // Collect function indices from global initializers (ref.func in globals)
+        for global in &module.globals {
+            Self::extract_ref_func_from_expr(&global.init, &mut declared);
+        }
+
+        // Collect function indices from element segment offset expressions
+        for elem in &module.elements {
+            Self::extract_ref_func_from_expr(&elem.offset_expr_bytes, &mut declared);
+        }
+
+        // Collect function indices from data segment offset expressions
+        for data in &module.data {
+            Self::extract_ref_func_from_expr(&data.offset_expr_bytes, &mut declared);
+        }
+
+        declared
+    }
+
+    /// Extract function indices from an element segment
+    fn collect_functions_from_element(elem: &PureElementSegment, declared: &mut HashSet<u32>) {
+        match &elem.init_data {
+            PureElementInit::FunctionIndices(indices) => {
+                for &idx in indices {
+                    declared.insert(idx);
+                }
+            }
+            PureElementInit::ExpressionBytes(exprs) => {
+                // Parse expression bytes to find ref.func instructions
+                for expr_bytes in exprs {
+                    Self::extract_ref_func_from_expr(expr_bytes, declared);
+                }
+            }
+        }
+    }
+
+    /// Extract ref.func indices from expression bytes
+    fn extract_ref_func_from_expr(expr: &[u8], declared: &mut HashSet<u32>) {
+        let mut pos = 0;
+        while pos < expr.len() {
+            let opcode = expr[pos];
+            pos += 1;
+
+            match opcode {
+                0xD2 => {
+                    // ref.func - parse the function index
+                    if let Ok((func_idx, new_pos)) = Self::read_leb128_unsigned(expr, pos) {
+                        declared.insert(func_idx);
+                        pos = new_pos;
+                    } else {
+                        break;
+                    }
+                }
+                0xD0 => {
+                    // ref.null - skip the heap type byte
+                    if pos < expr.len() {
+                        pos += 1;
+                    }
+                }
+                0x0B => {
+                    // end - stop parsing
+                    break;
+                }
+                _ => {
+                    // Unknown opcode in element expression - skip
+                    break;
+                }
+            }
+        }
     }
 
     /// Pop a value from the stack, checking its type
