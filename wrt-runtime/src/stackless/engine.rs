@@ -164,8 +164,9 @@ fn strip_wasi_version(interface: &str) -> &str {
 }
 
 /// Maximum number of concurrent module instances
-/// Increased to 64 for WAST conformance testing which loads many modules
-const MAX_CONCURRENT_INSTANCES: usize = 64;
+/// Set to 512 to handle large WAST test files that may have hundreds of module directives
+/// (e.g., align.wast has 117 module directives including assert_invalid)
+const MAX_CONCURRENT_INSTANCES: usize = 512;
 
 /// Maximum call depth to prevent stack overflow from recursive calls
 /// WebAssembly spec recommends supporting at least 1000 levels.
@@ -677,6 +678,17 @@ impl StacklessEngine {
     /// previous errors don't cause false "call stack exhausted" errors.
     pub fn reset_call_depth(&mut self) {
         self.call_frames_count = 0;
+    }
+
+    /// Clear all loaded module instances
+    ///
+    /// This is useful for WAST testing where many modules are loaded in sequence
+    /// and we want to avoid hitting instance limits. Note that this invalidates
+    /// all existing instance IDs.
+    pub fn clear_instances(&mut self) {
+        self.instances.clear();
+        // Reset instance ID counter to avoid confusion with old IDs
+        self.next_instance_id.store(0, Ordering::Relaxed);
     }
 
     /// Execute a function in the specified instance
@@ -8541,17 +8553,94 @@ impl StacklessEngine {
             }
 
             ("wasi:cli/environment", "get-arguments") => {
-                if let Some(stub) = stub_mem {
-                    #[cfg(feature = "tracing")]
-
-                    debug!("WASI: get-arguments: returning empty list ptr={}", stub.empty_list);
-                    Ok(Some(Value::I32(stub.empty_list as i32)))
+                // Pop the return area pointer (canonical ABI for list<string>)
+                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
+                    ptr as u32
                 } else {
-                    #[cfg(feature = "tracing")]
+                    return Err(wrt_error::Error::runtime_error("get-arguments: missing return_area"));
+                };
 
-                    debug!("WASI: get-arguments: stub not initialized, returning 0");
-                    Ok(Some(Value::I32(0)))
+                // Get the WASI args from global state
+                #[cfg(all(feature = "std", feature = "wasi"))]
+                let args: Vec<String> = wrt_wasi::get_global_wasi_args();
+
+                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
+                let args: Vec<String> = Vec::new();
+
+                #[cfg(feature = "tracing")]
+                trace!(
+                    return_area = format_args!("0x{:x}", return_area),
+                    args_len = args.len(),
+                    args = ?args,
+                    "[WASI-P2] get-arguments"
+                );
+
+                if args.is_empty() {
+                    // Empty list: write (0, 0) to return area
+                    if let Some(instance) = self.instances.get(&instance_id) {
+                        if let Ok(memory) = instance.memory(0) {
+                            let _ = memory.0.write_shared(return_area, &0u32.to_le_bytes());
+                            let _ = memory.0.write_shared(return_area + 4, &0u32.to_le_bytes());
+                        }
+                    }
+                    return Ok(None);
                 }
+
+                // Calculate memory layout:
+                // - list_ptr at 0x200: array of (ptr, len) pairs - 8 bytes per arg
+                // - string_data starts after the list entries
+                let list_ptr: u32 = 0x200;
+                let list_size = (args.len() * 8) as u32;
+                let mut string_ptr = list_ptr + list_size;
+
+                if let Some(instance) = self.instances.get(&instance_id) {
+                    if let Ok(memory) = instance.memory(0) {
+                        // First pass: write string data, collecting (ptr, len) for each
+                        let mut entries: Vec<(u32, u32)> = Vec::new();
+
+                        for arg in &args {
+                            let bytes = arg.as_bytes();
+                            let len = bytes.len() as u32;
+
+                            // Write string bytes
+                            if memory.0.write_shared(string_ptr, bytes).is_ok() {
+                                entries.push((string_ptr, len));
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    arg = %arg,
+                                    ptr = format_args!("0x{:x}", string_ptr),
+                                    len = len,
+                                    "[WASI-P2] wrote arg string"
+                                );
+                            }
+
+                            string_ptr += len;
+                            // Align to 4 bytes
+                            string_ptr = (string_ptr + 3) & !3;
+                        }
+
+                        // Second pass: write (ptr, len) entries at list_ptr
+                        for (i, (ptr, len)) in entries.iter().enumerate() {
+                            let entry_offset = list_ptr + (i as u32 * 8);
+                            let _ = memory.0.write_shared(entry_offset, &ptr.to_le_bytes());
+                            let _ = memory.0.write_shared(entry_offset + 4, &len.to_le_bytes());
+                        }
+
+                        // Write (list_ptr, count) to return area
+                        let _ = memory.0.write_shared(return_area, &list_ptr.to_le_bytes());
+                        let _ = memory.0.write_shared(return_area + 4, &(args.len() as u32).to_le_bytes());
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            list_ptr = format_args!("0x{:x}", list_ptr),
+                            count = args.len(),
+                            return_area = format_args!("0x{:x}", return_area),
+                            "[WASI-P2] wrote args list to return area"
+                        );
+                    }
+                }
+
+                Ok(None) // Result is written to memory, not returned on stack
             }
 
             ("wasi:cli/environment", "initial-cwd") => {
@@ -8605,8 +8694,15 @@ impl StacklessEngine {
             }
 
             // wasi:clocks/wall-clock@0.2.x::now() -> datetime
-            // Returns (seconds: u64, nanoseconds: u32) as a record
+            // Returns datetime { seconds: u64, nanoseconds: u32 } via return area pointer
             ("wasi:clocks/wall-clock", "now") => {
+                // Pop the return area pointer (canonical ABI writes records to memory)
+                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
+                    ptr as u32
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing return area for wall-clock::now"));
+                };
+
                 #[cfg(feature = "std")]
                 {
                     use std::time::{SystemTime, UNIX_EPOCH};
@@ -8619,39 +8715,62 @@ impl StacklessEngine {
                     let nanoseconds = now.subsec_nanos();
 
                     #[cfg(feature = "tracing")]
-                    trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::now()");
+                    trace!(seconds = seconds, nanoseconds = nanoseconds, return_area = return_area, "[WASI] wall-clock::now()");
 
-                    // Return as two i64 values (the component model will handle conversion)
-                    // The result is a record { seconds: u64, nanoseconds: u32 }
-                    // For the core WASM ABI, this is returned as (i64, i32) or written to memory
-                    // depending on the calling convention.
+                    // Write datetime record to return area:
+                    // offset 0: u64 seconds (8 bytes, little-endian)
+                    // offset 8: u32 nanoseconds (4 bytes, little-endian)
+                    if let Some(instance) = self.instances.get(&instance_id) {
+                        if let Ok(memory) = instance.memory(0) {
+                            // Write seconds (u64) at offset 0
+                            let seconds_bytes = seconds.to_le_bytes();
+                            let _ = memory.0.write_shared(return_area, &seconds_bytes);
 
-                    // For now, push both values to the stack (caller will handle them)
-                    // Note: This is a simplification - proper implementation depends on ABI
-                    stack.push(Value::I64(seconds as i64));
-                    stack.push(Value::I32(nanoseconds as i32));
-                    Ok(None) // No single return value, results are on stack
+                            // Write nanoseconds (u32) at offset 8
+                            let nanos_bytes = nanoseconds.to_le_bytes();
+                            let _ = memory.0.write_shared(return_area + 8, &nanos_bytes);
+                        }
+                    }
+
+                    Ok(None) // No return value on stack - result is in memory
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    // no_std: return stub time values
-                    stack.push(Value::I64(0));
-                    stack.push(Value::I32(0));
+                    // no_std: write stub time values to return area
+                    if let Some(instance) = self.instances.get(&instance_id) {
+                        if let Ok(memory) = instance.memory(0) {
+                            let _ = memory.0.write_shared(return_area, &0u64.to_le_bytes());
+                            let _ = memory.0.write_shared(return_area + 8, &0u32.to_le_bytes());
+                        }
+                    }
                     Ok(None)
                 }
             }
 
             // wasi:clocks/wall-clock@0.2.x::resolution() -> datetime
             ("wasi:clocks/wall-clock", "resolution") => {
+                // Pop the return area pointer (canonical ABI writes records to memory)
+                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
+                    ptr as u32
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing return area for wall-clock::resolution"));
+                };
+
                 // Return nanosecond resolution (1 nanosecond = best resolution)
                 let seconds: u64 = 0;
                 let nanoseconds: u32 = 1;
 
                 #[cfg(feature = "tracing")]
-                trace!(seconds = seconds, nanoseconds = nanoseconds, "[WASI] wall-clock::resolution()");
+                trace!(seconds = seconds, nanoseconds = nanoseconds, return_area = return_area, "[WASI] wall-clock::resolution()");
 
-                stack.push(Value::I64(seconds as i64));
-                stack.push(Value::I32(nanoseconds as i32));
+                // Write datetime record to return area
+                if let Some(instance) = self.instances.get(&instance_id) {
+                    if let Ok(memory) = instance.memory(0) {
+                        let _ = memory.0.write_shared(return_area, &seconds.to_le_bytes());
+                        let _ = memory.0.write_shared(return_area + 8, &nanoseconds.to_le_bytes());
+                    }
+                }
+
                 Ok(None)
             }
 
@@ -8659,7 +8778,16 @@ impl StacklessEngine {
             ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") => {
                 // use crate::wasi_preview2; // TODO: implement wasi_preview2 module
 
-                // Pop arguments: stream, data_ptr, data_len
+                // Pop arguments in canonical ABI order for methods returning result<_, error>:
+                // Stack (top to bottom): [return_area, data_len, data_ptr, stream_handle]
+                // Canonical method calls: (self, ptr, len, return_area)
+                // Pop return_area first (it's on top)
+                let return_area = if let Some(Value::I32(ra)) = stack.pop() {
+                    ra
+                } else {
+                    return Err(wrt_error::Error::runtime_error("Missing return_area argument"));
+                };
+
                 let data_len = if let Some(Value::I32(len)) = stack.pop() {
                     len
                 } else {
@@ -8672,6 +8800,7 @@ impl StacklessEngine {
                     return Err(wrt_error::Error::runtime_error("Missing data_ptr argument"));
                 };
 
+                // Pop the actual stream handle (self/receiver)
                 let stream_handle = if let Some(Value::I32(s)) = stack.pop() {
                     s
                 } else {
@@ -8749,13 +8878,11 @@ impl StacklessEngine {
                             Ok(Some(Value::I64(result as i64))) // WASI Preview 2 returns i64 for result types
                         } else {
                             #[cfg(feature = "tracing")]
-
                             debug!("WASI: Failed to read memory at ptr={}, len={}", data_ptr, data_len);
                             Ok(Some(Value::I64(1))) // Error
                         }
                     } else {
                         #[cfg(feature = "tracing")]
-
                         debug!("WASI: Failed to get memory from instance");
                         Ok(Some(Value::I64(1))) // Error
                     }
