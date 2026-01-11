@@ -318,6 +318,34 @@ impl<'a> RuntimeState for ExecutionState<'a> {
     }
 }
 
+/// Calculate effective memory address with overflow checking.
+/// Per WebAssembly spec, if base + offset overflows or exceeds u32::MAX, it traps.
+/// Returns Ok(effective_address) or Err if overflow occurs.
+#[inline]
+fn calculate_effective_address(base: i32, offset: u32, size: u32) -> wrt_error::Result<u64> {
+    // Convert base to u32 first (WebAssembly treats addresses as unsigned)
+    let base_u32 = base as u32;
+
+    // Check for overflow in base + offset
+    let effective_addr = (base_u32 as u64)
+        .checked_add(offset as u64)
+        .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+
+    // Check for overflow when adding access size
+    let end_addr = effective_addr
+        .checked_add(size as u64)
+        .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+
+    // If end_addr exceeds u32::MAX + 1 (4GB), it's out of bounds for 32-bit memory
+    // But we let the actual memory bounds check handle the memory size comparison
+    // Just ensure the calculation doesn't overflow
+    if end_addr > u64::from(u32::MAX) + 1 {
+        return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+    }
+
+    Ok(effective_addr)
+}
+
 impl StacklessEngine {
     /// Create a new stackless engine
     #[cfg(any(feature = "std", feature = "alloc"))]
@@ -2868,7 +2896,8 @@ impl StacklessEngine {
                     // The instance has data segments applied, the module is just a template
                     Instruction::I32Load(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            // Calculate effective address with overflow checking (4 bytes for i32)
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!("I32Load: reading from address {} (base={}, offset={})", offset, addr, mem_arg.offset);
                             // Get memory from INSTANCE (not module) - instance has initialized data
@@ -2895,21 +2924,22 @@ impl StacklessEngine {
                                                 pc = pc,
                                                 "[MEM-OOB] I32Load failed"
                                             );
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
                                     trace!("I32Load: failed to get memory at index {}: {:?}", mem_arg.memory_index, e);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Store(mem_arg) => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            // Calculate effective address with overflow checking (4 bytes for i32)
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!("I32Store: writing value {} to address {} (base={}, offset={})", value, offset, addr, mem_arg.offset);
 
@@ -2924,24 +2954,20 @@ impl StacklessEngine {
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Store: successfully wrote value {} to address {}", value, offset);
                                         }
-                                        Err(e) => {
-                                            #[cfg(feature = "tracing")]
-                                            trace!("I32Store: write failed: {:?}", e);
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
-                                Err(e) => {
-                                    #[cfg(feature = "tracing")]
-                                    trace!("I32Store: failed to get memory at index {}: {:?}", mem_arg.memory_index, e);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Load8S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!("I32Load8S: reading from address {}", offset);
                             match instance.memory(mem_arg.memory_index as u32) {
@@ -2956,19 +2982,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I32(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Load8U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -2981,19 +3007,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I32(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Load16S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -3006,19 +3032,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I32(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Load16U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -3031,106 +3057,66 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I32(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Store8(mem_arg) => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
 
                             #[cfg(feature = "tracing")]
-                            {
-                                let span = info_span!(
-                                    "i32_store8",
-                                    instance_id = instance_id,
-                                    address = offset,
-                                    value = value & 0xFF
-                                );
-                                let _guard = span.enter();
+                            trace!("I32Store8: writing byte {} to address {}", value & 0xFF, offset);
 
-                                // Debug: Show memory availability
-                                info!("Storing byte {} at address {:#x}", value & 0xFF, offset);
-                                if module.memories.is_empty() {
-                                    warn!("Module has NO memory - using instance memory instead");
-                                }
-                            }
-
-                            // CRITICAL FIX: Use instance memory, not module memory
-                            // The instance has the properly linked memory from imports
                             match instance.memory(mem_arg.memory_index) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
-
-                                    // Debug: Log the memory size
-                                    #[cfg(feature = "tracing")]
-                                    {
-                                        let memory_pages = memory.size();
-                                        let memory_bytes = memory_pages as usize * 65536;
-                                        info!("Memory info: {} pages ({} bytes), trying to write at {:#x} ({} bytes)",
-                                              memory_pages, memory_bytes, offset, offset);
-                                        if offset as usize >= memory_bytes {
-                                            error!("BOUNDS CHECK FAILED: offset {:#x} >= memory size {} bytes", offset, memory_bytes);
-                                        }
-                                    }
-
                                     let bytes = [(value & 0xFF) as u8];
-                                    // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
                                     match memory.write_shared(offset, &bytes) {
-                                        Ok(()) => {
-                                            #[cfg(feature = "tracing")]
-                                            info!("✓ Successfully wrote byte to address {:#x} using instance memory", offset);
-                                        }
-                                        Err(e) => {
-                                            #[cfg(feature = "tracing")]
-                                            error!("Memory write failed at address {:#x}: {:?}", offset, e);
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        Ok(()) => {}
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
-                                Err(e) => {
-                                    #[cfg(feature = "tracing")]
-                                    error!("Failed to get instance memory at index {}: {:?}", mem_arg.memory_index, e);
-                                    return Err(wrt_error::Error::runtime_trap("Instance has no memory - check memory imports"));
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I32Store16(mem_arg) => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
                                     let bytes = (value as u16).to_le_bytes();
-                                    // ASIL-B COMPLIANT: Use write_shared for thread-safe writes
                                     match memory.write_shared(offset, &bytes) {
                                         Ok(()) => {
                                             #[cfg(feature = "tracing")]
                                             trace!("I32Store16: successfully wrote value {} to address {}", value as u16, offset);
                                         }
-                                        Err(_e) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        Err(_) => {
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
-                                Err(_e) => {
-                                    #[cfg(feature = "tracing")]
-                                    trace!("I32Store16: failed to get memory at index {}", mem_arg.memory_index);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                Err(_) => {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 8)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -3163,19 +3149,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Store(mem_arg) => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 8)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -3187,14 +3173,14 @@ impl StacklessEngine {
                                             trace!("I64Store: successfully wrote value {} to address {}", value, offset);
                                         }
                                         Err(_e) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_e) => {
                                     #[cfg(feature = "tracing")]
                                     trace!("I64Store: failed to get memory at index {}", mem_arg.memory_index);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
@@ -3204,7 +3190,7 @@ impl StacklessEngine {
                     // ========================================
                     Instruction::I64Load8S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3224,19 +3210,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load8U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3256,19 +3242,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load16S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3288,19 +3274,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load16U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3320,19 +3306,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load32S(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3352,19 +3338,19 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Load32U(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3384,12 +3370,12 @@ impl StacklessEngine {
                                             operand_stack.push(Value::I64(value));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
@@ -3399,7 +3385,7 @@ impl StacklessEngine {
                     // ========================================
                     Instruction::I64Store8(mem_arg) => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 1)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3419,21 +3405,21 @@ impl StacklessEngine {
                                             trace!("I64Store8: successfully wrote value {} to address {}", value & 0xFF, offset);
                                         }
                                         Err(_e) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_e) => {
                                     #[cfg(feature = "tracing")]
                                     trace!("I64Store8: failed to get memory at index {}", mem_arg.memory_index);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Store16(mem_arg) => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 2)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3453,21 +3439,21 @@ impl StacklessEngine {
                                             trace!("I64Store16: successfully wrote value {} to address {}", value & 0xFFFF, offset);
                                         }
                                         Err(_e) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_e) => {
                                     #[cfg(feature = "tracing")]
                                     trace!("I64Store16: failed to get memory at index {}", mem_arg.memory_index);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::I64Store32(mem_arg) => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!(
                                 instance_id = instance_id,
@@ -3487,14 +3473,14 @@ impl StacklessEngine {
                                             trace!("I64Store32: successfully wrote value {} to address {}", value & 0xFFFFFFFF, offset);
                                         }
                                         Err(_e) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_e) => {
                                     #[cfg(feature = "tracing")]
                                     trace!("I64Store32: failed to get memory at index {}", mem_arg.memory_index);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
@@ -3511,7 +3497,7 @@ impl StacklessEngine {
                         #[cfg(feature = "tracing")]
                         trace!("F32Load: stack before pop has {} elements", operand_stack.len());
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             #[cfg(feature = "tracing")]
                             trace!("F32Load: addr={}, offset={}, mem_idx={}", addr, offset, mem_arg.memory_index);
                             match instance.memory(mem_arg.memory_index as u32) {
@@ -3530,14 +3516,14 @@ impl StacklessEngine {
                                         Err(e) => {
                                             #[cfg(feature = "tracing")]
                                             error!("F32Load: memory read error: {:?}", e);
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
                                     error!("F32Load: memory access error: {:?}", e);
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         } else {
@@ -3547,24 +3533,24 @@ impl StacklessEngine {
                     }
                     Instruction::F32Store(mem_arg) => {
                         if let (Some(Value::F32(bits)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 4)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
                                     let bytes = bits.0.to_le_bytes();
                                     if memory.write_shared(offset, &bytes).is_err() {
-                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                     }
                                 }
                                 Err(_e) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::F64Load(mem_arg) => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 8)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -3575,29 +3561,29 @@ impl StacklessEngine {
                                             operand_stack.push(Value::F64(FloatBits64(bits)));
                                         }
                                         Err(_) => {
-                                            return Err(wrt_error::Error::runtime_trap("Memory read out of bounds"));
+                                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                         }
                                     }
                                 }
                                 Err(_) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
                     }
                     Instruction::F64Store(mem_arg) => {
                         if let (Some(Value::F64(bits)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let offset = (addr as u32).wrapping_add(mem_arg.offset);
+                            let offset = calculate_effective_address(addr, mem_arg.offset, 8)? as u32;
                             match instance.memory(mem_arg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
                                     let bytes = bits.0.to_le_bytes();
                                     if memory.write_shared(offset, &bytes).is_err() {
-                                        return Err(wrt_error::Error::runtime_trap("Memory write out of bounds"));
+                                        return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                     }
                                 }
                                 Err(_e) => {
-                                    return Err(wrt_error::Error::runtime_trap("Memory access error"));
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                 }
                             }
                         }
@@ -8586,12 +8572,71 @@ impl StacklessEngine {
                     return Ok(None);
                 }
 
-                // Calculate memory layout:
-                // - list_ptr at 0x200: array of (ptr, len) pairs - 8 bytes per arg
-                // - string_data starts after the list entries
-                let list_ptr: u32 = 0x200;
+                // Calculate total memory needed:
+                // - List header: 8 bytes per arg (ptr + len)
+                // - String data: sum of all arg lengths, 4-byte aligned
                 let list_size = (args.len() * 8) as u32;
-                let mut string_ptr = list_ptr + list_size;
+                let string_total: u32 = args.iter()
+                    .map(|s| ((s.len() as u32) + 3) & !3) // 4-byte aligned
+                    .sum();
+                let total_size = list_size + string_total;
+
+                // Try to allocate memory via cabi_realloc (proper canonical ABI)
+                let alloc_result: Option<(u32, u32)> = {
+                    // Find cabi_realloc export
+                    let instance = self.instances.get(&instance_id)
+                        .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found"))?
+                        .clone();
+                    let module = instance.module();
+
+                    if let Ok(realloc_idx) = self.find_export_index(&module, "cabi_realloc") {
+                        // Call cabi_realloc(0, 0, 8, total_size)
+                        let realloc_args = vec![
+                            Value::I32(0),                  // old_ptr (NULL)
+                            Value::I32(0),                  // old_size
+                            Value::I32(8),                  // align (8-byte for pointers)
+                            Value::I32(total_size as i32),  // new_size
+                        ];
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            total_size = total_size,
+                            "[WASI-P2] get-arguments: calling cabi_realloc"
+                        );
+
+                        match self.execute(instance_id, realloc_idx, realloc_args) {
+                            Ok(results) => {
+                                if let Some(Value::I32(ptr)) = results.first() {
+                                    let base_ptr = *ptr as u32;
+                                    #[cfg(feature = "tracing")]
+                                    trace!(
+                                        ptr = format_args!("0x{:x}", base_ptr),
+                                        "[WASI-P2] get-arguments: cabi_realloc returned"
+                                    );
+                                    Some((base_ptr, base_ptr + list_size))
+                                } else {
+                                    None
+                                }
+                            }
+                            Err(_) => None
+                        }
+                    } else {
+                        None
+                    }
+                };
+
+                // Use allocated memory or fall back to high address (safer than 0x200)
+                let (list_ptr, mut string_ptr) = alloc_result.unwrap_or_else(|| {
+                    // Fallback: use address well above typical heap start
+                    // 0x10000 = 64KB offset, should be safe for most modules
+                    let fallback_ptr: u32 = 0x10000;
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        ptr = format_args!("0x{:x}", fallback_ptr),
+                        "[WASI-P2] get-arguments: using fallback allocation"
+                    );
+                    (fallback_ptr, fallback_ptr + list_size)
+                });
 
                 if let Some(instance) = self.instances.get(&instance_id) {
                     if let Ok(memory) = instance.memory(0) {
@@ -8774,16 +8819,14 @@ impl StacklessEngine {
                 Ok(None)
             }
 
-            // wasi:io/streams@0.2.0::[method]output-stream.blocking-write-and-flush(stream, data_ptr, data_len) -> result
+            // wasi:io/streams@0.2.x::[method]output-stream.blocking-write-and-flush(stream, data_ptr, data_len) -> result<_, stream-error>
             ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") => {
-                // use crate::wasi_preview2; // TODO: implement wasi_preview2 module
-
                 // Pop arguments in canonical ABI order for methods returning result<_, error>:
                 // Stack (top to bottom): [return_area, data_len, data_ptr, stream_handle]
                 // Canonical method calls: (self, ptr, len, return_area)
                 // Pop return_area first (it's on top)
                 let return_area = if let Some(Value::I32(ra)) = stack.pop() {
-                    ra
+                    ra as u32
                 } else {
                     return Err(wrt_error::Error::runtime_error("Missing return_area argument"));
                 };
@@ -8812,6 +8855,7 @@ impl StacklessEngine {
                     stream_handle = stream_handle,
                     data_ptr = format_args!("{:#x}", data_ptr),
                     data_len = data_len,
+                    return_area = format_args!("{:#x}", return_area),
                     "[WRITE] blocking-write-and-flush"
                 );
 
@@ -8839,62 +8883,74 @@ impl StacklessEngine {
                                 );
                             }
 
-                            // Find the actual content length - some components pass buffer capacity
-                            // instead of actual content length. For text output, trim at null byte.
-                            let actual_len = buffer.iter()
-                                .position(|&b| b == 0)
-                                .unwrap_or(buffer.len());
-                            let write_buffer = &buffer[..actual_len];
+                            // Write the FULL buffer - don't trim at null bytes for binary data
+                            // Only stdout text should potentially be trimmed
+                            let write_buffer = &buffer[..];
 
-                            // Write directly to stdout/stderr instead of using the memory-based function
+                            // Write directly to stdout/stderr
                             #[cfg(feature = "std")]
-                            let result = {
+                            let success = {
                                 use std::io::Write;
                                 if stream_handle == 1 {
                                     // Stdout
                                     let mut stdout = std::io::stdout();
                                     stdout.write_all(write_buffer)
                                         .and_then(|_| stdout.flush())
-                                        .map(|_| 0)
-                                        .unwrap_or(1)
+                                        .is_ok()
                                 } else if stream_handle == 2 {
                                     // Stderr
                                     let mut stderr = std::io::stderr();
                                     stderr.write_all(write_buffer)
                                         .and_then(|_| stderr.flush())
-                                        .map(|_| 0)
-                                        .unwrap_or(1)
+                                        .is_ok()
                                 } else {
                                     #[cfg(feature = "tracing")]
                                     debug!("WASI: Invalid stream handle: {}", stream_handle);
-                                    1 // Error
+                                    false
                                 }
                             };
                             #[cfg(not(feature = "std"))]
-                            let result = 1i32; // no_std: cannot write
+                            let success = false;
 
-                            #[cfg(feature = "tracing")]
-                            debug!("WASI: Write result: {}", result);
-                            Ok(Some(Value::I64(result as i64))) // WASI Preview 2 returns i64 for result types
+                            // Write result to return_area (canonical ABI for result<_, stream-error>)
+                            // Discriminant: 0 = ok, 1 = err
+                            if success {
+                                // ok() - write discriminant 0
+                                let _ = memory_wrapper.0.write_shared(return_area, &[0u8]);
+                                #[cfg(feature = "tracing")]
+                                debug!("WASI: Write success, wrote ok to return_area {:#x}", return_area);
+                            } else {
+                                // err(stream-error) - write discriminant 1 + error variant
+                                // stream-error is a variant, closed = 0
+                                let _ = memory_wrapper.0.write_shared(return_area, &[1u8]);
+                                let _ = memory_wrapper.0.write_shared(return_area + 4, &[0u8]); // closed variant
+                                #[cfg(feature = "tracing")]
+                                debug!("WASI: Write failed, wrote err to return_area {:#x}", return_area);
+                            }
+
+                            Ok(None) // Result written to memory, not returned on stack
                         } else {
+                            // Failed to read memory - write error to return_area
                             #[cfg(feature = "tracing")]
                             debug!("WASI: Failed to read memory at ptr={}, len={}", data_ptr, data_len);
-                            Ok(Some(Value::I64(1))) // Error
+                            let _ = memory_wrapper.0.write_shared(return_area, &[1u8]);
+                            let _ = memory_wrapper.0.write_shared(return_area + 4, &[0u8]);
+                            Ok(None)
                         }
                     } else {
                         #[cfg(feature = "tracing")]
                         debug!("WASI: Failed to get memory from instance");
-                        Ok(Some(Value::I64(1))) // Error
+                        Ok(None)
                     }
                 } else {
                     #[cfg(feature = "tracing")]
                     debug!("WASI: No instance available for id={}", instance_id);
-                    Ok(Some(Value::I64(1))) // Error
+                    Ok(None)
                 }
                 #[cfg(not(any(feature = "std", feature = "alloc")))]
                 {
                     // no_std without alloc: cannot allocate buffer for WASI I/O
-                    Ok(Some(Value::I64(1))) // Error
+                    Ok(None)
                 }
             }
 
@@ -9259,15 +9315,25 @@ impl StacklessEngine {
 
             // proc_exit(exit_code: i32) -> !
             ("wasi_snapshot_preview1", "proc_exit") => {
-                let _exit_code = if let Some(Value::I32(code)) = stack.pop() {
+                let exit_code = if let Some(Value::I32(code)) = stack.pop() {
                     code
                 } else {
                     0
                 };
                 #[cfg(feature = "tracing")]
-                trace!(exit_code = _exit_code, "[WASI-P1] proc_exit");
-                // For now, just return - we can't actually exit the process
-                Ok(None)
+                trace!(exit_code = exit_code, "[WASI-P1] proc_exit - terminating");
+                // Actually exit the process - proc_exit should never return
+                #[cfg(feature = "std")]
+                {
+                    std::process::exit(exit_code);
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    // In no_std mode, return an error to signal exit
+                    return Err(wrt_error::Error::runtime_error(
+                        format!("Process exit requested with code {}", exit_code)
+                    ));
+                }
             }
 
             // Default: stub implementation
