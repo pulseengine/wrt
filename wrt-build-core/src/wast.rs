@@ -263,6 +263,11 @@ impl WastTestRunner {
         self.stats.files_processed = wast_files.len();
 
         for (idx, file_path) in wast_files.iter().enumerate() {
+            // Reset engine state between files to avoid state pollution
+            if let Err(e) = self.engine.reset() {
+                // Log but don't fail - some resets may fail gracefully
+                eprintln!("Warning: Failed to reset engine before {}: {}", file_path.display(), e);
+            }
             match self.run_wast_file(&file_path) {
                 Ok(file_result) => {
                     results.push(file_result);
