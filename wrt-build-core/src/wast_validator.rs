@@ -597,8 +597,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -612,8 +613,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -627,8 +629,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -642,8 +645,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -658,8 +662,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -679,8 +684,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -696,8 +702,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -713,8 +720,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -730,8 +738,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -747,8 +756,9 @@ impl WastModuleValidator {
                     if !Self::has_memory(module) {
                         return Err(anyhow!("unknown memory"));
                     }
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    let (align, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
+                    Self::validate_alignment(opcode, align)?;
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
@@ -1834,6 +1844,41 @@ impl WastModuleValidator {
                 }
             }
         }
+    }
+
+    /// Get the maximum allowed alignment (as log2) for a memory operation opcode
+    /// Returns None if the opcode is not a memory operation
+    fn max_alignment_for_opcode(opcode: u8) -> Option<u32> {
+        match opcode {
+            // 4-byte operations (max align = 2, since 2^2 = 4)
+            0x28 | 0x36 => Some(2), // i32.load, i32.store
+            0x2A | 0x38 => Some(2), // f32.load, f32.store
+            0x34 | 0x35 | 0x3E => Some(2), // i64.load32_s/u, i64.store32
+
+            // 8-byte operations (max align = 3, since 2^3 = 8)
+            0x29 | 0x37 => Some(3), // i64.load, i64.store
+            0x2B | 0x39 => Some(3), // f64.load, f64.store
+
+            // 2-byte operations (max align = 1, since 2^1 = 2)
+            0x2E | 0x2F | 0x3B => Some(1), // i32.load16_s/u, i32.store16
+            0x32 | 0x33 | 0x3D => Some(1), // i64.load16_s/u, i64.store16
+
+            // 1-byte operations (max align = 0, since 2^0 = 1)
+            0x2C | 0x2D | 0x3A => Some(0), // i32.load8_s/u, i32.store8
+            0x30 | 0x31 | 0x3C => Some(0), // i64.load8_s/u, i64.store8
+
+            _ => None,
+        }
+    }
+
+    /// Validate that a memory operation's alignment doesn't exceed the natural alignment
+    fn validate_alignment(opcode: u8, align: u32) -> Result<()> {
+        if let Some(max_align) = Self::max_alignment_for_opcode(opcode) {
+            if align > max_align {
+                return Err(anyhow!("alignment must not be larger than natural"));
+            }
+        }
+        Ok(())
     }
 
     /// Pop a value from the stack, checking its type
