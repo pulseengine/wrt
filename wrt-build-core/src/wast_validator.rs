@@ -1365,6 +1365,210 @@ impl WastModuleValidator {
                     stack.push(StackType::FuncRef);
                 }
 
+                // Multi-byte prefix (0xFC) - saturating truncations, bulk memory, etc.
+                0xFC => {
+                    if offset >= code.len() {
+                        return Err(anyhow!("unexpected end of code after 0xFC prefix"));
+                    }
+                    let (sub_opcode, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+
+                    match sub_opcode {
+                        // Saturating truncation instructions (non-trapping float-to-int)
+                        // i32.trunc_sat_f32_s (0x00): f32 -> i32
+                        0x00 => {
+                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I32);
+                        }
+                        // i32.trunc_sat_f32_u (0x01): f32 -> i32
+                        0x01 => {
+                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I32);
+                        }
+                        // i32.trunc_sat_f64_s (0x02): f64 -> i32
+                        0x02 => {
+                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I32);
+                        }
+                        // i32.trunc_sat_f64_u (0x03): f64 -> i32
+                        0x03 => {
+                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I32);
+                        }
+                        // i64.trunc_sat_f32_s (0x04): f32 -> i64
+                        0x04 => {
+                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I64);
+                        }
+                        // i64.trunc_sat_f32_u (0x05): f32 -> i64
+                        0x05 => {
+                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I64);
+                        }
+                        // i64.trunc_sat_f64_s (0x06): f64 -> i64
+                        0x06 => {
+                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I64);
+                        }
+                        // i64.trunc_sat_f64_u (0x07): f64 -> i64
+                        0x07 => {
+                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            stack.push(StackType::I64);
+                        }
+                        // memory.init (0x08): [i32, i32, i32] -> []
+                        0x08 => {
+                            // Skip data_idx and mem_idx
+                            let (_data_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            let (_mem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n (length), s (source offset), d (dest offset) in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // data.drop (0x09): [] -> []
+                        0x09 => {
+                            let (_data_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                        }
+                        // memory.copy (0x0A): [i32, i32, i32] -> []
+                        0x0A => {
+                            let (_dst_mem, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            let (_src_mem, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n (length), s (source), d (dest) in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // memory.fill (0x0B): [i32, i32, i32] -> []
+                        0x0B => {
+                            let (_mem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n (length), val (value), d (dest) in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // table.init (0x0C): [i32, i32, i32] -> []
+                        0x0C => {
+                            let (_elem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n, s, d in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // elem.drop (0x0D): [] -> []
+                        0x0D => {
+                            let (_elem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                        }
+                        // table.copy (0x0E): [i32, i32, i32] -> []
+                        0x0E => {
+                            let (_dst_table, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            let (_src_table, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n, s, d in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // table.grow (0x0F): [ref, i32] -> [i32]
+                        0x0F => {
+                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n (delta), then ref (init value)
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            // Pop reference type (could be funcref or externref)
+                            if !unreachable && stack.len() > frame_height {
+                                stack.pop();
+                            }
+                            stack.push(StackType::I32);
+                        }
+                        // table.size (0x10): [] -> [i32]
+                        0x10 => {
+                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            stack.push(StackType::I32);
+                        }
+                        // table.fill (0x11): [i32, ref, i32] -> []
+                        0x11 => {
+                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            offset = new_offset;
+                            // Pop n (length), then ref (val), then i (dest) in reverse
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                            // Pop reference type
+                            if !unreachable && stack.len() > frame_height {
+                                stack.pop();
+                            }
+                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // Unknown 0xFC sub-opcode - skip
+                        _ => {}
+                    }
+                }
+
                 // SIMD prefix (0xFD)
                 0xFD => {
                     // SIMD instructions have a LEB128 opcode following the 0xFD prefix

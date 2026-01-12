@@ -2105,20 +2105,23 @@ impl StacklessEngine {
                     }
 
                     // Trapping truncation operations - trap on NaN or overflow
+                    // Per WebAssembly spec: NaN -> "invalid conversion to integer"
+                    //                       Infinity or out-of-range -> "integer overflow"
                     Instruction::I32TruncF32S => {
                         if let Some(Value::F32(bits)) = operand_stack.pop() {
                             let f = f32::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f32_s: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [-2147483648, 2147483647]
                             if f_trunc < -2_147_483_648.0_f32 || f_trunc >= 2_147_483_648.0_f32 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f32_s: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I32(f_trunc as i32));
                         }
@@ -2126,17 +2129,18 @@ impl StacklessEngine {
                     Instruction::I32TruncF32U => {
                         if let Some(Value::F32(bits)) = operand_stack.pop() {
                             let f = f32::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f32_u: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [0, 4294967295]
                             if f_trunc < 0.0_f32 || f_trunc >= 4_294_967_296.0_f32 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f32_u: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I32(f_trunc as u32 as i32));
                         }
@@ -2144,17 +2148,18 @@ impl StacklessEngine {
                     Instruction::I32TruncF64S => {
                         if let Some(Value::F64(bits)) = operand_stack.pop() {
                             let f = f64::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f64_s: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [-2147483648, 2147483647]
                             if f_trunc < -2_147_483_648.0_f64 || f_trunc >= 2_147_483_648.0_f64 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f64_s: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I32(f_trunc as i32));
                         }
@@ -2162,17 +2167,18 @@ impl StacklessEngine {
                     Instruction::I32TruncF64U => {
                         if let Some(Value::F64(bits)) = operand_stack.pop() {
                             let f = f64::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f64_u: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [0, 4294967295]
                             if f_trunc < 0.0_f64 || f_trunc >= 4_294_967_296.0_f64 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i32.trunc_f64_u: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I32(f_trunc as u32 as i32));
                         }
@@ -2180,19 +2186,20 @@ impl StacklessEngine {
                     Instruction::I64TruncF32S => {
                         if let Some(Value::F32(bits)) = operand_stack.pop() {
                             let f = f32::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f32_s: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [-9223372036854775808, 9223372036854775807]
                             if f_trunc < -9_223_372_036_854_775_808.0_f32
                                 || f_trunc >= 9_223_372_036_854_775_808.0_f32
                             {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f32_s: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I64(f_trunc as i64));
                         }
@@ -2200,17 +2207,18 @@ impl StacklessEngine {
                     Instruction::I64TruncF32U => {
                         if let Some(Value::F32(bits)) = operand_stack.pop() {
                             let f = f32::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f32_u: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [0, 18446744073709551615]
                             if f_trunc < 0.0_f32 || f_trunc >= 18_446_744_073_709_551_616.0_f32 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f32_u: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I64(f_trunc as u64 as i64));
                         }
@@ -2218,19 +2226,20 @@ impl StacklessEngine {
                     Instruction::I64TruncF64S => {
                         if let Some(Value::F64(bits)) = operand_stack.pop() {
                             let f = f64::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f64_s: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [-9223372036854775808, 9223372036854775807]
                             if f_trunc < -9_223_372_036_854_775_808.0_f64
                                 || f_trunc >= 9_223_372_036_854_775_808.0_f64
                             {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f64_s: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I64(f_trunc as i64));
                         }
@@ -2238,17 +2247,18 @@ impl StacklessEngine {
                     Instruction::I64TruncF64U => {
                         if let Some(Value::F64(bits)) = operand_stack.pop() {
                             let f = f64::from_bits(bits.0);
-                            if f.is_nan() || f.is_infinite() {
+                            if f.is_nan() {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f64_u: invalid conversion to integer",
+                                    "invalid conversion to integer",
                                 ));
+                            }
+                            if f.is_infinite() {
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             let f_trunc = f.trunc();
                             // Range check: must be in [0, 18446744073709551615]
                             if f_trunc < 0.0_f64 || f_trunc >= 18_446_744_073_709_551_616.0_f64 {
-                                return Err(wrt_error::Error::runtime_trap(
-                                    "i64.trunc_f64_u: integer overflow",
-                                ));
+                                return Err(wrt_error::Error::runtime_trap("integer overflow"));
                             }
                             operand_stack.push(Value::I64(f_trunc as u64 as i64));
                         }
