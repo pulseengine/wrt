@@ -816,7 +816,7 @@ fn parse_instruction_with_provider(
                     // table.init: elem_idx, table_idx
                     let (elem_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
                     consumed += bytes_read;
-                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2 + consumed - 1)?;
+                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
                     consumed += bytes_read;
                     Instruction::TableInit(elem_idx, table_idx)
                 }
@@ -830,7 +830,7 @@ fn parse_instruction_with_provider(
                     // table.copy: dst_table_idx, src_table_idx
                     let (dst_table, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
                     consumed += bytes_read;
-                    let (src_table, bytes_read) = read_leb128_u32(bytecode, offset + 2 + consumed - 1)?;
+                    let (src_table, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
                     consumed += bytes_read;
                     Instruction::TableCopy(dst_table, src_table)
                 }

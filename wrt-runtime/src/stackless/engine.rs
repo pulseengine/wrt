@@ -5531,47 +5531,47 @@ impl StacklessEngine {
                                 ));
                             }
 
-                            // Handle zero-size init (valid no-op)
+                            // Get the element segment from the module (needed for bounds check)
+                            #[cfg(feature = "std")]
+                            let elem_segment = module.elements.get(elem_seg_idx as usize)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                    "table.init: invalid element segment index"
+                                ))?;
+                            #[cfg(not(feature = "std"))]
+                            let elem_segment = module.elements.get(elem_seg_idx as usize)
+                                .map_err(|_| wrt_error::Error::runtime_trap(
+                                    "table.init: invalid element segment index"
+                                ))?;
+
+                            // Check bounds in element segment (must happen BEFORE zero-size check per spec)
+                            let src_end = (*src_idx as usize).checked_add(*init_size as usize)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                    "out of bounds table access"
+                                ))?;
+                            if src_end > elem_segment.items.len() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "out of bounds table access",
+                                ));
+                            }
+
+                            // Get table and check bounds (must happen BEFORE zero-size check per spec)
+                            let table = instance.table(table_idx)?;
+                            let dst_end = (*dst_idx as u32).checked_add(*init_size as u32)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                    "out of bounds table access"
+                                ))?;
+                            if dst_end > table.size() {
+                                return Err(wrt_error::Error::runtime_trap(
+                                    "out of bounds table access",
+                                ));
+                            }
+
+                            // Handle zero-size init (valid no-op) AFTER bounds checks
                             if *init_size == 0 {
                                 #[cfg(feature = "tracing")]
                                 trace!("[TableInit] Zero size, no-op");
                                 // Continue to next instruction
                             } else {
-                                // Get the element segment from the module
-                                #[cfg(feature = "std")]
-                                let elem_segment = module.elements.get(elem_seg_idx as usize)
-                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
-                                        "table.init: invalid element segment index"
-                                    ))?;
-                                #[cfg(not(feature = "std"))]
-                                let elem_segment = module.elements.get(elem_seg_idx as usize)
-                                    .map_err(|_| wrt_error::Error::runtime_trap(
-                                        "table.init: invalid element segment index"
-                                    ))?;
-
-                                // Check bounds in element segment
-                                let src_end = (*src_idx as usize).checked_add(*init_size as usize)
-                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
-                                        "table.init: src index overflow"
-                                    ))?;
-                                if src_end > elem_segment.items.len() {
-                                    return Err(wrt_error::Error::runtime_trap(
-                                        "out of bounds table access",
-                                    ));
-                                }
-
-                                // Get table and check bounds
-                                let table = instance.table(table_idx)?;
-                                let dst_end = (*dst_idx as u32).checked_add(*init_size as u32)
-                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
-                                        "out of bounds table access"
-                                    ))?;
-                                if dst_end > table.size() {
-                                    return Err(wrt_error::Error::runtime_trap(
-                                        "out of bounds table access",
-                                    ));
-                                }
-
                                 // Copy elements from segment to table
                                 for i in 0..*init_size as usize {
                                     let item_idx = *src_idx as usize + i;

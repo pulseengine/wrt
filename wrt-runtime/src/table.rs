@@ -555,12 +555,14 @@ impl Table {
         #[cfg(not(feature = "std"))]
         let mut elements = self.elements.lock();
 
-        // Verify bounds
-        if offset + len > elements.len() {
-            return Err(Error::runtime_error("Table fill out of bounds"));
+        // Verify bounds - use checked arithmetic to prevent overflow
+        let end = offset.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        if end > elements.len() {
+            return Err(Error::runtime_trap("out of bounds table access"));
         }
 
-        // Handle empty fill
+        // Handle empty fill (after bounds check per spec)
         if len == 0 {
             return Ok(());
         }
@@ -596,12 +598,16 @@ impl Table {
         #[cfg(not(feature = "std"))]
         let mut elements = self.elements.lock();
 
-        // Verify bounds
-        if src + len > elements.len() || dst + len > elements.len() {
-            return Err(Error::runtime_error("Table copy out of bounds"));
+        // Verify bounds - use checked arithmetic to prevent overflow
+        let src_end = src.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        let dst_end = dst.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        if src_end > elements.len() || dst_end > elements.len() {
+            return Err(Error::runtime_trap("out of bounds table access"));
         }
 
-        // Handle the case where no elements to copy
+        // Handle the case where no elements to copy (AFTER bounds check per spec)
         if len == 0 {
             return Ok(());
         }
@@ -792,12 +798,16 @@ impl Table {
         #[cfg(not(feature = "std"))]
         let mut elements = self.elements.lock();
 
-        // Verify bounds
-        if src + len > elements.len() || dst + len > elements.len() {
+        // Verify bounds - use checked arithmetic to prevent overflow
+        let src_end = src.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        let dst_end = dst.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        if src_end > elements.len() || dst_end > elements.len() {
             return Err(Error::runtime_trap("out of bounds table access"));
         }
 
-        // Handle the case where regions don't overlap or no elements to copy
+        // Handle the case where regions don't overlap or no elements to copy (AFTER bounds check per spec)
         if len == 0 {
             return Ok(());
         }
@@ -847,12 +857,14 @@ impl Table {
         #[cfg(not(feature = "std"))]
         let mut elements = self.elements.lock();
 
-        // Verify bounds
-        if offset + len > elements.len() {
+        // Verify bounds - use checked arithmetic to prevent overflow
+        let end = offset.checked_add(len)
+            .ok_or_else(|| Error::runtime_trap("out of bounds table access"))?;
+        if end > elements.len() {
             return Err(Error::runtime_trap("out of bounds table access"));
         }
 
-        // Handle empty fill
+        // Handle empty fill (after bounds check per spec)
         if len == 0 {
             return Ok(());
         }
