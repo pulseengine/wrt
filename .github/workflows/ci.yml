@@ -59,7 +59,7 @@ jobs:
       - name: Run CI Integrity Checks (lint, fmt, deny, spell, headers, etc.)
         run: cargo-wrt verify --detailed
       - name: Setup Java for PlantUML (if CheckDocsStrict Dagger pipeline needs it from host - unlikely)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         if: false # Assuming Dagger pipeline for docs is self-contained
         with:
           distribution: 'temurin'
