@@ -487,7 +487,10 @@ impl WrtdEngine {
             use std::sync::Arc;
             let registry_arc = Arc::new(self.host_registry.clone());
             let mut instance = ComponentInstance::from_parsed(0, &mut *parsed_component, Some(registry_arc))
-                .map_err(|_| Error::runtime_error("Failed to create and initialize component instance"))?;
+                .map_err(|e| {
+                    eprintln!("[DEBUG] ComponentInstance::from_parsed failed: {:?}", e);
+                    Error::runtime_error("Failed to create and initialize component instance")
+                })?;
             // parsed_component is now dropped - we only keep runtime instance
 
             let _ = self.logger.handle_minimal_log(

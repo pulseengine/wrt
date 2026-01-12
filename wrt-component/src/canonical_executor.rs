@@ -183,5 +183,39 @@ pub fn create_canonical_executor() -> CanonicalExecutor {
 
 /// Check if a function name represents a wasip2 canonical import
 pub fn is_wasip2_canonical(name: &str) -> bool {
-    name.starts_with("wasi:") && name.contains("@0.2")
+    // Full WASI interface names
+    if name.starts_with("wasi:") && name.contains("@0.2") {
+        return true;
+    }
+
+    // Short names for canonical lowered functions from WASI interfaces
+    // These appear in InlineExports when canonical functions are lowered
+    matches!(name,
+        // wasi:cli/exit
+        "exit" |
+        // wasi:cli/stdout/stderr
+        "get-stdout" | "get-stderr" |
+        // wasi:cli/environment
+        "get-environment" | "get-arguments" |
+        // wasi:io/streams methods
+        "[method]output-stream.blocking-write-and-flush" |
+        "[method]output-stream.blocking-flush" |
+        "[method]output-stream.write" |
+        "[method]input-stream.blocking-read" |
+        "[method]input-stream.read" |
+        // wasi:io/error methods
+        "[method]error.to-debug-string" |
+        // Resource drops
+        "[resource-drop]error" |
+        "[resource-drop]output-stream" |
+        "[resource-drop]input-stream" |
+        // wasi:clocks
+        "now" | "resolution" |
+        // wasi:filesystem
+        "get-directories" |
+        "[method]descriptor.read" |
+        "[method]descriptor.write" |
+        "[method]descriptor.stat" |
+        "[method]descriptor.read-directory"
+    )
 }

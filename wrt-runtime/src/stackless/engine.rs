@@ -8157,6 +8157,40 @@ impl StacklessEngine {
         args
     }
 
+    /// Get the parameter count for an imported function
+    fn get_import_param_count(module: &crate::module::Module, import_idx: usize) -> usize {
+        use wrt_foundation::types::ImportDesc;
+
+        // Look up the import's type from import_types
+        if let Some(import_desc) = module.import_types.get(import_idx) {
+            match import_desc {
+                ImportDesc::Function(type_idx) => {
+                    // Get the function type and return param count
+                    if let Some(func_type) = module.types.get(*type_idx as usize) {
+                        return func_type.params.len();
+                    }
+                }
+                _ => {} // Not a function import
+            }
+        }
+        0 // Default to 0 if we can't determine
+    }
+
+    /// Collect import function arguments from operand stack
+    fn collect_import_args(module: &crate::module::Module, import_idx: usize, operand_stack: &mut Vec<Value>) -> Vec<Value> {
+        let param_count = Self::get_import_param_count(module, import_idx);
+
+        // Pop arguments from stack in reverse order
+        let mut args = Vec::with_capacity(param_count);
+        for _ in 0..param_count {
+            if let Some(val) = operand_stack.pop() {
+                args.push(val);
+            }
+        }
+        args.reverse(); // Reverse to get correct order
+        args
+    }
+
     /// Find export function index by name
     fn find_export_index(&self, module: &crate::module::Module, name: &str) -> Result<usize> {
         #[cfg(feature = "std")]
@@ -8185,6 +8219,60 @@ impl StacklessEngine {
         }
 
         Err(wrt_error::Error::runtime_error("Export function not found"))
+    }
+
+    /// Find an import's parameter count by module and field name
+    #[cfg(feature = "std")]
+    fn get_import_param_count_by_name(
+        module: &crate::module::Module,
+        module_name: &str,
+        field_name: &str,
+    ) -> usize {
+        use wrt_foundation::types::ImportDesc;
+
+        // Strip version from module name for matching
+        let base_module = strip_wasi_version(module_name);
+
+        // Use import_order (Vec<(String, String)>) to find the import index,
+        // then look up its type in import_types
+        for (idx, (imp_module, imp_name)) in module.import_order.iter().enumerate() {
+            let base_imp_module = strip_wasi_version(imp_module);
+            if base_imp_module == base_module && imp_name == field_name {
+                // Found matching import - get its type from import_types
+                if let Some(import_desc) = module.import_types.get(idx) {
+                    match import_desc {
+                        ImportDesc::Function(type_idx) => {
+                            if let Some(func_type) = module.types.get(*type_idx as usize) {
+                                return func_type.params.len();
+                            }
+                        }
+                        _ => {} // Not a function import
+                    }
+                }
+            }
+        }
+        0 // Default to 0 if not found
+    }
+
+    /// Collect import arguments from stack by module/field name
+    #[cfg(feature = "std")]
+    fn collect_import_args_by_name(
+        module: &crate::module::Module,
+        module_name: &str,
+        field_name: &str,
+        operand_stack: &mut Vec<Value>,
+    ) -> Vec<Value> {
+        let param_count = Self::get_import_param_count_by_name(module, module_name, field_name);
+
+        // Pop arguments from stack in reverse order
+        let mut args = Vec::with_capacity(param_count);
+        for _ in 0..param_count {
+            if let Some(val) = operand_stack.pop() {
+                args.push(val);
+            }
+        }
+        args.reverse(); // Reverse to get correct order
+        args
     }
 
     /// Call cabi_realloc to allocate memory in WASM instance
@@ -8504,855 +8592,77 @@ impl StacklessEngine {
             }
         }
 
-        // NOTE: WASIP2-CANONICAL interception block REMOVED per CLAUDE.md
-        // Component adapter modules do P2→P1 translation - calls flow to P1 handlers
+        // Use host_handler for WASI dispatch (when configured)
+        // This is the proper architecture - host_handler routes to WasiDispatcher
+        #[cfg(feature = "std")]
+        if let Some(ref mut handler) = self.host_handler {
+            #[cfg(feature = "tracing")]
+            debug!(
+                module_name = %module_name,
+                field_name = %field_name,
+                "[HOST_HANDLER] Dispatching via HostImportHandler"
+            );
 
-        // WASI dispatch - adapter modules in component translate P2 calls to P1 handlers
+            // Get instance and memory
+            let instance = self.instances.get(&instance_id)
+                .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found for host handler call"))?
+                .clone();
+
+            // Get memory as MemoryAccessor
+            let mem_wrapper = instance.memory(0).ok();
+            let memory: Option<&dyn wrt_foundation::MemoryAccessor> = mem_wrapper.as_ref()
+                .map(|m| m.0.as_ref() as &dyn wrt_foundation::MemoryAccessor);
+
+            // Collect args from stack based on function signature
+            let args = Self::collect_import_args_by_name(&module, module_name, field_name, stack);
+
+            #[cfg(feature = "tracing")]
+            trace!(
+                args_count = args.len(),
+                has_memory = memory.is_some(),
+                "[HOST_HANDLER] Calling handler"
+            );
+
+            // Call handler - errors propagate up (no fallback per CLAUDE.md)
+            let results = handler.call_import(module_name, field_name, &args, memory)?;
+
+            #[cfg(feature = "tracing")]
+            trace!(
+                results_count = results.len(),
+                "[HOST_HANDLER] Handler returned successfully"
+            );
+
+            // Return first result if any
+            return Ok(results.into_iter().next());
+        }
+
+        // NO INLINE WASI DISPATCH - per CLAUDE.md NO FALLBACK LOGIC rule
+        // All WASI calls MUST go through host_handler (set via set_host_handler())
+        // The host_handler routes to WasiDispatcher which handles all WASI functions
+        //
+        // If we reach here, it means:
+        // 1. host_handler was not configured (wrtd should always configure it)
+        // 2. The caller is using the engine without proper WASI setup
+        //
+        // This is NOT a fallback - it's a hard error per CLAUDE.md:
+        // "FAIL LOUD AND EARLY: If data is missing or incorrect, return an error immediately"
         #[cfg(feature = "tracing")]
-        debug!("WASI dispatch: {}::{}", module_name, field_name);
-        let stub_mem = self.wasi_stubs.get(&instance_id);
-
-        // Strip version from module name to allow any 0.2.x version to match
-        let base_module = strip_wasi_version(module_name);
-
-        #[cfg(feature = "tracing")]
-        trace!(
-            base_module = %base_module,
+        error!(
+            module_name = %module_name,
             field_name = %field_name,
-            "[WASI_DISPATCH] Dispatching"
+            "[WASI] No host_handler configured - cannot dispatch WASI function"
         );
 
-        match (base_module, field_name) {
-            // wasi:cli/environment (any version)
-            ("wasi:cli/environment", "get-environment") => {
-                if let Some(stub) = stub_mem {
-                    #[cfg(feature = "tracing")]
-
-                    debug!("WASI: get-environment: returning empty list ptr={}", stub.empty_env);
-                    Ok(Some(Value::I32(stub.empty_env as i32)))
-                } else {
-                    #[cfg(feature = "tracing")]
-
-                    debug!("WASI: get-environment: stub not initialized, returning 0");
-                    Ok(Some(Value::I32(0)))
-                }
-            }
-
-            ("wasi:cli/environment", "get-arguments") => {
-                // Pop the return area pointer (canonical ABI for list<string>)
-                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("get-arguments: missing return_area"));
-                };
-
-                // Get the WASI args from global state
-                #[cfg(all(feature = "std", feature = "wasi"))]
-                let args: Vec<String> = wrt_wasi::get_global_wasi_args();
-
-                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
-                let args: Vec<String> = Vec::new();
-
-                #[cfg(feature = "tracing")]
-                trace!(
-                    return_area = format_args!("0x{:x}", return_area),
-                    args_len = args.len(),
-                    args = ?args,
-                    "[WASI-P2] get-arguments"
-                );
-
-                if args.is_empty() {
-                    // Empty list: write (0, 0) to return area
-                    if let Some(instance) = self.instances.get(&instance_id) {
-                        if let Ok(memory) = instance.memory(0) {
-                            let _ = memory.0.write_shared(return_area, &0u32.to_le_bytes());
-                            let _ = memory.0.write_shared(return_area + 4, &0u32.to_le_bytes());
-                        }
-                    }
-                    return Ok(None);
-                }
-
-                // Calculate total memory needed:
-                // - List header: 8 bytes per arg (ptr + len)
-                // - String data: sum of all arg lengths, 4-byte aligned
-                let list_size = (args.len() * 8) as u32;
-                let string_total: u32 = args.iter()
-                    .map(|s| ((s.len() as u32) + 3) & !3) // 4-byte aligned
-                    .sum();
-                let total_size = list_size + string_total;
-
-                // Try to allocate memory via cabi_realloc (proper canonical ABI)
-                let alloc_result: Option<(u32, u32)> = {
-                    // Find cabi_realloc export
-                    let instance = self.instances.get(&instance_id)
-                        .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found"))?
-                        .clone();
-                    let module = instance.module();
-
-                    if let Ok(realloc_idx) = self.find_export_index(&module, "cabi_realloc") {
-                        // Call cabi_realloc(0, 0, 8, total_size)
-                        let realloc_args = vec![
-                            Value::I32(0),                  // old_ptr (NULL)
-                            Value::I32(0),                  // old_size
-                            Value::I32(8),                  // align (8-byte for pointers)
-                            Value::I32(total_size as i32),  // new_size
-                        ];
-
-                        #[cfg(feature = "tracing")]
-                        trace!(
-                            total_size = total_size,
-                            "[WASI-P2] get-arguments: calling cabi_realloc"
-                        );
-
-                        match self.execute(instance_id, realloc_idx, realloc_args) {
-                            Ok(results) => {
-                                if let Some(Value::I32(ptr)) = results.first() {
-                                    let base_ptr = *ptr as u32;
-                                    #[cfg(feature = "tracing")]
-                                    trace!(
-                                        ptr = format_args!("0x{:x}", base_ptr),
-                                        "[WASI-P2] get-arguments: cabi_realloc returned"
-                                    );
-                                    Some((base_ptr, base_ptr + list_size))
-                                } else {
-                                    None
-                                }
-                            }
-                            Err(_) => None
-                        }
-                    } else {
-                        None
-                    }
-                };
-
-                // Use allocated memory or fall back to high address (safer than 0x200)
-                let (list_ptr, mut string_ptr) = alloc_result.unwrap_or_else(|| {
-                    // Fallback: use address well above typical heap start
-                    // 0x10000 = 64KB offset, should be safe for most modules
-                    let fallback_ptr: u32 = 0x10000;
-                    #[cfg(feature = "tracing")]
-                    trace!(
-                        ptr = format_args!("0x{:x}", fallback_ptr),
-                        "[WASI-P2] get-arguments: using fallback allocation"
-                    );
-                    (fallback_ptr, fallback_ptr + list_size)
-                });
-
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory) = instance.memory(0) {
-                        // First pass: write string data, collecting (ptr, len) for each
-                        let mut entries: Vec<(u32, u32)> = Vec::new();
-
-                        for arg in &args {
-                            let bytes = arg.as_bytes();
-                            let len = bytes.len() as u32;
-
-                            // Write string bytes
-                            if memory.0.write_shared(string_ptr, bytes).is_ok() {
-                                entries.push((string_ptr, len));
-                                #[cfg(feature = "tracing")]
-                                trace!(
-                                    arg = %arg,
-                                    ptr = format_args!("0x{:x}", string_ptr),
-                                    len = len,
-                                    "[WASI-P2] wrote arg string"
-                                );
-                            }
-
-                            string_ptr += len;
-                            // Align to 4 bytes
-                            string_ptr = (string_ptr + 3) & !3;
-                        }
-
-                        // Second pass: write (ptr, len) entries at list_ptr
-                        for (i, (ptr, len)) in entries.iter().enumerate() {
-                            let entry_offset = list_ptr + (i as u32 * 8);
-                            let _ = memory.0.write_shared(entry_offset, &ptr.to_le_bytes());
-                            let _ = memory.0.write_shared(entry_offset + 4, &len.to_le_bytes());
-                        }
-
-                        // Write (list_ptr, count) to return area
-                        let _ = memory.0.write_shared(return_area, &list_ptr.to_le_bytes());
-                        let _ = memory.0.write_shared(return_area + 4, &(args.len() as u32).to_le_bytes());
-
-                        #[cfg(feature = "tracing")]
-                        trace!(
-                            list_ptr = format_args!("0x{:x}", list_ptr),
-                            count = args.len(),
-                            return_area = format_args!("0x{:x}", return_area),
-                            "[WASI-P2] wrote args list to return area"
-                        );
-                    }
-                }
-
-                Ok(None) // Result is written to memory, not returned on stack
-            }
-
-            ("wasi:cli/environment", "initial-cwd") => {
-                if let Some(stub) = stub_mem {
-                    #[cfg(feature = "tracing")]
-
-                    debug!("WASI: initial-cwd: returning option None ptr={}", stub.option_none);
-                    Ok(Some(Value::I32(stub.option_none as i32)))
-                } else {
-                    #[cfg(feature = "tracing")]
-
-                    debug!("WASI: initial-cwd: stub not initialized, returning 0");
-                    Ok(Some(Value::I32(0)))
-                }
-            }
-
-            // wasi:cli/stdout@0.2.0::get-stdout() -> stream
-            ("wasi:cli/stdout", "get-stdout") => {
-                let handle = stub_mem.map(|s| s.stdout_handle).unwrap_or(1);
-                #[cfg(feature = "tracing")]
-
-                debug!("WASI: get-stdout: returning handle {}", handle);
-                Ok(Some(Value::I32(handle as i32)))
-            }
-
-            // wasi:cli/stderr@0.2.0::get-stderr() -> stream
-            ("wasi:cli/stderr", "get-stderr") => {
-                let handle = stub_mem.map(|s| s.stderr_handle).unwrap_or(2);
-                #[cfg(feature = "tracing")]
-
-                debug!("WASI: get-stderr: returning handle {}", handle);
-                Ok(Some(Value::I32(handle as i32)))
-            }
-
-            // wasi:cli/exit@0.2.0::exit(code)
-            ("wasi:cli/exit", "exit") => {
-                let exit_code = if let Some(Value::I32(code)) = stack.pop() {
-                    code
-                } else {
-                    1
-                };
-
-                #[cfg(feature = "tracing")]
-                debug!("WASI: exit called with code: {}", exit_code);
-
-                #[cfg(feature = "std")]
-                std::process::exit(exit_code);
-
-                #[cfg(not(feature = "std"))]
-                return Err(wrt_error::Error::runtime_error("WASI exit not supported in no_std"));
-            }
-
-            // wasi:clocks/wall-clock@0.2.x::now() -> datetime
-            // Returns datetime { seconds: u64, nanoseconds: u32 } via return area pointer
-            ("wasi:clocks/wall-clock", "now") => {
-                // Pop the return area pointer (canonical ABI writes records to memory)
-                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing return area for wall-clock::now"));
-                };
-
-                #[cfg(feature = "std")]
-                {
-                    use std::time::{SystemTime, UNIX_EPOCH};
-
-                    let now = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default();
-
-                    let seconds = now.as_secs();
-                    let nanoseconds = now.subsec_nanos();
-
-                    #[cfg(feature = "tracing")]
-                    trace!(seconds = seconds, nanoseconds = nanoseconds, return_area = return_area, "[WASI] wall-clock::now()");
-
-                    // Write datetime record to return area:
-                    // offset 0: u64 seconds (8 bytes, little-endian)
-                    // offset 8: u32 nanoseconds (4 bytes, little-endian)
-                    if let Some(instance) = self.instances.get(&instance_id) {
-                        if let Ok(memory) = instance.memory(0) {
-                            // Write seconds (u64) at offset 0
-                            let seconds_bytes = seconds.to_le_bytes();
-                            let _ = memory.0.write_shared(return_area, &seconds_bytes);
-
-                            // Write nanoseconds (u32) at offset 8
-                            let nanos_bytes = nanoseconds.to_le_bytes();
-                            let _ = memory.0.write_shared(return_area + 8, &nanos_bytes);
-                        }
-                    }
-
-                    Ok(None) // No return value on stack - result is in memory
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // no_std: write stub time values to return area
-                    if let Some(instance) = self.instances.get(&instance_id) {
-                        if let Ok(memory) = instance.memory(0) {
-                            let _ = memory.0.write_shared(return_area, &0u64.to_le_bytes());
-                            let _ = memory.0.write_shared(return_area + 8, &0u32.to_le_bytes());
-                        }
-                    }
-                    Ok(None)
-                }
-            }
-
-            // wasi:clocks/wall-clock@0.2.x::resolution() -> datetime
-            ("wasi:clocks/wall-clock", "resolution") => {
-                // Pop the return area pointer (canonical ABI writes records to memory)
-                let return_area = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing return area for wall-clock::resolution"));
-                };
-
-                // Return nanosecond resolution (1 nanosecond = best resolution)
-                let seconds: u64 = 0;
-                let nanoseconds: u32 = 1;
-
-                #[cfg(feature = "tracing")]
-                trace!(seconds = seconds, nanoseconds = nanoseconds, return_area = return_area, "[WASI] wall-clock::resolution()");
-
-                // Write datetime record to return area
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory) = instance.memory(0) {
-                        let _ = memory.0.write_shared(return_area, &seconds.to_le_bytes());
-                        let _ = memory.0.write_shared(return_area + 8, &nanoseconds.to_le_bytes());
-                    }
-                }
-
-                Ok(None)
-            }
-
-            // wasi:io/streams@0.2.x::[method]output-stream.blocking-write-and-flush(stream, data_ptr, data_len) -> result<_, stream-error>
-            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") => {
-                // Pop arguments in canonical ABI order for methods returning result<_, error>:
-                // Stack (top to bottom): [return_area, data_len, data_ptr, stream_handle]
-                // Canonical method calls: (self, ptr, len, return_area)
-                // Pop return_area first (it's on top)
-                let return_area = if let Some(Value::I32(ra)) = stack.pop() {
-                    ra as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing return_area argument"));
-                };
-
-                let data_len = if let Some(Value::I32(len)) = stack.pop() {
-                    len
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing data_len argument"));
-                };
-
-                let data_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing data_ptr argument"));
-                };
-
-                // Pop the actual stream handle (self/receiver)
-                let stream_handle = if let Some(Value::I32(s)) = stack.pop() {
-                    s
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing stream argument"));
-                };
-
-                #[cfg(feature = "tracing")]
-                trace!(
-                    stream_handle = stream_handle,
-                    data_ptr = format_args!("{:#x}", data_ptr),
-                    data_len = data_len,
-                    return_area = format_args!("{:#x}", return_area),
-                    "[WRITE] blocking-write-and-flush"
-                );
-
-                // Read data from WebAssembly memory and write to stdout/stderr
-                // Use instance memory instead of module memory
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        // Read data from instance memory into a buffer
-                        let mut buffer = vec![0u8; data_len as usize];
-                        if let Ok(()) = memory_wrapper.0.read(data_ptr as u32, &mut buffer) {
-                            #[cfg(feature = "tracing")]
-                            {
-                                trace!(
-                                    bytes = buffer.len(),
-                                    ptr = data_ptr,
-                                    "[WRITE] Read from memory"
-                                );
-                                // Debug: show actual buffer content (limited to 64 bytes)
-                                let preview_len = buffer.len().min(64);
-                                trace!(
-                                    preview = ?&buffer[..preview_len],
-                                    as_string = %String::from_utf8_lossy(&buffer[..preview_len]),
-                                    "[WRITE] Buffer content"
-                                );
-                            }
-
-                            // Write the FULL buffer - don't trim at null bytes for binary data
-                            // Only stdout text should potentially be trimmed
-                            let write_buffer = &buffer[..];
-
-                            // Write directly to stdout/stderr
-                            #[cfg(feature = "std")]
-                            let success = {
-                                use std::io::Write;
-                                if stream_handle == 1 {
-                                    // Stdout
-                                    let mut stdout = std::io::stdout();
-                                    stdout.write_all(write_buffer)
-                                        .and_then(|_| stdout.flush())
-                                        .is_ok()
-                                } else if stream_handle == 2 {
-                                    // Stderr
-                                    let mut stderr = std::io::stderr();
-                                    stderr.write_all(write_buffer)
-                                        .and_then(|_| stderr.flush())
-                                        .is_ok()
-                                } else {
-                                    #[cfg(feature = "tracing")]
-                                    debug!("WASI: Invalid stream handle: {}", stream_handle);
-                                    false
-                                }
-                            };
-                            #[cfg(not(feature = "std"))]
-                            let success = false;
-
-                            // Write result to return_area (canonical ABI for result<_, stream-error>)
-                            // Discriminant: 0 = ok, 1 = err
-                            if success {
-                                // ok() - write discriminant 0
-                                let _ = memory_wrapper.0.write_shared(return_area, &[0u8]);
-                                #[cfg(feature = "tracing")]
-                                debug!("WASI: Write success, wrote ok to return_area {:#x}", return_area);
-                            } else {
-                                // err(stream-error) - write discriminant 1 + error variant
-                                // stream-error is a variant, closed = 0
-                                let _ = memory_wrapper.0.write_shared(return_area, &[1u8]);
-                                let _ = memory_wrapper.0.write_shared(return_area + 4, &[0u8]); // closed variant
-                                #[cfg(feature = "tracing")]
-                                debug!("WASI: Write failed, wrote err to return_area {:#x}", return_area);
-                            }
-
-                            Ok(None) // Result written to memory, not returned on stack
-                        } else {
-                            // Failed to read memory - write error to return_area
-                            #[cfg(feature = "tracing")]
-                            debug!("WASI: Failed to read memory at ptr={}, len={}", data_ptr, data_len);
-                            let _ = memory_wrapper.0.write_shared(return_area, &[1u8]);
-                            let _ = memory_wrapper.0.write_shared(return_area + 4, &[0u8]);
-                            Ok(None)
-                        }
-                    } else {
-                        #[cfg(feature = "tracing")]
-                        debug!("WASI: Failed to get memory from instance");
-                        Ok(None)
-                    }
-                } else {
-                    #[cfg(feature = "tracing")]
-                    debug!("WASI: No instance available for id={}", instance_id);
-                    Ok(None)
-                }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
-                {
-                    // no_std without alloc: cannot allocate buffer for WASI I/O
-                    Ok(None)
-                }
-            }
-
-            // Resource drop operations - just consume the handle and return nothing
-            ("wasi:io/streams", "[resource-drop]output-stream") |
-            ("wasi:io/streams", "[resource-drop]input-stream") |
-            ("wasi:io/error", "[resource-drop]error") => {
-                // Pop the handle from the stack
-                let _handle = stack.pop();
-                #[cfg(feature = "tracing")]
-                debug!("WASI: resource-drop for {}::{}, handle={:?}", base_module, field_name, _handle);
-                Ok(None) // Resource drops return nothing
-            }
-
-            // Error to debug string
-            ("wasi:io/error", "[method]error.to-debug-string") => {
-                // Pop error handle, return a string representation
-                let _error_handle = stack.pop();
-                #[cfg(feature = "tracing")]
-                debug!("WASI: error.to-debug-string for handle {:?}", _error_handle);
-                // Return empty string (ptr=0, len=0)
-                Ok(Some(Value::I64(0))) // Empty string as (ptr, len) packed
-            }
-
-            // Blocking flush (similar to blocking-write-and-flush but without data)
-            ("wasi:io/streams", "[method]output-stream.blocking-flush") => {
-                let stream_handle = if let Some(Value::I32(s)) = stack.pop() {
-                    s
-                } else {
-                    return Err(wrt_error::Error::runtime_error("Missing stream argument"));
-                };
-
-                #[cfg(feature = "tracing")]
-                debug!("WASI: blocking-flush: stream={}", stream_handle);
-
-                #[cfg(feature = "std")]
-                let result = {
-                    use std::io::Write;
-                    if stream_handle == 1 {
-                        std::io::stdout().flush().map(|_| 0).unwrap_or(1)
-                    } else if stream_handle == 2 {
-                        std::io::stderr().flush().map(|_| 0).unwrap_or(1)
-                    } else {
-                        1
-                    }
-                };
-                #[cfg(not(feature = "std"))]
-                let result = 1i32; // no_std: cannot flush
-                Ok(Some(Value::I64(result as i64)))
-            }
-
-            // ============================================
-            // WASI Preview 1 (wasi_snapshot_preview1) support
-            // ============================================
-
-            // fd_write(fd: i32, iovs: i32, iovs_len: i32, nwritten: i32) -> errno
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            ("wasi_snapshot_preview1", "fd_write") => {
-                // Pop arguments in reverse order (they were pushed left to right)
-                let nwritten_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("fd_write: missing nwritten_ptr"));
-                };
-
-                let iovs_len = if let Some(Value::I32(len)) = stack.pop() {
-                    len as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("fd_write: missing iovs_len"));
-                };
-
-                let iovs_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("fd_write: missing iovs_ptr"));
-                };
-
-                let fd = if let Some(Value::I32(f)) = stack.pop() {
-                    f
-                } else {
-                    return Err(wrt_error::Error::runtime_error("fd_write: missing fd"));
-                };
-
-                #[cfg(feature = "tracing")]
-                trace!(
-                    fd = fd,
-                    iovs_ptr = iovs_ptr,
-                    iovs_len = iovs_len,
-                    nwritten_ptr = nwritten_ptr,
-                    "[WASI-P1] fd_write"
-                );
-
-                // Get instance memory (read-only access - memory is behind Arc)
-                let total_written = if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        let mut total = 0u32;
-
-                        // Process each iovec: struct { buf: *const u8, len: usize }
-                        // In WASM32, each iovec is 8 bytes: 4 bytes ptr + 4 bytes len
-                        for i in 0..iovs_len {
-                            let iov_offset = iovs_ptr + i * 8;
-
-                            // Read iovec ptr and len
-                            let mut buf = [0u8; 4];
-                            if memory_wrapper.0.read(iov_offset, &mut buf).is_err() {
-                                #[cfg(feature = "tracing")]
-                                warn!("[WASI-P1] fd_write: failed to read iovec ptr");
-                                continue;
-                            }
-                            let buf_ptr = u32::from_le_bytes(buf);
-
-                            if memory_wrapper.0.read(iov_offset + 4, &mut buf).is_err() {
-                                #[cfg(feature = "tracing")]
-                                warn!("[WASI-P1] fd_write: failed to read iovec len");
-                                continue;
-                            }
-                            let buf_len = u32::from_le_bytes(buf);
-
-                            #[cfg(feature = "tracing")]
-                            trace!(
-                                iovec_idx = i,
-                                ptr = buf_ptr,
-                                len = buf_len,
-                                "[WASI-P1] fd_write: iovec"
-                            );
-
-                            // Read the data to write
-                            let mut data = vec![0u8; buf_len as usize];
-                            if memory_wrapper.0.read(buf_ptr, &mut data).is_err() {
-                                #[cfg(feature = "tracing")]
-                                warn!("[WASI-P1] fd_write: failed to read data");
-                                continue;
-                            }
-
-                            // Write to stdout (fd=1) or stderr (fd=2)
-                            #[cfg(feature = "std")]
-                            let write_result = {
-                                use std::io::Write;
-                                if fd == 1 {
-                                    std::io::stdout().write_all(&data).and_then(|_| std::io::stdout().flush())
-                                } else if fd == 2 {
-                                    std::io::stderr().write_all(&data).and_then(|_| std::io::stderr().flush())
-                                } else {
-                                    // Other FDs not supported in stub
-                                    #[cfg(feature = "tracing")]
-                                    warn!(fd = fd, "[WASI-P1] fd_write: unsupported fd");
-                                    Ok(())
-                                }
-                            };
-                            #[cfg(not(feature = "std"))]
-                            let write_result: core::result::Result<(), ()> = Ok(()); // no_std: silent no-op
-
-                            if write_result.is_ok() {
-                                total += buf_len;
-                            }
-                        }
-
-                        // Note: In a full implementation we'd write total to nwritten_ptr,
-                        // but Memory is behind Arc and read-only here. Most WASM modules
-                        // don't check nwritten for stdout anyway.
-                        let _ = nwritten_ptr; // Silence unused warning
-
-                        total
-                    } else {
-                        0
-                    }
-                } else {
-                    0
-                };
-
-                #[cfg(feature = "tracing")]
-                trace!(total_written = total_written, "[WASI-P1] fd_write: complete");
-
-                // Return 0 (success / __WASI_ERRNO_SUCCESS)
-                Ok(Some(Value::I32(0)))
-            }
-
-            // args_sizes_get(argc: *mut u32, argv_buf_size: *mut u32) -> errno
-            // Returns the number of arguments and total size of argument string data
-            ("wasi_snapshot_preview1", "args_sizes_get") => {
-                // Pop arguments in reverse order
-                let argv_buf_size_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("args_sizes_get: missing argv_buf_size_ptr"));
-                };
-
-                let argc_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("args_sizes_get: missing argc_ptr"));
-                };
-
-                // Get the WASI args from the dispatcher or global
-                #[cfg(all(feature = "std", feature = "wasi"))]
-                let args: Vec<String> = if let Some(ref dispatcher) = self.wasi_dispatcher {
-                    let disp_args = dispatcher.args();
-                    if disp_args.is_empty() {
-                        wrt_wasi::get_global_wasi_args()
-                    } else {
-                        disp_args.to_vec()
-                    }
-                } else {
-                    wrt_wasi::get_global_wasi_args()
-                };
-
-                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
-                let args: Vec<String> = Vec::new();
-
-                let argc = args.len() as u32;
-                // Total size includes null terminators for each arg
-                let argv_buf_size: u32 = args.iter()
-                    .map(|s| s.len() as u32 + 1)
-                    .sum();
-
-                #[cfg(feature = "tracing")]
-                trace!(argc = argc, argv_buf_size = argv_buf_size, "[WASI-P1] args_sizes_get");
-
-                // Write the values to memory
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        // Write argc
-                        if let Err(e) = memory_wrapper.0.write_shared(argc_ptr, &argc.to_le_bytes()) {
-                            #[cfg(feature = "tracing")]
-                            warn!(error = ?e, "[WASI-P1] args_sizes_get: failed to write argc");
-                        }
-                        // Write argv_buf_size
-                        if let Err(e) = memory_wrapper.0.write_shared(argv_buf_size_ptr, &argv_buf_size.to_le_bytes()) {
-                            #[cfg(feature = "tracing")]
-                            warn!(error = ?e, "[WASI-P1] args_sizes_get: failed to write argv_buf_size");
-                        }
-                    }
-                }
-
-                Ok(Some(Value::I32(0))) // Success
-            }
-
-            // args_get(argv: *mut *mut u8, argv_buf: *mut u8) -> errno
-            // Writes argument pointers to argv and argument strings to argv_buf
-            ("wasi_snapshot_preview1", "args_get") => {
-                // Pop arguments in reverse order
-                let argv_buf_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("args_get: missing argv_buf_ptr"));
-                };
-
-                let argv_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("args_get: missing argv_ptr"));
-                };
-
-                // Get the WASI args from the dispatcher or global
-                #[cfg(all(feature = "std", feature = "wasi"))]
-                let args: Vec<String> = if let Some(ref dispatcher) = self.wasi_dispatcher {
-                    let disp_args = dispatcher.args();
-                    if disp_args.is_empty() {
-                        wrt_wasi::get_global_wasi_args()
-                    } else {
-                        disp_args.to_vec()
-                    }
-                } else {
-                    wrt_wasi::get_global_wasi_args()
-                };
-
-                #[cfg(any(not(feature = "std"), not(feature = "wasi")))]
-                let args: Vec<String> = Vec::new();
-
-                #[cfg(feature = "tracing")]
-                trace!(
-                    argv_ptr = format_args!("0x{:x}", argv_ptr),
-                    argv_buf_ptr = format_args!("0x{:x}", argv_buf_ptr),
-                    args_len = args.len(),
-                    "[WASI-P1] args_get"
-                );
-
-                // Write the argument data to memory
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        let mut current_buf_offset = argv_buf_ptr;
-
-                        for (i, arg) in args.iter().enumerate() {
-                            // Write pointer to this arg's string data in argv array
-                            let ptr_offset = argv_ptr + (i as u32 * 4);
-                            if let Err(e) = memory_wrapper.0.write_shared(ptr_offset, &current_buf_offset.to_le_bytes()) {
-                                #[cfg(feature = "tracing")]
-                                warn!(idx = i, error = ?e, "[WASI-P1] args_get: failed to write argv pointer");
-                            }
-
-                            // Write the arg string data (null-terminated)
-                            let arg_bytes = arg.as_bytes();
-                            if let Err(e) = memory_wrapper.0.write_shared(current_buf_offset, arg_bytes) {
-                                #[cfg(feature = "tracing")]
-                                warn!(idx = i, error = ?e, "[WASI-P1] args_get: failed to write arg data");
-                            }
-                            // Write null terminator
-                            if let Err(e) = memory_wrapper.0.write_shared(current_buf_offset + arg_bytes.len() as u32, &[0u8]) {
-                                #[cfg(feature = "tracing")]
-                                warn!(error = ?e, "[WASI-P1] args_get: failed to write null terminator");
-                            }
-
-                            #[cfg(feature = "tracing")]
-                            trace!(
-                                idx = i,
-                                offset = format_args!("0x{:x}", current_buf_offset),
-                                arg = ?arg,
-                                "[WASI-P1] args_get: wrote arg"
-                            );
-
-                            current_buf_offset += arg_bytes.len() as u32 + 1;
-                        }
-                    }
-                }
-
-                Ok(Some(Value::I32(0))) // Success
-            }
-
-            // environ_sizes_get(environc: *mut u32, environ_buf_size: *mut u32) -> errno
-            ("wasi_snapshot_preview1", "environ_sizes_get") => {
-                // Pop arguments in reverse order
-                let environ_buf_size_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("environ_sizes_get: missing environ_buf_size_ptr"));
-                };
-
-                let environc_ptr = if let Some(Value::I32(ptr)) = stack.pop() {
-                    ptr as u32
-                } else {
-                    return Err(wrt_error::Error::runtime_error("environ_sizes_get: missing environc_ptr"));
-                };
-
-                // For now, return empty environment (environc=0, buf_size=0)
-                #[cfg(feature = "tracing")]
-                trace!("[WASI-P1] environ_sizes_get: returning empty environment");
-
-                if let Some(instance) = self.instances.get(&instance_id) {
-                    if let Ok(memory_wrapper) = instance.memory(0) {
-                        // Write environc = 0
-                        let _ = memory_wrapper.0.write_shared(environc_ptr, &0u32.to_le_bytes());
-                        // Write environ_buf_size = 0
-                        let _ = memory_wrapper.0.write_shared(environ_buf_size_ptr, &0u32.to_le_bytes());
-                    }
-                }
-
-                Ok(Some(Value::I32(0))) // Success
-            }
-
-            // environ_get(environ: *mut *mut u8, environ_buf: *mut u8) -> errno
-            ("wasi_snapshot_preview1", "environ_get") => {
-                // Pop arguments (not used since we return empty environment)
-                let _environ_buf_ptr = stack.pop();
-                let _environ_ptr = stack.pop();
-
-                #[cfg(feature = "tracing")]
-                trace!("[WASI-P1] environ_get: returning empty environment");
-
-                // Nothing to write since environc = 0
-                Ok(Some(Value::I32(0))) // Success
-            }
-
-            // proc_exit(exit_code: i32) -> !
-            ("wasi_snapshot_preview1", "proc_exit") => {
-                let exit_code = if let Some(Value::I32(code)) = stack.pop() {
-                    code
-                } else {
-                    0
-                };
-                #[cfg(feature = "tracing")]
-                trace!(exit_code = exit_code, "[WASI-P1] proc_exit - terminating");
-                // Actually exit the process - proc_exit should never return
-                #[cfg(feature = "std")]
-                {
-                    std::process::exit(exit_code);
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // In no_std mode, return an error to signal exit
-                    return Err(wrt_error::Error::runtime_error(
-                        format!("Process exit requested with code {}", exit_code)
-                    ));
-                }
-            }
-
-            // Default: stub implementation
-            _ => {
-                #[cfg(feature = "tracing")]
-                debug!("WASI: Stub for {}::{}", module_name, field_name);
-                // Check if this is a __main_module__ import - these need special handling
-                if module_name == "__main_module__" {
-                    #[cfg(feature = "tracing")]
-                    warn!(field = %field_name, "[WASI] __main_module__ function called as WASI stub - linking error");
-                    return Err(wrt_error::Error::runtime_error(
-                        "Internal module function called as WASI import - linking error"
-                    ));
-                }
-                Ok(Some(Value::I32(0))) // Default success
-            }
-        }
+        Err(wrt_error::Error::runtime_error(
+            "WASI function called but no host_handler configured. \
+             Use engine.set_host_handler() with a WasiDispatcher to enable WASI support."
+        ))
     }
 }
+
+// REMOVED: ~950 lines of inline WASI dispatch code
+// All WASI dispatch is now handled by WasiDispatcher via HostImportHandler trait
+// See wrt-wasi/src/dispatcher.rs for the implementation
 
 impl Default for StacklessEngine {
     #[cfg(any(feature = "std", feature = "alloc"))]

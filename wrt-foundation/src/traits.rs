@@ -1296,6 +1296,113 @@ pub mod importance {
     pub const INTERNAL: u8 = 120;
 }
 
+/// Memory accessor trait for host imports
+///
+/// This trait abstracts memory access so both Mutex-protected Memory
+/// (for ASIL-B compliance) and raw byte slices (for tests) can work with
+/// the same `HostImportHandler` interface.
+///
+/// # Design Rationale
+///
+/// The engine's `Memory` type uses interior mutability with Mutex protection
+/// for thread safety, providing `read()` and `write()` methods via `Arc<Memory>`.
+/// Since `Arc` doesn't allow `&mut` references, writes use interior mutability.
+///
+/// Rather than exposing raw `&mut [u8]` (which would break ASIL-B safety) or
+/// using copy-in/copy-out (which wastes memory and is a fallback), this trait
+/// provides a clean abstraction both sides can implement.
+///
+/// Note: `write_bytes` takes `&self` (not `&mut self`) because Memory uses
+/// interior mutability via Mutex. Implementations must be thread-safe.
+#[cfg(feature = "std")]
+pub trait MemoryAccessor: Send + Sync {
+    /// Read bytes from memory at offset into buffer
+    ///
+    /// # Arguments
+    /// * `offset` - Starting byte offset in memory
+    /// * `buffer` - Buffer to read data into
+    ///
+    /// # Errors
+    /// Returns error if read would go out of bounds
+    fn read_bytes(&self, offset: u32, buffer: &mut [u8]) -> Result<()>;
+
+    /// Write bytes to memory at offset from data
+    ///
+    /// Uses interior mutability (typically via Mutex) for thread-safe writes.
+    ///
+    /// # Arguments
+    /// * `offset` - Starting byte offset in memory
+    /// * `data` - Data to write
+    ///
+    /// # Errors
+    /// Returns error if write would go out of bounds
+    fn write_bytes(&self, offset: u32, data: &[u8]) -> Result<()>;
+
+    /// Get total memory size in bytes
+    fn size(&self) -> usize;
+}
+
+/// Wrapper for byte vectors that implements `MemoryAccessor` with interior mutability.
+///
+/// Uses `RwLock` for thread-safe read/write access, matching the trait's requirements.
+/// This is useful for tests and simple cases where you need a `MemoryAccessor` from raw bytes.
+#[cfg(feature = "std")]
+pub struct SliceMemory {
+    data: std::sync::RwLock<Vec<u8>>,
+}
+
+#[cfg(feature = "std")]
+impl SliceMemory {
+    /// Create a new SliceMemory from a byte vector
+    pub fn new(data: Vec<u8>) -> Self {
+        Self {
+            data: std::sync::RwLock::new(data),
+        }
+    }
+
+    /// Create a new SliceMemory with specified size initialized to zeros
+    pub fn with_size(size: usize) -> Self {
+        Self {
+            data: std::sync::RwLock::new(vec![0u8; size]),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl MemoryAccessor for SliceMemory {
+    fn read_bytes(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
+        let data = self.data.read().map_err(|_| {
+            crate::Error::memory_out_of_bounds("Failed to acquire read lock")
+        })?;
+        let start = offset as usize;
+        let end = start.checked_add(buffer.len())
+            .ok_or_else(|| crate::Error::memory_out_of_bounds("Read offset overflow"))?;
+        if end > data.len() {
+            return Err(crate::Error::memory_out_of_bounds("Read out of bounds"));
+        }
+        buffer.copy_from_slice(&data[start..end]);
+        Ok(())
+    }
+
+    fn write_bytes(&self, offset: u32, data: &[u8]) -> Result<()> {
+        let mut mem = self.data.write().map_err(|_| {
+            crate::Error::memory_out_of_bounds("Failed to acquire write lock")
+        })?;
+        let start = offset as usize;
+        let end = start.checked_add(data.len())
+            .ok_or_else(|| crate::Error::memory_out_of_bounds("Write offset overflow"))?;
+        if end > mem.len() {
+            return Err(crate::Error::memory_out_of_bounds("Write out of bounds"));
+        }
+        mem[start..end].copy_from_slice(data);
+        Ok(())
+    }
+
+    fn size(&self) -> usize {
+        self.data.read().map(|d| d.len()).unwrap_or(0)
+    }
+}
+
 /// Handler for host imports (WASI, custom host functions, etc.)
 ///
 /// This trait provides the ONLY interface for the engine to call host functions.
@@ -1318,7 +1425,8 @@ pub trait HostImportHandler: Send + Sync {
     /// * `module` - The module name (e.g., "wasi:cli/stdout@0.2.0")
     /// * `function` - The function name (e.g., "get-stdout")
     /// * `args` - The arguments from the operand stack
-    /// * `memory` - Optional mutable access to instance memory for reading/writing
+    /// * `memory` - Optional access to instance memory for reading/writing.
+    ///   Uses interior mutability for writes (thread-safe via Mutex/RwLock).
     ///
     /// # Returns
     /// * `Ok(Vec<Value>)` - The return values to push onto the operand stack
@@ -1335,6 +1443,6 @@ pub trait HostImportHandler: Send + Sync {
         module: &str,
         function: &str,
         args: &[crate::Value],
-        memory: Option<&mut [u8]>,
+        memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<crate::Value>>;
 }

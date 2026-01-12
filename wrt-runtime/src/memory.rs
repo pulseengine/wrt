@@ -137,6 +137,8 @@ use wrt_foundation::{
     types::MemoryType,
     MemoryStats,
 };
+#[cfg(feature = "std")]
+use wrt_foundation::MemoryAccessor;
 // Import atomic operations trait
 use wrt_instructions::atomic_ops::AtomicOperations;
 // Import the MemoryOperations trait from wrt-instructions
@@ -2214,6 +2216,29 @@ impl Memory {
         self.update_peak_memory();
 
         Ok(old_size_pages)
+    }
+}
+
+/// Implementation of MemoryAccessor for Memory
+///
+/// This allows the engine to pass Memory to HostImportHandler as a trait object,
+/// enabling proper abstraction without exposing raw byte slices (which would break
+/// ASIL-B safety guarantees from the Mutex protection).
+///
+/// Uses interior mutability via `write_shared()` for thread-safe writes.
+#[cfg(feature = "std")]
+impl MemoryAccessor for Memory {
+    fn read_bytes(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
+        self.read(offset, buffer)
+    }
+
+    fn write_bytes(&self, offset: u32, data: &[u8]) -> Result<()> {
+        // Use write_shared which takes &self (interior mutability via Mutex)
+        self.write_shared(offset, data)
+    }
+
+    fn size(&self) -> usize {
+        self.size_in_bytes()
     }
 }
 

@@ -11,6 +11,8 @@ use wrt_error::{
 use wrt_foundation::capabilities::factory::CapabilityGuardedProvider;
 // Box is re-exported by wrt_foundation
 use wrt_foundation::Box;
+#[cfg(feature = "std")]
+use wrt_foundation::heap_provider::HeapProvider;
 use wrt_foundation::{
     bounded::{
         BoundedString,
@@ -29,29 +31,29 @@ use wrt_foundation::{
     },
 };
 
-/// Memory size for runtime provider (8KB).
+/// Memory size for runtime provider.
 ///
-/// Previously was 131072 (128KB) which caused stack overflow.
-/// The issue is that NoStdProvider stores [u8; N] directly in the struct,
-/// so even "heap allocation" ends up on the stack when returned.
-/// 8KB is the threshold that avoids the heap allocation path entirely.
-pub const RUNTIME_MEMORY_SIZE: usize = 8192;
+/// In std mode, we use HeapProvider which allocates on the heap, so this can be larger.
+/// ML inference modules with many imports/types need substantial memory for BoundedMaps.
+/// In no_std mode, we use NoStdProvider which embeds [u8; N] in the struct, so must be small.
+#[cfg(feature = "std")]
+pub const RUNTIME_MEMORY_SIZE: usize = 8_388_608; // 8MB for std (heap-allocated, large ML modules)
+#[cfg(not(feature = "std"))]
+pub const RUNTIME_MEMORY_SIZE: usize = 8192; // 8KB for no_std (stack-allocated)
 
 // Stack allocation threshold - use platform allocator for sizes above this
 const STACK_ALLOCATION_THRESHOLD: usize = 4096; // 4KB
 
 /// Base memory provider for runtime
-/// Always uses NoStdProvider as the base provider
-pub type BaseRuntimeProvider = NoStdProvider<RUNTIME_MEMORY_SIZE>;
+/// In std mode, use HeapProvider for heap allocation (supports larger modules)
+/// In no_std mode, use NoStdProvider with small stack allocation
+#[cfg(feature = "std")]
+pub type BaseRuntimeProvider = HeapProvider;
+#[cfg(not(feature = "std"))]
+pub type BaseRuntimeProvider = NoStdProvider<8192>;
 
 /// Budget-aware memory provider for runtime
-/// Uses CapabilityAwareProvider wrapper in std/alloc environments
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
-
-/// Budget-aware memory provider for runtime
-/// Uses CapabilityAwareProvider wrapper in no_std environments too
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+/// Uses CapabilityAwareProvider wrapper in all environments
 pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
 
 /// Default runtime provider alias for backward compatibility
@@ -69,11 +71,10 @@ pub fn create_runtime_provider_with_context(
         verification::VerificationLevel,
     };
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
-        // Create provider directly without going through global context to avoid
-        // recursion
-        let base_provider = BaseRuntimeProvider::default();
+        // In std mode, use HeapProvider with larger heap allocation
+        let base_provider = HeapProvider::new(RUNTIME_MEMORY_SIZE)?;
 
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
@@ -86,10 +87,10 @@ pub fn create_runtime_provider_with_context(
             CapabilityAwareProvider::new(base_provider, Box::new(capability), CrateId::Runtime);
         Ok(provider)
     }
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(feature = "std"))]
     {
-        // In no_std environments, use the lightweight provider creation
-        let base_provider = BaseRuntimeProvider::default();
+        // In no_std environments, use NoStdProvider with small stack allocation
+        let base_provider = NoStdProvider::<8192>::default();
 
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
@@ -106,27 +107,42 @@ pub fn create_runtime_provider_with_context(
 
 /// Helper function to create a runtime provider
 ///
-/// This creates a new context which can cause recursion. Use
-/// create_runtime_provider_with_context instead.
+/// In std mode, creates a HeapProvider with large capacity for ML modules.
+/// In no_std mode, creates a NoStdProvider with small stack allocation.
 pub fn create_runtime_provider() -> wrt_error::Result<RuntimeProvider> {
     #[cfg(feature = "tracing")]
     wrt_foundation::tracing::trace!("create_runtime_provider() called");
 
-    // For small sizes, use the normal capability system
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    use wrt_foundation::{
+        capabilities::DynamicMemoryCapability,
+        verification::VerificationLevel,
+    };
+
+    #[cfg(feature = "std")]
     {
-        // In std/alloc environments, safe_capability_alloc! returns
-        // CapabilityAwareProvider
-        let context = capability_context!(dynamic(CrateId::Runtime, RUNTIME_MEMORY_SIZE))?;
-        let provider = safe_capability_alloc!(context, CrateId::Runtime, RUNTIME_MEMORY_SIZE)?;
+        // In std mode, use HeapProvider with large heap allocation
+        let base_provider = HeapProvider::new(RUNTIME_MEMORY_SIZE)?;
+        let capability = DynamicMemoryCapability::new(
+            RUNTIME_MEMORY_SIZE,
+            CrateId::Runtime,
+            VerificationLevel::Standard,
+        );
+        let provider =
+            CapabilityAwareProvider::new(base_provider, Box::new(capability), CrateId::Runtime);
         Ok(provider)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(feature = "std"))]
     {
-        // In no_std, safe_capability_alloc! returns the base provider
-        let context = capability_context!(dynamic(CrateId::Runtime, RUNTIME_MEMORY_SIZE))?;
-        let provider = safe_capability_alloc!(context, CrateId::Runtime, RUNTIME_MEMORY_SIZE)?;
+        // In no_std, use NoStdProvider with small stack allocation
+        let base_provider = NoStdProvider::<8192>::default();
+        let capability = DynamicMemoryCapability::new(
+            RUNTIME_MEMORY_SIZE,
+            CrateId::Runtime,
+            VerificationLevel::Standard,
+        );
+        let provider =
+            CapabilityAwareProvider::new(base_provider, Box::new(capability), CrateId::Runtime);
         Ok(provider)
     }
 }

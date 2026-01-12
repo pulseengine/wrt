@@ -930,6 +930,8 @@ impl ComponentInstance {
         // Track which core instance index exports _start (the main executable module)
         // This is the GENERIC way to find the main module - it's the one that exports _start
         let mut start_export_instance_idx: Option<u32> = None;
+        // Track if this is an interface-style component (exports wasi:cli/run instead of _start alias)
+        let mut is_interface_style = false;
 
         #[cfg(feature = "std")]
         {
@@ -1015,7 +1017,29 @@ impl ComponentInstance {
             }
             if start_export_instance_idx.is_none() {
                 #[cfg(feature = "tracing")]
-                tracing::warn!("No _start export found in aliases - component may not be a command");
+                tracing::warn!("No _start export found in aliases - checking for wasi:cli/run interface");
+
+                // If no _start alias, check for wasi:cli/run interface export
+                // This is an interface-style component that uses wasi:cli/run instead of _start
+                for export in &parsed.exports {
+                    if export.name.name.starts_with("wasi:cli/run@") {
+                        // This is an interface-style component
+                        // It doesn't need _start - the entry point is via the interface
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            export_name = %export.name.name,
+                            "Found wasi:cli/run interface export - interface-style component"
+                        );
+                        println!("    ├─ Found wasi:cli/run interface: {}", export.name.name);
+                        is_interface_style = true;
+                        break;
+                    }
+                }
+
+                if !is_interface_style {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("No _start export and no wasi:cli/run interface found");
+                }
             }
 
             // Instantiate modules according to core_instances order
@@ -1120,6 +1144,12 @@ impl ComponentInstance {
                                             // For instance imports, we need to link ALL exports from the provider
                                             // to the module's imports that match by name
                                             if let Some(&handle) = core_instances_map.get(&(arg_ref.idx as usize)) {
+                                                // Check if this is a WASI P1 interface - should use WASI dispatcher directly
+                                                if arg_ref.name == "wasi_snapshot_preview1" {
+                                                    println!("    │  │  ├─ WASI P1 interface '{}' - skipping link, will use WASI dispatcher",
+                                                             arg_ref.name);
+                                                    continue;
+                                                }
                                                 // Check if this is an InlineExports with stored export names
                                                 if let Some(export_mappings) = inline_exports_map.get(&(arg_ref.idx as usize)) {
                                                     println!("    │  │  ├─ Instance {} has {} exports to link", arg_ref.idx, export_mappings.len());
@@ -1141,7 +1171,14 @@ impl ComponentInstance {
                                                     // Skip the normal single-link below since we linked everything
                                                     continue;
                                                 } else {
-                                                    // No stored exports, use the old behavior
+                                                    // No stored exports - this is likely a stub/canonical function instance
+                                                    // For WASI interfaces, skip linking and let WASI dispatcher handle it
+                                                    if arg_ref.name.starts_with("wasi:") {
+                                                        println!("    │  │  ├─ WASI interface '{}' - skipping link, will use WASI dispatcher",
+                                                                 arg_ref.name);
+                                                        continue;
+                                                    }
+                                                    // For non-WASI, use the old behavior
                                                     (handle, arg_ref.name.clone())
                                                 }
                                             } else {
@@ -1755,16 +1792,70 @@ impl ComponentInstance {
                     }
                 }
                 None => {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("No _start export found - component does not export an entry point");
-                    return Err(Error::runtime_execution_error(
-                        "No _start export found - command components must export _start"
-                    ));
+                    if is_interface_style {
+                        // Interface-style component (exports wasi:cli/run instead of _start)
+                        // Search ALL instances to find the one with wasi:cli/run#run export
+                        // (Can't just use instance 0 - adapters are instantiated first!)
+                        let mut found_handle = None;
+                        let entry_patterns = [
+                            "wasi:cli/run@0.2.3#run",
+                            "wasi:cli/run@0.2.6#run",
+                            "wasi:cli/run@0.2.0#run",
+                        ];
+
+                        for (&idx, &handle) in &core_instances_map {
+                            if let Some(engine_ref) = &instance.runtime_engine {
+                                for pattern in &entry_patterns {
+                                    if engine_ref.has_function(handle, pattern).unwrap_or(false) {
+                                        println!("    ├─ Found {} export in core instance {} (handle {:?})", pattern, idx, handle);
+                                        found_handle = Some(handle);
+                                        break;
+                                    }
+                                }
+                                if found_handle.is_some() {
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Fall back to the last instance in the map (often the main app)
+                        if found_handle.is_none() {
+                            // Take the instance with the highest core instance idx
+                            if let Some((&idx, &handle)) = core_instances_map.iter().max_by_key(|(k, _)| *k) {
+                                println!("    ├─ Fallback: using core instance {} (handle {:?}) as main", idx, handle);
+                                found_handle = Some(handle);
+                            }
+                        }
+
+                        if let Some(handle) = found_handle {
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                ?handle,
+                                "Interface-style component - using instance with wasi:cli/run export as main"
+                            );
+                            instance.main_instance_handle = Some(handle);
+                            handle
+                        } else {
+                            return Err(Error::runtime_execution_error(
+                                "Interface-style component has no core instances"
+                            ));
+                        }
+                    } else {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("No _start export found - component does not export an entry point");
+                        return Err(Error::runtime_execution_error(
+                            "No _start export found - command components must export _start"
+                        ));
+                    }
                 }
             };
 
             #[cfg(feature = "tracing")]
-            tracing::info!(?main_handle, "Main instance selected (exports _start)");
+            if is_interface_style {
+                tracing::info!(?main_handle, "Main instance selected (interface-style component)");
+            } else {
+                tracing::info!(?main_handle, "Main instance selected (exports _start)");
+            }
         }
 
         Ok(instance)
@@ -3587,20 +3678,89 @@ impl ComponentInstance {
 
         println!("[CALL_NATIVE] Executing canonical function {}", func_index);
 
-        // For now, since this is a canonical lower function for wasi:cli/run which
-        // takes no parameters and returns an exit code, we'll execute it directly
+        // Use the stored engine and instance handle from component instantiation
+        // This preserves all the import linkages established during instantiation
+        #[cfg(feature = "wrt-execution")]
+        {
+            use wrt_runtime::engine::CapabilityEngine;
+            use wrt_foundation::values::Value;
 
-        // The actual implementation should call the core WASM function
-        // through the runtime engine. For now, we'll call the _initialize function
-        // which is what the TinyGo component expects
+            if let (Some(engine_box), Some(instance_handle)) =
+                (&mut self.runtime_engine, self.main_instance_handle)
+            {
+                let engine = engine_box.as_mut();
+                println!("[CALL_NATIVE] Using stored engine and instance {:?}", instance_handle);
 
-        // TODO: Runtime engine integration for canonical function execution
-        // When runtime_engine and main_instance_handle are added to ComponentInstance,
-        // this path should use the stored engine to execute canonical functions through
-        // the already-instantiated module.
-        // For now, fall through to the module loading path below.
+                // Convert component values to WASM values
+                let wasm_args: Vec<Value> = args.iter().map(|_| {
+                    // For now, we don't pass arguments - wasi:cli/run takes none
+                    Value::I32(0)
+                }).collect();
 
-        // Get the module binary for other functions
+                // Try _initialize first (important for TinyGo components)
+                println!("[CALL_NATIVE] Attempting to call _initialize...");
+                match engine.execute(instance_handle, "_initialize", &[]) {
+                    Ok(_) => println!("[CALL_NATIVE] ✓ _initialize completed"),
+                    Err(e) => println!("[CALL_NATIVE] ⚠ _initialize skipped: {:?}", e),
+                }
+
+                // Try entry point functions in order of preference:
+                // 1. _start - standard WASI command entry point
+                // 2. wasi:cli/run@*#run - component model canonical entry point
+                // 3. run - common for interface-style components
+                // 4. main - C-style entry point
+                // For Rust-generated components, the entry point is often "wasi:cli/run@VERSION#run"
+                let entry_points = [
+                    "_start",
+                    "wasi:cli/run@0.2.3#run",  // Common version
+                    "wasi:cli/run@0.2.6#run",  // Another common version
+                    "wasi:cli/run@0.2.0#run",  // Older version
+                    "run",
+                    "main",
+                ];
+                let mut last_error = None;
+
+                for entry_point in entry_points {
+                    println!("[CALL_NATIVE] Trying entry point: {}...", entry_point);
+                    match engine.execute(instance_handle, entry_point, &wasm_args) {
+                        Ok(results) => {
+                            println!("[CALL_NATIVE] ✓ {} completed with {} results", entry_point, results.len());
+                            return Ok(vec![]); // wasi:cli/run returns nothing on success
+                        }
+                        Err(e) => {
+                            println!("[CALL_NATIVE] ⚠ {} not found or failed: {:?}", entry_point, e);
+                            last_error = Some(e);
+                        }
+                    }
+                }
+
+                // All entry points failed - check available exports for debugging
+                if let Some(e) = last_error {
+                    println!("[CALL_NATIVE] ✗ All entry points failed");
+                    // Debug: check for common exports
+                    let common_exports = [
+                        "_start", "_initialize", "run", "main",
+                        "wasi:cli/run@0.2.3#run", "wasi:cli/run@0.2.6#run", "wasi:cli/run@0.2.0#run",
+                        "memory", "__heap_base", "__data_end",
+                        "cabi_realloc", "__wasm_call_ctors",
+                    ];
+                    println!("[CALL_NATIVE] Checking for common exports:");
+                    for name in common_exports {
+                        match engine.has_function(instance_handle, name) {
+                            Ok(true) => println!("    ✓ {} - EXISTS", name),
+                            Ok(false) => println!("    ✗ {} - not found", name),
+                            Err(_) => println!("    ? {} - error checking", name),
+                        }
+                    }
+                    return Err(e);
+                }
+            } else {
+                println!("[CALL_NATIVE] No stored engine/instance, falling back to fresh instantiation");
+            }
+        }
+
+        // Fallback: Create fresh engine if stored engine not available
+        // This path is used when wrt-execution feature is disabled or during testing
         let module_binary = self.component.modules.get(module_index as usize)
             .ok_or_else(|| Error::runtime_execution_error("Module index out of bounds"))?;
 
@@ -3715,6 +3875,10 @@ impl ComponentInstance {
                 use wrt_foundation::values::Value;
                 use std::sync::{Arc as StdArc, Mutex};
 
+                // WASI Preview 2 versions we support - register for all to ensure compatibility
+                // Components may import @0.2.0, @0.2.4, or @0.2.6 depending on toolchain version
+                const WASI_VERSIONS: &[&str] = &["0.2.0", "0.2.4", "0.2.6"];
+
                 // Create shared instance state for WASI functions to access memory
                 // We'll populate this after instantiation
                 type InstanceMemory = StdArc<Mutex<Option<StdArc<wrt_runtime::module_instance::ModuleInstance>>>>;
@@ -3763,162 +3927,202 @@ impl ComponentInstance {
                     }
                 };
 
-                // wasi:cli/environment@0.2.0
-                let _ = engine.register_host_function("wasi:cli/environment@0.2.0", "get-environment",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // Empty list ptr
-                let _ = engine.register_host_function("wasi:cli/environment@0.2.0", "get-arguments",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // Empty list ptr
-                let _ = engine.register_host_function("wasi:cli/environment@0.2.0", "initial-cwd",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // None
+                // wasi:cli/environment - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:cli/environment@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-environment",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // Empty list ptr
+                    let _ = engine.register_host_function(&iface, "get-arguments",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // Empty list ptr
+                    let _ = engine.register_host_function(&iface, "initial-cwd",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // None
+                }
 
-                // wasi:cli/exit@0.2.0
-                let _ = engine.register_host_function("wasi:cli/exit@0.2.0", "exit",
-                    |args: &[Value]| {
-                        if let Some(Value::I32(code)) = args.get(0) {
-                            println!("[WASI] exit called with code: {}", code);
-                        }
-                        Ok(vec![]) // Never returns
-                    });
+                // wasi:cli/exit - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:cli/exit@{}", version);
+                    let _ = engine.register_host_function(&iface, "exit",
+                        |args: &[Value]| {
+                            if let Some(Value::I32(code)) = args.get(0) {
+                                println!("[WASI] exit called with code: {}", code);
+                            }
+                            Ok(vec![]) // Never returns
+                        });
+                }
 
-                // wasi:io/poll@0.2.0
-                let _ = engine.register_host_function("wasi:io/poll@0.2.0", "[method]pollable.block",
-                    |_args: &[Value]| Ok(vec![]));
+                // wasi:io/poll - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:io/poll@{}", version);
+                    let _ = engine.register_host_function(&iface, "[method]pollable.block",
+                        |_args: &[Value]| Ok(vec![]));
+                }
 
-                // wasi:io/streams@0.2.0
-                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[method]input-stream.blocking-read",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<tuple<list<u8>, bool>, error>
-                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[resource-drop]input-stream",
-                    |_args: &[Value]| Ok(vec![]));
-                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[method]output-stream.blocking-flush",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[method]output-stream.blocking-write-and-flush",
-                    {
-                        let read_mem = read_memory.clone();
-                        move |args: &[Value]| {
-                            if args.len() >= 3 {
-                                let handle = if let Value::I32(h) = args[0] { h } else { 1 };
-                                let ptr = if let Value::I32(p) = args[1] { p as u32 } else { 0 };
-                                let len = if let Value::I32(l) = args[2] { l as u32 } else { 0 };
+                // wasi:io/streams - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:io/streams@{}", version);
+                    let _ = engine.register_host_function(&iface, "[method]input-stream.blocking-read",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<tuple<list<u8>, bool>, error>
+                    let _ = engine.register_host_function(&iface, "[resource-drop]input-stream",
+                        |_args: &[Value]| Ok(vec![]));
+                    let _ = engine.register_host_function(&iface, "[method]output-stream.blocking-flush",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
 
-                                println!("[WASI] blocking-write-and-flush: handle={}, ptr={}, len={}", handle, ptr, len);
+                    // blocking-write-and-flush - the critical write function
+                    let read_mem = read_memory.clone();
+                    let _ = engine.register_host_function(&iface, "[method]output-stream.blocking-write-and-flush",
+                        {
+                            let read_mem = read_mem.clone();
+                            move |args: &[Value]| {
+                                if args.len() >= 3 {
+                                    let handle = if let Value::I32(h) = args[0] { h } else { 1 };
+                                    let ptr = if let Value::I32(p) = args[1] { p as u32 } else { 0 };
+                                    let len = if let Value::I32(l) = args[2] { l as u32 } else { 0 };
 
-                                // Try to read from WASM memory
-                                match read_mem(ptr, len) {
-                                    Ok(data) => {
-                                        // Write to stdout or stderr
-                                        use std::io::Write;
-                                        let result = if handle == 1 {
-                                            std::io::stdout().write_all(&data)
-                                                .and_then(|_| std::io::stdout().flush())
-                                        } else if handle == 2 {
-                                            std::io::stderr().write_all(&data)
-                                                .and_then(|_| std::io::stderr().flush())
-                                        } else {
-                                            Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid handle"))
-                                        };
+                                    println!("[WASI] blocking-write-and-flush: handle={}, ptr={}, len={}", handle, ptr, len);
 
-                                        match result {
-                                            Ok(_) => {
-                                                println!("[WASI] ✓ Wrote {} bytes to handle {}", len, handle);
-                                                println!("[WASI] Data: {:?}", String::from_utf8_lossy(&data));
-                                                Ok(vec![Value::I64(0)]) // Success
-                                            }
-                                            Err(e) => {
-                                                #[cfg(feature = "tracing")]
-                                                tracing::warn!(error = ?e, "WASI write error");
-                                                Ok(vec![Value::I64(1)]) // Error
+                                    // Try to read from WASM memory
+                                    match read_mem(ptr, len) {
+                                        Ok(data) => {
+                                            // Write to stdout or stderr
+                                            use std::io::Write;
+                                            let result = if handle == 1 {
+                                                std::io::stdout().write_all(&data)
+                                                    .and_then(|_| std::io::stdout().flush())
+                                            } else if handle == 2 {
+                                                std::io::stderr().write_all(&data)
+                                                    .and_then(|_| std::io::stderr().flush())
+                                            } else {
+                                                Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid handle"))
+                                            };
+
+                                            match result {
+                                                Ok(_) => {
+                                                    println!("[WASI] ✓ Wrote {} bytes to handle {}", len, handle);
+                                                    println!("[WASI] Data: {:?}", String::from_utf8_lossy(&data));
+                                                    Ok(vec![Value::I64(0)]) // Success
+                                                }
+                                                Err(e) => {
+                                                    #[cfg(feature = "tracing")]
+                                                    tracing::warn!(error = ?e, "WASI write error");
+                                                    Ok(vec![Value::I64(1)]) // Error
+                                                }
                                             }
                                         }
+                                        Err(e) => {
+                                            #[cfg(feature = "tracing")]
+                                            tracing::warn!(error = %e, "WASI memory read error");
+                                            Ok(vec![Value::I64(1)]) // Error - can't read memory yet
+                                        }
                                     }
-                                    Err(e) => {
-                                        #[cfg(feature = "tracing")]
-                                        tracing::warn!(error = %e, "WASI memory read error");
-                                        Ok(vec![Value::I64(1)]) // Error - can't read memory yet
-                                    }
+                                } else {
+                                    Ok(vec![Value::I64(1)]) // Error - wrong args
                                 }
-                            } else {
-                                Ok(vec![Value::I64(1)]) // Error - wrong args
                             }
-                        }
-                    });
-                let _ = engine.register_host_function("wasi:io/streams@0.2.0", "[resource-drop]output-stream",
-                    |_args: &[Value]| Ok(vec![]));
+                        });
+                    let _ = engine.register_host_function(&iface, "[resource-drop]output-stream",
+                        |_args: &[Value]| Ok(vec![]));
+                }
 
-                // wasi:cli/stdout@0.2.0
-                let _ = engine.register_host_function("wasi:cli/stdout@0.2.0", "get-stdout",
-                    |_args: &[Value]| {
-                        println!("[WASI] get-stdout called");
-                        Ok(vec![Value::I32(1)]) // Return stdout handle
-                    });
+                // wasi:cli/stdout - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:cli/stdout@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-stdout",
+                        |_args: &[Value]| {
+                            println!("[WASI] get-stdout called");
+                            Ok(vec![Value::I32(1)]) // Return stdout handle
+                        });
+                }
 
-                // wasi:cli/stderr@0.2.0
-                let _ = engine.register_host_function("wasi:cli/stderr@0.2.0", "get-stderr",
-                    |_args: &[Value]| {
-                        println!("[WASI] get-stderr called");
-                        Ok(vec![Value::I32(2)]) // Return stderr handle
-                    });
+                // wasi:cli/stderr - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:cli/stderr@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-stderr",
+                        |_args: &[Value]| {
+                            println!("[WASI] get-stderr called");
+                            Ok(vec![Value::I32(2)]) // Return stderr handle
+                        });
+                }
 
-                // wasi:cli/stdin@0.2.0
-                let _ = engine.register_host_function("wasi:cli/stdin@0.2.0", "get-stdin",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // Return stdin handle
+                // wasi:cli/stdin - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:cli/stdin@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-stdin",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // Return stdin handle
+                }
 
-                // wasi:clocks/monotonic-clock@0.2.0
-                let _ = engine.register_host_function("wasi:clocks/monotonic-clock@0.2.0", "now",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // instant (u64)
-                let _ = engine.register_host_function("wasi:clocks/monotonic-clock@0.2.0", "subscribe-duration",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // pollable handle
+                // wasi:clocks/monotonic-clock - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:clocks/monotonic-clock@{}", version);
+                    let _ = engine.register_host_function(&iface, "now",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // instant (u64)
+                    let _ = engine.register_host_function(&iface, "subscribe-duration",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // pollable handle
+                }
 
-                // wasi:clocks/wall-clock@0.2.0
-                let _ = engine.register_host_function("wasi:clocks/wall-clock@0.2.0", "now",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // datetime ptr
+                // wasi:clocks/wall-clock - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:clocks/wall-clock@{}", version);
+                    let _ = engine.register_host_function(&iface, "now",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // datetime ptr
+                }
 
-                // wasi:random/random@0.2.0
-                let _ = engine.register_host_function("wasi:random/random@0.2.0", "get-random-bytes",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // list<u8> ptr
-                let _ = engine.register_host_function("wasi:random/random@0.2.0", "get-random-u64",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // u64
+                // wasi:random/random - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:random/random@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-random-bytes",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // list<u8> ptr
+                    let _ = engine.register_host_function(&iface, "get-random-u64",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // u64
+                }
 
-                // wasi:filesystem/types@0.2.0
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.create-directory-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.link-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.open-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.read",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<tuple<list<u8>, bool>, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.read-directory",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<directory-entry-stream, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.readlink-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<string, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.remove-directory-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.rename-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[resource-drop]descriptor",
-                    |_args: &[Value]| Ok(vec![]));
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.stat",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor-stat, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.stat-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor-stat, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.symlink-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.sync-data",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.unlink-file-at",
-                    |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]descriptor.write",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I64(0)])); // result<filesize, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[method]directory-entry-stream.read-directory-entry",
-                    |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<option<directory-entry>, error>
-                let _ = engine.register_host_function("wasi:filesystem/types@0.2.0", "[resource-drop]directory-entry-stream",
-                    |_args: &[Value]| Ok(vec![]));
+                // wasi:filesystem/types - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:filesystem/types@{}", version);
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.create-directory-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.link-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.open-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.read",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<tuple<list<u8>, bool>, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.read-directory",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<directory-entry-stream, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.readlink-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0), Value::I32(0)])); // result<string, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.remove-directory-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.rename-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[resource-drop]descriptor",
+                        |_args: &[Value]| Ok(vec![]));
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.stat",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor-stat, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.stat-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<descriptor-stat, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.symlink-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.sync-data",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.unlink-file-at",
+                        |_args: &[Value]| Ok(vec![Value::I64(0)])); // result<_, error>
+                    let _ = engine.register_host_function(&iface, "[method]descriptor.write",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I64(0)])); // result<filesize, error>
+                    let _ = engine.register_host_function(&iface, "[method]directory-entry-stream.read-directory-entry",
+                        |_args: &[Value]| Ok(vec![Value::I64(0), Value::I32(0)])); // result<option<directory-entry>, error>
+                    let _ = engine.register_host_function(&iface, "[resource-drop]directory-entry-stream",
+                        |_args: &[Value]| Ok(vec![]));
+                }
 
-                // wasi:filesystem/preopens@0.2.0
-                let _ = engine.register_host_function("wasi:filesystem/preopens@0.2.0", "get-directories",
-                    |_args: &[Value]| Ok(vec![Value::I32(0)])); // list<tuple<descriptor, string>> ptr
+                // wasi:filesystem/preopens - register for all supported versions
+                for version in WASI_VERSIONS {
+                    let iface = format!("wasi:filesystem/preopens@{}", version);
+                    let _ = engine.register_host_function(&iface, "get-directories",
+                        |_args: &[Value]| Ok(vec![Value::I32(0)])); // list<tuple<descriptor, string>> ptr
+                }
 
-                println!("[TEST-THREAD] ✓ Registered 36 WASI host functions (stub implementations)");
+                // 36 functions * 3 versions = 108 total registrations
+                println!("[TEST-THREAD] ✓ Registered WASI host functions for versions 0.2.0, 0.2.4, 0.2.6");
                 println!("[TEST-THREAD] Loading module into engine...");
 
                 // Load module into engine
@@ -3938,13 +4142,19 @@ impl ComponentInstance {
                 #[cfg(feature = "std")]
                 println!("[TEST-THREAD] ✓ Engine and instance ready");
 
-                // HACK: Get access to the instance for memory operations
-                // The engine stores instances but doesn't expose them publicly
-                // We'll work around this by using the inner stackless engine's current module
-                // which gets set during execute() calls
-                //
-                // For now, we'll just let the memory read/write fail gracefully
-                // The WASM code will need to handle null pointers returned from WASI functions
+                // Populate instance_memory so WASI host functions can access WASM memory
+                // The engine stores instances and exposes them via get_instance()
+                match engine.get_instance(instance) {
+                    Ok(inst_arc) => {
+                        let mut lock = instance_memory.lock().unwrap();
+                        *lock = Some(inst_arc.clone());
+                        println!("[TEST-THREAD] ✓ Instance memory connected for WASI functions");
+                    }
+                    Err(e) => {
+                        println!("[TEST-THREAD] ⚠ Could not get instance for memory access: {:?}", e);
+                        println!("[TEST-THREAD] WASI output may not work correctly");
+                    }
+                }
 
                 // Try to find and execute the component's exported function
                 // For WASI components, we need to call _initialize first to set up globals

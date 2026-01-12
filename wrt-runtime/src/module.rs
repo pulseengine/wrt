@@ -89,16 +89,20 @@ use crate::{
     },
     table::Table,
 };
+// ImportMap: stores imports per namespace
+// 128 max imports per namespace (increased from 32 for ML inference modules)
 type ImportMap = BoundedMap<
     wrt_foundation::bounded::BoundedString<256>,
     Import,
-    32,
+    128,
     RuntimeProvider,
 >;
+// ModuleImports: maps namespace to ImportMap
+// 256 max namespaces (increased for large component models)
 type ModuleImports = BoundedMap<
     wrt_foundation::bounded::BoundedString<256>,
     ImportMap,
-    128, // Increased from 32 to handle modules with many import namespaces
+    256,
     RuntimeProvider,
 >;
 type CustomSections = BoundedMap<
@@ -117,21 +121,26 @@ type ExportMap = wrt_foundation::direct_map::DirectMap<
 type BoundedExportName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedImportName = wrt_foundation::bounded::BoundedString<128>;
 type BoundedModuleName = wrt_foundation::bounded::BoundedString<128>;
-type BoundedLocalsVec = wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 64, RuntimeProvider>;
+type BoundedLocalsVec = wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 256, RuntimeProvider>;
 type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 4096, RuntimeProvider>;
 // Data init storage: Vec in std mode for large segments, BoundedVec in no_std
 #[cfg(feature = "std")]
 type BoundedDataInit = Vec<u8>;
 #[cfg(not(feature = "std"))]
 type BoundedDataInit = wrt_foundation::bounded::BoundedVec<u8, 16384, RuntimeProvider>;
+// Module types: 512 for ML modules with many tensor operation signatures
 type BoundedModuleTypes =
-    wrt_foundation::bounded::BoundedVec<WrtFuncType, 256, RuntimeProvider>;
-type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 4096, RuntimeProvider>;
+    wrt_foundation::bounded::BoundedVec<WrtFuncType, 512, RuntimeProvider>;
+// Function limit: 8192 for large ML/inference modules
+type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 8192, RuntimeProvider>;
 type BoundedTableVec = wrt_foundation::bounded::BoundedVec<TableWrapper, 64, RuntimeProvider>;
 type BoundedMemoryVec = wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, RuntimeProvider>;
-type BoundedGlobalVec = wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, RuntimeProvider>;
-type BoundedElementVec = wrt_foundation::bounded::BoundedVec<Element, 256, RuntimeProvider>;
-type BoundedDataVec = wrt_foundation::bounded::BoundedVec<Data, 256, RuntimeProvider>;
+// Globals limit: 512 for modules with many constants
+type BoundedGlobalVec = wrt_foundation::bounded::BoundedVec<GlobalWrapper, 512, RuntimeProvider>;
+// Elements limit: 512 for indirect function tables
+type BoundedElementVec = wrt_foundation::bounded::BoundedVec<Element, 512, RuntimeProvider>;
+// Data segments limit: 512 for modules with embedded data
+type BoundedDataVec = wrt_foundation::bounded::BoundedVec<Data, 512, RuntimeProvider>;
 
 // Binary storage: Vec in std mode for large modules, BoundedVec in no_std
 #[cfg(feature = "std")]
@@ -1210,18 +1219,21 @@ impl Module {
         let shared_provider = crate::bounded_runtime_infra::create_runtime_provider()?;
 
         // Create initial empty module with proper providers
+        let imports_map = wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?;
+        let globals_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
+        let custom_sections_map = wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?;
         let mut runtime_module = Self {
             types: Vec::new(),
-            imports: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
+            imports: imports_map,
             import_order: Vec::new(), // Ordered list of imports for index-based lookup
             functions: Vec::new(),
             tables: Vec::new(), // Vec in std mode to avoid serialization issues with Arc<Table>
             memories: Vec::new(),
-            globals: wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?,
+            globals: globals_vec,
             elements: Vec::new(), // Vec in std mode for variable-size Element items
             data: Vec::new(), // Vec in std mode for large data segments
             start: wrt_module.start,
-            custom_sections: wrt_foundation::bounded_collections::BoundedMap::new(shared_provider.clone())?,
+            custom_sections: custom_sections_map,
             exports: wrt_foundation::direct_map::DirectMap::new(),
             name: None,
             binary: None,
@@ -1399,6 +1411,7 @@ impl Module {
 
                 #[cfg(feature = "tracing")]
                 trace!(func_idx = func_idx, instruction_count = instructions.len(), "Parsed instructions for function");
+
                 (locals, WrtExpr { instructions })
             };
 
@@ -2224,7 +2237,7 @@ impl Module {
             // Convert locals from foundation format to runtime format
             let provider = create_runtime_provider()?;
             let mut runtime_locals =
-                wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(
+                wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 256, RuntimeProvider>::new(
                     provider,
                 )?;
             for local in &code_entry.locals {
@@ -2944,7 +2957,7 @@ impl Module {
         // Convert Vec<WrtLocalEntry> to BoundedVec
         let provider = create_runtime_provider()?;
         let mut bounded_locals =
-            wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(
+            wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 256, RuntimeProvider>::new(
                 provider,
             )?;
         for local in locals {

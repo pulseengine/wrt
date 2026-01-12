@@ -546,7 +546,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         trace!(binary_size = binary.len(), "Decoding module");
         let decoded = Box::new(decode_module(binary)?);
         #[cfg(feature = "tracing")]
-        trace!("Decode successful, converting to runtime module");
+        trace!(types = decoded.types.len(), functions = decoded.functions.len(), "Decode successful, converting to runtime module");
 
         // Convert to runtime module (pass by reference, returns Box<Module>)
         let runtime_module = Module::from_wrt_module(&*decoded)?;
@@ -590,6 +590,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let handle = ModuleHandle::new();
         #[cfg(feature = "tracing")]
         trace!("About to Arc::new(*runtime_module)");
+
         let module_arc = Arc::new(*runtime_module);
         #[cfg(feature = "tracing")]
         trace!("About to insert into modules map");
@@ -992,12 +993,15 @@ impl CapabilityEngine for CapabilityAwareEngine {
             "[CAP_ENGINE] Executing function"
         );
 
-        // Set current module for execution (instance is already &Arc<ModuleInstance>)
-        self.inner.set_current_module(Arc::clone(instance))?;
+        // Set current module for execution and get the stackless engine's instance ID
+        // IMPORTANT: The StacklessEngine uses its own ID space (from set_current_module),
+        // NOT the CapabilityAwareEngine's InstanceHandle index. Using the wrong ID
+        // causes WASI functions to fail finding the instance memory.
+        let stackless_instance_id = self.inner.set_current_module(Arc::clone(instance))?;
 
-        // Execute the function
+        // Execute the function using the stackless engine's instance ID
         let results =
-            self.inner.execute(instance_handle.index(), func_idx as usize, args.to_vec())?;
+            self.inner.execute(stackless_instance_id, func_idx as usize, args.to_vec())?;
 
         #[cfg(feature = "tracing")]
         trace!(results_len = results.len(), "[CAP_ENGINE] Execution completed");

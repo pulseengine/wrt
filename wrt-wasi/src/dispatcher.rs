@@ -37,6 +37,8 @@ use crate::{
     prelude::*,
     Value,
 };
+#[cfg(feature = "std")]
+use wrt_foundation::MemoryAccessor;
 
 // Global storage for WASI args and env using Mutex for thread-safety
 // This allows passing args from wrtd to the engine without threading through all layers
@@ -1035,13 +1037,15 @@ impl WasiDispatcher {
     /// * `interface` - WASI interface name (e.g., "wasi:cli/stdout@0.2.4")
     /// * `function` - Function name (e.g., "get-stdout")
     /// * `args` - Raw values from the WASM stack
-    /// * `memory` - Linear memory for reading/writing complex types
+    /// * `memory` - Linear memory accessor for reading/writing complex types
+    ///   Uses interior mutability for thread-safe writes.
+    #[cfg(feature = "std")]
     pub fn dispatch_core(
         &mut self,
         interface: &str,
         function: &str,
         args: Vec<wrt_foundation::values::Value>,
-        memory: Option<&mut [u8]>,
+        memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<wrt_foundation::values::Value>> {
         use wrt_foundation::values::Value as CoreValue;
 
@@ -1097,15 +1101,12 @@ impl WasiDispatcher {
 
                 if let Some(mem) = memory {
                     #[cfg(feature = "tracing")]
-                    trace!(memory_size = mem.len(), "memory available");
+                    trace!(memory_size = mem.size(), "memory available");
 
                     if args_to_use.is_empty() {
                         // Empty list: write (0, 0) to return pointer
-                        let retptr_usize = retptr as usize;
-                        if retptr_usize + 8 <= mem.len() {
-                            mem[retptr_usize..retptr_usize + 4].copy_from_slice(&0u32.to_le_bytes());
-                            mem[retptr_usize + 4..retptr_usize + 8].copy_from_slice(&0u32.to_le_bytes());
-                        }
+                        mem.write_bytes(retptr, &0u32.to_le_bytes())?;
+                        mem.write_bytes(retptr + 4, &0u32.to_le_bytes())?;
                         return Ok(vec![]);
                     }
 
@@ -1135,20 +1136,17 @@ impl WasiDispatcher {
                         let len = bytes.len() as u32;
 
                         // Bounds check
-                        if (string_data_ptr as usize + bytes.len()) > mem.len() {
+                        if (string_data_ptr as usize + bytes.len()) > mem.size() {
                             #[cfg(feature = "tracing")]
                             warn!("not enough memory for arg data");
                             // Write empty list
-                            let retptr_usize = retptr as usize;
-                            if retptr_usize + 8 <= mem.len() {
-                                mem[retptr_usize..retptr_usize + 4].copy_from_slice(&0u32.to_le_bytes());
-                                mem[retptr_usize + 4..retptr_usize + 8].copy_from_slice(&0u32.to_le_bytes());
-                            }
+                            mem.write_bytes(retptr, &0u32.to_le_bytes())?;
+                            mem.write_bytes(retptr + 4, &0u32.to_le_bytes())?;
                             return Ok(vec![]);
                         }
 
                         // Write string bytes
-                        mem[string_data_ptr as usize..(string_data_ptr as usize + bytes.len())].copy_from_slice(bytes);
+                        mem.write_bytes(string_data_ptr, bytes)?;
                         #[cfg(feature = "tracing")]
                         trace!(
                             arg = %arg,
@@ -1165,29 +1163,23 @@ impl WasiDispatcher {
 
                     // Second pass: write (ptr, len) array at list_ptr
                     for (i, (ptr, len)) in string_entries.iter().enumerate() {
-                        let offset = list_ptr as usize + i * 8;
-                        if offset + 8 > mem.len() {
-                            return Ok(vec![]);
-                        }
-                        mem[offset..offset + 4].copy_from_slice(&ptr.to_le_bytes());
-                        mem[offset + 4..offset + 8].copy_from_slice(&len.to_le_bytes());
+                        let offset = list_ptr + (i as u32 * 8);
+                        mem.write_bytes(offset, &ptr.to_le_bytes())?;
+                        mem.write_bytes(offset + 4, &len.to_le_bytes())?;
                         #[cfg(feature = "tracing")]
                         trace!(index = i, ptr = format_args!("0x{:x}", ptr), len = len, "list entry written");
                     }
 
                     // Write (list_ptr, count) to the return pointer
-                    let retptr_usize = retptr as usize;
-                    if retptr_usize + 8 <= mem.len() {
-                        mem[retptr_usize..retptr_usize + 4].copy_from_slice(&list_ptr.to_le_bytes());
-                        mem[retptr_usize + 4..retptr_usize + 8].copy_from_slice(&(args_to_use.len() as u32).to_le_bytes());
-                        #[cfg(feature = "tracing")]
-                        trace!(
-                            retptr = format_args!("0x{:x}", retptr),
-                            list_ptr = format_args!("0x{:x}", list_ptr),
-                            count = args_to_use.len(),
-                            "wrote to retptr"
-                        );
-                    }
+                    mem.write_bytes(retptr, &list_ptr.to_le_bytes())?;
+                    mem.write_bytes(retptr + 4, &(args_to_use.len() as u32).to_le_bytes())?;
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        retptr = format_args!("0x{:x}", retptr),
+                        list_ptr = format_args!("0x{:x}", list_ptr),
+                        count = args_to_use.len(),
+                        "wrote to retptr"
+                    );
 
                     // Canonical ABI with return pointer returns void (no return values)
                     Ok(vec![])
@@ -1236,31 +1228,24 @@ impl WasiDispatcher {
                         }
                     };
 
-                    let retptr_idx = retptr as usize;
                     // Per Canonical ABI: datetime record layout
                     // seconds: u64 (8 bytes) at offset 0
                     // nanoseconds: u32 (4 bytes) at offset 8
-                    // Total: 12 bytes (but aligned to 8, so 16 bytes structure size)
-                    // NOTE: Writing only 12 bytes - the extra 4 bytes padding is not our data
-                    if retptr_idx + 12 <= mem.len() {
-                        // Write seconds (u64, 8 bytes) at retptr
-                        mem[retptr_idx..retptr_idx + 8].copy_from_slice(&seconds.to_le_bytes());
-                        // Write nanoseconds as u32 (4 bytes) at retptr + 8
-                        mem[retptr_idx + 8..retptr_idx + 12].copy_from_slice(&nanoseconds.to_le_bytes());
+                    // Write seconds (u64, 8 bytes) at retptr
+                    mem.write_bytes(retptr, &seconds.to_le_bytes())?;
+                    // Write nanoseconds as u32 (4 bytes) at retptr + 8
+                    mem.write_bytes(retptr + 8, &nanoseconds.to_le_bytes())?;
 
-                        #[cfg(feature = "tracing")]
-                        trace!(
-                            retptr = format_args!("0x{:x}", retptr),
-                            seconds = seconds,
-                            nanoseconds = nanoseconds,
-                            "wall-clock::now wrote datetime"
-                        );
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        retptr = format_args!("0x{:x}", retptr),
+                        seconds = seconds,
+                        nanoseconds = nanoseconds,
+                        "wall-clock::now wrote datetime"
+                    );
 
-                        // Return nothing - datetime was written to memory
-                        Ok(vec![])
-                    } else {
-                        Err(Error::wasi_invalid_argument("retptr out of bounds"))
-                    }
+                    // Return nothing - datetime was written to memory
+                    Ok(vec![])
                 } else {
                     // No memory available - return flat values
                     #[cfg(feature = "tracing")]
@@ -1287,17 +1272,11 @@ impl WasiDispatcher {
                         }
                     };
 
-                    let retptr_idx = retptr as usize;
-                    // Per Canonical ABI: datetime record is 16 bytes (both fields as i64)
-                    if retptr_idx + 16 <= mem.len() {
-                        // Write seconds (0) at retptr
-                        mem[retptr_idx..retptr_idx + 8].copy_from_slice(&0u64.to_le_bytes());
-                        // Write nanoseconds (1) as i64 at retptr + 8
-                        mem[retptr_idx + 8..retptr_idx + 16].copy_from_slice(&1u64.to_le_bytes());
-                        Ok(vec![])
-                    } else {
-                        Err(Error::wasi_invalid_argument("retptr out of bounds"))
-                    }
+                    // Write seconds (0) at retptr
+                    mem.write_bytes(retptr, &0u64.to_le_bytes())?;
+                    // Write nanoseconds (1) as i64 at retptr + 8
+                    mem.write_bytes(retptr + 8, &1u64.to_le_bytes())?;
+                    Ok(vec![])
                 } else {
                     Ok(vec![
                         CoreValue::I64(0), // seconds
@@ -1370,19 +1349,13 @@ impl WasiDispatcher {
                     data_ptr = format_args!("0x{:x}", data_ptr),
                     data_len = data_len,
                     retptr = ?retptr,
-                    mem_size = mem.len(),
+                    mem_size = mem.size(),
                     "write parameters"
                 );
 
-                let start = data_ptr as usize;
-                let end = start + data_len as usize;
-                if end > mem.len() {
-                    #[cfg(feature = "tracing")]
-                    warn!(end = format_args!("0x{:x}", end), mem_len = format_args!("0x{:x}", mem.len()), "write out of bounds");
-                    return Err(Error::wasi_invalid_argument("Write data out of bounds"));
-                }
-
-                let data = &mem[start..end];
+                // Read data from memory using MemoryAccessor
+                let mut data = vec![0u8; data_len as usize];
+                mem.read_bytes(data_ptr, &mut data)?;
 
                 #[cfg(feature = "tracing")]
                 trace!(
@@ -1399,11 +1372,11 @@ impl WasiDispatcher {
                     let result = if handle == self.stdout_handle {
                         #[cfg(feature = "tracing")]
                         trace!("writing to stdout");
-                        io::stdout().write_all(data).and_then(|_| io::stdout().flush())
+                        io::stdout().write_all(&data).and_then(|_| io::stdout().flush())
                     } else if handle == self.stderr_handle {
                         #[cfg(feature = "tracing")]
                         trace!("writing to stderr");
-                        io::stderr().write_all(data).and_then(|_| io::stderr().flush())
+                        io::stderr().write_all(&data).and_then(|_| io::stderr().flush())
                     } else {
                         #[cfg(feature = "tracing")]
                         warn!(
@@ -1420,19 +1393,18 @@ impl WasiDispatcher {
                     //   discriminant 0 = ok (no payload)
                     //   discriminant 1 = err (followed by error info)
                     if let Some(rp) = retptr {
-                        let rp_idx = rp as usize;
-                        if rp_idx < mem.len() {
+                        if (rp as usize) < mem.size() {
                             match &result {
                                 Ok(()) => {
                                     // Ok variant: discriminant = 0
-                                    mem[rp_idx] = 0;
+                                    mem.write_bytes(rp, &[0])?;
                                     #[cfg(feature = "tracing")]
                                     trace!(retptr = format_args!("0x{:x}", rp), "wrote Ok discriminant (0)");
                                 }
                                 Err(_) => {
                                     // Err variant: discriminant = 1
                                     // Note: stream-error payload would need more data, but for now just set discriminant
-                                    mem[rp_idx] = 1;
+                                    mem.write_bytes(rp, &[1])?;
                                     #[cfg(feature = "tracing")]
                                     trace!(retptr = format_args!("0x{:x}", rp), "wrote Err discriminant (1)");
                                 }
@@ -1457,9 +1429,8 @@ impl WasiDispatcher {
                 {
                     // In no_std, we can't write to stdout, but still write Ok to retptr
                     if let Some(rp) = retptr {
-                        let rp_idx = rp as usize;
-                        if rp_idx < mem.len() {
-                            mem[rp_idx] = 0; // Ok discriminant
+                        if (rp as usize) < mem.size() {
+                            mem.write_bytes(rp, &[0])?; // Ok discriminant
                         }
                     }
                     Ok(vec![])
@@ -1752,9 +1723,9 @@ impl wrt_foundation::HostImportHandler for WasiDispatcher {
         module: &str,
         function: &str,
         args: &[wrt_foundation::Value],
-        memory: Option<&mut [u8]>,
+        memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<wrt_foundation::Value>> {
-        // Convert slice to Vec and delegate to dispatch_core
+        // Delegate to dispatch_core with MemoryAccessor
         self.dispatch_core(module, function, args.to_vec(), memory)
     }
 }

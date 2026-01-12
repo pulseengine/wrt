@@ -30,7 +30,7 @@ use crate::bounded_runtime_infra::{
 pub fn convert_locals_to_bounded_with_provider(
     locals: &[ValueType],
     provider: RuntimeProvider,
-) -> Result<BoundedVec<LocalEntry, 64, RuntimeProvider>> {
+) -> Result<BoundedVec<LocalEntry, 256, RuntimeProvider>> {
 
     let mut bounded_locals = BoundedVec::new(provider)?;
 
@@ -74,7 +74,7 @@ pub fn convert_locals_to_bounded_with_provider(
 /// This is a backward-compatible wrapper that creates its own provider.
 pub fn convert_locals_to_bounded(
     locals: &[ValueType],
-) -> Result<BoundedVec<LocalEntry, 64, RuntimeProvider>> {
+) -> Result<BoundedVec<LocalEntry, 256, RuntimeProvider>> {
     let provider = create_runtime_provider()?;
     convert_locals_to_bounded_with_provider(locals, provider)
 }
@@ -84,7 +84,7 @@ pub fn convert_locals_to_bounded(
 /// representation
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub fn expand_locals_to_flat(
-    bounded_locals: &BoundedVec<LocalEntry, 64, RuntimeProvider>,
+    bounded_locals: &BoundedVec<LocalEntry, 256, RuntimeProvider>,
 ) -> Result<Vec<ValueType>> {
     let mut flat_locals = Vec::new();
 

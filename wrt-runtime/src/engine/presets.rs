@@ -15,11 +15,13 @@ use wrt_foundation::{
 };
 
 /// Budget allocations for QM mode (bytes)
+/// These are generous limits for development/testing - ML inference modules
+/// can be 4-10MB, so we allow 8MB for Runtime to accommodate them.
 const QM_BUDGETS: &[(CrateId, usize)] = &[
     (CrateId::Foundation, 2_000_000), // 2MB
-    (CrateId::Decoder, 1_000_000),    // 1MB
-    (CrateId::Runtime, 4_000_000),    // 4MB
-    (CrateId::Component, 2_000_000),  // 2MB
+    (CrateId::Decoder, 2_000_000),    // 2MB (large component sections)
+    (CrateId::Runtime, 8_000_000),    // 8MB (ML inference modules can be 4-6MB)
+    (CrateId::Component, 4_000_000),  // 4MB (component parsing)
     (CrateId::Host, 1_000_000),       // 1MB
     (CrateId::Instructions, 500_000), // 500KB
     (CrateId::Platform, 500_000),     // 500KB

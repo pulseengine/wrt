@@ -28,6 +28,10 @@ cargo-wrt --help
   - "Try instance 0 as fallback" or similar guessing logic
 - **SPEC COMPLIANCE ONLY**: NEVER add fallback behavior that is not part of the WebAssembly or WebAssembly Component Model specification. If the spec says something must exist (like `_start` for command components), then it MUST exist - don't guess or substitute. Fallbacks create a false sense of progress and mask real implementation gaps.
 - **FAIL LOUD AND EARLY**: If data is missing or incorrect, return an error immediately. Don't silently substitute defaults or guess values.
+- **FIX INTERFACES, DON'T WORK AROUND THEM**: When interfaces don't match (e.g., one component expects `&mut [u8]` but another provides `read()`/`write()` methods), FIX the interface properly - don't create copy-in/copy-out workarounds or temporary buffers. Create proper abstraction traits that both sides can implement. Examples:
+  - If `HostImportHandler` expects `&mut [u8]` but `Memory` uses Mutex-protected access → Create `MemoryAccessor` trait
+  - If component A expects sync and B is async → Create adapter trait, don't block/spawn threads as workaround
+  - Copy-in/copy-out patterns are BANNED - they waste memory and break safety guarantees
 - **NO DEAD CODE**: Remove unused code rather than leaving it "for later". Dead code:
   - Increases cognitive load and maintenance burden
   - Creates false confidence when stubs silently return success
