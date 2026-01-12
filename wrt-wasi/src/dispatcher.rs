@@ -1477,6 +1477,166 @@ impl WasiDispatcher {
                 }
             }
 
+            // WASI Neural Network (wasi-nn) functions
+            // These provide ML inference capabilities for WebAssembly components
+            // Note: nn-preview2 feature enables the synchronous sync_bridge module
+            #[cfg(all(feature = "nn-preview2", feature = "std"))]
+            ("wasi:nn/inference", "load") => {
+                use crate::nn::nn_load;
+
+                // Args: (data_ptr: i32, data_len: i32, encoding: i32, target: i32)
+                let data_ptr = match args.get(0) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_load: missing data_ptr")),
+                };
+                let data_len = match args.get(1) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_load: missing data_len")),
+                };
+                let encoding = match args.get(2) {
+                    Some(CoreValue::I32(v)) => *v as u8,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_load: missing encoding")),
+                };
+                let target = match args.get(3) {
+                    Some(CoreValue::I32(v)) => *v as u8,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_load: missing target")),
+                };
+
+                // Read model data from linear memory
+                let mem = memory.ok_or_else(|| wrt_error::Error::runtime_error(
+                    "nn_load requires memory access"
+                ))?;
+
+                let mut data = vec![0u8; data_len as usize];
+                mem.read_bytes(data_ptr, &mut data)?;
+
+                // Call the actual function
+                let graph_id = nn_load(data, encoding, target)?;
+
+                Ok(vec![CoreValue::I32(graph_id as i32)])
+            }
+
+            #[cfg(all(feature = "nn-preview2", feature = "std"))]
+            ("wasi:nn/inference", "init-execution-context") => {
+                use crate::nn::nn_init_execution_context;
+
+                // Args: (graph_id: i32)
+                let graph_id = match args.get(0) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_init_execution_context: missing graph_id")),
+                };
+
+                let context_id = nn_init_execution_context(graph_id)?;
+
+                Ok(vec![CoreValue::I32(context_id as i32)])
+            }
+
+            #[cfg(all(feature = "nn-preview2", feature = "std"))]
+            ("wasi:nn/inference", "set-input") => {
+                use crate::nn::nn_set_input;
+
+                // Args: (context_id, index, tensor_ptr, tensor_len, dims_ptr, dims_count, type)
+                let context_id = match args.get(0) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing context_id")),
+                };
+                let index = match args.get(1) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing index")),
+                };
+                let tensor_ptr = match args.get(2) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing tensor_ptr")),
+                };
+                let tensor_len = match args.get(3) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing tensor_len")),
+                };
+                let dims_ptr = match args.get(4) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing dims_ptr")),
+                };
+                let dims_count = match args.get(5) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing dims_count")),
+                };
+                let tensor_type = match args.get(6) {
+                    Some(CoreValue::I32(v)) => *v as u8,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_set_input: missing tensor_type")),
+                };
+
+                let mem = memory.ok_or_else(|| wrt_error::Error::runtime_error(
+                    "nn_set_input requires memory access"
+                ))?;
+
+                // Read tensor data
+                let mut tensor_data = vec![0u8; tensor_len as usize];
+                mem.read_bytes(tensor_ptr, &mut tensor_data)?;
+
+                // Read dimensions (as u32 array)
+                let mut dims_bytes = vec![0u8; (dims_count * 4) as usize];
+                mem.read_bytes(dims_ptr, &mut dims_bytes)?;
+                let dimensions: Vec<u32> = dims_bytes
+                    .chunks(4)
+                    .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+                    .collect();
+
+                nn_set_input(context_id, index, tensor_data, dimensions, tensor_type)?;
+
+                Ok(vec![])
+            }
+
+            #[cfg(all(feature = "nn-preview2", feature = "std"))]
+            ("wasi:nn/inference", "compute") => {
+                use crate::nn::nn_compute;
+
+                // Args: (context_id: i32)
+                let context_id = match args.get(0) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_compute: missing context_id")),
+                };
+
+                nn_compute(context_id)?;
+
+                Ok(vec![])
+            }
+
+            #[cfg(all(feature = "nn-preview2", feature = "std"))]
+            ("wasi:nn/inference", "get-output") => {
+                use crate::nn::nn_get_output;
+
+                // Args: (context_id, index, out_ptr, out_capacity)
+                let context_id = match args.get(0) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_get_output: missing context_id")),
+                };
+                let index = match args.get(1) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_get_output: missing index")),
+                };
+                let out_ptr = match args.get(2) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_get_output: missing out_ptr")),
+                };
+                let out_capacity = match args.get(3) {
+                    Some(CoreValue::I32(v)) => *v as u32,
+                    _ => return Err(wrt_error::Error::wasi_invalid_argument("nn_get_output: missing out_capacity")),
+                };
+
+                let mem = memory.ok_or_else(|| wrt_error::Error::runtime_error(
+                    "nn_get_output requires memory access"
+                ))?;
+
+                let (data, _dimensions, _tensor_type) = nn_get_output(context_id, index)?;
+
+                // Write as much data as fits in the provided buffer
+                let write_len = core::cmp::min(data.len(), out_capacity as usize);
+                mem.write_bytes(out_ptr, &data[..write_len])?;
+
+                // Return actual data length (caller may need to reallocate)
+                Ok(vec![CoreValue::I32(data.len() as i32)])
+            }
+
             _ => {
                 #[cfg(feature = "tracing")]
                 warn!(interface = %base_interface, function = %function, "unknown WASI function (core)");

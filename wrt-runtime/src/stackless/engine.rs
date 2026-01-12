@@ -163,6 +163,37 @@ fn strip_wasi_version(interface: &str) -> &str {
     }
 }
 
+/// Check if two function types match structurally.
+/// WebAssembly uses structural type equivalence: two function types are compatible
+/// if they have the same parameter and result types in the same order.
+fn func_types_match(expected: &wrt_foundation::types::FuncType, actual: &wrt_foundation::types::FuncType) -> bool {
+    if expected.params.len() != actual.params.len() {
+        return false;
+    }
+    if expected.results.len() != actual.results.len() {
+        return false;
+    }
+    // Compare each parameter type
+    for i in 0..expected.params.len() {
+        let expected_param = expected.params.get(i);
+        let actual_param = actual.params.get(i);
+        match (expected_param, actual_param) {
+            (Some(e), Some(a)) if e == a => continue,
+            _ => return false,
+        }
+    }
+    // Compare each result type
+    for i in 0..expected.results.len() {
+        let expected_result = expected.results.get(i);
+        let actual_result = actual.results.get(i);
+        match (expected_result, actual_result) {
+            (Some(e), Some(a)) if e == a => continue,
+            _ => return false,
+        }
+    }
+    true
+}
+
 /// Maximum number of concurrent module instances
 /// Set to 512 to handle large WAST test files that may have hundreds of module directives
 /// (e.g., align.wast has 117 module directives including assert_invalid)
@@ -226,6 +257,9 @@ pub struct StacklessEngine {
     host_registry:         Option<Arc<wrt_host::CallbackRegistry>>,
     /// Pre-allocated WASI stub memory for each instance
     wasi_stubs:            HashMap<usize, WasiStubMemory>,
+    /// Dropped data segments per instance (for data.drop/memory.init)
+    /// Maps instance_id -> Vec<bool> where true means segment was dropped
+    dropped_data_segments: HashMap<usize, Vec<bool>>,
     /// Cross-instance import links: (instance_id, import_module, import_name) -> (target_instance_id, export_name)
     #[cfg(feature = "std")]
     import_links:          HashMap<(usize, String, String), (usize, String)>,
@@ -362,6 +396,7 @@ impl StacklessEngine {
             #[cfg(feature = "std")]
             host_registry:       None,
             wasi_stubs:          HashMap::new(),
+            dropped_data_segments: HashMap::new(),
             #[cfg(feature = "std")]
             import_links:        HashMap::new(),
             #[cfg(feature = "std")]
@@ -1353,15 +1388,15 @@ impl StacklessEngine {
                                     // Tables store FuncRef values, not raw integers
                                     match func_ref {
                                         Value::FuncRef(Some(fref)) => fref.index as usize,
-                                        Value::FuncRef(None) => return Err(wrt_error::Error::runtime_trap("CallIndirect: null function reference")),
+                                        Value::FuncRef(None) => return Err(wrt_error::Error::runtime_trap("uninitialized element")),
                                         Value::I32(idx) => idx as usize, // Legacy fallback
                                         Value::I64(idx) => idx as usize, // Legacy fallback
-                                        _ => return Err(wrt_error::Error::runtime_trap("CallIndirect: invalid function reference type")),
+                                        _ => return Err(wrt_error::Error::runtime_trap("uninitialized element")),
                                     }
                                 } else if let Ok(None) = table.0.get(table_func_idx) {
-                                    return Err(wrt_error::Error::runtime_trap("CallIndirect: null function reference in table"));
+                                    return Err(wrt_error::Error::runtime_trap("uninitialized element"));
                                 } else {
-                                    return Err(wrt_error::Error::runtime_trap("CallIndirect: table access out of bounds"));
+                                    return Err(wrt_error::Error::runtime_trap("undefined element"));
                                 }
                             } else {
                                 // Fall back: use the element segment if tables aren't properly initialized
@@ -1440,9 +1475,7 @@ impl StacklessEngine {
 
                                 // NO FALLBACK: Per CLAUDE.md, fail loud and early if element not found
                                 resolved_func_idx.ok_or_else(|| {
-                                    wrt_error::Error::runtime_trap(
-                                        "CallIndirect: function not found in element segments"
-                                    )
+                                    wrt_error::Error::runtime_trap("undefined element")
                                 })?
                             }
                         } else {
@@ -1479,12 +1512,11 @@ impl StacklessEngine {
                         let func_type = module.types.get(func.type_idx as usize)
                             .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
 
-                        // Validate type matches expected type
+                        // Validate type matches expected type (structural equivalence)
                         let expected_type = module.types.get(type_idx as usize)
                             .ok_or_else(|| wrt_error::Error::runtime_error("Invalid expected function type"))?;
 
-                        if func_type.params.len() != expected_type.params.len() ||
-                           func_type.results.len() != expected_type.results.len() {
+                        if !func_types_match(expected_type, func_type) {
                             #[cfg(feature = "tracing")]
                             warn!(
                                 expected_params = expected_type.params.len(),
@@ -1493,7 +1525,7 @@ impl StacklessEngine {
                                 got_results = func_type.results.len(),
                                 "[CALL_INDIRECT] Type mismatch"
                             );
-                            // Continue anyway for now - type checking can be strict later
+                            return Err(wrt_error::Error::runtime_trap("indirect call type mismatch"));
                         }
 
                         // Pop the required number of arguments from the stack
@@ -4509,11 +4541,6 @@ impl StacklessEngine {
                                 "[MemoryCopy] Starting copy operation"
                             );
 
-                            if size == 0 {
-                                // No-op for zero size copy
-                                continue;
-                            }
-
                             // For now, only support same-memory copy (most common case)
                             // Multi-memory support can be added later
                             if dst_mem_idx != src_mem_idx {
@@ -4522,47 +4549,68 @@ impl StacklessEngine {
                                 return Err(wrt_error::Error::runtime_error("Cross-memory copy not yet implemented"));
                             }
 
+                            // Per WebAssembly spec: bounds check MUST happen before checking size==0
+                            // If size == 0 AND (dest > memory.size OR src > memory.size): TRAP
+                            // If size > 0 AND ((dest + size) > memory.size OR (src + size) > memory.size): TRAP
                             #[cfg(any(feature = "std", feature = "alloc"))]
-                            match instance.memory(dst_mem_idx) {
-                                Ok(memory_wrapper) => {
-                                    let memory = &memory_wrapper.0;
-                                    let size_usize = size as u32 as usize;
+                            {
+                                let memory_wrapper = instance.memory(dst_mem_idx)?;
+                                let memory = &memory_wrapper.0;
+                                let memory_size = memory.size_in_bytes() as u32;
+                                let dest_u32 = dest as u32;
+                                let src_u32 = src as u32;
+                                let size_u32 = size as u32;
 
-                                    // Read source data into temp buffer (handles overlapping regions)
-                                    let mut buffer = vec![0u8; size_usize];
-                                    if let Err(e) = memory.read(src as u32, &mut buffer) {
-                                        #[cfg(feature = "tracing")]
-                                        trace!("MemoryCopy: read failed: {:?}", e);
-                                        return Err(e);
+                                if size_u32 == 0 {
+                                    // For size 0, check if offsets are within bounds (can be equal to size)
+                                    if dest_u32 > memory_size || src_u32 > memory_size {
+                                        return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                                     }
+                                    // No-op for zero size copy after bounds check passes
+                                    continue;
+                                }
 
-                                    // Write to destination using write_shared (thread-safe)
-                                    if let Err(e) = memory.write_shared(dest as u32, &buffer) {
-                                        #[cfg(feature = "tracing")]
-                                        trace!("MemoryCopy: write failed: {:?}", e);
-                                        return Err(e);
-                                    }
+                                // For size > 0, check if (offset + size) overflows or exceeds memory size
+                                let dest_end = dest_u32.checked_add(size_u32)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+                                let src_end = src_u32.checked_add(size_u32)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
 
+                                if dest_end > memory_size || src_end > memory_size {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                                }
+
+                                let size_usize = size_u32 as usize;
+
+                                // Read source data into temp buffer (handles overlapping regions)
+                                let mut buffer = vec![0u8; size_usize];
+                                if let Err(e) = memory.read(src_u32, &mut buffer) {
                                     #[cfg(feature = "tracing")]
-                                    {
-                                        trace!(
-                                            size = size,
-                                            src = format_args!("{:#x}", src),
-                                            dest = format_args!("{:#x}", dest),
-                                            "[MemoryCopy] SUCCESS"
-                                        );
-                                        // Show copied data as string if ASCII
-                                        if size <= 50 && buffer.iter().all(|&b| b >= 0x20 && b <= 0x7e || b == 0) {
-                                            if let Ok(s) = core::str::from_utf8(&buffer) {
-                                                trace!(data = %s, "[MemoryCopy] Copied ASCII data");
-                                            }
+                                    trace!("MemoryCopy: read failed: {:?}", e);
+                                    return Err(e);
+                                }
+
+                                // Write to destination using write_shared (thread-safe)
+                                if let Err(e) = memory.write_shared(dest_u32, &buffer) {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("MemoryCopy: write failed: {:?}", e);
+                                    return Err(e);
+                                }
+
+                                #[cfg(feature = "tracing")]
+                                {
+                                    trace!(
+                                        size = size,
+                                        src = format_args!("{:#x}", src),
+                                        dest = format_args!("{:#x}", dest),
+                                        "[MemoryCopy] SUCCESS"
+                                    );
+                                    // Show copied data as string if ASCII
+                                    if size <= 50 && buffer.iter().all(|&b| b >= 0x20 && b <= 0x7e || b == 0) {
+                                        if let Ok(s) = core::str::from_utf8(&buffer) {
+                                            trace!(data = %s, "[MemoryCopy] Copied ASCII data");
                                         }
                                     }
-                                }
-                                Err(e) => {
-                                    #[cfg(feature = "tracing")]
-                                    trace!("MemoryCopy: memory[{}] not found: {:?}", dst_mem_idx, e);
-                                    return Err(e);
                                 }
                             }
                             #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -4586,45 +4634,162 @@ impl StacklessEngine {
                                 "[MemoryFill] Starting fill operation"
                             );
 
-                            if size == 0 {
-                                // No-op for zero size fill
+                            // Per WebAssembly spec: bounds check MUST happen before checking size==0
+                            // If size == 0 AND dest > memory.size: TRAP
+                            // If size > 0 AND (dest + size) > memory.size: TRAP
+                            let memory_wrapper = instance.memory(mem_idx)?;
+                            let memory = &memory_wrapper.0;
+                            let memory_size = memory.size_in_bytes() as u32;
+                            let dest_u32 = dest as u32;
+                            let size_u32 = size as u32;
+
+                            if size_u32 == 0 {
+                                // For size 0, check if offset is within bounds (can be equal to size)
+                                if dest_u32 > memory_size {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                                }
+                                // No-op for zero size fill after bounds check passes
                                 continue;
                             }
 
-                            match instance.memory(mem_idx) {
-                                Ok(memory_wrapper) => {
-                                    let memory = &memory_wrapper.0;
-                                    let size_usize = size as u32 as usize;
-                                    let fill_byte = (value & 0xFF) as u8;
+                            // For size > 0, check if (offset + size) overflows or exceeds memory size
+                            let dest_end = dest_u32.checked_add(size_u32)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
 
-                                    // Create buffer filled with the value
-                                    let buffer = vec![fill_byte; size_usize];
-
-                                    // Write to destination using write_shared (thread-safe)
-                                    if let Err(e) = memory.write_shared(dest as u32, &buffer) {
-                                        #[cfg(feature = "tracing")]
-                                        trace!("MemoryFill: write failed: {:?}", e);
-                                        return Err(e);
-                                    }
-
-                                    #[cfg(feature = "tracing")]
-                                    trace!(
-                                        size = size,
-                                        dest = format_args!("{:#x}", dest),
-                                        fill_byte = format_args!("{:#x}", fill_byte),
-                                        "[MemoryFill] SUCCESS"
-                                    );
-                                }
-                                Err(e) => {
-                                    #[cfg(feature = "tracing")]
-                                    trace!("MemoryFill: memory[{}] not found: {:?}", mem_idx, e);
-                                    return Err(e);
-                                }
+                            if dest_end > memory_size {
+                                return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
                             }
+
+                            let size_usize = size_u32 as usize;
+                            let fill_byte = (value & 0xFF) as u8;
+
+                            // Create buffer filled with the value
+                            let buffer = vec![fill_byte; size_usize];
+
+                            // Write to destination using write_shared (thread-safe)
+                            if let Err(e) = memory.write_shared(dest_u32, &buffer) {
+                                #[cfg(feature = "tracing")]
+                                trace!("MemoryFill: write failed: {:?}", e);
+                                return Err(e);
+                            }
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                size = size,
+                                dest = format_args!("{:#x}", dest),
+                                fill_byte = format_args!("{:#x}", fill_byte),
+                                "[MemoryFill] SUCCESS"
+                            );
                         } else {
                             #[cfg(feature = "tracing")]
                             trace!("MemoryFill: insufficient values on stack");
                         }
+                    }
+                    Instruction::MemoryInit(data_idx, mem_idx) => {
+                        // Pop n (length), s (source offset in data), d (dest offset in memory)
+                        if let (Some(Value::I32(n)), Some(Value::I32(s)), Some(Value::I32(d))) =
+                            (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
+                        {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                dest = format_args!("{:#x}", d),
+                                src = format_args!("{:#x}", s),
+                                len = n,
+                                data_idx = data_idx,
+                                mem_idx = mem_idx,
+                                "[MemoryInit] Starting memory init operation"
+                            );
+
+                            // Check if this data segment has been dropped
+                            // Per WebAssembly spec, a dropped segment behaves as if it has zero length
+                            let is_dropped = self.dropped_data_segments
+                                .get(&instance_id)
+                                .and_then(|v| v.get(data_idx as usize))
+                                .copied()
+                                .unwrap_or(false);
+
+                            // Get data segment from module (for length calculation)
+                            let data_segment = module.data.get(data_idx as usize)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+
+                            // If dropped, treat as zero-length segment
+                            let data_len = if is_dropped { 0u32 } else { data_segment.init.len() as u32 };
+                            let s_u32 = s as u32;
+                            let d_u32 = d as u32;
+                            let n_u32 = n as u32;
+
+                            // Per WebAssembly spec: bounds check MUST happen before checking n==0
+                            // Get memory for bounds checking
+                            let memory_wrapper = instance.memory(mem_idx)?;
+                            let memory = &memory_wrapper.0;
+                            let memory_size = memory.size_in_bytes() as u32;
+
+                            if n_u32 == 0 {
+                                // For n == 0, check if offsets are within bounds (can be equal to size)
+                                if s_u32 > data_len || d_u32 > memory_size {
+                                    return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                                }
+                                // No-op for zero size init after bounds check passes
+                                continue;
+                            }
+
+                            // For n > 0, check if (offset + n) overflows or exceeds bounds
+                            let src_end = s_u32.checked_add(n_u32)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+                            let dest_end = d_u32.checked_add(n_u32)
+                                .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
+
+                            if src_end > data_len {
+                                return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                            }
+                            if dest_end > memory_size {
+                                return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                            }
+
+                            // Copy data from segment to memory
+                            #[cfg(any(feature = "std", feature = "alloc"))]
+                            {
+                                let src_slice = &data_segment.init[s_u32 as usize..src_end as usize];
+                                if let Err(e) = memory.write_shared(d_u32, src_slice) {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("MemoryInit: write failed: {:?}", e);
+                                    return Err(e);
+                                }
+                            }
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                dest = format_args!("{:#x}", d),
+                                src = format_args!("{:#x}", s),
+                                len = n,
+                                "[MemoryInit] SUCCESS"
+                            );
+                        } else {
+                            #[cfg(feature = "tracing")]
+                            trace!("MemoryInit: insufficient values on stack");
+                        }
+                    }
+                    Instruction::DataDrop(data_idx) => {
+                        #[cfg(feature = "tracing")]
+                        trace!(data_idx = data_idx, "[DataDrop] Dropping data segment");
+
+                        // Validate data segment index
+                        if data_idx as usize >= module.data.len() {
+                            return Err(wrt_error::Error::runtime_trap("out of bounds memory access"));
+                        }
+
+                        // Initialize dropped_data_segments for this instance if not already done
+                        let dropped_vec = self.dropped_data_segments
+                            .entry(instance_id)
+                            .or_insert_with(|| vec![false; module.data.len()]);
+
+                        // Mark the segment as dropped
+                        if let Some(dropped) = dropped_vec.get_mut(data_idx as usize) {
+                            *dropped = true;
+                        }
+
+                        #[cfg(feature = "tracing")]
+                        trace!(data_idx = data_idx, "[DataDrop] SUCCESS");
                     }
                     Instruction::BrTable { ref targets, default_target } => {
                         // Pop the index from the stack

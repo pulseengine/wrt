@@ -39,7 +39,7 @@ fn make_string(s: &str) -> Result<WasiHostString> {
 
 /// Convert foundation Value types to `value_compat` Value types
 #[cfg(feature = "std")]
-fn _convert_foundation_values_to_compat(args: _FoundationValueVec) -> Result<Vec<crate::Value>> {
+fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<crate::Value>> {
     let mut converted = Vec::new();
     for arg in args {
         match arg {
@@ -59,7 +59,7 @@ fn _convert_foundation_values_to_compat(args: _FoundationValueVec) -> Result<Vec
 
 /// Convert `value_compat` Value types back to foundation Value types
 #[cfg(feature = "std")]
-fn _convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<_FoundationValueVec> {
+fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<FoundationValueVec> {
     let mut converted = Vec::new();
     for value in values {
         match value {
@@ -216,7 +216,7 @@ fn empty_type_vec() -> wrt_error::Result<impl Iterator<Item = ValType>> {
 
 // Type alias for Value vectors from foundation
 #[cfg(feature = "std")]
-type _FoundationValueVec = Vec<wrt_foundation::values::Value>;
+type FoundationValueVec = Vec<wrt_foundation::values::Value>;
 
 // Simplified no_std types - just use placeholder
 #[cfg(not(feature = "std"))]

@@ -165,7 +165,7 @@ impl WastEngine {
         let results = self
             .engine
             .execute(instance_id, func_idx as usize, args.to_vec())
-            .map_err(|e| anyhow::anyhow!("execute failed: {:?}", e))?;
+            .map_err(|e| anyhow::Error::from(e))?;
 
         Ok(results)
     }

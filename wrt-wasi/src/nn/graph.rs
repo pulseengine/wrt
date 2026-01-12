@@ -107,7 +107,7 @@ impl Graph {
         let hash = calculate_sha256(data);
 
         // For higher safety levels, verify the model is approved
-        let verification_level = capability.verification_level;
+        let verification_level = capability.verification_level();
         if matches!(
             verification_level,
             VerificationLevel::Continuous

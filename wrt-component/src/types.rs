@@ -245,6 +245,28 @@ impl ComponentInstance {
     pub fn nested_component_instance_count(&self) -> usize {
         self.nested_component_instances.len()
     }
+
+    /// Set the host import handler for WASI and other host functions
+    ///
+    /// This should be called after creating the ComponentInstance to enable
+    /// WASI support. The handler routes all host function calls through
+    /// a unified dispatch mechanism.
+    ///
+    /// # Arguments
+    /// * `handler` - The host import handler implementation (e.g., WasiDispatcher)
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut instance = ComponentInstance::from_parsed(...)?;
+    /// let dispatcher = WasiDispatcher::with_defaults()?;
+    /// instance.set_host_handler(Box::new(dispatcher));
+    /// ```
+    #[cfg(all(feature = "std", feature = "wrt-execution"))]
+    pub fn set_host_handler(&mut self, handler: Box<dyn wrt_foundation::HostImportHandler>) {
+        if let Some(ref mut engine) = self.runtime_engine {
+            engine.set_host_handler(handler);
+        }
+    }
 }
 
 /// State of a component instance

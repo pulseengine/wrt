@@ -493,6 +493,28 @@ impl WrtdEngine {
                 })?;
             // parsed_component is now dropped - we only keep runtime instance
 
+            // Wire up WASI dispatcher as the host import handler for this component
+            // This is CRITICAL - without this, WASI functions won't work
+            #[cfg(feature = "wasi")]
+            if self.config.enable_wasi {
+                use wrt_wasi::WasiDispatcher;
+                match WasiDispatcher::with_defaults() {
+                    Ok(dispatcher) => {
+                        instance.set_host_handler(Box::new(dispatcher));
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Info,
+                            "WASI dispatcher connected to component instance"
+                        );
+                    }
+                    Err(_e) => {
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Warn,
+                            "Failed to create WASI dispatcher for component"
+                        );
+                    }
+                }
+            }
+
             let _ = self.logger.handle_minimal_log(
                 LogLevel::Info,
                 "Component initialized and running successfully"
