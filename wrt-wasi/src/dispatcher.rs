@@ -218,6 +218,7 @@ pub enum DispatchResult {
     /// Dispatch needs memory allocation before it can complete
     /// Returns (allocation request, continuation data)
     NeedsAllocation {
+        /// The allocation request specifying memory needed
         request: AllocationRequest,
         /// The args to return (we'll write them once memory is allocated)
         args_to_write: Vec<String>,
@@ -1394,9 +1395,9 @@ impl WasiDispatcher {
                                     trace!("writing to stderr (handle {})", handle);
                                     io::stderr().write_all(&data).and_then(|_| io::stderr().flush())
                                 }
-                                other => {
+                                _other => {
                                     #[cfg(feature = "tracing")]
-                                    warn!(handle = handle, name = other, "unknown output stream name");
+                                    warn!(handle = handle, name = _other, "unknown output stream name");
                                     return Err(Error::wasi_invalid_fd("Unknown output stream"));
                                 }
                             }

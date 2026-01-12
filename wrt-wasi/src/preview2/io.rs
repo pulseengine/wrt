@@ -59,44 +59,44 @@ pub enum PollableKind {
 /// A pollable resource for async I/O notification
 #[derive(Debug)]
 pub struct Pollable {
-    /// Unique handle for this pollable
-    handle: u32,
+    /// Unique handle for this pollable (reserved for resource tracking)
+    _handle: u32,
     /// Type of resource this pollable tracks
     kind: PollableKind,
     /// Current state
     state: PollableState,
-    /// Number of active waiters
-    waiter_count: u32,
+    /// Number of active waiters (reserved for future multi-waiter support)
+    _waiter_count: u32,
 }
 
 impl Pollable {
     /// Create a new pollable for an input stream
     pub fn for_input_stream(handle: u32, stream_handle: u32) -> Self {
         Self {
-            handle,
+            _handle: handle,
             kind: PollableKind::InputStream(stream_handle),
             state: PollableState::Pending,
-            waiter_count: 0,
+            _waiter_count: 0,
         }
     }
 
     /// Create a new pollable for an output stream
     pub fn for_output_stream(handle: u32, stream_handle: u32) -> Self {
         Self {
-            handle,
+            _handle: handle,
             kind: PollableKind::OutputStream(stream_handle),
             state: PollableState::Pending,
-            waiter_count: 0,
+            _waiter_count: 0,
         }
     }
 
     /// Create a new pollable for a timer
     pub fn for_timer(handle: u32, deadline_ns: u64) -> Self {
         Self {
-            handle,
+            _handle: handle,
             kind: PollableKind::Timer { deadline_ns },
             state: PollableState::Pending,
-            waiter_count: 0,
+            _waiter_count: 0,
         }
     }
 

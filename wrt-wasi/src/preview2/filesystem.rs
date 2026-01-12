@@ -84,8 +84,8 @@ impl Default for FileDescriptorTable {
 pub struct OpenFile {
     /// The underlying file handle
     file: File,
-    /// The path to the file
-    path: PathBuf,
+    /// The path to the file (reserved for future use)
+    _path: PathBuf,
     /// Whether the file is readable
     readable: bool,
     /// Whether the file is writable
@@ -159,7 +159,7 @@ pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 
         let open_file = OpenFile {
             file,
-            path: PathBuf::from(path),
+            _path: PathBuf::from(path),
             readable,
             writable,
         };

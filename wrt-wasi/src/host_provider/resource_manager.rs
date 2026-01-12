@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use wrt_error::Result;
 #[cfg(feature = "std")]
 use wrt_foundation::capabilities::CapabilityAwareProvider;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::budget_aware_provider::CrateId as BudgetCrateId;
 use wrt_foundation::{
-    budget_aware_provider::CrateId as BudgetCrateId,
     resource::{
         Resource,
         ResourceOperation,
     },
-    safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::{
         Checksummable,
@@ -25,18 +25,17 @@ use wrt_foundation::{
         WriteStream,
     },
     verification::Checksum,
-    BoundedMap,
     BoundedString,
 };
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{safe_managed_alloc, BoundedMap};
 
 use crate::prelude::*;
 
 /// Maximum number of WASI resources per manager
 const MAX_WASI_RESOURCES: usize = 256;
 
-// Type alias for provider (used for no_std BoundedMap)
-#[cfg(feature = "std")]
-type WasiProvider = CapabilityAwareProvider<NoStdProvider<65536>>;
+// Type alias for provider (used for no_std BoundedMap only)
 #[cfg(not(feature = "std"))]
 type WasiProvider = NoStdProvider<65536>;
 
