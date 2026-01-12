@@ -218,7 +218,7 @@ jobs:
       - name: Generate Safety Dashboard
         run: cargo-wrt verify --asil d --detailed # Dashboard included in detailed verification
       - name: Upload Safety Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: safety-verification-artifacts
           path: |

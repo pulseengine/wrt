@@ -200,7 +200,7 @@ jobs:
         fi
 
     - name: Upload KANI results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       if: always()
       with:
         name: kani-results-${{ matrix.asil_level }}-${{ github.run_number }}
@@ -304,7 +304,7 @@ jobs:
         echo "Coverage report generated successfully"
 
     - name: Upload coverage report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: kani-coverage-report-${{ github.run_number }}
         path: coverage-report.md
