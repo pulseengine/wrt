@@ -1,8 +1,11 @@
 //! WASI stdout implementation for Component Model
 //!
-//! Implements the minimal WASI functions needed to print output:
-//! - wasi:cli/stdout@0.2.0 → get-stdout
-//! - wasi:io/streams@0.2.0 → [method]output-stream.blocking-write-and-flush
+//! **DEPRECATED**: This module provides legacy standalone functions for stdout.
+//! The proper Preview2 implementation is in `wrt_wasi::WasiDispatcher` which
+//! uses dynamic resource allocation via `WasiResourceManager`.
+//!
+//! These functions are kept for backwards compatibility but should not be used
+//! for new code. Use `WasiDispatcher::dispatch()` instead.
 
 use wrt_error::Result;
 
@@ -13,78 +16,93 @@ use std::io::Write;
 #[cfg(feature = "tracing")]
 use wrt_foundation::tracing::trace;
 
-/// WASI stdout handle (file descriptor 1)
-const STDOUT_HANDLE: u32 = 1;
-
-/// Get stdout output stream handle
+/// DEPRECATED: Get stdout output stream handle
 ///
-/// Returns a handle to stdout that can be used with write operations
+/// This function returns a static handle (1) which is Preview1 semantics.
+/// For proper Preview2 resource semantics, use `WasiDispatcher` which
+/// allocates handles dynamically via `WasiResourceManager`.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use WasiDispatcher::dispatch(\"wasi:cli/stdout\", \"get-stdout\", ...) instead"
+)]
 pub fn wasi_get_stdout() -> Result<u32> {
     #[cfg(feature = "tracing")]
-    trace!("wasi_get_stdout called");
-    Ok(STDOUT_HANDLE)
+    trace!("wasi_get_stdout called (deprecated - use WasiDispatcher)");
+    // Legacy: return static handle 1
+    Ok(1)
 }
 
-/// Write bytes to an output stream and flush
+/// DEPRECATED: Write bytes to an output stream and flush
 ///
-/// # Arguments
-/// * `handle` - Output stream handle (1 for stdout)
-/// * `bytes` - Bytes to write
-///
-/// # Returns
-/// Number of bytes written
+/// This function uses static handle checking which is Preview1 semantics.
+/// For proper Preview2 resource semantics, use `WasiDispatcher` which
+/// looks up resources via `WasiResourceManager`.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use WasiDispatcher::dispatch(\"wasi:io/streams\", \"blocking-write-and-flush\", ...) instead"
+)]
 #[cfg(feature = "std")]
 pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
     #[cfg(feature = "tracing")]
-    trace!(byte_count = bytes.len(), "wasi_blocking_write_and_flush called");
+    trace!(byte_count = bytes.len(), "wasi_blocking_write_and_flush called (deprecated)");
 
-    if handle == STDOUT_HANDLE {
+    // Legacy: handle 1 = stdout
+    if handle == 1 {
         std::io::stdout().write_all(bytes)
             .map_err(|_| wrt_error::Error::runtime_error("Write failed"))?;
 
         std::io::stdout().flush()
             .map_err(|_| wrt_error::Error::runtime_error("Flush failed"))?;
 
-        #[cfg(feature = "tracing")]
-        trace!(byte_count = bytes.len(), "Successfully wrote to stdout");
         Ok(bytes.len() as u64)
     } else {
         Err(wrt_error::Error::runtime_error("Invalid output stream handle"))
     }
 }
 
-/// Write bytes to an output stream and flush (no_std stub)
+/// DEPRECATED: Write bytes to an output stream and flush (no_std stub)
+#[deprecated(
+    since = "0.2.0",
+    note = "Use WasiDispatcher instead"
+)]
 #[cfg(not(feature = "std"))]
 pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
-    // In no_std, we can't write to stdout
-    // This is a stub that always succeeds
-    if handle == STDOUT_HANDLE {
+    // In no_std, we can't write to stdout - stub that always succeeds for handle 1
+    if handle == 1 {
         Ok(bytes.len() as u64)
     } else {
         Err(wrt_error::Error::runtime_error("Invalid output stream handle"))
     }
 }
 
-/// Write bytes to stdout (convenience function)
+/// DEPRECATED: Write bytes to stdout (convenience function)
+#[deprecated(
+    since = "0.2.0",
+    note = "Use WasiDispatcher instead"
+)]
+#[allow(deprecated)]
 pub fn write_stdout(bytes: &[u8]) -> Result<()> {
-    wasi_blocking_write_and_flush(STDOUT_HANDLE, bytes)?;
+    wasi_blocking_write_and_flush(1, bytes)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    #[allow(deprecated)]
     use super::*;
 
     #[test]
     fn test_get_stdout() {
+        #[allow(deprecated)]
         let handle = wasi_get_stdout().unwrap();
-        assert_eq!(handle, 1);
+        assert_eq!(handle, 1); // Legacy behavior
     }
 
     #[test]
     fn test_write_stdout() {
         let data = b"Test output\n";
-        let result = wasi_blocking_write_and_flush(STDOUT_HANDLE, data);
+        #[allow(deprecated)]
+        let result = wasi_blocking_write_and_flush(1, data);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), data.len() as u64);
     }

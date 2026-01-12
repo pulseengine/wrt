@@ -34,6 +34,7 @@ use alloc::string::String;
 
 use crate::{
     capabilities::WasiCapabilities,
+    host_provider::resource_manager::{WasiResourceManager, WasiResourceType},
     prelude::*,
     Value,
 };
@@ -179,15 +180,8 @@ pub struct FileDescriptorEntry {
 pub struct WasiDispatcher {
     /// WASI capabilities for this dispatcher
     capabilities: WasiCapabilities,
-    /// Next available resource handle
-    next_handle: u32,
-    /// Stdout handle (pre-allocated)
-    stdout_handle: u32,
-    /// Stderr handle (pre-allocated)
-    stderr_handle: u32,
-    /// Stdin handle (pre-allocated)
-    #[allow(dead_code)]
-    stdin_handle: u32,
+    /// Resource manager for Preview2 resource semantics
+    resource_manager: WasiResourceManager,
     /// Command-line arguments
     args: Vec<String>,
     /// Environment variables as (key, value) pairs
@@ -196,6 +190,7 @@ pub struct WasiDispatcher {
     /// Set by the engine after calling cabi_realloc
     args_alloc: Option<(u32, u32)>,
     /// File descriptor table (maps handle -> descriptor info)
+    /// Note: This is separate from resource_manager - used for filesystem operations
     #[cfg(feature = "std")]
     fd_table: HashMap<u32, FileDescriptorEntry>,
     /// Pre-opened directories (list of (handle, path) pairs)
@@ -259,10 +254,7 @@ impl WasiDispatcher {
 
         Ok(Self {
             capabilities,
-            next_handle: 3, // 0=stdin, 1=stdout, 2=stderr, start user handles at 3
-            stdin_handle: 0,
-            stdout_handle: 1,
-            stderr_handle: 2,
+            resource_manager: WasiResourceManager::new()?,
             args: Vec::new(),
             env_vars: Vec::new(),
             args_alloc: None,
@@ -301,12 +293,14 @@ impl WasiDispatcher {
     ///
     /// Returns the file descriptor handle for the directory
     #[cfg(feature = "std")]
-    pub fn add_preopen(&mut self, path: impl Into<PathBuf>) -> u32 {
+    pub fn add_preopen(&mut self, path: impl Into<PathBuf>) -> Result<u32> {
         let path = path.into();
-        let handle = self.next_handle;
-        self.next_handle += 1;
+        let path_str = path.to_string_lossy();
 
-        // Add to fd_table
+        // Use resource manager to allocate handle (Preview2 style)
+        let handle = self.resource_manager.create_directory_handle(&path_str)?;
+
+        // Also add to fd_table for filesystem operations
         self.fd_table.insert(handle, FileDescriptorEntry {
             fd_type: FileDescriptorType::PreopenDirectory(path.clone()),
             read: self.capabilities.filesystem.read_access,
@@ -316,7 +310,7 @@ impl WasiDispatcher {
         // Add to preopens list
         self.preopens.push((handle, path));
 
-        handle
+        Ok(handle)
     }
 
     /// Get the list of pre-opened directories
@@ -398,11 +392,15 @@ impl WasiDispatcher {
             // ================================================================
 
             ("wasi:cli/stdout", "get-stdout") => {
-                Ok(vec![Value::U32(self.stdout_handle)])
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stdout")?;
+                Ok(vec![Value::U32(handle)])
             }
 
             ("wasi:cli/stderr", "get-stderr") => {
-                Ok(vec![Value::U32(self.stderr_handle)])
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stderr")?;
+                Ok(vec![Value::U32(handle)])
             }
 
             ("wasi:cli/environment", "get-arguments") => {
@@ -648,11 +646,15 @@ impl WasiDispatcher {
                     return Err(Error::wasi_permission_denied("Path escapes sandbox"));
                 }
 
-                // Allocate new handle
-                let new_handle = self.next_handle;
-                self.next_handle += 1;
+                // Allocate new handle via resource manager (Preview2 semantics)
+                let path_str = full_path.to_string_lossy();
+                let new_handle = self.resource_manager.create_file_descriptor(
+                    &path_str,
+                    self.capabilities.filesystem.read_access,
+                    self.capabilities.filesystem.write_access,
+                )?;
 
-                // Add to fd_table
+                // Also add to fd_table for filesystem operations
                 self.fd_table.insert(new_handle, FileDescriptorEntry {
                     fd_type: FileDescriptorType::RegularFile(full_path.clone()),
                     read: self.capabilities.filesystem.read_access,
@@ -1054,11 +1056,15 @@ impl WasiDispatcher {
         match (base_interface, function) {
             // Simple functions that don't need memory
             ("wasi:cli/stdout", "get-stdout") => {
-                Ok(vec![CoreValue::I32(self.stdout_handle as i32)])
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stdout")?;
+                Ok(vec![CoreValue::I32(handle as i32)])
             }
 
             ("wasi:cli/stderr", "get-stderr") => {
-                Ok(vec![CoreValue::I32(self.stderr_handle as i32)])
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stderr")?;
+                Ok(vec![CoreValue::I32(handle as i32)])
             }
 
             // Environment functions
@@ -1364,28 +1370,42 @@ impl WasiDispatcher {
                     "data to write"
                 );
 
-                // Write to stdout or stderr
+                // Preview2: Look up resource by handle - NO FALLBACK
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
 
-                    let result = if handle == self.stdout_handle {
-                        #[cfg(feature = "tracing")]
-                        trace!("writing to stdout");
-                        io::stdout().write_all(&data).and_then(|_| io::stdout().flush())
-                    } else if handle == self.stderr_handle {
-                        #[cfg(feature = "tracing")]
-                        trace!("writing to stderr");
-                        io::stderr().write_all(&data).and_then(|_| io::stderr().flush())
-                    } else {
-                        #[cfg(feature = "tracing")]
-                        warn!(
-                            handle = handle,
-                            stdout_handle = self.stdout_handle,
-                            stderr_handle = self.stderr_handle,
-                            "invalid handle"
-                        );
-                        return Err(Error::wasi_invalid_fd("Invalid stream handle"));
+                    // Look up the resource in the resource manager
+                    let resource = self.resource_manager.get_resource(handle)?;
+
+                    let result = match resource.resource_type() {
+                        WasiResourceType::OutputStream { name, .. } => {
+                            let name_str = name.as_str().map_err(|_|
+                                Error::wasi_invalid_fd("Invalid stream name"))?;
+
+                            match name_str {
+                                "stdout" => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("writing to stdout (handle {})", handle);
+                                    io::stdout().write_all(&data).and_then(|_| io::stdout().flush())
+                                }
+                                "stderr" => {
+                                    #[cfg(feature = "tracing")]
+                                    trace!("writing to stderr (handle {})", handle);
+                                    io::stderr().write_all(&data).and_then(|_| io::stderr().flush())
+                                }
+                                other => {
+                                    #[cfg(feature = "tracing")]
+                                    warn!(handle = handle, name = other, "unknown output stream name");
+                                    return Err(Error::wasi_invalid_fd("Unknown output stream"));
+                                }
+                            }
+                        }
+                        _ => {
+                            #[cfg(feature = "tracing")]
+                            warn!(handle = handle, "handle is not an output stream");
+                            return Err(Error::wasi_invalid_fd("Handle is not an output stream"));
+                        }
                     };
 
                     // Write result to retptr if provided
@@ -1449,9 +1469,21 @@ impl WasiDispatcher {
                 Ok(vec![CoreValue::I32(0)])
             }
 
-            // Resource drops
+            // Resource drops - properly remove from resource manager
             ("wasi:io/streams", "[resource-drop]output-stream") |
-            ("wasi:io/streams", "[resource-drop]input-stream") |
+            ("wasi:io/streams", "[resource-drop]input-stream") => {
+                // Extract handle from args
+                let handle = match args.first() {
+                    Some(CoreValue::I32(h)) => *h as u32,
+                    _ => return Err(Error::wasi_invalid_argument("resource-drop requires handle argument")),
+                };
+
+                // Remove from resource manager (Preview2 semantics)
+                let _ = self.resource_manager.remove_resource(handle);
+                Ok(vec![])
+            }
+
+            // Error resource drop (no resource tracking needed)
             ("wasi:io/error", "[resource-drop]error") => {
                 Ok(vec![])
             }
@@ -1669,11 +1701,15 @@ impl WasiDispatcher {
         match (base_interface, function) {
             // Simple functions that complete immediately
             ("wasi:cli/stdout", "get-stdout") => {
-                Ok(DispatchResult::Complete(vec![CoreValue::I32(self.stdout_handle as i32)]))
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stdout")?;
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(handle as i32)]))
             }
 
             ("wasi:cli/stderr", "get-stderr") => {
-                Ok(DispatchResult::Complete(vec![CoreValue::I32(self.stderr_handle as i32)]))
+                // Preview2: dynamically allocate output-stream resource
+                let handle = self.resource_manager.create_output_stream("stderr")?;
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(handle as i32)]))
             }
 
             // get-arguments needs allocation for list<string>
@@ -1900,28 +1936,47 @@ mod tests {
         MemoryInitializer::ensure_initialized()?;
         let caps = WasiCapabilities::minimal()?;
         let dispatcher = WasiDispatcher::new(caps)?;
-        assert_eq!(dispatcher.stdout_handle, 1);
-        assert_eq!(dispatcher.stderr_handle, 2);
+        // Verify resource manager was created (no hardcoded handles anymore)
+        assert_eq!(dispatcher.resource_manager.resource_count(), 0);
         Ok(())
     }
 
     #[test]
-    fn test_get_stdout() -> Result<()> {
+    fn test_get_stdout_dynamic_handle() -> Result<()> {
         MemoryInitializer::ensure_initialized()?;
         let mut dispatcher = WasiDispatcher::with_defaults()?;
-        let result = dispatcher.dispatch("wasi:cli/stdout@0.2.4", "get-stdout", vec![])?;
-        assert_eq!(result.len(), 1);
-        assert!(matches!(result[0], Value::U32(1)));
+
+        // First call to get-stdout allocates a resource handle
+        let result1 = dispatcher.dispatch("wasi:cli/stdout@0.2.4", "get-stdout", vec![])?;
+        assert_eq!(result1.len(), 1);
+        let handle1 = match &result1[0] {
+            Value::U32(h) => *h,
+            _ => panic!("Expected U32 handle"),
+        };
+
+        // Second call should return a DIFFERENT handle (Preview2 semantics)
+        let result2 = dispatcher.dispatch("wasi:cli/stdout@0.2.4", "get-stdout", vec![])?;
+        assert_eq!(result2.len(), 1);
+        let handle2 = match &result2[0] {
+            Value::U32(h) => *h,
+            _ => panic!("Expected U32 handle"),
+        };
+
+        // Preview2: Each call creates a new resource, so handles should differ
+        assert_ne!(handle1, handle2);
         Ok(())
     }
 
     #[test]
-    fn test_get_stderr() -> Result<()> {
+    fn test_get_stderr_dynamic_handle() -> Result<()> {
         MemoryInitializer::ensure_initialized()?;
         let mut dispatcher = WasiDispatcher::with_defaults()?;
+
+        // get-stderr allocates a resource handle
         let result = dispatcher.dispatch("wasi:cli/stderr@0.2.4", "get-stderr", vec![])?;
         assert_eq!(result.len(), 1);
-        assert!(matches!(result[0], Value::U32(2)));
+        // Handle should be a valid u32 (value doesn't matter, it's dynamic)
+        assert!(matches!(result[0], Value::U32(_)));
         Ok(())
     }
 
