@@ -811,6 +811,47 @@ fn parse_instruction_with_provider(
                     consumed += 1;
                     Instruction::MemoryFill(mem_idx as u32)
                 }
+                // Table operations (bulk memory proposal)
+                0x0C => {
+                    // table.init: elem_idx, table_idx
+                    let (elem_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2 + consumed - 1)?;
+                    consumed += bytes_read;
+                    Instruction::TableInit(elem_idx, table_idx)
+                }
+                0x0D => {
+                    // elem.drop: elem_idx
+                    let (elem_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    Instruction::ElemDrop(elem_idx)
+                }
+                0x0E => {
+                    // table.copy: dst_table_idx, src_table_idx
+                    let (dst_table, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    let (src_table, bytes_read) = read_leb128_u32(bytecode, offset + 2 + consumed - 1)?;
+                    consumed += bytes_read;
+                    Instruction::TableCopy(dst_table, src_table)
+                }
+                0x0F => {
+                    // table.grow: table_idx
+                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    Instruction::TableGrow(table_idx)
+                }
+                0x10 => {
+                    // table.size: table_idx
+                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    Instruction::TableSize(table_idx)
+                }
+                0x11 => {
+                    // table.fill: table_idx
+                    let (table_idx, bytes_read) = read_leb128_u32(bytecode, offset + 2)?;
+                    consumed += bytes_read;
+                    Instruction::TableFill(table_idx)
+                }
                 _ => {
                     #[cfg(feature = "tracing")]
                     wrt_foundation::tracing::warn!(subopcode = format!("0xFC 0x{:02X}", subopcode), offset = offset, "Unknown FC subopcode");

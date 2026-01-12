@@ -1822,6 +1822,15 @@ impl Module {
                                     items.push(func_idx)?;
                                 }
                             }
+                            0xD0 => {
+                                // ref.null instruction (0xD0 followed by heap type)
+                                // Use u32::MAX as sentinel value to indicate null reference
+                                #[cfg(feature = "tracing")]
+                                if i < 5 {
+                                    trace!(elem_offset = offset_value + i as u32, "Element item = ref.null");
+                                }
+                                items.push(u32::MAX)?;  // Sentinel for null reference
+                            }
                             0x23 => {
                                 // global.get instruction - defer evaluation
                                 // Store the expression for later evaluation during element init
@@ -1835,12 +1844,15 @@ impl Module {
                                         shared_provider.clone()
                                     )?;
                                     deferred_item_exprs.push((i as u32, WrtExpr { instructions: expr_insts }));
+                                    // Push placeholder for deferred item
+                                    items.push(u32::MAX - 1)?;  // Sentinel for deferred evaluation
                                 }
                             }
                             _ => {
-                                // Unknown expression type - skip
+                                // Unknown expression type - push null sentinel
                                 #[cfg(feature = "tracing")]
-                                trace!(elem_offset = offset_value + i as u32, opcode = format_args!("0x{:02X}", expr[0]), "Element item = unknown opcode");
+                                trace!(elem_offset = offset_value + i as u32, opcode = format_args!("0x{:02X}", expr[0]), "Element item = unknown opcode (treating as null)");
+                                items.push(u32::MAX)?;  // Default to null for unknown expressions
                             }
                         }
                     }

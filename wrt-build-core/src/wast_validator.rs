@@ -83,8 +83,10 @@ impl WastModuleValidator {
         // Validate memory limits
         Self::validate_memory_limits(module)?;
 
-        // Validate data segments - they require at least one memory to be defined
-        if !module.data.is_empty() && !Self::has_memory(module) {
+        // Validate data segments - only ACTIVE segments require a memory to be defined
+        // Passive segments can exist without memory (they're only used via memory.init/data.drop)
+        let has_active_data = module.data.iter().any(|d| d.is_active());
+        if has_active_data && !Self::has_memory(module) {
             return Err(anyhow!("unknown memory"));
         }
 

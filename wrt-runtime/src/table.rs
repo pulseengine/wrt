@@ -794,7 +794,7 @@ impl Table {
 
         // Verify bounds
         if src + len > elements.len() || dst + len > elements.len() {
-            return Err(Error::runtime_error("Runtime operation error"));
+            return Err(Error::runtime_trap("out of bounds table access"));
         }
 
         // Handle the case where regions don't overlap or no elements to copy
@@ -849,7 +849,7 @@ impl Table {
 
         // Verify bounds
         if offset + len > elements.len() {
-            return Err(Error::runtime_error("Runtime operation error"));
+            return Err(Error::runtime_trap("out of bounds table access"));
         }
 
         // Handle empty fill
@@ -909,7 +909,7 @@ impl Table {
 
         // Check bounds
         if idx >= elements.len() {
-            return Err(Error::invalid_function_index("Runtime operation error"));
+            return Err(Error::runtime_trap("out of bounds table access"));
         }
 
         // Set the element directly using BoundedVec's set method

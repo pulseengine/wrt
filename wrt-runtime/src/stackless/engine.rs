@@ -5556,7 +5556,7 @@ impl StacklessEngine {
                                     ))?;
                                 if src_end > elem_segment.items.len() {
                                     return Err(wrt_error::Error::runtime_trap(
-                                        "table.init: src out of bounds in element segment",
+                                        "out of bounds table access",
                                     ));
                                 }
 
@@ -5564,11 +5564,11 @@ impl StacklessEngine {
                                 let table = instance.table(table_idx)?;
                                 let dst_end = (*dst_idx as u32).checked_add(*init_size as u32)
                                     .ok_or_else(|| wrt_error::Error::runtime_trap(
-                                        "table.init: dst index overflow"
+                                        "out of bounds table access"
                                     ))?;
                                 if dst_end > table.size() {
                                     return Err(wrt_error::Error::runtime_trap(
-                                        "table.init: dst out of bounds in table",
+                                        "out of bounds table access",
                                     ));
                                 }
 
@@ -5580,9 +5580,14 @@ impl StacklessEngine {
                                             "table.init: element segment access error"
                                         ))?;
 
-                                    let value = Some(Value::FuncRef(Some(
-                                        wrt_foundation::values::FuncRef { index: func_idx }
-                                    )));
+                                    // u32::MAX is sentinel for null reference
+                                    let value = if func_idx == u32::MAX {
+                                        Some(Value::FuncRef(None))  // null funcref
+                                    } else {
+                                        Some(Value::FuncRef(Some(
+                                            wrt_foundation::values::FuncRef { index: func_idx }
+                                        )))
+                                    };
                                     table.set(*dst_idx as u32 + i as u32, value)?;
                                 }
 
