@@ -220,7 +220,7 @@ impl PollableTable {
             // Check each pollable
             let mut results: Vec<bool> = handles.iter().map(|&handle| {
                 self.pollables.get_mut(&handle)
-                    .map(|p| p.check_ready())
+                    .map(Pollable::check_ready)
                     .unwrap_or(false)
             }).collect();
 
@@ -242,7 +242,7 @@ impl PollableTable {
             // Re-check in case of quick readiness
             results = handles.iter().map(|&handle| {
                 self.pollables.get_mut(&handle)
-                    .map(|p| p.check_ready())
+                    .map(Pollable::check_ready)
                     .unwrap_or(false)
             }).collect();
 
@@ -645,7 +645,7 @@ pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: Vec<Value>) -> Result
         let table = table.as_mut()
             .ok_or_else(|| Error::wasi_capability_unavailable("Pollable table not initialized"))?;
 
-        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        let timeout = timeout_ns.map(Duration::from_nanos);
         let results = table.poll_blocking(&pollables, timeout);
 
         let wasi_results: Vec<Value> = results.into_iter().map(Value::Bool).collect();

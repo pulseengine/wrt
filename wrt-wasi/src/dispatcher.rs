@@ -802,7 +802,7 @@ impl WasiDispatcher {
                 match std::fs::read_dir(path) {
                     Ok(entries) => {
                         let dir_entries: Vec<Value> = entries
-                            .filter_map(|e| e.ok())
+                            .filter_map(std::result::Result::ok)
                             .map(|e| {
                                 let name = e.file_name().to_string_lossy().to_string();
                                 let file_type = if e.path().is_dir() { 3u8 } else { 6u8 };
