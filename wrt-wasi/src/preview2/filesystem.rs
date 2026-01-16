@@ -714,7 +714,7 @@ fn extract_open_flags(args: &[Value], index: usize) -> Result<OpenFlags> {
         Value::Record(fields) => {
             // Handle record-style flags
             let mut flags = OpenFlags::default();
-            for (name, value) in fields.iter() {
+            for (name, value) in fields {
                 match (name.as_str(), value) {
                     ("create", Value::Bool(b)) => flags.create = *b,
                     ("directory", Value::Bool(b)) => flags.directory = *b,
@@ -745,7 +745,7 @@ fn extract_descriptor_flags(args: &[Value], index: usize) -> Result<DescriptorFl
         },
         Value::Record(fields) => {
             let mut flags = DescriptorFlags::default();
-            for (name, value) in fields.iter() {
+            for (name, value) in fields {
                 match (name.as_str(), value) {
                     ("read", Value::Bool(b)) => flags.read = *b,
                     ("write", Value::Bool(b)) => flags.write = *b,
@@ -802,7 +802,7 @@ fn extract_timestamp(args: &[Value], index: usize) -> Result<TimestampValue> {
         Value::U64(ns) => Ok(TimestampValue::Timestamp(*ns)),
         Value::Record(fields) => {
             // Handle record-style timestamp (variant)
-            for (name, value) in fields.iter() {
+            for (name, value) in fields {
                 match (name.as_str(), value) {
                     ("no-change", Value::Tuple(_)) => return Ok(TimestampValue::NoChange),
                     ("now", Value::Tuple(_)) => return Ok(TimestampValue::Now),
