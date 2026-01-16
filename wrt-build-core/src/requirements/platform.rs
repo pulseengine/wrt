@@ -1144,6 +1144,6 @@ mod tests {
         let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap();
 
         assert_eq!(result.asil_level, AsilLevel::A);
-        assert!(!result.platform_limits.max_total_memory == 0);
+        assert!(result.platform_limits.max_total_memory != 0);
     }
 }

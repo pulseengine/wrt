@@ -447,6 +447,9 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: Vec<Value>) -> Res
 pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
+        use std::fs::FileTimes;
+        use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
         ensure_file_table()?;
 
         let fd = extract_file_descriptor(&args)?;
@@ -460,9 +463,6 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Res
 
         let open_file = table.get(fd)
             .ok_or_else(|| Error::wasi_invalid_fd("Invalid file descriptor"))?;
-
-        use std::fs::FileTimes;
-        use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
         // Get current timestamps for NoChange cases
         let metadata = open_file.file.metadata()

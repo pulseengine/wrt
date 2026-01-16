@@ -273,8 +273,9 @@ impl PlatformTime {
 
     /// macOS implementation of process CPU time using getrusage
     #[cfg(all(feature = "std", target_os = "macos"))]
+    #[allow(clippy::cast_sign_loss)] // OS time values are always non-negative
     fn macos_process_cpu_time_ns() -> Result<u64> {
-        use std::mem;
+        use core::mem;
 
         #[repr(C)]
         struct Timeval {
@@ -312,6 +313,7 @@ impl PlatformTime {
 
     /// macOS implementation of thread CPU time using thread_info
     #[cfg(all(feature = "std", target_os = "macos"))]
+    #[allow(clippy::cast_sign_loss)] // OS time values are always non-negative
     fn macos_thread_cpu_time_ns() -> Result<u64> {
         #[repr(C)]
         struct ThreadBasicInfo {

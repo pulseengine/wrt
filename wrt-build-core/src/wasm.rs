@@ -273,7 +273,7 @@ pub fn create_minimal_module() -> Vec<u8> {
 
     // Import section with wasi_builtin.random
     module.extend_from_slice(&[
-        0x02, 0x16, // Import section ID and size
+        0x02, 0x17, // Import section ID and size (23 bytes)
         0x01, // Number of imports
         0x0C, // Module name length
         // "wasi_builtin"

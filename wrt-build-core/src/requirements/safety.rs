@@ -468,9 +468,16 @@ impl SafetyVerificationFramework {
 
         let blocking_issues = self.get_blocking_issues_for_asil(asil_level);
 
-        let is_ready = compliance_result.compliance_percentage >= required_threshold
-            && self.coverage_data.overall_coverage() >= coverage_threshold
-            && blocking_issues.is_empty();
+        // If there are no requirements for this ASIL level, system is trivially compliant
+        // (coverage check not applicable when there's nothing to cover)
+        let is_ready = if compliance_result.total_requirements == 0 {
+            compliance_result.compliance_percentage >= required_threshold
+                && blocking_issues.is_empty()
+        } else {
+            compliance_result.compliance_percentage >= required_threshold
+                && self.coverage_data.overall_coverage() >= coverage_threshold
+                && blocking_issues.is_empty()
+        };
 
         if is_ready {
             diagnostics.add_info(

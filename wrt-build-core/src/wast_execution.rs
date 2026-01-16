@@ -102,6 +102,11 @@ impl WastEngine {
             .populate_tables_from_module()
             .context("Failed to populate tables")?;
 
+        // Initialize dropped segment tracking (for elem.drop and data.drop)
+        module_instance
+            .initialize_dropped_segments()
+            .context("Failed to initialize dropped segments")?;
+
         // Initialize active data segments (writes data to memory)
         #[cfg(feature = "std")]
         module_instance

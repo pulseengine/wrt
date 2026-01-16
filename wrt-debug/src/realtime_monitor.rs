@@ -388,7 +388,7 @@ impl RealtimeMonitor {
             if config.console_output {
                 eprintln!("Failed to create output directory: {}", e);
             }
-            return Ok();
+            return Ok(());
         }
 
         let timestamp = std::time::SystemTime::now()

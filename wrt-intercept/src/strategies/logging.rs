@@ -147,6 +147,8 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         function: &str,
         args: &[Value],
     ) -> Result<Vec<Value>> {
+        use core::fmt::Write;
+
         // Format the function call
         let mut log_entry = format!("CALL: {source}->{target}::{function}");
 
@@ -167,11 +169,9 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
             }
 
             if limit < args.len() {
-                use core::fmt::Write;
                 let _ = write!(args_str, ", ... ({} more)", args.len() - limit);
             }
 
-            use core::fmt::Write;
             let _ = write!(log_entry, " args: [{args_str}]");
         }
 
@@ -197,6 +197,8 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         _args: &[Value],
         result: Result<Vec<Value>>,
     ) -> Result<Vec<Value>> {
+        use core::fmt::Write;
+
         // Format the return
         let mut log_entry = format!("RETURN: {source}->{target}::{function}");
 
@@ -204,7 +206,6 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         if self.config.log_timing {
             if let Ok(mut timing) = self.timing.lock() {
                 if let Some(start_time) = timing.take() {
-                    use core::fmt::Write;
                     let elapsed = start_time.elapsed();
                     let _ = write!(log_entry, " elapsed: {elapsed:?}");
                 }
@@ -233,16 +234,13 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
                         }
 
                         if limit < values.len() {
-                            use core::fmt::Write;
                             let _ = write!(result_str, ", ... ({} more)", values.len() - limit);
                         }
 
-                        use core::fmt::Write;
                         let _ = write!(log_entry, " result: [{result_str}]");
                     }
                 },
                 Err(e) => {
-                    use core::fmt::Write;
                     let _ = write!(log_entry, " error: {e}");
                 },
             }

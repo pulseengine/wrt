@@ -108,6 +108,18 @@ pub struct ModuleInstance {
     instance_id: usize,
     /// Imported instance indices to resolve imports
     imports:     BoundedImportMap<BoundedImportMap<(usize, usize)>>,
+    /// Tracks which element segments have been dropped via elem.drop
+    /// After dropping, table.init will treat the segment as having 0 length
+    #[cfg(feature = "std")]
+    dropped_elements: Arc<Mutex<Vec<bool>>>,
+    #[cfg(not(feature = "std"))]
+    dropped_elements: Arc<Mutex<wrt_foundation::bounded::BoundedVec<bool, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    /// Tracks which data segments have been dropped via data.drop
+    /// After dropping, memory.init will treat the segment as having 0 length
+    #[cfg(feature = "std")]
+    dropped_data: Arc<Mutex<Vec<bool>>>,
+    #[cfg(not(feature = "std"))]
+    dropped_data: Arc<Mutex<wrt_foundation::bounded::BoundedVec<bool, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
     /// Debug information (optional)
     #[cfg(feature = "debug")]
     debug_info:  Option<DwarfDebugInfo<'static>>,
@@ -137,6 +149,8 @@ impl ModuleInstance {
             globals: Arc::new(Mutex::new(Vec::new())),
             instance_id,
             imports: Default::default(),
+            dropped_elements: Arc::new(Mutex::new(Vec::new())),
+            dropped_data: Arc::new(Mutex::new(Vec::new())),
             #[cfg(feature = "debug")]
             debug_info: None,
         })
@@ -158,6 +172,14 @@ impl ModuleInstance {
         // Allocate memory for globals collection
         let globals_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
 
+        // Allocate memory for dropped segment tracking
+        let dropped_elements_vec = wrt_foundation::bounded::BoundedVec::new(
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        )?;
+        let dropped_data_vec = wrt_foundation::bounded::BoundedVec::new(
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        )?;
+
         Ok(Self {
             module,
             memories: Arc::new(Mutex::new(memories_vec)),
@@ -165,6 +187,8 @@ impl ModuleInstance {
             globals: Arc::new(Mutex::new(globals_vec)),
             instance_id,
             imports: Default::default(),
+            dropped_elements: Arc::new(Mutex::new(dropped_elements_vec)),
+            dropped_data: Arc::new(Mutex::new(dropped_data_vec)),
             #[cfg(feature = "debug")]
             debug_info: None,
         })
@@ -776,6 +800,110 @@ impl ModuleInstance {
         Ok(())
     }
 
+    /// Initialize dropped segment tracking arrays based on module's segment counts
+    /// Call this during instance initialization before any elem.drop/data.drop operations
+    pub fn initialize_dropped_segments(&self) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            let mut dropped_elems = self.dropped_elements.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock dropped_elements"))?;
+            let mut dropped_data = self.dropped_data.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock dropped_data"))?;
+
+            // Resize to match module's element and data segment counts
+            dropped_elems.resize(self.module.elements.len(), false);
+            dropped_data.resize(self.module.data.len(), false);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut dropped_elems = self.dropped_elements.lock();
+            let mut dropped_data = self.dropped_data.lock();
+
+            // Push false for each segment (they start not-dropped)
+            for _ in 0..self.module.elements.len() {
+                dropped_elems.push(false)?;
+            }
+            for _ in 0..self.module.data.len() {
+                dropped_data.push(false)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Mark an element segment as dropped (called by elem.drop instruction)
+    pub fn drop_element_segment(&self, segment_idx: u32) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            let mut dropped = self.dropped_elements.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock dropped_elements"))?;
+            if (segment_idx as usize) < dropped.len() {
+                dropped[segment_idx as usize] = true;
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut dropped = self.dropped_elements.lock();
+            if let Ok(slot) = dropped.get_mut(segment_idx as usize) {
+                *slot = true;
+            }
+        }
+        Ok(())
+    }
+
+    /// Mark a data segment as dropped (called by data.drop instruction)
+    pub fn drop_data_segment(&self, segment_idx: u32) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            let mut dropped = self.dropped_data.lock()
+                .map_err(|_| Error::runtime_error("Failed to lock dropped_data"))?;
+            if (segment_idx as usize) < dropped.len() {
+                dropped[segment_idx as usize] = true;
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut dropped = self.dropped_data.lock();
+            if let Ok(slot) = dropped.get_mut(segment_idx as usize) {
+                *slot = true;
+            }
+        }
+        Ok(())
+    }
+
+    /// Check if an element segment has been dropped
+    pub fn is_element_segment_dropped(&self, segment_idx: u32) -> bool {
+        #[cfg(feature = "std")]
+        {
+            if let Ok(dropped) = self.dropped_elements.lock() {
+                dropped.get(segment_idx as usize).copied().unwrap_or(false)
+            } else {
+                false
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let dropped = self.dropped_elements.lock();
+            dropped.get(segment_idx as usize).ok().copied().unwrap_or(false)
+        }
+    }
+
+    /// Check if a data segment has been dropped
+    pub fn is_data_segment_dropped(&self, segment_idx: u32) -> bool {
+        #[cfg(feature = "std")]
+        {
+            if let Ok(dropped) = self.dropped_data.lock() {
+                dropped.get(segment_idx as usize).copied().unwrap_or(false)
+            } else {
+                false
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let dropped = self.dropped_data.lock();
+            dropped.get(segment_idx as usize).ok().copied().unwrap_or(false)
+        }
+    }
+
     /// Initialize data segments into memory
     /// This copies the static data from data segments into the appropriate memory locations
     pub fn initialize_data_segments(&self) -> Result<()> {
@@ -1377,6 +1505,8 @@ impl Clone for ModuleInstance {
             memories: Arc::clone(&self.memories),
             tables: Arc::clone(&self.tables),
             globals: Arc::clone(&self.globals),
+            dropped_elements: Arc::clone(&self.dropped_elements),
+            dropped_data: Arc::clone(&self.dropped_data),
             instance_id: self.instance_id,
             imports: self.imports.clone(),
             #[cfg(feature = "debug")]

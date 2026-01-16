@@ -1795,9 +1795,9 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn validate_calling_convention(&self, context: &CfiExecutionContext) -> Result<()> {
+        const REQUIRED_ALIGNMENT: u32 = 16; // Common for most ABIs
         let _ = self; // Unused in current implementation
         // ASIL-B: Validate stack alignment for calls
-        const REQUIRED_ALIGNMENT: u32 = 16; // Common for most ABIs
         if context.current_stack_depth % REQUIRED_ALIGNMENT != 0 {
             return Err(Error::runtime_unaligned_access(
                 "Stack misaligned for function call",

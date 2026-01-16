@@ -5543,12 +5543,20 @@ impl StacklessEngine {
                                     "table.init: invalid element segment index"
                                 ))?;
 
+                            // Check if the element segment has been dropped
+                            // Dropped segments have effective length 0
+                            let effective_elem_len = if instance.is_element_segment_dropped(elem_seg_idx) {
+                                0
+                            } else {
+                                elem_segment.items.len()
+                            };
+
                             // Check bounds in element segment (must happen BEFORE zero-size check per spec)
                             let src_end = (*src_idx as usize).checked_add(*init_size as usize)
                                 .ok_or_else(|| wrt_error::Error::runtime_trap(
                                     "out of bounds table access"
                                 ))?;
-                            if src_end > elem_segment.items.len() {
+                            if src_end > effective_elem_len {
                                 return Err(wrt_error::Error::runtime_trap(
                                     "out of bounds table access",
                                 ));
@@ -5631,11 +5639,9 @@ impl StacklessEngine {
                             ));
                         }
 
-                        // Note: In a full implementation, we would need to track which segments
-                        // have been dropped in the module instance. For now, we acknowledge the
-                        // instruction but don't enforce the "dropped" state since we don't have
-                        // mutable access to the module's element segments at runtime.
-                        // Future improvement: Add a dropped_element_segments bitset to ModuleInstance.
+                        // Mark the element segment as dropped in the instance
+                        // After this, table.init will treat the segment as having 0 length
+                        instance.drop_element_segment(elem_seg_idx)?;
 
                         #[cfg(feature = "tracing")]
                         trace!(

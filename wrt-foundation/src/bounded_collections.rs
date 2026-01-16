@@ -3400,7 +3400,7 @@ where
         for i in 0..self.entries.len() {
             if let Ok((k, v)) = self.entries.get(i) {
                 // Insert should succeed since we cloned the provider with same capacity
-                let _ = new_map.insert(k, v);
+                drop(new_map.insert(k, v));
             }
         }
 

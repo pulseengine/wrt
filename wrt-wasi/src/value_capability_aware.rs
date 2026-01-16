@@ -293,11 +293,12 @@ impl CapabilityAwareValue {
 
 /// Helper function to create a WASI value provider with capability verification
 fn create_wasi_value_provider() -> Result<NoStdProvider<8192>> {
+    use wrt_foundation::capabilities::MemoryFactory;
+
     let context = get_global_capability_context()?;
     let operation = MemoryOperation::Allocate { size: 8192 };
     context.verify_operation(CrateId::Wasi, &operation)?;
 
-    use wrt_foundation::capabilities::MemoryFactory;
     MemoryFactory::create_with_context::<8192>(context, CrateId::Wasi)
 }
 
