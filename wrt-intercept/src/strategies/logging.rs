@@ -351,7 +351,8 @@ impl LogSink for FileLogSink {
         use std::io::Write;
 
         if let Ok(mut file) = self.file.lock() {
-            let _ = writeln!(file, "{entry}");
+            // Intentionally ignore write errors in logging
+            drop(writeln!(file, "{entry}"));
         }
     }
 }

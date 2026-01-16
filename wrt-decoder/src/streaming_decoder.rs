@@ -284,7 +284,7 @@ impl<'a> StreamingDecoder<'a> {
                         locals: alloc::vec::Vec::new(),
                         code: alloc::vec::Vec::new(),
                     };
-                    let _ = self.module.functions.push(func);
+                    self.module.functions.push(func);
 
                     // Track function imports for proper function indexing
                     self.num_function_imports += 1;
@@ -496,7 +496,7 @@ impl<'a> StreamingDecoder<'a> {
                 code: alloc::vec::Vec::new(),
             };
 
-            let _ = self.module.functions.push(func);
+            self.module.functions.push(func);
         }
 
         Ok(())
@@ -1251,7 +1251,7 @@ impl<'a> StreamingDecoder<'a> {
 
                     // Add 'count' locals of this type
                     for _ in 0..count {
-                        let _ = func.locals.push(vt);
+                        func.locals.push(vt);
                     }
                 }
 

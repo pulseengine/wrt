@@ -1464,8 +1464,9 @@ impl WasiDispatcher {
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
-                    let _ = io::stdout().flush();
-                    let _ = io::stderr().flush();
+                    // Flush operations - intentionally ignore errors
+                    drop(io::stdout().flush());
+                    drop(io::stderr().flush());
                 }
                 Ok(vec![CoreValue::I32(0)])
             }
@@ -1480,7 +1481,8 @@ impl WasiDispatcher {
                 };
 
                 // Remove from resource manager (Preview2 semantics)
-                let _ = self.resource_manager.remove_resource(handle);
+                // Intentionally ignore if resource was already removed
+                drop(self.resource_manager.remove_resource(handle));
                 Ok(vec![])
             }
 
