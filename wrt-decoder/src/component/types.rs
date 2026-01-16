@@ -640,11 +640,8 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
         #[cfg(feature = "std")]
         {
             let mut bytes = Vec::new();
-            loop {
-                match reader.read_u8() {
-                    Ok(byte) => bytes.push(byte),
-                    Err(_) => break,
-                }
+            while let Ok(byte) = reader.read_u8() {
+                bytes.push(byte);
             }
 
             let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
@@ -745,11 +742,8 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
         #[cfg(feature = "std")]
         {
             let mut bytes = Vec::new();
-            loop {
-                match reader.read_u8() {
-                    Ok(byte) => bytes.push(byte),
-                    Err(_) => break,
-                }
+            while let Ok(byte) = reader.read_u8() {
+                bytes.push(byte);
             }
 
             let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();

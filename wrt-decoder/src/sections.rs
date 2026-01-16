@@ -349,8 +349,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
 
-        let mut format_func_types = Vec::new();
-        format_func_types.reserve(count_usize.min(1024)); // Reserve conservatively
+        let mut format_func_types = Vec::with_capacity(count_usize.min(1024));
 
         for _ in 0..count {
             // Function type indicator (0x60)
@@ -369,8 +368,7 @@ pub mod parsers {
             check_bounds_u32(param_count, 1000, "param count")?;
             let param_count_usize = safe_usize_conversion(param_count, "param count")?;
 
-            let mut params = Vec::new();
-            params.reserve(param_count_usize.min(256)); // Conservative reservation
+            let mut params = Vec::with_capacity(param_count_usize.min(256));
             for _ in 0..param_count {
                 if offset >= bytes.len() {
                     return Err(Error::parse_error("Unexpected end of param types"));
@@ -393,8 +391,7 @@ pub mod parsers {
             check_bounds_u32(result_count, 1000, "result count")?;
             let result_count_usize = safe_usize_conversion(result_count, "result count")?;
 
-            let mut results = Vec::new();
-            results.reserve(result_count_usize.min(256)); // Conservative reservation
+            let mut results = Vec::with_capacity(result_count_usize.min(256));
             for _ in 0..result_count {
                 if offset >= bytes.len() {
                     return Err(Error::parse_error("Unexpected end of result types"));
@@ -443,8 +440,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "import count")?;
         let count_usize = safe_usize_conversion(count, "import count")?;
 
-        let mut format_imports = Vec::new();
-        format_imports.reserve(count_usize.min(1024)); // Conservative reservation
+        let mut format_imports = Vec::with_capacity(count_usize.min(1024));
 
         for _ in 0..count {
             // Parse module name using optimized string processing
@@ -764,8 +760,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "export count")?;
         let count_usize = safe_usize_conversion(count, "export count")?;
 
-        let mut format_exports = Vec::new();
-        format_exports.reserve(count_usize.min(1024)); // Conservative reservation
+        let mut format_exports = Vec::with_capacity(count_usize.min(1024));
 
         for _ in 0..count {
             // Parse export name using optimized string processing

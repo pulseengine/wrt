@@ -725,11 +725,8 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
             wrt_foundation::BoundedVec::new(provider)
                 .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?
         };
-        loop {
-            match stream.read_u8() {
-                Ok(byte) => bytes.push(byte),
-                Err(_) => break,
-            }
+        while let Ok(byte) = stream.read_u8() {
+            bytes.push(byte);
         }
 
         let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
@@ -810,11 +807,8 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
             wrt_foundation::BoundedVec::new(provider)
                 .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?
         };
-        loop {
-            match stream.read_u8() {
-                Ok(byte) => bytes.push(byte),
-                Err(_) => break,
-            }
+        while let Ok(byte) = stream.read_u8() {
+            bytes.push(byte);
         }
 
         let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();

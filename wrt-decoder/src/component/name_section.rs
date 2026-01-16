@@ -156,16 +156,11 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
                 wrt_foundation::traits::SerializationError::Custom("Failed to create BoundedVec")
             })?
         };
-        loop {
-            match reader.read_u8() {
-                #[cfg(feature = "std")]
-                Ok(byte) => bytes.push(byte),
-                #[cfg(not(feature = "std"))]
-                Ok(byte) => {
-                    let _ = bytes.push(byte);
-                },
-                Err(_) => break,
-            }
+        while let Ok(byte) = reader.read_u8() {
+            #[cfg(feature = "std")]
+            bytes.push(byte);
+            #[cfg(not(feature = "std"))]
+            drop(bytes.push(byte));
         }
         #[cfg(feature = "std")]
         let name = alloc::string::String::from_utf8_lossy(&bytes).to_string();
