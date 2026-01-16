@@ -5458,7 +5458,7 @@ impl StacklessEngine {
 
                             if *dst_idx < 0 || *src_idx < 0 || *copy_size < 0 {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "table.copy: negative offset or size",
+                                    "out of bounds table access",
                                 ));
                             }
 
@@ -5527,7 +5527,7 @@ impl StacklessEngine {
 
                             if *dst_idx < 0 || *src_idx < 0 || *init_size < 0 {
                                 return Err(wrt_error::Error::runtime_trap(
-                                    "table.init: negative offset or size",
+                                    "out of bounds table access",
                                 ));
                             }
 
