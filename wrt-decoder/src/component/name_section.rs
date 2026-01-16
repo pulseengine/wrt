@@ -553,7 +553,7 @@ pub fn generate_component_name_section(
     // Component name
     if let Some(name) = &name_section.component_name {
         // Name type
-        let _ = data.push(COMPONENT_NAME_COMPONENT);
+        data.push(COMPONENT_NAME_COMPONENT);
 
         // Generate data for name
         #[cfg(feature = "std")]
@@ -600,12 +600,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }
@@ -620,7 +620,7 @@ pub fn generate_component_name_section(
 
     if !sort_names_empty {
         // Name type
-        let _ = data.push(COMPONENT_NAME_SORT);
+        data.push(COMPONENT_NAME_SORT);
 
         // Generate data for sorts
         #[cfg(feature = "std")]
@@ -640,7 +640,7 @@ pub fn generate_component_name_section(
         };
 
         for (sort, name_map) in &name_section.sort_names {
-            let sort_bytes = generate_sort(&sort)?;
+            let sort_bytes = generate_sort(sort)?;
             #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&sort_bytes);
             #[cfg(not(feature = "std"))]
@@ -650,7 +650,7 @@ pub fn generate_component_name_section(
                 }
             }
 
-            let name_map_bytes = generate_name_map(&name_map)?;
+            let name_map_bytes = generate_name_map(name_map)?;
             #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&name_map_bytes);
             #[cfg(not(feature = "std"))]
@@ -673,12 +673,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }
@@ -693,7 +693,7 @@ pub fn generate_component_name_section(
 
     if !import_names_empty {
         // Name type
-        let _ = data.push(COMPONENT_NAME_IMPORT);
+        data.push(COMPONENT_NAME_IMPORT);
 
         // Generate data for import names
         let subsection_data = generate_name_map(&name_section.import_names)?;
@@ -710,12 +710,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }
@@ -730,7 +730,7 @@ pub fn generate_component_name_section(
 
     if !export_names_empty {
         // Name type
-        let _ = data.push(COMPONENT_NAME_EXPORT);
+        data.push(COMPONENT_NAME_EXPORT);
 
         // Generate data for export names
         let subsection_data = generate_name_map(&name_section.export_names)?;
@@ -747,12 +747,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }
@@ -767,7 +767,7 @@ pub fn generate_component_name_section(
 
     if !canonical_names_empty {
         // Name type
-        let _ = data.push(COMPONENT_NAME_CANONICAL);
+        data.push(COMPONENT_NAME_CANONICAL);
 
         // Generate data for canonical names
         let subsection_data = generate_name_map(&name_section.canonical_names)?;
@@ -784,12 +784,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }
@@ -804,7 +804,7 @@ pub fn generate_component_name_section(
 
     if !type_names_empty {
         // Name type
-        let _ = data.push(COMPONENT_NAME_TYPE);
+        data.push(COMPONENT_NAME_TYPE);
 
         // Generate data for type names
         let subsection_data = generate_name_map(&name_section.type_names)?;
@@ -821,12 +821,12 @@ pub fn generate_component_name_section(
             let len_bytes = write_leb128_u32(subsection_data.len() as u32)?;
             for i in 0..len_bytes.len() {
                 if let Ok(byte) = len_bytes.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
             for i in 0..subsection_data.len() {
                 if let Ok(byte) = subsection_data.get(i) {
-                    let _ = data.push(byte);
+                    data.push(byte);
                 }
             }
         }

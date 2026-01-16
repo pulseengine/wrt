@@ -380,7 +380,7 @@ impl WasiDispatcher {
         &mut self,
         interface: &str,
         function: &str,
-        args: Vec<Value>,
+        args: &[Value],
     ) -> Result<Vec<Value>> {
         let base_interface = Self::strip_version(interface);
 
@@ -532,8 +532,7 @@ impl WasiDispatcher {
             // ================================================================
 
             #[cfg(feature = "wasi-io")]
-            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") |
-            ("wasi:io/streams", "output-stream.blocking-write-and-flush") => {
+            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush" | "output-stream.blocking-write-and-flush") => {
                 if !self.capabilities.io.stdout_access {
                     return Err(Error::wasi_permission_denied("Stream write access denied"));
                 }
@@ -544,21 +543,18 @@ impl WasiDispatcher {
             }
 
             #[cfg(feature = "wasi-io")]
-            ("wasi:io/streams", "[method]output-stream.blocking-flush") |
-            ("wasi:io/streams", "output-stream.blocking-flush") => {
+            ("wasi:io/streams", "[method]output-stream.blocking-flush" | "output-stream.blocking-flush") => {
                 wasi_stream_flush(&mut (), args)
             }
 
             #[cfg(feature = "wasi-io")]
-            ("wasi:io/streams", "[method]output-stream.check-write") |
-            ("wasi:io/streams", "output-stream.check-write") => {
+            ("wasi:io/streams", "[method]output-stream.check-write" | "output-stream.check-write") => {
                 wasi_stream_check_write(&mut (), args)
             }
 
             // Resource drops - no-op, just consume the handle
-            ("wasi:io/streams", "[resource-drop]output-stream") |
-            ("wasi:io/streams", "[resource-drop]input-stream") |
-            ("wasi:io/error", "[resource-drop]error") => {
+            ("wasi:io/streams", "[resource-drop]output-stream" | "[resource-drop]input-stream")
+            | ("wasi:io/error", "[resource-drop]error") => {
                 Ok(vec![])
             }
 
@@ -688,8 +684,7 @@ impl WasiDispatcher {
 
                 // Get metadata
                 let path = match &entry.fd_type {
-                    FileDescriptorType::RegularFile(p) => p,
-                    FileDescriptorType::PreopenDirectory(p) => p,
+                    FileDescriptorType::RegularFile(p) | FileDescriptorType::PreopenDirectory(p) => p,
                     _ => return Err(Error::wasi_invalid_argument("Cannot stat this descriptor type")),
                 };
 
@@ -1047,7 +1042,7 @@ impl WasiDispatcher {
         &mut self,
         interface: &str,
         function: &str,
-        args: Vec<wrt_foundation::values::Value>,
+        args: &[wrt_foundation::values::Value],
         memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<wrt_foundation::values::Value>> {
         use wrt_foundation::values::Value as CoreValue;
@@ -1306,8 +1301,7 @@ impl WasiDispatcher {
 
             // I/O functions that need memory access
             #[cfg(feature = "wasi-io")]
-            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush") |
-            ("wasi:io/streams", "output-stream.blocking-write-and-flush") => {
+            ("wasi:io/streams", "[method]output-stream.blocking-write-and-flush" | "output-stream.blocking-write-and-flush") => {
                 #[cfg(feature = "tracing")]
                 trace!(args = ?args, has_memory = memory.is_some(), "blocking-write-and-flush dispatch");
 
@@ -1459,8 +1453,7 @@ impl WasiDispatcher {
             }
 
             #[cfg(feature = "wasi-io")]
-            ("wasi:io/streams", "[method]output-stream.blocking-flush") |
-            ("wasi:io/streams", "output-stream.blocking-flush") => {
+            ("wasi:io/streams", "[method]output-stream.blocking-flush" | "output-stream.blocking-flush") => {
                 #[cfg(feature = "std")]
                 {
                     use std::io::{self, Write};
@@ -1472,8 +1465,7 @@ impl WasiDispatcher {
             }
 
             // Resource drops - properly remove from resource manager
-            ("wasi:io/streams", "[resource-drop]output-stream") |
-            ("wasi:io/streams", "[resource-drop]input-stream") => {
+            ("wasi:io/streams", "[resource-drop]output-stream" | "[resource-drop]input-stream") => {
                 // Extract handle from args
                 let handle = match args.first() {
                     Some(CoreValue::I32(h)) => *h as u32,
@@ -1694,7 +1686,7 @@ impl WasiDispatcher {
         &mut self,
         interface: &str,
         function: &str,
-        args: Vec<wrt_foundation::values::Value>,
+        args: &[wrt_foundation::values::Value],
         _memory: Option<&mut [u8]>,
     ) -> Result<DispatchResult> {
         use wrt_foundation::values::Value as CoreValue;
@@ -1925,7 +1917,7 @@ impl wrt_foundation::HostImportHandler for WasiDispatcher {
         memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<wrt_foundation::Value>> {
         // Delegate to dispatch_core with MemoryAccessor
-        self.dispatch_core(module, function, args.to_vec(), memory)
+        self.dispatch_core(module, function, args, memory)
     }
 }
 

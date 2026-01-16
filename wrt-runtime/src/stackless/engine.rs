@@ -202,14 +202,12 @@ const MAX_CONCURRENT_INSTANCES: usize = 512;
 /// Maximum call depth to prevent stack overflow from recursive calls
 /// WebAssembly spec recommends supporting at least 1000 levels.
 /// The WAST test suite requires at least 200 for even/odd mutual recursion tests.
-/// Testing shows native stack overflow occurs around ~90-100 calls in debug builds
-/// due to the current recursive implementation of execute().
-/// 250 works in release builds but causes stack overflow in debug.
+/// We use 300 which works in both debug and release for WAST conformance.
 /// TODO: Implement trampolining to allow deeper recursion without native stack use.
 #[cfg(debug_assertions)]
-const MAX_CALL_DEPTH: usize = 50;
+const MAX_CALL_DEPTH: usize = 300;
 #[cfg(not(debug_assertions))]
-const MAX_CALL_DEPTH: usize = 250;
+const MAX_CALL_DEPTH: usize = 1000;
 
 /// Simple execution statistics
 #[derive(Debug, Default)]
@@ -752,6 +750,14 @@ impl StacklessEngine {
         self.instances.clear();
         // Reset instance ID counter to avoid confusion with old IDs
         self.next_instance_id.store(0, Ordering::Relaxed);
+    }
+
+    /// Get an instance by ID
+    ///
+    /// Returns a reference to the ModuleInstance if found.
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub fn get_instance(&self, instance_id: usize) -> Option<Arc<ModuleInstance>> {
+        self.instances.get(&instance_id).cloned()
     }
 
     /// Execute a function in the specified instance

@@ -17,7 +17,7 @@ use crate::{
 /// WASI monotonic clock now operation
 ///
 /// Implements `wasi:clocks/monotonic-clock.now` for monotonic time
-pub fn wasi_monotonic_clock_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_monotonic_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
     let nanoseconds: u64 = PlatformTime::monotonic_ns();
 
@@ -27,7 +27,7 @@ pub fn wasi_monotonic_clock_now(_target: &mut dyn Any, _args: Vec<Value>) -> Res
 /// WASI wall clock now operation
 ///
 /// Implements `wasi:clocks/wall-clock.now` for wall clock time
-pub fn wasi_wall_clock_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_wall_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get wall clock time using platform abstraction
     let total_ns = PlatformTime::wall_clock_ns()
         .map_err(|_| Error::wasi_capability_unavailable("Wall clock not available"))?;
@@ -48,7 +48,7 @@ pub fn wasi_wall_clock_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<V
 /// Implements `wasi:clocks/monotonic-clock.resolution` for clock precision
 pub fn wasi_monotonic_clock_resolution(
     _target: &mut dyn Any,
-    _args: Vec<Value>,
+    _args: &[Value],
 ) -> Result<Vec<Value>> {
     // Get monotonic clock resolution using platform abstraction
     // For now, return 1 nanosecond resolution
@@ -60,7 +60,7 @@ pub fn wasi_monotonic_clock_resolution(
 /// WASI wall clock resolution operation
 ///
 /// Implements `wasi:clocks/wall-clock.resolution` for wall clock precision
-pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get wall clock resolution using platform abstraction
     // For now, return 1 nanosecond resolution
     let resolution = 1u64;
@@ -72,7 +72,7 @@ pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: Vec<Value>) -> R
 ///
 /// Implements CPU time measurement for the current process.
 /// Returns the CPU time consumed by the process (user + system time) in nanoseconds.
-pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get process CPU time using platform abstraction
     let cpu_time = PlatformTime::process_cpu_time_ns()
         .map_err(|_| Error::wasi_capability_unavailable("Process CPU time not available"))?;
@@ -84,7 +84,7 @@ pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Re
 ///
 /// Implements CPU time measurement for the current thread.
 /// Returns the CPU time consumed by the current thread (user + system time) in nanoseconds.
-pub fn wasi_thread_cpu_time_now(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_thread_cpu_time_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get thread CPU time using platform abstraction
     let cpu_time = PlatformTime::thread_cpu_time_ns()
         .map_err(|_| Error::wasi_capability_unavailable("Thread CPU time not available"))?;

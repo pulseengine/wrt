@@ -1167,7 +1167,20 @@ impl ModuleInstance {
                     // Set each function reference in the table
                     for (item_idx, func_idx) in elem_segment.items.iter().enumerate() {
                         let table_offset = actual_offset + item_idx as u32;
-                        let value = Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx })));
+
+                        // Handle sentinel values from module conversion:
+                        // u32::MAX = ref.null (null reference)
+                        // u32::MAX - 1 = deferred (will be evaluated later by item_exprs)
+                        let value = if func_idx == u32::MAX {
+                            // ref.null - set to null reference
+                            Some(WrtValue::FuncRef(None))
+                        } else if func_idx == u32::MAX - 1 {
+                            // Deferred - skip, will be set by item_exprs processing below
+                            continue;
+                        } else {
+                            // Normal function reference
+                            Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx })))
+                        };
 
                         // Use set_shared which provides interior mutability
                         table.set_shared(table_offset, value)?;

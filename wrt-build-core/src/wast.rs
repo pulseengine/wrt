@@ -441,8 +441,11 @@ impl WastTestRunner {
                 // The encode() method parses quoted text if needed and returns binary
                 match wast_module.encode() {
                     Ok(binary) => {
-                        // Store in registry
+                        // Store in registry with the module name (if provided) and also as "current"
                         self.module_registry.insert("current".to_string(), binary.clone());
+                        if let Some(name) = module_name {
+                            self.module_registry.insert(name.to_string(), binary.clone());
+                        }
 
                         // Load into execution engine
                         match self.engine.load_module(module_name, &binary) {
@@ -1291,17 +1294,31 @@ impl WastTestRunner {
     fn handle_register_directive(
         &mut self,
         name: &str,
-        _module: &Option<wast::token::Id>,
+        module: &Option<wast::token::Id>,
         _file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
         self.stats.register_count += 1;
 
-        // Register the current module if available
-        if let Some(binary) = self.module_registry.get("current") {
-            self.module_registry.insert(name.to_string(), binary.clone());
+        // Get the source module name - either from the module param or "current"
+        let source_module_name = module
+            .as_ref()
+            .map(|id| id.name().to_string())
+            .unwrap_or_else(|| "current".to_string());
+
+        // Try to register from the source module name, falling back to "current"
+        let binary = self.module_registry.get(&source_module_name)
+            .or_else(|| self.module_registry.get("current"))
+            .cloned();
+
+        if let Some(binary) = binary {
+            self.module_registry.insert(name.to_string(), binary);
 
             // Register the module in the execution engine
-            match self.engine.register_module(name, "current") {
+            // Try source module name first, then "current"
+            let result = self.engine.register_module(name, &source_module_name)
+                .or_else(|_| self.engine.register_module(name, "current"));
+
+            match result {
                 Ok(()) => {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
@@ -1333,7 +1350,7 @@ impl WastTestRunner {
                 requires_module_state: true,
                 modifies_engine_state: true,
                 result:                TestResult::Failed,
-                error_message:         Some("No module available for registration".to_string()),
+                error_message:         Some(format!("Module '{}' not found for registration", source_module_name)),
             })
         }
     }

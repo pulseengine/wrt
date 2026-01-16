@@ -1300,7 +1300,7 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1;
 
                         match opcode {
-                            0x02 | 0x03 | 0x04 => depth += 1,
+                            0x02..=0x04 => depth += 1,
                             0x0B => {
                                 depth = depth.saturating_sub(1);
                                 if depth == 0 {
@@ -1380,7 +1380,7 @@ impl<'a> StreamingDecoder<'a> {
                         offset += 1;
 
                         match opcode {
-                            0x02 | 0x03 | 0x04 => depth += 1,
+                            0x02..=0x04 => depth += 1,
                             0x0B => {
                                 depth = depth.saturating_sub(1);
                                 if depth == 0 {

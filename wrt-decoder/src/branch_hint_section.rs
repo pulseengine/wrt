@@ -169,7 +169,7 @@ pub struct FunctionBranchHints {
     /// Map from instruction offset to branch hint
     #[cfg(feature = "std")]
     pub hints:          HashMap<u32, BranchHintValue>,
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub hints:          BTreeMap<u32, BranchHintValue>,
 }
 
@@ -180,7 +180,7 @@ impl FunctionBranchHints {
             function_index,
             #[cfg(feature = "std")]
             hints: HashMap::new(),
-            #[cfg(all(not(feature = "std")))]
+            #[cfg(not(feature = "std"))]
             hints: BTreeMap::new(),
         }
     }
@@ -218,7 +218,7 @@ pub struct BranchHintSection {
     /// Map from function index to branch hints
     #[cfg(feature = "std")]
     pub function_hints: HashMap<u32, FunctionBranchHints>,
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub function_hints: BTreeMap<u32, FunctionBranchHints>,
 }
 
@@ -228,7 +228,7 @@ impl BranchHintSection {
         Self {
             #[cfg(feature = "std")]
             function_hints:                                   HashMap::new(),
-            #[cfg(all(not(feature = "std")))]
+            #[cfg(not(feature = "std"))]
             function_hints:                                   BTreeMap::new(),
         }
     }

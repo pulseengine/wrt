@@ -425,7 +425,7 @@ impl CallbackRegistry {
                 return interceptor.intercept_call(
                     "host",
                     &function_key(module_name, function_name),
-                    args,
+                    &args,
                     |modified_args| {
                         self.call_host_function_internal(
                             engine,

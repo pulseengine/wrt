@@ -412,6 +412,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI filesystem read operations
+    #[allow(clippy::unused_self)]
     fn create_filesystem_read_function(&self) -> Result<HostFunction> {
         // use crate::preview2::filesystem::wasi_filesystem_read;
 
@@ -442,7 +443,8 @@ impl ComponentModelProvider {
         })
     }
 
-    /// Create host function for WASI filesystem write operations  
+    /// Create host function for WASI filesystem write operations
+    #[allow(clippy::unused_self)]
     fn create_filesystem_write_function(&self) -> Result<HostFunction> {
         // use crate::preview2::filesystem::wasi_filesystem_write;
 
@@ -469,6 +471,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI filesystem open operations
+    #[allow(clippy::unused_self)]
     fn create_filesystem_open_function(&self) -> Result<HostFunction> {
         // use crate::preview2::filesystem::wasi_filesystem_open_at;
 
@@ -495,6 +498,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI CLI arguments
+    #[allow(clippy::unused_self)]
     fn create_cli_args_function(&self) -> Result<HostFunction> {
         Ok(HostFunction {
             #[cfg(feature = "std")]
@@ -525,6 +529,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI CLI environment variables
+    #[allow(clippy::unused_self)]
     fn create_cli_environ_function(&self) -> Result<HostFunction> {
         Ok(HostFunction {
             #[cfg(feature = "std")]
@@ -555,6 +560,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI monotonic clock
+    #[allow(clippy::unused_self)]
     fn create_clock_now_function(&self) -> Result<HostFunction> {
         // use crate::preview2::clocks::wasi_monotonic_clock_now;
 
@@ -581,6 +587,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI I/O write
+    #[allow(clippy::unused_self)]
     fn create_io_write_function(&self) -> Result<HostFunction> {
         // use crate::preview2::io::wasi_stream_write;
 
@@ -607,6 +614,7 @@ impl ComponentModelProvider {
     }
 
     /// Create host function for WASI random number generation
+    #[allow(clippy::unused_self)]
     fn create_random_get_function(&self) -> Result<HostFunction> {
         // use crate::preview2::random::wasi_get_random_bytes;
 

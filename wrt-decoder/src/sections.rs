@@ -141,7 +141,7 @@ fn parse_data(
                 current_offset += 1;
 
                 match opcode {
-                    0x02 | 0x03 | 0x04 => depth += 1, // block, loop, if
+                    0x02..=0x04 => depth += 1, // block, loop, if
                     0x0B => { // end
                         depth = depth.saturating_sub(1);
                         if depth == 0 {
@@ -239,7 +239,7 @@ fn parse_data(
                 current_offset += 1;
 
                 match opcode {
-                    0x02 | 0x03 | 0x04 => depth += 1,
+                    0x02..=0x04 => depth += 1,
                     0x0B => {
                         depth = depth.saturating_sub(1);
                         if depth == 0 {

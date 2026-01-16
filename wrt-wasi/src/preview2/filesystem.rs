@@ -111,16 +111,16 @@ fn ensure_file_table() -> Result<()> {
 ///
 /// Opens a file relative to a directory descriptor.
 /// Implements `wasi:filesystem/types.open-at`
-pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
         // Extract arguments: dir_fd, path_flags, path, open_flags, descriptor_flags
-        let _dir_fd = extract_file_descriptor(&args)?;
-        let path = extract_string(&args, 2)?;
-        let open_flags = extract_open_flags(&args, 3)?;
-        let descriptor_flags = extract_descriptor_flags(&args, 4)?;
+        let _dir_fd = extract_file_descriptor(args)?;
+        let path = extract_string(args, 2)?;
+        let open_flags = extract_open_flags(args, 3)?;
+        let descriptor_flags = extract_descriptor_flags(args, 4)?;
 
         // Build open options
         let mut options = OpenOptions::new();
@@ -149,7 +149,7 @@ pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 
         // Open the file
         let file = options.open(path)
-            .map_err(|e| map_io_error(e, "Failed to open file"))?;
+            .map_err(|e| map_io_error(&e, "Failed to open file"))?;
 
         // Register in file table
         let mut table = FILE_TABLE.write()
@@ -181,13 +181,13 @@ pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 ///
 /// Reads data from a file descriptor.
 /// Implements `wasi:filesystem/types.read`
-pub fn wasi_filesystem_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
-        let len = extract_length(&args, 1)? as usize;
+        let fd = extract_file_descriptor(args)?;
+        let len = extract_length(args, 1)? as usize;
         let offset = args.get(2)
             .and_then(|v| match v {
                 Value::U64(o) => Some(*o),
@@ -209,13 +209,13 @@ pub fn wasi_filesystem_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
         // Seek if offset provided
         if let Some(off) = offset {
             open_file.file.seek(SeekFrom::Start(off))
-                .map_err(|e| map_io_error(e, "Failed to seek"))?;
+                .map_err(|e| map_io_error(&e, "Failed to seek"))?;
         }
 
         // Read data
         let mut buffer = vec![0u8; len.min(65536)];
         let bytes_read = open_file.file.read(&mut buffer)
-            .map_err(|e| map_io_error(e, "Failed to read file"))?;
+            .map_err(|e| map_io_error(&e, "Failed to read file"))?;
 
         buffer.truncate(bytes_read);
 
@@ -242,13 +242,13 @@ pub fn wasi_filesystem_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
 ///
 /// Writes data to a file descriptor.
 /// Implements `wasi:filesystem/types.write`
-pub fn wasi_filesystem_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
-        let data = extract_byte_data(&args, 1)?;
+        let fd = extract_file_descriptor(args)?;
+        let data = extract_byte_data(args, 1)?;
         let offset = args.get(2)
             .and_then(|v| match v {
                 Value::U64(o) => Some(*o),
@@ -270,12 +270,12 @@ pub fn wasi_filesystem_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<
         // Seek if offset provided
         if let Some(off) = offset {
             open_file.file.seek(SeekFrom::Start(off))
-                .map_err(|e| map_io_error(e, "Failed to seek"))?;
+                .map_err(|e| map_io_error(&e, "Failed to seek"))?;
         }
 
         // Write data
         let bytes_written = open_file.file.write(&data)
-            .map_err(|e| map_io_error(e, "Failed to write file"))?;
+            .map_err(|e| map_io_error(&e, "Failed to write file"))?;
 
         Ok(vec![Value::Result(Ok(Box::new(Value::U64(bytes_written as u64))))])
     }
@@ -290,12 +290,12 @@ pub fn wasi_filesystem_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<
 ///
 /// Closes a file descriptor.
 /// Implements closing via dropping the descriptor
-pub fn wasi_filesystem_close(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_close(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
+        let fd = extract_file_descriptor(args)?;
 
         let mut table = FILE_TABLE.write()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -319,12 +319,12 @@ pub fn wasi_filesystem_close(_target: &mut dyn Any, args: Vec<Value>) -> Result<
 ///
 /// Gets file metadata.
 /// Implements `wasi:filesystem/types.stat`
-pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
+        let fd = extract_file_descriptor(args)?;
 
         let table = FILE_TABLE.read()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -335,7 +335,7 @@ pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
             .ok_or_else(|| Error::wasi_invalid_fd("Invalid file descriptor"))?;
 
         let metadata = open_file.file.metadata()
-            .map_err(|e| map_io_error(e, "Failed to get file metadata"))?;
+            .map_err(|e| map_io_error(&e, "Failed to get file metadata"))?;
 
         // Build descriptor-stat record
         let stat = build_descriptor_stat(&metadata);
@@ -353,14 +353,14 @@ pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
 ///
 /// Gets file metadata by path relative to a directory.
 /// Implements `wasi:filesystem/types.stat-at`
-pub fn wasi_filesystem_stat_at(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_stat_at(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
-        let _dir_fd = extract_file_descriptor(&args)?;
-        let path = extract_string(&args, 2)?;
+        let _dir_fd = extract_file_descriptor(args)?;
+        let path = extract_string(args, 2)?;
 
         let metadata = std::fs::metadata(path)
-            .map_err(|e| map_io_error(e, "Failed to get file metadata"))?;
+            .map_err(|e| map_io_error(&e, "Failed to get file metadata"))?;
 
         let stat = build_descriptor_stat(&metadata);
 
@@ -377,12 +377,12 @@ pub fn wasi_filesystem_stat_at(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 ///
 /// Syncs file data to disk.
 /// Implements `wasi:filesystem/types.sync`
-pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
+        let fd = extract_file_descriptor(args)?;
 
         let table = FILE_TABLE.read()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -393,7 +393,7 @@ pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
             .ok_or_else(|| Error::wasi_invalid_fd("Invalid file descriptor"))?;
 
         open_file.file.sync_all()
-            .map_err(|e| map_io_error(e, "Failed to sync file"))?;
+            .map_err(|e| map_io_error(&e, "Failed to sync file"))?;
 
         Ok(vec![Value::Result(Ok(Box::new(Value::Tuple(vec![]))))])
     }
@@ -408,12 +408,12 @@ pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
 ///
 /// Syncs file data to disk without metadata.
 /// Implements `wasi:filesystem/types.sync-data`
-pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
+        let fd = extract_file_descriptor(args)?;
 
         let table = FILE_TABLE.read()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -425,7 +425,7 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: Vec<Value>) -> Res
 
         // sync_data() syncs data without metadata (more efficient than sync_all)
         open_file.file.sync_data()
-            .map_err(|e| map_io_error(e, "Failed to sync file data"))?;
+            .map_err(|e| map_io_error(&e, "Failed to sync file data"))?;
 
         Ok(vec![Value::Result(Ok(Box::new(Value::Tuple(vec![]))))])
     }
@@ -444,7 +444,7 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: Vec<Value>) -> Res
 /// Note: This implementation uses std::fs::File::set_times which requires
 /// Rust 1.75+. If using an older Rust version, this will use the path-based
 /// approach via std::fs::set_times which is available on most platforms.
-pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         use std::fs::FileTimes;
@@ -452,9 +452,9 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Res
 
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
-        let atime = extract_timestamp(&args, 1)?;
-        let mtime = extract_timestamp(&args, 2)?;
+        let fd = extract_file_descriptor(args)?;
+        let atime = extract_timestamp(args, 1)?;
+        let mtime = extract_timestamp(args, 2)?;
 
         let table = FILE_TABLE.read()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -466,7 +466,7 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Res
 
         // Get current timestamps for NoChange cases
         let metadata = open_file.file.metadata()
-            .map_err(|e| map_io_error(e, "Failed to get metadata"))?;
+            .map_err(|e| map_io_error(&e, "Failed to get metadata"))?;
 
         let current_atime = metadata.accessed().unwrap_or(SystemTime::now());
         let current_mtime = metadata.modified().unwrap_or(SystemTime::now());
@@ -490,7 +490,7 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Res
             .set_modified(mtime_system);
 
         open_file.file.set_times(times)
-            .map_err(|e| map_io_error(e, "Failed to set file times"))?;
+            .map_err(|e| map_io_error(&e, "Failed to set file times"))?;
 
         Ok(vec![Value::Result(Ok(Box::new(Value::Tuple(vec![]))))])
     }
@@ -505,12 +505,12 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: Vec<Value>) -> Res
 ///
 /// Gets descriptor flags.
 /// Implements `wasi:filesystem/types.get-flags`
-pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
+        let fd = extract_file_descriptor(args)?;
 
         let table = FILE_TABLE.read()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -548,13 +548,13 @@ pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: Vec<Value>) -> Res
 /// The actual OS-level flags (like O_NONBLOCK, O_SYNC) cannot be changed
 /// without unsafe code and libc. If the caller needs true nonblocking I/O,
 /// they should open the file with those flags initially.
-pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
-        let new_flags = extract_descriptor_flags(&args, 1)?;
+        let fd = extract_file_descriptor(args)?;
+        let new_flags = extract_descriptor_flags(args, 1)?;
 
         let mut table = FILE_TABLE.write()
             .map_err(|_| Error::wasi_capability_unavailable("Failed to acquire file table lock"))?;
@@ -591,15 +591,15 @@ pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: Vec<Value>) -> Res
 /// access patterns. Without libc/unsafe FFI, we cannot call posix_fadvise,
 /// so this implementation validates arguments and returns success.
 /// The OS will still use its default caching strategy.
-pub fn wasi_filesystem_advise(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_filesystem_advise(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
         ensure_file_table()?;
 
-        let fd = extract_file_descriptor(&args)?;
-        let _offset = extract_length(&args, 1)?;
-        let _len = extract_length(&args, 2)?;
-        let _advice = extract_advice(&args, 3)?;
+        let fd = extract_file_descriptor(args)?;
+        let _offset = extract_length(args, 1)?;
+        let _len = extract_length(args, 2)?;
+        let _advice = extract_advice(args, 3)?;
 
         // Verify the fd is valid
         let table = FILE_TABLE.read()
@@ -837,26 +837,20 @@ fn extract_advice(args: &[Value], index: usize) -> Result<Advice> {
         .ok_or_else(|| Error::parameter_wasi_invalid_fd("Missing advice argument"))?;
 
     match val {
-        // WASI advice enum encoding
-        Value::U32(0) => Ok(Advice::Normal),
-        Value::U32(1) => Ok(Advice::Sequential),
-        Value::U32(2) => Ok(Advice::Random),
-        Value::U32(3) => Ok(Advice::WillNeed),
-        Value::U32(4) => Ok(Advice::DontNeed),
-        Value::U32(5) => Ok(Advice::NoReuse),
-        Value::U8(0) => Ok(Advice::Normal),
-        Value::U8(1) => Ok(Advice::Sequential),
-        Value::U8(2) => Ok(Advice::Random),
-        Value::U8(3) => Ok(Advice::WillNeed),
-        Value::U8(4) => Ok(Advice::DontNeed),
-        Value::U8(5) => Ok(Advice::NoReuse),
+        // WASI advice enum encoding (supports both U32 and U8)
+        Value::U32(0) | Value::U8(0) => Ok(Advice::Normal),
+        Value::U32(1) | Value::U8(1) => Ok(Advice::Sequential),
+        Value::U32(2) | Value::U8(2) => Ok(Advice::Random),
+        Value::U32(3) | Value::U8(3) => Ok(Advice::WillNeed),
+        Value::U32(4) | Value::U8(4) => Ok(Advice::DontNeed),
+        Value::U32(5) | Value::U8(5) => Ok(Advice::NoReuse),
         _ => Ok(Advice::Normal),
     }
 }
 
 /// Map std::io::Error to WASI error
 #[cfg(feature = "std")]
-fn map_io_error(e: std::io::Error, _context: &str) -> Error {
+fn map_io_error(e: &std::io::Error, _context: &str) -> Error {
     use std::io::ErrorKind;
 
     match e.kind() {
@@ -922,7 +916,7 @@ mod tests {
     #[test]
     fn test_extract_file_descriptor() {
         let args = vec![Value::U32(42)];
-        assert_eq!(extract_file_descriptor(&args).unwrap(), 42);
+        assert_eq!(extract_file_descriptor(args).unwrap(), 42);
 
         let invalid_args = vec![Value::String("not_a_fd".to_string())];
         assert!(extract_file_descriptor(&invalid_args).is_err());
@@ -931,7 +925,7 @@ mod tests {
     #[test]
     fn test_extract_length() {
         let args = vec![Value::U32(0), Value::U64(1024)];
-        assert_eq!(extract_length(&args, 1).unwrap(), 1024);
+        assert_eq!(extract_length(args, 1).unwrap(), 1024);
 
         let args_u32 = vec![Value::U32(0), Value::U32(512)];
         assert_eq!(extract_length(&args_u32, 1).unwrap(), 512);
@@ -942,7 +936,7 @@ mod tests {
         let data = vec![Value::U8(1), Value::U8(2), Value::U8(3)];
         let args = vec![Value::U32(42), Value::List(data)];
 
-        let bytes = extract_byte_data(&args, 1)?;
+        let bytes = extract_byte_data(args, 1)?;
         assert_eq!(bytes, vec![1, 2, 3]);
 
         Ok(())
@@ -951,7 +945,7 @@ mod tests {
     #[test]
     fn test_extract_string() -> Result<()> {
         let args = vec![Value::U32(42), Value::String("test.txt".to_string())];
-        let path = extract_string(&args, 1)?;
+        let path = extract_string(args, 1)?;
         assert_eq!(path, "test.txt");
 
         Ok(())
@@ -961,7 +955,7 @@ mod tests {
     fn test_open_flags_extraction() {
         // Test bit-based flags
         let args = vec![Value::U32(0), Value::U32(0), Value::String("test".to_string()), Value::U32(0x05)];
-        let flags = extract_open_flags(&args, 3).unwrap();
+        let flags = extract_open_flags(args, 3).unwrap();
         assert!(flags.create);
         assert!(!flags.directory);
         assert!(flags.exclusive);
@@ -971,7 +965,7 @@ mod tests {
     #[test]
     fn test_descriptor_flags_extraction() {
         let args = vec![Value::U32(0), Value::U32(0), Value::String("test".to_string()), Value::U32(0), Value::U32(0x03)];
-        let flags = extract_descriptor_flags(&args, 4).unwrap();
+        let flags = extract_descriptor_flags(args, 4).unwrap();
         assert!(flags.read);
         assert!(flags.write);
         assert!(!flags.sync);

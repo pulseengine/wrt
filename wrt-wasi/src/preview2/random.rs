@@ -15,9 +15,9 @@ use crate::{
 ///
 /// Implements `wasi:random/random.get-random-bytes` for secure random
 /// generation
-pub fn wasi_get_random_bytes(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_get_random_bytes(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract length from arguments
-    let len = extract_length(&args)?;
+    let len = extract_length(args)?;
 
     // Validate length is reasonable
     if len > 1024 * 1024 {
@@ -41,10 +41,10 @@ pub fn wasi_get_random_bytes(_target: &mut dyn Any, args: Vec<Value>) -> Result<
 /// pseudo-random generation
 pub fn wasi_get_insecure_random_bytes(
     _target: &mut dyn Any,
-    args: Vec<Value>,
+    args: &[Value],
 ) -> Result<Vec<Value>> {
     // Extract length from arguments
-    let len = extract_length(&args)?;
+    let len = extract_length(args)?;
 
     // Validate length is reasonable
     if len > 10 * 1024 * 1024 {
@@ -65,7 +65,7 @@ pub fn wasi_get_insecure_random_bytes(
 /// WASI get random u64 operation
 ///
 /// Implements `wasi:random/random.get-random-u64` for secure u64 generation
-pub fn wasi_get_random_u64(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_get_random_u64(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Generate 8 secure random bytes
     let random_bytes = generate_secure_random(8)?;
 
@@ -83,7 +83,7 @@ pub fn wasi_get_random_u64(_target: &mut dyn Any, _args: Vec<Value>) -> Result<V
 /// generation
 pub fn wasi_get_insecure_random_u64(
     _target: &mut dyn Any,
-    _args: Vec<Value>,
+    _args: &[Value],
 ) -> Result<Vec<Value>> {
     // Generate 8 pseudo-random bytes
     let random_bytes = generate_pseudo_random(8)?;
@@ -208,20 +208,20 @@ mod tests {
     #[test]
     fn test_extract_length() -> Result<()> {
         let args = vec![Value::U64(1024)];
-        let len = extract_length(&args)?;
+        let len = extract_length(args)?;
         assert_eq!(len, 1024);
 
         let args = vec![Value::U32(512)];
-        let len = extract_length(&args)?;
+        let len = extract_length(args)?;
         assert_eq!(len, 512);
 
         let args = vec![Value::S32(256)];
-        let len = extract_length(&args)?;
+        let len = extract_length(args)?;
         assert_eq!(len, 256);
 
         // Test negative length
         let args = vec![Value::S32(-1)];
-        let result = extract_length(&args);
+        let result = extract_length(args);
         assert!(result.is_err());
 
         Ok(())

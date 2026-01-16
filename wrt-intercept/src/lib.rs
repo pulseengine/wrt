@@ -553,13 +553,13 @@ impl LinkInterceptor {
         &self,
         target: &str,
         function: &str,
-        args: Vec<Value>,
+        args: &[Value],
         call_fn: F,
     ) -> Result<Vec<Value>>
     where
         F: FnOnce(Vec<Value>) -> Result<Vec<Value>>,
     {
-        let mut modified_args = args.clone();
+        let mut modified_args = args.to_vec();
 
         // Apply before_call interceptors
         for strategy in &self.strategies {
@@ -576,7 +576,7 @@ impl LinkInterceptor {
 
         // Apply after_call interceptors in reverse order
         for strategy in self.strategies.iter().rev() {
-            result = strategy.after_call(&self.name, target, function, &args, result);
+            result = strategy.after_call(&self.name, target, function, args, result);
         }
 
         result
@@ -629,7 +629,7 @@ impl LinkInterceptor {
     #[cfg(feature = "std")]
     pub fn post_intercept(
         &self,
-        component_name: String,
+        component_name: &str,
         func_name: &str,
         args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
         results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
@@ -644,7 +644,7 @@ impl LinkInterceptor {
         for strategy in &self.strategies {
             // Apply strategy-specific post-processing
             if let Some(modifications) =
-                strategy.process_results(component_name.as_str(), func_name, args, results)?
+                strategy.process_results(component_name, func_name, args, results)?
             {
                 result.modified = true;
                 result.modifications.extend(modifications);

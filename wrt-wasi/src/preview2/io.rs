@@ -292,18 +292,10 @@ fn check_input_stream_ready(stream_handle: u32) -> bool {
 
 /// Check if an output stream is ready for writing
 #[cfg(feature = "std")]
-fn check_output_stream_ready(stream_handle: u32) -> bool {
-    match stream_handle {
-        1 | 2 => {
-            // stdout/stderr - always ready for buffered I/O
-            true
-        },
-        _ => {
-            // Other streams - assume ready
-            // A full implementation would check buffer space
-            true
-        }
-    }
+fn check_output_stream_ready(_stream_handle: u32) -> bool {
+    // All streams are currently assumed ready for buffered I/O
+    // A full implementation would check buffer space for non-stdout/stderr
+    true
 }
 
 /// Check if a timer has expired
@@ -322,10 +314,10 @@ fn check_timer_ready(deadline_ns: u64) -> bool {
 /// WASI stream read operation
 ///
 /// Implements `wasi:io/streams.read` for reading from input streams
-pub fn wasi_stream_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_stream_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract stream handle and length from arguments
-    let stream_handle = extract_stream_handle(&args)?;
-    let len = extract_read_length(&args, 1)?;
+    let stream_handle = extract_stream_handle(args)?;
+    let len = extract_read_length(args, 1)?;
 
     // Validate stream handle and check if readable
     // In a real implementation, this would access the resource manager
@@ -342,10 +334,10 @@ pub fn wasi_stream_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<V
 /// WASI stream write operation
 ///
 /// Implements `wasi:io/streams.write` for writing to output streams
-pub fn wasi_stream_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_stream_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract stream handle and data from arguments
-    let stream_handle = extract_stream_handle(&args)?;
-    let data = extract_write_data(&args, 1)?;
+    let stream_handle = extract_stream_handle(args)?;
+    let data = extract_write_data(args, 1)?;
 
     // Validate stream handle and check if writable
     // In a real implementation, this would access the resource manager
@@ -360,8 +352,8 @@ pub fn wasi_stream_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<
 /// WASI stream flush operation
 ///
 /// Implements `wasi:io/streams.flush` for flushing output streams
-pub fn wasi_stream_flush(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
+pub fn wasi_stream_flush(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
 
     // Validate stream handle and check if writable
 
@@ -375,8 +367,8 @@ pub fn wasi_stream_flush(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<
 /// WASI stream check-write operation
 ///
 /// Implements `wasi:io/streams.check-write` to check available write space
-pub fn wasi_stream_check_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
+pub fn wasi_stream_check_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
 
     // Check how many bytes can be written without blocking
     let available = check_write_capacity(stream_handle)?;
@@ -387,9 +379,9 @@ pub fn wasi_stream_check_write(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 /// WASI stream blocking-read operation
 ///
 /// Implements `wasi:io/streams.blocking-read` for blocking reads
-pub fn wasi_stream_blocking_read(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
-    let len = extract_read_length(&args, 1)?;
+pub fn wasi_stream_blocking_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
+    let len = extract_read_length(args, 1)?;
 
     // Blocking read - will block until data available or EOF
     // For now, delegates to regular read which may block on stdin
@@ -402,9 +394,9 @@ pub fn wasi_stream_blocking_read(_target: &mut dyn Any, args: Vec<Value>) -> Res
 /// WASI stream blocking-write operation
 ///
 /// Implements `wasi:io/streams.blocking-write-and-flush` for blocking writes
-pub fn wasi_stream_blocking_write(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
-    let data = extract_write_data(&args, 1)?;
+pub fn wasi_stream_blocking_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
+    let data = extract_write_data(args, 1)?;
 
     // Write all data (blocking if necessary)
     let bytes_written = perform_stream_write(stream_handle, &data)?;
@@ -418,9 +410,9 @@ pub fn wasi_stream_blocking_write(_target: &mut dyn Any, args: Vec<Value>) -> Re
 /// WASI stream skip operation
 ///
 /// Implements `wasi:io/streams.skip` for skipping input bytes
-pub fn wasi_stream_skip(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
-    let len = extract_read_length(&args, 1)?;
+pub fn wasi_stream_skip(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
+    let len = extract_read_length(args, 1)?;
 
     // Read and discard the bytes
     let data = perform_stream_read(stream_handle, len)?;
@@ -432,7 +424,7 @@ pub fn wasi_stream_skip(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<V
 /// WASI stream blocking-skip operation
 ///
 /// Implements `wasi:io/streams.blocking-skip` for blocking skip
-pub fn wasi_stream_blocking_skip(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_stream_blocking_skip(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Same as skip - the underlying read may block
     wasi_stream_skip(_target, args)
 }
@@ -441,15 +433,15 @@ pub fn wasi_stream_blocking_skip(_target: &mut dyn Any, args: Vec<Value>) -> Res
 ///
 /// Implements `wasi:io/streams.splice` for transferring data between streams
 /// Reads from input stream and writes to output stream without intermediate buffering
-pub fn wasi_stream_splice(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let output_stream = extract_stream_handle(&args)?;
+pub fn wasi_stream_splice(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let output_stream = extract_stream_handle(args)?;
     let input_stream = args.get(1)
         .and_then(|v| match v {
             Value::U32(h) => Some(*h),
             _ => None,
         })
         .ok_or_else(|| Error::wasi_invalid_fd("Invalid input stream handle"))?;
-    let len = extract_read_length(&args, 2)?;
+    let len = extract_read_length(args, 2)?;
 
     // Read from input
     let data = perform_stream_read(input_stream, len)?;
@@ -463,7 +455,7 @@ pub fn wasi_stream_splice(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec
 /// WASI stream blocking-splice operation
 ///
 /// Implements `wasi:io/streams.blocking-splice` for blocking splice
-pub fn wasi_stream_blocking_splice(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_stream_blocking_splice(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Same as splice - operations may block
     wasi_stream_splice(_target, args)
 }
@@ -471,8 +463,8 @@ pub fn wasi_stream_blocking_splice(_target: &mut dyn Any, args: Vec<Value>) -> R
 /// WASI stream forward operation
 ///
 /// Implements forwarding all remaining data from input to output stream
-pub fn wasi_stream_forward(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let output_stream = extract_stream_handle(&args)?;
+pub fn wasi_stream_forward(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let output_stream = extract_stream_handle(args)?;
     let input_stream = args.get(1)
         .and_then(|v| match v {
             Value::U32(h) => Some(*h),
@@ -505,8 +497,8 @@ pub fn wasi_stream_forward(_target: &mut dyn Any, args: Vec<Value>) -> Result<Ve
 /// WASI input-stream drop operation
 ///
 /// Drops an input stream resource
-pub fn wasi_drop_input_stream(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
+pub fn wasi_drop_input_stream(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
 
     // For stdin (0), we don't actually close it
     // For other streams, would need to close the underlying resource
@@ -520,8 +512,8 @@ pub fn wasi_drop_input_stream(_target: &mut dyn Any, args: Vec<Value>) -> Result
 /// WASI output-stream drop operation
 ///
 /// Drops an output stream resource
-pub fn wasi_drop_output_stream(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
+pub fn wasi_drop_output_stream(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
 
     // For stdout/stderr (1, 2), we don't actually close them
     // For other streams, would need to close the underlying resource
@@ -535,8 +527,8 @@ pub fn wasi_drop_output_stream(_target: &mut dyn Any, args: Vec<Value>) -> Resul
 /// WASI stream subscribe operation
 ///
 /// Implements `wasi:io/poll.subscribe` for async I/O notification
-pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let stream_handle = extract_stream_handle(&args)?;
+pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let stream_handle = extract_stream_handle(args)?;
 
     #[cfg(feature = "std")]
     {
@@ -549,9 +541,8 @@ pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: Vec<Value>) -> Result<
 
         // Determine if this is an input or output stream
         let pollable_handle = match stream_handle {
-            0 => table.create_for_input(stream_handle),      // stdin is input
-            1 | 2 => table.create_for_output(stream_handle), // stdout/stderr are output
-            _ => table.create_for_output(stream_handle),     // Default to output for file handles
+            0 => table.create_for_input(stream_handle), // stdin is input
+            _ => table.create_for_output(stream_handle), // stdout/stderr and file handles are output
         };
 
         Ok(vec![Value::U32(pollable_handle)])
@@ -569,8 +560,8 @@ pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: Vec<Value>) -> Result<
 ///
 /// Creates a pollable that becomes ready when the timer expires.
 /// Implements `wasi:clocks/monotonic-clock.subscribe-instant`
-pub fn wasi_subscribe_timer(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let deadline_ns = extract_timestamp_ns(&args)?;
+pub fn wasi_subscribe_timer(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let deadline_ns = extract_timestamp_ns(args)?;
 
     #[cfg(feature = "std")]
     {
@@ -596,8 +587,8 @@ pub fn wasi_subscribe_timer(_target: &mut dyn Any, args: Vec<Value>) -> Result<V
 ///
 /// Implements `wasi:io/poll.poll` for synchronous polling.
 /// Blocks until at least one pollable is ready.
-pub fn wasi_poll_one_off(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let pollables = extract_pollable_list(&args)?;
+pub fn wasi_poll_one_off(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let pollables = extract_pollable_list(args)?;
 
     #[cfg(feature = "std")]
     {
@@ -629,8 +620,8 @@ pub fn wasi_poll_one_off(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<
 ///
 /// Implements `wasi:io/poll.poll-list` with optional timeout.
 /// Returns immediately if any pollable is ready, or after timeout.
-pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-    let pollables = extract_pollable_list(&args)?;
+pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
+    let pollables = extract_pollable_list(args)?;
     let timeout_ns = args.get(1).and_then(|v| match v {
         Value::U64(ns) => Some(*ns),
         _ => None,
@@ -665,7 +656,7 @@ pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: Vec<Value>) -> Result
 ///
 /// Drops a pollable resource.
 /// Implements `wasi:io/poll.pollable.drop`
-pub fn wasi_drop_pollable(_target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+pub fn wasi_drop_pollable(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let pollable_handle = args.first()
         .and_then(|v| match v {
             Value::U32(h) => Some(*h),
@@ -1008,16 +999,16 @@ mod tests {
     #[test]
     fn test_extract_stream_handle() -> Result<()> {
         let args = vec![Value::U32(42)];
-        let handle = extract_stream_handle(&args)?;
+        let handle = extract_stream_handle(args)?;
         assert_eq!(handle, 42);
 
         let args = vec![Value::S32(24)];
-        let handle = extract_stream_handle(&args)?;
+        let handle = extract_stream_handle(args)?;
         assert_eq!(handle, 24);
 
         // Test negative handle
         let args = vec![Value::S32(-1)];
-        let result = extract_stream_handle(&args);
+        let result = extract_stream_handle(args);
         assert!(result.is_err());
 
         Ok(())
@@ -1026,11 +1017,11 @@ mod tests {
     #[test]
     fn test_extract_read_length() -> Result<()> {
         let args = vec![Value::U32(42), Value::U64(1024)];
-        let len = extract_read_length(&args, 1)?;
+        let len = extract_read_length(args, 1)?;
         assert_eq!(len, 1024);
 
         let args = vec![Value::U32(42), Value::U32(512)];
-        let len = extract_read_length(&args, 1)?;
+        let len = extract_read_length(args, 1)?;
         assert_eq!(len, 512);
 
         Ok(())
@@ -1041,7 +1032,7 @@ mod tests {
         let data = vec![Value::U8(1), Value::U8(2), Value::U8(3)];
         let args = vec![Value::U32(42), Value::List(data)];
 
-        let bytes = extract_write_data(&args, 1)?;
+        let bytes = extract_write_data(args, 1)?;
         assert_eq!(bytes, vec![1, 2, 3]);
 
         Ok(())

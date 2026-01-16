@@ -497,11 +497,8 @@ impl WasiResource {
     /// Update stream position (for stream resources)
     pub fn update_position(&mut self, new_position: u64) -> Result<()> {
         match &mut self.resource_type {
-            WasiResourceType::InputStream { position, .. } => {
-                *position = new_position;
-                Ok(())
-            },
-            WasiResourceType::OutputStream { position, .. } => {
+            WasiResourceType::InputStream { position, .. }
+            | WasiResourceType::OutputStream { position, .. } => {
                 *position = new_position;
                 Ok(())
             },
@@ -514,8 +511,8 @@ impl WasiResource {
     /// Get current position (for stream resources)
     pub fn get_position(&self) -> Option<u64> {
         match &self.resource_type {
-            WasiResourceType::InputStream { position, .. } => Some(*position),
-            WasiResourceType::OutputStream { position, .. } => Some(*position),
+            WasiResourceType::InputStream { position, .. }
+            | WasiResourceType::OutputStream { position, .. } => Some(*position),
             _ => None,
         }
     }

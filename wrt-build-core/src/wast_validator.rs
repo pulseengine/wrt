@@ -13,7 +13,8 @@
 use anyhow::{anyhow, Context, Result};
 use std::collections::HashSet;
 use wrt_format::module::{Function, Global, ImportDesc, Module};
-use wrt_format::pure_format_types::{PureElementInit, PureElementSegment};
+use wrt_format::pure_format_types::{PureElementInit, PureElementSegment, PureElementMode};
+use wrt_format::types::RefType;
 use wrt_foundation::ValueType;
 
 /// Type of a value on the stack
@@ -106,7 +107,133 @@ impl WastModuleValidator {
                 .context(format!("Global {} validation failed", global_idx))?;
         }
 
+        // Validate element segments - function indices must be valid
+        Self::validate_element_segments(module)?;
+
+        // Validate start function
+        Self::validate_start_function(module)?;
+
         Ok(())
+    }
+
+    /// Validate element segments
+    /// Function indices in element segments must be valid
+    fn validate_element_segments(module: &Module) -> Result<()> {
+        let total_funcs = Self::total_functions(module);
+
+        for elem in &module.elements {
+            match &elem.init_data {
+                PureElementInit::FunctionIndices(indices) => {
+                    for &idx in indices {
+                        if (idx as usize) >= total_funcs {
+                            return Err(anyhow!("unknown function"));
+                        }
+                    }
+                }
+                PureElementInit::ExpressionBytes(exprs) => {
+                    // Parse expressions to find ref.func instructions
+                    for expr_bytes in exprs {
+                        Self::validate_element_expr_functions(expr_bytes, total_funcs)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate function references in element expression bytes
+    fn validate_element_expr_functions(expr: &[u8], total_funcs: usize) -> Result<()> {
+        let mut pos = 0;
+        while pos < expr.len() {
+            let opcode = expr[pos];
+            pos += 1;
+
+            match opcode {
+                0xD2 => {
+                    // ref.func - validate the function index
+                    if let Ok((func_idx, new_pos)) = Self::read_leb128_unsigned(expr, pos) {
+                        if (func_idx as usize) >= total_funcs {
+                            return Err(anyhow!("unknown function"));
+                        }
+                        pos = new_pos;
+                    } else {
+                        break;
+                    }
+                }
+                0xD0 => {
+                    // ref.null - skip heap type
+                    if pos < expr.len() {
+                        pos += 1;
+                    }
+                }
+                0x0B => {
+                    // end
+                    break;
+                }
+                _ => {
+                    // Skip other opcodes - may need to parse their immediates
+                    // For now, just continue
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate start function
+    /// - Start function index must be valid
+    /// - Start function must have no parameters
+    /// - Start function must have no results
+    fn validate_start_function(module: &Module) -> Result<()> {
+        if let Some(start_idx) = module.start {
+            let total_funcs = Self::total_functions(module);
+
+            // Check that start function index is valid
+            if (start_idx as usize) >= total_funcs {
+                return Err(anyhow!("unknown function"));
+            }
+
+            // Get the function type of the start function
+            let func_type = Self::get_function_type(module, start_idx)?;
+
+            // Start function must have no parameters
+            if !func_type.params.is_empty() {
+                return Err(anyhow!("start function"));
+            }
+
+            // Start function must have no results
+            if !func_type.results.is_empty() {
+                return Err(anyhow!("start function"));
+            }
+        }
+        Ok(())
+    }
+
+    /// Get the function type for a function index (accounting for imports)
+    fn get_function_type(module: &Module, func_idx: u32) -> Result<&wrt_foundation::CleanCoreFuncType> {
+        let num_func_imports = Self::count_function_imports(module);
+
+        if (func_idx as usize) < num_func_imports {
+            // This is an imported function - find its type
+            let mut import_idx = 0;
+            for import in &module.imports {
+                if let ImportDesc::Function(type_idx) = &import.desc {
+                    if import_idx == func_idx as usize {
+                        let type_idx = *type_idx as usize;
+                        return module.types.get(type_idx)
+                            .ok_or_else(|| anyhow!("unknown type"));
+                    }
+                    import_idx += 1;
+                }
+            }
+            Err(anyhow!("unknown function"))
+        } else {
+            // This is a defined function
+            let local_idx = (func_idx as usize) - num_func_imports;
+            let func = module.functions.get(local_idx)
+                .ok_or_else(|| anyhow!("unknown function"))?;
+            module.types.get(func.type_idx as usize)
+                .ok_or_else(|| anyhow!("unknown type"))
+        }
     }
 
     /// Validate memory section limits
@@ -539,7 +666,7 @@ impl WastModuleValidator {
                     }
 
                     // Pop arguments and push results
-                    if let Some(func_type) = Self::get_function_type(func_idx, module) {
+                    if let Ok(func_type) = Self::get_function_type(module, func_idx) {
                         // Pop arguments in reverse order
                         let frame_height = Self::current_frame_height(&frames);
                         for param in func_type.params.iter().rev() {
@@ -559,15 +686,18 @@ impl WastModuleValidator {
                     let (type_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
-                    // table_idx (assumed 0, skip varuint32)
-                    let (_, new_offset) = Self::parse_varuint32(code, offset)?;
+                    // table_idx - validate that the table exists
+                    let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
+                    // Validate table exists
+                    if table_idx as usize >= Self::total_tables(module) {
+                        return Err(anyhow!("unknown table"));
+                    }
+
+                    // Validate type index
                     if type_idx as usize >= module.types.len() {
-                        return Err(anyhow!(
-                            "call_indirect: invalid type index {}",
-                            type_idx
-                        ));
+                        return Err(anyhow!("unknown type"));
                     }
 
                     let func_type = &module.types[type_idx as usize];
@@ -1886,6 +2016,21 @@ impl WastModuleValidator {
         Self::total_memories(module) > 0
     }
 
+    /// Count the number of table imports in a module
+    fn count_table_imports(module: &Module) -> usize {
+        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Table(_))).count()
+    }
+
+    /// Get the total number of tables (imports + defined)
+    fn total_tables(module: &Module) -> usize {
+        Self::count_table_imports(module) + module.tables.len()
+    }
+
+    /// Check if module has any table defined (imported or local)
+    fn has_table(module: &Module) -> bool {
+        Self::total_tables(module) > 0
+    }
+
     /// Get the global type for a global index (accounting for imports)
     /// Global indices include both imported and defined globals:
     /// - Indices 0..N-1 are imported globals
@@ -2275,24 +2420,6 @@ impl WastModuleValidator {
 
                 Ok((inputs, outputs))
             }
-        }
-    }
-
-    /// Get function type
-    fn get_function_type(func_idx: u32, module: &Module) -> Option<wrt_foundation::CleanCoreFuncType> {
-        let func_idx_usize = func_idx as usize;
-        let func_count = module.functions.len();
-        let total_funcs = func_count + module.imports.len();
-
-        if func_idx_usize < func_count {
-            let func = &module.functions[func_idx_usize];
-            module.types.get(func.type_idx as usize).cloned()
-        } else if func_idx_usize < total_funcs {
-            // For imports, would need to look up the imported function type
-            // For now, return None
-            None
-        } else {
-            None
         }
     }
 

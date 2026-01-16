@@ -77,6 +77,10 @@ impl WastEngine {
                 .context("Failed to create module instance")?,
         );
 
+        // Resolve spectest memory imports FIRST (imported memories come before defined memories)
+        // This must happen before populate_memories_from_module() which adds defined memories
+        Self::resolve_spectest_memory_imports(&module, &module_instance)?;
+
         // Initialize module instance resources (memories, globals, tables, data segments, etc.)
         module_instance
             .populate_memories_from_module()
@@ -146,24 +150,28 @@ impl WastEngine {
         function_name: &str,
         args: &[Value],
     ) -> Result<Vec<Value>> {
-        // Get the module - either the specified one or the current one
-        let module = if let Some(name) = module_name {
-            self.modules
+        // Get the module and instance_id - either from the specified module name or the current one
+        let (module, instance_id) = if let Some(name) = module_name {
+            let module = self.modules
                 .get(name)
-                .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?
+                .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?;
+            let instance_id = self.instance_ids
+                .get(name)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("Instance ID for module '{}' not found", name))?;
+            (module, instance_id)
         } else {
-            self.current_module
+            let module = self.current_module
                 .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?
+                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
+            let instance_id = self.current_instance_id
+                .ok_or_else(|| anyhow::anyhow!("No module loaded - cannot execute function"))?;
+            (module, instance_id)
         };
 
         // Find the exported function index
         let func_idx = self.find_export_function_index(&**module, function_name)?;
 
-        // Execute the function using StacklessEngine
-        let instance_id = self
-            .current_instance_id
-            .ok_or_else(|| anyhow::anyhow!("No module loaded - cannot execute function"))?;
         // Reset call depth before each top-level invocation to prevent
         // accumulated errors from previous tests causing false failures
         self.engine.reset_call_depth();
@@ -188,6 +196,58 @@ impl WastEngine {
             .ok_or_else(|| {
                 anyhow::anyhow!("Function '{}' is not exported from module", function_name)
             })
+    }
+
+    /// Get a global variable value by name
+    pub fn get_global(
+        &self,
+        module_name: Option<&str>,
+        global_name: &str,
+    ) -> Result<Value> {
+        use wrt_runtime::module::ExportKind;
+
+        // Get the module and instance_id
+        let (module, instance_id) = if let Some(name) = module_name {
+            let module = self.modules
+                .get(name)
+                .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?;
+            let instance_id = self.instance_ids
+                .get(name)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("Instance ID for module '{}' not found", name))?;
+            (module, instance_id)
+        } else {
+            let module = self.current_module
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
+            let instance_id = self.current_instance_id
+                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
+            (module, instance_id)
+        };
+
+        // Find the exported global index
+        let export = module
+            .get_export(global_name)
+            .ok_or_else(|| anyhow::anyhow!("Global '{}' is not exported from module", global_name))?;
+
+        if export.kind != ExportKind::Global {
+            return Err(anyhow::anyhow!("'{}' is not a global export", global_name));
+        }
+
+        let global_idx = export.index;
+
+        // Get the instance from the engine
+        let instance = self.engine.get_instance(instance_id)
+            .ok_or_else(|| anyhow::anyhow!("Instance {} not found in engine", instance_id))?;
+
+        // Get the global value from the instance
+        let global_wrapper = instance.global(global_idx)
+            .map_err(|e| anyhow::anyhow!("Failed to get global {}: {:?}", global_idx, e))?;
+
+        let value = global_wrapper.get()
+            .map_err(|e| anyhow::anyhow!("Failed to read global value: {:?}", e))?;
+
+        Ok(value)
     }
 
     /// Register a module with a specific name for imports
@@ -220,6 +280,46 @@ impl WastEngine {
         self.current_instance_id = None;
         // Create a new engine to reset state
         self.engine = StacklessEngine::new();
+        Ok(())
+    }
+
+    /// Resolve spectest memory imports
+    /// The spectest module provides a memory export named "memory"
+    /// This must be called BEFORE populate_memories_from_module() because
+    /// imported memories come before defined memories in the index space.
+    fn resolve_spectest_memory_imports(
+        module: &Module,
+        module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
+    ) -> Result<()> {
+        use wrt_foundation::types::{Limits, MemoryType};
+        use wrt_foundation::clean_core_types::CoreMemoryType;
+        use wrt_runtime::memory::Memory;
+        use wrt_runtime::module::{MemoryWrapper, RuntimeImportDesc};
+
+        // Look for memory imports from spectest
+        for (i, (mod_name, field_name)) in module.import_order.iter().enumerate() {
+            if mod_name == "spectest" && field_name == "memory" {
+                // Check if this is actually a memory import
+                if let Some(RuntimeImportDesc::Memory(mem_type)) = module.import_types.get(i) {
+                    // Create a memory with the imported type's limits
+                    // The spectest memory has at least 1 page and can grow
+                    let core_mem_type = CoreMemoryType {
+                        limits: mem_type.limits,
+                        shared: mem_type.shared,
+                    };
+
+                    let memory = Memory::new(core_mem_type)
+                        .map_err(|e| anyhow::anyhow!("Failed to create spectest memory: {:?}", e))?;
+
+                    let wrapper = MemoryWrapper::new(memory);
+
+                    // Add the memory to the instance (at index 0 since it's an import)
+                    module_instance.set_memory(0, wrapper)
+                        .map_err(|e| anyhow::anyhow!("Failed to set spectest memory: {:?}", e))?;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -438,8 +538,8 @@ pub fn execute_wast_execute(engine: &mut WastEngine, execute: &WastExecute) -> R
         WastExecute::Get { module, global, .. } => {
             // Global variable access
             let module_name = module.as_ref().map(|id| id.name());
-            // TODO: Implement global variable access
-            Err(anyhow::anyhow!("Global access not yet implemented"))
+            let value = engine.get_global(module_name, global)?;
+            Ok(vec![value])
         },
     }
 }
