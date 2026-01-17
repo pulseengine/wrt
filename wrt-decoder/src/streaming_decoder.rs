@@ -29,6 +29,114 @@ use crate::{
     },
 };
 
+/// Skip an LEB128-encoded unsigned integer and return the number of bytes consumed
+fn skip_leb128_u32(data: &[u8], offset: usize) -> usize {
+    let mut bytes = 0;
+    while offset + bytes < data.len() {
+        let byte = data[offset + bytes];
+        bytes += 1;
+        if byte & 0x80 == 0 {
+            break;
+        }
+        // Safety limit to prevent infinite loops
+        if bytes > 5 {
+            break;
+        }
+    }
+    bytes
+}
+
+/// Skip an LEB128-encoded signed integer (i32) and return the number of bytes consumed
+fn skip_leb128_i32(data: &[u8], offset: usize) -> usize {
+    let mut bytes = 0;
+    while offset + bytes < data.len() {
+        let byte = data[offset + bytes];
+        bytes += 1;
+        if byte & 0x80 == 0 {
+            break;
+        }
+        // Safety limit to prevent infinite loops
+        if bytes > 5 {
+            break;
+        }
+    }
+    bytes
+}
+
+/// Skip an LEB128-encoded signed integer (i64) and return the number of bytes consumed
+fn skip_leb128_i64(data: &[u8], offset: usize) -> usize {
+    let mut bytes = 0;
+    while offset + bytes < data.len() {
+        let byte = data[offset + bytes];
+        bytes += 1;
+        if byte & 0x80 == 0 {
+            break;
+        }
+        // Safety limit to prevent infinite loops
+        if bytes > 10 {
+            break;
+        }
+    }
+    bytes
+}
+
+/// Find the end of an expression by properly parsing instructions.
+/// Returns the position AFTER the end opcode (0x0B).
+///
+/// This is necessary because 0x0B can appear as a LEB128 value (e.g., the value 11),
+/// so we can't just scan for the first 0x0B.
+fn find_expression_end(data: &[u8], start: usize) -> Result<usize> {
+    let mut offset = start;
+
+    while offset < data.len() {
+        let opcode = data[offset];
+        offset += 1;
+
+        match opcode {
+            0x0B => {
+                // end opcode - we found the end of the expression
+                return Ok(offset);
+            }
+            0x41 => {
+                // i32.const - skip LEB128 i32 value
+                offset += skip_leb128_i32(data, offset);
+            }
+            0x42 => {
+                // i64.const - skip LEB128 i64 value
+                offset += skip_leb128_i64(data, offset);
+            }
+            0x43 => {
+                // f32.const - skip 4 bytes
+                offset += 4;
+            }
+            0x44 => {
+                // f64.const - skip 8 bytes
+                offset += 8;
+            }
+            0x23 => {
+                // global.get - skip LEB128 global index
+                offset += skip_leb128_u32(data, offset);
+            }
+            0xD0 => {
+                // ref.null - skip LEB128 heap type
+                offset += skip_leb128_u32(data, offset);
+            }
+            0xD2 => {
+                // ref.func - skip LEB128 function index
+                offset += skip_leb128_u32(data, offset);
+            }
+            _ => {
+                // Unknown opcode in expression - this shouldn't happen in valid WASM
+                // but we'll continue and hope to find an end
+                #[cfg(feature = "tracing")]
+                trace!(opcode = opcode, offset = offset - 1, "Unknown opcode in expression");
+            }
+        }
+    }
+
+    Err(Error::parse_error("Expression did not end with 0x0B"))
+}
+
 /// Streaming decoder that processes WebAssembly modules section by section
 pub struct StreamingDecoder<'a> {
     /// The WebAssembly binary data
@@ -967,14 +1075,9 @@ impl<'a> StreamingDecoder<'a> {
             let (mode, offset_expr_bytes, element_type) = match flags {
                 0 => {
                     // Active, table 0, funcref, func indices
-                    // Parse offset expression (ends with 0x0B = end)
+                    // Parse offset expression properly (can't just scan for 0x0B as it may appear as a value)
                     let expr_start = offset;
-                    while offset < data.len() && data[offset] != 0x0B {
-                        offset += 1;
-                    }
-                    if offset < data.len() {
-                        offset += 1; // consume 0x0B
-                    }
+                    offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
                     trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active table 0");
@@ -1006,14 +1109,9 @@ impl<'a> StreamingDecoder<'a> {
                     let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
 
-                    // Parse offset expression (ends with 0x0B)
+                    // Parse offset expression properly (can't just scan for 0x0B as it may appear as a value)
                     let expr_start = offset;
-                    while offset < data.len() && data[offset] != 0x0B {
-                        offset += 1;
-                    }
-                    if offset < data.len() {
-                        offset += 1; // consume 0x0B
-                    }
+                    offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
 
                     // Parse elemkind (must be 0x00 = funcref)
@@ -1045,14 +1143,9 @@ impl<'a> StreamingDecoder<'a> {
                 4 => {
                     // Active, table 0 (implicit), offset expr, vec<expr>
                     // Per WebAssembly spec: flags=4 has NO explicit table index (table 0 implicit)
-                    // Parse offset expression
+                    // Parse offset expression properly (can't just scan for 0x0B as it may appear as a value)
                     let expr_start = offset;
-                    while offset < data.len() && data[offset] != 0x0B {
-                        offset += 1;
-                    }
-                    if offset < data.len() {
-                        offset += 1; // consume 0x0B
-                    }
+                    offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
                     trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active expressions table 0");
@@ -1082,13 +1175,9 @@ impl<'a> StreamingDecoder<'a> {
                     let (table_index, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
 
+                    // Parse offset expression properly (can't just scan for 0x0B as it may appear as a value)
                     let expr_start = offset;
-                    while offset < data.len() && data[offset] != 0x0B {
-                        offset += 1;
-                    }
-                    if offset < data.len() {
-                        offset += 1; // consume 0x0B
-                    }
+                    offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
 
                     // Parse ref_type (comes after offset expression, before items)
@@ -1154,14 +1243,9 @@ impl<'a> StreamingDecoder<'a> {
                 // Expression format (flags 4, 5, 6, 7 use reftype + expressions)
                 let mut expr_bytes = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
+                    // Parse item expression properly (can't just scan for 0x0B as it may appear as a value)
                     let expr_start = offset;
-                    // Find end of expression (0x0B)
-                    while offset < data.len() && data[offset] != 0x0B {
-                        offset += 1;
-                    }
-                    if offset < data.len() {
-                        offset += 1; // consume 0x0B
-                    }
+                    offset = find_expression_end(data, offset)?;
                     let expr_data: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
                     if i < 5 {
