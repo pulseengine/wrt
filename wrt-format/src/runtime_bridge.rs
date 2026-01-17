@@ -430,7 +430,7 @@ impl ModuleBridge {
         for data_segment in module.data.iter() {
             // Convert module::Data to runtime extraction
             let extraction = RuntimeDataExtraction {
-                is_active:               is_data_active(data_segment),
+                is_active:               is_data_active(&data_segment),
                 memory_index:            data_segment.memory_index(),
                 offset_expr_bytes:       {
                     #[cfg(feature = "std")]
@@ -448,7 +448,7 @@ impl ModuleBridge {
                     }
                 },
                 data_size:               data_segment.data_bytes.len(),
-                requires_initialization: is_data_active(data_segment),
+                requires_initialization: is_data_active(&data_segment),
             };
             #[cfg(feature = "std")]
             data_extractions.push(extraction);
@@ -466,8 +466,8 @@ impl ModuleBridge {
         };
         for element_segment in module.elements.iter() {
             let extraction = RuntimeElementExtraction {
-                is_active:               is_element_active(element_segment),
-                table_index:             get_element_table_index(element_segment),
+                is_active:               is_element_active(&element_segment),
+                table_index:             get_element_table_index(&element_segment),
                 element_type:            element_segment.element_type.clone(),
                 offset_expr_bytes:       {
                     #[cfg(feature = "std")]
@@ -492,7 +492,7 @@ impl ModuleBridge {
                         ElementInitType::ExpressionBytes
                     },
                 },
-                requires_initialization: is_element_active(element_segment),
+                requires_initialization: is_element_active(&element_segment),
             };
             #[cfg(feature = "std")]
             element_extractions.push(extraction);
@@ -505,8 +505,8 @@ impl ModuleBridge {
             data_extractions,
             element_extractions,
             requires_initialization: module.start.is_some()
-                || module.data.iter().any(|d| is_data_active(d))
-                || module.elements.iter().any(|e| is_element_active(e)),
+                || module.data.iter().any(|d| is_data_active(&d))
+                || module.elements.iter().any(|e| is_element_active(&e)),
         }
     }
 
@@ -551,9 +551,9 @@ impl ModuleBridge {
         };
         for (index, element_segment) in module.elements.iter().enumerate() {
             let hint = ElementInitializationHint {
-                segment_type:             get_element_segment_type(element_segment),
-                table_target:             get_element_table_index(element_segment),
-                offset_evaluation_needed: is_element_active(element_segment),
+                segment_type:             get_element_segment_type(&element_segment),
+                table_target:             get_element_table_index(&element_segment),
+                offset_evaluation_needed: is_element_active(&element_segment),
                 element_count:            match &element_segment.init_data {
                     crate::pure_format_types::PureElementInit::FunctionIndices(indices) => {
                         indices.len()

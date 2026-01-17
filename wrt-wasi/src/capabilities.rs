@@ -158,8 +158,8 @@ impl WasiCapabilities {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiFileSystemCapabilities {
     /// Allowed filesystem paths
-    /// Uses Vec<String> for std (simpler, works correctly)
-    /// Uses BoundedVec for no_std (memory-safe, bounded)
+    /// Uses `Vec<String>` for std (simpler, works correctly)
+    /// Uses `BoundedVec` for `no_std` (memory-safe, bounded)
     #[cfg(feature = "std")]
     allowed_paths: Vec<String>,
     #[cfg(not(feature = "std"))]
@@ -183,7 +183,7 @@ impl WasiFileSystemCapabilities {
     ///
     /// # Errors
     ///
-    /// Returns an error if memory allocation for path storage fails (no_std only).
+    /// Returns an error if memory allocation for path storage fails (`no_std` only).
     pub fn minimal() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -212,7 +212,7 @@ impl WasiFileSystemCapabilities {
     ///
     /// # Errors
     ///
-    /// Returns an error if memory allocation for path storage fails (no_std only).
+    /// Returns an error if memory allocation for path storage fails (`no_std` only).
     pub fn read_only() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -241,7 +241,7 @@ impl WasiFileSystemCapabilities {
     ///
     /// # Errors
     ///
-    /// Returns an error if memory allocation for path storage fails (no_std only).
+    /// Returns an error if memory allocation for path storage fails (`no_std` only).
     pub fn full_access() -> Result<Self> {
         #[cfg(feature = "std")]
         {

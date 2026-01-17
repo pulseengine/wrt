@@ -1726,11 +1726,11 @@ impl WasiDispatcher {
     ///
     /// This method implements the spec-compliant approach where:
     /// 1. If the function doesn't need allocation, it completes immediately
-    /// 2. If allocation is needed (e.g., returning list<string>), it returns
-    ///    a NeedsAllocation result with the size/alignment requirements
-    /// 3. The caller then calls cabi_realloc, then calls complete_allocation
+    /// 2. If allocation is needed (e.g., returning `list<string>`), it returns
+    ///    a `NeedsAllocation` result with the size/alignment requirements
+    /// 3. The caller then calls `cabi_realloc`, then calls `complete_allocation`
     ///
-    /// This allows the HOST to call cabi_realloc as required by the Canonical ABI.
+    /// This allows the HOST to call `cabi_realloc` as required by the Canonical ABI.
     ///
     /// # Errors
     ///
@@ -1849,14 +1849,14 @@ impl WasiDispatcher {
 
     /// Complete an allocation request by writing data to allocated memory.
     ///
-    /// Called after the caller has used cabi_realloc to allocate memory.
-    /// Writes the list<string> data to the allocated region and updates
+    /// Called after the caller has used `cabi_realloc` to allocate memory.
+    /// Writes the `list<string>` data to the allocated region and updates
     /// the return pointer.
     ///
     /// # Arguments
-    /// * `allocated_ptr` - Pointer returned by cabi_realloc
+    /// * `allocated_ptr` - Pointer returned by `cabi_realloc`
     /// * `args_to_write` - The strings to write
-    /// * `retptr` - Where to write (list_ptr, len)
+    /// * `retptr` - Where to write `(list_ptr, len)`
     /// * `memory` - Linear memory to write to
     ///
     /// # Errors
@@ -1960,7 +1960,7 @@ impl WasiDispatcher {
     }
 }
 
-/// Implementation of HostImportHandler for WasiDispatcher
+/// Implementation of `HostImportHandler` for `WasiDispatcher`
 ///
 /// This allows the engine to call WASI functions through the generic trait
 /// without knowing about WASI specifics.

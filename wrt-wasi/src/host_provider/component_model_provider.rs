@@ -520,8 +520,7 @@ impl ComponentModelProvider {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_arguments_capability_aware;
                     let empty_args = value_vec!();
                     match wasi_cli_get_arguments_capability_aware(target, empty_args) {
-                        Ok(_) => Ok(value_vec!()),
-                        Err(_) => Ok(value_vec!()),
+                        Ok(_) | Err(_) => Ok(value_vec!()),
                     }
                 }
                 #[cfg(not(feature = "wasi-cli"))]
@@ -551,8 +550,7 @@ impl ComponentModelProvider {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_environment_capability_aware;
                     let empty_args = value_vec!();
                     match wasi_cli_get_environment_capability_aware(target, empty_args) {
-                        Ok(_) => Ok(value_vec!()),
-                        Err(_) => Ok(value_vec!()),
+                        Ok(_) | Err(_) => Ok(value_vec!()),
                     }
                 }
                 #[cfg(not(feature = "wasi-cli"))]
@@ -853,8 +851,7 @@ impl WasiProviderBuilder {
                 // Choose default capabilities based on safety level
                 match self.safety_level.unwrap_or(wasi_safety_level()) {
                     "maximum-safety" => WasiCapabilities::minimal()?,
-                    "static-memory-safety" => WasiCapabilities::sandboxed()?,
-                    "bounded-collections" => WasiCapabilities::sandboxed()?,
+                    "static-memory-safety" | "bounded-collections" => WasiCapabilities::sandboxed()?,
                     _ => WasiCapabilities::system_utility()?,
                 }
             },

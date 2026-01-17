@@ -138,13 +138,13 @@ fn extract_length(args: &[Value]) -> Result<usize> {
 
 /// Generate secure random bytes using platform-specific implementation
 ///
-/// Uses wrt-platform's PlatformRandom which provides:
-/// - Linux: /dev/urandom
-/// - macOS: getentropy() system call
-/// - Windows: BCryptGenRandom()
-/// - QNX: /dev/random
-/// - VxWorks: randBytes()
-/// - Others: /dev/urandom fallback or error
+/// Uses wrt-platform's `PlatformRandom` which provides:
+/// - Linux: `/dev/urandom`
+/// - macOS: `getentropy()` system call
+/// - Windows: `BCryptGenRandom()`
+/// - QNX: `/dev/random`
+/// - `VxWorks`: `randBytes()`
+/// - Others: `/dev/urandom` fallback or error
 fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
     #[cfg(feature = "std")]
     {

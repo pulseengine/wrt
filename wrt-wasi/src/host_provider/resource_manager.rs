@@ -131,7 +131,7 @@ pub enum WasiClockType {
 /// patterns
 #[derive(Debug)]
 pub struct WasiResourceManager {
-    /// Resource table - uses HashMap for std (simpler, no serialization)
+    /// Resource table - uses `HashMap` for std (simpler, no serialization)
     #[cfg(feature = "std")]
     resources: HashMap<WasiHandle, WasiResource>,
     /// Resource table - uses BoundedMap for no_std (bounded, memory-safe)
@@ -698,9 +698,9 @@ impl FromBytes for WasiResource {
         };
 
         // Read resource type discriminant and data
+        // 0/unknown discriminants fall through to wildcard which returns Null
         let discriminant = reader.read_u8()?;
         let resource_type = match discriminant {
-            0 => WasiResourceType::Null,
             1 => {
                 let path = BoundedString::from_bytes_with_provider(reader, provider)?;
                 let readable = reader.read_u8()? != 0;
@@ -723,8 +723,8 @@ impl FromBytes for WasiResource {
             },
             5 => {
                 let clock_byte = reader.read_u8()?;
+                // 0/unknown clock_byte falls through to wildcard which returns Realtime
                 let clock_type = match clock_byte {
-                    0 => WasiClockType::Realtime,
                     1 => WasiClockType::Monotonic,
                     2 => WasiClockType::ProcessCpuTime,
                     3 => WasiClockType::ThreadCpuTime,

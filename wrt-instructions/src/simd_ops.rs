@@ -571,8 +571,11 @@ impl SimdOp {
             V128Xor,
         };
         match self {
-            // Load operations take 1 input (memory index)
-            // Load and extract lane operations take 1 input (memory index or vector)
+            // Operations that take 1 input:
+            // - Load operations (memory index)
+            // - Extract lane operations (vector)
+            // - Splat operations (scalar value)
+            // - Unary operations
             V128Load { .. }
             | V128Load8x8S { .. }
             | V128Load8x8U { .. }
@@ -591,22 +594,14 @@ impl SimdOp {
             | I32x4ExtractLane { .. }
             | I64x2ExtractLane { .. }
             | F32x4ExtractLane { .. }
-            | F64x2ExtractLane { .. } => 1,
-
-            // Store and replace lane operations take 2 inputs (memory index/vector and value)
-            V128Store { .. }
-            | I8x16ReplaceLane { .. }
-            | I16x8ReplaceLane { .. }
-            | I32x4ReplaceLane { .. }
-            | I64x2ReplaceLane { .. }
-            | F32x4ReplaceLane { .. }
-            | F64x2ReplaceLane { .. } => 2,
-
-            // Splat operations take 1 input (scalar value)
-            I8x16Splat | I16x8Splat | I32x4Splat | I64x2Splat | F32x4Splat | F64x2Splat => 1,
-
-            // Unary operations take 1 input
-            I8x16Neg
+            | F64x2ExtractLane { .. }
+            | I8x16Splat
+            | I16x8Splat
+            | I32x4Splat
+            | I64x2Splat
+            | F32x4Splat
+            | F64x2Splat
+            | I8x16Neg
             | I8x16Abs
             | I16x8Neg
             | I16x8Abs
@@ -653,8 +648,18 @@ impl SimdOp {
             | I32x4ExtAddPairwiseI16x8S
             | I32x4ExtAddPairwiseI16x8U => 1,
 
-            // Binary operations take 2 inputs
-            I8x16Add
+            // Operations that take 2 inputs:
+            // - Store operations (memory index and value)
+            // - Replace lane operations (vector and value)
+            // - Binary operations
+            V128Store { .. }
+            | I8x16ReplaceLane { .. }
+            | I16x8ReplaceLane { .. }
+            | I32x4ReplaceLane { .. }
+            | I64x2ReplaceLane { .. }
+            | F32x4ReplaceLane { .. }
+            | F64x2ReplaceLane { .. }
+            | I8x16Add
             | I8x16Sub
             | I8x16MinS
             | I8x16MinU

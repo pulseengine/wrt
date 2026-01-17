@@ -1036,7 +1036,7 @@ fn check_write_capacity(stream_handle: u32) -> Result<u64> {
     }
 }
 
-/// Pollable handle offset - pollable handles are stream_handle + POLLABLE_OFFSET
+/// Pollable handle offset - pollable handles are `stream_handle + POLLABLE_OFFSET`
 const POLLABLE_OFFSET: u32 = 1000;
 
 /// Create a pollable for the given stream (legacy fallback for no_std)

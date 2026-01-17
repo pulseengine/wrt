@@ -274,6 +274,10 @@ pub struct FormatDetectionTests;
 
 impl FormatDetectionTests {
     /// Test basic format detection with unified loader
+    ///
+    /// # Panics
+    ///
+    /// Panics if format detection assertions fail.
     pub fn test_unified_loader_detection() -> Result<()> {
         // Test Core Module detection
         let core_binary = FormatTestData::minimal_core_module()?;
@@ -303,6 +307,10 @@ impl FormatDetectionTests {
     }
 
     /// Test lazy detection performance and accuracy
+    ///
+    /// # Panics
+    ///
+    /// Panics if format detection assertions fail.
     pub fn test_lazy_detection() -> Result<()> {
         let config = DetectionConfig::default();
         let detector = LazyDetector::with_config(config);
@@ -355,6 +363,10 @@ impl FormatDetectionTests {
     }
 
     /// Test error handling with invalid binaries
+    ///
+    /// # Panics
+    ///
+    /// Panics if error handling assertions fail.
     pub fn test_error_handling() -> Result<()> {
         // Test invalid magic
         let invalid_magic = FormatTestData::invalid_magic()?;
@@ -442,6 +454,10 @@ impl FormatDetectionTests {
     }
 
     /// Test edge cases and corner cases
+    ///
+    /// # Panics
+    ///
+    /// Panics if edge case assertions fail.
     pub fn test_edge_cases() -> Result<()> {
         // Test minimum valid binary (just header)
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
@@ -486,6 +502,10 @@ impl FormatDetectionTests {
     }
 
     /// Test caching behavior
+    ///
+    /// # Panics
+    ///
+    /// Panics if caching behavior assertions fail.
     pub fn test_caching_behavior() -> Result<()> {
         let binary = FormatTestData::complex_core_module()?;
         #[cfg(feature = "std")]

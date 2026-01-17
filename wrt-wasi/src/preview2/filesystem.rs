@@ -503,9 +503,9 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// Sets file access and modification times.
 /// Implements `wasi:filesystem/types.set-times`
 ///
-/// Note: This implementation uses std::fs::File::set_times which requires
+/// Note: This implementation uses `std::fs::File::set_times` which requires
 /// Rust 1.75+. If using an older Rust version, this will use the path-based
-/// approach via std::fs::set_times which is available on most platforms.
+/// approach via `std::fs::set_times` which is available on most platforms.
 ///
 /// # Errors
 ///
@@ -622,7 +622,7 @@ pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// Implements `wasi:filesystem/types.set-flags`
 ///
 /// Note: This implementation can only update our tracked flag state.
-/// The actual OS-level flags (like O_NONBLOCK, O_SYNC) cannot be changed
+/// The actual OS-level flags (like `O_NONBLOCK`, `O_SYNC`) cannot be changed
 /// without unsafe code and libc. If the caller needs true nonblocking I/O,
 /// they should open the file with those flags initially.
 ///
@@ -673,7 +673,7 @@ pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// Implements `wasi:filesystem/types.advise`
 ///
 /// Note: This is an advisory operation that hints to the OS about expected
-/// access patterns. Without libc/unsafe FFI, we cannot call posix_fadvise,
+/// access patterns. Without libc/unsafe FFI, we cannot call `posix_fadvise`,
 /// so this implementation validates arguments and returns success.
 /// The OS will still use its default caching strategy.
 ///
@@ -889,7 +889,7 @@ fn extract_timestamp(args: &[Value], index: usize) -> Result<TimestampValue> {
     match val {
         // WASI new-timestamp variant encoding:
         // 0 = no-change, 1 = now, 2 = timestamp(u64)
-        Value::U32(0) => Ok(TimestampValue::NoChange),
+        // Value::U32(0) falls through to wildcard which returns NoChange
         Value::U32(1) => Ok(TimestampValue::Now),
         Value::U64(ns) => Ok(TimestampValue::Timestamp(*ns)),
         Value::Record(fields) => {
@@ -906,8 +906,8 @@ fn extract_timestamp(args: &[Value], index: usize) -> Result<TimestampValue> {
         },
         Value::Tuple(items) if items.len() == 2 => {
             // Variant encoding: (tag, payload)
+            // Some(Value::U32(0)) falls through to wildcard which returns NoChange
             match items.first() {
-                Some(Value::U32(0)) => Ok(TimestampValue::NoChange),
                 Some(Value::U32(1)) => Ok(TimestampValue::Now),
                 Some(Value::U32(2)) => {
                     match items.get(1) {
@@ -930,7 +930,7 @@ fn extract_advice(args: &[Value], index: usize) -> Result<Advice> {
 
     match val {
         // WASI advice enum encoding (supports both U32 and U8)
-        Value::U32(0) | Value::U8(0) => Ok(Advice::Normal),
+        // 0/default = Normal, handled by wildcard
         Value::U32(1) | Value::U8(1) => Ok(Advice::Sequential),
         Value::U32(2) | Value::U8(2) => Ok(Advice::Random),
         Value::U32(3) | Value::U8(3) => Ok(Advice::WillNeed),
@@ -940,7 +940,7 @@ fn extract_advice(args: &[Value], index: usize) -> Result<Advice> {
     }
 }
 
-/// Map std::io::Error to WASI error
+/// Map `std::io::Error` to WASI error
 #[cfg(feature = "std")]
 fn map_io_error(e: &std::io::Error, _context: &str) -> Error {
     use std::io::ErrorKind;

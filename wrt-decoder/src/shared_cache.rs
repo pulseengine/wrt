@@ -85,6 +85,11 @@ impl DecodedCache {
     }
 
     /// Get cached imports, parsing if not cached
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic as `unwrap()` is called on a value that was
+    /// just set to `Some`.
     pub fn get_imports(&mut self, binary: &[u8]) -> Result<&Vec<ImportInfo>> {
         if self.import_cache.is_none() {
             let imports = parse_imports_from_binary(binary)?;
@@ -100,6 +105,11 @@ impl DecodedCache {
     }
 
     /// Get cached exports, parsing if not cached
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic as `unwrap()` is called on a value that was
+    /// just set to `Some`.
     pub fn get_exports(&mut self, binary: &[u8]) -> Result<&Vec<ExportInfo>> {
         if self.export_cache.is_none() {
             let exports = parse_exports_from_binary(binary)?;
@@ -115,6 +125,11 @@ impl DecodedCache {
     }
 
     /// Get cached builtin imports, parsing if not cached
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic as `unwrap()` is called on a value that was
+    /// just set to `Some`.
     pub fn get_builtin_imports(&mut self, binary: &[u8]) -> Result<&Vec<String>> {
         if self.builtin_imports.is_none() {
             let imports = self.get_imports(binary)?;
@@ -241,6 +256,11 @@ impl CacheManager {
     }
 
     /// Get or create cache for a binary
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic as `unwrap()` is called on a value that was
+    /// just inserted into the hashmap.
     pub fn get_cache(&mut self, binary: &[u8]) -> Result<&mut DecodedCache> {
         let hash = calculate_hash(binary);
 
