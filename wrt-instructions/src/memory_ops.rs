@@ -408,6 +408,8 @@ impl MemoryLoad {
     /// # Errors
     ///
     /// Returns an error if the memory access is invalid or out of bounds
+    // Large match is intentional - interpreter dispatch for all memory load opcodes.
+    #[allow(clippy::too_many_lines)]
     pub fn execute(
         &self,
         memory: &(impl MemoryOperations + ?Sized),

@@ -334,6 +334,8 @@ pub enum SimdOp {
 
 impl SimdOp {
     /// Get the number of input values this operation expects
+    // Large match is intentional - SIMD has 200+ operations to dispatch.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn input_count(&self) -> usize {
         use SimdOp::{

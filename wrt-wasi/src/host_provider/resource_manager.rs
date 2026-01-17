@@ -174,6 +174,8 @@ impl Default for WasiResource {
 }
 
 /// Capabilities for WASI resources
+// Multiple bool flags represent independent capability toggles.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Default)]
 pub struct WasiResourceCapabilities {
@@ -346,6 +348,7 @@ impl WasiResourceManager {
     }
 
     /// Check if a handle is valid
+    #[must_use]
     pub fn is_valid_handle(&self, handle: WasiHandle) -> bool {
         #[cfg(feature = "std")]
         {

@@ -864,10 +864,37 @@ impl StacklessEngine {
             );
         }
 
-        // TODO: Check if this function index is an import and dispatch to host registry
-        // For now, we rely on direct name-based dispatch in CapabilityAwareEngine::execute()
+        // Check if this function index is an import and dispatch to linked instance
+        let num_imports = self.count_total_imports(&module);
+        if func_idx < num_imports {
+            #[cfg(feature = "std")]
+            {
+                // This is an imported function - need to call via import link
+                if let Ok((module_name, field_name)) = self.find_import_by_index(&module, func_idx) {
+                    let import_key = (instance_id, module_name.clone(), field_name.clone());
+                    if let Some((target_instance_id, export_name)) = self.import_links.get(&import_key)
+                        .map(|(ti, en)| (*ti, en.clone()))
+                    {
+                        // Call the linked function
+                        self.call_frames_count -= 1; // Will be re-incremented by recursive call
+                        return self.call_exported_function(target_instance_id, &export_name, args);
+                    }
+                    // Fall through to WASI dispatch if not linked
+                    // Return dummy value for unresolved imports
+                    self.call_frames_count -= 1;
+                    return Ok(vec![Value::I32(0)]);
+                }
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                // In no_std mode, return error for unresolved imports
+                self.call_frames_count -= 1;
+                return Err(wrt_error::Error::runtime_error("Import resolution not supported in no_std"));
+            }
+        }
 
         // Validate function index
+        // Note: module.functions includes both import stubs and local functions
         if func_idx >= module.functions.len() {
             return Err(wrt_error::Error::runtime_function_not_found(
                 "Function index out of bounds",
@@ -875,6 +902,7 @@ impl StacklessEngine {
         }
 
         // Get function type to determine return values
+        // Note: module.functions includes both import stubs and local functions
         let func = module
             .functions
             .get(func_idx)

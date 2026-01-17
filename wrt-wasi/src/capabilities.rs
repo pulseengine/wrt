@@ -155,6 +155,8 @@ impl WasiCapabilities {
 }
 
 /// Filesystem access capabilities
+// Multiple bool flags represent independent capability toggles.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiFileSystemCapabilities {
     /// Allowed filesystem paths
@@ -430,6 +432,8 @@ impl WasiEnvironmentCapabilities {
 }
 
 /// Clock access capabilities
+// Multiple bool flags represent independent capability toggles.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiClockCapabilities {
     /// Allow access to realtime clock
@@ -478,6 +482,8 @@ impl WasiClockCapabilities {
 }
 
 /// I/O stream capabilities
+// Multiple bool flags represent independent capability toggles.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiIoCapabilities {
     /// Allow access to stdin

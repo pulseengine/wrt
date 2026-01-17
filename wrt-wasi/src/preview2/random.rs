@@ -171,6 +171,8 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
 }
 
 /// Generate pseudo-random bytes using fast non-cryptographic implementation
+// Result kept for API consistency with secure random functions.
+#[allow(clippy::unnecessary_wraps)]
 fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
     // Use platform time as seed
     use wrt_platform::time::PlatformTime;

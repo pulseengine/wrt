@@ -71,6 +71,7 @@ pub struct Pollable {
 
 impl Pollable {
     /// Create a new pollable for an input stream
+    #[must_use]
     pub fn for_input_stream(handle: u32, stream_handle: u32) -> Self {
         Self {
             _handle: handle,
@@ -81,6 +82,7 @@ impl Pollable {
     }
 
     /// Create a new pollable for an output stream
+    #[must_use]
     pub fn for_output_stream(handle: u32, stream_handle: u32) -> Self {
         Self {
             _handle: handle,
@@ -91,6 +93,7 @@ impl Pollable {
     }
 
     /// Create a new pollable for a timer
+    #[must_use]
     pub fn for_timer(handle: u32, deadline_ns: u64) -> Self {
         Self {
             _handle: handle,
@@ -156,6 +159,7 @@ pub struct PollableTable {
 #[cfg(feature = "std")]
 impl PollableTable {
     /// Create a new pollable table
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pollables: HashMap::new(),
@@ -1023,6 +1027,8 @@ fn perform_stream_flush(stream_handle: u32) -> Result<()> {
 }
 
 /// Check write capacity for stream
+// Result kept for API consistency and future error handling.
+#[allow(clippy::unnecessary_wraps)]
 fn check_write_capacity(stream_handle: u32) -> Result<u64> {
     match stream_handle {
         1 | 2 => {

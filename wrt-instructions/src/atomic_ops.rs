@@ -457,6 +457,8 @@ pub mod opcodes {
 
 impl AtomicOp {
     /// Get the opcode for this atomic operation
+    // Large match is intentional - maps all atomic operations to their opcodes.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn opcode(&self) -> u8 {
         use opcodes::{

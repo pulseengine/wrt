@@ -252,6 +252,8 @@ where
 }
 
 impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
+    // Large match is intentional - interpreter dispatch for all arithmetic opcodes.
+    #[allow(clippy::too_many_lines)]
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
             // Integer operations (i32)

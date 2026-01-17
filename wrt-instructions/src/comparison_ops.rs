@@ -163,6 +163,8 @@ where
 }
 
 impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
+    // Large match is intentional - interpreter dispatch for all comparison opcodes.
+    #[allow(clippy::too_many_lines)]
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
             // i32 comparison operations

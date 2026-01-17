@@ -153,6 +153,8 @@ impl ConstExprSequence {
     /// # Errors
     ///
     /// Returns an error if evaluation fails or invalid operations occur
+    // Large match is intentional - interpreter dispatch for const expression opcodes.
+    #[allow(clippy::too_many_lines)]
     pub fn evaluate(&self, context: &dyn ConstExprContext) -> Result<Value> {
         #[cfg(feature = "std")]
         let mut stack = Vec::new();

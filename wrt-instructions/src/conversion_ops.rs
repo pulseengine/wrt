@@ -129,6 +129,8 @@ pub trait ConversionContext {
 }
 
 impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
+    // Large match is intentional - interpreter dispatch for all conversion opcodes.
+    #[allow(clippy::too_many_lines)]
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
             // i32 conversions

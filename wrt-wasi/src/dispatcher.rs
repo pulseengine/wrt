@@ -417,6 +417,8 @@ impl WasiDispatcher {
     /// - The interface/function combination is unknown or unsupported
     /// - Arguments are missing, invalid, or have wrong types
     /// - The underlying WASI operation fails (I/O, permission, etc.)
+    // Large match is intentional - WASI interface dispatch for all Preview2 functions.
+    #[allow(clippy::too_many_lines)]
     pub fn dispatch(
         &mut self,
         interface: &str,
@@ -519,7 +521,7 @@ impl WasiDispatcher {
 
                 #[cfg(feature = "std")]
                 {
-                    std::process::exit(if success { 0 } else { 1 });
+                    std::process::exit(i32::from(!success));
                 }
                 #[cfg(not(feature = "std"))]
                 {
@@ -1086,6 +1088,8 @@ impl WasiDispatcher {
     /// - Arguments are missing, invalid, or have wrong types
     /// - Memory access fails (when reading/writing complex types)
     /// - The underlying WASI operation fails
+    // Large match is intentional - WASI core interface dispatch for all functions.
+    #[allow(clippy::too_many_lines)]
     #[cfg(feature = "std")]
     pub fn dispatch_core(
         &mut self,
@@ -1541,7 +1545,7 @@ impl WasiDispatcher {
 
                 #[cfg(feature = "std")]
                 {
-                    std::process::exit(if status_ok { 0 } else { 1 });
+                    std::process::exit(i32::from(!status_ok));
                 }
                 #[cfg(not(feature = "std"))]
                 {

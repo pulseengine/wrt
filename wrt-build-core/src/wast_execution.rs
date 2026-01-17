@@ -465,12 +465,20 @@ impl WastEngine {
         let import_types = &module.import_types;
         let import_order = &module.import_order;
 
+        eprintln!("[DEBUG link_function_imports] instance_id={}, import_order.len()={}, import_types.len()={}",
+            instance_id, import_order.len(), import_types.len());
+        eprintln!("[DEBUG link_function_imports] available modules: {:?}", self.modules.keys().collect::<Vec<_>>());
+        eprintln!("[DEBUG link_function_imports] available instance_ids: {:?}", self.instance_ids);
+
         if import_types.len() != import_order.len() {
             // Mismatch - this shouldn't happen but fall back gracefully
+            eprintln!("[DEBUG link_function_imports] MISMATCH - skipping linking");
             return Ok(());
         }
 
         for (i, (mod_name, field_name)) in import_order.iter().enumerate() {
+            eprintln!("[DEBUG link_function_imports] checking import[{}]: {}::{}", i, mod_name, field_name);
+
             // Skip spectest imports (handled by WASI stubs)
             if mod_name == "spectest" {
                 continue;
@@ -478,8 +486,12 @@ impl WastEngine {
 
             // Check if this is a function import
             if let Some(RuntimeImportDesc::Function(_type_idx)) = import_types.get(i) {
+                eprintln!("[DEBUG link_function_imports] import[{}] is a function import", i);
+
                 // Check if we have a registered module with this name
                 if let Some(&source_instance_id) = self.instance_ids.get(mod_name) {
+                    eprintln!("[DEBUG link_function_imports] found source instance_id={} for module '{}'", source_instance_id, mod_name);
+
                     // Check if the source module exports this function
                     if let Some(source_module) = self.modules.get(mod_name) {
                         let bounded_field = wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(field_name)
@@ -487,6 +499,9 @@ impl WastEngine {
 
                         if let Some(export) = source_module.exports.get(&bounded_field) {
                             if export.kind == wrt_runtime::module::ExportKind::Function {
+                                eprintln!("[DEBUG link_function_imports] LINKING: instance {} imports {}::{} from instance {}",
+                                    instance_id, mod_name, field_name, source_instance_id);
+
                                 // Set up the import link
                                 self.engine.register_import_link(
                                     instance_id,
@@ -495,9 +510,17 @@ impl WastEngine {
                                     source_instance_id,
                                     field_name.clone(),
                                 );
+                            } else {
+                                eprintln!("[DEBUG link_function_imports] export '{}' is not a function", field_name);
                             }
+                        } else {
+                            eprintln!("[DEBUG link_function_imports] export '{}' not found in source module", field_name);
                         }
+                    } else {
+                        eprintln!("[DEBUG link_function_imports] source module '{}' not found in modules", mod_name);
                     }
+                } else {
+                    eprintln!("[DEBUG link_function_imports] module '{}' not found in instance_ids", mod_name);
                 }
             }
         }
@@ -560,8 +583,15 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
     for directive in wast.directives {
         match directive {
             WastDirective::Module(mut module) => {
+                // Extract module name BEFORE calling encode() (which consumes the value)
+                let module_name = if let wast::QuoteWat::Wat(wast::Wat::Module(ref m)) = module {
+                    m.id.as_ref().map(|id| id.name().to_string())
+                } else {
+                    None
+                };
+                eprintln!("[DEBUG] Loading module with name: {:?}", module_name);
                 let binary = module.encode().context("Failed to encode module to binary")?;
-                engine.load_module(None, &binary).context("Failed to load module")?;
+                engine.load_module(module_name.as_deref(), &binary).context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => match exec {
                 WastExecute::Invoke(invoke) => {
@@ -679,6 +709,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
             WastDirective::Register { module, name, .. } => {
                 // Register the current module (or named module) as 'name' for imports
                 let source_name = module.as_ref().map(|id| id.name()).unwrap_or("current");
+                eprintln!("[DEBUG] Registering module: name='{}', source='{}'", name, source_name);
                 engine.register_module(name, source_name)?;
             },
             WastDirective::Invoke(invoke) => {

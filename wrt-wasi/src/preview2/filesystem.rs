@@ -35,6 +35,7 @@ pub struct FileDescriptorTable {
 #[cfg(feature = "std")]
 impl FileDescriptorTable {
     /// Create a new file descriptor table
+    #[must_use]
     pub fn new() -> Self {
         Self {
             files: HashMap::new(),

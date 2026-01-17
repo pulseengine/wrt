@@ -1131,6 +1131,8 @@ pub struct CfiMetrics {
 pub struct DefaultCfiControlFlowOps;
 
 impl CfiControlFlowOps for DefaultCfiControlFlowOps {
+    // Large function is intentional - implements full CFI validation logic.
+    #[allow(clippy::too_many_lines)]
     fn call_indirect_with_cfi(
         &self,
         type_idx: u32,
@@ -1552,6 +1554,8 @@ impl DefaultCfiControlFlowOps {
         }
     }
 
+    // Result needed for no_std where safe_managed_alloc! can fail.
+    #[allow(clippy::unnecessary_wraps)]
     fn create_software_validation(
         &self,
         target_type: CfiTargetType,
@@ -1603,6 +1607,8 @@ impl DefaultCfiControlFlowOps {
         0 // Placeholder
     }
 
+    // Result needed for no_std where safe_managed_alloc! can fail.
+    #[allow(clippy::unnecessary_wraps)]
     fn determine_valid_predecessors(
         &self,
         target_type: CfiTargetType,

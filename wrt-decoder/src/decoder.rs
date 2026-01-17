@@ -62,10 +62,7 @@ fn convert_module_provider(_source: WrtModule<NoStdProvider<8192>>) -> WrtModule
     WrtModule::default()
 }
 
-/// Build a module from parsed sections
-/// Build a module from parsed sections (std version)
-#[cfg(feature = "std")]
-/// Convert import descriptor from foundation to format types
+/// Convert import descriptor from foundation to format types (std version)
 #[cfg(feature = "std")]
 fn convert_import_desc(
     desc: wrt_foundation::types::ImportDesc<DecoderProvider>,

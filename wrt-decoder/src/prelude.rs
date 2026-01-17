@@ -137,9 +137,6 @@ pub use wrt_format::pure_format_types::{
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-// pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
-// Binary std/no_std choice
-#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::{
     ComponentValue,
     ValType,

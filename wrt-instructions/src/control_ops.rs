@@ -568,6 +568,8 @@ pub trait ControlContext {
 }
 
 impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
+    // Large match is intentional - interpreter dispatch for all control flow opcodes.
+    #[allow(clippy::too_many_lines)]
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
             Self::Block(block_type) => context.enter_block(Block::Block(*block_type)),
