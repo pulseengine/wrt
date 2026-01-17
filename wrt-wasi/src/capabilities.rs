@@ -91,6 +91,10 @@ pub struct WasiCapabilities {
 
 impl WasiCapabilities {
     /// Create a minimal capability set with basic access
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for capability storage fails.
     pub fn minimal() -> Result<Self> {
         Ok(Self {
             filesystem: WasiFileSystemCapabilities::minimal()?,
@@ -108,6 +112,10 @@ impl WasiCapabilities {
     }
 
     /// Create a capability set suitable for sandboxed applications
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for capability storage fails.
     pub fn sandboxed() -> Result<Self> {
         Ok(Self {
             filesystem: WasiFileSystemCapabilities::read_only()?,
@@ -125,6 +133,10 @@ impl WasiCapabilities {
     }
 
     /// Create a capability set suitable for system utilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for capability storage fails.
     pub fn system_utility() -> Result<Self> {
         Ok(Self {
             filesystem: WasiFileSystemCapabilities::full_access()?,
@@ -168,6 +180,10 @@ pub struct WasiFileSystemCapabilities {
 
 impl WasiFileSystemCapabilities {
     /// Create minimal filesystem capabilities (no access)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for path storage fails (no_std only).
     pub fn minimal() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -193,6 +209,10 @@ impl WasiFileSystemCapabilities {
     }
 
     /// Create read-only filesystem capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for path storage fails (no_std only).
     pub fn read_only() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -218,6 +238,10 @@ impl WasiFileSystemCapabilities {
     }
 
     /// Create full filesystem access capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for path storage fails (no_std only).
     pub fn full_access() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -243,6 +267,12 @@ impl WasiFileSystemCapabilities {
     }
 
     /// Add an allowed filesystem path
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The path exceeds the maximum length (256 characters)
+    /// - The maximum number of allowed paths (32) has been reached
     pub fn add_allowed_path(&mut self, path: &str) -> Result<()> {
         #[cfg(feature = "std")]
         {
@@ -314,6 +344,10 @@ pub struct WasiEnvironmentCapabilities {
 
 impl WasiEnvironmentCapabilities {
     /// Create minimal environment capabilities (no access)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for environment variable storage fails.
     pub fn minimal() -> Result<Self> {
         let provider = create_provider()?;
         Ok(Self {
@@ -324,6 +358,10 @@ impl WasiEnvironmentCapabilities {
     }
 
     /// Create args-only environment capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for environment variable storage fails.
     pub fn args_only() -> Result<Self> {
         let provider = create_provider()?;
         Ok(Self {
@@ -334,6 +372,10 @@ impl WasiEnvironmentCapabilities {
     }
 
     /// Create full environment access capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for environment variable storage fails.
     pub fn full_access() -> Result<Self> {
         let provider = create_provider()?;
         Ok(Self {
@@ -344,6 +386,12 @@ impl WasiEnvironmentCapabilities {
     }
 
     /// Add an allowed environment variable
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The variable name exceeds the maximum length (128 characters)
+    /// - The maximum number of allowed variables (64) has been reached
     pub fn add_allowed_var(&mut self, var_name: &str) -> Result<()> {
         let _provider = create_provider()?;
         let bounded_var = BoundedString::<128>::try_from_str(var_name)

@@ -189,6 +189,10 @@ pub struct WasiResourceCapabilities {
 
 impl WasiResourceManager {
     /// Create a new WASI resource manager
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if memory allocation for the resource table fails.
     pub fn new() -> Result<Self> {
         #[cfg(feature = "std")]
         {
@@ -212,6 +216,12 @@ impl WasiResourceManager {
     }
 
     /// Create a new WASI resource and return its handle
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The maximum number of resources (256) has been reached
+    /// - Failed to insert the resource into the resource table
     pub fn create_resource(
         &mut self,
         resource_type: WasiResourceType,
@@ -258,6 +268,10 @@ impl WasiResourceManager {
     }
 
     /// Get a WASI resource by handle
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the handle is invalid or does not exist in the resource table.
     pub fn get_resource(&self, handle: WasiHandle) -> Result<WasiResource> {
         #[cfg(feature = "std")]
         {
@@ -282,6 +296,10 @@ impl WasiResourceManager {
     }
 
     /// Get a WASI resource by handle (for modification via `update_resource`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the handle is invalid or does not exist in the resource table.
     pub fn get_resource_mut(&mut self, handle: WasiHandle) -> Result<WasiResource> {
         #[cfg(feature = "std")]
         {
@@ -300,6 +318,10 @@ impl WasiResourceManager {
     }
 
     /// Remove a WASI resource by handle
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the handle is invalid or does not exist in the resource table.
     pub fn remove_resource(&mut self, handle: WasiHandle) -> Result<WasiResource> {
         #[cfg(feature = "std")]
         {
@@ -341,6 +363,12 @@ impl WasiResourceManager {
     }
 
     /// Create a file descriptor resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The path string exceeds the maximum length (256 characters)
+    /// - The resource table is full or allocation fails
     pub fn create_file_descriptor(
         &mut self,
         path: &str,
@@ -367,6 +395,12 @@ impl WasiResourceManager {
     }
 
     /// Create a directory handle resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The path string exceeds the maximum length (256 characters)
+    /// - The resource table is full or allocation fails
     pub fn create_directory_handle(&mut self, path: &str) -> Result<WasiHandle> {
         let path_string = BoundedString::try_from_str(path).map_err(|_| {
             Error::new(
@@ -389,6 +423,12 @@ impl WasiResourceManager {
     }
 
     /// Create an input stream resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The stream name exceeds the maximum length (64 characters)
+    /// - The resource table is full or allocation fails
     pub fn create_input_stream(&mut self, name: &str) -> Result<WasiHandle> {
         let name_string = BoundedString::try_from_str(name)
             .map_err(|_| Error::runtime_execution_error("Stream name too long"))?;
@@ -409,6 +449,12 @@ impl WasiResourceManager {
     }
 
     /// Create an output stream resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The stream name exceeds the maximum length (64 characters)
+    /// - The resource table is full or allocation fails
     pub fn create_output_stream(&mut self, name: &str) -> Result<WasiHandle> {
         let name_string = BoundedString::try_from_str(name).map_err(|_| {
             Error::new(
@@ -434,6 +480,10 @@ impl WasiResourceManager {
     }
 
     /// Create a clock handle resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource table is full or allocation fails.
     pub fn create_clock_handle(&mut self, clock_type: WasiClockType) -> Result<WasiHandle> {
         let resource_type = WasiResourceType::ClockHandle { clock_type };
 
@@ -448,6 +498,10 @@ impl WasiResourceManager {
     }
 
     /// Create a random handle resource
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource table is full or allocation fails.
     pub fn create_random_handle(&mut self, secure: bool) -> Result<WasiHandle> {
         let resource_type = WasiResourceType::RandomHandle { secure };
 
@@ -489,12 +543,21 @@ impl WasiResource {
     }
 
     /// Verify an operation is allowed on this resource
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible and always returns `Ok`.
+    /// Future implementations may return errors for unauthorized operations.
     pub fn verify_operation(&self, _operation: ResourceOperation) -> Result<()> {
         // TODO: Implement operation verification when available in wrt-foundation
         Ok(())
     }
 
     /// Update stream position (for stream resources)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource is not a stream type (input or output stream).
     pub fn update_position(&mut self, new_position: u64) -> Result<()> {
         match &mut self.resource_type {
             WasiResourceType::InputStream { position, .. }
