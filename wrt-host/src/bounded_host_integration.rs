@@ -360,10 +360,14 @@ pub trait BoundedHostFunction: Send + Sync {
     fn safety_level(&self) -> u8;
 }
 
+/// Type alias for bounded host function handlers
+pub type BoundedHostHandler =
+    Box<dyn Fn(&BoundedCallContext) -> Result<BoundedCallResult> + Send + Sync>;
+
 /// Simple host function implementation
 pub struct SimpleBoundedHostFunction {
     name:               String,
-    handler:            Box<dyn Fn(&BoundedCallContext) -> Result<BoundedCallResult> + Send + Sync>,
+    handler:            BoundedHostHandler,
     memory_requirement: usize,
     safety_level:       u8,
 }

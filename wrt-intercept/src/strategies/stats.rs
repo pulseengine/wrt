@@ -5,9 +5,10 @@
 //!
 //! Note: This strategy requires the `std` feature.
 
-// Statistics counters use u64 for counts, f64 for averages.
-// Some precision loss in very large counts is acceptable for statistics.
+// Statistics module requires floating-point arithmetic for timing metrics.
+// Precision loss in large counts is acceptable for statistics.
 #![allow(clippy::cast_precision_loss)]
+#![allow(clippy::float_arithmetic)]
 
 #[cfg(all(feature = "std", test))]
 use std::time::Duration;

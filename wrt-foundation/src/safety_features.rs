@@ -257,6 +257,7 @@ pub mod runtime {
     use super::*;
 
     /// Check if a capability is enabled at runtime
+    #[allow(clippy::match_like_matches_macro)] // Each arm returns different cfg!() result
     pub fn has_capability(capability: &str) -> bool {
         match capability {
             "dynamic-allocation" => cfg!(feature = "dynamic-allocation"),
