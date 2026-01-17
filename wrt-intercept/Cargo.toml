@@ -71,8 +71,10 @@ clippy.transmute_ptr_to_ref = "deny" # Rule 1
 clippy.dyn_trait = "warn" # Rule 1
 clippy.ptr_offset_with_cast = "warn" # Rule 2
 clippy.result_unit_err = "warn" # Rule 3
-clippy.let_underscore_drop = "warn" # Rule 3
-clippy.must_use = "warn" # Rule 3
+# Note: let_underscore_drop was promoted from clippy to rustc in Rust 1.60
+# Using the rust prefix for rustc lints
+rust.let_underscore_drop = { level = "warn", priority = -1 } # Rule 3
+clippy.must_use_candidate = "warn" # Rule 3
 # clippy.static_mut_reference renamed to static_mut_refs in newer Rust versions
 clippy.arc_mutate = "deny" # Rule 5
 clippy.missing_docs_in_private_items = "allow" # To be reviewed if too noisy

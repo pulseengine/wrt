@@ -20,6 +20,8 @@
 //! - Software CFI fallback support
 
 #![allow(dead_code)] // Allow during development
+// CFI index operations may involve address-like values that need casting.
+#![allow(clippy::cast_possible_truncation)]
 
 
 use crate::{

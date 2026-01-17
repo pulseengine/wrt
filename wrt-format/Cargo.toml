@@ -93,6 +93,7 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg
 # pointer_cast = "deny" # Not a standard Rust lint, covered by forbid(unsafe_code) and clippy::cast_ptr_alignment etc.
 # Rule 9
 missing_docs = "deny"
+let_underscore_drop = "deny"
 unsafe_code = "forbid"
 
 [lints.clippy]
@@ -109,7 +110,7 @@ unwrap_used = "deny"
 expect_used = "deny" # Added for completeness with unwrap_used
 panic = "deny" # Also covers Rule 4 (todo!, unimplemented!)
 result_unit_err = "deny"
-let_underscore_drop = "deny" # Stricter interpretation of Rule 3
+# Note: let_underscore_drop moved to [lints.rust] - promoted from clippy to rustc
 must_use_candidate = "warn"
 must_use_unit = "warn"
 # Rule 4: Control-flow soundness

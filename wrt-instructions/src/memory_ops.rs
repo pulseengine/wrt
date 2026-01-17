@@ -67,6 +67,13 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
+// WebAssembly value semantics require bit reinterpretation casts.
+// i32/u32 and i64/u64 are the same bits - just different interpretations.
+// These casts implement correct WASM behavior, not bugs.
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::{
     prelude::{
         Debug,

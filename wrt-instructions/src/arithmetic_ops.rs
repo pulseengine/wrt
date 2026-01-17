@@ -8,6 +8,12 @@
 //! instructions, including add, subtract, multiply, divide, and remainder
 //! operations for various numeric types.
 
+// WebAssembly value semantics require bit reinterpretation casts.
+// i32/u32 and i64/u64 are the same bits - just different interpretations.
+// These casts implement correct WASM behavior, not bugs.
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+
 use wrt_math as math;
 
 use crate::{

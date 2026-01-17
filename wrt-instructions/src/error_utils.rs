@@ -1,5 +1,8 @@
 //! Error formatting utilities for `no_std` compatibility
 
+// Error formatting may truncate large values for display - acceptable behavior.
+#![allow(clippy::cast_possible_truncation)]
+
 use wrt_error::{
     Error,
     ErrorCategory,

@@ -15,6 +15,13 @@
 //! The implementation works across std, `no_std+alloc`, and pure `no_std`
 //! environments.
 
+// WebAssembly value semantics require bit reinterpretation casts.
+// i32/u32 and i64/u64 are the same bits - just different interpretations.
+// These casts implement correct WASM behavior, not bugs.
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_possible_truncation)]
+
 use wrt_error::{
     Error,
     Result,

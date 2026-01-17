@@ -83,6 +83,7 @@ safety-critical = ["asil-b"]  # Maximum safety level for WASI
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 missing_docs = "deny"
 unsafe_code = "deny"
+let_underscore_drop = "warn"
 
 [lints.clippy]
 # Language subset
@@ -97,7 +98,7 @@ ptr_offset_with_cast = "warn"
 unwrap_used = "warn"
 panic = "warn"
 result_unit_err = "warn"
-let_underscore_drop = "warn"
+# Note: let_underscore_drop moved to [lints.rust] - promoted from clippy to rustc
 must_use_candidate = "warn"
 must_use_unit = "warn"
 # Control-flow soundness

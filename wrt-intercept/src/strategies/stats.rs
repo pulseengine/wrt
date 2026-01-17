@@ -5,6 +5,10 @@
 //!
 //! Note: This strategy requires the `std` feature.
 
+// Statistics counters use u64 for counts, f64 for averages.
+// Some precision loss in very large counts is acceptable for statistics.
+#![allow(clippy::cast_precision_loss)]
+
 #[cfg(all(feature = "std", test))]
 use std::time::Duration;
 #[cfg(feature = "std")]

@@ -109,6 +109,7 @@ dev-panic = ["wrt-panic/default-panic-handler", "wrt-panic/dev", "dep:linked_lis
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 missing_docs = "deny"
 unsafe_code = "deny"
+let_underscore_drop = "warn"
 
 [lints.clippy]
 # Rule 1: Language subset
@@ -123,7 +124,7 @@ ptr_offset_with_cast = "warn"
 unwrap_used = "warn"
 panic = "warn" # Also covers Rule 4
 result_unit_err = "warn"
-let_underscore_drop = "warn"
+# Note: let_underscore_drop moved to [lints.rust] - promoted from clippy to rustc
 must_use_candidate = "warn"
 must_use_unit = "warn"
 # Rule 4: Control-flow soundness

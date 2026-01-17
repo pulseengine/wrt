@@ -13,6 +13,12 @@
 //! These operations support the WebAssembly 3.0 GC proposal
 //! and work across std, `no_std+alloc`, and pure `no_std` environments.
 
+// WebAssembly value semantics require bit reinterpretation casts.
+// These casts implement correct WASM behavior, not bugs.
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+
 use wrt_error::{
     Error,
     Result,

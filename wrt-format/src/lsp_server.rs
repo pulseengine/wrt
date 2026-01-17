@@ -3,7 +3,11 @@
 //! This module provides the foundation for WIT language server support,
 //! enabling IDE features like syntax highlighting, error reporting, and more.
 
-#[cfg(all(not(feature = "std")))]
+// LSP protocol uses specific integer types for line/column positions.
+// These casts are safe within reasonable document sizes.
+#![allow(clippy::cast_possible_truncation)]
+
+#[cfg(not(feature = "std"))]
 use std::{
     collections::BTreeMap,
     sync::Arc,
