@@ -181,6 +181,10 @@ pub mod conversions {
     }
 
     /// Convert Value to filesystem descriptor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not a U32.
     pub fn value_to_descriptor(value: &Value) -> Result<filesystem_types::Descriptor> {
         match value {
             Value::U32(desc) => Ok(*desc),
@@ -200,6 +204,10 @@ pub mod conversions {
     }
 
     /// Convert Value to timestamp
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not a properly structured record.
     pub fn value_to_timestamp(value: &Value) -> Result<filesystem_types::Timestamp> {
         match value {
             Value::Record(fields) => {
@@ -249,6 +257,10 @@ pub mod conversions {
     }
 
     /// Convert Value to descriptor type
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not a valid descriptor type (0-7).
     pub fn value_to_descriptor_type(value: &Value) -> Result<filesystem_types::DescriptorType> {
         match value {
             Value::U8(0) => Ok(filesystem_types::DescriptorType::RegularFile),

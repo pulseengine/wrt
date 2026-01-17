@@ -17,6 +17,10 @@ use crate::{
 /// WASI monotonic clock now operation
 ///
 /// Implements `wasi:clocks/monotonic-clock.now` for monotonic time
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_monotonic_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
     let nanoseconds: u64 = PlatformTime::monotonic_ns();
@@ -27,6 +31,10 @@ pub fn wasi_monotonic_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Resul
 /// WASI wall clock now operation
 ///
 /// Implements `wasi:clocks/wall-clock.now` for wall clock time
+///
+/// # Errors
+///
+/// Returns an error if the wall clock is not available on this platform.
 pub fn wasi_wall_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get wall clock time using platform abstraction
     let total_ns = PlatformTime::wall_clock_ns()
@@ -46,6 +54,10 @@ pub fn wasi_wall_clock_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec
 /// WASI monotonic clock resolution operation
 ///
 /// Implements `wasi:clocks/monotonic-clock.resolution` for clock precision
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_monotonic_clock_resolution(
     _target: &mut dyn Any,
     _args: &[Value],
@@ -60,6 +72,10 @@ pub fn wasi_monotonic_clock_resolution(
 /// WASI wall clock resolution operation
 ///
 /// Implements `wasi:clocks/wall-clock.resolution` for wall clock precision
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get wall clock resolution using platform abstraction
     // For now, return 1 nanosecond resolution
@@ -72,6 +88,10 @@ pub fn wasi_wall_clock_resolution(_target: &mut dyn Any, _args: &[Value]) -> Res
 ///
 /// Implements CPU time measurement for the current process.
 /// Returns the CPU time consumed by the process (user + system time) in nanoseconds.
+///
+/// # Errors
+///
+/// Returns an error if process CPU time is not available on this platform.
 pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get process CPU time using platform abstraction
     let cpu_time = PlatformTime::process_cpu_time_ns()
@@ -84,6 +104,10 @@ pub fn wasi_process_cpu_time_now(_target: &mut dyn Any, _args: &[Value]) -> Resu
 ///
 /// Implements CPU time measurement for the current thread.
 /// Returns the CPU time consumed by the current thread (user + system time) in nanoseconds.
+///
+/// # Errors
+///
+/// Returns an error if thread CPU time is not available on this platform.
 pub fn wasi_thread_cpu_time_now(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Get thread CPU time using platform abstraction
     let cpu_time = PlatformTime::thread_cpu_time_ns()
@@ -109,6 +133,10 @@ pub fn nanoseconds_to_datetime(nanoseconds: u64) -> Value {
 /// Convert WASI datetime record to nanoseconds
 ///
 /// Helper function to convert WASI datetime to nanoseconds since Unix epoch
+///
+/// # Errors
+///
+/// Returns an error if the datetime value is not a valid WASI datetime record.
 pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
     match datetime {
         Value::Record(fields) => {
@@ -140,6 +168,11 @@ pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
 /// Get current time with specified clock capabilities
 ///
 /// Helper function that respects WASI clock capabilities
+///
+/// # Errors
+///
+/// Returns an error if access to the specified clock type is denied by capabilities,
+/// or if the clock is not available on this platform.
 pub fn get_time_with_capabilities(
     clock_type: WasiClockType,
     capabilities: &WasiClockCapabilities,

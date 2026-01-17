@@ -60,7 +60,13 @@ pub fn set_global_wasi_args(args: Vec<String>) {
 }
 
 /// Get the global WASI arguments
-/// Falls back to std::env::args() if no global args are set
+///
+/// Falls back to `std::env::args()` if no global args are set
+///
+/// # Panics
+///
+/// Panics if the global WASI args mutex is poisoned (a thread panicked while
+/// holding the lock).
 #[cfg(feature = "std")]
 pub fn get_global_wasi_args() -> Vec<String> {
     // Per CLAUDE.md: fail loud and early. A poisoned mutex means a thread panicked
@@ -78,7 +84,13 @@ pub fn get_global_wasi_args() -> Vec<String> {
 }
 
 /// Get the global WASI environment variables
-/// Falls back to std::env::vars() if no global env vars are set
+///
+/// Falls back to `std::env::vars()` if no global env vars are set
+///
+/// # Panics
+///
+/// Panics if the global WASI env mutex is poisoned (a thread panicked while
+/// holding the lock).
 #[cfg(feature = "std")]
 pub fn get_global_wasi_env() -> Vec<(String, String)> {
     // Per CLAUDE.md: fail loud and early. A poisoned mutex means a thread panicked
@@ -186,11 +198,11 @@ pub struct WasiDispatcher {
     args: Vec<String>,
     /// Environment variables as (key, value) pairs
     env_vars: Vec<(String, String)>,
-    /// Pre-allocated memory for args (list_ptr, string_data_ptr)
-    /// Set by the engine after calling cabi_realloc
+    /// Pre-allocated memory for args (`list_ptr`, `string_data_ptr`)
+    /// Set by the engine after calling `cabi_realloc`
     args_alloc: Option<(u32, u32)>,
     /// File descriptor table (maps handle -> descriptor info)
-    /// Note: This is separate from resource_manager - used for filesystem operations
+    /// Note: This is separate from `resource_manager` - used for filesystem operations
     #[cfg(feature = "std")]
     fd_table: HashMap<u32, FileDescriptorEntry>,
     /// Pre-opened directories (list of (handle, path) pairs)
@@ -198,7 +210,7 @@ pub struct WasiDispatcher {
     preopens: Vec<(u32, PathBuf)>,
 }
 
-/// Describes memory that needs to be allocated via cabi_realloc
+/// Describes memory that needs to be allocated via `cabi_realloc`
 /// before a WASI function can complete its return value.
 #[derive(Debug, Clone)]
 pub struct AllocationRequest {
@@ -222,13 +234,17 @@ pub enum DispatchResult {
         request: AllocationRequest,
         /// The args to return (we'll write them once memory is allocated)
         args_to_write: Vec<String>,
-        /// The return pointer where we'll write (list_ptr, len)
+        /// The return pointer where we'll write (`list_ptr`, len)
         retptr: u32,
     },
 }
 
 impl WasiDispatcher {
     /// Create a new WASI dispatcher with the given capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource manager cannot be initialized.
     pub fn new(capabilities: WasiCapabilities) -> Result<Self> {
         #[cfg(feature = "std")]
         let mut fd_table = HashMap::new();
@@ -267,11 +283,20 @@ impl WasiDispatcher {
     }
 
     /// Create a dispatcher with default (full) capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if default capabilities cannot be created or the
+    /// resource manager fails to initialize.
     pub fn with_defaults() -> Result<Self> {
         Self::new(WasiCapabilities::system_utility()?)
     }
 
     /// Create a dispatcher with arguments
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource manager cannot be initialized.
     pub fn with_args(capabilities: WasiCapabilities, args: Vec<String>) -> Result<Self> {
         let mut dispatcher = Self::new(capabilities)?;
         dispatcher.args = args;
@@ -279,6 +304,10 @@ impl WasiDispatcher {
     }
 
     /// Create a dispatcher with arguments and environment variables
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource manager cannot be initialized.
     pub fn with_args_and_env(
         capabilities: WasiCapabilities,
         args: Vec<String>,
@@ -293,6 +322,11 @@ impl WasiDispatcher {
     /// Add a pre-opened directory to the WASI sandbox
     ///
     /// Returns the file descriptor handle for the directory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory handle cannot be created in the
+    /// resource manager.
     #[cfg(feature = "std")]
     pub fn add_preopen(&mut self, path: impl Into<PathBuf>) -> Result<u32> {
         let path = path.into();
@@ -330,9 +364,9 @@ impl WasiDispatcher {
         self.env_vars = env_vars;
     }
 
-    /// Set pre-allocated memory for arguments (from cabi_realloc)
+    /// Set pre-allocated memory for arguments (from `cabi_realloc`)
     ///
-    /// This is set by the engine after calling cabi_realloc to allocate
+    /// This is set by the engine after calling `cabi_realloc` to allocate
     /// properly owned memory for argument strings.
     ///
     /// # Arguments
@@ -376,6 +410,13 @@ impl WasiDispatcher {
     ///
     /// This is the primary entry point for Component Model WASI calls.
     /// Values are already lifted (strings are String, lists are Vec, etc.)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The interface/function combination is unknown or unsupported
+    /// - Arguments are missing, invalid, or have wrong types
+    /// - The underlying WASI operation fails (I/O, permission, etc.)
     pub fn dispatch(
         &mut self,
         interface: &str,
@@ -1037,6 +1078,14 @@ impl WasiDispatcher {
     /// * `args` - Raw values from the WASM stack
     /// * `memory` - Linear memory accessor for reading/writing complex types
     ///   Uses interior mutability for thread-safe writes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The interface/function combination is unknown or unsupported
+    /// - Arguments are missing, invalid, or have wrong types
+    /// - Memory access fails (when reading/writing complex types)
+    /// - The underlying WASI operation fails
     #[cfg(feature = "std")]
     pub fn dispatch_core(
         &mut self,
@@ -1682,6 +1731,10 @@ impl WasiDispatcher {
     /// 3. The caller then calls cabi_realloc, then calls complete_allocation
     ///
     /// This allows the HOST to call cabi_realloc as required by the Canonical ABI.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the interface/function is unknown or unsupported.
     pub fn dispatch_core_v2(
         &mut self,
         interface: &str,
@@ -1805,6 +1858,10 @@ impl WasiDispatcher {
     /// * `args_to_write` - The strings to write
     /// * `retptr` - Where to write (list_ptr, len)
     /// * `memory` - Linear memory to write to
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the memory write fails (e.g., out of bounds).
     pub fn complete_allocation(
         &mut self,
         allocated_ptr: u32,

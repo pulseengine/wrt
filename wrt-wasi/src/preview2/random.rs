@@ -15,6 +15,12 @@ use crate::{
 ///
 /// Implements `wasi:random/random.get-random-bytes` for secure random
 /// generation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The requested length exceeds 1MB
+/// - Secure random generation fails on this platform
 pub fn wasi_get_random_bytes(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract length from arguments
     let len = extract_length(args)?;
@@ -39,6 +45,12 @@ pub fn wasi_get_random_bytes(_target: &mut dyn Any, args: &[Value]) -> Result<Ve
 ///
 /// Implements `wasi:random/insecure.get-insecure-random-bytes` for fast
 /// pseudo-random generation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The requested length exceeds 10MB
+/// - Pseudo-random generation fails
 pub fn wasi_get_insecure_random_bytes(
     _target: &mut dyn Any,
     args: &[Value],
@@ -65,6 +77,10 @@ pub fn wasi_get_insecure_random_bytes(
 /// WASI get random u64 operation
 ///
 /// Implements `wasi:random/random.get-random-u64` for secure u64 generation
+///
+/// # Errors
+///
+/// Returns an error if secure random generation fails on this platform.
 pub fn wasi_get_random_u64(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec<Value>> {
     // Generate 8 secure random bytes
     let random_bytes = generate_secure_random(8)?;
@@ -81,6 +97,10 @@ pub fn wasi_get_random_u64(_target: &mut dyn Any, _args: &[Value]) -> Result<Vec
 ///
 /// Implements `wasi:random/insecure.get-insecure-random-u64` for fast u64
 /// generation
+///
+/// # Errors
+///
+/// Returns an error if pseudo-random generation fails.
 pub fn wasi_get_insecure_random_u64(
     _target: &mut dyn Any,
     _args: &[Value],
@@ -186,6 +206,11 @@ fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
 /// Validate random generation with capabilities
 ///
 /// Helper function to check if random generation is allowed
+///
+/// # Errors
+///
+/// Returns an error if the requested random type (secure or pseudo) is not
+/// permitted by the provided capabilities.
 pub fn validate_random_capabilities(
     secure: bool,
     capabilities: &WasiRandomCapabilities,

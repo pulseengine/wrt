@@ -111,6 +111,14 @@ fn ensure_file_table() -> Result<()> {
 ///
 /// Opens a file relative to a directory descriptor.
 /// Implements `wasi:filesystem/types.open-at`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - Arguments are missing or have invalid types
+/// - The file cannot be opened (permission denied, not found, etc.)
 pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -181,6 +189,14 @@ pub fn wasi_filesystem_open_at(_target: &mut dyn Any, args: &[Value]) -> Result<
 ///
 /// Reads data from a file descriptor.
 /// Implements `wasi:filesystem/types.read`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - The file is not readable or seek/read operations fail
 pub fn wasi_filesystem_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -242,6 +258,14 @@ pub fn wasi_filesystem_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec
 ///
 /// Writes data to a file descriptor.
 /// Implements `wasi:filesystem/types.write`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - The file is not writable or seek/write operations fail
 pub fn wasi_filesystem_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -290,6 +314,13 @@ pub fn wasi_filesystem_write(_target: &mut dyn Any, args: &[Value]) -> Result<Ve
 ///
 /// Closes a file descriptor.
 /// Implements closing via dropping the descriptor
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
 pub fn wasi_filesystem_close(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -319,6 +350,14 @@ pub fn wasi_filesystem_close(_target: &mut dyn Any, args: &[Value]) -> Result<Ve
 ///
 /// Gets file metadata.
 /// Implements `wasi:filesystem/types.stat`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - Metadata retrieval fails
 pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -353,6 +392,13 @@ pub fn wasi_filesystem_stat(_target: &mut dyn Any, args: &[Value]) -> Result<Vec
 ///
 /// Gets file metadata by path relative to a directory.
 /// Implements `wasi:filesystem/types.stat-at`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The directory descriptor argument is missing or invalid
+/// - The path argument is missing or invalid
+/// - Metadata retrieval for the path fails
 pub fn wasi_filesystem_stat_at(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -377,6 +423,14 @@ pub fn wasi_filesystem_stat_at(_target: &mut dyn Any, args: &[Value]) -> Result<
 ///
 /// Syncs file data to disk.
 /// Implements `wasi:filesystem/types.sync`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - The sync operation fails
 pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -408,6 +462,14 @@ pub fn wasi_filesystem_sync(_target: &mut dyn Any, args: &[Value]) -> Result<Vec
 ///
 /// Syncs file data to disk without metadata.
 /// Implements `wasi:filesystem/types.sync-data`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - The sync-data operation fails
 pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -444,6 +506,14 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// Note: This implementation uses std::fs::File::set_times which requires
 /// Rust 1.75+. If using an older Rust version, this will use the path-based
 /// approach via std::fs::set_times which is available on most platforms.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - Metadata or timestamp operations fail
 pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -505,6 +575,13 @@ pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: &[Value]) -> Resul
 ///
 /// Gets descriptor flags.
 /// Implements `wasi:filesystem/types.get-flags`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
 pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -548,6 +625,14 @@ pub fn wasi_filesystem_get_flags(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// The actual OS-level flags (like O_NONBLOCK, O_SYNC) cannot be changed
 /// without unsafe code and libc. If the caller needs true nonblocking I/O,
 /// they should open the file with those flags initially.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
+/// - The descriptor flags argument is missing or invalid
 pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -591,6 +676,13 @@ pub fn wasi_filesystem_set_flags(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// access patterns. Without libc/unsafe FFI, we cannot call posix_fadvise,
 /// so this implementation validates arguments and returns success.
 /// The OS will still use its default caching strategy.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file table lock cannot be acquired
+/// - The file table is not initialized
+/// - The file descriptor is invalid
 pub fn wasi_filesystem_advise(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {

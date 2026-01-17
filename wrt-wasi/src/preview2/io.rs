@@ -314,6 +314,13 @@ fn check_timer_ready(deadline_ns: u64) -> bool {
 /// WASI stream read operation
 ///
 /// Implements `wasi:io/streams.read` for reading from input streams
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The read length argument is missing or invalid
+/// - The stream read operation fails on this platform
 pub fn wasi_stream_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract stream handle and length from arguments
     let stream_handle = extract_stream_handle(args)?;
@@ -334,6 +341,13 @@ pub fn wasi_stream_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Val
 /// WASI stream write operation
 ///
 /// Implements `wasi:io/streams.write` for writing to output streams
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The write data argument is missing or invalid
+/// - The stream write operation fails on this platform
 pub fn wasi_stream_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Extract stream handle and data from arguments
     let stream_handle = extract_stream_handle(args)?;
@@ -352,6 +366,12 @@ pub fn wasi_stream_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Va
 /// WASI stream flush operation
 ///
 /// Implements `wasi:io/streams.flush` for flushing output streams
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The stream flush operation fails on this platform
 pub fn wasi_stream_flush(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
 
@@ -367,6 +387,12 @@ pub fn wasi_stream_flush(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Va
 /// WASI stream check-write operation
 ///
 /// Implements `wasi:io/streams.check-write` to check available write space
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The write capacity check fails
 pub fn wasi_stream_check_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
 
@@ -379,6 +405,13 @@ pub fn wasi_stream_check_write(_target: &mut dyn Any, args: &[Value]) -> Result<
 /// WASI stream blocking-read operation
 ///
 /// Implements `wasi:io/streams.blocking-read` for blocking reads
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The read length argument is missing or invalid
+/// - The blocking read operation fails on this platform
 pub fn wasi_stream_blocking_read(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
     let len = extract_read_length(args, 1)?;
@@ -394,6 +427,13 @@ pub fn wasi_stream_blocking_read(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// WASI stream blocking-write operation
 ///
 /// Implements `wasi:io/streams.blocking-write-and-flush` for blocking writes
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The write data argument is missing or invalid
+/// - The blocking write or flush operation fails on this platform
 pub fn wasi_stream_blocking_write(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
     let data = extract_write_data(args, 1)?;
@@ -410,6 +450,13 @@ pub fn wasi_stream_blocking_write(_target: &mut dyn Any, args: &[Value]) -> Resu
 /// WASI stream skip operation
 ///
 /// Implements `wasi:io/streams.skip` for skipping input bytes
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The skip length argument is missing or invalid
+/// - The underlying read operation fails
 pub fn wasi_stream_skip(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
     let len = extract_read_length(args, 1)?;
@@ -424,6 +471,10 @@ pub fn wasi_stream_skip(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Val
 /// WASI stream blocking-skip operation
 ///
 /// Implements `wasi:io/streams.blocking-skip` for blocking skip
+///
+/// # Errors
+///
+/// Returns an error if the underlying skip operation fails.
 pub fn wasi_stream_blocking_skip(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Same as skip - the underlying read may block
     wasi_stream_skip(_target, args)
@@ -433,6 +484,13 @@ pub fn wasi_stream_blocking_skip(_target: &mut dyn Any, args: &[Value]) -> Resul
 ///
 /// Implements `wasi:io/streams.splice` for transferring data between streams
 /// Reads from input stream and writes to output stream without intermediate buffering
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The output or input stream handle arguments are missing or invalid
+/// - The length argument is missing or invalid
+/// - The underlying read or write operations fail
 pub fn wasi_stream_splice(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let output_stream = extract_stream_handle(args)?;
     let input_stream = args.get(1)
@@ -455,6 +513,10 @@ pub fn wasi_stream_splice(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<V
 /// WASI stream blocking-splice operation
 ///
 /// Implements `wasi:io/streams.blocking-splice` for blocking splice
+///
+/// # Errors
+///
+/// Returns an error if the underlying splice operation fails.
 pub fn wasi_stream_blocking_splice(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     // Same as splice - operations may block
     wasi_stream_splice(_target, args)
@@ -463,6 +525,12 @@ pub fn wasi_stream_blocking_splice(_target: &mut dyn Any, args: &[Value]) -> Res
 /// WASI stream forward operation
 ///
 /// Implements forwarding all remaining data from input to output stream
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The output or input stream handle arguments are missing or invalid
+/// - The underlying read or write operations fail during forwarding
 pub fn wasi_stream_forward(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let output_stream = extract_stream_handle(args)?;
     let input_stream = args.get(1)
@@ -497,6 +565,10 @@ pub fn wasi_stream_forward(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<
 /// WASI input-stream drop operation
 ///
 /// Drops an input stream resource
+///
+/// # Errors
+///
+/// Returns an error if the stream handle argument is missing or invalid.
 pub fn wasi_drop_input_stream(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
 
@@ -512,6 +584,10 @@ pub fn wasi_drop_input_stream(_target: &mut dyn Any, args: &[Value]) -> Result<V
 /// WASI output-stream drop operation
 ///
 /// Drops an output stream resource
+///
+/// # Errors
+///
+/// Returns an error if the stream handle argument is missing or invalid.
 pub fn wasi_drop_output_stream(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
 
@@ -527,6 +603,13 @@ pub fn wasi_drop_output_stream(_target: &mut dyn Any, args: &[Value]) -> Result<
 /// WASI stream subscribe operation
 ///
 /// Implements `wasi:io/poll.subscribe` for async I/O notification
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The stream handle argument is missing or invalid
+/// - The pollable table lock cannot be acquired
+/// - The pollable table is not initialized
 pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let stream_handle = extract_stream_handle(args)?;
 
@@ -560,6 +643,13 @@ pub fn wasi_stream_subscribe(_target: &mut dyn Any, args: &[Value]) -> Result<Ve
 ///
 /// Creates a pollable that becomes ready when the timer expires.
 /// Implements `wasi:clocks/monotonic-clock.subscribe-instant`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The deadline timestamp argument is missing or invalid
+/// - The pollable table lock cannot be acquired
+/// - The pollable table is not initialized
 pub fn wasi_subscribe_timer(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let deadline_ns = extract_timestamp_ns(args)?;
 
@@ -587,6 +677,13 @@ pub fn wasi_subscribe_timer(_target: &mut dyn Any, args: &[Value]) -> Result<Vec
 ///
 /// Implements `wasi:io/poll.poll` for synchronous polling.
 /// Blocks until at least one pollable is ready.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The pollables list argument is missing or invalid
+/// - The pollable table lock cannot be acquired
+/// - The pollable table is not initialized
 pub fn wasi_poll_one_off(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let pollables = extract_pollable_list(args)?;
 
@@ -620,6 +717,13 @@ pub fn wasi_poll_one_off(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Va
 ///
 /// Implements `wasi:io/poll.poll-list` with optional timeout.
 /// Returns immediately if any pollable is ready, or after timeout.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The pollables list argument is missing or invalid
+/// - The pollable table lock cannot be acquired
+/// - The pollable table is not initialized
 pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let pollables = extract_pollable_list(args)?;
     let timeout_ns = args.get(1).and_then(|v| match v {
@@ -656,6 +760,14 @@ pub fn wasi_poll_with_timeout(_target: &mut dyn Any, args: &[Value]) -> Result<V
 ///
 /// Drops a pollable resource.
 /// Implements `wasi:io/poll.pollable.drop`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The pollable handle argument is missing or invalid
+/// - The pollable table lock cannot be acquired
+/// - The pollable table is not initialized
+/// - The pollable handle does not exist in the table
 pub fn wasi_drop_pollable(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     let pollable_handle = args.first()
         .and_then(|v| match v {

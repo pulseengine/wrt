@@ -21,6 +21,10 @@ use crate::{
 ///
 /// Implements `wasi:cli/environment.get-arguments` using capability-aware
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if the capability-aware bridge function fails.
 pub fn wasi_cli_get_arguments(target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     // Use capability-aware bridge function for memory safety
     wasi_cli_get_arguments_bridge(target, args)
@@ -30,6 +34,10 @@ pub fn wasi_cli_get_arguments(target: &mut dyn Any, args: Vec<Value>) -> Result<
 ///
 /// Implements `wasi:cli/environment.get-environment` using capability-aware
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if the capability-aware bridge function fails.
 pub fn wasi_cli_get_environment(target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     // Use capability-aware bridge function for memory safety
     wasi_cli_get_environment_bridge(target, args)
@@ -39,6 +47,10 @@ pub fn wasi_cli_get_environment(target: &mut dyn Any, args: Vec<Value>) -> Resul
 ///
 /// Implements `wasi:cli/environment.initial-cwd` using capability-aware
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if the capability-aware bridge function fails.
 pub fn wasi_get_initial_cwd(target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     // Use capability-aware bridge function for memory safety
     wasi_get_initial_cwd_bridge(target, args)
@@ -48,6 +60,10 @@ pub fn wasi_get_initial_cwd(target: &mut dyn Any, args: Vec<Value>) -> Result<Ve
 ///
 /// Implements `wasi:cli/terminal-stdin.get-terminal-stdin` for terminal
 /// detection
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_get_terminal_stdin(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -78,6 +94,10 @@ pub fn wasi_get_terminal_stdin(_target: &mut dyn Any, _args: Vec<Value>) -> Resu
 ///
 /// Implements `wasi:cli/terminal-stdout.get-terminal-stdout` for terminal
 /// detection
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_get_terminal_stdout(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -108,6 +128,10 @@ pub fn wasi_get_terminal_stdout(_target: &mut dyn Any, _args: Vec<Value>) -> Res
 ///
 /// Implements `wasi:cli/terminal-stderr.get-terminal-stderr` for terminal
 /// detection
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn wasi_get_terminal_stderr(_target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {
@@ -137,6 +161,10 @@ pub fn wasi_get_terminal_stderr(_target: &mut dyn Any, _args: Vec<Value>) -> Res
 /// Get filtered environment variables based on capabilities
 ///
 /// Helper function to filter environment variables based on WASI capabilities
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn get_filtered_environment(
     capabilities: &WasiEnvironmentCapabilities,
 ) -> Result<Vec<(String, String)>> {
@@ -163,6 +191,10 @@ pub fn get_filtered_environment(
 /// Get filtered command line arguments based on capabilities
 ///
 /// Helper function to filter arguments based on WASI capabilities
+///
+/// # Errors
+///
+/// This function is infallible and always returns `Ok`.
 pub fn get_filtered_arguments(capabilities: &WasiEnvironmentCapabilities) -> Result<Vec<String>> {
     if !capabilities.args_access {
         return Ok(Vec::with_capacity(0));

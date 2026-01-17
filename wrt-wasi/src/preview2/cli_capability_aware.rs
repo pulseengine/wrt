@@ -26,6 +26,13 @@ use crate::{
 ///
 /// Implements `wasi:cli/environment.get-arguments` using capability-based
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The global capability context cannot be acquired
+/// - The allocation capability verification fails
+/// - Value conversion fails during list creation
 pub fn wasi_cli_get_arguments_capability_aware(
     _target: &mut dyn Any,
     _args: Vec<CapabilityAwareValue>,
@@ -65,6 +72,13 @@ pub fn wasi_cli_get_arguments_capability_aware(
 ///
 /// Implements `wasi:cli/environment.get-environment` using capability-based
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The global capability context cannot be acquired
+/// - The allocation capability verification fails
+/// - Value conversion fails during list creation
 pub fn wasi_cli_get_environment_capability_aware(
     _target: &mut dyn Any,
     _args: Vec<CapabilityAwareValue>,
@@ -108,6 +122,13 @@ pub fn wasi_cli_get_environment_capability_aware(
 ///
 /// Implements `wasi:cli/environment.initial-cwd` using capability-based
 /// allocation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The global capability context cannot be acquired
+/// - The allocation capability verification fails
+/// - Value conversion fails during option creation
 pub fn wasi_get_initial_cwd_capability_aware(
     _target: &mut dyn Any,
     _args: Vec<CapabilityAwareValue>,
@@ -207,6 +228,11 @@ fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Val
 }
 
 /// Bridge function to convert legacy CLI functions to capability-aware versions
+///
+/// # Errors
+///
+/// Returns an error if value conversion or the underlying capability-aware
+/// function fails.
 pub fn wasi_cli_get_arguments_bridge(target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     // Convert legacy values to capability-aware values
     let mut capability_args = alloc::vec::Vec::new();
@@ -230,6 +256,11 @@ pub fn wasi_cli_get_arguments_bridge(target: &mut dyn Any, args: Vec<Value>) -> 
 }
 
 /// Bridge function for environment variables
+///
+/// # Errors
+///
+/// Returns an error if value conversion or the underlying capability-aware
+/// function fails.
 pub fn wasi_cli_get_environment_bridge(
     target: &mut dyn Any,
     args: Vec<Value>,
@@ -253,6 +284,11 @@ pub fn wasi_cli_get_environment_bridge(
 }
 
 /// Bridge function for current working directory
+///
+/// # Errors
+///
+/// Returns an error if value conversion or the underlying capability-aware
+/// function fails.
 pub fn wasi_get_initial_cwd_bridge(target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
     // Convert to capability-aware and back
     let mut capability_args = alloc::vec::Vec::new();

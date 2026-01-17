@@ -354,7 +354,6 @@ impl WastTestRunner {
         let wast: Wast = match parser::parse::<Wast>(&buf) {
             Ok(wast) => wast,
             Err(e) => {
-
                 return Ok(WastFileResult {
                     file_path:         relative_path,
                     directives_count:  0,

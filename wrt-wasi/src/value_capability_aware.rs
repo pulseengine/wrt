@@ -205,6 +205,10 @@ impl CapabilityAwareValue {
     }
 
     /// Create a capability-aware tuple value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if bounded memory allocation fails.
     pub fn tuple_from_vec(values: alloc::vec::Vec<CapabilityAwareValue>) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
         let mut bounded_vec = WasiBoundedVec::new(provider)?;
@@ -245,6 +249,10 @@ impl CapabilityAwareValue {
     }
 
     /// Extract a string from the value, returning bounded string if possible
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if bounded string creation fails.
     pub fn as_bounded_string(&self) -> Result<WasiBoundedString> {
         if let CapabilityAwareValue::String(s) = self { Ok(s.clone()) } else {
             let _provider = create_wasi_value_provider()?;

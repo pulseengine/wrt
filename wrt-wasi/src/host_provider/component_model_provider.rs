@@ -263,6 +263,10 @@ macro_rules! type_vec {
 impl ComponentModelProvider {
     /// Create a new component model provider with the given capabilities
     /// Allocates function cache using safety-aware allocation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource manager cannot be initialized.
     pub fn new(capabilities: WasiCapabilities) -> Result<Self> {
         let resource_manager = WasiResourceManager::new()?;
 
@@ -292,6 +296,10 @@ impl ComponentModelProvider {
     /// Register all WASI functions with a callback registry
     ///
     /// This follows the same pattern as other WRT host providers
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if building host functions fails.
     pub fn register_with_registry(&mut self, registry: &mut CallbackRegistry) -> Result<()> {
         // Build functions if not already cached
         #[cfg(feature = "std")]
@@ -833,6 +841,11 @@ impl WasiProviderBuilder {
     }
 
     /// Build the WASI provider with safety-aware defaults
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capabilities cannot be created or the provider
+    /// initialization fails.
     pub fn build(self) -> Result<ComponentModelProvider> {
         let capabilities = match self.capabilities {
             Some(caps) => caps,
