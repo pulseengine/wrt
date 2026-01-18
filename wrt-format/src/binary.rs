@@ -80,6 +80,7 @@ pub const ELEMENT_SECTION_ID: u8 = 0x09;
 pub const CODE_SECTION_ID: u8 = 0x0A;
 pub const DATA_SECTION_ID: u8 = 0x0B;
 pub const DATA_COUNT_SECTION_ID: u8 = 0x0C;
+pub const TAG_SECTION_ID: u8 = 0x0D;
 
 /// WebAssembly value types
 pub const I32_TYPE: u8 = 0x7F;
@@ -89,6 +90,7 @@ pub const F64_TYPE: u8 = 0x7C;
 pub const V128_TYPE: u8 = 0x7B; // For SIMD extension
 pub const FUNCREF_TYPE: u8 = 0x70;
 pub const EXTERNREF_TYPE: u8 = 0x6F;
+pub const EXNREF_TYPE: u8 = 0x69;
 
 /// WebAssembly control instructions
 pub const UNREACHABLE: u8 = 0x00;
@@ -97,6 +99,12 @@ pub const BLOCK: u8 = 0x02;
 pub const LOOP: u8 = 0x03;
 pub const IF: u8 = 0x04;
 pub const ELSE: u8 = 0x05;
+// Exception handling opcodes (0x06-0x0A reserved for EH proposal)
+pub const TRY: u8 = 0x06;
+pub const CATCH: u8 = 0x07;
+pub const THROW: u8 = 0x08;
+pub const RETHROW: u8 = 0x09;
+pub const THROW_REF: u8 = 0x0A;
 pub const END: u8 = 0x0B;
 pub const BR: u8 = 0x0C;
 pub const BR_IF: u8 = 0x0D;
@@ -107,6 +115,10 @@ pub const CALL_INDIRECT: u8 = 0x11;
 // Wasm 2.0 Tail Call extension
 pub const RETURN_CALL: u8 = 0x12;
 pub const RETURN_CALL_INDIRECT: u8 = 0x13;
+// Exception handling opcodes (continued)
+pub const DELEGATE: u8 = 0x18;
+pub const CATCH_ALL: u8 = 0x19;
+pub const TRY_TABLE: u8 = 0x1F;
 
 /// WebAssembly parametric instructions
 pub const DROP: u8 = 0x1A;

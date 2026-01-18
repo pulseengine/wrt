@@ -210,6 +210,8 @@ pub enum Value {
     StructRef(Option<StructRef<DefaultMemoryProvider>>),
     /// Array reference (WebAssembly 3.0 GC)
     ArrayRef(Option<ArrayRef<DefaultMemoryProvider>>),
+    /// Exception reference (Exception Handling proposal)
+    ExnRef(Option<u32>),
     /// Component Model extensions
     Bool(bool),
     S8(i8),
@@ -257,6 +259,7 @@ impl PartialEq for Value {
             (Value::V128(a), Value::V128(b)) => a == b,
             (Value::FuncRef(a), Value::FuncRef(b)) => a == b,
             (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
+            (Value::ExnRef(a), Value::ExnRef(b)) => a == b,
             (Value::Ref(a), Value::Ref(b)) => a == b,
             (Value::I16x8(a), Value::I16x8(b)) => a == b,
             (Value::StructRef(a), Value::StructRef(b)) => a == b,
@@ -352,6 +355,7 @@ impl Value {
             ValueType::ExternRef => Value::ExternRef(None),
             ValueType::StructRef(_) => Value::StructRef(None),
             ValueType::ArrayRef(_) => Value::ArrayRef(None),
+            ValueType::ExnRef => Value::ExnRef(None),
         }
     }
 
@@ -367,6 +371,7 @@ impl Value {
             Self::I16x8(_) => ValueType::I16x8,
             Self::FuncRef(_) => ValueType::FuncRef,
             Self::ExternRef(_) => ValueType::ExternRef,
+            Self::ExnRef(_) => ValueType::ExnRef,
             Self::Ref(_) => ValueType::I32,
             Self::StructRef(Some(s)) => ValueType::StructRef(s.type_index),
             Self::StructRef(None) => ValueType::StructRef(0), // Default type index for null
@@ -395,6 +400,7 @@ impl Value {
             (Self::I16x8(_), ValueType::I16x8) => true,
             (Self::FuncRef(_), ValueType::FuncRef) => true,
             (Self::ExternRef(_), ValueType::ExternRef) => true,
+            (Self::ExnRef(_), ValueType::ExnRef) => true,
             (Self::Ref(_), ValueType::I32) => true,
             (Self::StructRef(Some(s)), ValueType::StructRef(idx)) => s.type_index == *idx,
             (Self::StructRef(None), ValueType::StructRef(_)) => true, // Null matches any struct
@@ -633,6 +639,7 @@ impl Value {
             // Reference types - now Copy
             Self::FuncRef(v) => Self::FuncRef(*v),
             Self::ExternRef(v) => Self::ExternRef(*v),
+            Self::ExnRef(v) => Self::ExnRef(*v),
             Self::Ref(v) => Self::Ref(*v),
             // Simple Copy types from Component Model
             Self::Bool(v) => Self::Bool(*v),
@@ -719,13 +726,14 @@ impl Value {
             Value::FuncRef(Some(fr)) => writer.write_all(&fr.index.to_le_bytes()),
             Value::ExternRef(Some(er)) => writer.write_all(&er.index.to_le_bytes()),
             Value::Ref(r) => writer.write_all(&r.to_le_bytes()),
-            Value::FuncRef(None) | Value::ExternRef(None) => {
+            Value::FuncRef(None) | Value::ExternRef(None) | Value::ExnRef(None) => {
                 // Null reference, often represented as a specific integer pattern (e.g., all
                 // ones or zero) For now, let's serialize as 0, assuming it
                 // represents null. This needs to align with deserialization and
                 // runtime expectations.
                 writer.write_all(&0u32.to_le_bytes())
             },
+            Value::ExnRef(Some(idx)) => writer.write_all(&idx.to_le_bytes()),
             Value::StructRef(Some(s)) => writer.write_all(&s.type_index.to_le_bytes()),
             Value::StructRef(None) => writer.write_all(&0u32.to_le_bytes()),
             Value::ArrayRef(Some(a)) => writer.write_all(&a.type_index.to_le_bytes()),
@@ -839,6 +847,10 @@ impl Value {
                 // These require more complex GC-aware deserialization
                 Ok(Value::ArrayRef(None))
             },
+            ValueType::ExnRef => {
+                // Exception references not yet supported for byte deserialization
+                Ok(Value::ExnRef(None))
+            },
         }
     }
 }
@@ -855,6 +867,8 @@ impl fmt::Display for Value {
             Value::FuncRef(None) => write!(f, "funcref:null"),
             Value::ExternRef(Some(v)) => write!(f, "externref:{}", v.index),
             Value::ExternRef(None) => write!(f, "externref:null"),
+            Value::ExnRef(Some(v)) => write!(f, "exnref:{v}"),
+            Value::ExnRef(None) => write!(f, "exnref:null"),
             Value::Ref(v) => write!(f, "ref:{v}"),
             Value::I16x8(v) => write!(f, "i16x8:{v:?}"),
             Value::StructRef(Some(v)) => write!(f, "structref:type{}", v.type_index),
@@ -1038,6 +1052,7 @@ impl Checksummable for Value {
             Value::V128(_) => 4u8,
             Value::FuncRef(_) => 5u8,
             Value::ExternRef(_) => 6u8,
+            Value::ExnRef(_) => 35u8,   // Exception reference
             Value::Ref(_) => 7u8,       // Generic Ref
             Value::I16x8(_) => 8u8,     // I16x8, distinct from V128 for checksum
             Value::StructRef(_) => 9u8, // Struct reference
@@ -1131,6 +1146,7 @@ impl Checksummable for Value {
                 h.update_checksum(checksum);
             },
             Value::Void => {},
+            Value::ExnRef(v) => v.update_checksum(checksum),
         }
     }
 }
@@ -1147,6 +1163,7 @@ impl ToBytes for Value {
             // FuncRef: 1 byte for Some/None flag, + 4 bytes for index if Some
             Value::FuncRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::ExternRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::ExnRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::Ref(_) => 4,
             Value::StructRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::ArrayRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
@@ -1211,6 +1228,7 @@ impl ToBytes for Value {
             Value::Void => 32u8,
             Value::Stream(_) => 33u8,
             Value::Future(_) => 34u8,
+            Value::ExnRef(_) => 35u8,
         };
         writer.write_u8(discriminant)?;
 
@@ -1271,6 +1289,13 @@ impl ToBytes for Value {
                 writer.write_u32_le(*h)?;
             },
             Value::Void => {},
+            Value::ExnRef(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    writer.write_u32_le(*v)?;
+                }
+            },
         }
         Ok(())
     }
@@ -1380,6 +1405,16 @@ impl FromBytes for Value {
                 // Future handle
                 let h = reader.read_u32_le()?;
                 Ok(Value::Future(h))
+            },
+            35 => {
+                // ExnRef
+                let flag = reader.read_u8()?;
+                if flag != 0 {
+                    let idx = reader.read_u32_le()?;
+                    Ok(Value::ExnRef(Some(idx)))
+                } else {
+                    Ok(Value::ExnRef(None))
+                }
             },
             _ => Err(Error::runtime_execution_error(
                 "Unknown discriminant byte in Value deserialization",

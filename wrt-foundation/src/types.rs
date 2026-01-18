@@ -206,6 +206,8 @@ pub enum ValueType {
     StructRef(u32), // type index
     /// Array reference (WebAssembly 3.0 GC)
     ArrayRef(u32), // type index
+    /// Exception reference (Exception Handling proposal)
+    ExnRef,
 }
 
 impl core::fmt::Debug for ValueType {
@@ -222,6 +224,7 @@ impl core::fmt::Debug for ValueType {
             Self::ExternRef => write!(f, "ExternRef"),
             Self::StructRef(idx) => f.debug_tuple("StructRef").field(idx).finish(),
             Self::ArrayRef(idx) => f.debug_tuple("ArrayRef").field(idx).finish(),
+            Self::ExnRef => write!(f, "ExnRef"),
         }
     }
 }
@@ -244,6 +247,7 @@ impl ValueType {
             0x79 => Ok(ValueType::I16x8),
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
+            0x69 => Ok(ValueType::ExnRef),
             _ => Err(Error::runtime_execution_error("Invalid value type byte")),
         }
     }
@@ -259,8 +263,9 @@ impl ValueType {
             0x79 => Ok(ValueType::I16x8),
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
-            0x6E => Ok(ValueType::StructRef(type_index)), // New: struct reference
-            0x6D => Ok(ValueType::ArrayRef(type_index)),  // New: array reference
+            0x69 => Ok(ValueType::ExnRef),
+            0x6E => Ok(ValueType::StructRef(type_index)), // GC: struct reference
+            0x6D => Ok(ValueType::ArrayRef(type_index)),  // GC: array reference
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
@@ -284,6 +289,7 @@ impl ValueType {
             ValueType::I16x8 => 0x79,
             ValueType::FuncRef => 0x70,
             ValueType::ExternRef => 0x6F,
+            ValueType::ExnRef => 0x69,
             ValueType::StructRef(_) => 0x6E,
             ValueType::ArrayRef(_) => 0x6D,
         }
@@ -305,7 +311,7 @@ impl ValueType {
             Self::I32 | Self::F32 => 4,
             Self::I64 | Self::F64 => 8,
             Self::V128 | Self::I16x8 => 16, // COMBINED ARMS
-            Self::FuncRef | Self::ExternRef | Self::StructRef(_) | Self::ArrayRef(_) => {
+            Self::FuncRef | Self::ExternRef | Self::ExnRef | Self::StructRef(_) | Self::ArrayRef(_) => {
                 // Size of a reference can vary. Using usize for simplicity.
                 // In a real scenario, this might depend on target architecture (32/64 bit).
                 core::mem::size_of::<usize>()
@@ -462,6 +468,158 @@ impl TryFrom<ValueType> for RefType {
 pub const MAX_FUNC_TYPE_PARAMS: usize = MAX_PARAMS_IN_FUNC_TYPE; // Use the new constant
 /// Maximum number of results allowed in a function type by this implementation.
 pub const MAX_FUNC_TYPE_RESULTS: usize = MAX_RESULTS_IN_FUNC_TYPE; // Use the new constant
+
+/// Maximum number of catch handlers in a try_table instruction
+pub const MAX_CATCH_HANDLERS: usize = 64;
+
+/// Exception tag type for WebAssembly Exception Handling proposal
+///
+/// Tags define the signature of exceptions. Each tag has an associated
+/// function type that describes the exception's payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct TagType {
+    /// The attribute byte (must be 0 for exception tags)
+    pub attribute: u8,
+    /// Index into the type section defining the exception signature
+    pub type_idx: TypeIdx,
+}
+
+impl TagType {
+    /// Create a new tag type with the given type index
+    #[must_use]
+    pub const fn new(type_idx: TypeIdx) -> Self {
+        Self {
+            attribute: 0, // Exception attribute
+            type_idx,
+        }
+    }
+}
+
+impl Checksummable for TagType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update(self.attribute);
+        checksum.update_slice(&self.type_idx.to_le_bytes());
+    }
+}
+
+impl ToBytes for TagType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        writer.write_u8(self.attribute)?;
+        writer.write_u32_le(self.type_idx)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> wrt_error::Result<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for TagType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let attribute = reader.read_u8()?;
+        let type_idx = reader.read_u32_le()?;
+        Ok(Self { attribute, type_idx })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> wrt_error::Result<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+/// Catch handler clause for try_table instruction
+///
+/// Defines how to handle exceptions in a try_table block.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CatchHandler {
+    /// Catch exceptions with a specific tag, branch to label
+    Catch {
+        /// Tag index to match
+        tag_idx: TagIdx,
+        /// Label to branch to when caught
+        label: LabelIdx,
+    },
+    /// Catch exceptions with a specific tag, push exnref, branch to label
+    CatchRef {
+        /// Tag index to match
+        tag_idx: TagIdx,
+        /// Label to branch to when caught
+        label: LabelIdx,
+    },
+    /// Catch all exceptions, branch to label
+    CatchAll {
+        /// Label to branch to when caught
+        label: LabelIdx,
+    },
+    /// Catch all exceptions, push exnref, branch to label
+    CatchAllRef {
+        /// Label to branch to when caught
+        label: LabelIdx,
+    },
+}
+
+impl CatchHandler {
+    /// Get the label this handler branches to
+    #[must_use]
+    pub const fn label(&self) -> LabelIdx {
+        match self {
+            Self::Catch { label, .. }
+            | Self::CatchRef { label, .. }
+            | Self::CatchAll { label }
+            | Self::CatchAllRef { label } => *label,
+        }
+    }
+
+    /// Get the tag index if this is a tag-specific handler
+    #[must_use]
+    pub const fn tag_idx(&self) -> Option<TagIdx> {
+        match self {
+            Self::Catch { tag_idx, .. } | Self::CatchRef { tag_idx, .. } => Some(*tag_idx),
+            Self::CatchAll { .. } | Self::CatchAllRef { .. } => None,
+        }
+    }
+
+    /// Returns true if this handler captures the exception reference
+    #[must_use]
+    pub const fn captures_exnref(&self) -> bool {
+        matches!(self, Self::CatchRef { .. } | Self::CatchAllRef { .. })
+    }
+}
+
+impl Checksummable for CatchHandler {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            Self::Catch { tag_idx, label } => {
+                checksum.update(0x00);
+                checksum.update_slice(&tag_idx.to_le_bytes());
+                checksum.update_slice(&label.to_le_bytes());
+            }
+            Self::CatchRef { tag_idx, label } => {
+                checksum.update(0x01);
+                checksum.update_slice(&tag_idx.to_le_bytes());
+                checksum.update_slice(&label.to_le_bytes());
+            }
+            Self::CatchAll { label } => {
+                checksum.update(0x02);
+                checksum.update_slice(&label.to_le_bytes());
+            }
+            Self::CatchAllRef { label } => {
+                checksum.update(0x03);
+                checksum.update_slice(&label.to_le_bytes());
+            }
+        }
+    }
+}
 
 /// Represents the type of a WebAssembly function.
 ///
@@ -2577,6 +2735,8 @@ pub enum ImportDesc<P: MemoryProvider + PartialEq + Eq> {
     Memory(MemoryType), // Uses locally defined MemoryType
     /// An imported global.
     Global(GlobalType), // Uses locally defined GlobalType
+    /// An imported tag (exception handling).
+    Tag(TagType),
     /// An imported external value (used in component model).
     Extern(ExternTypePlaceholder), // Using placeholder
     /// An imported resource (used in component model).
@@ -2604,12 +2764,16 @@ impl<P: MemoryProvider + PartialEq + Eq> Checksummable for ImportDesc<P> {
                 checksum.update(3);
                 gt.update_checksum(checksum);
             },
-            ImportDesc::Extern(etp) => {
+            ImportDesc::Tag(tag) => {
                 checksum.update(4);
+                tag.update_checksum(checksum);
+            },
+            ImportDesc::Extern(etp) => {
+                checksum.update(5);
                 etp.update_checksum(checksum);
             },
             ImportDesc::Resource(rtp) => {
-                checksum.update(5);
+                checksum.update(6);
                 rtp.update_checksum(checksum);
             },
             ImportDesc::_Phantom(_) => { /* No checksum update for phantom data */ },
@@ -2646,12 +2810,16 @@ impl<P: MemoryProvider + PartialEq + Eq> ToBytes for ImportDesc<P> {
                 writer.write_u8(3)?; // Tag for Global
                 gt.to_bytes_with_provider(writer, provider)?;
             },
+            ImportDesc::Tag(tag) => {
+                writer.write_u8(4)?; // Tag for Tag (exception)
+                tag.to_bytes_with_provider(writer, provider)?;
+            },
             ImportDesc::Extern(et) => {
-                writer.write_u8(4)?; // Tag for Extern
+                writer.write_u8(5)?; // Tag for Extern
                 et.to_bytes_with_provider(writer, provider)?;
             },
             ImportDesc::Resource(rt) => {
-                writer.write_u8(5)?; // Tag for Resource
+                writer.write_u8(6)?; // Tag for Resource
                 rt.to_bytes_with_provider(writer, provider)?;
             },
             ImportDesc::_Phantom(_) => {
@@ -2680,10 +2848,13 @@ impl<P: MemoryProvider + PartialEq + Eq> FromBytes for ImportDesc<P> {
             3 => Ok(ImportDesc::Global(GlobalType::from_bytes_with_provider(
                 reader, provider,
             )?)),
-            4 => Ok(ImportDesc::Extern(
+            4 => Ok(ImportDesc::Tag(TagType::from_bytes_with_provider(
+                reader, provider,
+            )?)),
+            5 => Ok(ImportDesc::Extern(
                 ExternTypePlaceholder::from_bytes_with_provider(reader, provider)?,
             )),
-            5 => Ok(ImportDesc::Resource(
+            6 => Ok(ImportDesc::Resource(
                 ResourceTypePlaceholder::from_bytes_with_provider(reader, provider)?,
             )),
             255 => Ok(ImportDesc::_Phantom(core::marker::PhantomData)),
