@@ -513,6 +513,27 @@ impl WrtdEngine {
                         );
                     }
                 }
+
+                // Pre-allocate WASI args memory using cabi_realloc
+                // This is required before calling get-arguments or get-environment
+                #[cfg(feature = "wasi")]
+                match instance.pre_allocate_wasi_args() {
+                    Ok(()) => {
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Info,
+                            "Pre-allocated WASI args via cabi_realloc"
+                        );
+                    }
+                    Err(e) => {
+                        // Log but don't fail - component may not use get-arguments
+                        #[cfg(feature = "std")]
+                        eprintln!("[WARN] Failed to pre-allocate WASI args: {}", e);
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Warn,
+                            "Failed to pre-allocate WASI args"
+                        );
+                    }
+                }
             }
 
             let _ = self.logger.handle_minimal_log(

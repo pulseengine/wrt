@@ -1445,4 +1445,18 @@ pub trait HostImportHandler: Send + Sync {
         args: &[crate::Value],
         memory: Option<&dyn MemoryAccessor>,
     ) -> Result<Vec<crate::Value>>;
+
+    /// Set pre-allocated memory pointers for WASI arguments
+    ///
+    /// This is called after cabi_realloc has allocated memory for get-arguments.
+    /// The pointers should be used when get-arguments is subsequently called.
+    ///
+    /// # Arguments
+    /// * `list_ptr` - Pointer to the list<string> structure
+    /// * `string_data_ptr` - Pointer to the string data area
+    ///
+    /// Default implementation does nothing (for non-WASI handlers).
+    fn set_args_allocation(&mut self, _list_ptr: u32, _string_data_ptr: u32) {
+        // Default no-op for handlers that don't need this
+    }
 }

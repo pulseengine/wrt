@@ -294,12 +294,22 @@ impl WasiDispatcher {
 
     /// Create a dispatcher with default (full) capabilities
     ///
+    /// Automatically populates args and environment from global state
+    /// (set via `set_global_wasi_args` and `set_global_wasi_env`).
+    ///
     /// # Errors
     ///
     /// Returns an error if default capabilities cannot be created or the
     /// resource manager fails to initialize.
     pub fn with_defaults() -> Result<Self> {
-        Self::new(WasiCapabilities::system_utility()?)
+        let mut dispatcher = Self::new(WasiCapabilities::system_utility()?)?;
+        // Populate from global state
+        #[cfg(feature = "std")]
+        {
+            dispatcher.args = get_global_wasi_args();
+            dispatcher.env_vars = get_global_wasi_env();
+        }
+        Ok(dispatcher)
     }
 
     /// Create a dispatcher with arguments
@@ -1649,6 +1659,92 @@ impl WasiDispatcher {
                 }
             }
 
+            // [method]output-stream.write - non-blocking write (may be partial)
+            #[cfg(feature = "wasi-io")]
+            ("wasi:io/streams", "[method]output-stream.write" | "output-stream.write") => {
+                #[cfg(feature = "tracing")]
+                trace!(args = ?args, has_memory = memory.is_some(), "output-stream.write dispatch");
+
+                // Args: handle (i32), data_ptr (i32), data_len (i32), retptr (i32)
+                // Returns result<u64, stream-error> via retptr
+                if args.len() < 3 {
+                    return Err(Error::wasi_invalid_argument("output-stream.write requires 3+ args"));
+                }
+
+                let handle = match &args[0] {
+                    CoreValue::I32(h) => *h as u32,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid handle type")),
+                };
+
+                let data_ptr = match &args[1] {
+                    CoreValue::I32(p) => *p as u32,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid ptr type")),
+                };
+
+                let data_len = match &args[2] {
+                    CoreValue::I32(l) => *l as u32,
+                    _ => return Err(Error::wasi_invalid_argument("Invalid len type")),
+                };
+
+                let retptr = if args.len() >= 4 {
+                    match &args[3] {
+                        CoreValue::I32(p) => Some(*p as u32),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+
+                #[cfg(feature = "std")]
+                {
+                    let mem = memory.ok_or_else(|| Error::wasi_invalid_argument("write requires memory"))?;
+
+                    // Read data from memory
+                    let mut data = vec![0u8; data_len as usize];
+                    mem.read_bytes(data_ptr, &mut data)?;
+
+                    // Look up resource and write
+                    let resource = self.resource_manager.get_resource(handle)?;
+                    let bytes_written = match resource.resource_type() {
+                        crate::host_provider::resource_manager::WasiResourceType::OutputStream { name, .. } => {
+                            let name_str = name.as_str().unwrap_or("unknown");
+                            match name_str {
+                                "stdout" => {
+                                    use std::io::Write;
+                                    std::io::stdout().write(&data).unwrap_or(0)
+                                }
+                                "stderr" => {
+                                    use std::io::Write;
+                                    std::io::stderr().write(&data).unwrap_or(0)
+                                }
+                                _ => data.len(), // Treat as sink
+                            }
+                        }
+                        _ => return Err(Error::wasi_invalid_fd("Handle is not an output stream")),
+                    };
+
+                    // Write result<u64, stream-error> to retptr
+                    if let Some(rp) = retptr {
+                        // discriminant 0 = ok, followed by u64 bytes written
+                        mem.write_bytes(rp, &0u32.to_le_bytes())?;
+                        mem.write_bytes(rp + 8, &(bytes_written as u64).to_le_bytes())?;
+                    }
+
+                    Ok(vec![])
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    if let Some(rp) = retptr {
+                        if let Some(mem) = memory {
+                            mem.write_bytes(rp, &0u32.to_le_bytes())?;
+                            mem.write_bytes(rp + 8, &(data_len as u64).to_le_bytes())?;
+                        }
+                    }
+                    Ok(vec![])
+                }
+            }
+
             #[cfg(feature = "wasi-io")]
             ("wasi:io/streams", "[method]output-stream.blocking-flush" | "output-stream.blocking-flush") => {
                 #[cfg(feature = "std")]
@@ -1697,6 +1793,27 @@ impl WasiDispatcher {
                         Ok(vec![])
                     } else {
                         Err(Error::runtime_error("Component exited with failure"))
+                    }
+                }
+            }
+
+            // WASI Preview1 proc_exit - used by some components for exit
+            ("wasi_snapshot_preview1", "proc_exit") => {
+                let exit_code = match args.first() {
+                    Some(CoreValue::I32(code)) => *code,
+                    _ => 0,
+                };
+
+                #[cfg(feature = "std")]
+                {
+                    std::process::exit(exit_code);
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    if exit_code == 0 {
+                        Ok(vec![])
+                    } else {
+                        Err(Error::runtime_error("Component exited with non-zero status"))
                     }
                 }
             }
@@ -1943,6 +2060,9 @@ impl WasiDispatcher {
             _ => {
                 #[cfg(feature = "tracing")]
                 warn!(interface = %base_interface, function = %function, "unknown WASI function (core)");
+
+                #[cfg(feature = "std")]
+                eprintln!("[WASI-UNKNOWN] interface='{}' function='{}'", base_interface, function);
 
                 Err(Error::runtime_not_implemented("Unknown WASI function"))
             }
@@ -2251,6 +2371,10 @@ impl wrt_foundation::HostImportHandler for WasiDispatcher {
     ) -> Result<Vec<wrt_foundation::Value>> {
         // Delegate to dispatch_core with MemoryAccessor
         self.dispatch_core(module, function, args, memory)
+    }
+
+    fn set_args_allocation(&mut self, list_ptr: u32, string_data_ptr: u32) {
+        self.set_args_alloc(list_ptr, string_data_ptr);
     }
 }
 

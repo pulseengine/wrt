@@ -8816,11 +8816,10 @@ impl StacklessEngine {
     /// Ok(()) if successful, Err if allocation fails
     #[cfg(feature = "wasi")]
     pub fn pre_allocate_wasi_args(&mut self, instance_id: usize) -> Result<()> {
-        // Get args from dispatcher
-        let args: Vec<String> = self.wasi_dispatcher
-            .as_ref()
-            .map(|d| d.args().to_vec())
-            .unwrap_or_default();
+        // Get args from global state (set by wrtd before execution)
+        // This is more reliable than using internal dispatcher since it
+        // ensures we use the same args that will be returned by get-arguments
+        let args: Vec<String> = wrt_wasi::get_global_wasi_args();
 
         if args.is_empty() {
             #[cfg(feature = "tracing")]
@@ -8845,10 +8844,18 @@ impl StacklessEngine {
                     "[WASI-PREALLOC] Allocated successfully"
                 );
 
-                // Store in dispatcher
+                // Store in internal dispatcher (for backwards compatibility)
                 if let Some(ref mut dispatcher) = self.wasi_dispatcher {
                     dispatcher.set_args_alloc(list_ptr, string_ptr);
                 }
+
+                // CRITICAL: Also set on host_handler (the actual dispatch target)
+                // This is the dispatcher that receives get-arguments calls
+                #[cfg(feature = "std")]
+                if let Some(ref mut handler) = self.host_handler {
+                    handler.set_args_allocation(list_ptr, string_ptr);
+                }
+
                 Ok(())
             }
             None => {

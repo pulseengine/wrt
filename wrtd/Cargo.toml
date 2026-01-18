@@ -72,7 +72,7 @@ tracing = [
 ]
 
 # WASI support features
-wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2", "wrt-wasi/std", "wrt-runtime/wasi"]
+wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2", "wrt-wasi/std", "wrt-runtime/wasi", "wrt-component?/wasi"]
 wasi-filesystem = ["wasi", "wrt-wasi/wasi-filesystem"]
 wasi-cli = ["wasi", "wrt-wasi/wasi-cli"]
 wasi-clocks = ["wasi", "wrt-wasi/wasi-clocks"]

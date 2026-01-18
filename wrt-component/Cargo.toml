@@ -53,6 +53,9 @@ std = [
 # WRT execution engine support (enables host function registry integration)
 wrt-execution = []
 
+# WASI support (enables WASI-specific methods like pre_allocate_wasi_args)
+wasi = ["wrt-runtime/wasi"]
+
 # Allocation support for no_std environments (DEPRECATED - use bounded-allocation instead)
 alloc = [
     "bounded-allocation",
