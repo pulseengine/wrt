@@ -40,7 +40,7 @@ impl MockMemory {
 }
 
 impl MemoryOperations for MockMemory {
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
+    fn read_bytes(&self, offset: u64, len: u64) -> Result<Vec<u8>> {
         let start = offset as usize;
         let end = start + len as usize;
         if end > self.data.len() {
@@ -49,7 +49,7 @@ impl MemoryOperations for MockMemory {
         Ok(self.data[start..end].to_vec())
     }
 
-    fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
+    fn write_bytes(&mut self, offset: u64, bytes: &[u8]) -> Result<()> {
         let start = offset as usize;
         let end = start + bytes.len();
 
@@ -63,17 +63,17 @@ impl MemoryOperations for MockMemory {
         Ok(())
     }
 
-    fn size_in_bytes(&self) -> Result<usize> {
-        Ok(self.data.len())
+    fn size_in_bytes(&self) -> Result<u64> {
+        Ok(self.data.len() as u64)
     }
 
-    fn grow(&mut self, bytes: usize) -> Result<()> {
-        let new_size = self.data.len() + bytes;
+    fn grow(&mut self, bytes: u64) -> Result<()> {
+        let new_size = self.data.len() + bytes as usize;
         self.data.resize(new_size, 0);
         Ok(())
     }
 
-    fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
+    fn fill(&mut self, offset: u64, value: u8, size: u64) -> Result<()> {
         let start = offset as usize;
         let end = start + size as usize;
 
@@ -89,9 +89,9 @@ impl MemoryOperations for MockMemory {
         Ok(())
     }
 
-    fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
+    fn copy(&mut self, dest: u64, src: u64, size: u64) -> Result<()> {
         if dest == src || size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         let dest_start = dest as usize;

@@ -244,6 +244,20 @@ fn parse_instruction_with_provider(
             consumed += table_bytes;
             Instruction::CallIndirect(type_idx, table_idx)
         },
+        0x12 => {
+            // ReturnCall (tail-call extension): func_idx (LEB128 u32)
+            let (func_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::ReturnCall(func_idx)
+        },
+        0x13 => {
+            // ReturnCallIndirect (tail-call extension): type_idx (LEB128 u32) followed by table_idx (LEB128 u32)
+            let (type_idx, type_bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += type_bytes;
+            let (table_idx, table_bytes) = read_leb128_u32(bytecode, offset + 1 + type_bytes)?;
+            consumed += table_bytes;
+            Instruction::ReturnCallIndirect(type_idx, table_idx)
+        },
 
         // Parametric instructions
         0x1A => Instruction::Drop,

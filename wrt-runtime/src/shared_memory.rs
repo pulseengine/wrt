@@ -261,9 +261,13 @@ impl SharedMemoryInstance {
         let memory_size = memory.size_in_bytes()?;
         let memory_base = core::ptr::null_mut(); // Safe placeholder - actual memory access via MemoryOperations trait
 
+        // Convert u64 to usize for SafeAtomicMemoryContext (which uses platform-native sizes)
+        let memory_size_usize = usize::try_from(memory_size)
+            .map_err(|_| Error::memory_out_of_bounds("Memory size exceeds platform capacity"))?;
+
         let atomic_context = SafeAtomicMemoryContext::new(
             memory_base,
-            memory_size,
+            memory_size_usize,
             thread_manager,
             capability_context,
         )?;
@@ -395,8 +399,8 @@ impl SharedMemoryInstance {
                 let mut memory = self.memory.write();
 
                 let current_size = memory.size_in_bytes()?;
-                let page_size = 65536; // WebAssembly page size
-                let new_bytes = (delta_pages as usize) * page_size;
+                let page_size: u64 = 65536; // WebAssembly page size
+                let new_bytes = u64::from(delta_pages) * page_size;
 
                 memory.grow(new_bytes)?;
                 let new_pages = (current_size / page_size) as i32;

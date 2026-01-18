@@ -128,6 +128,16 @@ use crate::preview2::io::{
     wasi_stream_write,
     wasi_stream_flush,
     wasi_stream_check_write,
+    wasi_poll_one_off,
+    wasi_drop_pollable,
+};
+
+// Terminal detection functions for C/C++ runtime support
+#[cfg(feature = "wasi-cli")]
+use crate::preview2::cli::{
+    wasi_get_terminal_stdin,
+    wasi_get_terminal_stdout,
+    wasi_get_terminal_stderr,
 };
 
 #[cfg(all(feature = "wasi-sockets", feature = "std"))]
@@ -447,6 +457,12 @@ impl WasiDispatcher {
                 Ok(vec![Value::U32(handle)])
             }
 
+            ("wasi:cli/stdin", "get-stdin") => {
+                // Preview2: dynamically allocate input-stream resource
+                let handle = self.resource_manager.create_input_stream("stdin")?;
+                Ok(vec![Value::U32(handle)])
+            }
+
             ("wasi:cli/environment", "get-arguments") => {
                 // Get args - prefer local args, fall back to global thread-local args
                 #[cfg(feature = "std")]
@@ -611,6 +627,46 @@ impl WasiDispatcher {
                     // For no_std, return a simplified value
                     Ok(vec![Value::U32(0)]) // Empty string representation
                 }
+            }
+
+            // ================================================================
+            // wasi:io/poll - Polling interfaces for async I/O
+            // ================================================================
+
+            #[cfg(feature = "wasi-io")]
+            ("wasi:io/poll", "poll") => {
+                wasi_poll_one_off(&mut (), &args)
+            }
+
+            #[cfg(feature = "wasi-io")]
+            ("wasi:io/poll", "[method]pollable.block" | "pollable.block") => {
+                // Block on a single pollable - just poll it
+                wasi_poll_one_off(&mut (), &args)
+            }
+
+            #[cfg(feature = "wasi-io")]
+            ("wasi:io/poll", "[resource-drop]pollable") => {
+                wasi_drop_pollable(&mut (), &args)
+            }
+
+            // ================================================================
+            // wasi:cli/terminal-* - Terminal detection interfaces
+            // Required by C/C++ runtime libraries for buffering decisions
+            // ================================================================
+
+            #[cfg(feature = "wasi-cli")]
+            ("wasi:cli/terminal-stdin", "get-terminal-stdin") => {
+                wasi_get_terminal_stdin(&mut (), args.to_vec())
+            }
+
+            #[cfg(feature = "wasi-cli")]
+            ("wasi:cli/terminal-stdout", "get-terminal-stdout") => {
+                wasi_get_terminal_stdout(&mut (), args.to_vec())
+            }
+
+            #[cfg(feature = "wasi-cli")]
+            ("wasi:cli/terminal-stderr", "get-terminal-stderr") => {
+                wasi_get_terminal_stderr(&mut (), args.to_vec())
             }
 
             // ================================================================
@@ -1116,6 +1172,12 @@ impl WasiDispatcher {
                 Ok(vec![CoreValue::I32(handle as i32)])
             }
 
+            ("wasi:cli/stdin", "get-stdin") => {
+                // Preview2: dynamically allocate input-stream resource
+                let handle = self.resource_manager.create_input_stream("stdin")?;
+                Ok(vec![CoreValue::I32(handle as i32)])
+            }
+
             // Environment functions
             ("wasi:cli/environment", "get-arguments") => {
                 // Canonical ABI for list<string> return:
@@ -1249,6 +1311,88 @@ impl WasiDispatcher {
                 // Similar to get-arguments but for env vars
                 // For now, return empty list
                 Ok(vec![CoreValue::I32(0), CoreValue::I32(0)])
+            }
+
+            // ================================================================
+            // wasi:cli/terminal-* - Terminal detection interfaces
+            // ================================================================
+            // C/C++ runtime needs these to determine buffering behavior
+
+            ("wasi:cli/terminal-stdin", "get-terminal-stdin") => {
+                // Return option<terminal-input> - None means not a terminal
+                // For CLI execution, return None (discriminant 0)
+                Ok(vec![CoreValue::I32(0)])
+            }
+
+            ("wasi:cli/terminal-stdout", "get-terminal-stdout") => {
+                // Return option<terminal-output> - None means not a terminal
+                // For CLI execution, return None (discriminant 0)
+                Ok(vec![CoreValue::I32(0)])
+            }
+
+            ("wasi:cli/terminal-stderr", "get-terminal-stderr") => {
+                // Return option<terminal-output> - None means not a terminal
+                // For CLI execution, return None (discriminant 0)
+                Ok(vec![CoreValue::I32(0)])
+            }
+
+            // ================================================================
+            // wasi:io/poll - Async I/O polling interfaces
+            // ================================================================
+
+            ("wasi:io/poll", "poll") => {
+                // poll(pollables: list<borrow<pollable>>) -> list<u32>
+                // Returns indices of ready pollables
+                // For simple synchronous execution, return first item ready
+                // Args: list_ptr, list_len, retptr
+                if let Some(mem) = memory {
+                    let retptr = match args.get(2) {
+                        Some(CoreValue::I32(p)) => *p as u32,
+                        _ => return Ok(vec![]),
+                    };
+                    // Write empty list (0, 0) - all items "ready"
+                    mem.write_bytes(retptr, &0u32.to_le_bytes())?;
+                    mem.write_bytes(retptr + 4, &0u32.to_le_bytes())?;
+                }
+                Ok(vec![])
+            }
+
+            ("wasi:io/poll", "[method]pollable.block" | "pollable.block") => {
+                // block() -> void - block until pollable is ready
+                // For synchronous execution, return immediately
+                Ok(vec![])
+            }
+
+            ("wasi:io/poll", "[resource-drop]pollable") => {
+                // Drop pollable resource - no action needed for simple impl
+                Ok(vec![])
+            }
+
+            // ================================================================
+            // wasi:io/streams - Additional stream operations
+            // ================================================================
+
+            ("wasi:io/streams", "[method]output-stream.check-write" | "output-stream.check-write") => {
+                // check-write(self) -> result<u64, stream-error>
+                // Returns number of bytes that can be written without blocking
+                // Return large value to indicate ready for writes
+                // Args: handle, retptr
+                if let Some(mem) = memory {
+                    let retptr = match args.get(1) {
+                        Some(CoreValue::I32(p)) => *p as u32,
+                        _ => return Ok(vec![CoreValue::I64(65536)]),
+                    };
+                    // Write success discriminant (0) and capacity
+                    mem.write_bytes(retptr, &0u32.to_le_bytes())?;
+                    mem.write_bytes(retptr + 8, &65536u64.to_le_bytes())?;
+                }
+                Ok(vec![])
+            }
+
+            ("wasi:io/streams", "[method]output-stream.subscribe" | "output-stream.subscribe") => {
+                // subscribe(self) -> pollable
+                // Return a pollable handle (use 0 for simple impl)
+                Ok(vec![CoreValue::I32(0)])
             }
 
             // Clock functions
@@ -1717,6 +1861,85 @@ impl WasiDispatcher {
                 Ok(vec![CoreValue::I32(data.len() as i32)])
             }
 
+            // ================================================================
+            // wasi:random/* - Random number generation interfaces
+            // ================================================================
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/random", "get-random-bytes") => {
+                use wrt_platform::random::PlatformRandom;
+
+                // Check random capability
+                if !self.capabilities.random.secure_random {
+                    return Err(Error::wasi_permission_denied("Secure random access denied"));
+                }
+
+                #[cfg(feature = "tracing")]
+                trace!(args_len = args.len(), args = ?args, "get-random-bytes dispatch_core");
+
+                // WASI Preview2: get-random-bytes(len: u64) -> list<u8>
+                // Canonical ABI lowering: (len: i64, retptr: i32) or (len_lo: i32, len_hi: i32, retptr: i32)
+                // Parse based on argument count and types
+                let (len, retptr) = if args.len() >= 2 {
+                    match (&args[0], &args[1]) {
+                        // If first arg is i64, it's the length directly
+                        (CoreValue::I64(n), CoreValue::I32(p)) => {
+                            (*n as usize, *p as u32)
+                        }
+                        // If first arg is i32, check if second is also i32 (split u64 case)
+                        (CoreValue::I32(n), CoreValue::I32(p)) => {
+                            // Could be: (len_lo, retptr) with len_hi=0, or (len, retptr) direct
+                            // For practical purposes, treat single i32 as the length
+                            (*n as usize, *p as u32)
+                        }
+                        _ => return Err(Error::wasi_invalid_argument("get-random-bytes: invalid argument types")),
+                    }
+                } else {
+                    return Err(Error::wasi_invalid_argument("get-random-bytes: missing arguments"));
+                };
+
+                // Limit length to prevent OOM (WASI spec allows large values but we cap)
+                let len = len.min(1024 * 1024); // Cap at 1MB
+
+                if let Some(mem) = memory {
+                    // Generate random bytes
+                    let mut bytes = vec![0u8; len];
+                    PlatformRandom::get_secure_bytes(&mut bytes)
+                        .map_err(|_| Error::wasi_capability_unavailable("Random not available"))?;
+
+                    // Allocate and write bytes to memory
+                    // For now, write at a known offset after retptr and return (ptr, len)
+                    let data_ptr = retptr + 8; // After the (ptr, len) tuple
+                    mem.write_bytes(data_ptr, &bytes)?;
+
+                    // Write (ptr, len) to retptr
+                    mem.write_bytes(retptr, &data_ptr.to_le_bytes())?;
+                    mem.write_bytes(retptr + 4, &(len as u32).to_le_bytes())?;
+
+                    #[cfg(feature = "tracing")]
+                    trace!(len = len, data_ptr = data_ptr, retptr = retptr, "get-random-bytes complete");
+                }
+
+                Ok(vec![])
+            }
+
+            #[cfg(feature = "wasi-random")]
+            ("wasi:random/random", "get-random-u64") => {
+                use wrt_platform::random::PlatformRandom;
+
+                if !self.capabilities.random.secure_random {
+                    return Err(Error::wasi_permission_denied("Secure random access denied"));
+                }
+
+                // Generate 8 random bytes and convert to u64
+                let mut bytes = [0u8; 8];
+                PlatformRandom::get_secure_bytes(&mut bytes)
+                    .map_err(|_| Error::wasi_capability_unavailable("Random not available"))?;
+                let val = u64::from_le_bytes(bytes);
+
+                Ok(vec![CoreValue::I64(val as i64)])
+            }
+
             _ => {
                 #[cfg(feature = "tracing")]
                 warn!(interface = %base_interface, function = %function, "unknown WASI function (core)");
@@ -1762,6 +1985,55 @@ impl WasiDispatcher {
                 // Preview2: dynamically allocate output-stream resource
                 let handle = self.resource_manager.create_output_stream("stderr")?;
                 Ok(DispatchResult::Complete(vec![CoreValue::I32(handle as i32)]))
+            }
+
+            ("wasi:cli/stdin", "get-stdin") => {
+                // Preview2: dynamically allocate input-stream resource
+                let handle = self.resource_manager.create_input_stream("stdin")?;
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(handle as i32)]))
+            }
+
+            // Terminal detection interfaces - C/C++ runtime needs these
+            ("wasi:cli/terminal-stdin", "get-terminal-stdin") => {
+                // Return option<terminal-input> - None means not a terminal
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(0)]))
+            }
+
+            ("wasi:cli/terminal-stdout", "get-terminal-stdout") => {
+                // Return option<terminal-output> - None means not a terminal
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(0)]))
+            }
+
+            ("wasi:cli/terminal-stderr", "get-terminal-stderr") => {
+                // Return option<terminal-output> - None means not a terminal
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(0)]))
+            }
+
+            // Poll interfaces - async I/O support
+            ("wasi:io/poll", "poll") => {
+                // For synchronous execution, complete immediately
+                Ok(DispatchResult::Complete(vec![]))
+            }
+
+            ("wasi:io/poll", "[method]pollable.block" | "pollable.block") => {
+                // Block until ready - for sync, return immediately
+                Ok(DispatchResult::Complete(vec![]))
+            }
+
+            ("wasi:io/poll", "[resource-drop]pollable") => {
+                // Resource drop - no action needed
+                Ok(DispatchResult::Complete(vec![]))
+            }
+
+            // Stream operations
+            ("wasi:io/streams", "[method]output-stream.check-write" | "output-stream.check-write") => {
+                // Return large capacity to indicate ready for writes
+                Ok(DispatchResult::Complete(vec![CoreValue::I64(65536)]))
+            }
+
+            ("wasi:io/streams", "[method]output-stream.subscribe" | "output-stream.subscribe") => {
+                // Return a pollable handle
+                Ok(DispatchResult::Complete(vec![CoreValue::I32(0)]))
             }
 
             // get-arguments needs allocation for list<string>

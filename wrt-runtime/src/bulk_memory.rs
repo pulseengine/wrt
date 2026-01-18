@@ -467,7 +467,7 @@ struct EmptyMemory;
 
 impl MemoryOperations for EmptyMemory {
     #[cfg(feature = "std")]
-    fn read_bytes(&self, _offset: u32, _len: u32) -> Result<Vec<u8>> {
+    fn read_bytes(&self, _offset: u64, _len: u64) -> Result<Vec<u8>> {
         Err(Error::runtime_unsupported_operation(
             "EmptyMemory read not supported",
         ))
@@ -476,8 +476,8 @@ impl MemoryOperations for EmptyMemory {
     #[cfg(not(feature = "std"))]
     fn read_bytes(
         &self,
-        _offset: u32,
-        _len: u32,
+        _offset: u64,
+        _len: u64,
     ) -> Result<
         wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::safe_memory::NoStdProvider<65_536>>,
     > {
@@ -486,29 +486,29 @@ impl MemoryOperations for EmptyMemory {
         ))
     }
 
-    fn write_bytes(&mut self, _offset: u32, _bytes: &[u8]) -> Result<()> {
+    fn write_bytes(&mut self, _offset: u64, _bytes: &[u8]) -> Result<()> {
         Err(Error::runtime_unsupported_operation(
             "EmptyMemory write not supported",
         ))
     }
 
-    fn size_in_bytes(&self) -> Result<usize> {
+    fn size_in_bytes(&self) -> Result<u64> {
         Ok(0)
     }
 
-    fn grow(&mut self, _bytes: usize) -> Result<()> {
+    fn grow(&mut self, _bytes: u64) -> Result<()> {
         Err(Error::runtime_unsupported_operation(
             "EmptyMemory grow not supported",
         ))
     }
 
-    fn fill(&mut self, _offset: u32, _value: u8, _size: u32) -> Result<()> {
+    fn fill(&mut self, _offset: u64, _value: u8, _size: u64) -> Result<()> {
         Err(Error::runtime_unsupported_operation(
             "EmptyMemory fill not supported",
         ))
     }
 
-    fn copy(&mut self, _dest: u32, _src: u32, _size: u32) -> Result<()> {
+    fn copy(&mut self, _dest: u64, _src: u64, _size: u64) -> Result<()> {
         Err(Error::runtime_unsupported_operation(
             "EmptyMemory copy not supported",
         ))

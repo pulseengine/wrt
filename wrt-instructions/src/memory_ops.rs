@@ -92,6 +92,9 @@ use crate::{
 };
 
 /// Memory trait defining the requirements for memory operations
+///
+/// All offsets use `u64` to support Memory64 (WASM 3.0).
+/// For 32-bit memories, addresses are implicitly extended to 64-bit.
 pub trait MemoryOperations {
     /// Read bytes from memory
     ///
@@ -99,7 +102,7 @@ pub trait MemoryOperations {
     ///
     /// Returns an error if the read operation exceeds memory bounds
     #[cfg(feature = "std")]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
+    fn read_bytes(&self, offset: u64, len: u64) -> Result<Vec<u8>>;
 
     /// Read bytes from memory (`no_std` variant)
     ///
@@ -109,8 +112,8 @@ pub trait MemoryOperations {
     #[cfg(not(any(feature = "std",)))]
     fn read_bytes(
         &self,
-        offset: u32,
-        len: u32,
+        offset: u64,
+        len: u64,
     ) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>;
 
     /// Write bytes to memory
@@ -118,35 +121,35 @@ pub trait MemoryOperations {
     /// # Errors
     ///
     /// Returns an error if the write operation exceeds memory bounds
-    fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()>;
+    fn write_bytes(&mut self, offset: u64, bytes: &[u8]) -> Result<()>;
 
     /// Get the size of memory in bytes
     ///
     /// # Errors
     ///
     /// Returns an error if memory size cannot be determined
-    fn size_in_bytes(&self) -> Result<usize>;
+    fn size_in_bytes(&self) -> Result<u64>;
 
     /// Grow memory by the specified number of bytes
     ///
     /// # Errors
     ///
     /// Returns an error if memory cannot be grown by the specified amount
-    fn grow(&mut self, bytes: usize) -> Result<()>;
+    fn grow(&mut self, bytes: u64) -> Result<()>;
 
     /// Fill memory region with a byte value (bulk memory operation)
     ///
     /// # Errors
     ///
     /// Returns an error if the fill operation exceeds memory bounds
-    fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()>;
+    fn fill(&mut self, offset: u64, value: u8, size: u64) -> Result<()>;
 
     /// Copy memory region within the same memory (bulk memory operation)
     ///
     /// # Errors
     ///
     /// Returns an error if the copy operation exceeds memory bounds
-    fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()>;
+    fn copy(&mut self, dest: u64, src: u64, size: u64) -> Result<()>;
 }
 
 /// Memory load operation
@@ -154,8 +157,8 @@ pub trait MemoryOperations {
 pub struct MemoryLoad {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
-    /// Memory offset
-    pub offset:       u32,
+    /// Memory offset (u64 for Memory64 support)
+    pub offset:       u64,
     /// Required alignment
     pub align:        u32,
     /// Value type to load
@@ -171,8 +174,8 @@ pub struct MemoryLoad {
 pub struct MemoryStore {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
-    /// Memory offset
-    pub offset:       u32,
+    /// Memory offset (u64 for Memory64 support)
+    pub offset:       u64,
     /// Required alignment
     pub align:        u32,
     /// Value type to store
@@ -194,7 +197,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i32 values
     #[must_use]
-    pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
+    pub fn i32(memory_index: u32, offset: u64, align: u32) -> Self {
         Self {
             memory_index,
             offset,
@@ -216,7 +219,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i32 values from memory 0
     #[must_use]
-    pub fn i32_legacy(offset: u32, align: u32) -> Self {
+    pub fn i32_legacy(offset: u64, align: u32) -> Self {
         Self::i32(0, offset, align)
     }
 
@@ -231,7 +234,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i64 values
     #[must_use]
-    pub fn i64(offset: u32, align: u32) -> Self {
+    pub fn i64(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -253,7 +256,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for f32 values
     #[must_use]
-    pub fn f32(offset: u32, align: u32) -> Self {
+    pub fn f32(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -275,7 +278,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for f64 values
     #[must_use]
-    pub fn f64(offset: u32, align: u32) -> Self {
+    pub fn f64(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -298,7 +301,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i32 values loading from 8-bit memory
     #[must_use]
-    pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
+    pub fn i32_load8(offset: u64, align: u32, signed: bool) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -321,7 +324,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i32 values loading from 16-bit memory
     #[must_use]
-    pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
+    pub fn i32_load16(offset: u64, align: u32, signed: bool) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -344,7 +347,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i64 values loading from 8-bit memory
     #[must_use]
-    pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
+    pub fn i64_load8(offset: u64, align: u32, signed: bool) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -367,7 +370,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i64 values loading from 16-bit memory
     #[must_use]
-    pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
+    pub fn i64_load16(offset: u64, align: u32, signed: bool) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -390,7 +393,7 @@ impl MemoryLoad {
     ///
     /// A new `MemoryLoad` for i64 values loading from 32-bit memory
     #[must_use]
-    pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
+    pub fn i64_load32(offset: u64, align: u32, signed: bool) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -423,24 +426,26 @@ impl MemoryLoad {
         addr_arg: &Value,
     ) -> Result<Value> {
         // Extract address from argument
-        // Note: WebAssembly addresses are i32 but treated as unsigned for memory operations
+        // Note: WebAssembly addresses are i32/i64 but treated as unsigned for memory operations
+        // Memory64 uses i64 addresses, standard memory uses i32 addresses
         #[allow(clippy::cast_sign_loss)]
-        let addr = match addr_arg {
-            Value::I32(a) => *a as u32,
+        let addr: u64 = match addr_arg {
+            Value::I32(a) => u64::from(*a as u32),
+            Value::I64(a) => *a as u64,
             _ => {
                 return Err(Error::type_error(
-                    "Memory load expects I32 address, got unexpected value",
+                    "Memory load expects I32 or I64 address, got unexpected value",
                 ));
             },
         };
 
-        // Calculate effective address
+        // Calculate effective address (u64 for Memory64 support)
         let effective_addr = addr
             .checked_add(self.offset)
             .ok_or_else(|| Error::memory_error("Address overflow in memory load"))?;
 
         // Verify alignment if required - make configurable later
-        if self.align > 1 && effective_addr % self.align != 0 {
+        if self.align > 1 && effective_addr % u64::from(self.align) != 0 {
             return Err(Error::memory_error("Unaligned memory access"));
         }
 
@@ -654,7 +659,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for i32 values
     #[must_use]
-    pub fn i32(offset: u32, align: u32) -> Self {
+    pub fn i32(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -675,7 +680,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for i64 values
     #[must_use]
-    pub fn i64(offset: u32, align: u32) -> Self {
+    pub fn i64(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -696,7 +701,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for f32 values
     #[must_use]
-    pub fn f32(offset: u32, align: u32) -> Self {
+    pub fn f32(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -717,7 +722,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for f64 values
     #[must_use]
-    pub fn f64(offset: u32, align: u32) -> Self {
+    pub fn f64(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -738,7 +743,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for storing an i32 value as 8 bits
     #[must_use]
-    pub fn i32_store8(offset: u32, align: u32) -> Self {
+    pub fn i32_store8(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -759,7 +764,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for storing an i32 value as 16 bits
     #[must_use]
-    pub fn i32_store16(offset: u32, align: u32) -> Self {
+    pub fn i32_store16(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -780,7 +785,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for storing an i64 value as 8 bits
     #[must_use]
-    pub fn i64_store8(offset: u32, align: u32) -> Self {
+    pub fn i64_store8(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -801,7 +806,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for storing an i64 value as 16 bits
     #[must_use]
-    pub fn i64_store16(offset: u32, align: u32) -> Self {
+    pub fn i64_store16(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -822,7 +827,7 @@ impl MemoryStore {
     ///
     /// A new `MemoryStore` for storing an i64 value as 32 bits
     #[must_use]
-    pub fn i64_store32(offset: u32, align: u32) -> Self {
+    pub fn i64_store32(offset: u64, align: u32) -> Self {
         Self {
             memory_index: 0,
             offset,
@@ -850,22 +855,25 @@ impl MemoryStore {
         value: &Value,
     ) -> Result<()> {
         // Extract address from argument
-        let addr = match addr_arg {
-            Value::I32(a) => *a as u32,
+        // Memory64 uses i64 addresses, standard memory uses i32 addresses
+        #[allow(clippy::cast_sign_loss)]
+        let addr: u64 = match addr_arg {
+            Value::I32(a) => u64::from(*a as u32),
+            Value::I64(a) => *a as u64,
             _ => {
                 return Err(Error::type_error(
-                    "Memory store expects I32 address, got unexpected value",
+                    "Memory store expects I32 or I64 address, got unexpected value",
                 ));
             },
         };
 
-        // Calculate effective address
+        // Calculate effective address (u64 for Memory64 support)
         let effective_addr = addr
             .checked_add(self.offset)
             .ok_or_else(|| Error::memory_error("Address overflow in memory store"))?;
 
         // Verify alignment if required
-        if self.align > 1 && effective_addr % self.align != 0 {
+        if self.align > 1 && effective_addr % u64::from(self.align) != 0 {
             return Err(Error::memory_error("Unaligned memory access"));
         }
 
@@ -1000,10 +1008,12 @@ impl MemoryFill {
         value: &Value,
         size: &Value,
     ) -> Result<()> {
-        // Extract arguments
-        let dest_addr = match dest {
-            Value::I32(addr) => *addr as u32,
-            _ => return Err(Error::type_error("memory.fill dest must be i32")),
+        // Extract arguments - support both i32 and i64 addresses for Memory64
+        #[allow(clippy::cast_sign_loss)]
+        let dest_addr: u64 = match dest {
+            Value::I32(addr) => u64::from(*addr as u32),
+            Value::I64(addr) => *addr as u64,
+            _ => return Err(Error::type_error("memory.fill dest must be i32 or i64")),
         };
 
         let fill_byte = match value {
@@ -1011,9 +1021,11 @@ impl MemoryFill {
             _ => return Err(Error::type_error("memory.fill value must be i32")),
         };
 
-        let fill_size = match size {
-            Value::I32(sz) => *sz as u32,
-            _ => return Err(Error::type_error("memory.fill size must be i32")),
+        #[allow(clippy::cast_sign_loss)]
+        let fill_size: u64 = match size {
+            Value::I32(sz) => u64::from(*sz as u32),
+            Value::I64(sz) => *sz as u64,
+            _ => return Err(Error::type_error("memory.fill size must be i32 or i64")),
         };
 
         // Check for overflow
@@ -1022,7 +1034,7 @@ impl MemoryFill {
             .ok_or_else(|| Error::memory_error("memory.fill address overflow"))?;
 
         // Check bounds
-        let memory_size = memory.size_in_bytes()? as u32;
+        let memory_size = memory.size_in_bytes()?;
         if end_addr > memory_size {
             return Err(Error::memory_error("memory.fill out of bounds"));
         }
@@ -1062,20 +1074,26 @@ impl MemoryCopy {
         src: &Value,
         size: &Value,
     ) -> Result<()> {
-        // Extract arguments
-        let dest_addr = match dest {
-            Value::I32(addr) => *addr as u32,
-            _ => return Err(Error::type_error("memory.copy dest must be i32")),
+        // Extract arguments - support both i32 and i64 addresses for Memory64
+        #[allow(clippy::cast_sign_loss)]
+        let dest_addr: u64 = match dest {
+            Value::I32(addr) => u64::from(*addr as u32),
+            Value::I64(addr) => *addr as u64,
+            _ => return Err(Error::type_error("memory.copy dest must be i32 or i64")),
         };
 
-        let src_addr = match src {
-            Value::I32(addr) => *addr as u32,
-            _ => return Err(Error::type_error("memory.copy src must be i32")),
+        #[allow(clippy::cast_sign_loss)]
+        let src_addr: u64 = match src {
+            Value::I32(addr) => u64::from(*addr as u32),
+            Value::I64(addr) => *addr as u64,
+            _ => return Err(Error::type_error("memory.copy src must be i32 or i64")),
         };
 
-        let copy_size = match size {
-            Value::I32(sz) => *sz as u32,
-            _ => return Err(Error::type_error("memory.copy size must be i32")),
+        #[allow(clippy::cast_sign_loss)]
+        let copy_size: u64 = match size {
+            Value::I32(sz) => u64::from(*sz as u32),
+            Value::I64(sz) => *sz as u64,
+            _ => return Err(Error::type_error("memory.copy size must be i32 or i64")),
         };
 
         // Check for overflow
@@ -1088,7 +1106,7 @@ impl MemoryCopy {
             .ok_or_else(|| Error::memory_error("memory.copy src address overflow"))?;
 
         // Check bounds
-        let memory_size = memory.size_in_bytes()? as u32;
+        let memory_size = memory.size_in_bytes()?;
         if dest_end > memory_size || src_end > memory_size {
             return Err(Error::memory_error("memory.copy out of bounds"));
         }
@@ -1129,20 +1147,26 @@ impl MemoryInit {
         src: &Value,
         size: &Value,
     ) -> Result<()> {
-        // Extract arguments
-        let dest_addr = match dest {
-            Value::I32(addr) => *addr as u32,
-            _ => return Err(Error::type_error("memory.init dest must be i32")),
+        // Extract arguments - support both i32 and i64 addresses for Memory64
+        #[allow(clippy::cast_sign_loss)]
+        let dest_addr: u64 = match dest {
+            Value::I32(addr) => u64::from(*addr as u32),
+            Value::I64(addr) => *addr as u64,
+            _ => return Err(Error::type_error("memory.init dest must be i32 or i64")),
         };
 
-        let src_offset = match src {
+        // Source offset in data segment is always i32 (data segments are bounded)
+        #[allow(clippy::cast_sign_loss)]
+        let src_offset: u32 = match src {
             Value::I32(offset) => *offset as u32,
             _ => return Err(Error::type_error("memory.init src must be i32")),
         };
 
-        let copy_size = match size {
-            Value::I32(sz) => *sz as u32,
-            _ => return Err(Error::type_error("memory.init size must be i32")),
+        #[allow(clippy::cast_sign_loss)]
+        let copy_size: u64 = match size {
+            Value::I32(sz) => u64::from(*sz as u32),
+            Value::I64(sz) => *sz as u64,
+            _ => return Err(Error::type_error("memory.init size must be i32 or i64")),
         };
 
         // Get data segment
@@ -1150,9 +1174,9 @@ impl MemoryInit {
             .get_data_segment(self.data_index)?
             .ok_or_else(|| Error::memory_error("Data segment has been dropped"))?;
 
-        // Check bounds in data segment
-        let data_len = data.len() as u32;
-        let src_end = src_offset
+        // Check bounds in data segment (data segments are bounded by u32)
+        let data_len = data.len() as u64;
+        let src_end = u64::from(src_offset)
             .checked_add(copy_size)
             .ok_or_else(|| Error::memory_error("memory.init src offset overflow"))?;
 
@@ -1165,7 +1189,7 @@ impl MemoryInit {
             .checked_add(copy_size)
             .ok_or_else(|| Error::memory_error("memory.init dest address overflow"))?;
 
-        let memory_size = memory.size_in_bytes()? as u32;
+        let memory_size = memory.size_in_bytes()?;
         if dest_end > memory_size {
             return Err(Error::memory_error("memory.init dest out of bounds"));
         }
@@ -1178,12 +1202,13 @@ impl MemoryInit {
         }
         #[cfg(not(any(feature = "std",)))]
         {
-            // Binary std/no_std choice
-            for (i, offset) in (src_offset..src_end).enumerate() {
+            // Binary std/no_std choice - iterate byte by byte
+            for i in 0..copy_size {
+                let src_idx = src_offset as u64 + i;
                 let byte = data
-                    .get(offset as usize)
+                    .get(src_idx as usize)
                     .map_err(|_| Error::memory_error("Data segment index out of bounds"))?;
-                memory.write_bytes(dest_addr + i as u32, &[byte])?;
+                memory.write_bytes(dest_addr + i, &[byte])?;
             }
             Ok(())
         }
@@ -1237,13 +1262,27 @@ pub enum MemoryOp {
 pub struct MemorySize {
     /// Memory index (0 for MVP, but allows for multi-memory proposal)
     pub memory_index: u32,
+    /// Whether this is for a memory64 memory (returns i64 instead of i32)
+    pub memory64:     bool,
 }
 
 impl MemorySize {
-    /// Create a new memory size operation
+    /// Create a new memory size operation (32-bit memory)
     #[must_use]
     pub fn new(memory_index: u32) -> Self {
-        Self { memory_index }
+        Self {
+            memory_index,
+            memory64: false,
+        }
+    }
+
+    /// Create a new memory size operation for memory64
+    #[must_use]
+    pub fn new_memory64(memory_index: u32) -> Self {
+        Self {
+            memory_index,
+            memory64: true,
+        }
     }
 
     /// Execute memory.size operation
@@ -1254,15 +1293,20 @@ impl MemorySize {
     ///
     /// # Returns
     ///
-    /// The size of memory in pages (64KiB pages) as an i32 Value
+    /// The size of memory in pages (64KiB pages) - i32 for 32-bit memory, i64 for memory64
     ///
     /// # Errors
     ///
     /// Returns an error if memory size cannot be determined
     pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized)) -> Result<Value> {
         let size_in_bytes = memory.size_in_bytes()?;
-        let size_in_pages = (size_in_bytes / 65_536) as i32;
-        Ok(Value::I32(size_in_pages))
+        let size_in_pages = size_in_bytes / 65_536;
+
+        if self.memory64 {
+            Ok(Value::I64(size_in_pages as i64))
+        } else {
+            Ok(Value::I32(size_in_pages as i32))
+        }
     }
 }
 
@@ -1271,13 +1315,21 @@ impl MemorySize {
 pub struct MemoryGrow {
     /// Memory index (0 for MVP, but allows for multi-memory proposal)
     pub memory_index: u32,
+    /// Whether this is a memory64 operation (returns i64 instead of i32)
+    pub memory64:     bool,
 }
 
 impl MemoryGrow {
-    /// Create a new memory grow operation
+    /// Create a new memory grow operation (32-bit memory)
     #[must_use]
     pub fn new(memory_index: u32) -> Self {
-        Self { memory_index }
+        Self { memory_index, memory64: false }
+    }
+
+    /// Create a new memory grow operation with memory64 flag
+    #[must_use]
+    pub fn new_with_memory64(memory_index: u32, memory64: bool) -> Self {
+        Self { memory_index, memory64 }
     }
 
     /// Execute memory.grow operation
@@ -1285,45 +1337,71 @@ impl MemoryGrow {
     /// # Arguments
     ///
     /// * `memory` - The memory to grow
-    /// * `delta` - Number of pages to grow by (i32 value)
+    /// * `delta` - Number of pages to grow by (i32 for memory32, i64 for memory64)
     ///
     /// # Returns
     ///
-    /// The previous size in pages, or -1 if the operation failed (as i32 Value)
+    /// The previous size in pages, or -1 if the operation failed.
+    /// Returns i32 for memory32, i64 for memory64.
     ///
     /// # Errors
     ///
-    /// Returns an error if the delta value is not i32 or memory size cannot be determined
+    /// Returns an error if the delta value type doesn't match the memory type
+    /// or memory size cannot be determined
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_wrap)]
     pub fn execute(
         &self,
         memory: &mut (impl MemoryOperations + ?Sized),
         delta: &Value,
     ) -> Result<Value> {
-        // Extract delta pages
-        let delta_pages = match delta {
-            Value::I32(pages) => *pages,
-            _ => return Err(Error::type_error("memory.grow delta must be i32")),
+        // Extract delta pages - accept i32 or i64 based on memory64 flag
+        let delta_pages: i64 = if self.memory64 {
+            match delta {
+                Value::I64(pages) => *pages,
+                Value::I32(pages) => i64::from(*pages), // Allow i32 for convenience
+                _ => return Err(Error::type_error("memory.grow delta must be i64 for memory64")),
+            }
+        } else {
+            match delta {
+                Value::I32(pages) => i64::from(*pages),
+                _ => return Err(Error::type_error("memory.grow delta must be i32")),
+            }
         };
 
         // Negative delta is not allowed
         if delta_pages < 0 {
-            return Ok(Value::I32(-1));
+            return if self.memory64 {
+                Ok(Value::I64(-1))
+            } else {
+                Ok(Value::I32(-1))
+            };
         }
 
         // Get current size in pages
         let current_size_bytes = memory.size_in_bytes()?;
-        let current_size_pages = (current_size_bytes / 65_536) as i32;
+        let current_size_pages = current_size_bytes / 65_536;
 
-        // Try to grow the memory
-        let delta_bytes = (delta_pages as usize) * 65_536;
-
-        // Check if growth would exceed limits
-        let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes);
+        // Calculate delta in bytes (u64 to handle memory64)
+        let delta_bytes = (delta_pages as u64) * 65_536;
 
         // Attempt to grow - this will fail if it exceeds max size
         match memory.grow(delta_bytes) {
-            Ok(()) => Ok(Value::I32(current_size_pages)),
-            Err(_) => Ok(Value::I32(-1)), // Growth failed, return -1
+            Ok(()) => {
+                if self.memory64 {
+                    Ok(Value::I64(current_size_pages as i64))
+                } else {
+                    Ok(Value::I32(current_size_pages as i32))
+                }
+            },
+            Err(_) => {
+                // Growth failed, return -1
+                if self.memory64 {
+                    Ok(Value::I64(-1))
+                } else {
+                    Ok(Value::I32(-1))
+                }
+            },
         }
     }
 }

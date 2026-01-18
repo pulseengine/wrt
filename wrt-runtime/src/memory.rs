@@ -2257,17 +2257,23 @@ impl MemoryAccessor for Memory {
 // MemorySafety trait implementation removed as it doesn't exist in
 // wrt-foundation
 
+/// Helper to convert u64 offset to usize, checking for overflow on 32-bit platforms
+#[inline]
+fn u64_to_usize(value: u64) -> Result<usize> {
+    usize::try_from(value).map_err(|_| Error::memory_out_of_bounds("Address exceeds platform capacity"))
+}
+
 impl MemoryOperations for Memory {
     #[cfg(feature = "std")]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
+    fn read_bytes(&self, offset: u64, len: u64) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
             return Ok(alloc::vec::Vec::new());
         }
 
         // Convert to usize and check for overflow
-        let offset_usize = wasm_offset_to_usize(offset)?;
-        let len_usize = wasm_offset_to_usize(len)?;
+        let offset_usize = u64_to_usize(offset)?;
+        let len_usize = u64_to_usize(len)?;
 
         // Verify bounds
         let end = offset_usize
@@ -2289,15 +2295,18 @@ impl MemoryOperations for Memory {
             }
             buf
         };
-        self.read(offset, &mut buffer)?;
+        // Convert back to u32 for the internal read method (which still uses u32)
+        let offset_u32 = u32::try_from(offset)
+            .map_err(|_| Error::memory_out_of_bounds("Offset exceeds u32 for internal read"))?;
+        self.read(offset_u32, &mut buffer)?;
         Ok(buffer)
     }
 
     #[cfg(not(any(feature = "std",)))]
     fn read_bytes(
         &self,
-        offset: u32,
-        len: u32,
+        offset: u64,
+        len: u64,
     ) -> Result<wrt_foundation::BoundedVec<u8, 65536, MediumMemoryProvider>> {
         // Handle zero-length reads
         if len == 0 {
@@ -2306,8 +2315,8 @@ impl MemoryOperations for Memory {
         }
 
         // Convert to usize and check for overflow
-        let offset_usize = wasm_offset_to_usize(offset)?;
-        let len_usize = wasm_offset_to_usize(len)?;
+        let offset_usize = u64_to_usize(offset)?;
+        let len_usize = u64_to_usize(len)?;
 
         // Verify bounds
         let end = offset_usize
@@ -2324,8 +2333,11 @@ impl MemoryOperations for Memory {
         )?;
 
         // Read data byte by byte to populate the bounded vector
+        // Convert offset to u32 for internal get_byte method
+        let offset_u32 = u32::try_from(offset)
+            .map_err(|_| Error::memory_out_of_bounds("Offset exceeds u32 for internal read"))?;
         for i in 0..len_usize {
-            let byte = self.get_byte(offset + i as u32)?;
+            let byte = self.get_byte(offset_u32 + i as u32)?;
             result
                 .push(byte)
                 .map_err(|_| Error::runtime_execution_error("Memory access failed"))?;
@@ -2334,42 +2346,46 @@ impl MemoryOperations for Memory {
         Ok(result)
     }
 
-    fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
+    fn write_bytes(&mut self, offset: u64, bytes: &[u8]) -> Result<()> {
+        // Convert offset to u32 for the internal write method
+        let offset_u32 = u32::try_from(offset)
+            .map_err(|_| Error::memory_out_of_bounds("Offset exceeds u32 for internal write"))?;
         // Delegate to the existing write method
-        self.write(offset, bytes)
+        self.write(offset_u32, bytes)
     }
 
-    fn size_in_bytes(&self) -> Result<usize> {
-        // Delegate to the existing method
-        Ok(Memory::size_in_bytes(self))
+    fn size_in_bytes(&self) -> Result<u64> {
+        // Delegate to the existing method and convert to u64
+        Ok(Memory::size_in_bytes(self) as u64)
     }
 
-    fn grow(&mut self, bytes: usize) -> Result<()> {
+    fn grow(&mut self, bytes: u64) -> Result<()> {
         // Convert bytes to pages (WebAssembly page size is 64KB)
-        let pages = bytes.div_ceil(PAGE_SIZE); // Ceiling division
+        let bytes_usize = u64_to_usize(bytes)?;
+        let pages = bytes_usize.div_ceil(PAGE_SIZE); // Ceiling division
 
         // Delegate to the existing grow method (which returns old page count)
         self.grow(pages as u32)?;
         Ok(())
     }
 
-    fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
-        // Delegate to the existing fill method
-        let offset_usize = wasm_offset_to_usize(offset)?;
-        let size_usize = wasm_offset_to_usize(size)?;
+    fn fill(&mut self, offset: u64, value: u8, size: u64) -> Result<()> {
+        // Convert to usize for the internal fill method
+        let offset_usize = u64_to_usize(offset)?;
+        let size_usize = u64_to_usize(size)?;
         self.fill(offset_usize, value, size_usize)
     }
 
-    fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
+    fn copy(&mut self, dest: u64, src: u64, size: u64) -> Result<()> {
         // For same-memory copy, we can use a simplified version of
         // copy_within_or_between
         if size == 0 {
             return Ok(());
         }
 
-        let dest_usize = wasm_offset_to_usize(dest)?;
-        let src_usize = wasm_offset_to_usize(src)?;
-        let size_usize = wasm_offset_to_usize(size)?;
+        let dest_usize = u64_to_usize(dest)?;
+        let src_usize = u64_to_usize(src)?;
+        let size_usize = u64_to_usize(size)?;
 
         // Bounds checks
         let src_end = src_usize
@@ -2391,11 +2407,17 @@ impl MemoryOperations for Memory {
 
         // Handle overlapping regions by using a temporary buffer
         // Read source data first
+        // Convert to u32 for internal read/write methods
+        let src_u32 = u32::try_from(src)
+            .map_err(|_| Error::memory_out_of_bounds("Source offset exceeds u32"))?;
+        let dest_u32 = u32::try_from(dest)
+            .map_err(|_| Error::memory_out_of_bounds("Dest offset exceeds u32"))?;
+
         #[cfg(feature = "std")]
         {
             let mut buffer = vec![0u8; size_usize];
-            self.read(src, &mut buffer)?;
-            self.write(dest, &buffer)?;
+            self.read(src_u32, &mut buffer)?;
+            self.write(dest_u32, &buffer)?;
         }
 
         #[cfg(not(feature = "std"))]
@@ -2407,8 +2429,8 @@ impl MemoryOperations for Memory {
             }
 
             for i in 0..size_usize {
-                let byte = self.get_byte(src + i as u32)?;
-                self.set_byte(dest + i as u32, byte)?;
+                let byte = self.get_byte(src_u32 + i as u32)?;
+                self.set_byte(dest_u32 + i as u32, byte)?;
             }
         }
 

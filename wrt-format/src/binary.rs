@@ -583,6 +583,21 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
         let byte = bytes[pos + offset];
         offset += 1;
 
+        // For the 5th byte (shift == 28), check for overflow:
+        // - Only the low 4 bits are valid (bits 28-31 of the result)
+        // - The byte value must be <= 0x0F for valid u32
+        // - The continuation bit must not be set
+        if shift == 28 {
+            // Check if high bits would cause overflow
+            if (byte & 0x70) != 0 {
+                return Err(parse_error("LEB128 integer too large"));
+            }
+            // Check for continuation bit on 5th byte
+            if (byte & 0x80) != 0 {
+                return Err(parse_error("LEB128 integer too large"));
+            }
+        }
+
         result |= ((byte & 0x7F) as u32) << shift;
 
         // Check for continuation bit
@@ -592,8 +607,8 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
 
         shift += 7;
 
-        // Prevent overflow
-        if shift >= 32 {
+        // Prevent overflow (should not reach here if 5th byte check works)
+        if shift >= 35 {
             return Err(parse_error("LEB128 overflow"));
         }
     }
@@ -815,6 +830,21 @@ pub mod with_alloc {
             let byte = bytes[pos + offset];
             offset += 1;
 
+            // For the 5th byte (shift == 28), check for overflow:
+            // - Only the low 4 bits are valid (bits 28-31 of the result)
+            // - The byte value must be <= 0x0F for valid u32
+            // - The continuation bit must not be set
+            if shift == 28 {
+                // Check if high bits would cause overflow
+                if (byte & 0x70) != 0 {
+                    return Err(parse_error("LEB128 integer too large"));
+                }
+                // Check for continuation bit on 5th byte
+                if (byte & 0x80) != 0 {
+                    return Err(parse_error("LEB128 integer too large"));
+                }
+            }
+
             // Apply 7 bits from this byte
             result |= ((byte & 0x7F) as u32) << shift;
             shift += 7;
@@ -824,8 +854,8 @@ pub mod with_alloc {
                 break;
             }
 
-            // Guard against malformed/malicious LEB128
-            if shift >= 32 {
+            // Guard against malformed/malicious LEB128 (should not reach here due to 5th byte check)
+            if shift >= 35 {
                 return Err(parse_error("LEB128 integer too large"));
             }
         }

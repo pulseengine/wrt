@@ -147,6 +147,8 @@ pub struct StreamingDecoder<'a> {
     platform_limits: ComprehensivePlatformLimits,
     /// Number of function imports (for proper function indexing)
     num_function_imports: usize,
+    /// Number of memory imports (for multiple memory validation)
+    num_memory_imports: usize,
     /// The module being built (std version)
     #[cfg(feature = "std")]
     module:          WrtModule,
@@ -166,6 +168,7 @@ impl<'a> StreamingDecoder<'a> {
             offset: 0,
             platform_limits: ComprehensivePlatformLimits::default(),
             num_function_imports: 0,
+            num_memory_imports: 0,
             module,
         })
     }
@@ -184,6 +187,7 @@ impl<'a> StreamingDecoder<'a> {
             offset: 0,
             platform_limits: ComprehensivePlatformLimits::default(),
             num_function_imports: 0,
+            num_memory_imports: 0,
             module,
         })
     }
@@ -472,20 +476,68 @@ impl<'a> StreamingDecoder<'a> {
                 },
                 0x02 => {
                     // Memory import - need to parse limits
+                    use wrt_format::binary::read_leb128_u64;
+
                     if offset >= data.len() {
                         return Err(Error::parse_error("Unexpected end of memory import"));
                     }
                     let flags = data[offset];
                     offset += 1;
-                    let (min, bytes_read) = read_leb128_u32(data, offset)?;
-                    offset += bytes_read;
-                    let max = if flags & 0x01 != 0 {
-                        let (max, bytes_read) = read_leb128_u32(data, offset)?;
+
+                    // Check for memory64 flag (bit 2)
+                    let is_memory64 = (flags & 0x04) != 0;
+
+                    // WebAssembly spec: memory size must be at most 65536 pages (4GB)
+                    const MAX_MEMORY_PAGES: u32 = 65536;
+
+                    // Parse limits - memory64 uses u64, regular memory uses u32
+                    let (min, max) = if is_memory64 {
+                        let (min64, bytes_read) = read_leb128_u64(data, offset)?;
                         offset += bytes_read;
-                        Some(max)
+
+                        let max64 = if flags & 0x01 != 0 {
+                            let (max_val, bytes_read) = read_leb128_u64(data, offset)?;
+                            offset += bytes_read;
+                            Some(max_val)
+                        } else {
+                            None
+                        };
+
+                        // Validate memory64 limits
+                        if min64 > MAX_MEMORY_PAGES as u64 {
+                            return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                        }
+                        if let Some(max64) = max64 {
+                            if max64 > MAX_MEMORY_PAGES as u64 {
+                                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                            }
+                        }
+
+                        (min64 as u32, max64.map(|v| v as u32))
                     } else {
-                        None
+                        let (min, bytes_read) = read_leb128_u32(data, offset)?;
+                        offset += bytes_read;
+                        let max = if flags & 0x01 != 0 {
+                            let (max, bytes_read) = read_leb128_u32(data, offset)?;
+                            offset += bytes_read;
+                            Some(max)
+                        } else {
+                            None
+                        };
+
+                        // Validate regular memory limits
+                        if min > MAX_MEMORY_PAGES {
+                            return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                        }
+                        if let Some(max_val) = max {
+                            if max_val > MAX_MEMORY_PAGES {
+                                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                            }
+                        }
+
+                        (min, max)
                     };
+
                     #[cfg(feature = "tracing")]
                     trace!(import_index = i, min_pages = min, max_pages = ?max, "import: memory");
 
@@ -512,6 +564,9 @@ impl<'a> StreamingDecoder<'a> {
                         };
                         self.module.imports.push(import);
                     }
+
+                    // Track memory imports for multiple memory validation
+                    self.num_memory_imports += 1;
                 },
                 0x03 => {
                     // Global import - need to parse global type
@@ -765,7 +820,7 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process memory section
     fn process_memory_section(&mut self, data: &[u8]) -> Result<()> {
-        use wrt_format::binary::read_leb128_u32;
+        use wrt_format::{read_leb128_u32, read_leb128_u64};
 
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
@@ -774,11 +829,11 @@ impl<'a> StreamingDecoder<'a> {
         #[cfg(feature = "tracing")]
         trace!(count = count, "process_memory_section");
 
-        // Check memory count against platform limits
-        if count > 1 && !self.platform_limits.max_components > 0 {
-            return Err(Error::resource_exhausted(
-                "Multiple memories not supported on this platform",
-            ));
+        // WebAssembly core spec: only one memory is allowed without the multi-memory proposal
+        // Total memories = imported memories + defined memories
+        let total_memories = self.num_memory_imports + count as usize;
+        if total_memories > 1 {
+            return Err(Error::validation_error("multiple memories"));
         }
 
         // Process each memory one at a time
@@ -790,21 +845,59 @@ impl<'a> StreamingDecoder<'a> {
             let flags = data[offset];
             offset += 1;
 
-            let (min, bytes_read) = read_leb128_u32(data, offset)?;
-            offset += bytes_read;
+            // Check for memory64 flag (bit 2)
+            let is_memory64 = (flags & 0x04) != 0;
 
-            let max = if flags & 0x01 != 0 {
-                let (max_val, bytes_read) = read_leb128_u32(data, offset)?;
+            // WebAssembly spec: memory size must be at most 65536 pages (4GB)
+            // for non-memory64 memories (and memory64 has its own limit)
+            const MAX_MEMORY_PAGES: u32 = 65536;
+
+            // Parse limits - memory64 uses u64, regular memory uses u32
+            let (min, max) = if is_memory64 {
+                let (min64, bytes_read) = read_leb128_u64(data, offset)?;
                 offset += bytes_read;
-                Some(max_val)
+
+                let max64 = if flags & 0x01 != 0 {
+                    let (max_val, bytes_read) = read_leb128_u64(data, offset)?;
+                    offset += bytes_read;
+                    Some(max_val)
+                } else {
+                    None
+                };
+
+                // Validate memory64 limits (still have a limit, though higher)
+                // For non-memory64 tests, values > 65536 pages should fail
+                if min64 > MAX_MEMORY_PAGES as u64 {
+                    return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                }
+                if let Some(max64) = max64 {
+                    if max64 > MAX_MEMORY_PAGES as u64 {
+                        return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                    }
+                }
+
+                (min64 as u32, max64.map(|v| v as u32))
             } else {
-                None
+                let (min, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+
+                let max = if flags & 0x01 != 0 {
+                    let (max_val, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                    Some(max_val)
+                } else {
+                    None
+                };
+                (min, max)
             };
 
             let shared = (flags & 0x02) != 0;
 
-            // WebAssembly spec: memory size must be at most 65536 pages (4GB)
-            const MAX_MEMORY_PAGES: u32 = 65536;
+            // WebAssembly threads proposal: shared memory must have a maximum
+            if shared && max.is_none() {
+                return Err(Error::validation_error("shared memory must have maximum"));
+            }
+
             if min > MAX_MEMORY_PAGES {
                 return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
             }

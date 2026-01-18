@@ -193,22 +193,32 @@ pub fn is_wasip2_canonical(name: &str) -> bool {
     matches!(name,
         // wasi:cli/exit
         "exit" |
-        // wasi:cli/stdout/stderr
-        "get-stdout" | "get-stderr" |
+        // wasi:cli/stdout/stderr/stdin
+        "get-stdout" | "get-stderr" | "get-stdin" |
+        // wasi:cli/terminal-*
+        "get-terminal-stdin" | "get-terminal-stdout" | "get-terminal-stderr" |
         // wasi:cli/environment
         "get-environment" | "get-arguments" |
         // wasi:io/streams methods
         "[method]output-stream.blocking-write-and-flush" |
         "[method]output-stream.blocking-flush" |
         "[method]output-stream.write" |
+        "[method]output-stream.check-write" |
+        "[method]output-stream.subscribe" |
         "[method]input-stream.blocking-read" |
         "[method]input-stream.read" |
+        // wasi:io/poll methods
+        "poll" |
+        "[method]pollable.block" |
         // wasi:io/error methods
         "[method]error.to-debug-string" |
         // Resource drops
         "[resource-drop]error" |
         "[resource-drop]output-stream" |
         "[resource-drop]input-stream" |
+        "[resource-drop]pollable" |
+        "[resource-drop]terminal-input" |
+        "[resource-drop]terminal-output" |
         // wasi:clocks
         "now" | "resolution" |
         // wasi:filesystem
@@ -216,6 +226,8 @@ pub fn is_wasip2_canonical(name: &str) -> bool {
         "[method]descriptor.read" |
         "[method]descriptor.write" |
         "[method]descriptor.stat" |
-        "[method]descriptor.read-directory"
+        "[method]descriptor.read-directory" |
+        // wasi:random
+        "get-random-bytes" | "get-random-u64"
     )
 }

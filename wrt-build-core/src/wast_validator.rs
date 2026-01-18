@@ -60,6 +60,8 @@ struct ControlFrame {
     reachable: bool,
     /// Stack height at frame entry
     stack_height: usize,
+    /// Stack height when frame became unreachable (for polymorphic base tracking)
+    unreachable_height: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -228,11 +230,12 @@ impl WastModuleValidator {
             Err(anyhow!("unknown function"))
         } else {
             // This is a defined function
-            let local_idx = (func_idx as usize) - num_func_imports;
-            let func = module.functions.get(local_idx)
+            // Note: module.functions includes imports, so use func_idx directly
+            let func = module.functions.get(func_idx as usize)
                 .ok_or_else(|| anyhow!("unknown function"))?;
-            module.types.get(func.type_idx as usize)
-                .ok_or_else(|| anyhow!("unknown type"))
+            let func_type = module.types.get(func.type_idx as usize)
+                .ok_or_else(|| anyhow!("unknown type"))?;
+            Ok(func_type)
         }
     }
 
@@ -339,6 +342,7 @@ impl WastModuleValidator {
                 .collect(),
             reachable: true,
             stack_height: 0,
+            unreachable_height: None,
         }];
 
         // Parse bytecode
@@ -354,6 +358,9 @@ impl WastModuleValidator {
                 0x00 => {
                     // unreachable
                     if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
                         frame.reachable = false;
                     }
                 }
@@ -385,6 +392,7 @@ impl WastModuleValidator {
                         output_types: output_types.clone(),
                         reachable: true,
                         stack_height,
+                        unreachable_height: None,
                     });
 
                     // Push inputs back - they're now on the block's stack
@@ -417,6 +425,7 @@ impl WastModuleValidator {
                         output_types: output_types.clone(),
                         reachable: true,
                         stack_height,
+                        unreachable_height: None,
                     });
 
                     // Push inputs back - they're now on the loop's stack
@@ -454,6 +463,7 @@ impl WastModuleValidator {
                         output_types: output_types.clone(),
                         reachable: true,
                         stack_height,
+                        unreachable_height: None,
                     });
 
                     // Push inputs back - they're now on the if's stack
@@ -509,15 +519,32 @@ impl WastModuleValidator {
                         // This is the final function-level end - valid termination
                         // Verify the stack matches the function's return types
                         let frame = &frames[0];
-                        if frame.reachable {
-                            let frame_height = frame.stack_height;
-                            // Check stack has exactly the right number of outputs
+                        let frame_height = frame.stack_height;
+                        let unreachable = !frame.reachable;
+
+                        if unreachable {
+                            // In unreachable code, the stack is polymorphic at the bottom.
+                            // Pop the expected output types (polymorphic provides missing ones).
+                            // Then check for extra values ABOVE the unreachable_height - those are an error.
+                            // Values below unreachable_height are from before the terminating instruction.
+                            let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
+                            for &expected in frame.output_types.iter().rev() {
+                                if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
+                                    return Err(anyhow!("type mismatch"));
+                                }
+                            }
+                            // Check for extra values pushed AFTER the terminating instruction
+                            if stack.len() > unreachable_height {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        } else {
+                            // In reachable code, check exact stack height and types
                             let expected_height = frame_height + frame.output_types.len();
                             if stack.len() != expected_height {
                                 return Err(anyhow!("type mismatch"));
                             }
                             for &expected in frame.output_types.iter().rev() {
-                                if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                if !Self::pop_type(&mut stack, expected, frame_height, false) {
                                     return Err(anyhow!("type mismatch"));
                                 }
                             }
@@ -536,16 +563,31 @@ impl WastModuleValidator {
                         return Err(anyhow!("type mismatch"));
                     }
 
-                    // Verify stack has expected output types (if reachable)
-                    if frame.reachable {
-                        let frame_height = frame.stack_height;
-                        // Check stack has exactly the right number of outputs
+                    // Verify stack has expected output types
+                    let frame_height = frame.stack_height;
+                    let unreachable = !frame.reachable;
+
+                    if unreachable {
+                        // In unreachable code, pop expected types (polymorphic provides missing)
+                        // Then check for extra values ABOVE unreachable_height
+                        let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
+                        for &expected in frame.output_types.iter().rev() {
+                            if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        // Check for extra values pushed AFTER the terminating instruction
+                        if stack.len() > unreachable_height {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    } else {
+                        // In reachable code, check exact stack height and types
                         let expected_height = frame_height + frame.output_types.len();
                         if stack.len() != expected_height {
                             return Err(anyhow!("type mismatch"));
                         }
                         for &expected in frame.output_types.iter().rev() {
-                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            if !Self::pop_type(&mut stack, expected, frame_height, false) {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
@@ -564,6 +606,9 @@ impl WastModuleValidator {
 
                     // Mark current frame as unreachable
                     if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
                         frame.reachable = false;
                     }
                 }
@@ -638,6 +683,9 @@ impl WastModuleValidator {
 
                     // Mark current frame as unreachable
                     if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
                         frame.reachable = false;
                     }
                 }
@@ -653,6 +701,9 @@ impl WastModuleValidator {
                     }
 
                     if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
                         frame.reachable = false;
                     }
                 }
@@ -719,6 +770,112 @@ impl WastModuleValidator {
                     // Push results
                     for result in &func_type.results {
                         stack.push(StackType::from_value_type(*result));
+                    }
+                }
+                0x12 => {
+                    // return_call (tail-call extension)
+                    // Parse function index
+                    let (func_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Get the called function's type (handles both imports and local functions)
+                    let called_func_type = Self::get_function_type(module, func_idx)?;
+
+                    // Verify called function's results match current function's results
+                    // (Required for tail call: the callee's results become the caller's results)
+                    if called_func_type.results.len() != func_type.results.len() {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    for (called_result, current_result) in called_func_type.results.iter()
+                        .zip(func_type.results.iter())
+                    {
+                        if called_result != current_result {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    let frame_height = Self::current_frame_height(&frames);
+
+                    // Pop arguments in reverse order
+                    for param in called_func_type.params.iter().rev() {
+                        let expected = StackType::from_value_type(*param);
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // return_call is a terminating instruction (like return)
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
+                        frame.reachable = false;
+                    }
+                }
+                0x13 => {
+                    // return_call_indirect (tail-call extension)
+                    let (type_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // table_idx - validate that the table exists
+                    let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate table exists
+                    if table_idx as usize >= Self::total_tables(module) {
+                        return Err(anyhow!("unknown table"));
+                    }
+
+                    // Validate table element type is funcref (not externref)
+                    if let Some(elem_type) = Self::get_table_element_type(module, table_idx) {
+                        if elem_type != wrt_foundation::RefType::Funcref {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // Validate type index
+                    if type_idx as usize >= module.types.len() {
+                        return Err(anyhow!("unknown type"));
+                    }
+
+                    let called_type = &module.types[type_idx as usize];
+
+                    // Verify called function type's results match current function's results
+                    // (Required for tail call: the callee's results become the caller's results)
+                    if called_type.results.len() != func_type.results.len() {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                    for (called_result, current_result) in called_type.results.iter()
+                        .zip(func_type.results.iter())
+                    {
+                        if called_result != current_result {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    let frame_height = Self::current_frame_height(&frames);
+
+                    // Pop table index (must be i32)
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+
+                    // Pop arguments in reverse order
+                    for param in called_type.params.iter().rev() {
+                        let expected = StackType::from_value_type(*param);
+                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    // return_call_indirect is a terminating instruction (like return)
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
+                        frame.reachable = false;
                     }
                 }
 
@@ -2029,6 +2186,32 @@ impl WastModuleValidator {
     /// Check if module has any table defined (imported or local)
     fn has_table(module: &Module) -> bool {
         Self::total_tables(module) > 0
+    }
+
+    /// Get the table element type for a table index (accounting for imports)
+    /// Table indices include both imported and defined tables:
+    /// - Indices 0..N-1 are imported tables
+    /// - Indices N+ are defined tables
+    fn get_table_element_type(module: &Module, table_idx: u32) -> Option<wrt_foundation::RefType> {
+        let num_table_imports = Self::count_table_imports(module);
+
+        if (table_idx as usize) < num_table_imports {
+            // This is an imported table - find it in imports Vec
+            let mut import_idx = 0;
+            for import in &module.imports {
+                if let ImportDesc::Table(table_type) = &import.desc {
+                    if import_idx == table_idx as usize {
+                        return Some(table_type.element_type);
+                    }
+                    import_idx += 1;
+                }
+            }
+            None
+        } else {
+            // This is a defined table
+            let defined_idx = table_idx as usize - num_table_imports;
+            module.tables.get(defined_idx).map(|t| t.element_type)
+        }
     }
 
     /// Get the global type for a global index (accounting for imports)

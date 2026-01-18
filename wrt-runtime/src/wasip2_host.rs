@@ -286,6 +286,73 @@ pub fn get_wasi_function_signature(interface: &str, function: &str) -> Option<Wa
             vec![WasiComponentType::String],
         )),
 
+        // wasi:cli/stdin.get-stdin() -> own<input-stream>
+        ("wasi:cli/stdin", "get-stdin") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Handle],
+        )),
+
+        // wasi:cli/terminal-stdin.get-terminal-stdin() -> option<own<terminal-input>>
+        ("wasi:cli/terminal-stdin", "get-terminal-stdin") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Option(Box::new(WasiComponentType::Handle))],
+        )),
+
+        // wasi:cli/terminal-stdout.get-terminal-stdout() -> option<own<terminal-output>>
+        ("wasi:cli/terminal-stdout", "get-terminal-stdout") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Option(Box::new(WasiComponentType::Handle))],
+        )),
+
+        // wasi:cli/terminal-stderr.get-terminal-stderr() -> option<own<terminal-output>>
+        ("wasi:cli/terminal-stderr", "get-terminal-stderr") => Some(WasiFunctionSignature::new(
+            vec![],
+            vec![WasiComponentType::Option(Box::new(WasiComponentType::Handle))],
+        )),
+
+        // wasi:io/poll.poll(list<pollable>) -> list<u32>
+        ("wasi:io/poll", "poll") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::List(Box::new(WasiComponentType::Handle))],
+            vec![WasiComponentType::List(Box::new(WasiComponentType::U32))],
+        )),
+
+        // wasi:io/poll.[method]pollable.block(self: borrow<pollable>)
+        ("wasi:io/poll", "[method]pollable.block") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![],
+        )),
+
+        // wasi:io/poll.[resource-drop]pollable
+        ("wasi:io/poll", "[resource-drop]pollable") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![],
+        )),
+
+        // wasi:io/streams.[method]output-stream.subscribe() -> own<pollable>
+        ("wasi:io/streams", "[method]output-stream.subscribe") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![WasiComponentType::Handle],
+        )),
+
+        // wasi:io/streams.[method]output-stream.check-write(self: borrow<output-stream>) -> result<u64, stream-error>
+        ("wasi:io/streams", "[method]output-stream.check-write") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![WasiComponentType::Result(Some(Box::new(WasiComponentType::U64)), Some(Box::new(WasiComponentType::String)))],
+        )),
+
+        // wasi:io/streams.[method]output-stream.write(self: borrow<output-stream>, contents: list<u8>) -> result<_, stream-error>
+        ("wasi:io/streams", "[method]output-stream.write") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle, WasiComponentType::ListU8],
+            vec![WasiComponentType::Result(None, Some(Box::new(WasiComponentType::String)))],
+        )),
+
+        // Resource drops for terminal and poll resources
+        ("wasi:cli/terminal-input", "[resource-drop]terminal-input") |
+        ("wasi:cli/terminal-output", "[resource-drop]terminal-output") => Some(WasiFunctionSignature::new(
+            vec![WasiComponentType::Handle],
+            vec![],
+        )),
+
         _ => None,
     }
 }
@@ -1344,7 +1411,80 @@ impl Wasip2Host {
                 };
                 self.cli_exit(status_ok)
             },
+            ("wasi:cli/stdin", "get-stdin") => {
+                // Return a resource handle for stdin (input-stream)
+                Ok(vec![Value::I32(0)]) // Handle 0 = stdin
+            },
+            ("wasi:cli/terminal-stdin", "get-terminal-stdin") => {
+                // Return Option<terminal-input>: 0 = None (not a terminal)
+                // For now, return none (0,0) - first 0 is discriminant for None
+                Ok(vec![Value::I32(0)])
+            },
+            ("wasi:cli/terminal-stdout", "get-terminal-stdout") => {
+                // Return Option<terminal-output>: 0 = None (not a terminal)
+                Ok(vec![Value::I32(0)])
+            },
+            ("wasi:cli/terminal-stderr", "get-terminal-stderr") => {
+                // Return Option<terminal-output>: 0 = None (not a terminal)
+                Ok(vec![Value::I32(0)])
+            },
+            ("wasi:io/poll", "poll") |
+            ("wasi:io/poll", "[method]pollable.block") => {
+                // Simple poll implementation - return immediately with all ready
+                // Args: list of pollable handles
+                // Returns: list of ready indices
+                let ready_indices: Vec<Value> = vec![Value::I32(0)]; // First pollable always ready
+                Ok(ready_indices)
+            },
+            ("wasi:io/poll", "[resource-drop]pollable") |
+            ("wasi:io/streams", "[resource-drop]output-stream") |
+            ("wasi:io/streams", "[resource-drop]input-stream") |
+            ("wasi:io/error", "[resource-drop]error") |
+            ("wasi:cli/terminal-input", "[resource-drop]terminal-input") |
+            ("wasi:cli/terminal-output", "[resource-drop]terminal-output") => {
+                // Resource drops are no-ops in this simple implementation
+                Ok(vec![])
+            },
+            ("wasi:io/streams", "[method]output-stream.check-write") => {
+                // Check how much we can write - return Result<u64, stream-error>
+                // Return Ok(1MB) - we can write 1MB at a time
+                Ok(vec![Value::I32(0), Value::I64(1024 * 1024)]) // discriminant 0 = ok, value = 1MB
+            },
+            ("wasi:io/streams", "[method]output-stream.write") => {
+                // Write to output stream - simplified version
+                // Returns Result<_, stream-error>
+                if args.len() >= 3 {
+                    if let Some(mem) = memory {
+                        let handle = match args[0] {
+                            Value::I32(h) => h as u32,
+                            _ => return Err(wrt_error::Error::runtime_error("Invalid handle")),
+                        };
+                        let data_ptr = match args[1] {
+                            Value::I32(p) => p as u32,
+                            _ => return Err(wrt_error::Error::runtime_error("Invalid ptr")),
+                        };
+                        let data_len = match args[2] {
+                            Value::I32(l) => l as u32,
+                            _ => return Err(wrt_error::Error::runtime_error("Invalid len")),
+                        };
+                        return self.io_streams_output_stream_blocking_write_and_flush(handle, data_ptr, data_len, mem);
+                    }
+                }
+                // Return success (discriminant 0)
+                Ok(vec![Value::I32(0)])
+            },
+            ("wasi:io/streams", "[method]output-stream.subscribe") => {
+                // Subscribe returns a pollable handle
+                // We use a simple scheme: pollable = stream_handle + 1000
+                let handle = match args.first() {
+                    Some(Value::I32(h)) => *h as u32,
+                    _ => 0,
+                };
+                Ok(vec![Value::I32((handle + 1000) as i32)])
+            },
             _ => {
+                #[cfg(feature = "std")]
+                eprintln!("[WASIP2] Unknown function: {}/{}", base_interface, function);
                 Err(wrt_error::Error::runtime_error("Unknown wasip2 function"))
             }
         }

@@ -216,6 +216,21 @@ pub struct ExecutionStats {
     pub function_calls: u64,
 }
 
+/// Outcome of executing a function body
+/// Used for proper tail-call optimization via trampolining
+#[cfg(any(feature = "std", feature = "alloc"))]
+enum ExecutionOutcome {
+    /// Function completed normally with results
+    Complete(Vec<Value>),
+    /// Tail call to another function - trampoline should continue with new target
+    TailCall {
+        /// Target function index
+        func_idx: usize,
+        /// Arguments for the target function
+        args: Vec<Value>,
+    },
+}
+
 /// Pre-allocated WASI stub memory regions
 #[derive(Debug, Clone)]
 pub struct WasiStubMemory {
@@ -776,6 +791,43 @@ impl StacklessEngine {
         func_idx: usize,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
+        // Trampoline loop for proper tail-call optimization
+        // Instead of recursive native calls, we loop here when we encounter return_call
+        let mut current_func_idx = func_idx;
+        let mut current_args = args;
+
+        // Only increment call depth once - tail calls reuse the same frame
+        if self.call_frames_count >= MAX_CALL_DEPTH {
+            return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
+        }
+        self.call_frames_count += 1;
+
+        loop {
+            match self.execute_function_body(instance_id, current_func_idx, current_args)? {
+                ExecutionOutcome::Complete(results) => {
+                    // Normal completion - decrement call depth and return
+                    self.call_frames_count = self.call_frames_count.saturating_sub(1);
+                    return Ok(results);
+                }
+                ExecutionOutcome::TailCall { func_idx: next_func, args: next_args } => {
+                    // Tail call - continue the trampoline loop with new target
+                    // This does NOT grow the native stack
+                    current_func_idx = next_func;
+                    current_args = next_args;
+                    // Continue the loop - no recursive call!
+                }
+            }
+        }
+    }
+
+    /// Internal function body execution - can return TailCall for trampolining
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn execute_function_body(
+        &mut self,
+        instance_id: usize,
+        func_idx: usize,
+        args: Vec<Value>,
+    ) -> Result<ExecutionOutcome> {
         #[cfg(feature = "tracing")]
         let _span = ExecutionTrace::function(func_idx, instance_id).entered();
 
@@ -786,13 +838,6 @@ impl StacklessEngine {
             args_len = args.len(),
             "[INNER_EXEC] Executing function"
         );
-
-        // Check call depth to prevent native stack overflow
-        // WebAssembly allows deep recursion but native Rust stack is limited
-        if self.call_frames_count >= MAX_CALL_DEPTH {
-            return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
-        }
-        self.call_frames_count += 1;
 
         // Clone the instance to avoid holding a borrow on self.instances
         // This allows us to call &mut self methods (like execute, call_wasi_function)
@@ -875,14 +920,32 @@ impl StacklessEngine {
                     if let Some((target_instance_id, export_name)) = self.import_links.get(&import_key)
                         .map(|(ti, en)| (*ti, en.clone()))
                     {
-                        // Call the linked function
+                        // Call the linked function and wrap result
                         self.call_frames_count -= 1; // Will be re-incremented by recursive call
-                        return self.call_exported_function(target_instance_id, &export_name, args);
+                        let results = self.call_exported_function(target_instance_id, &export_name, args)?;
+                        return Ok(ExecutionOutcome::Complete(results));
                     }
-                    // Fall through to WASI dispatch if not linked
-                    // Return dummy value for unresolved imports
+                    // Import not linked - return correct number of default results
+                    // based on the imported function's type signature
                     self.call_frames_count -= 1;
-                    return Ok(vec![Value::I32(0)]);
+                    if let Some(func) = module.functions.get(func_idx) {
+                        if let Some(func_type) = module.types.get(func.type_idx as usize) {
+                            let mut results = Vec::new();
+                            for result_type in &func_type.results {
+                                let default_value = match result_type {
+                                    wrt_foundation::ValueType::I32 => Value::I32(0),
+                                    wrt_foundation::ValueType::I64 => Value::I64(0),
+                                    wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                                    wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                                    _ => Value::I32(0),
+                                };
+                                results.push(default_value);
+                            }
+                            return Ok(ExecutionOutcome::Complete(results));
+                        }
+                    }
+                    // Fallback for corrupted module data
+                    return Ok(ExecutionOutcome::Complete(Vec::new()));
                 }
             }
             #[cfg(not(feature = "std"))]
@@ -1675,6 +1738,127 @@ impl StacklessEngine {
                         for result in results {
                             operand_stack.push(result);
                         }
+                    }
+                    Instruction::ReturnCall(func_idx) => {
+                        // ReturnCall: tail call to another function
+                        // Similar to Call, but the results become the current function's return value
+                        #[cfg(feature = "tracing")]
+                        trace!("⚡ RETURN_CALL: func_idx={}", func_idx);
+
+                        // Get function type to determine parameter count
+                        if (func_idx as usize) >= module.functions.len() {
+                            return Err(wrt_error::Error::runtime_trap("return_call: function index out of bounds"));
+                        }
+                        let func = &module.functions[func_idx as usize];
+                        let func_type = module.types.get(func.type_idx as usize)
+                            .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
+
+                        // Pop the required number of arguments from the stack
+                        let param_count = func_type.params.len();
+                        let mut call_args = Vec::new();
+                        for _ in 0..param_count {
+                            if let Some(arg) = operand_stack.pop() {
+                                call_args.push(arg);
+                            } else {
+                                return Err(wrt_error::Error::runtime_error("Stack underflow on return_call"));
+                            }
+                        }
+                        call_args.reverse();
+
+                        // Restore debugger before returning for tail call
+                        #[cfg(all(feature = "std", feature = "debugger"))]
+                        {
+                            self.debugger = debugger_opt;
+                        }
+
+                        // Return TailCall - the trampoline will execute the target function
+                        // This avoids recursive native calls and prevents stack overflow
+                        return Ok(ExecutionOutcome::TailCall {
+                            func_idx: func_idx as usize,
+                            args: call_args,
+                        });
+                    }
+                    Instruction::ReturnCallIndirect(type_idx, table_idx) => {
+                        // ReturnCallIndirect: tail call through indirect table reference
+                        // Pop the function index from the stack
+                        let table_func_idx = if let Some(Value::I32(idx)) = operand_stack.pop() {
+                            idx as u32
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("return_call_indirect: expected i32 function index on stack"));
+                        };
+
+                        #[cfg(feature = "tracing")]
+                        trace!(
+                            type_idx = type_idx,
+                            table_idx = table_idx,
+                            table_func_idx = table_func_idx,
+                            "[RETURN_CALL_INDIRECT] Indirect tail call"
+                        );
+
+                        // Look up the function in the table
+                        let func_idx = if let Some(inst) = self.instances.get(&instance_id) {
+                            if let Ok(table) = inst.table(table_idx) {
+                                if let Ok(Some(func_ref)) = table.0.get(table_func_idx) {
+                                    match func_ref {
+                                        Value::FuncRef(Some(fref)) => fref.index as usize,
+                                        Value::FuncRef(None) => return Err(wrt_error::Error::runtime_trap("uninitialized element")),
+                                        Value::I32(idx) => idx as usize,
+                                        Value::I64(idx) => idx as usize,
+                                        _ => return Err(wrt_error::Error::runtime_trap("uninitialized element")),
+                                    }
+                                } else if let Ok(None) = table.0.get(table_func_idx) {
+                                    return Err(wrt_error::Error::runtime_trap("uninitialized element"));
+                                } else {
+                                    return Err(wrt_error::Error::runtime_trap("undefined element"));
+                                }
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("return_call_indirect: table not found"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("return_call_indirect: instance not found"));
+                        };
+
+                        // Validate function index
+                        if func_idx >= module.functions.len() {
+                            return Err(wrt_error::Error::runtime_trap("return_call_indirect: function index out of bounds"));
+                        }
+
+                        // Get function type and validate
+                        let func = &module.functions[func_idx];
+                        let func_type = module.types.get(func.type_idx as usize)
+                            .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
+
+                        let expected_type = module.types.get(type_idx as usize)
+                            .ok_or_else(|| wrt_error::Error::runtime_error("Invalid expected function type"))?;
+
+                        if !func_types_match(expected_type, func_type) {
+                            return Err(wrt_error::Error::runtime_trap("indirect call type mismatch"));
+                        }
+
+                        // Pop the required number of arguments from the stack
+                        let param_count = func_type.params.len();
+                        let mut call_args = Vec::new();
+                        for _ in 0..param_count {
+                            if let Some(arg) = operand_stack.pop() {
+                                call_args.push(arg);
+                            } else {
+                                return Err(wrt_error::Error::runtime_error("Stack underflow on return_call_indirect"));
+                            }
+                        }
+                        call_args.reverse();
+
+                        // Restore debugger before returning for tail call
+                        #[cfg(all(feature = "std", feature = "debugger"))]
+                        {
+                            self.debugger = debugger_opt;
+                        }
+
+                        // Return TailCall - the trampoline will execute the target function
+                        // This avoids recursive native calls and prevents stack overflow
+                        return Ok(ExecutionOutcome::TailCall {
+                            func_idx,
+                            args: call_args,
+                        });
                     }
                     Instruction::I32Const(value) => {
                         #[cfg(feature = "tracing")]
@@ -5506,16 +5690,36 @@ impl StacklessEngine {
                                 let src_table = instance.table(src_table_idx)?;
                                 let dst_table = instance.table(dst_table_idx)?;
 
-                                // Read all source elements first (to handle any overlap scenarios)
-                                let mut temp_elements = Vec::new();
-                                for i in 0..*copy_size as u32 {
-                                    let elem = src_table.get(*src_idx as u32 + i)?;
-                                    temp_elements.push(elem);
+                                // Bounds check BEFORE zero-length check (per WebAssembly spec)
+                                let src_end = (*src_idx as u32).checked_add(*copy_size as u32)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                        "out of bounds table access"
+                                    ))?;
+                                let dst_end = (*dst_idx as u32).checked_add(*copy_size as u32)
+                                    .ok_or_else(|| wrt_error::Error::runtime_trap(
+                                        "out of bounds table access"
+                                    ))?;
+                                if src_end > src_table.size() || dst_end > dst_table.size() {
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "out of bounds table access"
+                                    ));
                                 }
 
-                                // Write to destination table
-                                for (i, elem) in temp_elements.into_iter().enumerate() {
-                                    dst_table.set(*dst_idx as u32 + i as u32, elem)?;
+                                // Zero-length copy is a no-op (after bounds check)
+                                if *copy_size == 0 {
+                                    // Continue to next instruction
+                                } else {
+                                    // Read all source elements first (to handle any overlap scenarios)
+                                    let mut temp_elements = Vec::new();
+                                    for i in 0..*copy_size as u32 {
+                                        let elem = src_table.get(*src_idx as u32 + i)?;
+                                        temp_elements.push(elem);
+                                    }
+
+                                    // Write to destination table
+                                    for (i, elem) in temp_elements.into_iter().enumerate() {
+                                        dst_table.set(*dst_idx as u32 + i as u32, elem)?;
+                                    }
                                 }
                             }
 
@@ -8037,9 +8241,8 @@ impl StacklessEngine {
                 self.debugger = debugger_opt;
             }
 
-            // Decrement call depth before returning
-            self.call_frames_count = self.call_frames_count.saturating_sub(1);
-            Ok(results)
+            // Return completed execution - call depth is handled by the trampoline wrapper
+            Ok(ExecutionOutcome::Complete(results))
         }
 
         #[cfg(not(feature = "std"))]
@@ -8064,9 +8267,8 @@ impl StacklessEngine {
                 };
                 results.push(default_value)?;
             }
-            // Decrement call depth before returning
-            self.call_frames_count = self.call_frames_count.saturating_sub(1);
-            Ok(results)
+            // Return completed execution - call depth is handled by the trampoline wrapper
+            Ok(ExecutionOutcome::Complete(results))
         }
     }
 

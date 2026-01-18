@@ -102,6 +102,24 @@ impl WasiInstanceProvider {
             name if name.starts_with("wasi:random/random") => {
                 self.add_random_exports(&mut instance)?;
             }
+            // Terminal interfaces for C/C++ runtime support
+            name if name.starts_with("wasi:cli/terminal-stdin") => {
+                self.add_terminal_stdin_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/terminal-stdout") => {
+                self.add_terminal_stdout_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/terminal-stderr") => {
+                self.add_terminal_stderr_exports(&mut instance)?;
+            }
+            name if name.starts_with("wasi:cli/terminal-input") => {
+                // Resource-only interface - no function exports needed
+                // The resource-drop is handled by canonical ABI
+            }
+            name if name.starts_with("wasi:cli/terminal-output") => {
+                // Resource-only interface - no function exports needed
+                // The resource-drop is handled by canonical ABI
+            }
             _ => {
                 #[cfg(feature = "std")]
                 println!("[WASI-PROVIDER] Warning: No exports for unknown interface '{}'", interface_name);
@@ -240,6 +258,27 @@ impl WasiInstanceProvider {
         self.add_simple_export(instance, "get-random-bytes")?;
         // Export: get-random-u64() -> u64
         self.add_simple_export(instance, "get-random-u64")
+    }
+
+    /// Add terminal-stdin interface exports (wasi:cli/terminal-stdin@0.2.0)
+    /// Returns option<terminal-input> to indicate if stdin is a terminal
+    fn add_terminal_stdin_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-terminal-stdin() -> option<terminal-input>
+        self.add_simple_export(instance, "get-terminal-stdin")
+    }
+
+    /// Add terminal-stdout interface exports (wasi:cli/terminal-stdout@0.2.0)
+    /// Returns option<terminal-output> to indicate if stdout is a terminal
+    fn add_terminal_stdout_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-terminal-stdout() -> option<terminal-output>
+        self.add_simple_export(instance, "get-terminal-stdout")
+    }
+
+    /// Add terminal-stderr interface exports (wasi:cli/terminal-stderr@0.2.0)
+    /// Returns option<terminal-output> to indicate if stderr is a terminal
+    fn add_terminal_stderr_exports(&mut self, instance: &mut InstanceImport) -> Result<()> {
+        // Export: get-terminal-stderr() -> option<terminal-output>
+        self.add_simple_export(instance, "get-terminal-stderr")
     }
 
     /// Helper to add a simple function export
