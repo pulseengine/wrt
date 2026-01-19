@@ -8216,22 +8216,138 @@ impl StacklessEngine {
                     }
                     Instruction::Throw(tag_idx) => {
                         // Throw an exception with the given tag
-                        // Phase 4 basic implementation: trap with exception info
-                        // Full unwinding to catch handlers comes in Phase 5
                         #[cfg(feature = "tracing")]
-                        error!(
+                        trace!(
                             tag_idx = tag_idx,
                             pc = pc,
                             func_idx = func_idx,
-                            "[EXCEPTION] Throw instruction - tag_idx={}",
-                            tag_idx
+                            block_stack_len = block_stack.len(),
+                            "[EXCEPTION] Throw instruction"
                         );
 
-                        // For now, return a WebAssembly exception trap
-                        // TODO Phase 5: Implement proper exception unwinding to find catch handlers
-                        return Err(wrt_error::Error::runtime_trap(
-                            "uncaught exception",
-                        ));
+                        // Walk block_stack from top to bottom looking for try_table with matching handler
+                        let mut found_handler = false;
+                        let mut handler_label = 0u32;
+                        let mut handler_is_ref = false;
+                        let mut try_block_idx = 0usize;
+
+                        for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
+                            if *block_type == "try_table" {
+                                // Found a try_table - check its handlers
+                                if let Some(try_instr) = instructions.get(*try_pc) {
+                                    if let Instruction::TryTable { handlers, .. } = try_instr {
+                                        // Check each handler for a match
+                                        for i in 0..handlers.len() {
+                                            if let Ok(handler) = handlers.get(i) {
+                                                let (matches, lbl, is_ref) = match handler {
+                                                    wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
+                                                        (htag == tag_idx, hlbl, false)
+                                                    }
+                                                    wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
+                                                        (htag == tag_idx, hlbl, true)
+                                                    }
+                                                    wrt_foundation::types::CatchHandler::CatchAll { label: hlbl } => {
+                                                        (true, hlbl, false)
+                                                    }
+                                                    wrt_foundation::types::CatchHandler::CatchAllRef { label: hlbl } => {
+                                                        (true, hlbl, true)
+                                                    }
+                                                };
+                                                if matches {
+                                                    handler_label = lbl;
+                                                    handler_is_ref = is_ref;
+                                                    found_handler = true;
+                                                    try_block_idx = idx;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if found_handler {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if found_handler {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                handler_label = handler_label,
+                                handler_is_ref = handler_is_ref,
+                                try_block_idx = try_block_idx,
+                                "[EXCEPTION] Found handler, branching"
+                            );
+
+                            // Pop blocks from stack down to and including the try_table
+                            while block_stack.len() > try_block_idx {
+                                block_stack.pop();
+                                block_depth -= 1;
+                            }
+
+                            // If handler is *Ref variant, push exnref to stack
+                            // Use tag_idx as a simple exn identifier
+                            if handler_is_ref {
+                                operand_stack.push(Value::ExnRef(Some(tag_idx)));
+                            }
+
+                            // Branch to handler label - need to find the End of the target block
+                            // handler_label=0 means branch to the end of current (try_table's) block
+                            // handler_label=N means branch to the end of Nth outer block
+                            let target_block_idx = if (handler_label as usize) < block_stack.len() {
+                                block_stack.len() - 1 - (handler_label as usize)
+                            } else {
+                                // Label targets function level - return
+                                break;
+                            };
+
+                            let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+
+                            // Clear stack to entry height
+                            while operand_stack.len() > entry_stack_height {
+                                operand_stack.pop();
+                            }
+
+                            // Find the End of the target block by scanning forward
+                            let mut target_depth = (handler_label as i32) + 1;
+                            let mut new_pc = pc + 1;
+                            let mut depth = 0;
+
+                            while new_pc < instructions.len() && target_depth > 0 {
+                                if let Some(instr) = instructions.get(new_pc) {
+                                    match instr {
+                                        Instruction::Block { .. } |
+                                        Instruction::Loop { .. } |
+                                        Instruction::If { .. } |
+                                        Instruction::Try { .. } |
+                                        Instruction::TryTable { .. } => depth += 1,
+                                        Instruction::End => {
+                                            if depth == 0 {
+                                                target_depth -= 1;
+                                                if target_depth == 0 {
+                                                    pc = new_pc - 1;
+                                                    break;
+                                                }
+                                            } else {
+                                                depth -= 1;
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                new_pc += 1;
+                            }
+                        } else {
+                            // No handler found - uncaught exception
+                            #[cfg(feature = "tracing")]
+                            error!(
+                                tag_idx = tag_idx,
+                                "[EXCEPTION] No handler found - uncaught exception"
+                            );
+                            return Err(wrt_error::Error::runtime_trap(
+                                "uncaught exception",
+                            ));
+                        }
                     }
                     Instruction::ThrowRef => {
                         // Throw an exception from an exnref on the stack
