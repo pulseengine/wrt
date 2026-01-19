@@ -1451,12 +1451,16 @@ pub trait HostImportHandler: Send + Sync {
     /// This is called after cabi_realloc has allocated memory for get-arguments.
     /// The pointers should be used when get-arguments is subsequently called.
     ///
+    /// IMPORTANT: Each string is allocated SEPARATELY via cabi_realloc to ensure
+    /// proper allocator metadata. This prevents crashes when the component tries
+    /// to free individual strings.
+    ///
     /// # Arguments
-    /// * `list_ptr` - Pointer to the list<string> structure
-    /// * `string_data_ptr` - Pointer to the string data area
+    /// * `list_ptr` - Pointer to the list<string> structure (array of ptr+len pairs)
+    /// * `string_ptrs` - Vector of (ptr, len) for each individually allocated string
     ///
     /// Default implementation does nothing (for non-WASI handlers).
-    fn set_args_allocation(&mut self, _list_ptr: u32, _string_data_ptr: u32) {
+    fn set_args_allocation(&mut self, _list_ptr: u32, _string_ptrs: Vec<(u32, u32)>) {
         // Default no-op for handlers that don't need this
     }
 }

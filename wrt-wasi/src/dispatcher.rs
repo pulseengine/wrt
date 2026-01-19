@@ -208,9 +208,10 @@ pub struct WasiDispatcher {
     args: Vec<String>,
     /// Environment variables as (key, value) pairs
     env_vars: Vec<(String, String)>,
-    /// Pre-allocated memory for args (`list_ptr`, `string_data_ptr`)
+    /// Pre-allocated memory for args (`list_ptr`, `string_ptrs`)
     /// Set by the engine after calling `cabi_realloc`
-    args_alloc: Option<(u32, u32)>,
+    /// Each string is allocated separately to ensure proper allocator metadata
+    args_alloc: Option<(u32, Vec<(u32, u32)>)>,
     /// File descriptor table (maps handle -> descriptor info)
     /// Note: This is separate from `resource_manager` - used for filesystem operations
     #[cfg(feature = "std")]
@@ -389,11 +390,15 @@ impl WasiDispatcher {
     /// This is set by the engine after calling `cabi_realloc` to allocate
     /// properly owned memory for argument strings.
     ///
+    /// IMPORTANT: Each string is allocated SEPARATELY to ensure proper
+    /// allocator metadata. This prevents crashes when the component frees
+    /// individual strings.
+    ///
     /// # Arguments
     /// * `list_ptr` - Pointer to the (ptr, len) array for list elements
-    /// * `string_data_ptr` - Pointer to start writing string data
-    pub fn set_args_alloc(&mut self, list_ptr: u32, string_data_ptr: u32) {
-        self.args_alloc = Some((list_ptr, string_data_ptr));
+    /// * `string_ptrs` - Vector of (ptr, len) for each individually allocated string
+    pub fn set_args_alloc(&mut self, list_ptr: u32, string_ptrs: Vec<(u32, u32)>) {
+        self.args_alloc = Some((list_ptr, string_ptrs));
     }
 
     /// Clear pre-allocated memory for arguments
@@ -402,8 +407,8 @@ impl WasiDispatcher {
     }
 
     /// Get pre-allocated memory pointers for arguments
-    pub fn get_args_alloc(&self) -> Option<(u32, u32)> {
-        self.args_alloc
+    pub fn get_args_alloc(&self) -> Option<&(u32, Vec<(u32, u32)>)> {
+        self.args_alloc.as_ref()
     }
 
     /// Get the capabilities for this dispatcher
@@ -1241,14 +1246,16 @@ impl WasiDispatcher {
                     }
 
                     // Use pre-allocated memory from cabi_realloc - this is required
-                    let (list_ptr, mut string_data_ptr) = if let Some((alloc_list, alloc_strings)) = self.args_alloc {
+                    // IMPORTANT: Each string has its own allocation to ensure proper
+                    // allocator metadata (prevents crash when component frees strings)
+                    let (list_ptr, string_ptrs) = if let Some((alloc_list, ref alloc_strings)) = self.args_alloc {
                         #[cfg(feature = "tracing")]
                         trace!(
                             list_ptr = format_args!("0x{:x}", alloc_list),
-                            string_ptr = format_args!("0x{:x}", alloc_strings),
-                            "using cabi_realloc memory"
+                            num_strings = alloc_strings.len(),
+                            "using cabi_realloc memory with SEPARATE string allocations"
                         );
-                        (alloc_list, alloc_strings)
+                        (alloc_list, alloc_strings.clone())
                     } else {
                         // NO FALLBACK - cabi_realloc must have been called
                         // Per CLAUDE.md: "FAIL LOUD AND EARLY" - no stack-relative hacks
@@ -1259,45 +1266,62 @@ impl WasiDispatcher {
                         ));
                     };
 
-                    // First pass: write string data and collect pointers
-                    let mut string_entries: Vec<(u32, u32)> = Vec::new();
-                    for arg in &args_to_use {
+                    // Verify we have the right number of string allocations
+                    if string_ptrs.len() != args_to_use.len() {
+                        #[cfg(feature = "tracing")]
+                        warn!(
+                            expected = args_to_use.len(),
+                            actual = string_ptrs.len(),
+                            "string allocation count mismatch"
+                        );
+                        return Err(wrt_error::Error::runtime_error(
+                            "string allocation count mismatch"
+                        ));
+                    }
+
+                    // Write each string to its INDIVIDUALLY allocated location
+                    // This ensures each string has proper allocator metadata
+                    for (i, (arg, (string_ptr, expected_len))) in args_to_use.iter().zip(string_ptrs.iter()).enumerate() {
                         let bytes = arg.as_bytes();
                         let len = bytes.len() as u32;
 
+                        // Verify allocation matches
+                        if len != *expected_len {
+                            #[cfg(feature = "tracing")]
+                            warn!(
+                                index = i,
+                                expected_len = *expected_len,
+                                actual_len = len,
+                                "string length mismatch"
+                            );
+                        }
+
                         // Bounds check
-                        if (string_data_ptr as usize + bytes.len()) > mem.size() {
+                        if (*string_ptr as usize + bytes.len()) > mem.size() {
                             #[cfg(feature = "tracing")]
                             warn!("not enough memory for arg data");
-                            // Write empty list
                             mem.write_bytes(retptr, &0u32.to_le_bytes())?;
                             mem.write_bytes(retptr + 4, &0u32.to_le_bytes())?;
                             return Ok(vec![]);
                         }
 
-                        // Write string bytes
-                        mem.write_bytes(string_data_ptr, bytes)?;
+                        // Write string bytes to its individually allocated location
+                        mem.write_bytes(*string_ptr, bytes)?;
                         #[cfg(feature = "tracing")]
                         trace!(
+                            index = i,
                             arg = %arg,
                             byte_count = bytes.len(),
-                            addr = format_args!("0x{:x}", string_data_ptr),
-                            "wrote string"
+                            addr = format_args!("0x{:x}", *string_ptr),
+                            "wrote string to separate allocation"
                         );
 
-                        string_entries.push((string_data_ptr, len));
-                        string_data_ptr += len;
-                        // Align to 8 bytes
-                        string_data_ptr = (string_data_ptr + 7) & !7;
-                    }
-
-                    // Second pass: write (ptr, len) array at list_ptr
-                    for (i, (ptr, len)) in string_entries.iter().enumerate() {
+                        // Write (ptr, len) to list array
                         let offset = list_ptr + (i as u32 * 8);
-                        mem.write_bytes(offset, &ptr.to_le_bytes())?;
+                        mem.write_bytes(offset, &string_ptr.to_le_bytes())?;
                         mem.write_bytes(offset + 4, &len.to_le_bytes())?;
                         #[cfg(feature = "tracing")]
-                        trace!(index = i, ptr = format_args!("0x{:x}", ptr), len = len, "list entry written");
+                        trace!(index = i, ptr = format_args!("0x{:x}", string_ptr), len = len, "list entry written");
                     }
 
                     // Write (list_ptr, count) to the return pointer
@@ -2375,8 +2399,8 @@ impl wrt_foundation::HostImportHandler for WasiDispatcher {
         self.dispatch_core(module, function, args, memory)
     }
 
-    fn set_args_allocation(&mut self, list_ptr: u32, string_data_ptr: u32) {
-        self.set_args_alloc(list_ptr, string_data_ptr);
+    fn set_args_allocation(&mut self, list_ptr: u32, string_ptrs: Vec<(u32, u32)>) {
+        self.set_args_alloc(list_ptr, string_ptrs);
     }
 }
 
