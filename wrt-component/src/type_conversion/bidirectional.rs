@@ -193,6 +193,7 @@ pub fn value_type_to_format_val_type(
         ValueType::I16x8 => Err(Error::runtime_execution_error("I16x8 not supported in component model")),
         ValueType::StructRef(_) => Err(Error::runtime_execution_error("StructRef not supported in component model")),
         ValueType::ArrayRef(_) => Err(Error::runtime_execution_error("ArrayRef not supported in component model")),
+        ValueType::ExnRef => Err(Error::runtime_execution_error("ExnRef not supported in component model")),
     }
 }
 
@@ -286,6 +287,7 @@ pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(value_type
         ValueType::I16x8 => WrtTypesValType::Void, // I16x8 not supported in component model
         ValueType::StructRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
         ValueType::ArrayRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
+        ValueType::ExnRef => WrtTypesValType::Ref(0), // Map ExnRef to Ref with default index
     }
 }
 

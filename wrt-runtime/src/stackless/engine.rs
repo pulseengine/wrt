@@ -9024,45 +9024,89 @@ impl StacklessEngine {
         // Use host_handler for WASI dispatch (when configured)
         // This is the proper architecture - host_handler routes to WasiDispatcher
         #[cfg(feature = "std")]
-        if let Some(ref mut handler) = self.host_handler {
-            #[cfg(feature = "tracing")]
-            debug!(
-                module_name = %module_name,
-                field_name = %field_name,
-                "[HOST_HANDLER] Dispatching via HostImportHandler"
-            );
+        {
+            // ON-DEMAND ALLOCATION for get-arguments
+            // This MUST happen AFTER _start has initialized the component's allocator.
+            // Pre-allocating before _start causes memory collisions where the allocator
+            // reuses our memory for other purposes.
+            #[cfg(feature = "wasi")]
+            let args_alloc = if module_name.contains("wasi:cli/environment") && field_name == "get-arguments" {
+                let wasi_args = wrt_wasi::get_global_wasi_args();
+                if !wasi_args.is_empty() {
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        args = ?wasi_args,
+                        "[ON-DEMAND-ALLOC] Allocating memory for get-arguments"
+                    );
+                    match self.allocate_wasi_args_memory(instance_id, &wasi_args) {
+                        Ok(alloc) => alloc,
+                        Err(e) => {
+                            #[cfg(feature = "tracing")]
+                            warn!(error = %e, "[ON-DEMAND-ALLOC] Failed to allocate args memory");
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
-            // Get instance and memory
-            let instance = self.instances.get(&instance_id)
-                .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found for host handler call"))?
-                .clone();
+            #[cfg(not(feature = "wasi"))]
+            let args_alloc: Option<(u32, u32)> = None;
 
-            // Get memory as MemoryAccessor
-            let mem_wrapper = instance.memory(0).ok();
-            let memory: Option<&dyn wrt_foundation::MemoryAccessor> = mem_wrapper.as_ref()
-                .map(|m| m.0.as_ref() as &dyn wrt_foundation::MemoryAccessor);
+            if let Some(ref mut handler) = self.host_handler {
+                // Set the allocation if we have one (for get-arguments)
+                if let Some((list_ptr, string_ptr)) = args_alloc {
+                    #[cfg(feature = "tracing")]
+                    trace!(
+                        list_ptr = format_args!("0x{:x}", list_ptr),
+                        string_ptr = format_args!("0x{:x}", string_ptr),
+                        "[ON-DEMAND-ALLOC] Setting args allocation on handler"
+                    );
+                    handler.set_args_allocation(list_ptr, string_ptr);
+                }
 
-            // Collect args from stack based on function signature
-            let args = Self::collect_import_args_by_name(&module, module_name, field_name, stack);
+                #[cfg(feature = "tracing")]
+                debug!(
+                    module_name = %module_name,
+                    field_name = %field_name,
+                    "[HOST_HANDLER] Dispatching via HostImportHandler"
+                );
 
-            #[cfg(feature = "tracing")]
-            trace!(
-                args_count = args.len(),
-                has_memory = memory.is_some(),
-                "[HOST_HANDLER] Calling handler"
-            );
+                // Get instance and memory
+                let instance = self.instances.get(&instance_id)
+                    .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found for host handler call"))?
+                    .clone();
 
-            // Call handler - errors propagate up (no fallback per CLAUDE.md)
-            let results = handler.call_import(module_name, field_name, &args, memory)?;
+                // Get memory as MemoryAccessor
+                let mem_wrapper = instance.memory(0).ok();
+                let memory: Option<&dyn wrt_foundation::MemoryAccessor> = mem_wrapper.as_ref()
+                    .map(|m| m.0.as_ref() as &dyn wrt_foundation::MemoryAccessor);
 
-            #[cfg(feature = "tracing")]
-            trace!(
-                results_count = results.len(),
-                "[HOST_HANDLER] Handler returned successfully"
-            );
+                // Collect args from stack based on function signature
+                let args = Self::collect_import_args_by_name(&module, module_name, field_name, stack);
 
-            // Return first result if any
-            return Ok(results.into_iter().next());
+                #[cfg(feature = "tracing")]
+                trace!(
+                    args_count = args.len(),
+                    has_memory = memory.is_some(),
+                    "[HOST_HANDLER] Calling handler"
+                );
+
+                // Call handler - errors propagate up (no fallback per CLAUDE.md)
+                let results = handler.call_import(module_name, field_name, &args, memory)?;
+
+                #[cfg(feature = "tracing")]
+                trace!(
+                    results_count = results.len(),
+                    "[HOST_HANDLER] Handler returned successfully"
+                );
+
+                // Return first result if any
+                return Ok(results.into_iter().next());
+            }
         }
 
         // NO INLINE WASI DISPATCH - per CLAUDE.md NO FALLBACK LOGIC rule

@@ -175,6 +175,7 @@ pub fn type_name(value: &crate::prelude::Value) -> &'static str {
         crate::prelude::Value::I16x8(_) => "I16x8",
         crate::prelude::Value::StructRef(_) => "StructRef",
         crate::prelude::Value::ArrayRef(_) => "ArrayRef",
+        crate::prelude::Value::ExnRef(_) => "ExnRef",
         // Component Model types
         crate::prelude::Value::Bool(_) => "Bool",
         crate::prelude::Value::S8(_) => "S8",

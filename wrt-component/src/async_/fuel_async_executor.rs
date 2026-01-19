@@ -3696,6 +3696,13 @@ impl FuelAsyncExecutor {
                     Some(_) => result.extend_from_slice(&[1u8]),
                     None => result.extend_from_slice(&[0u8]),
                 },
+                wrt_foundation::Value::ExnRef(opt_ref) => match opt_ref {
+                    Some(v) => {
+                        result.extend_from_slice(&[1u8]);
+                        result.extend_from_slice(&v.to_le_bytes());
+                    },
+                    None => result.extend_from_slice(&[0u8]),
+                },
                 &wrt_foundation::Value::Bool(v) => {
                     result.extend_from_slice(&[if v { 1u8 } else { 0u8 }]);
                 },

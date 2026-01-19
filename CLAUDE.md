@@ -603,6 +603,25 @@ This is fundamentally different from inline WAT modules which are already parsed
 - [WABT Test Documentation](https://github.com/WebAssembly/wabt/blob/main/test/README.md)
 - [Official WebAssembly Interpreter](https://github.com/WebAssembly/spec/tree/main/interpreter)
 
+### Test Components
+For testing WASI component execution, use the pre-built components from:
+- [pulseengine/wasm-component-examples](https://github.com/pulseengine/wasm-component-examples/releases)
+
+Download and extract with:
+```bash
+mkdir -p /tmp/wasm-components && cd /tmp/wasm-components
+gh release download v0.2.0 --repo pulseengine/wasm-component-examples --pattern "wasm-components-0.2.0.tar.gz"
+tar -xzf wasm-components-0.2.0.tar.gz
+# Components are in release-0.2.0/{rust,c,cpp}/
+```
+
+Available test components:
+- `rust/hello_rust.wasm` - Basic Rust CLI component
+- `rust/calculator.wasm` - Calculator using get-arguments
+- `rust/datetime.wasm` - Uses wasi:clocks
+- `c/hello_c_cli.wasm` - C CLI component (uses terminal interfaces)
+- `cpp/hello_cpp_cli.wasm` - C++ CLI component (uses terminal interfaces)
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.

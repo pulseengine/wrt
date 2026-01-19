@@ -81,6 +81,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
+        ValueType::ExnRef => Ok(FormatValType::Own(0)), // Map exception reference to handle
     }
 }
 
@@ -110,6 +111,7 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> wrt_error::Result<FormatValT
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
+        ValueType::ExnRef => Ok(FormatValType::Own(0)), // Map exception reference to handle
     }
 }
 

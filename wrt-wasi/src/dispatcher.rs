@@ -1168,6 +1168,9 @@ impl WasiDispatcher {
 
         let base_interface = Self::strip_version(interface);
 
+        // DEBUG: trace WASI calls
+        eprintln!("[WASI-TRACE] {}::{} args={:?}", base_interface, function, args);
+
         match (base_interface, function) {
             // Simple functions that don't need memory
             ("wasi:cli/stdout", "get-stdout") => {
@@ -1300,6 +1303,7 @@ impl WasiDispatcher {
                     // Write (list_ptr, count) to the return pointer
                     mem.write_bytes(retptr, &list_ptr.to_le_bytes())?;
                     mem.write_bytes(retptr + 4, &(args_to_use.len() as u32).to_le_bytes())?;
+
                     #[cfg(feature = "tracing")]
                     trace!(
                         retptr = format_args!("0x{:x}", retptr),
@@ -1614,19 +1618,20 @@ impl WasiDispatcher {
                     // For result<_, stream-error>:
                     //   discriminant 0 = ok (no payload)
                     //   discriminant 1 = err (followed by error info)
+                    // Canonical ABI uses i32 (4 bytes) for discriminant
                     if let Some(rp) = retptr {
-                        if (rp as usize) < mem.size() {
+                        if (rp as usize + 4) <= mem.size() {
                             match &result {
                                 Ok(()) => {
-                                    // Ok variant: discriminant = 0
-                                    mem.write_bytes(rp, &[0])?;
+                                    // Ok variant: discriminant = 0 (4 bytes, little-endian)
+                                    mem.write_bytes(rp, &0u32.to_le_bytes())?;
                                     #[cfg(feature = "tracing")]
                                     trace!(retptr = format_args!("0x{:x}", rp), "wrote Ok discriminant (0)");
                                 }
                                 Err(_) => {
-                                    // Err variant: discriminant = 1
+                                    // Err variant: discriminant = 1 (4 bytes, little-endian)
                                     // Note: stream-error payload would need more data, but for now just set discriminant
-                                    mem.write_bytes(rp, &[1])?;
+                                    mem.write_bytes(rp, &1u32.to_le_bytes())?;
                                     #[cfg(feature = "tracing")]
                                     trace!(retptr = format_args!("0x{:x}", rp), "wrote Err discriminant (1)");
                                 }
@@ -1651,8 +1656,8 @@ impl WasiDispatcher {
                 {
                     // In no_std, we can't write to stdout, but still write Ok to retptr
                     if let Some(rp) = retptr {
-                        if (rp as usize) < mem.size() {
-                            mem.write_bytes(rp, &[0])?; // Ok discriminant
+                        if (rp as usize + 4) <= mem.size() {
+                            mem.write_bytes(rp, &0u32.to_le_bytes())?; // Ok discriminant (4 bytes)
                         }
                     }
                     Ok(vec![])
@@ -2060,9 +2065,6 @@ impl WasiDispatcher {
             _ => {
                 #[cfg(feature = "tracing")]
                 warn!(interface = %base_interface, function = %function, "unknown WASI function (core)");
-
-                #[cfg(feature = "std")]
-                eprintln!("[WASI-UNKNOWN] interface='{}' function='{}'", base_interface, function);
 
                 Err(Error::runtime_not_implemented("Unknown WASI function"))
             }

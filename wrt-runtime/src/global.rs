@@ -136,6 +136,7 @@ fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
         WrtValueType::I16x8 => 7,
         WrtValueType::StructRef(_) => 8,
         WrtValueType::ArrayRef(_) => 9,
+        WrtValueType::ExnRef => 10,
     }
 }
 

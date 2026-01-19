@@ -97,6 +97,9 @@ fn convert_import_desc(
             // This should never occur in practice, but we need to handle it
             wrt_format::module::ImportDesc::Function(0)
         },
+        wrt_foundation::types::ImportDesc::Tag(tag_type) => {
+            wrt_format::module::ImportDesc::Tag(tag_type.type_idx)
+        },
     }
 }
 
@@ -117,6 +120,7 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
         binary:            None,
         core_version:      wrt_format::types::CoreWasmVersion::default(),
         type_info_section: None,
+        tags:              Vec::new(),
     };
 
     for section in sections {
