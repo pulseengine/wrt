@@ -16,8 +16,10 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     types::{
         BlockType,
+        CatchHandler,
         Instruction,
         MemArg,
+        MAX_CATCH_HANDLERS,
     },
 };
 
@@ -175,6 +177,33 @@ fn parse_instruction_with_provider(
             Instruction::If { block_type_idx }
         },
         0x05 => Instruction::Else,
+        // Exception handling instructions (exception handling proposal)
+        0x06 => {
+            // try (legacy) - takes block type
+            let block_type = parse_block_type(bytecode, offset + 1)?;
+            consumed += 1;
+            let block_type_idx = block_type_to_index(&block_type);
+            Instruction::Try { block_type_idx }
+        },
+        0x07 => {
+            // catch (legacy) - takes tag index
+            let (tag_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::Catch(tag_idx)
+        },
+        0x08 => {
+            // throw - takes tag index
+            let (tag_idx, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::Throw(tag_idx)
+        },
+        0x09 => {
+            // rethrow (legacy) - takes relative depth to try block
+            let (depth, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::Rethrow(depth)
+        },
+        0x0A => Instruction::ThrowRef,
         0x0B => Instruction::End,
         0x0C => {
             // Br (branch)
@@ -257,6 +286,78 @@ fn parse_instruction_with_provider(
             let (table_idx, table_bytes) = read_leb128_u32(bytecode, offset + 1 + type_bytes)?;
             consumed += table_bytes;
             Instruction::ReturnCallIndirect(type_idx, table_idx)
+        },
+
+        // Exception handling instructions (continued)
+        0x18 => {
+            // delegate (legacy) - takes relative depth
+            let (depth, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+            Instruction::Delegate(depth)
+        },
+        0x19 => Instruction::CatchAll,
+        0x1F => {
+            // try_table - takes block type + catch handler list
+            let block_type = parse_block_type(bytecode, offset + 1)?;
+            consumed += 1;
+            let block_type_idx = block_type_to_index(&block_type);
+
+            // Parse handler count
+            let (handler_count, handler_bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+            consumed += handler_bytes;
+
+            // Parse catch handlers
+            let mut handlers = BoundedVec::new(provider.clone())
+                .map_err(|_| Error::parse_error("Failed to create catch handlers vector"))?;
+
+            for _ in 0..handler_count {
+                // Each handler has: catch_kind (1 byte), then tag_idx (if applicable), then label
+                if offset + consumed >= bytecode.len() {
+                    return Err(Error::parse_error("Unexpected end in try_table handlers"));
+                }
+                let catch_kind = bytecode[offset + consumed];
+                consumed += 1;
+
+                let handler = match catch_kind {
+                    0x00 => {
+                        // catch: tag_idx + label
+                        let (tag_idx, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        let (label, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        CatchHandler::Catch { tag_idx, label }
+                    },
+                    0x01 => {
+                        // catch_ref: tag_idx + label
+                        let (tag_idx, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        let (label, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        CatchHandler::CatchRef { tag_idx, label }
+                    },
+                    0x02 => {
+                        // catch_all: label only
+                        let (label, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        CatchHandler::CatchAll { label }
+                    },
+                    0x03 => {
+                        // catch_all_ref: label only
+                        let (label, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
+                        consumed += bytes;
+                        CatchHandler::CatchAllRef { label }
+                    },
+                    _ => return Err(Error::parse_error("Invalid catch handler kind in try_table")),
+                };
+
+                handlers.push(handler)
+                    .map_err(|_| Error::parse_error("Too many catch handlers in try_table"))?;
+            }
+
+            Instruction::TryTable {
+                block_type_idx,
+                handlers,
+            }
         },
 
         // Parametric instructions

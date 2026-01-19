@@ -19,6 +19,7 @@ use wrt_format::module::{
 use wrt_foundation::{
     bounded::BoundedVec,
     safe_memory::NoStdProvider,
+    types::TagType,
 };
 
 use crate::{
@@ -257,6 +258,7 @@ impl<'a> StreamingDecoder<'a> {
             10 => self.process_code_section(data),
             11 => self.process_data_section(data),
             12 => self.process_data_count_section(data),
+            13 => self.process_tag_section(data),
             _ => self.process_custom_section(data),
         }
     }
@@ -1617,6 +1619,55 @@ impl<'a> StreamingDecoder<'a> {
 
         #[cfg(feature = "tracing")]
         trace!(count = count, total_segments = self.module.data.len(), "process_data_section: complete");
+
+        Ok(())
+    }
+
+    /// Process tag section (exception handling proposal)
+    /// Tag section ID is 13 (0x0D)
+    fn process_tag_section(&mut self, data: &[u8]) -> Result<()> {
+        use wrt_format::binary::read_leb128_u32;
+
+        let mut offset = 0;
+        let (count, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+
+        #[cfg(feature = "tracing")]
+        trace!(count = count, "process_tag_section");
+
+        for _i in 0..count {
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of tag section"));
+            }
+
+            // Each tag has: attribute (u8, must be 0) + type_idx (LEB128 u32)
+            let attribute = data[offset];
+            offset += 1;
+
+            // Validate attribute - must be 0 (exception)
+            if attribute != 0 {
+                return Err(Error::validation_error("Invalid tag attribute"));
+            }
+
+            let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
+            offset += bytes_read;
+
+            // Validate type index
+            if type_idx as usize >= self.module.types.len() {
+                return Err(Error::validation_error("Invalid tag type index"));
+            }
+
+            let tag = TagType { attribute, type_idx };
+
+            #[cfg(feature = "std")]
+            self.module.tags.push(tag);
+            #[cfg(not(feature = "std"))]
+            self.module.tags.push(tag)
+                .map_err(|_| Error::resource_exhausted("Too many tags"))?;
+
+            #[cfg(feature = "tracing")]
+            trace!(tag_idx = _i, type_idx = type_idx, "tag");
+        }
 
         Ok(())
     }

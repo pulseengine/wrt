@@ -35,6 +35,7 @@ use wrt_foundation::{
         ImportDesc as WrtImportDesc,
         MemoryType as WrtMemoryType,
         TableType as WrtTableType,
+        TagType,
     },
     RefType,
     ValueType,
@@ -1622,6 +1623,8 @@ pub struct Module<
     pub memories:          crate::WasmVec<Memory, P>,
     /// Global definitions
     pub globals:           crate::WasmVec<Global<P>, P>,
+    /// Exception tag definitions (exception handling proposal)
+    pub tags:              crate::WasmVec<TagType, P>,
     /// Element segments (table initializers) - using pure format internally
     pub elements:          crate::WasmVec<crate::pure_format_types::PureElementSegment, P>,
     /// Data segments (memory initializers) - using pure format internally
@@ -1664,6 +1667,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
                 .unwrap_or_else(|_| panic!("Failed to create memories vector")),
             globals:           crate::WasmVec::new(P::default())
                 .unwrap_or_else(|_| panic!("Failed to create globals vector")),
+            tags:              crate::WasmVec::new(P::default())
+                .unwrap_or_else(|_| panic!("Failed to create tags vector")),
             elements:          crate::WasmVec::new(P::default())
                 .unwrap_or_else(|_| panic!("Failed to create elements vector")),
             data:              crate::WasmVec::new(P::default())
@@ -1696,6 +1701,8 @@ pub struct Module {
     pub memories:          Vec<Memory>,
     /// Global definitions
     pub globals:           Vec<Global>,
+    /// Exception tag definitions (exception handling proposal)
+    pub tags:              Vec<TagType>,
     /// Element segments (table initializers) - using pure format internally
     pub elements:          Vec<crate::pure_format_types::PureElementSegment>,
     /// Data segments (memory initializers) - using pure format internally
@@ -1733,6 +1740,7 @@ impl Module {
             tables:            Vec::new(),
             memories:          Vec::new(),
             globals:           Vec::new(),
+            tags:              Vec::new(),
             elements:          Vec::new(),
             data:              Vec::new(),
             exports:           Vec::new(),

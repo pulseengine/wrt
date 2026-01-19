@@ -621,6 +621,87 @@ impl Checksummable for CatchHandler {
     }
 }
 
+impl Default for CatchHandler {
+    fn default() -> Self {
+        Self::CatchAll { label: 0 }
+    }
+}
+
+impl ToBytes for CatchHandler {
+    fn serialized_size(&self) -> usize {
+        match self {
+            Self::Catch { .. } | Self::CatchRef { .. } => 1 + 4 + 4, // discriminant + tag_idx + label
+            Self::CatchAll { .. } | Self::CatchAllRef { .. } => 1 + 4, // discriminant + label
+        }
+    }
+
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<()> {
+        match self {
+            Self::Catch { tag_idx, label } => {
+                writer.write_u8(0x00)?;
+                writer.write_u32_le(*tag_idx)?;
+                writer.write_u32_le(*label)?;
+            }
+            Self::CatchRef { tag_idx, label } => {
+                writer.write_u8(0x01)?;
+                writer.write_u32_le(*tag_idx)?;
+                writer.write_u32_le(*label)?;
+            }
+            Self::CatchAll { label } => {
+                writer.write_u8(0x02)?;
+                writer.write_u32_le(*label)?;
+            }
+            Self::CatchAllRef { label } => {
+                writer.write_u8(0x03)?;
+                writer.write_u32_le(*label)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl FromBytes for CatchHandler {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0x00 => {
+                let tag_idx = reader.read_u32_le()?;
+                let label = reader.read_u32_le()?;
+                Ok(Self::Catch { tag_idx, label })
+            }
+            0x01 => {
+                let tag_idx = reader.read_u32_le()?;
+                let label = reader.read_u32_le()?;
+                Ok(Self::CatchRef { tag_idx, label })
+            }
+            0x02 => {
+                let label = reader.read_u32_le()?;
+                Ok(Self::CatchAll { label })
+            }
+            0x03 => {
+                let label = reader.read_u32_le()?;
+                Ok(Self::CatchAllRef { label })
+            }
+            _ => Err(wrt_error::Error::parse_error(
+                "Invalid CatchHandler discriminant",
+            )),
+        }
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> wrt_error::Result<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
 /// Represents the type of a WebAssembly function.
 ///
 /// It defines the parameter types and result types of a function.
@@ -914,6 +995,29 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     // Tail call instructions (0x12 and 0x13 opcodes)
     ReturnCall(FuncIdx),
     ReturnCallIndirect(TypeIdx, TableIdx),
+
+    // Exception handling instructions (exception handling proposal)
+    /// Throw exception with specified tag (opcode 0x08)
+    Throw(TagIdx),
+    /// Throw exception from exnref on stack (opcode 0x0A)
+    ThrowRef,
+    /// Modern try_table block with catch handlers (opcode 0x1F)
+    TryTable {
+        block_type_idx: u32,
+        handlers:       BoundedVec<CatchHandler, MAX_CATCH_HANDLERS, P>,
+    },
+    /// Legacy try block (opcode 0x06)
+    Try {
+        block_type_idx: u32,
+    },
+    /// Legacy catch clause - tag index (opcode 0x07)
+    Catch(TagIdx),
+    /// Legacy catch_all clause (opcode 0x19)
+    CatchAll,
+    /// Legacy rethrow - relative depth to try block (opcode 0x09)
+    Rethrow(LabelIdx),
+    /// Legacy delegate - relative depth (opcode 0x18)
+    Delegate(LabelIdx),
 
     // Branch hinting instructions (0xD5 and 0xD6 opcodes)
     BrOnNull(LabelIdx),
