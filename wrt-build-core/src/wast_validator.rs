@@ -27,6 +27,7 @@ pub enum StackType {
     V128,
     FuncRef,
     ExternRef,
+    ExnRef,
     Unknown,
 }
 
@@ -41,6 +42,7 @@ impl StackType {
             ValueType::V128 => StackType::V128,
             ValueType::FuncRef => StackType::FuncRef,
             ValueType::ExternRef => StackType::ExternRef,
+            ValueType::ExnRef => StackType::ExnRef,
             // WebAssembly 3.0 GC types - not yet fully supported, treat as unknown
             ValueType::I16x8 | ValueType::StructRef(_) | ValueType::ArrayRef(_) => StackType::Unknown,
         }
@@ -513,6 +515,146 @@ impl WastModuleValidator {
                         frame.reachable = true;
                     }
                 }
+
+                // Exception handling instructions
+                0x06 => {
+                    // try (legacy) - similar to block but with Try frame type
+                    let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
+                    offset = new_offset;
+
+                    let (input_types, output_types) =
+                        Self::block_type_to_stack_types(&block_type, module)?;
+
+                    // Pop inputs from stack
+                    let frame_height = Self::current_frame_height(&frames);
+                    for input_type in input_types.iter().rev() {
+                        if !Self::pop_type(&mut stack, *input_type, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    let stack_height = stack.len();
+                    frames.push(ControlFrame {
+                        frame_type: FrameType::Try,
+                        input_types: input_types.clone(),
+                        output_types: output_types.clone(),
+                        reachable: true,
+                        stack_height,
+                        unreachable_height: None,
+                    });
+
+                    for input_type in &input_types {
+                        stack.push(*input_type);
+                    }
+                }
+                0x07 => {
+                    // catch (legacy) - takes tag index, similar to else for if
+                    let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate tag exists
+                    if tag_idx as usize >= module.tags.len() {
+                        return Err(anyhow!("unknown tag"));
+                    }
+
+                    // Catch must be in a try block
+                    if let Some(frame) = frames.last() {
+                        if frame.frame_type != FrameType::Try {
+                            return Err(anyhow!("catch without try"));
+                        }
+                    } else {
+                        return Err(anyhow!("catch without try"));
+                    }
+
+                    // Reset stack to frame start height
+                    if let Some(frame) = frames.last() {
+                        stack.truncate(frame.stack_height);
+                    }
+
+                    // Push the tag's parameter types onto the stack (caught values)
+                    let tag = &module.tags[tag_idx as usize];
+                    if let Some(tag_type) = module.types.get(tag.type_idx as usize) {
+                        for param in &tag_type.params {
+                            stack.push(StackType::from_value_type(*param));
+                        }
+                    }
+
+                    // Mark as still in try context but now reachable
+                    if let Some(frame) = frames.last_mut() {
+                        frame.reachable = true;
+                    }
+                }
+                0x08 => {
+                    // throw - takes tag index, pops tag parameters, makes code unreachable
+                    let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate tag exists
+                    if tag_idx as usize >= module.tags.len() {
+                        return Err(anyhow!("unknown tag"));
+                    }
+
+                    let frame_height = Self::current_frame_height(&frames);
+
+                    // Pop the tag's parameter types from the stack
+                    let tag = &module.tags[tag_idx as usize];
+                    if let Some(tag_type) = module.types.get(tag.type_idx as usize) {
+                        for param in tag_type.params.iter().rev() {
+                            let expected = StackType::from_value_type(*param);
+                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                    }
+
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
+                        frame.reachable = false;
+                    }
+                }
+                0x09 => {
+                    // rethrow (legacy) - takes relative depth to try block
+                    let (depth, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate relative depth points to a try/catch block
+                    if depth as usize >= frames.len() {
+                        return Err(anyhow!("rethrow: invalid depth"));
+                    }
+                    let target_frame_idx = frames.len() - 1 - depth as usize;
+                    if frames[target_frame_idx].frame_type != FrameType::Try {
+                        return Err(anyhow!("rethrow: not in try block"));
+                    }
+
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
+                        frame.reachable = false;
+                    }
+                }
+                0x0A => {
+                    // throw_ref - pops exnref, throws it
+                    let frame_height = Self::current_frame_height(&frames);
+
+                    // Pop exnref
+                    if !Self::pop_type(&mut stack, StackType::ExnRef, frame_height, Self::is_unreachable(&frames)) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+
+                    // Mark current frame as unreachable
+                    if let Some(frame) = frames.last_mut() {
+                        if frame.reachable {
+                            frame.unreachable_height = Some(stack.len());
+                        }
+                        frame.reachable = false;
+                    }
+                }
+
                 0x0B => {
                     // end
                     if frames.len() == 1 {
@@ -876,6 +1018,121 @@ impl WastModuleValidator {
                             frame.unreachable_height = Some(stack.len());
                         }
                         frame.reachable = false;
+                    }
+                }
+
+                // Exception handling (continued)
+                0x18 => {
+                    // delegate (legacy) - terminates try block and delegates to outer handler
+                    let (depth, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Must be in a try block
+                    if let Some(frame) = frames.last() {
+                        if frame.frame_type != FrameType::Try {
+                            return Err(anyhow!("delegate without try"));
+                        }
+                    } else {
+                        return Err(anyhow!("delegate without try"));
+                    }
+
+                    // Validate relative depth
+                    if depth as usize >= frames.len() {
+                        return Err(anyhow!("delegate: invalid depth"));
+                    }
+
+                    // Pop the try frame
+                    if let Some(frame) = frames.pop() {
+                        // Restore stack to before try
+                        stack.truncate(frame.stack_height);
+                        // Push outputs
+                        for output in &frame.output_types {
+                            stack.push(*output);
+                        }
+                    }
+                }
+                0x19 => {
+                    // catch_all (legacy) - catches all exceptions
+                    // Must be in a try block
+                    if let Some(frame) = frames.last() {
+                        if frame.frame_type != FrameType::Try {
+                            return Err(anyhow!("catch_all without try"));
+                        }
+                    } else {
+                        return Err(anyhow!("catch_all without try"));
+                    }
+
+                    // Reset stack to frame start height
+                    if let Some(frame) = frames.last() {
+                        stack.truncate(frame.stack_height);
+                    }
+
+                    // catch_all doesn't push any values - exception is discarded
+                    // Mark as reachable
+                    if let Some(frame) = frames.last_mut() {
+                        frame.reachable = true;
+                    }
+                }
+                0x1F => {
+                    // try_table - modern exception handling block
+                    let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
+                    offset = new_offset;
+
+                    // Parse handler count
+                    let (handler_count, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Parse and validate each handler
+                    for _ in 0..handler_count {
+                        if offset >= code.len() {
+                            return Err(anyhow!("try_table: unexpected end"));
+                        }
+                        let catch_kind = code[offset];
+                        offset += 1;
+
+                        match catch_kind {
+                            0x00 | 0x01 => {
+                                // catch / catch_ref: parse tag_idx + label
+                                let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+                                if tag_idx as usize >= module.tags.len() {
+                                    return Err(anyhow!("unknown tag"));
+                                }
+                                let (_label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+                            }
+                            0x02 | 0x03 => {
+                                // catch_all / catch_all_ref: parse label only
+                                let (_label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+                            }
+                            _ => return Err(anyhow!("invalid catch handler kind")),
+                        }
+                    }
+
+                    let (input_types, output_types) =
+                        Self::block_type_to_stack_types(&block_type, module)?;
+
+                    // Pop inputs from stack
+                    let frame_height = Self::current_frame_height(&frames);
+                    for input_type in input_types.iter().rev() {
+                        if !Self::pop_type(&mut stack, *input_type, frame_height, Self::is_unreachable(&frames)) {
+                            return Err(anyhow!("type mismatch"));
+                        }
+                    }
+
+                    let stack_height = stack.len();
+                    frames.push(ControlFrame {
+                        frame_type: FrameType::Try,
+                        input_types: input_types.clone(),
+                        output_types: output_types.clone(),
+                        reachable: true,
+                        stack_height,
+                        unreachable_height: None,
+                    });
+
+                    for input_type in &input_types {
+                        stack.push(*input_type);
                     }
                 }
 
