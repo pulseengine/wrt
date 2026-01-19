@@ -4214,7 +4214,9 @@ impl StacklessEngine {
                                         match instr {
                                             wrt_foundation::types::Instruction::If { .. } |
                                             wrt_foundation::types::Instruction::Block { .. } |
-                                            wrt_foundation::types::Instruction::Loop { .. } => {
+                                            wrt_foundation::types::Instruction::Loop { .. } |
+                                            wrt_foundation::types::Instruction::Try { .. } |
+                                            wrt_foundation::types::Instruction::TryTable { .. } => {
                                                 depth += 1;
                                             }
                                             wrt_foundation::types::Instruction::End => {
@@ -4264,7 +4266,9 @@ impl StacklessEngine {
                                 match instr {
                                     wrt_foundation::types::Instruction::If { .. } |
                                     wrt_foundation::types::Instruction::Block { .. } |
-                                    wrt_foundation::types::Instruction::Loop { .. } => {
+                                    wrt_foundation::types::Instruction::Loop { .. } |
+                                    wrt_foundation::types::Instruction::Try { .. } |
+                                    wrt_foundation::types::Instruction::TryTable { .. } => {
                                         depth += 1;
                                     }
                                     wrt_foundation::types::Instruction::End => {
@@ -4448,11 +4452,13 @@ impl StacklessEngine {
                                         match instr {
                                             wrt_foundation::types::Instruction::Block { .. } |
                                             wrt_foundation::types::Instruction::Loop { .. } |
-                                            wrt_foundation::types::Instruction::If { .. } => {
+                                            wrt_foundation::types::Instruction::If { .. } |
+                                            wrt_foundation::types::Instruction::Try { .. } |
+                                            wrt_foundation::types::Instruction::TryTable { .. } => {
                                                 depth += 1;
                                                 #[cfg(feature = "tracing")]
                                                 if func_idx == 76 {
-                                                    trace!(pc = new_pc, depth = depth, "[BR-FWD] Block/Loop/If");
+                                                    trace!(pc = new_pc, depth = depth, "[BR-FWD] Block/Loop/If/Try");
                                                 }
                                             }
                                             wrt_foundation::types::Instruction::End => {
@@ -4614,7 +4620,9 @@ impl StacklessEngine {
                                                 match instr {
                                                     wrt_foundation::types::Instruction::Block { .. } |
                                                     wrt_foundation::types::Instruction::Loop { .. } |
-                                                    wrt_foundation::types::Instruction::If { .. } => {
+                                                    wrt_foundation::types::Instruction::If { .. } |
+                                                    wrt_foundation::types::Instruction::Try { .. } |
+                                                    wrt_foundation::types::Instruction::TryTable { .. } => {
                                                         depth += 1;
                                                     }
                                                     wrt_foundation::types::Instruction::End => {
@@ -5129,7 +5137,9 @@ impl StacklessEngine {
                                             match instr {
                                                 wrt_foundation::types::Instruction::Block { .. } |
                                                 wrt_foundation::types::Instruction::Loop { .. } |
-                                                wrt_foundation::types::Instruction::If { .. } => {
+                                                wrt_foundation::types::Instruction::If { .. } |
+                                                wrt_foundation::types::Instruction::Try { .. } |
+                                                wrt_foundation::types::Instruction::TryTable { .. } => {
                                                     depth += 1;
                                                 }
                                                 wrt_foundation::types::Instruction::End => {
@@ -5377,7 +5387,7 @@ impl StacklessEngine {
                                             #[cfg(feature = "std")]
                                             if let Some(search_instr) = instructions.get(search_pc) {
                                                 match search_instr {
-                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } => depth += 1,
+                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::Try { .. } | Instruction::TryTable { .. } => depth += 1,
                                                     Instruction::End => depth -= 1,
                                                     _ => {}
                                                 }
@@ -5385,7 +5395,7 @@ impl StacklessEngine {
                                             #[cfg(not(feature = "std"))]
                                             if let Ok(search_instr) = instructions.get(search_pc) {
                                                 match search_instr {
-                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } => depth += 1,
+                                                    Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::Try { .. } | Instruction::TryTable { .. } => depth += 1,
                                                     Instruction::End => depth -= 1,
                                                     _ => {}
                                                 }
@@ -8191,6 +8201,191 @@ impl StacklessEngine {
 
                     // End of atomic operations
                     // ===============================================
+
+                    // ========================================
+                    // Exception Handling Instructions
+                    // ========================================
+                    Instruction::Try { block_type_idx } => {
+                        // Try block - similar to Block but with exception handling
+                        // For Phase 4, we just push a "try" frame; full handler logic comes in Phase 5
+                        block_depth += 1;
+                        block_stack.push(("try", pc, block_type_idx, operand_stack.len()));
+                        #[cfg(feature = "tracing")]
+                        trace!("Try: block_type_idx={}, depth now {}, stack_height={}", block_type_idx, block_depth, operand_stack.len());
+                        // Continue execution - End will close this like any other block
+                    }
+                    Instruction::Throw(tag_idx) => {
+                        // Throw an exception with the given tag
+                        // Phase 4 basic implementation: trap with exception info
+                        // Full unwinding to catch handlers comes in Phase 5
+                        #[cfg(feature = "tracing")]
+                        error!(
+                            tag_idx = tag_idx,
+                            pc = pc,
+                            func_idx = func_idx,
+                            "[EXCEPTION] Throw instruction - tag_idx={}",
+                            tag_idx
+                        );
+
+                        // For now, return a WebAssembly exception trap
+                        // TODO Phase 5: Implement proper exception unwinding to find catch handlers
+                        return Err(wrt_error::Error::runtime_trap(
+                            "uncaught exception",
+                        ));
+                    }
+                    Instruction::ThrowRef => {
+                        // Throw an exception from an exnref on the stack
+                        // Pop the exnref and throw it
+                        if let Some(ref_val) = operand_stack.pop() {
+                            match ref_val {
+                                Value::ExnRef(Some(_exn_idx)) => {
+                                    #[cfg(feature = "tracing")]
+                                    error!(
+                                        exn_idx = _exn_idx,
+                                        pc = pc,
+                                        func_idx = func_idx,
+                                        "[EXCEPTION] ThrowRef instruction"
+                                    );
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "uncaught exception",
+                                    ));
+                                }
+                                Value::ExnRef(None) => {
+                                    // Throwing null exnref is a trap
+                                    return Err(wrt_error::Error::runtime_trap(
+                                        "null exception reference",
+                                    ));
+                                }
+                                _ => {
+                                    return Err(wrt_error::Error::runtime_type_mismatch(
+                                        "throw_ref expects an exnref",
+                                    ));
+                                }
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap(
+                                "throw_ref: stack underflow",
+                            ));
+                        }
+                    }
+                    Instruction::TryTable { block_type_idx, .. } => {
+                        // Modern try_table block with catch handlers
+                        // For Phase 4, we treat it like a regular block
+                        // Full handler matching comes in Phase 5
+                        block_depth += 1;
+                        block_stack.push(("try_table", pc, block_type_idx, operand_stack.len()));
+                        #[cfg(feature = "tracing")]
+                        trace!("TryTable: block_type_idx={}, depth now {}, stack_height={}", block_type_idx, block_depth, operand_stack.len());
+                    }
+                    Instruction::Catch(_tag_idx) => {
+                        // Legacy catch clause - skip forward to find End
+                        // This is only reached if we fall through from try block
+                        // (no exception was thrown), so we skip the catch code
+                        #[cfg(feature = "tracing")]
+                        trace!("Catch: skipping catch clause (no exception), tag_idx={}", _tag_idx);
+
+                        // Scan forward to find matching End, skipping nested blocks
+                        let mut depth = 1;
+                        let mut new_pc = pc + 1;
+                        while new_pc < instructions.len() && depth > 0 {
+                            if let Some(instr) = instructions.get(new_pc) {
+                                match instr {
+                                    Instruction::Block { .. } |
+                                    Instruction::Loop { .. } |
+                                    Instruction::If { .. } |
+                                    Instruction::Try { .. } |
+                                    Instruction::TryTable { .. } => depth += 1,
+                                    Instruction::End => depth -= 1,
+                                    _ => {}
+                                }
+                            }
+                            if depth > 0 { new_pc += 1; }
+                        }
+                        pc = new_pc - 1; // -1 because we'll +1 at end of loop
+                    }
+                    Instruction::CatchAll => {
+                        // Legacy catch_all clause - skip forward to End
+                        #[cfg(feature = "tracing")]
+                        trace!("CatchAll: skipping catch_all clause (no exception)");
+
+                        let mut depth = 1;
+                        let mut new_pc = pc + 1;
+                        while new_pc < instructions.len() && depth > 0 {
+                            if let Some(instr) = instructions.get(new_pc) {
+                                match instr {
+                                    Instruction::Block { .. } |
+                                    Instruction::Loop { .. } |
+                                    Instruction::If { .. } |
+                                    Instruction::Try { .. } |
+                                    Instruction::TryTable { .. } => depth += 1,
+                                    Instruction::End => depth -= 1,
+                                    _ => {}
+                                }
+                            }
+                            if depth > 0 { new_pc += 1; }
+                        }
+                        pc = new_pc - 1;
+                    }
+                    Instruction::Rethrow(label_idx) => {
+                        // Legacy rethrow - rethrow exception from a catch block
+                        // For Phase 4, just trap
+                        #[cfg(feature = "tracing")]
+                        error!(
+                            label_idx = label_idx,
+                            pc = pc,
+                            "[EXCEPTION] Rethrow instruction"
+                        );
+                        return Err(wrt_error::Error::runtime_trap(
+                            "uncaught exception (rethrow)",
+                        ));
+                    }
+                    Instruction::Delegate(label_idx) => {
+                        // Legacy delegate - delegate exception to outer handler
+                        // For Phase 4, treat like branch to end of block
+                        #[cfg(feature = "tracing")]
+                        trace!("Delegate: delegating to label_idx={}", label_idx);
+
+                        // Pop blocks and branch to the target's End
+                        if (label_idx as usize) < block_stack.len() {
+                            let blocks_to_pop = label_idx as usize;
+                            for _ in 0..blocks_to_pop {
+                                if !block_stack.is_empty() {
+                                    block_stack.pop();
+                                    block_depth -= 1;
+                                }
+                            }
+
+                            // Scan forward to find the End
+                            let mut target_depth = (label_idx as i32) + 1;
+                            let mut new_pc = pc + 1;
+                            let mut depth = 0;
+
+                            while new_pc < instructions.len() && target_depth > 0 {
+                                if let Some(instr) = instructions.get(new_pc) {
+                                    match instr {
+                                        Instruction::Block { .. } |
+                                        Instruction::Loop { .. } |
+                                        Instruction::If { .. } |
+                                        Instruction::Try { .. } |
+                                        Instruction::TryTable { .. } => depth += 1,
+                                        Instruction::End => {
+                                            if depth == 0 {
+                                                target_depth -= 1;
+                                                if target_depth == 0 {
+                                                    pc = new_pc - 1;
+                                                    break;
+                                                }
+                                            } else {
+                                                depth -= 1;
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                new_pc += 1;
+                            }
+                        }
+                    }
 
                     _ => {
                         // CLAUDE.md: FAIL LOUD AND EARLY - return error instead of silently skipping
