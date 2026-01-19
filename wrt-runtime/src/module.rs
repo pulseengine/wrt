@@ -706,6 +706,11 @@ pub struct Module {
     pub memories:        BoundedMemoryVec,
     /// Global variable instances
     pub globals:         BoundedGlobalVec,
+    /// Exception tag definitions (exception handling proposal)
+    #[cfg(feature = "std")]
+    pub tags:            Vec<wrt_foundation::types::TagType>,
+    #[cfg(not(feature = "std"))]
+    pub tags:            wrt_foundation::bounded::BoundedVec<wrt_foundation::types::TagType, 64, RuntimeProvider>,
     /// Element segments for tables
     /// In std mode, use Vec since Element has variable-size items (BoundedVec)
     /// and BoundedVec requires fixed-size serialization
@@ -1185,6 +1190,10 @@ impl Module {
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             #[cfg(feature = "std")]
+            tags: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            tags: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
             elements: Vec::new(),
             #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -1230,6 +1239,7 @@ impl Module {
             tables: Vec::new(), // Vec in std mode to avoid serialization issues with Arc<Table>
             memories: Vec::new(),
             globals: globals_vec,
+            tags: Vec::new(), // Exception tags (exception handling proposal)
             elements: Vec::new(), // Vec in std mode for variable-size Element items
             data: Vec::new(), // Vec in std mode for large data segments
             start: wrt_module.start,
@@ -1635,6 +1645,13 @@ impl Module {
                 initial_value,
             )?;
             runtime_module.globals.push(GlobalWrapper(Arc::new(RwLock::new(new_global))))?;
+        }
+
+        // Convert tags (exception handling proposal)
+        #[cfg(feature = "tracing")]
+        debug!(tag_count = wrt_module.tags.len(), "Converting tags from wrt_module");
+        for tag_type in &wrt_module.tags {
+            runtime_module.tags.push(tag_type.clone());
         }
 
         // Convert data segments - CRITICAL for memory initialization!
@@ -2086,6 +2103,16 @@ impl Module {
             runtime_module.globals.push(GlobalWrapper(Arc::new(RwLock::new(new_global))))?;
         }
 
+        // Convert tags (exception handling proposal)
+        #[cfg(feature = "tracing")]
+        debug!(tag_count = wrt_module.tags.len(), "Converting tags from wrt_module (nostd)");
+        for tag_type in &wrt_module.tags {
+            #[cfg(feature = "std")]
+            runtime_module.tags.push(tag_type.clone());
+            #[cfg(not(feature = "std"))]
+            runtime_module.tags.push(tag_type.clone())?;
+        }
+
         // Convert exports
         for export in &wrt_module.exports {
             let kind = match export.kind {
@@ -2329,6 +2356,10 @@ impl Module {
                 default_value,
             )?))?;
         }
+
+        // Convert tags (exception handling proposal)
+        // Note: wrt_foundation Module doesn't have tags yet, so this is a placeholder
+        // Tags would be added when wrt_foundation::types::Module gets a tags field
 
         for export_def in &wrt_module.exports {
             let (kind, index) = match &export_def.ty {
@@ -3360,6 +3391,10 @@ impl Module {
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             #[cfg(feature = "std")]
+            tags: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            tags: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
             elements: Vec::new(),
             #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -3774,6 +3809,10 @@ impl wrt_foundation::traits::FromBytes for Module {
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
+            tags: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            tags: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             #[cfg(feature = "std")]
             elements: Vec::new(),
             #[cfg(not(feature = "std"))]

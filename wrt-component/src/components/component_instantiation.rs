@@ -3810,6 +3810,13 @@ impl ComponentInstance {
                             Error::runtime_execution_error("Failed to create globals")
                         })?,
                         #[cfg(feature = "std")]
+                        tags: Vec::new(),
+                        #[cfg(not(feature = "std"))]
+                        tags: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {
+                            println!("[TEST-THREAD] ✗ Failed to create tags: {:?}", e);
+                            Error::runtime_execution_error("Failed to create tags")
+                        })?,
+                        #[cfg(feature = "std")]
                         elements: Vec::new(),
                         #[cfg(not(feature = "std"))]
                         elements: wrt_foundation::bounded::BoundedVec::new(provider.clone()).map_err(|e| {

@@ -289,6 +289,10 @@ pub struct StacklessEngine {
     /// Optional runtime debugger for profiling and debugging
     #[cfg(all(feature = "std", feature = "debugger"))]
     debugger:              Option<Box<dyn RuntimeDebugger>>,
+    /// Active exception state for exception propagation across calls
+    /// Contains (tag_idx, payload) when an exception is in flight
+    #[cfg(feature = "std")]
+    active_exception:      Option<(u32, Vec<Value>)>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -420,6 +424,8 @@ impl StacklessEngine {
             host_handler:        None,
             #[cfg(all(feature = "std", feature = "debugger"))]
             debugger:            None,
+            #[cfg(feature = "std")]
+            active_exception:    None,
         }
     }
 
@@ -1448,7 +1454,130 @@ impl StacklessEngine {
 
                             trace!("Stack before call: {} values, after popping args: {} values",                                 operand_stack.len() + call_args.len(), operand_stack.len());
 
-                            let results = self.execute(instance_id, func_idx as usize, call_args)?;
+                            let call_result = self.execute(instance_id, func_idx as usize, call_args);
+
+                            // Check if the called function threw an exception
+                            #[cfg(feature = "std")]
+                            if let Err(_) = &call_result {
+                                if let Some((ex_tag_idx, ref ex_payload)) = self.active_exception.clone() {
+                                    #[cfg(feature = "tracing")]
+                                    trace!(ex_tag_idx = ex_tag_idx, "[EXCEPTION] Call returned with exception, searching for handler in caller");
+
+                                    // Search for try_table handler in current function's block_stack
+                                    let mut found_handler = false;
+                                    let mut handler_label = 0u32;
+                                    let mut handler_is_ref = false;
+                                    let mut try_block_idx = 0usize;
+
+                                    for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
+                                        if *block_type == "try_table" {
+                                            if let Some(try_instr) = instructions.get(*try_pc) {
+                                                if let Instruction::TryTable { handlers, .. } = try_instr {
+                                                    for i in 0..handlers.len() {
+                                                        if let Ok(handler) = handlers.get(i) {
+                                                            let handler_val = handler.clone();
+                                                            let (matches, lbl, is_ref) = match handler_val {
+                                                                wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
+                                                                    (htag == ex_tag_idx, hlbl, false)
+                                                                }
+                                                                wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
+                                                                    (htag == ex_tag_idx, hlbl, true)
+                                                                }
+                                                                wrt_foundation::types::CatchHandler::CatchAll { label } => {
+                                                                    (true, label, false)
+                                                                }
+                                                                wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
+                                                                    (true, label, true)
+                                                                }
+                                                            };
+                                                            if matches {
+                                                                handler_label = lbl;
+                                                                handler_is_ref = is_ref;
+                                                                found_handler = true;
+                                                                try_block_idx = idx;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    if found_handler {
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if found_handler {
+                                        #[cfg(feature = "tracing")]
+                                        trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, "[EXCEPTION] Found handler in caller");
+
+                                        // Clear active exception - it's being handled
+                                        let payload = ex_payload.clone();
+                                        self.active_exception = None;
+
+                                        // Pop blocks down to the try_table
+                                        while block_stack.len() > try_block_idx {
+                                            block_stack.pop();
+                                            block_depth -= 1;
+                                        }
+
+                                        // Find target block for branch
+                                        let target_block_idx = if (handler_label as usize) < block_stack.len() {
+                                            block_stack.len() - 1 - (handler_label as usize)
+                                        } else {
+                                            // Branch out of function - push payload and return
+                                            for val in payload.iter() {
+                                                operand_stack.push(val.clone());
+                                            }
+                                            if handler_is_ref {
+                                                operand_stack.push(Value::ExnRef(Some(ex_tag_idx)));
+                                            }
+                                            return Ok(ExecutionOutcome::Complete(operand_stack));
+                                        };
+
+                                        // Truncate stack to target height
+                                        if let Some((_, _, target_height, _)) = block_stack.get(target_block_idx) {
+                                            while operand_stack.len() > *target_height as usize {
+                                                operand_stack.pop();
+                                            }
+                                        }
+
+                                        // Push payload values
+                                        for val in payload.iter() {
+                                            operand_stack.push(val.clone());
+                                        }
+                                        if handler_is_ref {
+                                            operand_stack.push(Value::ExnRef(Some(ex_tag_idx)));
+                                        }
+
+                                        // Find End of target block
+                                        let mut target_depth = (handler_label as i32) + 1;
+                                        let mut new_pc = pc + 1;
+                                        while new_pc < instructions.len() && target_depth > 0 {
+                                            match &instructions[new_pc] {
+                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } => {
+                                                    target_depth += 1;
+                                                }
+                                                Instruction::End => {
+                                                    target_depth -= 1;
+                                                }
+                                                _ => {}
+                                            }
+                                            new_pc += 1;
+                                        }
+                                        pc = new_pc;
+                                        continue;
+                                    } else {
+                                        // No handler in caller - propagate exception
+                                        #[cfg(feature = "tracing")]
+                                        trace!("[EXCEPTION] No handler in caller - propagating exception");
+                                        return Err(call_result.unwrap_err());
+                                    }
+                                }
+                            }
+
+                            // Normal return or non-exception error
+                            let results = call_result?;
                             #[cfg(feature = "tracing")]
                             trace!("Function returned {} results", results.len());
 
@@ -8222,8 +8351,30 @@ impl StacklessEngine {
                             pc = pc,
                             func_idx = func_idx,
                             block_stack_len = block_stack.len(),
+                            tags_len = module.tags.len(),
                             "[EXCEPTION] Throw instruction"
                         );
+
+                        // Get the exception payload values by looking up the tag's type
+                        // Tag's type_idx points to a FuncType whose params are the exception values
+                        let mut exception_payload: Vec<Value> = Vec::new();
+                        if let Some(tag_type) = module.tags.get(tag_idx as usize) {
+                            if let Some(func_type) = module.types.get(tag_type.type_idx as usize) {
+                                // Pop values in reverse order (last param is top of stack)
+                                for _ in 0..func_type.params.len() {
+                                    if let Some(val) = operand_stack.pop() {
+                                        exception_payload.push(val);
+                                    }
+                                }
+                                // Reverse to get correct order (first param first)
+                                exception_payload.reverse();
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    payload_len = exception_payload.len(),
+                                    "[EXCEPTION] Captured exception payload"
+                                );
+                            }
+                        }
 
                         // Walk block_stack from top to bottom looking for try_table with matching handler
                         let mut found_handler = false;
@@ -8239,18 +8390,19 @@ impl StacklessEngine {
                                         // Check each handler for a match
                                         for i in 0..handlers.len() {
                                             if let Ok(handler) = handlers.get(i) {
-                                                let (matches, lbl, is_ref) = match handler {
+                                                let handler_val = handler.clone();
+                                                let (matches, lbl, is_ref) = match handler_val {
                                                     wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
                                                         (htag == tag_idx, hlbl, false)
                                                     }
                                                     wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
                                                         (htag == tag_idx, hlbl, true)
                                                     }
-                                                    wrt_foundation::types::CatchHandler::CatchAll { label: hlbl } => {
-                                                        (true, hlbl, false)
+                                                    wrt_foundation::types::CatchHandler::CatchAll { label } => {
+                                                        (true, label, false)
                                                     }
-                                                    wrt_foundation::types::CatchHandler::CatchAllRef { label: hlbl } => {
-                                                        (true, hlbl, true)
+                                                    wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
+                                                        (true, label, true)
                                                     }
                                                 };
                                                 if matches {
@@ -8285,12 +8437,6 @@ impl StacklessEngine {
                                 block_depth -= 1;
                             }
 
-                            // If handler is *Ref variant, push exnref to stack
-                            // Use tag_idx as a simple exn identifier
-                            if handler_is_ref {
-                                operand_stack.push(Value::ExnRef(Some(tag_idx)));
-                            }
-
                             // Branch to handler label - need to find the End of the target block
                             // handler_label=0 means branch to the end of current (try_table's) block
                             // handler_label=N means branch to the end of Nth outer block
@@ -8307,6 +8453,23 @@ impl StacklessEngine {
                             while operand_stack.len() > entry_stack_height {
                                 operand_stack.pop();
                             }
+
+                            // Push exception payload values to stack (for catch handlers)
+                            for val in exception_payload.iter() {
+                                operand_stack.push(val.clone());
+                            }
+
+                            // If handler is *Ref variant, push exnref to stack after payload
+                            if handler_is_ref {
+                                operand_stack.push(Value::ExnRef(Some(tag_idx)));
+                            }
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                stack_len = operand_stack.len(),
+                                payload_pushed = exception_payload.len(),
+                                "[EXCEPTION] Stack restored with payload"
+                            );
 
                             // Find the End of the target block by scanning forward
                             let mut target_depth = (handler_label as i32) + 1;
@@ -8338,14 +8501,19 @@ impl StacklessEngine {
                                 new_pc += 1;
                             }
                         } else {
-                            // No handler found - uncaught exception
+                            // No handler found in current function - store exception state for propagation
+                            #[cfg(feature = "std")]
+                            {
+                                self.active_exception = Some((tag_idx, exception_payload));
+                            }
                             #[cfg(feature = "tracing")]
-                            error!(
+                            trace!(
                                 tag_idx = tag_idx,
-                                "[EXCEPTION] No handler found - uncaught exception"
+                                "[EXCEPTION] No handler found - propagating to caller"
                             );
+                            // Return error to trigger unwinding - caller will check active_exception
                             return Err(wrt_error::Error::runtime_trap(
-                                "uncaught exception",
+                                "exception",
                             ));
                         }
                     }
@@ -9043,15 +9211,19 @@ impl StacklessEngine {
     /// This properly allocates memory owned by the component so that argument
     /// strings don't get overwritten by the component's heap/stack operations.
     ///
-    /// Returns (list_ptr, string_data_ptr) where:
+    /// IMPORTANT: Each string is allocated SEPARATELY via cabi_realloc to ensure
+    /// proper allocator metadata. This allows the component to free strings
+    /// individually without causing allocator corruption.
+    ///
+    /// Returns (list_ptr, string_ptrs) where:
     /// - list_ptr: pointer to the (ptr, len) array for list elements
-    /// - string_data_ptr: pointer to the start of string data
+    /// - string_ptrs: vector of (ptr, len) for each string allocation
     #[cfg(feature = "wasi")]
     fn allocate_wasi_args_memory(
         &mut self,
         instance_id: usize,
         args: &[String],
-    ) -> Result<Option<(u32, u32)>> {
+    ) -> Result<Option<(u32, Vec<(u32, u32)>)>> {
         // Find cabi_realloc export
         let instance = self.instances.get(&instance_id)
             .ok_or_else(|| wrt_error::Error::runtime_error("Instance not found"))?
@@ -9067,51 +9239,63 @@ impl StacklessEngine {
             }
         };
 
-        // Calculate total memory needed:
-        // - (ptr, len) array: 8 bytes per arg
-        // - string data: sum of all string lengths + padding
-        let list_size = args.len() * 8;
-        let mut string_total: usize = 0;
-        for arg in args {
-            string_total += arg.len();
-            string_total += 1; // null terminator
-            string_total = (string_total + 7) & !7; // align to 8
-        }
-        let total_size = list_size + string_total;
-
-        if total_size == 0 {
+        if args.is_empty() {
             return Ok(None);
         }
 
+        // Calculate list array size: 8 bytes per arg (ptr + len)
+        let list_size = args.len() * 8;
+
         #[cfg(feature = "tracing")]
         trace!(
-            total_size = total_size,
             args_len = args.len(),
             list_size = list_size,
-            string_total = string_total,
-            "[WASI-ALLOC] Allocating memory for args"
+            "[WASI-ALLOC] Allocating memory for args with SEPARATE string allocations"
         );
 
-        // Call cabi_realloc to allocate memory
-        // cabi_realloc(old_ptr, old_size, align, new_size) -> ptr
-        let ptr = self.call_cabi_realloc(
+        // Allocate the list array (holds ptr+len pairs)
+        let list_ptr = self.call_cabi_realloc(
             instance_id,
             cabi_realloc_idx,
             0,  // old_ptr (NULL for new allocation)
             0,  // old_size
             8,  // align (8-byte alignment for pointers)
-            total_size as u32,
+            list_size as u32,
         )?;
 
         #[cfg(feature = "tracing")]
-        trace!(ptr = format_args!("0x{:x}", ptr), "[WASI-ALLOC] cabi_realloc returned");
+        trace!(list_ptr = format_args!("0x{:x}", list_ptr), "[WASI-ALLOC] list array allocated");
 
-        // list_ptr is at the start of allocated memory
-        // string_data_ptr is after the (ptr, len) array
-        let list_ptr = ptr;
-        let string_data_ptr = ptr + (list_size as u32);
+        // Allocate EACH string separately to ensure proper allocator metadata
+        // This is critical: dlmalloc needs metadata before each allocation
+        let mut string_ptrs: Vec<(u32, u32)> = Vec::with_capacity(args.len());
 
-        Ok(Some((list_ptr, string_data_ptr)))
+        for (i, arg) in args.iter().enumerate() {
+            let string_len = arg.len() as u32;
+
+            // Allocate memory for this string (alignment 1 for byte data)
+            let string_ptr = self.call_cabi_realloc(
+                instance_id,
+                cabi_realloc_idx,
+                0,  // old_ptr (NULL for new allocation)
+                0,  // old_size
+                1,  // align (1-byte alignment for strings)
+                string_len,
+            )?;
+
+            #[cfg(feature = "tracing")]
+            trace!(
+                index = i,
+                string_ptr = format_args!("0x{:x}", string_ptr),
+                string_len = string_len,
+                arg = %arg,
+                "[WASI-ALLOC] string allocated separately"
+            );
+
+            string_ptrs.push((string_ptr, string_len));
+        }
+
+        Ok(Some((list_ptr, string_ptrs)))
     }
 
     /// Pre-allocate memory for WASI arguments before starting execution
@@ -9145,26 +9329,26 @@ impl StacklessEngine {
             "[WASI-PREALLOC] Pre-allocating memory for args"
         );
 
-        // Allocate memory
+        // Allocate memory - each string is allocated SEPARATELY for proper allocator metadata
         match self.allocate_wasi_args_memory(instance_id, &args)? {
-            Some((list_ptr, string_ptr)) => {
+            Some((list_ptr, string_ptrs)) => {
                 #[cfg(feature = "tracing")]
                 trace!(
                     list_ptr = format_args!("0x{:x}", list_ptr),
-                    string_ptr = format_args!("0x{:x}", string_ptr),
-                    "[WASI-PREALLOC] Allocated successfully"
+                    num_strings = string_ptrs.len(),
+                    "[WASI-PREALLOC] Allocated successfully with SEPARATE string allocations"
                 );
 
                 // Store in internal dispatcher (for backwards compatibility)
                 if let Some(ref mut dispatcher) = self.wasi_dispatcher {
-                    dispatcher.set_args_alloc(list_ptr, string_ptr);
+                    dispatcher.set_args_alloc(list_ptr, string_ptrs.clone());
                 }
 
                 // CRITICAL: Also set on host_handler (the actual dispatch target)
                 // This is the dispatcher that receives get-arguments calls
                 #[cfg(feature = "std")]
                 if let Some(ref mut handler) = self.host_handler {
-                    handler.set_args_allocation(list_ptr, string_ptr);
+                    handler.set_args_allocation(list_ptr, string_ptrs);
                 }
 
                 Ok(())
@@ -9365,18 +9549,19 @@ impl StacklessEngine {
             };
 
             #[cfg(not(feature = "wasi"))]
-            let args_alloc: Option<(u32, u32)> = None;
+            let args_alloc: Option<(u32, Vec<(u32, u32)>)> = None;
 
             if let Some(ref mut handler) = self.host_handler {
                 // Set the allocation if we have one (for get-arguments)
-                if let Some((list_ptr, string_ptr)) = args_alloc {
+                // Each string is allocated SEPARATELY to ensure proper allocator metadata
+                if let Some((list_ptr, string_ptrs)) = args_alloc {
                     #[cfg(feature = "tracing")]
                     trace!(
                         list_ptr = format_args!("0x{:x}", list_ptr),
-                        string_ptr = format_args!("0x{:x}", string_ptr),
-                        "[ON-DEMAND-ALLOC] Setting args allocation on handler"
+                        num_strings = string_ptrs.len(),
+                        "[ON-DEMAND-ALLOC] Setting args allocation on handler with SEPARATE strings"
                     );
-                    handler.set_args_allocation(list_ptr, string_ptr);
+                    handler.set_args_allocation(list_ptr, string_ptrs);
                 }
 
                 #[cfg(feature = "tracing")]

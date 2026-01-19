@@ -1691,6 +1691,10 @@ impl FromBytes for ModuleInstance {
             memories: Vec::new(),
             globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             #[cfg(feature = "std")]
+            tags: Vec::new(),
+            #[cfg(not(feature = "std"))]
+            tags: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
             elements: Vec::new(),
             #[cfg(not(feature = "std"))]
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
