@@ -603,6 +603,28 @@ This is fundamentally different from inline WAT modules which are already parsed
 - [WABT Test Documentation](https://github.com/WebAssembly/wabt/blob/main/test/README.md)
 - [Official WebAssembly Interpreter](https://github.com/WebAssembly/spec/tree/main/interpreter)
 
+### Excluded Tests
+The following test directories are **permanently excluded** from WRT testing:
+
+#### `external/testsuite/legacy/` - Legacy Exception Handling
+**Reason**: WRT implements only the modern exception handling syntax (`try_table` + `exnref`) from the October 2023 WebAssembly CG decision. The legacy `try/catch/delegate/rethrow` syntax is deprecated and being phased out.
+
+- **Legacy syntax** (NOT implemented): `try`, `catch`, `catch_all`, `delegate`, `rethrow`
+- **Modern syntax** (implemented): `try_table`, `throw`, `throw_ref`, `exnref`
+
+The legacy tests use opcodes 0x06-0x09 and 0x18-0x19 which we do not decode or execute.
+
+Reference: [Exception Handling Proposal - Legacy](https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md)
+
+When running WAST tests, always exclude the legacy directory:
+```bash
+# Correct - runs modern exception tests
+cargo-wrt testsuite --run-wast --wast-dir external/testsuite --wast-filter throw.wast
+
+# WRONG - legacy tests will fail
+cargo-wrt testsuite --run-wast --wast-dir external/testsuite/legacy
+```
+
 ### Test Components
 For testing WASI component execution, use the pre-built components from:
 - [pulseengine/wasm-component-examples](https://github.com/pulseengine/wasm-component-examples/releases)
