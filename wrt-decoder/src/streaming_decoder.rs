@@ -595,6 +595,7 @@ impl<'a> StreamingDecoder<'a> {
                         0x7B => wrt_foundation::ValueType::V128,
                         0x70 => wrt_foundation::ValueType::FuncRef,
                         0x6F => wrt_foundation::ValueType::ExternRef,
+                        0x69 => wrt_foundation::ValueType::ExnRef,
                         _ => return Err(Error::parse_error("Invalid global import value type")),
                     };
 
@@ -955,6 +956,7 @@ impl<'a> StreamingDecoder<'a> {
                 0x7B => ValueType::V128,
                 0x70 => ValueType::FuncRef,
                 0x6F => ValueType::ExternRef,
+                0x69 => ValueType::ExnRef,
                 _ => return Err(Error::parse_error("Invalid global value type")),
             };
             offset += 1;
@@ -1425,6 +1427,10 @@ impl<'a> StreamingDecoder<'a> {
                         0x7E => wrt_foundation::types::ValueType::I64,
                         0x7D => wrt_foundation::types::ValueType::F32,
                         0x7C => wrt_foundation::types::ValueType::F64,
+                        0x7B => wrt_foundation::types::ValueType::V128,
+                        0x70 => wrt_foundation::types::ValueType::FuncRef,
+                        0x6F => wrt_foundation::types::ValueType::ExternRef,
+                        0x69 => wrt_foundation::types::ValueType::ExnRef,
                         _ => return Err(Error::parse_error("Invalid local type")),
                     };
 

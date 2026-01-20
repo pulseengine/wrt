@@ -2801,6 +2801,7 @@ impl WastModuleValidator {
             0x7B => BlockType::ValueType(ValueType::V128),
             0x70 => BlockType::ValueType(ValueType::FuncRef),
             0x6F => BlockType::ValueType(ValueType::ExternRef),
+            0x69 => BlockType::ValueType(ValueType::ExnRef),
             _ if byte >= 0 => {
                 // Function type index
                 let type_idx = byte as u32;

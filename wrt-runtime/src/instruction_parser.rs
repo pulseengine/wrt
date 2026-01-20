@@ -1016,6 +1016,7 @@ fn parse_block_type(bytecode: &[u8], offset: usize) -> Result<BlockType> {
         0x7B => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::V128))),
         0x70 => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::FuncRef))),
         0x6F => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::ExternRef))),
+        0x69 => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::ExnRef))),
         _ => {
             // Type index: parse as s33 (for small positive values, it's just the byte)
             // For now, handle single-byte type indices (0-63)
@@ -1141,6 +1142,7 @@ fn block_type_to_index(block_type: &BlockType) -> u32 {
         BlockType::Value(Some(wrt_foundation::types::ValueType::I16x8)) => 0x7A,
         BlockType::Value(Some(wrt_foundation::types::ValueType::FuncRef)) => 0x70,
         BlockType::Value(Some(wrt_foundation::types::ValueType::ExternRef)) => 0x6F,
+        BlockType::Value(Some(wrt_foundation::types::ValueType::ExnRef)) => 0x69,
         BlockType::FuncType(idx) => *idx,
         // Handle any other value types with a default
         BlockType::Value(Some(_)) => 0x40, // Default to empty type for unknown types
