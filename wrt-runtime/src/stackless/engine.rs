@@ -202,12 +202,14 @@ const MAX_CONCURRENT_INSTANCES: usize = 512;
 /// Maximum call depth to prevent stack overflow from recursive calls
 /// WebAssembly spec recommends supporting at least 1000 levels.
 /// The WAST test suite requires at least 200 for even/odd mutual recursion tests.
-/// We use 300 which works in both debug and release for WAST conformance.
+/// However, the native Rust stack can only handle ~150-200 recursive calls before overflow
+/// in debug builds with large stack frames. Until proper trampolining is implemented,
+/// keep these limits conservative.
 /// TODO: Implement trampolining to allow deeper recursion without native stack use.
 #[cfg(debug_assertions)]
-const MAX_CALL_DEPTH: usize = 300;
+const MAX_CALL_DEPTH: usize = 100;  // Reduced to prevent native stack overflow
 #[cfg(not(debug_assertions))]
-const MAX_CALL_DEPTH: usize = 1000;
+const MAX_CALL_DEPTH: usize = 300;  // Release builds have smaller stack frames
 
 /// Simple execution statistics
 #[derive(Debug, Default)]
@@ -293,6 +295,10 @@ pub struct StacklessEngine {
     /// Contains (tag_idx, payload) when an exception is in flight
     #[cfg(feature = "std")]
     active_exception:      Option<(u32, Vec<Value>)>,
+    /// Storage for caught exceptions (for throw_ref to re-throw)
+    /// Maps exnref index to (tag_idx, payload)
+    #[cfg(feature = "std")]
+    exception_storage:     Vec<(u32, Vec<Value>)>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -426,6 +432,8 @@ impl StacklessEngine {
             debugger:            None,
             #[cfg(feature = "std")]
             active_exception:    None,
+            #[cfg(feature = "std")]
+            exception_storage:   Vec::new(),
         }
     }
 
@@ -964,13 +972,15 @@ impl StacklessEngine {
                         .map(|(ti, en)| (*ti, en.clone()))
                     {
                         // Call the linked function and wrap result
-                        self.call_frames_count -= 1; // Will be re-incremented by recursive call
+                        // NOTE: Do NOT decrement call_frames_count here! The recursive execute()
+                        // will handle its own increment/decrement. Pre-decrementing defeats
+                        // the purpose of call depth tracking and causes stack overflow.
                         let results = self.call_exported_function(target_instance_id, &export_name, args)?;
                         return Ok(ExecutionOutcome::Complete(results));
                     }
                     // Import not linked - return correct number of default results
                     // based on the imported function's type signature
-                    self.call_frames_count -= 1;
+                    // NOTE: Do NOT decrement here - execute() will decrement on Complete
                     if let Some(func) = module.functions.get(func_idx) {
                         if let Some(func_type) = module.types.get(func.type_idx as usize) {
                             let mut results = Vec::new();
@@ -1345,6 +1355,11 @@ impl StacklessEngine {
                                             "[HOST_CALL] Linked to target instance"
                                         );
 
+                                        if self.call_frames_count <= 10 {
+                                            eprintln!("[CALL_INSTR] Call to import '{}::{}' linked to instance {} export '{}'",
+                                                      module_name, field_name, target_instance, export_name);
+                                        }
+
                                         // Collect args from operand stack based on function signature
                                         let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
 
@@ -1567,7 +1582,10 @@ impl StacklessEngine {
                                                 operand_stack.push(val.clone());
                                             }
                                             if handler_is_ref {
-                                                operand_stack.push(Value::ExnRef(Some(ex_tag_idx)));
+                                                // Store exception and push exnref
+                                                let exn_idx = self.exception_storage.len() as u32;
+                                                self.exception_storage.push((ex_tag_idx, payload.clone()));
+                                                operand_stack.push(Value::ExnRef(Some(exn_idx)));
                                             }
                                             return Ok(ExecutionOutcome::Complete(operand_stack));
                                         };
@@ -1584,7 +1602,10 @@ impl StacklessEngine {
                                             operand_stack.push(val.clone());
                                         }
                                         if handler_is_ref {
-                                            operand_stack.push(Value::ExnRef(Some(ex_tag_idx)));
+                                            // Store exception and push exnref
+                                            let exn_idx = self.exception_storage.len() as u32;
+                                            self.exception_storage.push((ex_tag_idx, payload.clone()));
+                                            operand_stack.push(Value::ExnRef(Some(exn_idx)));
                                         }
 
                                         // Find End of target block
@@ -8468,23 +8489,29 @@ impl StacklessEngine {
                                 "[EXCEPTION] Found handler, branching"
                             );
 
-                            // Pop blocks from stack down to and including the try_table
-                            while block_stack.len() > try_block_idx {
-                                block_stack.pop();
-                                block_depth -= 1;
-                            }
-
                             // Branch to handler label - need to find the End of the target block
-                            // handler_label=0 means branch to the end of current (try_table's) block
-                            // handler_label=N means branch to the end of Nth outer block
-                            let target_block_idx = if (handler_label as usize) < block_stack.len() {
-                                block_stack.len() - 1 - (handler_label as usize)
+                            // handler_label is relative to try_table position:
+                            // - handler_label=0 means branch to try_table itself (same block)
+                            // - handler_label=N means branch to Nth outer block from try_table
+                            // Calculate target block index BEFORE popping
+                            let target_block_idx = if handler_label as usize <= try_block_idx {
+                                try_block_idx - handler_label as usize
                             } else {
-                                // Label targets function level - return
+                                // Label targets function level - return with exception
+                                #[cfg(feature = "tracing")]
+                                trace!("[EXCEPTION] Handler label {} exceeds block depth, returning", handler_label);
                                 break;
                             };
 
+                            // Get entry stack height before popping blocks
                             let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+
+                            // Pop blocks from stack down to (but not including) target block
+                            // The target block will be popped when we execute its End instruction
+                            while block_stack.len() > target_block_idx + 1 {
+                                block_stack.pop();
+                                block_depth -= 1;
+                            }
 
                             // Clear stack to entry height
                             while operand_stack.len() > entry_stack_height {
@@ -8496,24 +8523,31 @@ impl StacklessEngine {
                                 operand_stack.push(val.clone());
                             }
 
-                            // If handler is *Ref variant, push exnref to stack after payload
+                            // If handler is *Ref variant, store exception and push exnref
                             if handler_is_ref {
-                                operand_stack.push(Value::ExnRef(Some(tag_idx)));
+                                // Store exception in exception_storage for throw_ref
+                                let exn_idx = self.exception_storage.len() as u32;
+                                self.exception_storage.push((tag_idx, exception_payload.clone()));
+                                operand_stack.push(Value::ExnRef(Some(exn_idx)));
                             }
 
                             #[cfg(feature = "tracing")]
                             trace!(
                                 stack_len = operand_stack.len(),
                                 payload_pushed = exception_payload.len(),
+                                target_block_idx = target_block_idx,
+                                block_stack_len = block_stack.len(),
                                 "[EXCEPTION] Stack restored with payload"
                             );
 
                             // Find the End of the target block by scanning forward
-                            let mut target_depth = (handler_label as i32) + 1;
+                            // We need to find block_stack.len() End instructions at depth 0
+                            // The last one closes the target block
+                            let mut ends_to_find = block_stack.len() as i32;
                             let mut new_pc = pc + 1;
-                            let mut depth = 0;
+                            let mut depth = 0i32;
 
-                            while new_pc < instructions.len() && target_depth > 0 {
+                            while new_pc < instructions.len() && ends_to_find > 0 {
                                 if let Some(instr) = instructions.get(new_pc) {
                                     match instr {
                                         Instruction::Block { .. } |
@@ -8523,8 +8557,10 @@ impl StacklessEngine {
                                         Instruction::TryTable { .. } => depth += 1,
                                         Instruction::End => {
                                             if depth == 0 {
-                                                target_depth -= 1;
-                                                if target_depth == 0 {
+                                                ends_to_find -= 1;
+                                                if ends_to_find == 0 {
+                                                    // Found the End of target block
+                                                    // Set pc to this End so it executes next
                                                     pc = new_pc - 1;
                                                     break;
                                                 }
@@ -8556,20 +8592,18 @@ impl StacklessEngine {
                     }
                     Instruction::ThrowRef => {
                         // Throw an exception from an exnref on the stack
-                        // Pop the exnref and throw it
+                        // Pop the exnref and re-throw with original tag and payload
                         if let Some(ref_val) = operand_stack.pop() {
-                            match ref_val {
-                                Value::ExnRef(Some(_exn_idx)) => {
-                                    #[cfg(feature = "tracing")]
-                                    error!(
-                                        exn_idx = _exn_idx,
-                                        pc = pc,
-                                        func_idx = func_idx,
-                                        "[EXCEPTION] ThrowRef instruction"
-                                    );
-                                    return Err(wrt_error::Error::runtime_trap(
-                                        "uncaught exception",
-                                    ));
+                            let (tag_idx, exception_payload) = match ref_val {
+                                Value::ExnRef(Some(exn_idx)) => {
+                                    // Look up the exception from storage
+                                    if let Some((stored_tag, stored_payload)) = self.exception_storage.get(exn_idx as usize) {
+                                        (*stored_tag, stored_payload.clone())
+                                    } else {
+                                        return Err(wrt_error::Error::runtime_trap(
+                                            "invalid exception reference",
+                                        ));
+                                    }
                                 }
                                 Value::ExnRef(None) => {
                                     // Throwing null exnref is a trap
@@ -8582,6 +8616,130 @@ impl StacklessEngine {
                                         "throw_ref expects an exnref",
                                     ));
                                 }
+                            };
+
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                tag_idx = tag_idx,
+                                payload_len = exception_payload.len(),
+                                pc = pc,
+                                func_idx = func_idx,
+                                "[EXCEPTION] ThrowRef re-throwing exception"
+                            );
+
+                            // Now do the same handler search as Throw instruction
+                            let mut found_handler = false;
+                            let mut handler_label = 0u32;
+                            let mut handler_is_ref = false;
+                            let mut try_block_idx = 0usize;
+
+                            for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
+                                if *block_type == "try_table" {
+                                    if let Some(try_instr) = instructions.get(*try_pc) {
+                                        if let Instruction::TryTable { handlers, .. } = try_instr {
+                                            for i in 0..handlers.len() {
+                                                if let Ok(handler) = handlers.get(i) {
+                                                    let handler_val = handler.clone();
+                                                    let (matches, lbl, is_ref) = match handler_val {
+                                                        wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
+                                                            (htag == tag_idx, hlbl, false)
+                                                        }
+                                                        wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
+                                                            (htag == tag_idx, hlbl, true)
+                                                        }
+                                                        wrt_foundation::types::CatchHandler::CatchAll { label } => {
+                                                            (true, label, false)
+                                                        }
+                                                        wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
+                                                            (true, label, true)
+                                                        }
+                                                    };
+                                                    if matches {
+                                                        handler_label = lbl;
+                                                        handler_is_ref = is_ref;
+                                                        found_handler = true;
+                                                        try_block_idx = idx;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if found_handler {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if found_handler {
+                                // Calculate target block index BEFORE popping
+                                let target_block_idx = if handler_label as usize <= try_block_idx {
+                                    try_block_idx - handler_label as usize
+                                } else {
+                                    break; // Function return
+                                };
+
+                                let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+
+                                // Pop blocks down to target
+                                while block_stack.len() > target_block_idx + 1 {
+                                    block_stack.pop();
+                                    block_depth -= 1;
+                                }
+
+                                // Clear stack to entry height
+                                while operand_stack.len() > entry_stack_height {
+                                    operand_stack.pop();
+                                }
+
+                                // Push exception payload
+                                for val in exception_payload.iter() {
+                                    operand_stack.push(val.clone());
+                                }
+
+                                // If handler is *Ref variant, store and push new exnref
+                                if handler_is_ref {
+                                    let new_exn_idx = self.exception_storage.len() as u32;
+                                    self.exception_storage.push((tag_idx, exception_payload.clone()));
+                                    operand_stack.push(Value::ExnRef(Some(new_exn_idx)));
+                                }
+
+                                // Find End of target block
+                                let mut ends_to_find = block_stack.len() as i32;
+                                let mut new_pc = pc + 1;
+                                let mut depth = 0i32;
+
+                                while new_pc < instructions.len() && ends_to_find > 0 {
+                                    if let Some(instr) = instructions.get(new_pc) {
+                                        match instr {
+                                            Instruction::Block { .. } |
+                                            Instruction::Loop { .. } |
+                                            Instruction::If { .. } |
+                                            Instruction::Try { .. } |
+                                            Instruction::TryTable { .. } => depth += 1,
+                                            Instruction::End => {
+                                                if depth == 0 {
+                                                    ends_to_find -= 1;
+                                                    if ends_to_find == 0 {
+                                                        pc = new_pc - 1;
+                                                        break;
+                                                    }
+                                                } else {
+                                                    depth -= 1;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    new_pc += 1;
+                                }
+                            } else {
+                                // No handler - propagate to caller
+                                #[cfg(feature = "std")]
+                                {
+                                    self.active_exception = Some((tag_idx, exception_payload));
+                                }
+                                return Err(wrt_error::Error::runtime_trap("exception"));
                             }
                         } else {
                             return Err(wrt_error::Error::runtime_trap(

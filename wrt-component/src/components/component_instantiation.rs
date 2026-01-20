@@ -1802,21 +1802,38 @@ impl ComponentInstance {
                 }
                 None => {
                     if is_interface_style {
-                        // Interface-style component (exports wasi:cli/run instead of _start)
-                        // Search ALL instances to find the one with wasi:cli/run#run export
-                        // (Can't just use instance 0 - adapters are instantiated first!)
+                        // Interface-style component (exports wasi:cli/run at component level)
+                        // The CORE module still exports _start - search for it.
+                        // NOTE: wasi:cli/run@*#run are COMPONENT-level export names, not core module
+                        // exports! Always search for _start in core modules.
                         let mut found_handle = None;
-                        let entry_patterns = [
+                        // For Rust component model, entry point is often wasi:cli/run@VERSION#run
+                        // For C/TinyGo, entry point is _start
+                        let core_entry_points = [
+                            "_start",
                             "wasi:cli/run@0.2.3#run",
                             "wasi:cli/run@0.2.6#run",
                             "wasi:cli/run@0.2.0#run",
+                            "run",
+                            "main",
                         ];
 
+                        println!("    ├─ Searching {} core instances for entry point...", core_instances_map.len());
                         for (&idx, &handle) in &core_instances_map {
                             if let Some(engine_ref) = &instance.runtime_engine {
-                                for pattern in &entry_patterns {
-                                    if engine_ref.has_function(handle, pattern).unwrap_or(false) {
-                                        println!("    ├─ Found {} export in core instance {} (handle {:?})", pattern, idx, handle);
+                                // Debug: list what exports this instance has
+                                println!("    │  ├─ Instance {} (handle {:?}) exports:", idx, handle);
+                                for entry_point in &["_start", "_initialize", "run", "main", "memory", "cabi_realloc",
+                                                     "wasi:cli/run@0.2.3#run", "wasi:cli/run@0.2.6#run"] {
+                                    let has = engine_ref.has_function(handle, entry_point).unwrap_or(false);
+                                    if has {
+                                        println!("    │  │  ✓ {}", entry_point);
+                                    }
+                                }
+
+                                for entry_point in &core_entry_points {
+                                    if engine_ref.has_function(handle, entry_point).unwrap_or(false) {
+                                        println!("    ├─ Found {} export in core instance {} (handle {:?})", entry_point, idx, handle);
                                         found_handle = Some(handle);
                                         break;
                                     }
@@ -1827,26 +1844,21 @@ impl ComponentInstance {
                             }
                         }
 
-                        // Fall back to the last instance in the map (often the main app)
-                        if found_handle.is_none() {
-                            // Take the instance with the highest core instance idx
-                            if let Some((&idx, &handle)) = core_instances_map.iter().max_by_key(|(k, _)| *k) {
-                                println!("    ├─ Fallback: using core instance {} (handle {:?}) as main", idx, handle);
-                                found_handle = Some(handle);
-                            }
-                        }
-
+                        // NO FALLBACK: Per CLAUDE.md rules, we must not guess.
+                        // If _start is not found, the component is malformed or our loading is broken.
                         if let Some(handle) = found_handle {
                             #[cfg(feature = "tracing")]
                             tracing::info!(
                                 ?handle,
-                                "Interface-style component - using instance with wasi:cli/run export as main"
+                                "Interface-style component - found instance with core entry point"
                             );
                             instance.main_instance_handle = Some(handle);
                             handle
                         } else {
+                            println!("    ✗ ERROR: No core instance exports _start, run, or main!");
+                            println!("    Available instances: {:?}", core_instances_map.keys().collect::<Vec<_>>());
                             return Err(Error::runtime_execution_error(
-                                "Interface-style component has no core instances"
+                                "No core instance exports _start - module exports not properly loaded"
                             ));
                         }
                     } else {
@@ -3714,16 +3726,18 @@ impl ComponentInstance {
                 }
 
                 // Try entry point functions in order of preference:
-                // 1. _start - standard WASI command entry point
-                // 2. wasi:cli/run@*#run - component model canonical entry point
+                // 1. _start - standard WASI command entry point (C/TinyGo)
+                // 2. wasi:cli/run@*#run - Rust component model entry point
                 // 3. run - common for interface-style components
                 // 4. main - C-style entry point
-                // For Rust-generated components, the entry point is often "wasi:cli/run@VERSION#run"
+                // NOTE: We must use the correct instance_handle (main module, not a shim).
+                // Infinite recursion occurs if we call a re-exported alias instead of the
+                // actual implementation.
                 let entry_points = [
                     "_start",
-                    "wasi:cli/run@0.2.3#run",  // Common version
-                    "wasi:cli/run@0.2.6#run",  // Another common version
-                    "wasi:cli/run@0.2.0#run",  // Older version
+                    "wasi:cli/run@0.2.3#run",
+                    "wasi:cli/run@0.2.6#run",
+                    "wasi:cli/run@0.2.0#run",
                     "run",
                     "main",
                 ];
@@ -3746,10 +3760,9 @@ impl ComponentInstance {
                 // All entry points failed - check available exports for debugging
                 if let Some(e) = last_error {
                     println!("[CALL_NATIVE] ✗ All entry points failed");
-                    // Debug: check for common exports
+                    // Debug: check for common exports (core module exports only)
                     let common_exports = [
                         "_start", "_initialize", "run", "main",
-                        "wasi:cli/run@0.2.3#run", "wasi:cli/run@0.2.6#run", "wasi:cli/run@0.2.0#run",
                         "memory", "__heap_base", "__data_end",
                         "cabi_realloc", "__wasm_call_ctors",
                     ];

@@ -568,6 +568,17 @@ impl CapabilityEngine for CapabilityAwareEngine {
             "[LOAD_MODULE] Module loaded"
         );
 
+        // Debug: list all exports
+        #[cfg(feature = "std")]
+        {
+            let export_names: Vec<_> = runtime_module.exports.keys()
+                .map(|k| k.as_str().unwrap_or("?"))
+                .collect();
+            if export_names.iter().any(|n| *n == "_start" || *n == "memory") {
+                eprintln!("[LOAD_MODULE] Module exports ({} total): {:?}", export_names.len(), export_names);
+            }
+        }
+
         #[cfg(feature = "tracing")]
         {
             let elem_count = runtime_module.elements.len();
@@ -993,7 +1004,14 @@ impl CapabilityEngine for CapabilityAwareEngine {
             }
 
             // Also try wasi: prefix format like "wasi:cli/stdout@0.2.0"
+            // BUT ONLY if this function is NOT exported by the module!
+            // If the module exports it (like wasi:cli/run@0.2.3#run), we should call
+            // the module's implementation, not dispatch to host.
+            let is_module_export = instance.module().find_function_by_name(func_name).is_some();
             if func_name.starts_with("wasi:") {
+                eprintln!("[EXECUTE] wasi: function '{}', is_module_export={}", func_name, is_module_export);
+            }
+            if func_name.starts_with("wasi:") && !is_module_export {
                 // Extract just the function name part (last component after #)
                 if let Some(hash_pos) = func_name.rfind('#') {
                     let module_part = &func_name[..hash_pos];
@@ -1052,6 +1070,8 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let stackless_instance_id = self.inner.set_current_module(Arc::clone(instance))?;
 
         // Execute the function using the stackless engine's instance ID
+        eprintln!("[CAP_ENGINE] Calling inner.execute(instance_id={}, func_idx={}, func_name='{}')",
+                  stackless_instance_id, func_idx, func_name);
         let results =
             self.inner.execute(stackless_instance_id, func_idx as usize, args.to_vec())?;
 
