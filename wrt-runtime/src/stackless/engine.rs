@@ -580,6 +580,43 @@ impl StacklessEngine {
         );
     }
 
+    /// Remap import links from old_id to new_id
+    /// This is needed when link_import is called with module_id before instantiation,
+    /// but runtime lookup uses instance_id (which is assigned during instantiation)
+    #[cfg(feature = "std")]
+    pub fn remap_import_links(&mut self, old_id: usize, new_id: usize) {
+        if old_id == new_id {
+            return;
+        }
+
+        // Collect links to remap
+        let links_to_remap: Vec<((usize, String, String), (usize, String))> = self
+            .import_links
+            .iter()
+            .filter(|((id, _, _), _)| *id == old_id)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        #[cfg(feature = "tracing")]
+        if !links_to_remap.is_empty() {
+            tracing::debug!(
+                old_id = old_id,
+                new_id = new_id,
+                count = links_to_remap.len(),
+                "Remapping import links"
+            );
+        }
+
+        // Re-insert with new instance_id
+        for ((_, import_module, import_name), (target_id, export_name)) in links_to_remap {
+            self.import_links.remove(&(old_id, import_module.clone(), import_name.clone()));
+            self.import_links.insert(
+                (new_id, import_module, import_name),
+                (target_id, export_name),
+            );
+        }
+    }
+
     /// Register an aliased function origin
     /// This tracks which instance a function actually belongs to when it's aliased
     #[cfg(feature = "std")]

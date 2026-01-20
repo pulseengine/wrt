@@ -1144,12 +1144,12 @@ impl ComponentInstance {
                                             // For instance imports, we need to link ALL exports from the provider
                                             // to the module's imports that match by name
                                             if let Some(&handle) = core_instances_map.get(&(arg_ref.idx as usize)) {
-                                                // Check if this is a WASI P1 interface - should use WASI dispatcher directly
-                                                if arg_ref.name == "wasi_snapshot_preview1" {
-                                                    println!("    │  │  ├─ WASI P1 interface '{}' - skipping link, will use WASI dispatcher",
-                                                             arg_ref.name);
-                                                    continue;
-                                                }
+                                                // NOTE: We do NOT skip wasi_snapshot_preview1 here!
+                                                // If a component has an adapter module that implements Preview1
+                                                // by translating to Preview2, we should link to the adapter's
+                                                // exports, not fall back to the dispatcher.
+                                                // The adapter's exports will be in inline_exports_map.
+
                                                 // Check if this is an InlineExports with stored export names
                                                 if let Some(export_mappings) = inline_exports_map.get(&(arg_ref.idx as usize)) {
                                                     println!("    │  │  ├─ Instance {} has {} exports to link", arg_ref.idx, export_mappings.len());
@@ -1292,6 +1292,15 @@ impl ComponentInstance {
                                     Ok(instance_handle) => {
                                         println!("    ├─ ✓ Instantiated as instance {:?}", instance_handle);
                                         core_instances_map.insert(core_instance_idx, instance_handle);
+
+                                        // CRITICAL: Remap import links from module_handle to instance_handle
+                                        // link_import was called before instantiation with module_handle,
+                                        // but runtime lookup uses instance_handle - these IDs differ!
+                                        if let Err(e) = engine.remap_import_links(module_handle, instance_handle) {
+                                            println!("    ├─ WARNING: Failed to remap import links: {:?}", e);
+                                        } else {
+                                            println!("    ├─ Import links remapped to instance {:?}", instance_handle);
+                                        }
 
                                         // Check if this is the instance that exports _start
                                         // (we found this by scanning aliases earlier)

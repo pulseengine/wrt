@@ -186,6 +186,15 @@ pub trait CapabilityEngine: Send + Sync {
         export_name: &str,
     ) -> Result<()>;
 
+    /// Remap import links from a module handle to an instance handle
+    /// This should be called after instantiation to fix the ID mismatch between
+    /// module handles (used during linking) and instance handles (used at runtime)
+    fn remap_import_links(
+        &mut self,
+        module: ModuleHandle,
+        instance: InstanceHandle,
+    ) -> Result<()>;
+
     /// Execute a function with capability enforcement
     fn execute(
         &mut self,
@@ -900,6 +909,41 @@ impl CapabilityEngine for CapabilityAwareEngine {
         Err(Error::runtime_error("Import linking not supported in no_std mode"))
     }
 
+    #[cfg(feature = "std")]
+    fn remap_import_links(
+        &mut self,
+        module: ModuleHandle,
+        instance: InstanceHandle,
+    ) -> Result<()> {
+        // Transfer import links from module_id to instance_id
+        // This is needed because link_import is called before instantiation (with module handle)
+        // but runtime lookup uses instance handle
+        let module_id = module.0 as usize;
+        let instance_id = instance.0 as usize;
+
+        #[cfg(feature = "tracing")]
+        trace!(
+            module_id = module_id,
+            instance_id = instance_id,
+            "Remapping import links from module to instance"
+        );
+
+        // Delegate to StacklessEngine's remap method
+        self.inner.remap_import_links(module_id, instance_id);
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn remap_import_links(
+        &mut self,
+        _module: ModuleHandle,
+        _instance: InstanceHandle,
+    ) -> Result<()> {
+        // No-std mode: not supported
+        Ok(())
+    }
+
     fn execute(
         &mut self,
         instance_handle: InstanceHandle,
@@ -993,10 +1037,18 @@ impl CapabilityEngine for CapabilityAwareEngine {
             "[CAP_ENGINE] Executing function"
         );
 
-        // Set current module for execution and get the stackless engine's instance ID
-        // IMPORTANT: The StacklessEngine uses its own ID space (from set_current_module),
-        // NOT the CapabilityAwareEngine's InstanceHandle index. Using the wrong ID
-        // causes WASI functions to fail finding the instance memory.
+        // Get the stackless engine's instance ID from our mapping
+        // IMPORTANT: We must NOT call set_current_module here - that creates a new ID!
+        // The instance was already registered during instantiate() and import links
+        // were registered with that ID. Using a different ID breaks link lookup.
+        #[cfg(feature = "std")]
+        let stackless_instance_id = self
+            .handle_to_idx
+            .get(&instance_handle)
+            .copied()
+            .ok_or_else(|| Error::resource_not_found("Instance not registered - call instantiate first"))?;
+
+        #[cfg(not(feature = "std"))]
         let stackless_instance_id = self.inner.set_current_module(Arc::clone(instance))?;
 
         // Execute the function using the stackless engine's instance ID
