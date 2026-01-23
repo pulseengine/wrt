@@ -1355,11 +1355,6 @@ impl StacklessEngine {
                                             "[HOST_CALL] Linked to target instance"
                                         );
 
-                                        if self.call_frames_count <= 10 {
-                                            eprintln!("[CALL_INSTR] Call to import '{}::{}' linked to instance {} export '{}'",
-                                                      module_name, field_name, target_instance, export_name);
-                                        }
-
                                         // Collect args from operand stack based on function signature
                                         let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
 
@@ -4384,7 +4379,8 @@ impl StacklessEngine {
                         trace!("If: block_type_idx={}, depth now {}, stack_height={}",
                                block_type_idx, block_depth, operand_stack.len().saturating_sub(1));
                         // Pop condition
-                        if let Some(Value::I32(condition)) = operand_stack.pop() {
+                        let condition_val = operand_stack.pop();
+                        if let Some(Value::I32(condition)) = condition_val {
                             #[cfg(feature = "tracing")]
 
                             trace!("If: condition = {}", condition != 0);
@@ -5422,7 +5418,6 @@ impl StacklessEngine {
                         if block_depth < 0 || (pc == instructions.len() - 1 && block_depth == 0) {
                             // This is the function's final End
                             #[cfg(feature = "tracing")]
-
                             trace!("🔙 End at pc={} (function end)", pc);
                             #[cfg(feature = "tracing")]
 
@@ -8490,12 +8485,13 @@ impl StacklessEngine {
                             );
 
                             // Branch to handler label - need to find the End of the target block
-                            // handler_label is relative to try_table position:
-                            // - handler_label=0 means branch to try_table itself (same block)
-                            // - handler_label=N means branch to Nth outer block from try_table
+                            // Per wast crate encoding, handler_label is relative to try_table's PARENT:
+                            // - handler_label=0 means branch to try_table's parent (containing block)
+                            // - handler_label=N means branch N levels further out from parent
                             // Calculate target block index BEFORE popping
-                            let target_block_idx = if handler_label as usize <= try_block_idx {
-                                try_block_idx - handler_label as usize
+                            // target = try_block_idx - 1 (parent) - handler_label (additional levels)
+                            let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
+                                try_block_idx - 1 - handler_label as usize
                             } else {
                                 // Label targets function level - return with exception
                                 #[cfg(feature = "tracing")]
@@ -8505,6 +8501,8 @@ impl StacklessEngine {
 
                             // Get entry stack height before popping blocks
                             let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+                            // Save original block count for depth calculation
+                            let original_block_count = block_stack.len();
 
                             // Pop blocks from stack down to (but not including) target block
                             // The target block will be popped when we execute its End instruction
@@ -8541,11 +8539,13 @@ impl StacklessEngine {
                             );
 
                             // Find the End of the target block by scanning forward
-                            // We need to find block_stack.len() End instructions at depth 0
-                            // The last one closes the target block
-                            let mut ends_to_find = block_stack.len() as i32;
+                            // We need to skip over ALL inner blocks' Ends (not just try_table's)
+                            // depth = number of blocks we're exiting from throw location to target
+                            let mut ends_to_find = 1i32;  // Just looking for target block's End
                             let mut new_pc = pc + 1;
-                            let mut depth = 0i32;
+                            // Skip all blocks from throw location down to (but not including) target
+                            // Use original_block_count (before popping) to know how many ends to skip
+                            let mut depth = (original_block_count - 1 - target_block_idx) as i32;
 
                             while new_pc < instructions.len() && ends_to_find > 0 {
                                 if let Some(instr) = instructions.get(new_pc) {
@@ -8673,13 +8673,16 @@ impl StacklessEngine {
 
                             if found_handler {
                                 // Calculate target block index BEFORE popping
-                                let target_block_idx = if handler_label as usize <= try_block_idx {
-                                    try_block_idx - handler_label as usize
+                                // Per wast crate encoding, handler_label is relative to try_table's PARENT
+                                let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
+                                    try_block_idx - 1 - handler_label as usize
                                 } else {
                                     break; // Function return
                                 };
 
                                 let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+                                // Save original block count for depth calculation
+                                let original_block_count = block_stack.len();
 
                                 // Pop blocks down to target
                                 while block_stack.len() > target_block_idx + 1 {
@@ -8705,9 +8708,10 @@ impl StacklessEngine {
                                 }
 
                                 // Find End of target block
-                                let mut ends_to_find = block_stack.len() as i32;
+                                let mut ends_to_find = 1i32;  // Just looking for target block's End
                                 let mut new_pc = pc + 1;
-                                let mut depth = 0i32;
+                                // Skip all blocks from throw location down to (but not including) target
+                                let mut depth = (original_block_count - 1 - target_block_idx) as i32;
 
                                 while new_pc < instructions.len() && ends_to_find > 0 {
                                     if let Some(instr) = instructions.get(new_pc) {
