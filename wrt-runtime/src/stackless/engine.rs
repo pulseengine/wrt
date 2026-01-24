@@ -819,6 +819,7 @@ impl StacklessEngine {
         let func_idx = func_idx.ok_or_else(|| {
             #[cfg(feature = "tracing")]
             warn!("Cross-instance call: Export '{}' not found", export_name);
+            eprintln!("[CROSS_CALL_ERROR] Export '{}' not found in instance {}", export_name, target_instance_id);
             wrt_error::Error::resource_not_found("Export not found")
         })?;
 
@@ -1627,7 +1628,153 @@ impl StacklessEngine {
                                         let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
 
                                         // Call the linked function in the target instance
-                                        let result = self.call_exported_function(target_instance, &export_name, args)?;
+                                        let call_result = self.call_exported_function(target_instance, &export_name, args);
+
+                                        // Check if the called function threw an exception
+                                        #[cfg(feature = "std")]
+                                        if let Err(_) = &call_result {
+                                            if let Some((ex_tag_idx, ref ex_payload)) = self.active_exception.clone() {
+                                                #[cfg(feature = "tracing")]
+                                                trace!(ex_tag_idx = ex_tag_idx, "[EXCEPTION_HOST_CALL] Cross-module call returned with exception, searching for handler");
+
+                                                // Search for try_table handler in current function's block_stack
+                                                let mut found_handler = false;
+                                                let mut handler_label = 0u32;
+                                                let mut handler_is_ref = false;
+                                                let mut try_block_idx = 0usize;
+
+                                                for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
+                                                    if *block_type == "try_table" {
+                                                        if let Some(try_instr) = instructions.get(*try_pc) {
+                                                            if let Instruction::TryTable { handlers, .. } = try_instr {
+                                                                for i in 0..handlers.len() {
+                                                                    if let Ok(handler) = handlers.get(i) {
+                                                                        let handler_val = handler.clone();
+                                                                        let (matches, lbl, is_ref) = match handler_val {
+                                                                            wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
+                                                                                (htag == ex_tag_idx, hlbl, false)
+                                                                            }
+                                                                            wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
+                                                                                (htag == ex_tag_idx, hlbl, true)
+                                                                            }
+                                                                            wrt_foundation::types::CatchHandler::CatchAll { label } => {
+                                                                                (true, label, false)
+                                                                            }
+                                                                            wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
+                                                                                (true, label, true)
+                                                                            }
+                                                                        };
+                                                                        if matches {
+                                                                            handler_label = lbl;
+                                                                            handler_is_ref = is_ref;
+                                                                            found_handler = true;
+                                                                            try_block_idx = idx;
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if found_handler {
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                if found_handler {
+                                                    #[cfg(feature = "tracing")]
+                                                    trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, try_block_idx = try_block_idx, "[EXCEPTION_HOST_CALL] Found handler");
+
+                                                    // Clear active exception - it's being handled
+                                                    let payload = ex_payload.clone();
+                                                    self.active_exception = None;
+
+                                                    // Save original block count for depth calculation
+                                                    let original_block_count = block_stack.len();
+
+                                                    // Pop blocks down to the try_table (but keep the try_table)
+                                                    while block_stack.len() > try_block_idx + 1 {
+                                                        block_stack.pop();
+                                                        block_depth -= 1;
+                                                    }
+
+                                                    // Calculate target block index
+                                                    // handler_label is relative to try_table's PARENT
+                                                    let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
+                                                        try_block_idx - 1 - handler_label as usize
+                                                    } else {
+                                                        // Branch out of function - push payload and return
+                                                        for val in payload.iter() {
+                                                            operand_stack.push(val.clone());
+                                                        }
+                                                        if handler_is_ref {
+                                                            let exn_idx = self.exception_storage.len() as u32;
+                                                            self.exception_storage.push((ex_tag_idx, payload.clone()));
+                                                            operand_stack.push(Value::ExnRef(Some(exn_idx)));
+                                                        }
+                                                        return Ok(ExecutionOutcome::Complete(operand_stack));
+                                                    };
+
+                                                    // Get entry stack height and pop blocks down to target
+                                                    let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
+
+                                                    // Pop blocks from stack down to (but not including) target block
+                                                    while block_stack.len() > target_block_idx + 1 {
+                                                        block_stack.pop();
+                                                        block_depth -= 1;
+                                                    }
+
+                                                    // Truncate operand stack to target height
+                                                    while operand_stack.len() > entry_stack_height as usize {
+                                                        operand_stack.pop();
+                                                    }
+
+                                                    // Push payload values
+                                                    for val in payload.iter() {
+                                                        operand_stack.push(val.clone());
+                                                    }
+
+                                                    // Push exnref if this is a _ref handler
+                                                    if handler_is_ref {
+                                                        let exn_idx = self.exception_storage.len() as u32;
+                                                        self.exception_storage.push((ex_tag_idx, payload.clone()));
+                                                        operand_stack.push(Value::ExnRef(Some(exn_idx)));
+                                                    }
+
+                                                    // Find the End instruction for the target block
+                                                    let ends_to_skip = original_block_count - 1 - target_block_idx;
+                                                    let mut depth = ends_to_skip as i32;
+                                                    let mut new_pc = pc + 1;
+                                                    while new_pc < instructions.len() && depth >= 0 {
+                                                        if let Some(instr) = instructions.get(new_pc) {
+                                                            match instr {
+                                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } | Instruction::Try { .. } => {
+                                                                    depth += 1;
+                                                                }
+                                                                Instruction::End => {
+                                                                    if depth == 0 {
+                                                                        break;
+                                                                    }
+                                                                    depth -= 1;
+                                                                }
+                                                                _ => {}
+                                                            }
+                                                        }
+                                                        new_pc += 1;
+                                                    }
+                                                    pc = new_pc;
+                                                    continue;
+                                                } else {
+                                                    // No handler in caller - propagate exception
+                                                    #[cfg(feature = "tracing")]
+                                                    trace!("[EXCEPTION_HOST_CALL] No handler - propagating exception");
+                                                    return Err(call_result.unwrap_err());
+                                                }
+                                            }
+                                        }
+
+                                        // Normal return or non-exception error
+                                        let result = call_result?;
 
                                         // Push result onto stack if function returns a value
                                         if let Some(value) = result.first() {
@@ -9527,40 +9674,65 @@ impl StacklessEngine {
     }
 
     /// Find import by function index using the ordered import list
+    ///
+    /// IMPORTANT: func_idx is the FUNCTION import index (0 = first imported function),
+    /// not the overall import index. import_order contains ALL imports (functions,
+    /// globals, memories, tables, tags), so we must iterate through import_types
+    /// to find the Nth function import.
     fn find_import_by_index(&self, module: &crate::module::Module, func_idx: usize) -> Result<(String, String)> {
+        use crate::module::RuntimeImportDesc;
+
         #[cfg(feature = "tracing")]
         let _span = wrt_foundation::tracing::ImportTrace::lookup("", "").entered();
 
         #[cfg(feature = "tracing")]
-        debug!("Looking for import at index {} (import_order.len()={})", func_idx, module.import_order.len());
+        debug!("Looking for function import at index {} (import_order.len()={}, import_types.len()={})",
+               func_idx, module.import_order.len(), module.import_types.len());
 
-        // Use the ordered import list for direct index lookup
+        // Iterate through ALL imports, counting only function imports until we find the one we want
         #[cfg(feature = "std")]
         {
-            if func_idx < module.import_order.len() {
-                let (module_name, field_name) = &module.import_order[func_idx];
-                #[cfg(feature = "tracing")]
-                trace!("Found import at index {}: {}::{}", func_idx, module_name, field_name);
-                return Ok((module_name.clone(), field_name.clone()));
+            let mut func_import_count = 0usize;
+            for (i, (module_name, field_name)) in module.import_order.iter().enumerate() {
+                // Check if this import is a function import
+                if let Some(RuntimeImportDesc::Function(_)) = module.import_types.get(i) {
+                    if func_import_count == func_idx {
+                        #[cfg(feature = "tracing")]
+                        trace!("Found function import {} at overall index {}: {}::{}",
+                               func_idx, i, module_name, field_name);
+                        return Ok((module_name.clone(), field_name.clone()));
+                    }
+                    func_import_count += 1;
+                }
             }
         }
 
         #[cfg(not(feature = "std"))]
         {
-            if let Ok(Some((module_name, field_name))) = module.import_order.get(func_idx) {
-                #[cfg(feature = "tracing")]
-                trace!("Found import at index {}: {}::{}", func_idx,
-                    module_name.as_str().unwrap_or("<error>"),
-                    field_name.as_str().unwrap_or("<error>"));
-                return Ok((
-                    module_name.as_str().map(|s| s.to_string()).unwrap_or_default(),
-                    field_name.as_str().map(|s| s.to_string()).unwrap_or_default()
-                ));
+            let mut func_import_count = 0usize;
+            for i in 0..module.import_order.len() {
+                if let Ok(Some((module_name, field_name))) = module.import_order.get(i) {
+                    // Check if this import is a function import
+                    if let Some(RuntimeImportDesc::Function(_)) = module.import_types.get(i) {
+                        if func_import_count == func_idx {
+                            #[cfg(feature = "tracing")]
+                            trace!("Found function import {} at overall index {}: {}::{}",
+                                   func_idx, i,
+                                   module_name.as_str().unwrap_or("<error>"),
+                                   field_name.as_str().unwrap_or("<error>"));
+                            return Ok((
+                                module_name.as_str().map(|s| s.to_string()).unwrap_or_default(),
+                                field_name.as_str().map(|s| s.to_string()).unwrap_or_default()
+                            ));
+                        }
+                        func_import_count += 1;
+                    }
+                }
             }
         }
 
         #[cfg(feature = "tracing")]
-        trace!("Could not find import at index {} (import_order.len()={})", func_idx, module.import_order.len());
+        trace!("Could not find function import at index {} (import_order.len()={})", func_idx, module.import_order.len());
         Err(wrt_error::Error::runtime_error("Import not found"))
     }
 

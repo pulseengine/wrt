@@ -1085,6 +1085,7 @@ impl WastModuleValidator {
                     offset = new_offset;
 
                     // Parse and validate each handler
+                    // Handlers branch to target blocks, so we need to verify type compatibility
                     for _ in 0..handler_count {
                         if offset >= code.len() {
                             return Err(anyhow!("try_table: unexpected end"));
@@ -1092,25 +1093,72 @@ impl WastModuleValidator {
                         let catch_kind = code[offset];
                         offset += 1;
 
-                        match catch_kind {
-                            0x00 | 0x01 => {
-                                // catch / catch_ref: parse tag_idx + label
+                        // Determine what types this handler will push when branching
+                        let handler_pushes: Vec<StackType> = match catch_kind {
+                            0x00 => {
+                                // catch: pushes tag's param types
                                 let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-                                // Tag indices include both imported and defined tags
                                 if tag_idx as usize >= Self::total_tags(module) {
                                     return Err(anyhow!("unknown tag"));
                                 }
-                                let (_label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
+
+                                // Get tag's param types
+                                let tag_params = Self::get_tag_param_types(module, tag_idx)?;
+
+                                // Validate handler branch target
+                                Self::validate_handler_branch(&frames, label, &tag_params)?;
+
+                                tag_params
                             }
-                            0x02 | 0x03 => {
-                                // catch_all / catch_all_ref: parse label only
-                                let (_label, new_offset) = Self::parse_varuint32(code, offset)?;
+                            0x01 => {
+                                // catch_ref: pushes tag's param types + exnref
+                                let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
+                                if tag_idx as usize >= Self::total_tags(module) {
+                                    return Err(anyhow!("unknown tag"));
+                                }
+                                let (label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+
+                                // Get tag's param types + exnref
+                                let mut handler_types = Self::get_tag_param_types(module, tag_idx)?;
+                                handler_types.push(StackType::ExnRef);
+
+                                // Validate handler branch target
+                                Self::validate_handler_branch(&frames, label, &handler_types)?;
+
+                                handler_types
+                            }
+                            0x02 => {
+                                // catch_all: pushes nothing
+                                let (label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+
+                                // Validate handler branch target (empty types)
+                                Self::validate_handler_branch(&frames, label, &[])?;
+
+                                Vec::new()
+                            }
+                            0x03 => {
+                                // catch_all_ref: pushes exnref
+                                let (label, new_offset) = Self::parse_varuint32(code, offset)?;
+                                offset = new_offset;
+
+                                let handler_types = vec![StackType::ExnRef];
+
+                                // Validate handler branch target
+                                Self::validate_handler_branch(&frames, label, &handler_types)?;
+
+                                handler_types
                             }
                             _ => return Err(anyhow!("invalid catch handler kind")),
-                        }
+                        };
+
+                        // Handler types are validated above; no need to use them further
+                        let _ = handler_pushes;
                     }
 
                     let (input_types, output_types) =
@@ -2573,6 +2621,66 @@ impl WastModuleValidator {
             let defined_idx = tag_idx as usize - num_tag_imports;
             module.tags.get(defined_idx).map(|t| t.type_idx)
         }
+    }
+
+    /// Get the parameter types for a tag as StackTypes
+    /// Tags are defined with a type index pointing to a function type,
+    /// and the tag's params are the function type's params
+    fn get_tag_param_types(module: &Module, tag_idx: u32) -> Result<Vec<StackType>> {
+        let type_idx = Self::get_tag_type_idx(module, tag_idx)
+            .ok_or_else(|| anyhow!("unknown tag"))?;
+
+        let func_type = module.types.get(type_idx as usize)
+            .ok_or_else(|| anyhow!("unknown type"))?;
+
+        Ok(func_type.params.iter()
+            .map(|vt| StackType::from_value_type(*vt))
+            .collect())
+    }
+
+    /// Validate that a try_table handler can branch to the target label
+    /// Handler branches carry specific values based on handler type:
+    /// - catch: tag's param types
+    /// - catch_ref: tag's param types + exnref
+    /// - catch_all: nothing
+    /// - catch_all_ref: exnref
+    /// The target block must have output types matching the handler's values
+    fn validate_handler_branch(
+        frames: &[ControlFrame],
+        label: u32,
+        handler_types: &[StackType],
+    ) -> Result<()> {
+        let label = label as usize;
+
+        // Validate label is in range
+        if label >= frames.len() {
+            return Err(anyhow!("unknown label"));
+        }
+
+        // Get the target frame (label 0 = innermost = frames.last())
+        let target_idx = frames.len() - 1 - label;
+        let target_frame = &frames[target_idx];
+
+        // Get the target's label types (what a branch to it must provide)
+        // For loops, branches provide inputs; for other blocks, branches provide outputs
+        let target_types = if target_frame.frame_type == FrameType::Loop {
+            &target_frame.input_types
+        } else {
+            &target_frame.output_types
+        };
+
+        // Handler's pushed types must match target's expected types
+        if handler_types.len() != target_types.len() {
+            return Err(anyhow!("type mismatch"));
+        }
+
+        for (handler_type, target_type) in handler_types.iter().zip(target_types.iter()) {
+            if handler_type != target_type {
+                return Err(anyhow!("type mismatch"));
+            }
+        }
+
+        Ok(())
     }
 
     /// Collect all function indices that are "declared" for ref.func validation
