@@ -620,11 +620,37 @@ impl<'a> StreamingDecoder<'a> {
                     }
                 },
                 0x04 => {
-                    // Tag import
+                    // Tag import: attribute byte + type_idx
+                    // Per WebAssembly spec, tag type is: attribute (must be 0) + type_idx
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of tag import"));
+                    }
+                    let attribute = data[offset];
+                    offset += 1;
+
+                    // Validate attribute - must be 0 (exception)
+                    if attribute != 0 {
+                        return Err(Error::validation_error("Invalid tag attribute"));
+                    }
+
                     let (type_idx, bytes_read) = read_leb128_u32(data, offset)?;
                     offset += bytes_read;
+
                     #[cfg(feature = "tracing")]
-                    trace!(import_index = i, type_idx = type_idx, "import: tag");
+                    trace!(import_index = i, attribute = attribute, type_idx = type_idx, "import: tag");
+
+                    // Store tag import in module.imports for runtime resolution
+                    #[cfg(feature = "std")]
+                    {
+                        use wrt_format::module::{Import, ImportDesc};
+
+                        let import = Import {
+                            module: module_name.to_string(),
+                            name: field_name.to_string(),
+                            desc: ImportDesc::Tag(type_idx),
+                        };
+                        self.module.imports.push(import);
+                    }
                 },
                 _ => {
                     return Err(Error::parse_error("Invalid import kind"));
@@ -1093,6 +1119,7 @@ impl<'a> StreamingDecoder<'a> {
                 0x01 => wrt_format::module::ExportKind::Table,
                 0x02 => wrt_format::module::ExportKind::Memory,
                 0x03 => wrt_format::module::ExportKind::Global,
+                0x04 => wrt_format::module::ExportKind::Tag,
                 _ => {
                     #[cfg(feature = "tracing")]
                     trace!(kind_byte = kind_byte, "invalid export kind");

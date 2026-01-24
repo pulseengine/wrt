@@ -764,6 +764,40 @@ impl Module {
         self.memories.push(memory)
     }
 
+    /// Count the number of tag imports in the module
+    #[cfg(feature = "std")]
+    pub fn count_tag_imports(&self) -> usize {
+        self.import_types.iter()
+            .filter(|desc| matches!(desc, RuntimeImportDesc::Tag(_)))
+            .count()
+    }
+
+    /// Get the tag type for a given tag index (accounting for imports)
+    /// Tag indices include both imported and defined tags:
+    /// - Indices 0..N-1 are imported tags
+    /// - Indices N+ are defined tags
+    #[cfg(feature = "std")]
+    pub fn get_tag_type(&self, tag_idx: u32) -> Option<&wrt_foundation::types::TagType> {
+        let num_tag_imports = self.count_tag_imports();
+        if (tag_idx as usize) < num_tag_imports {
+            // This is an imported tag - find it in import_types
+            let mut import_idx = 0;
+            for desc in &self.import_types {
+                if let RuntimeImportDesc::Tag(tag_type) = desc {
+                    if import_idx == tag_idx as usize {
+                        return Some(tag_type);
+                    }
+                    import_idx += 1;
+                }
+            }
+            None
+        } else {
+            // This is a defined tag
+            let defined_idx = tag_idx as usize - num_tag_imports;
+            self.tags.get(defined_idx)
+        }
+    }
+
     /// Evaluate a constant expression and return its value.
     /// Supports both simple const expressions and extended const expressions (WebAssembly 2.0).
     /// Extended const expressions allow i32/i64 add, sub, mul operations.
@@ -1306,9 +1340,12 @@ impl Module {
                     runtime_module.global_import_types.push(global_type.clone());
                     RuntimeImportDesc::Global(global_type)
                 },
-                FormatImportDesc::Tag(_tag_idx) => {
+                FormatImportDesc::Tag(type_idx) => {
                     // Handle Tag import - convert to appropriate runtime representation
-                    return Err(Error::parse_error("Tag imports not yet supported"));
+                    RuntimeImportDesc::Tag(wrt_foundation::types::TagType {
+                        attribute: 0, // Exception tag attribute
+                        type_idx: *type_idx,
+                    })
                 },
             };
 
@@ -1359,7 +1396,10 @@ impl Module {
                         value_type: gt.value_type,
                         mutable: gt.mutable,
                     }),
-                    FormatImportDesc::Tag(_) => RuntimeImportDesc::Function(0), // Fallback
+                    FormatImportDesc::Tag(type_idx) => RuntimeImportDesc::Tag(wrt_foundation::types::TagType {
+                        attribute: 0,
+                        type_idx: *type_idx,
+                    }),
                 };
                 runtime_module.import_types.push(import_desc);
             }

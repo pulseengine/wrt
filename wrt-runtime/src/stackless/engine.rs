@@ -248,6 +248,28 @@ pub struct WasiStubMemory {
     pub stderr_handle: u32,
 }
 
+/// A lowered function produced by canon.lower
+///
+/// Per Component Model spec, `canon lower` takes a component function and produces
+/// a core WebAssembly function. This struct represents that synthesized function.
+/// When the engine executes a function that maps to a LoweredFunction, it dispatches
+/// to the canonical executor instead of executing bytecode.
+///
+/// This is the "virtual WebAssembly code" approach - the lowered function exists
+/// in the function index space but executes via our canonical executor.
+#[derive(Debug, Clone)]
+#[cfg(feature = "std")]
+pub struct LoweredFunction {
+    /// Target interface (e.g., "wasi:io/streams@0.2.4")
+    pub interface: String,
+    /// Target function name (e.g., "[method]output-stream.blocking-write-and-flush")
+    pub function: String,
+    /// Memory index for ABI operations (from canon options)
+    pub memory_idx: Option<u32>,
+    /// Realloc function index for ABI operations (from canon options)
+    pub realloc_idx: Option<u32>,
+}
+
 /// Simple stackless WebAssembly execution engine
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct StacklessEngine {
@@ -299,6 +321,10 @@ pub struct StacklessEngine {
     /// Maps exnref index to (tag_idx, payload)
     #[cfg(feature = "std")]
     exception_storage:     Vec<(u32, Vec<Value>)>,
+    /// Lowered function registry: (instance_id, func_idx) -> LoweredFunction
+    /// Used for canon.lower synthesized functions that dispatch to canonical executor
+    #[cfg(feature = "std")]
+    lowered_functions:     HashMap<(usize, usize), LoweredFunction>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -434,6 +460,8 @@ impl StacklessEngine {
             active_exception:    None,
             #[cfg(feature = "std")]
             exception_storage:   Vec::new(),
+            #[cfg(feature = "std")]
+            lowered_functions:   HashMap::new(),
         }
     }
 
@@ -484,6 +512,246 @@ impl StacklessEngine {
         if let Some(ref mut dispatcher) = self.wasi_dispatcher {
             dispatcher.set_env(env_vars);
         }
+    }
+
+    /// Register a lowered function from a canon.lower operation
+    ///
+    /// When a module calls a function at this (instance_id, func_idx), the engine
+    /// will dispatch to the canonical executor instead of executing bytecode.
+    /// This is the Component Model's "synthesized core function" mechanism.
+    #[cfg(feature = "std")]
+    pub fn register_lowered_function(
+        &mut self,
+        instance_id: usize,
+        func_idx: usize,
+        interface: String,
+        function: String,
+        memory_idx: Option<u32>,
+        realloc_idx: Option<u32>,
+    ) {
+        #[cfg(feature = "tracing")]
+        trace!(
+            instance_id = instance_id,
+            func_idx = func_idx,
+            interface = %interface,
+            function = %function,
+            "[CANON_LOWER] Registering lowered function"
+        );
+        let lowered = LoweredFunction {
+            interface,
+            function,
+            memory_idx,
+            realloc_idx,
+        };
+        self.lowered_functions.insert((instance_id, func_idx), lowered);
+    }
+
+    /// Check if a function is a lowered function (from canon.lower)
+    #[cfg(feature = "std")]
+    fn is_lowered_function(&self, instance_id: usize, func_idx: usize) -> bool {
+        self.lowered_functions.contains_key(&(instance_id, func_idx))
+    }
+
+    /// Execute a lowered function via the WASI dispatcher
+    ///
+    /// This is called when the engine detects that a function is a lowered function.
+    /// It extracts the target interface/function and dispatches to the WASI system.
+    ///
+    /// Implements canonical ABI lifting: converts core WASM values (i32 pointers/lengths)
+    /// to component values (lists, records, etc.) by reading from instance memory.
+    #[cfg(all(feature = "std", feature = "wasi"))]
+    fn execute_lowered_function(
+        &mut self,
+        instance_id: usize,
+        func_idx: usize,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        let lowered = self.lowered_functions.get(&(instance_id, func_idx))
+            .cloned()
+            .ok_or_else(|| wrt_error::Error::runtime_error("Lowered function not found"))?;
+
+        #[cfg(feature = "tracing")]
+        trace!(
+            interface = %lowered.interface,
+            function = %lowered.function,
+            args_count = args.len(),
+            "[CANON_LOWER] Executing lowered function"
+        );
+
+        // Lift args based on the function being called
+        // Some functions need memory access to convert pointers to actual data
+        let wasi_args = self.lift_lowered_function_args(
+            instance_id,
+            &lowered.interface,
+            &lowered.function,
+            &args,
+        )?;
+
+        // Dispatch to WASI using the standard dispatch interface
+        if let Some(ref mut dispatcher) = self.wasi_dispatcher {
+            let wasi_results = dispatcher.dispatch(&lowered.interface, &lowered.function, &wasi_args)?;
+
+            // Convert wrt_wasi::Value back to wrt_foundation::values::Value
+            let results: Vec<Value> = wasi_results.into_iter().map(|v| {
+                match v {
+                    wrt_wasi::Value::S32(i) => Value::I32(i),
+                    wrt_wasi::Value::U32(u) => Value::I32(u as i32),
+                    wrt_wasi::Value::S64(i) => Value::I64(i),
+                    wrt_wasi::Value::U64(u) => Value::I64(u as i64),
+                    wrt_wasi::Value::F32(f) => Value::F32(FloatBits32::from_f32(f)),
+                    wrt_wasi::Value::F64(f) => Value::F64(FloatBits64::from_f64(f)),
+                    wrt_wasi::Value::Bool(b) => Value::I32(if b { 1 } else { 0 }),
+                    wrt_wasi::Value::U8(u) => Value::I32(u as i32),
+                    wrt_wasi::Value::S8(i) => Value::I32(i as i32),
+                    wrt_wasi::Value::U16(u) => Value::I32(u as i32),
+                    wrt_wasi::Value::S16(i) => Value::I32(i as i32),
+                    _ => Value::I32(0), // Default for unsupported types
+                }
+            }).collect();
+
+            Ok(results)
+        } else {
+            Err(wrt_error::Error::runtime_error("WASI dispatcher not available for lowered function"))
+        }
+    }
+
+    /// Lift core WASM args to component-level WASI args
+    ///
+    /// This implements the canonical ABI "lift" operation for function arguments.
+    /// For functions that take list<u8> parameters (like write operations), we need
+    /// to read the actual bytes from memory using the pointer and length.
+    #[cfg(all(feature = "std", feature = "wasi"))]
+    fn lift_lowered_function_args(
+        &self,
+        instance_id: usize,
+        interface: &str,
+        function: &str,
+        args: &[Value],
+    ) -> Result<Vec<wrt_wasi::Value>> {
+        // Check if this function needs special ABI lifting
+        let needs_write_lifting = function.contains("blocking-write")
+            || function.contains("write-zeroes")
+            || function == "write";
+
+        if needs_write_lifting && args.len() >= 3 {
+            // blocking-write-and-flush ABI: (handle: u32, data_ptr: i32, data_len: i32, retptr: i32)
+            // We need to read the bytes from memory at data_ptr for data_len bytes
+            return self.lift_write_args(instance_id, args);
+        }
+
+        // For other functions, do simple value conversion
+        let wasi_args: Vec<wrt_wasi::Value> = args.iter().map(|v| {
+            match v {
+                Value::I32(i) => wrt_wasi::Value::S32(*i),
+                Value::I64(i) => wrt_wasi::Value::S64(*i),
+                Value::F32(f) => wrt_wasi::Value::F32(f.to_f32()),
+                Value::F64(f) => wrt_wasi::Value::F64(f.to_f64()),
+                _ => wrt_wasi::Value::U32(0),
+            }
+        }).collect();
+
+        Ok(wasi_args)
+    }
+
+    /// Lift write operation arguments by reading data from memory
+    ///
+    /// For blocking-write-and-flush: (handle, data_ptr, data_len, retptr)
+    /// Returns: [handle, List<U8>(actual bytes)]
+    #[cfg(all(feature = "std", feature = "wasi"))]
+    fn lift_write_args(
+        &self,
+        instance_id: usize,
+        args: &[Value],
+    ) -> Result<Vec<wrt_wasi::Value>> {
+        // Extract the pointer and length from args
+        let handle = match args.get(0) {
+            Some(Value::I32(h)) => *h as u32,
+            _ => return Err(wrt_error::Error::runtime_error("Missing handle argument for write")),
+        };
+
+        let data_ptr = match args.get(1) {
+            Some(Value::I32(p)) => *p as u32,
+            _ => return Err(wrt_error::Error::runtime_error("Missing data pointer for write")),
+        };
+
+        let data_len = match args.get(2) {
+            Some(Value::I32(l)) => *l as u32,
+            _ => return Err(wrt_error::Error::runtime_error("Missing data length for write")),
+        };
+
+        #[cfg(feature = "tracing")]
+        trace!(
+            handle = handle,
+            data_ptr = data_ptr,
+            data_len = data_len,
+            instance_id = instance_id,
+            "[CANON_LIFT] Lifting write args from memory"
+        );
+
+        // Find an instance with memory - the shim doesn't have memory, but the main module does.
+        // In Component Model, the memory comes from the module that imports the lowered function,
+        // not the shim. We search for an instance that has memory.
+        let memory = self.find_instance_with_memory(instance_id)?;
+
+        let mut data = Vec::with_capacity(data_len as usize);
+        for i in 0..data_len {
+            let addr = data_ptr + i;
+            let mut buffer = [0u8; 1];
+            memory.0.read(addr, &mut buffer)
+                .map_err(|_| wrt_error::Error::runtime_error("Failed to read memory for write data"))?;
+            data.push(buffer[0]);
+        }
+
+        #[cfg(feature = "tracing")]
+        trace!(
+            bytes_read = data.len(),
+            "[CANON_LIFT] Read {} bytes from memory",
+            data.len()
+        );
+
+        // Convert to WASI values: handle and list of bytes
+        let byte_list: Vec<wrt_wasi::Value> = data.into_iter()
+            .map(wrt_wasi::Value::U8)
+            .collect();
+
+        Ok(vec![
+            wrt_wasi::Value::U32(handle),
+            wrt_wasi::Value::List(byte_list),
+        ])
+    }
+
+    /// Find an instance that has memory for ABI lifting
+    ///
+    /// In Component Model, the shim module doesn't have memory - the main module does.
+    /// This function first checks the given instance, then searches other instances.
+    #[cfg(all(feature = "std", feature = "wasi"))]
+    fn find_instance_with_memory(&self, preferred_instance_id: usize) -> Result<crate::module::MemoryWrapper> {
+        // First, try the preferred instance
+        if let Some(instance) = self.instances.get(&preferred_instance_id) {
+            if let Ok(memory) = instance.memory(0) {
+                #[cfg(feature = "tracing")]
+                trace!(
+                    instance_id = preferred_instance_id,
+                    "[CANON_LIFT] Found memory in preferred instance"
+                );
+                return Ok(memory);
+            }
+        }
+
+        // Search all instances for one with memory
+        // Typically the main module (instance 2 in component model) has memory
+        for (&id, instance) in &self.instances {
+            if let Ok(memory) = instance.memory(0) {
+                #[cfg(feature = "tracing")]
+                trace!(
+                    instance_id = id,
+                    "[CANON_LIFT] Found memory in instance"
+                );
+                return Ok(memory);
+            }
+        }
+
+        Err(wrt_error::Error::runtime_error("No instance with memory found for ABI lifting"))
     }
 
     /// Register a cross-instance import link
@@ -1556,21 +1824,27 @@ impl StacklessEngine {
 
                                     if found_handler {
                                         #[cfg(feature = "tracing")]
-                                        trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, "[EXCEPTION] Found handler in caller");
+                                        trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, try_block_idx = try_block_idx, "[EXCEPTION] Found handler in caller");
 
                                         // Clear active exception - it's being handled
                                         let payload = ex_payload.clone();
                                         self.active_exception = None;
 
-                                        // Pop blocks down to the try_table
-                                        while block_stack.len() > try_block_idx {
+                                        // Save original block count for depth calculation
+                                        let original_block_count = block_stack.len();
+
+                                        // Pop blocks down to the try_table (but keep the try_table)
+                                        while block_stack.len() > try_block_idx + 1 {
                                             block_stack.pop();
                                             block_depth -= 1;
                                         }
 
-                                        // Find target block for branch
-                                        let target_block_idx = if (handler_label as usize) < block_stack.len() {
-                                            block_stack.len() - 1 - (handler_label as usize)
+                                        // Calculate target block index
+                                        // handler_label is relative to try_table's PARENT
+                                        // try_block_idx - 1 = try_table's parent
+                                        // try_block_idx - 1 - handler_label = target
+                                        let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
+                                            try_block_idx - 1 - handler_label as usize
                                         } else {
                                             // Branch out of function - push payload and return
                                             for val in payload.iter() {
@@ -1585,11 +1859,18 @@ impl StacklessEngine {
                                             return Ok(ExecutionOutcome::Complete(operand_stack));
                                         };
 
-                                        // Truncate stack to target height
-                                        if let Some((_, _, target_height, _)) = block_stack.get(target_block_idx) {
-                                            while operand_stack.len() > *target_height as usize {
-                                                operand_stack.pop();
-                                            }
+                                        // Get entry stack height and pop blocks down to target
+                                        let (_, _, entry_stack_height, _) = block_stack[target_block_idx];
+
+                                        // Pop blocks from stack down to (but not including) target block
+                                        while block_stack.len() > target_block_idx + 1 {
+                                            block_stack.pop();
+                                            block_depth -= 1;
+                                        }
+
+                                        // Truncate operand stack to target height
+                                        while operand_stack.len() > entry_stack_height as usize {
+                                            operand_stack.pop();
                                         }
 
                                         // Push payload values
@@ -1604,15 +1885,22 @@ impl StacklessEngine {
                                         }
 
                                         // Find End of target block
-                                        let mut target_depth = (handler_label as i32) + 1;
+                                        // Start from current PC and skip all End instructions for blocks
+                                        // between where we were and the target
+                                        let ends_to_skip = original_block_count - 1 - target_block_idx;
+                                        let mut depth = ends_to_skip as i32;
                                         let mut new_pc = pc + 1;
-                                        while new_pc < instructions.len() && target_depth > 0 {
+                                        while new_pc < instructions.len() && depth >= 0 {
                                             match &instructions[new_pc] {
-                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } => {
-                                                    target_depth += 1;
+                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } | Instruction::Try { .. } => {
+                                                    depth += 1;
                                                 }
                                                 Instruction::End => {
-                                                    target_depth -= 1;
+                                                    if depth == 0 {
+                                                        // Found the End of target block
+                                                        break;
+                                                    }
+                                                    depth -= 1;
                                                 }
                                                 _ => {}
                                             }
@@ -1763,6 +2051,48 @@ impl StacklessEngine {
 
                         #[cfg(feature = "tracing")]
                         trace!(func_idx = func_idx, "[CALL_INDIRECT] Resolved to function index");
+
+                        // CHECK FOR LOWERED FUNCTION: If this function was created by canon.lower,
+                        // dispatch to the canonical executor instead of executing bytecode.
+                        // This prevents infinite recursion when shim modules have self-referential tables.
+                        #[cfg(all(feature = "std", feature = "wasi"))]
+                        if self.is_lowered_function(instance_id, func_idx) {
+                            #[cfg(feature = "tracing")]
+                            trace!(
+                                instance_id = instance_id,
+                                func_idx = func_idx,
+                                "[CALL_INDIRECT] Function is a canon.lower synthesized function"
+                            );
+
+                            // Get function type to determine parameter count
+                            let func = &module.functions[func_idx];
+                            let func_type = module.types.get(func.type_idx as usize)
+                                .ok_or_else(|| wrt_error::Error::runtime_error("Invalid function type"))?;
+
+                            // Pop the required number of arguments from the stack
+                            let param_count = func_type.params.len();
+                            let mut call_args = Vec::new();
+                            for _ in 0..param_count {
+                                if let Some(arg) = operand_stack.pop() {
+                                    call_args.push(arg);
+                                } else {
+                                    return Err(wrt_error::Error::runtime_error("Stack underflow on lowered function call"));
+                                }
+                            }
+                            call_args.reverse();
+
+                            // Execute the lowered function via WASI dispatcher
+                            let results = self.execute_lowered_function(instance_id, func_idx, call_args)?;
+
+                            // Push results back onto stack
+                            for result in results {
+                                operand_stack.push(result);
+                            }
+
+                            // Skip the normal call_indirect processing
+                            pc += 1;
+                            continue;
+                        }
 
                         // Track call_indirect to func 138 (iterator next)
                         static CALL_138_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -8410,8 +8740,9 @@ impl StacklessEngine {
 
                         // Get the exception payload values by looking up the tag's type
                         // Tag's type_idx points to a FuncType whose params are the exception values
+                        // Use get_tag_type to handle both imported and defined tags
                         let mut exception_payload: Vec<Value> = Vec::new();
-                        if let Some(tag_type) = module.tags.get(tag_idx as usize) {
+                        if let Some(tag_type) = module.get_tag_type(tag_idx) {
                             if let Some(func_type) = module.types.get(tag_type.type_idx as usize) {
                                 // Pop values in reverse order (last param is top of stack)
                                 for _ in 0..func_type.params.len() {

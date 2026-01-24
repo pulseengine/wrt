@@ -589,20 +589,22 @@ impl WastModuleValidator {
                     let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
-                    // Validate tag exists
-                    if tag_idx as usize >= module.tags.len() {
+                    // Validate tag exists (including imported tags)
+                    if tag_idx as usize >= Self::total_tags(module) {
                         return Err(anyhow!("unknown tag"));
                     }
 
                     let frame_height = Self::current_frame_height(&frames);
 
                     // Pop the tag's parameter types from the stack
-                    let tag = &module.tags[tag_idx as usize];
-                    if let Some(tag_type) = module.types.get(tag.type_idx as usize) {
-                        for param in tag_type.params.iter().rev() {
-                            let expected = StackType::from_value_type(*param);
-                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
-                                return Err(anyhow!("type mismatch"));
+                    // Use get_tag_type_idx to handle both imported and defined tags
+                    if let Some(type_idx) = Self::get_tag_type_idx(module, tag_idx) {
+                        if let Some(tag_type) = module.types.get(type_idx as usize) {
+                            for param in tag_type.params.iter().rev() {
+                                let expected = StackType::from_value_type(*param);
+                                if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                    return Err(anyhow!("type mismatch"));
+                                }
                             }
                         }
                     }
@@ -1095,7 +1097,8 @@ impl WastModuleValidator {
                                 // catch / catch_ref: parse tag_idx + label
                                 let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-                                if tag_idx as usize >= module.tags.len() {
+                                // Tag indices include both imported and defined tags
+                                if tag_idx as usize >= Self::total_tags(module) {
                                     return Err(anyhow!("unknown tag"));
                                 }
                                 let (_label, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -2534,6 +2537,42 @@ impl WastModuleValidator {
     /// Get the total number of functions (imports + defined)
     fn total_functions(module: &Module) -> usize {
         Self::count_function_imports(module) + module.functions.len()
+    }
+
+    /// Count the number of tag imports in a module
+    fn count_tag_imports(module: &Module) -> usize {
+        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Tag(_))).count()
+    }
+
+    /// Get the total number of tags (imports + defined)
+    fn total_tags(module: &Module) -> usize {
+        Self::count_tag_imports(module) + module.tags.len()
+    }
+
+    /// Get the type index for a tag (accounting for imports)
+    /// Tag indices include both imported and defined tags:
+    /// - Indices 0..N-1 are imported tags
+    /// - Indices N+ are defined tags
+    fn get_tag_type_idx(module: &Module, tag_idx: u32) -> Option<u32> {
+        let num_tag_imports = Self::count_tag_imports(module);
+
+        if (tag_idx as usize) < num_tag_imports {
+            // This is an imported tag - find it in imports
+            let mut import_idx = 0;
+            for import in &module.imports {
+                if let ImportDesc::Tag(type_idx) = &import.desc {
+                    if import_idx == tag_idx as usize {
+                        return Some(*type_idx);
+                    }
+                    import_idx += 1;
+                }
+            }
+            None
+        } else {
+            // This is a defined tag
+            let defined_idx = tag_idx as usize - num_tag_imports;
+            module.tags.get(defined_idx).map(|t| t.type_idx)
+        }
     }
 
     /// Collect all function indices that are "declared" for ref.func validation
