@@ -1085,7 +1085,10 @@ impl WastModuleValidator {
                     offset = new_offset;
 
                     // Parse and validate each handler
-                    // Handlers branch to target blocks, so we need to verify type compatibility
+                    // IMPORTANT: Handler labels are interpreted relative to the try_table's
+                    // position in the control stack, NOT from inside the try_table body.
+                    // This means label 0 refers to the immediately enclosing block, not the try_table.
+                    // Therefore we validate handlers BEFORE pushing the try_table frame.
                     for _ in 0..handler_count {
                         if offset >= code.len() {
                             return Err(anyhow!("try_table: unexpected end"));
@@ -1093,8 +1096,7 @@ impl WastModuleValidator {
                         let catch_kind = code[offset];
                         offset += 1;
 
-                        // Determine what types this handler will push when branching
-                        let handler_pushes: Vec<StackType> = match catch_kind {
+                        match catch_kind {
                             0x00 => {
                                 // catch: pushes tag's param types
                                 let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -1104,14 +1106,9 @@ impl WastModuleValidator {
                                 }
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-
-                                // Get tag's param types
                                 let tag_params = Self::get_tag_param_types(module, tag_idx)?;
-
-                                // Validate handler branch target
+                                // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &tag_params)?;
-
-                                tag_params
                             }
                             0x01 => {
                                 // catch_ref: pushes tag's param types + exnref
@@ -1122,43 +1119,28 @@ impl WastModuleValidator {
                                 }
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-
-                                // Get tag's param types + exnref
                                 let mut handler_types = Self::get_tag_param_types(module, tag_idx)?;
                                 handler_types.push(StackType::ExnRef);
-
-                                // Validate handler branch target
+                                // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &handler_types)?;
-
-                                handler_types
                             }
                             0x02 => {
                                 // catch_all: pushes nothing
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-
-                                // Validate handler branch target (empty types)
+                                // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &[])?;
-
-                                Vec::new()
                             }
                             0x03 => {
                                 // catch_all_ref: pushes exnref
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
-
                                 let handler_types = vec![StackType::ExnRef];
-
-                                // Validate handler branch target
+                                // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &handler_types)?;
-
-                                handler_types
                             }
                             _ => return Err(anyhow!("invalid catch handler kind")),
-                        };
-
-                        // Handler types are validated above; no need to use them further
-                        let _ = handler_pushes;
+                        }
                     }
 
                     let (input_types, output_types) =
