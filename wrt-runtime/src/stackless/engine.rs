@@ -1486,6 +1486,49 @@ impl StacklessEngine {
         }
     }
 
+    /// Execute a leaf function that is guaranteed not to make further calls.
+    /// Used for cabi_realloc and similar canonical ABI functions that only do
+    /// memory operations and return immediately. This avoids creating a nested
+    /// trampoline when called from within execute_function_body.
+    ///
+    /// # Panics
+    /// Panics if the function attempts a Call or TailCall (violating leaf contract).
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn execute_leaf_function(
+        &mut self,
+        instance_id: usize,
+        func_idx: usize,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        // Leaf functions still count toward call depth for safety
+        if self.call_frames_count >= MAX_CALL_DEPTH {
+            return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
+        }
+        self.call_frames_count += 1;
+
+        // Execute the function body directly - no trampoline loop needed
+        let outcome = self.execute_function_body(instance_id, func_idx, args, None);
+
+        self.call_frames_count = self.call_frames_count.saturating_sub(1);
+
+        match outcome {
+            Ok(ExecutionOutcome::Complete(results)) => Ok(results),
+            Ok(ExecutionOutcome::TailCall { .. }) => {
+                // Leaf functions must not tail call
+                Err(wrt_error::Error::runtime_error(
+                    "leaf function attempted tail call (cabi_realloc contract violation)",
+                ))
+            }
+            Ok(ExecutionOutcome::Call { .. }) => {
+                // Leaf functions must not call other functions
+                Err(wrt_error::Error::runtime_error(
+                    "leaf function attempted call (cabi_realloc contract violation)",
+                ))
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Internal function body execution - can return TailCall for trampolining
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn execute_function_body(
@@ -10053,7 +10096,9 @@ impl StacklessEngine {
         #[cfg(feature = "tracing")]
         trace!(args = ?args, "[CABI_REALLOC] Arguments prepared");
 
-        let results = self.execute(instance_id, func_idx, args)?;
+        // Use execute_leaf_function instead of execute() to avoid nested trampolines.
+        // cabi_realloc is guaranteed by canonical ABI to be a leaf function (no calls).
+        let results = self.execute_leaf_function(instance_id, func_idx, args)?;
 
         if let Some(Value::I32(ptr)) = results.first() {
             Ok(*ptr as u32)
