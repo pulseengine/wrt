@@ -199,17 +199,36 @@ fn func_types_match(expected: &wrt_foundation::types::FuncType, actual: &wrt_fou
 /// (e.g., align.wast has 117 module directives including assert_invalid)
 const MAX_CONCURRENT_INSTANCES: usize = 512;
 
-/// Maximum call depth to prevent stack overflow from recursive calls
-/// WebAssembly spec recommends supporting at least 1000 levels.
-/// The WAST test suite requires at least 200 for even/odd mutual recursion tests.
-/// However, the native Rust stack can only handle ~150-200 recursive calls before overflow
-/// in debug builds with large stack frames. Until proper trampolining is implemented,
-/// keep these limits conservative.
-/// TODO: Implement trampolining to allow deeper recursion without native stack use.
-#[cfg(debug_assertions)]
-const MAX_CALL_DEPTH: usize = 100;  // Reduced to prevent native stack overflow
-#[cfg(not(debug_assertions))]
-const MAX_CALL_DEPTH: usize = 300;  // Release builds have smaller stack frames
+/// Maximum call depth to prevent infinite recursion.
+/// With trampolining, wasm-to-wasm calls don't grow the Rust stack,
+/// so this can be set high. Only cross-instance calls via call_exported_function
+/// create nested trampolines (bounded by import chain depth).
+const MAX_CALL_DEPTH: usize = 10000;
+
+/// Saved execution state for a suspended function during a Call.
+/// When a Call instruction is encountered, the caller's state is saved here
+/// and returned to the trampoline. When the callee completes, the trampoline
+/// pushes results onto operand_stack and resumes execution from pc.
+#[cfg(any(feature = "std", feature = "alloc"))]
+#[derive(Debug)]
+struct SuspendedFrame {
+    /// Instance ID of the executing instance
+    instance_id: usize,
+    /// Function index being executed (used to re-lookup module/instructions on resume)
+    func_idx: usize,
+    /// Program counter to resume from (instruction AFTER the Call/CallIndirect)
+    pc: usize,
+    /// Local variables (moved from execute_function_body, not cloned)
+    locals: Vec<Value>,
+    /// Operand stack (moved, callee results will be pushed here before resume)
+    operand_stack: Vec<Value>,
+    /// Block stack: (block_type, start_pc, block_type_idx, entry_stack_height)
+    block_stack: Vec<(&'static str, usize, u32, usize)>,
+    /// Block depth counter
+    block_depth: i32,
+    /// Instruction count for profiling
+    instruction_count: usize,
+}
 
 /// Simple execution statistics
 #[derive(Debug, Default)]
@@ -218,8 +237,9 @@ pub struct ExecutionStats {
     pub function_calls: u64,
 }
 
-/// Outcome of executing a function body
-/// Used for proper tail-call optimization via trampolining
+/// Outcome of executing a function body.
+/// Used for trampolining: instead of recursing on the Rust stack,
+/// execute_function_body returns control flow decisions to the trampoline in execute().
 #[cfg(any(feature = "std", feature = "alloc"))]
 enum ExecutionOutcome {
     /// Function completed normally with results
@@ -230,6 +250,18 @@ enum ExecutionOutcome {
         func_idx: usize,
         /// Arguments for the target function
         args: Vec<Value>,
+    },
+    /// Regular call to another function - save caller state and execute callee
+    Call {
+        /// Target instance ID for the callee
+        instance_id: usize,
+        /// Target function index for the callee
+        func_idx: usize,
+        /// Arguments for the callee
+        args: Vec<Value>,
+        /// Caller's saved state. Some = regular call (push onto pending stack).
+        /// None = import redirect (no state to save, caller already on pending stack).
+        return_state: Option<SuspendedFrame>,
     },
 }
 
@@ -314,9 +346,10 @@ pub struct StacklessEngine {
     #[cfg(all(feature = "std", feature = "debugger"))]
     debugger:              Option<Box<dyn RuntimeDebugger>>,
     /// Active exception state for exception propagation across calls
-    /// Contains (tag_idx, payload) when an exception is in flight
+    /// Contains (instance_id, tag_idx, tag_identity, payload) when an exception is in flight
+    /// tag_identity is Some((module, name)) for imported tags, None for local tags
     #[cfg(feature = "std")]
-    active_exception:      Option<(u32, Vec<Value>)>,
+    active_exception:      Option<(usize, u32, Option<(String, String)>, Vec<Value>)>,
     /// Storage for caught exceptions (for throw_ref to re-throw)
     /// Maps exnref index to (tag_idx, payload)
     #[cfg(feature = "std")]
@@ -325,6 +358,15 @@ pub struct StacklessEngine {
     /// Used for canon.lower synthesized functions that dispatch to canonical executor
     #[cfg(feature = "std")]
     lowered_functions:     HashMap<(usize, usize), LoweredFunction>,
+    /// Instance name registry: instance_id -> registered module name
+    /// Used for resolving tag identities in cross-module exception handling
+    #[cfg(feature = "std")]
+    instance_registry:     HashMap<usize, String>,
+    /// Explicit call stack for trampolining (avoids Rust stack recursion)
+    /// Not used directly as a field - the trampoline in execute() uses a local Vec instead.
+    /// Kept for potential future use (e.g., stack inspection).
+    #[cfg(feature = "std")]
+    call_stack:            Vec<SuspendedFrame>,
 }
 
 /// Simple stackless WebAssembly execution engine (no_std version)
@@ -462,6 +504,10 @@ impl StacklessEngine {
             exception_storage:   Vec::new(),
             #[cfg(feature = "std")]
             lowered_functions:   HashMap::new(),
+            #[cfg(feature = "std")]
+            instance_registry:   HashMap::new(),
+            #[cfg(feature = "std")]
+            call_stack:          Vec::with_capacity(256),
         }
     }
 
@@ -544,6 +590,22 @@ impl StacklessEngine {
             realloc_idx,
         };
         self.lowered_functions.insert((instance_id, func_idx), lowered);
+    }
+
+    /// Register an instance name for cross-module exception handling
+    ///
+    /// This associates a human-readable module name with an instance ID.
+    /// Used for resolving tag identities in catch handlers when exceptions
+    /// propagate across module boundaries.
+    #[cfg(feature = "std")]
+    pub fn register_instance_name(&mut self, instance_id: usize, name: &str) {
+        self.instance_registry.insert(instance_id, name.to_string());
+    }
+
+    /// Get the registered name for an instance
+    #[cfg(feature = "std")]
+    pub fn get_instance_registered_name(&self, instance_id: usize) -> Option<&String> {
+        self.instance_registry.get(&instance_id)
     }
 
     /// Check if a function is a lowered function (from canon.lower)
@@ -783,6 +845,14 @@ impl StacklessEngine {
             "[CROSS_CALL] call_exported_function"
         );
 
+        // Early depth check to prevent native stack overflow from recursive calls
+        if self.call_frames_count >= MAX_CALL_DEPTH {
+            #[cfg(feature = "tracing")]
+            trace!("[CROSS_CALL] call stack exhausted at depth {} (target_instance={}, export='{}')",
+                     self.call_frames_count, target_instance_id, export_name);
+            return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
+        }
+
         // Get the target instance
         let target_instance = self.instances.get(&target_instance_id)
             .ok_or_else(|| wrt_error::Error::resource_not_found("Target instance not found"))?
@@ -819,7 +889,6 @@ impl StacklessEngine {
         let func_idx = func_idx.ok_or_else(|| {
             #[cfg(feature = "tracing")]
             warn!("Cross-instance call: Export '{}' not found", export_name);
-            eprintln!("[CROSS_CALL_ERROR] Export '{}' not found in instance {}", export_name, target_instance_id);
             wrt_error::Error::resource_not_found("Export not found")
         })?;
 
@@ -833,6 +902,205 @@ impl StacklessEngine {
 
         // Execute the function in the target instance
         self.execute(target_instance_id, func_idx, args)
+    }
+
+    /// Resolve an exported function to (instance_id, func_idx) without executing it.
+    /// Used by the trampoline to redirect import calls without recursion.
+    #[cfg(feature = "std")]
+    fn resolve_export_func_idx(
+        &self,
+        target_instance_id: usize,
+        export_name: &str,
+    ) -> Result<usize> {
+        let target_instance = self.instances.get(&target_instance_id)
+            .ok_or_else(|| wrt_error::Error::resource_not_found("Target instance not found"))?;
+        let module = target_instance.module();
+
+        let mut func_idx = None;
+        for (name, export) in module.exports.iter() {
+            if let Ok(name_str) = name.as_str() {
+                if name_str == export_name {
+                    use crate::module::ExportKind;
+                    if let ExportKind::Function = export.kind {
+                        func_idx = Some(export.index as usize);
+                        break;
+                    }
+                }
+            }
+        }
+
+        func_idx.ok_or_else(|| {
+            wrt_error::Error::resource_not_found("Export not found")
+        })
+    }
+
+    /// Search for a try_table exception handler in a suspended frame's block_stack.
+    ///
+    /// This is used by the trampoline's error path to unwind through pending frames
+    /// looking for exception handlers. If a handler is found, the frame's state is
+    /// modified in place (operand_stack, block_stack, block_depth, pc) so that resuming
+    /// the frame will execute the handler code.
+    ///
+    /// Returns true if a handler was found and applied, false otherwise.
+    #[cfg(feature = "std")]
+    fn find_and_apply_exception_handler(&mut self, frame: &mut SuspendedFrame) -> bool {
+        use wrt_foundation::types::Instruction;
+
+        // Get the active exception
+        let (ex_tag_idx, ex_payload) = match &self.active_exception {
+            Some((_inst_id, tag_idx, _identity, payload)) => (*tag_idx, payload.clone()),
+            None => return false,
+        };
+
+        // Look up the module and instructions for this frame
+        let instance = match self.instances.get(&frame.instance_id) {
+            Some(inst) => inst.clone(),
+            None => return false,
+        };
+
+        // Check if function is aliased - get the correct module
+        let actual_module = if let Some(&original_instance_id) = self.aliased_functions.get(&(frame.instance_id, frame.func_idx)) {
+            match self.instances.get(&original_instance_id) {
+                Some(inst) => inst.module().clone(),
+                None => return false,
+            }
+        } else {
+            instance.module().clone()
+        };
+
+        // Get function and instructions
+        let func = match actual_module.functions.get(frame.func_idx) {
+            Some(f) => f,
+            None => return false,
+        };
+        let instructions = &func.body.instructions;
+
+        // Search for try_table handler in frame's block_stack
+        let mut found_handler = false;
+        let mut handler_label = 0u32;
+        let mut handler_is_ref = false;
+        let mut try_block_idx = 0usize;
+
+        for (idx, (block_type, try_pc, _, _)) in frame.block_stack.iter().enumerate().rev() {
+            if *block_type == "try_table" {
+                if let Some(try_instr) = instructions.get(*try_pc) {
+                    if let Instruction::TryTable { handlers, .. } = try_instr {
+                        for i in 0..handlers.len() {
+                            if let Ok(handler) = handlers.get(i) {
+                                let handler_val = handler.clone();
+                                let (matches, lbl, is_ref) = match handler_val {
+                                    wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
+                                        (htag == ex_tag_idx, hlbl, false)
+                                    }
+                                    wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
+                                        (htag == ex_tag_idx, hlbl, true)
+                                    }
+                                    wrt_foundation::types::CatchHandler::CatchAll { label } => {
+                                        (true, label, false)
+                                    }
+                                    wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
+                                        (true, label, true)
+                                    }
+                                };
+                                if matches {
+                                    handler_label = lbl;
+                                    handler_is_ref = is_ref;
+                                    found_handler = true;
+                                    try_block_idx = idx;
+                                    break;
+                                }
+                            }
+                        }
+                        if found_handler {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if !found_handler {
+            return false;
+        }
+
+        // Clear active exception - it's being handled
+        let payload = ex_payload;
+        self.active_exception = None;
+
+        // Save original block count for depth calculation
+        let original_block_count = frame.block_stack.len();
+
+        // Pop blocks down to the try_table (but keep the try_table)
+        while frame.block_stack.len() > try_block_idx + 1 {
+            frame.block_stack.pop();
+            frame.block_depth -= 1;
+        }
+
+        // Calculate target block index
+        // handler_label is relative to try_table's PARENT
+        let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
+            try_block_idx - 1 - handler_label as usize
+        } else {
+            // Branch out of function - push payload and set pc past end
+            for val in payload.iter() {
+                frame.operand_stack.push(val.clone());
+            }
+            if handler_is_ref {
+                let exn_idx = self.exception_storage.len() as u32;
+                self.exception_storage.push((ex_tag_idx, payload));
+                frame.operand_stack.push(Value::ExnRef(Some(exn_idx)));
+            }
+            // Set pc past end of instructions so the resumed function returns immediately
+            frame.pc = instructions.len();
+            return true;
+        };
+
+        // Get entry stack height from target block
+        let (_, _, _, entry_stack_height) = frame.block_stack[target_block_idx];
+
+        // Pop blocks down to (but not including) target block
+        while frame.block_stack.len() > target_block_idx + 1 {
+            frame.block_stack.pop();
+            frame.block_depth -= 1;
+        }
+
+        // Truncate operand stack to target height
+        while frame.operand_stack.len() > entry_stack_height {
+            frame.operand_stack.pop();
+        }
+
+        // Push payload values
+        for val in payload.iter() {
+            frame.operand_stack.push(val.clone());
+        }
+        if handler_is_ref {
+            let exn_idx = self.exception_storage.len() as u32;
+            self.exception_storage.push((ex_tag_idx, payload));
+            frame.operand_stack.push(Value::ExnRef(Some(exn_idx)));
+        }
+
+        // Find End of target block to set resume pc
+        let ends_to_skip = original_block_count - 1 - target_block_idx;
+        let mut depth = ends_to_skip as i32;
+        let mut new_pc = frame.pc; // frame.pc points to instruction after the Call
+        while new_pc < instructions.len() && depth >= 0 {
+            match &instructions[new_pc] {
+                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } | Instruction::Try { .. } => {
+                    depth += 1;
+                }
+                Instruction::End => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                }
+                _ => {}
+            }
+            new_pc += 1;
+        }
+        frame.pc = new_pc;
+
+        true
     }
 
     /// Set the host function registry for imported function calls
@@ -1111,30 +1379,108 @@ impl StacklessEngine {
         func_idx: usize,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        // Trampoline loop for proper tail-call optimization
-        // Instead of recursive native calls, we loop here when we encounter return_call
+        // Full call trampoline: handles TailCall, regular Call, and exception unwinding.
+        // Instead of recursive Rust stack frames (which overflow in debug mode at ~50-100
+        // levels due to the ~100-160KB frame size of execute_function_body), we maintain
+        // an explicit pending_frames stack on the heap. This gives us O(1) Rust stack
+        // usage per wasm-to-wasm call.
+        let mut current_instance_id = instance_id;
         let mut current_func_idx = func_idx;
         let mut current_args = args;
+        let mut pending_frames: Vec<SuspendedFrame> = Vec::new();
+        let mut resume_state: Option<SuspendedFrame> = None;
 
-        // Only increment call depth once - tail calls reuse the same frame
+        // Check call depth for the initial function
         if self.call_frames_count >= MAX_CALL_DEPTH {
             return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
         }
         self.call_frames_count += 1;
 
         loop {
-            match self.execute_function_body(instance_id, current_func_idx, current_args)? {
-                ExecutionOutcome::Complete(results) => {
-                    // Normal completion - decrement call depth and return
-                    self.call_frames_count = self.call_frames_count.saturating_sub(1);
-                    return Ok(results);
+            let outcome = self.execute_function_body(
+                current_instance_id,
+                current_func_idx,
+                std::mem::take(&mut current_args),
+                resume_state.take(),
+            );
+
+            match outcome {
+                Ok(ExecutionOutcome::Complete(results)) => {
+                    if let Some(mut frame) = pending_frames.pop() {
+                        // Callee completed - push results onto caller's operand stack
+                        self.call_frames_count = self.call_frames_count.saturating_sub(1);
+                        for result in results {
+                            frame.operand_stack.push(result);
+                        }
+                        // Resume the caller
+                        current_instance_id = frame.instance_id;
+                        current_func_idx = frame.func_idx;
+                        current_args = Vec::new(); // unused when resuming
+                        resume_state = Some(frame);
+                    } else {
+                        // Top-level return - trampoline is done
+                        self.call_frames_count = self.call_frames_count.saturating_sub(1);
+                        return Ok(results);
+                    }
                 }
-                ExecutionOutcome::TailCall { func_idx: next_func, args: next_args } => {
-                    // Tail call - continue the trampoline loop with new target
-                    // This does NOT grow the native stack
+                Ok(ExecutionOutcome::TailCall { func_idx: next_func, args: next_args }) => {
+                    // Tail call - reuse current frame slot, no stack growth
                     current_func_idx = next_func;
                     current_args = next_args;
-                    // Continue the loop - no recursive call!
+                    resume_state = None;
+                }
+                Ok(ExecutionOutcome::Call {
+                    instance_id: target_id,
+                    func_idx: target_func,
+                    args: call_args,
+                    return_state,
+                }) => {
+                    // Regular call - save caller state and set up callee
+                    if let Some(state) = return_state {
+                        pending_frames.push(state);
+                    }
+                    // Check call depth for the new callee
+                    if self.call_frames_count >= MAX_CALL_DEPTH {
+                        let depth = pending_frames.len() + 1;
+                        self.call_frames_count = self.call_frames_count.saturating_sub(depth);
+                        return Err(wrt_error::Error::runtime_trap("call stack exhausted"));
+                    }
+                    self.call_frames_count += 1;
+                    current_instance_id = target_id;
+                    current_func_idx = target_func;
+                    current_args = call_args;
+                    resume_state = None;
+                }
+                Err(e) => {
+                    // Handle exception unwinding through pending frames
+                    #[cfg(feature = "std")]
+                    if self.active_exception.is_some() {
+                        // Current function (which errored) is done
+                        self.call_frames_count = self.call_frames_count.saturating_sub(1);
+                        let mut found_handler = false;
+                        while let Some(mut frame) = pending_frames.pop() {
+                            if self.find_and_apply_exception_handler(&mut frame) {
+                                // Handler found - resume this frame
+                                current_instance_id = frame.instance_id;
+                                current_func_idx = frame.func_idx;
+                                current_args = Vec::new();
+                                resume_state = Some(frame);
+                                found_handler = true;
+                                break;
+                            }
+                            // No handler in this frame - unwind it
+                            self.call_frames_count = self.call_frames_count.saturating_sub(1);
+                        }
+                        if found_handler {
+                            continue;
+                        }
+                        // No handler found in any frame
+                        return Err(e);
+                    }
+                    // Non-exception error - clean up all frames
+                    let depth = pending_frames.len() + 1;
+                    self.call_frames_count = self.call_frames_count.saturating_sub(depth);
+                    return Err(e);
                 }
             }
         }
@@ -1147,17 +1493,10 @@ impl StacklessEngine {
         instance_id: usize,
         func_idx: usize,
         args: Vec<Value>,
+        resume: Option<SuspendedFrame>,
     ) -> Result<ExecutionOutcome> {
         #[cfg(feature = "tracing")]
         let _span = ExecutionTrace::function(func_idx, instance_id).entered();
-
-        #[cfg(feature = "tracing")]
-        debug!(
-            instance_id = instance_id,
-            func_idx = func_idx,
-            args_len = args.len(),
-            "[INNER_EXEC] Executing function"
-        );
 
         // Clone the instance to avoid holding a borrow on self.instances
         // This allows us to call &mut self methods (like execute, call_wasi_function)
@@ -1240,12 +1579,18 @@ impl StacklessEngine {
                     if let Some((target_instance_id, export_name)) = self.import_links.get(&import_key)
                         .map(|(ti, en)| (*ti, en.clone()))
                     {
-                        // Call the linked function and wrap result
-                        // NOTE: Do NOT decrement call_frames_count here! The recursive execute()
-                        // will handle its own increment/decrement. Pre-decrementing defeats
-                        // the purpose of call depth tracking and causes stack overflow.
-                        let results = self.call_exported_function(target_instance_id, &export_name, args)?;
-                        return Ok(ExecutionOutcome::Complete(results));
+                        // Detect self-referencing loop
+                        let target_func = self.resolve_export_func_idx(target_instance_id, &export_name)?;
+                        if target_instance_id == instance_id && target_func == func_idx {
+                            return Err(wrt_error::Error::runtime_trap("circular import link detected"));
+                        }
+                        // NON-RECURSIVE: Resolve target and redirect via trampoline
+                        return Ok(ExecutionOutcome::Call {
+                            instance_id: target_instance_id,
+                            func_idx: target_func,
+                            args,
+                            return_state: None, // No state to save - this is the very start
+                        });
                     }
                     // Import not linked - return correct number of default results
                     // based on the imported function's type signature
@@ -1348,101 +1693,112 @@ impl StacklessEngine {
                 instructions_len = instructions.len(),
                 "[EXEC] Starting execution"
             );
-            let mut operand_stack: Vec<Value> = Vec::new();
-            let mut locals: Vec<Value> = Vec::new();
-            let mut instruction_count = 0usize;
-
             // Take debugger out of self to use during execution (avoids borrow issues)
+            // This is done for both fresh calls and resumes - the debugger is restored
+            // before returning Call outcomes and re-taken on resume.
             #[cfg(all(feature = "std", feature = "debugger"))]
             let mut debugger_opt = self.debugger.take();
-            let mut block_depth = 0i32; // Track nesting depth during execution
 
-            // Initialize parameters as locals
-            // Need to match the function type signature, not just provided args
-            #[cfg(feature = "tracing")]
-            trace!("Initializing locals: args.len()={}, func.locals.len()={}", args.len(), func.locals.len());
+            // Save the current function index for SuspendedFrame construction.
+            // Inside the instruction match, Instruction::Call(func_idx) shadows this,
+            // so we need a separate binding for the caller's func_idx.
+            let caller_func_idx = func_idx;
 
-            // Get expected parameter count from function type
-            // Per CLAUDE.md: FAIL LOUD AND EARLY - don't silently substitute defaults
-            let func_type = module.types.get(func.type_idx as usize)
-                .ok_or_else(|| wrt_error::Error::runtime_error(
-                    "Function type not found - module corrupted"
-                ))?;
-            let expected_param_count = func_type.params.len();
+            // Initialize execution state - either from resume or fresh call
+            let mut operand_stack: Vec<Value>;
+            let mut locals: Vec<Value>;
+            let mut instruction_count: usize;
+            let mut block_depth: i32;
+            let mut pc: usize;
+            let mut block_stack: Vec<(&'static str, usize, u32, usize)>;
 
-            #[cfg(feature = "tracing")]
-            trace!(
-                expected_param_count = expected_param_count,
-                args_len = args.len(),
-                "[EXEC] Function parameter info"
-            );
+            if let Some(frame) = resume {
+                // Resume from suspended state - use saved values directly (moved, not cloned)
+                operand_stack = frame.operand_stack;
+                locals = frame.locals;
+                block_stack = frame.block_stack;
+                block_depth = frame.block_depth;
+                instruction_count = frame.instruction_count;
+                pc = frame.pc;
+            } else {
+                // Fresh call - initialize from args and function signature
+                operand_stack = Vec::new();
+                locals = Vec::new();
+                instruction_count = 0;
+                block_depth = 0;
+                pc = 0;
+                block_stack = Vec::new();
 
-            // Add provided arguments
-            for (i, arg) in args.iter().enumerate() {
-                if i < expected_param_count {
-                    locals.push(arg.clone());
-                }
-            }
+                // Initialize parameters as locals
+                // Need to match the function type signature, not just provided args
+                #[cfg(feature = "tracing")]
+                trace!("Initializing locals: args.len()={}, func.locals.len()={}", args.len(), func.locals.len());
 
-            // Pad with default values for missing parameters
-            // Use func_type we already have from above
-            if args.len() < expected_param_count {
-                for i in args.len()..expected_param_count {
-                    // Per CLAUDE.md: FAIL LOUD - param index must be valid
-                    let param_type = func_type.params.get(i)
-                        .ok_or_else(|| wrt_error::Error::runtime_error(
-                            "Parameter index out of bounds - type corrupted"
-                        ))?;
-                    let default_value = match param_type {
-                        wrt_foundation::ValueType::I32 => Value::I32(0),
-                        wrt_foundation::ValueType::I64 => Value::I64(0),
-                        wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
-                        wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
-                        _ => Value::I32(0),
-                    };
-                    locals.push(default_value);
-                }
-            }
+                // Get expected parameter count from function type
+                // Per CLAUDE.md: FAIL LOUD AND EARLY - don't silently substitute defaults
+                let func_type = module.types.get(func.type_idx as usize)
+                    .ok_or_else(|| wrt_error::Error::runtime_error(
+                        "Function type not found - module corrupted"
+                    ))?;
+                let expected_param_count = func_type.params.len();
 
-            #[cfg(feature = "tracing")]
+                #[cfg(feature = "tracing")]
+                trace!(
+                    expected_param_count = expected_param_count,
+                    args_len = args.len(),
+                    "[EXEC] Function parameter info"
+                );
 
-
-            trace!("After parameters: locals.len()={}", locals.len());
-
-            // Initialize remaining locals to zero
-            // Each LocalEntry has a count field - create that many locals of that type
-            for i in 0..func.locals.len() {
-                if let Ok(local_decl) = func.locals.get(i) {
-                    #[cfg(feature = "tracing")]
-
-                    trace!("LocalEntry[{}]: type={:?}, count={}", i, local_decl.value_type, local_decl.count);
-                    let zero_value = match local_decl.value_type {
-                        wrt_foundation::ValueType::I32 => Value::I32(0),
-                        wrt_foundation::ValueType::I64 => Value::I64(0),
-                        wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
-                        wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
-                        _ => Value::I32(0),
-                    };
-                    // Create 'count' locals of this type
-                    for _ in 0..local_decl.count {
-                        locals.push(zero_value.clone());
+                // Add provided arguments
+                for (i, arg) in args.iter().enumerate() {
+                    if i < expected_param_count {
+                        locals.push(arg.clone());
                     }
-                    #[cfg(feature = "tracing")]
-
-                    trace!("After LocalEntry[{}]: locals.len()={}", i, locals.len());
                 }
-            }
-            #[cfg(feature = "tracing")]
 
-            trace!("Initialized {} locals total", locals.len());
+                // Pad with default values for missing parameters
+                if args.len() < expected_param_count {
+                    for i in args.len()..expected_param_count {
+                        let param_type = func_type.params.get(i)
+                            .ok_or_else(|| wrt_error::Error::runtime_error(
+                                "Parameter index out of bounds - type corrupted"
+                            ))?;
+                        let default_value = match param_type {
+                            wrt_foundation::ValueType::I32 => Value::I32(0),
+                            wrt_foundation::ValueType::I64 => Value::I64(0),
+                            wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                            wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                            _ => Value::I32(0),
+                        };
+                        locals.push(default_value);
+                    }
+                }
 
-            // Execute instructions - iterate over parsed Instruction enum
-            let mut pc = 0;
+                #[cfg(feature = "tracing")]
+                trace!("After parameters: locals.len()={}", locals.len());
 
-            // Track block stack: (block_type, start_pc, block_type_idx, stack_height) where block_type is "loop", "block", or "if"
-            // block_type_idx encodes the block's signature: 0x40=empty, 0x7F=i32, 0x7E=i64, 0x7D=f32, 0x7C=f64, or type index
-            // stack_height is the operand_stack length when the block was entered (for unwinding on br)
-            let mut block_stack: Vec<(&str, usize, u32, usize)> = Vec::new();
+                // Initialize remaining locals to zero
+                for i in 0..func.locals.len() {
+                    if let Ok(local_decl) = func.locals.get(i) {
+                        #[cfg(feature = "tracing")]
+                        trace!("LocalEntry[{}]: type={:?}, count={}", i, local_decl.value_type, local_decl.count);
+                        let zero_value = match local_decl.value_type {
+                            wrt_foundation::ValueType::I32 => Value::I32(0),
+                            wrt_foundation::ValueType::I64 => Value::I64(0),
+                            wrt_foundation::ValueType::F32 => Value::F32(FloatBits32(0)),
+                            wrt_foundation::ValueType::F64 => Value::F64(FloatBits64(0)),
+                            _ => Value::I32(0),
+                        };
+                        for _ in 0..local_decl.count {
+                            locals.push(zero_value.clone());
+                        }
+                        #[cfg(feature = "tracing")]
+                        trace!("After LocalEntry[{}]: locals.len()={}", i, locals.len());
+                    }
+                }
+                #[cfg(feature = "tracing")]
+                trace!("Initialized {} locals total", locals.len());
+            } // end of fresh-call initialization
 
             while pc < instructions.len() {
                 #[cfg(feature = "std")]
@@ -1566,10 +1922,6 @@ impl StacklessEngine {
                         }
                     }
                     Instruction::Call(func_idx) => {
-                        #[cfg(feature = "tracing")]
-
-                        trace!("⚡ CALL INSTRUCTION: func_idx={}", func_idx);
-
                         // Count total number of imports across all modules
                         let num_imports = self.count_total_imports(&module);
 
@@ -1584,7 +1936,39 @@ impl StacklessEngine {
                         if (func_idx as usize) < num_imports {
                             // This is a host function call
                             #[cfg(feature = "tracing")]
-                            trace!(func_idx = func_idx, "[HOST_CALL] Calling host function at import index");
+                            trace!("[CALL_IMPORT] instance={}, func_idx={}, num_imports={}", instance_id, func_idx, num_imports);
+
+                            // CHECK FOR LOWERED FUNCTION: If this import was created by canon.lower,
+                            // dispatch to the canonical executor instead of using import_links.
+                            // This prevents infinite recursion when adapter modules import canon-lowered
+                            // functions that are backed by InlineExports with no real module.
+                            #[cfg(all(feature = "std", feature = "wasi"))]
+                            {
+                            let is_lowered = self.is_lowered_function(instance_id, func_idx as usize);
+                            if is_lowered {
+                                #[cfg(feature = "tracing")]
+                                trace!(
+                                    instance_id = instance_id,
+                                    func_idx = func_idx,
+                                    "[CALL] Import is a canon.lower synthesized function - dispatching to WASI"
+                                );
+
+                                // Collect args from operand stack based on function signature
+                                let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
+
+                                // Execute the lowered function via WASI dispatcher
+                                let results = self.execute_lowered_function(instance_id, func_idx as usize, args)?;
+
+                                // Push results back onto stack
+                                for result in results {
+                                    operand_stack.push(result);
+                                }
+
+                                // Skip the normal import handling
+                                pc += 1;
+                                continue;
+                            }
+                            } // end #[cfg(all(feature = "std", feature = "wasi"))]
 
                             // Find the import by index
                             let import_result = self.find_import_by_index(&module, func_idx as usize);
@@ -1617,173 +2001,30 @@ impl StacklessEngine {
                                     );
 
                                     if let Some((target_instance, export_name)) = linked {
-                                        #[cfg(feature = "tracing")]
-                                        trace!(
-                                            target_instance = target_instance,
-                                            export_name = %export_name,
-                                            "[HOST_CALL] Linked to target instance"
-                                        );
-
                                         // Collect args from operand stack based on function signature
-                                        let args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
+                                        let call_args = Self::collect_function_args(&module, func_idx as usize, &mut operand_stack);
 
-                                        // Call the linked function in the target instance
-                                        let call_result = self.call_exported_function(target_instance, &export_name, args);
+                                        // NON-RECURSIVE: resolve target function and return to trampoline
+                                        let target_func = self.resolve_export_func_idx(target_instance, &export_name)?;
 
-                                        // Check if the called function threw an exception
-                                        #[cfg(feature = "std")]
-                                        if let Err(_) = &call_result {
-                                            if let Some((ex_tag_idx, ref ex_payload)) = self.active_exception.clone() {
-                                                #[cfg(feature = "tracing")]
-                                                trace!(ex_tag_idx = ex_tag_idx, "[EXCEPTION_HOST_CALL] Cross-module call returned with exception, searching for handler");
+                                        // Save current execution state for resumption after callee returns
+                                        let saved_state = SuspendedFrame {
+                                            instance_id,
+                                            func_idx: caller_func_idx,
+                                            pc: pc + 1, // resume at next instruction
+                                            locals,
+                                            operand_stack,
+                                            block_stack,
+                                            block_depth,
+                                            instruction_count,
+                                        };
 
-                                                // Search for try_table handler in current function's block_stack
-                                                let mut found_handler = false;
-                                                let mut handler_label = 0u32;
-                                                let mut handler_is_ref = false;
-                                                let mut try_block_idx = 0usize;
-
-                                                for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
-                                                    if *block_type == "try_table" {
-                                                        if let Some(try_instr) = instructions.get(*try_pc) {
-                                                            if let Instruction::TryTable { handlers, .. } = try_instr {
-                                                                for i in 0..handlers.len() {
-                                                                    if let Ok(handler) = handlers.get(i) {
-                                                                        let handler_val = handler.clone();
-                                                                        let (matches, lbl, is_ref) = match handler_val {
-                                                                            wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
-                                                                                (htag == ex_tag_idx, hlbl, false)
-                                                                            }
-                                                                            wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
-                                                                                (htag == ex_tag_idx, hlbl, true)
-                                                                            }
-                                                                            wrt_foundation::types::CatchHandler::CatchAll { label } => {
-                                                                                (true, label, false)
-                                                                            }
-                                                                            wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
-                                                                                (true, label, true)
-                                                                            }
-                                                                        };
-                                                                        if matches {
-                                                                            handler_label = lbl;
-                                                                            handler_is_ref = is_ref;
-                                                                            found_handler = true;
-                                                                            try_block_idx = idx;
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                }
-                                                                if found_handler {
-                                                                    break;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-
-                                                if found_handler {
-                                                    #[cfg(feature = "tracing")]
-                                                    trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, try_block_idx = try_block_idx, "[EXCEPTION_HOST_CALL] Found handler");
-
-                                                    // Clear active exception - it's being handled
-                                                    let payload = ex_payload.clone();
-                                                    self.active_exception = None;
-
-                                                    // Save original block count for depth calculation
-                                                    let original_block_count = block_stack.len();
-
-                                                    // Pop blocks down to the try_table (but keep the try_table)
-                                                    while block_stack.len() > try_block_idx + 1 {
-                                                        block_stack.pop();
-                                                        block_depth -= 1;
-                                                    }
-
-                                                    // Calculate target block index
-                                                    // handler_label is relative to try_table's PARENT
-                                                    let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
-                                                        try_block_idx - 1 - handler_label as usize
-                                                    } else {
-                                                        // Branch out of function - push payload and return
-                                                        for val in payload.iter() {
-                                                            operand_stack.push(val.clone());
-                                                        }
-                                                        if handler_is_ref {
-                                                            let exn_idx = self.exception_storage.len() as u32;
-                                                            self.exception_storage.push((ex_tag_idx, payload.clone()));
-                                                            operand_stack.push(Value::ExnRef(Some(exn_idx)));
-                                                        }
-                                                        return Ok(ExecutionOutcome::Complete(operand_stack));
-                                                    };
-
-                                                    // Get entry stack height and pop blocks down to target
-                                                    let (_, _, _, entry_stack_height) = block_stack[target_block_idx];
-
-                                                    // Pop blocks from stack down to (but not including) target block
-                                                    while block_stack.len() > target_block_idx + 1 {
-                                                        block_stack.pop();
-                                                        block_depth -= 1;
-                                                    }
-
-                                                    // Truncate operand stack to target height
-                                                    while operand_stack.len() > entry_stack_height as usize {
-                                                        operand_stack.pop();
-                                                    }
-
-                                                    // Push payload values
-                                                    for val in payload.iter() {
-                                                        operand_stack.push(val.clone());
-                                                    }
-
-                                                    // Push exnref if this is a _ref handler
-                                                    if handler_is_ref {
-                                                        let exn_idx = self.exception_storage.len() as u32;
-                                                        self.exception_storage.push((ex_tag_idx, payload.clone()));
-                                                        operand_stack.push(Value::ExnRef(Some(exn_idx)));
-                                                    }
-
-                                                    // Find the End instruction for the target block
-                                                    let ends_to_skip = original_block_count - 1 - target_block_idx;
-                                                    let mut depth = ends_to_skip as i32;
-                                                    let mut new_pc = pc + 1;
-                                                    while new_pc < instructions.len() && depth >= 0 {
-                                                        if let Some(instr) = instructions.get(new_pc) {
-                                                            match instr {
-                                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } | Instruction::Try { .. } => {
-                                                                    depth += 1;
-                                                                }
-                                                                Instruction::End => {
-                                                                    if depth == 0 {
-                                                                        break;
-                                                                    }
-                                                                    depth -= 1;
-                                                                }
-                                                                _ => {}
-                                                            }
-                                                        }
-                                                        new_pc += 1;
-                                                    }
-                                                    pc = new_pc;
-                                                    continue;
-                                                } else {
-                                                    // No handler in caller - propagate exception
-                                                    #[cfg(feature = "tracing")]
-                                                    trace!("[EXCEPTION_HOST_CALL] No handler - propagating exception");
-                                                    return Err(call_result.unwrap_err());
-                                                }
-                                            }
-                                        }
-
-                                        // Normal return or non-exception error
-                                        let result = call_result?;
-
-                                        // Push result onto stack if function returns a value
-                                        if let Some(value) = result.first() {
-                                            operand_stack.push(value.clone());
-                                        }
-
-                                        // Advance pc before continue (continue skips the pc += 1 at end of match)
-                                        pc += 1;
-                                        continue; // Linked call handled - skip WASI dispatch
+                                        return Ok(ExecutionOutcome::Call {
+                                            instance_id: target_instance,
+                                            func_idx: target_func,
+                                            args: call_args,
+                                            return_state: Some(saved_state),
+                                        });
                                     }
                                     // Not linked - fall through to WASI dispatch
                                 }
@@ -1916,162 +2157,30 @@ impl StacklessEngine {
 
                             trace!("Stack before call: {} values, after popping args: {} values",                                 operand_stack.len() + call_args.len(), operand_stack.len());
 
-                            let call_result = self.execute(instance_id, func_idx as usize, call_args);
-
-                            // Check if the called function threw an exception
-                            #[cfg(feature = "std")]
-                            if let Err(_) = &call_result {
-                                if let Some((ex_tag_idx, ref ex_payload)) = self.active_exception.clone() {
-                                    #[cfg(feature = "tracing")]
-                                    trace!(ex_tag_idx = ex_tag_idx, "[EXCEPTION] Call returned with exception, searching for handler in caller");
-
-                                    // Search for try_table handler in current function's block_stack
-                                    let mut found_handler = false;
-                                    let mut handler_label = 0u32;
-                                    let mut handler_is_ref = false;
-                                    let mut try_block_idx = 0usize;
-
-                                    for (idx, (block_type, try_pc, _, _)) in block_stack.iter().enumerate().rev() {
-                                        if *block_type == "try_table" {
-                                            if let Some(try_instr) = instructions.get(*try_pc) {
-                                                if let Instruction::TryTable { handlers, .. } = try_instr {
-                                                    for i in 0..handlers.len() {
-                                                        if let Ok(handler) = handlers.get(i) {
-                                                            let handler_val = handler.clone();
-                                                            let (matches, lbl, is_ref) = match handler_val {
-                                                                wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
-                                                                    (htag == ex_tag_idx, hlbl, false)
-                                                                }
-                                                                wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
-                                                                    (htag == ex_tag_idx, hlbl, true)
-                                                                }
-                                                                wrt_foundation::types::CatchHandler::CatchAll { label } => {
-                                                                    (true, label, false)
-                                                                }
-                                                                wrt_foundation::types::CatchHandler::CatchAllRef { label } => {
-                                                                    (true, label, true)
-                                                                }
-                                                            };
-                                                            if matches {
-                                                                handler_label = lbl;
-                                                                handler_is_ref = is_ref;
-                                                                found_handler = true;
-                                                                try_block_idx = idx;
-                                                                break;
-                                                            }
-                                                        }
-                                                    }
-                                                    if found_handler {
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if found_handler {
-                                        #[cfg(feature = "tracing")]
-                                        trace!(handler_label = handler_label, handler_is_ref = handler_is_ref, try_block_idx = try_block_idx, "[EXCEPTION] Found handler in caller");
-
-                                        // Clear active exception - it's being handled
-                                        let payload = ex_payload.clone();
-                                        self.active_exception = None;
-
-                                        // Save original block count for depth calculation
-                                        let original_block_count = block_stack.len();
-
-                                        // Pop blocks down to the try_table (but keep the try_table)
-                                        while block_stack.len() > try_block_idx + 1 {
-                                            block_stack.pop();
-                                            block_depth -= 1;
-                                        }
-
-                                        // Calculate target block index
-                                        // handler_label is relative to try_table's PARENT
-                                        // try_block_idx - 1 = try_table's parent
-                                        // try_block_idx - 1 - handler_label = target
-                                        let target_block_idx = if handler_label as usize + 1 <= try_block_idx {
-                                            try_block_idx - 1 - handler_label as usize
-                                        } else {
-                                            // Branch out of function - push payload and return
-                                            for val in payload.iter() {
-                                                operand_stack.push(val.clone());
-                                            }
-                                            if handler_is_ref {
-                                                // Store exception and push exnref
-                                                let exn_idx = self.exception_storage.len() as u32;
-                                                self.exception_storage.push((ex_tag_idx, payload.clone()));
-                                                operand_stack.push(Value::ExnRef(Some(exn_idx)));
-                                            }
-                                            return Ok(ExecutionOutcome::Complete(operand_stack));
-                                        };
-
-                                        // Get entry stack height and pop blocks down to target
-                                        let (_, _, entry_stack_height, _) = block_stack[target_block_idx];
-
-                                        // Pop blocks from stack down to (but not including) target block
-                                        while block_stack.len() > target_block_idx + 1 {
-                                            block_stack.pop();
-                                            block_depth -= 1;
-                                        }
-
-                                        // Truncate operand stack to target height
-                                        while operand_stack.len() > entry_stack_height as usize {
-                                            operand_stack.pop();
-                                        }
-
-                                        // Push payload values
-                                        for val in payload.iter() {
-                                            operand_stack.push(val.clone());
-                                        }
-                                        if handler_is_ref {
-                                            // Store exception and push exnref
-                                            let exn_idx = self.exception_storage.len() as u32;
-                                            self.exception_storage.push((ex_tag_idx, payload.clone()));
-                                            operand_stack.push(Value::ExnRef(Some(exn_idx)));
-                                        }
-
-                                        // Find End of target block
-                                        // Start from current PC and skip all End instructions for blocks
-                                        // between where we were and the target
-                                        let ends_to_skip = original_block_count - 1 - target_block_idx;
-                                        let mut depth = ends_to_skip as i32;
-                                        let mut new_pc = pc + 1;
-                                        while new_pc < instructions.len() && depth >= 0 {
-                                            match &instructions[new_pc] {
-                                                Instruction::Block { .. } | Instruction::Loop { .. } | Instruction::If { .. } | Instruction::TryTable { .. } | Instruction::Try { .. } => {
-                                                    depth += 1;
-                                                }
-                                                Instruction::End => {
-                                                    if depth == 0 {
-                                                        // Found the End of target block
-                                                        break;
-                                                    }
-                                                    depth -= 1;
-                                                }
-                                                _ => {}
-                                            }
-                                            new_pc += 1;
-                                        }
-                                        pc = new_pc;
-                                        continue;
-                                    } else {
-                                        // No handler in caller - propagate exception
-                                        #[cfg(feature = "tracing")]
-                                        trace!("[EXCEPTION] No handler in caller - propagating exception");
-                                        return Err(call_result.unwrap_err());
-                                    }
-                                }
+                            // Trampoline: save caller state and return to the trampoline loop.
+                            // The trampoline will execute the callee, and when it completes,
+                            // push results onto our operand_stack and resume us at pc+1.
+                            // Exception handling is managed by the trampoline via
+                            // find_and_apply_exception_handler on pending frames.
+                            #[cfg(all(feature = "std", feature = "debugger"))]
+                            {
+                                self.debugger = debugger_opt;
                             }
-
-                            // Normal return or non-exception error
-                            let results = call_result?;
-                            #[cfg(feature = "tracing")]
-                            trace!("Function returned {} results", results.len());
-
-                            for result in results {
-                                operand_stack.push(result);
-                            }
+                            return Ok(ExecutionOutcome::Call {
+                                instance_id,
+                                func_idx: func_idx as usize,
+                                args: call_args,
+                                return_state: Some(SuspendedFrame {
+                                    instance_id,
+                                    func_idx: caller_func_idx,
+                                    pc: pc + 1,
+                                    locals,
+                                    operand_stack,
+                                    block_stack,
+                                    block_depth,
+                                    instruction_count,
+                                }),
+                            });
                         }
                     }
                     Instruction::CallIndirect(type_idx, table_idx) => {
@@ -2300,7 +2409,7 @@ impl StacklessEngine {
                         // Imported functions have empty body and locals
                         let is_import = func.body.is_empty() && func.locals.is_empty();
 
-                        let results = if is_import {
+                        if is_import {
                             #[cfg(feature = "tracing")]
                             trace!(
                                 func_idx = func_idx,
@@ -2331,8 +2440,24 @@ impl StacklessEngine {
                                             "[CALL_INDIRECT] Import linked to another instance"
                                         );
 
-                                        // Call the linked function in the target instance
-                                        self.call_exported_function(target_instance, &export_name, call_args)?
+                                        // NON-RECURSIVE: resolve target and redirect via trampoline
+                                        let target_func = self.resolve_export_func_idx(target_instance, &export_name)?;
+                                        let saved_state = SuspendedFrame {
+                                            instance_id,
+                                            func_idx: caller_func_idx,
+                                            pc: pc + 1,
+                                            locals,
+                                            operand_stack,
+                                            block_stack,
+                                            block_depth,
+                                            instruction_count,
+                                        };
+                                        return Ok(ExecutionOutcome::Call {
+                                            instance_id: target_instance,
+                                            func_idx: target_func,
+                                            args: call_args,
+                                            return_state: Some(saved_state),
+                                        });
                                     } else {
                                         // Not linked - dispatch to WASI if applicable
                                         #[cfg(feature = "tracing")]
@@ -2354,48 +2479,73 @@ impl StacklessEngine {
                                             instance_id,
                                         )?;
                                         if let Some(val) = result {
-                                            vec![val]
-                                        } else {
-                                            vec![]
+                                            operand_stack.push(val);
                                         }
                                     }
                                 }
 
                                 #[cfg(not(feature = "std"))]
                                 {
-                                    // In no_std mode, just try to execute directly
-                                    self.execute(instance_id, func_idx, call_args)?
+                                    // NON-RECURSIVE: redirect via trampoline
+                                    let saved_state = SuspendedFrame {
+                                        instance_id,
+                                        func_idx: caller_func_idx,
+                                        pc: pc + 1,
+                                        locals,
+                                        operand_stack,
+                                        block_stack,
+                                        block_depth,
+                                        instruction_count,
+                                    };
+                                    return Ok(ExecutionOutcome::Call {
+                                        instance_id,
+                                        func_idx,
+                                        args: call_args,
+                                        return_state: Some(saved_state),
+                                    });
                                 }
                             } else {
-                                // Couldn't resolve import - try to execute directly
+                                // Couldn't resolve import - redirect via trampoline
                                 #[cfg(feature = "tracing")]
                                 warn!(
                                     func_idx = func_idx,
-                                    "[CALL_INDIRECT] Could not resolve import, executing directly"
+                                    "[CALL_INDIRECT] Could not resolve import, executing via trampoline"
                                 );
-                                self.execute(instance_id, func_idx, call_args)?
+                                let saved_state = SuspendedFrame {
+                                    instance_id,
+                                    func_idx: caller_func_idx,
+                                    pc: pc + 1,
+                                    locals,
+                                    operand_stack,
+                                    block_stack,
+                                    block_depth,
+                                    instruction_count,
+                                };
+                                return Ok(ExecutionOutcome::Call {
+                                    instance_id,
+                                    func_idx,
+                                    args: call_args,
+                                    return_state: Some(saved_state),
+                                });
                             }
                         } else {
-                            // Regular function - execute directly
-                            self.execute(instance_id, func_idx, call_args)?
-                        };
-
-                        #[cfg(feature = "tracing")]
-                        trace!(
-                            func_idx = func_idx,
-                            results_len = results.len(),
-                            "[CALL_INDIRECT] Function returned"
-                        );
-
-                        // Trace function 138 return value
-                        #[cfg(feature = "tracing")]
-                        if func_idx == 138 && !results.is_empty() {
-                            trace!(result = ?results[0], "[CALL_INDIRECT-138] Return value");
-                        }
-
-                        // Push results back onto stack
-                        for result in results {
-                            operand_stack.push(result);
+                            // Regular function - redirect via trampoline (non-recursive)
+                            let saved_state = SuspendedFrame {
+                                instance_id,
+                                func_idx: caller_func_idx,
+                                pc: pc + 1,
+                                locals,
+                                operand_stack,
+                                block_stack,
+                                block_depth,
+                                instruction_count,
+                            };
+                            return Ok(ExecutionOutcome::Call {
+                                instance_id,
+                                func_idx,
+                                args: call_args,
+                                return_state: Some(saved_state),
+                            });
                         }
                     }
                     Instruction::ReturnCall(func_idx) => {
@@ -9055,7 +9205,9 @@ impl StacklessEngine {
                             // No handler found in current function - store exception state for propagation
                             #[cfg(feature = "std")]
                             {
-                                self.active_exception = Some((tag_idx, exception_payload));
+                                // Get tag identity for cross-module exception matching
+                                let tag_identity = module.get_tag_import_identity(tag_idx);
+                                self.active_exception = Some((instance_id, tag_idx, tag_identity, exception_payload));
                             }
                             #[cfg(feature = "tracing")]
                             trace!(
@@ -9219,7 +9371,9 @@ impl StacklessEngine {
                                 // No handler - propagate to caller
                                 #[cfg(feature = "std")]
                                 {
-                                    self.active_exception = Some((tag_idx, exception_payload));
+                                    // Get tag identity for cross-module exception matching
+                                    let tag_identity = module.get_tag_import_identity(tag_idx);
+                                    self.active_exception = Some((instance_id, tag_idx, tag_identity, exception_payload));
                                 }
                                 return Err(wrt_error::Error::runtime_trap("exception"));
                             }

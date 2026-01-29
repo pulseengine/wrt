@@ -135,7 +135,10 @@ impl WastEngine {
         // Store the module and instance ID for later reference
         let module_name = name.unwrap_or("current").to_string();
         self.modules.insert(module_name.clone(), Arc::clone(&module));
-        self.instance_ids.insert(module_name, instance_idx);
+        self.instance_ids.insert(module_name.clone(), instance_idx);
+
+        // Register instance name for cross-module exception handling
+        self.engine.register_instance_name(instance_idx, &module_name);
 
         // Set as current module
         self.current_module = Some(module);
@@ -257,6 +260,8 @@ impl WastEngine {
             // Also copy the instance ID for cross-module linking
             if let Some(&instance_id) = self.instance_ids.get(module_name) {
                 self.instance_ids.insert(name.to_string(), instance_id);
+                // Register the new name for cross-module exception handling
+                self.engine.register_instance_name(instance_id, name);
             }
             Ok(())
         } else {

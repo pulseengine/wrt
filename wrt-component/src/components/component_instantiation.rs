@@ -1000,6 +1000,198 @@ impl ComponentInstance {
             #[cfg(feature = "tracing")]
             trace!(instance_export_count = component_alias_map.len(), "Component alias map built");
 
+            // Build canon_lower_map: core_func_idx -> (component_func_idx, interface, function_name)
+            // This tracks which core functions were created by canon.lower operations
+            // and maps them to their WASI interface/function names for canonical executor dispatch
+            //
+            // Step 1: Build component_import_func_map - maps component func idx to WASI names
+            // Component function indices are assigned in order: first from imports that are functions,
+            // then from canon.lift operations
+            let mut component_import_func_map: HashMap<u32, (String, String)> = HashMap::new();
+            {
+                let mut component_func_idx = 0u32;
+                for import in &parsed.imports {
+                    // Check if this import is a function
+                    if matches!(import.ty, wrt_format::component::ExternType::Function { .. }) {
+                        let interface = if !import.name.namespace.is_empty() {
+                            import.name.namespace.clone()
+                        } else {
+                            import.name.name.clone()
+                        };
+                        let function_name = if !import.name.namespace.is_empty() {
+                            import.name.name.clone()
+                        } else {
+                            String::new()
+                        };
+                        println!("    ├─ Component func[{}] = import {}::{}",
+                                 component_func_idx, interface, function_name);
+                        component_import_func_map.insert(component_func_idx, (interface, function_name));
+                        component_func_idx += 1;
+                    }
+                }
+                #[cfg(feature = "tracing")]
+                trace!(import_func_count = component_func_idx, "Component import function map built");
+            }
+
+            // Build instance_interface_map: instance_idx -> WASI interface name
+            // In the component model, the instance index space is:
+            //   0..K-1:    imported instances (from component imports with ExternType::Instance)
+            //   K..K+M-1:  defined instances (from parsed.instances)
+            // We need this to resolve WASI interface names for canon.lower operations.
+            let instance_interface_map: HashMap<u32, String> = {
+                let mut map = HashMap::new();
+                let mut instance_import_idx = 0u32;
+                for import in &parsed.imports {
+                    // In the component model, imports that create instance-space entries include:
+                    // - ExternType::Instance { .. } (inline instance type)
+                    // - ExternType::Type(idx) where the type is an instance type
+                    //   (common: WASI interfaces are encoded as type references)
+                    // Function and Value imports go to their own index spaces.
+                    let is_instance_import = match &import.ty {
+                        wrt_format::component::ExternType::Instance { .. } => true,
+                        wrt_format::component::ExternType::Type(_) => true,
+                        wrt_format::component::ExternType::Component { .. } => true,
+                        wrt_format::component::ExternType::Module { .. } => true,
+                        _ => false,
+                    };
+
+                    if is_instance_import {
+                        // For instance imports, the interface name is the import name
+                        let interface = if !import.name.namespace.is_empty() {
+                            import.name.namespace.clone()
+                        } else {
+                            import.name.name.clone()
+                        };
+                        println!("    ├─ Instance import[{}] = {}", instance_import_idx, interface);
+                        map.insert(instance_import_idx, interface);
+                        instance_import_idx += 1;
+                    }
+                }
+                let num_instance_imports = instance_import_idx;
+                println!("    ├─ {} instance imports, {} defined instances",
+                         num_instance_imports, parsed.instances.len());
+                // Add defined instances (from parsed.instances) with their offset
+                for (i, instance) in parsed.instances.iter().enumerate() {
+                    let combined_idx = num_instance_imports + i as u32;
+                    match &instance.instance_expr {
+                        wrt_format::component::InstanceExpr::ComponentReference { arg_refs, .. } => {
+                            // For component references, the args might identify WASI interfaces
+                            if let Some(arg) = arg_refs.first() {
+                                if !arg.name.is_empty() {
+                                    map.insert(combined_idx, arg.name.clone());
+                                }
+                            }
+                        },
+                        wrt_format::component::InstanceExpr::InlineExports(_) => {
+                            // InlineExports don't directly represent WASI interfaces
+                        },
+                    }
+                }
+                map
+            };
+
+            // Step 2: Build canon_lower_map - maps core_func_idx -> (component_func_idx, interface, function)
+            // To compute core function indices, we need to process aliases and canonicals in order.
+            // The decoder assigns indices sequentially, interleaving aliases and canonicals.
+            //
+            // Approach: Use the fact that aliases have dest_idx stored during parsing.
+            // Find the maximum dest_idx for function aliases, then canon.lower operations
+            // get indices starting after the highest alias dest_idx (in simple cases).
+            //
+            // For proper handling, we track all function alias dest_idx values and assign
+            // canon.lower indices to the remaining slots.
+            let mut canon_lower_map: HashMap<u32, (u32, String, String)> = HashMap::new();
+            {
+                use wrt_format::component::CanonOperation;
+
+                // Collect all function alias dest_idx values
+                let alias_func_indices: std::collections::HashSet<u32> = alias_map
+                    .iter()
+                    .filter(|((sort, _), _)| matches!(sort, CoreSort::Function))
+                    .map(|((_, idx), _)| *idx)
+                    .collect();
+
+                println!("    ├─ Found {} function aliases with indices: {:?}",
+                         alias_func_indices.len(), alias_func_indices);
+
+                // Count canon.lower and canon.resource operations to know how many core functions they create
+                let mut canon_creates_count = 0u32;
+                for canon in &parsed.canonicals {
+                    match &canon.operation {
+                        CanonOperation::Lower { .. } => canon_creates_count += 1,
+                        CanonOperation::Resource(_) => canon_creates_count += 1,
+                        _ => {}
+                    }
+                }
+
+                // Total core functions = alias functions + canon functions
+                // Canon functions get indices that aren't used by aliases
+                // In the typical case, indices are assigned sequentially: 0, 1, 2, ...
+                // Aliases take some indices, canon operations take the rest
+
+                // Simple approach: assume canon.lower operations get consecutive indices
+                // starting from 0, skipping any that are used by aliases
+                let mut canon_core_idx = 0u32;
+                for canon in &parsed.canonicals {
+                    match &canon.operation {
+                        CanonOperation::Lower { func_idx, .. } => {
+                            // Skip indices used by aliases
+                            while alias_func_indices.contains(&canon_core_idx) {
+                                canon_core_idx += 1;
+                            }
+
+                            // Look up the component function to get WASI name
+                            // Try: 1) Direct import map, 2) Component alias map (InstanceExport aliases)
+                            if let Some((interface, function)) = component_import_func_map.get(func_idx) {
+                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = {}::{}",
+                                         canon_core_idx, func_idx, interface, function);
+                                canon_lower_map.insert(
+                                    canon_core_idx,
+                                    (*func_idx, interface.clone(), function.clone())
+                                );
+                            } else if let Some((instance_idx, func_name)) = component_alias_map.get(&(Sort::Function, *func_idx)) {
+                                // This is an InstanceExport alias - the function comes from a component instance
+                                // The instance_idx is in the combined instance space:
+                                //   0..K-1 = imported instances, K..K+M-1 = defined instances
+                                // Use instance_interface_map to resolve the WASI interface name
+                                let interface_name = instance_interface_map
+                                    .get(instance_idx)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = instance[{}]::{}",
+                                         canon_core_idx, func_idx, instance_idx, func_name);
+                                println!("    │  └─ Resolved interface: '{}'", interface_name);
+                                canon_lower_map.insert(
+                                    canon_core_idx,
+                                    (*func_idx, interface_name, func_name.clone())
+                                );
+                            } else {
+                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) - unresolved",
+                                         canon_core_idx, func_idx);
+                                // Store with component func idx for later resolution
+                                canon_lower_map.insert(
+                                    canon_core_idx,
+                                    (*func_idx, String::new(), String::new())
+                                );
+                            }
+                            canon_core_idx += 1;
+                        },
+                        CanonOperation::Resource(_) => {
+                            // Resource operations also create core functions, skip their index
+                            while alias_func_indices.contains(&canon_core_idx) {
+                                canon_core_idx += 1;
+                            }
+                            canon_core_idx += 1;
+                        },
+                        _ => {}
+                    }
+                }
+
+                println!("    ├─ Built canon_lower_map with {} entries", canon_lower_map.len());
+                #[cfg(feature = "tracing")]
+                trace!(canon_lower_count = canon_lower_map.len(), "Canon lower map built");
+            }
+
             // Find which core instance exports _start - this is the main executable module
             // This is the GENERIC way to find the main module regardless of component structure
             for alias in &parsed.aliases {
@@ -1041,6 +1233,11 @@ impl ComponentInstance {
                     tracing::warn!("No _start export and no wasi:cli/run interface found");
                 }
             }
+
+            // Track which core instances have canon-lowered function exports
+            // Maps: core_instance_idx -> Vec<(export_name, core_func_idx, interface, function)>
+            // Used after module instantiation to register lowered functions with the engine
+            let mut canon_lowered_for_instance: HashMap<usize, Vec<(String, u32, String, String)>> = HashMap::new();
 
             // Instantiate modules according to core_instances order
             // core_instances describes WHAT to instantiate and HOW to link imports
@@ -1302,6 +1499,55 @@ impl ComponentInstance {
                                             println!("    ├─ Import links remapped to instance {:?}", instance_handle);
                                         }
 
+                                        // Register canon-lowered functions for this instance
+                                        // When this module calls an imported canon-lowered function,
+                                        // the engine dispatches through the WASI canonical executor
+                                        // instead of executing bytecode (preventing infinite recursion).
+                                        //
+                                        // The func_idx in the module's index space depends on the ORDER
+                                        // of arg_refs and how many function imports each provides.
+                                        // We track the cumulative function import offset.
+                                        {
+                                            let mut func_import_offset: usize = 0;
+                                            for arg_ref in arg_refs {
+                                                match arg_ref.kind {
+                                                    0x12 => { // Instance kind - provides multiple imports
+                                                        // Count function exports from this instance
+                                                        let func_export_count = inline_exports_map
+                                                            .get(&(arg_ref.idx as usize))
+                                                            .map(|mappings| mappings.iter()
+                                                                .filter(|(_, _, sort)| *sort == CoreSort::Function)
+                                                                .count())
+                                                            .unwrap_or(0);
+
+                                                        if let Some(lowered_exports) = canon_lowered_for_instance.get(&(arg_ref.idx as usize)) {
+                                                            println!("    ├─ Registering {} canon-lowered functions for instance {:?} (from InlineExports[{}], offset={})",
+                                                                     lowered_exports.len(), instance_handle, arg_ref.idx, func_import_offset);
+                                                            for (i, (_name, _idx, interface, function)) in lowered_exports.iter().enumerate() {
+                                                                // func_idx = offset + position within this InlineExports
+                                                                let func_idx = func_import_offset + i;
+                                                                println!("    │  ├─ Lowered func[{}] = {}::{}", func_idx, interface, function);
+                                                                engine.register_lowered_function(
+                                                                    instance_handle.index(),
+                                                                    func_idx,
+                                                                    interface.clone(),
+                                                                    function.clone(),
+                                                                    None, // memory_idx
+                                                                    None, // realloc_idx
+                                                                );
+                                                            }
+                                                        }
+
+                                                        func_import_offset += func_export_count;
+                                                    },
+                                                    0x00 => { // Function kind - single function import
+                                                        func_import_offset += 1;
+                                                    },
+                                                    _ => {} // Table (0x01), Memory (0x02), Global (0x03) don't affect function index
+                                                }
+                                            }
+                                        }
+
                                         // Check if this is the instance that exports _start
                                         // (we found this by scanning aliases earlier)
                                         if start_export_instance_idx == Some(core_instance_idx as u32) {
@@ -1341,6 +1587,10 @@ impl ComponentInstance {
                         let mut source_instance_idx: Option<u32> = None;
                         let mut export_mappings: Vec<(String, String, CoreSort)> = Vec::new();
 
+                        // Track canon-lowered function exports separately
+                        // These need special handling via canonical executor
+                        let mut canon_lowered_exports: Vec<(String, u32, String, String)> = Vec::new();
+
                         for export in exports {
                             // Look up this export in the alias map using (sort, index)
                             if let Some((instance_idx, actual_export_name)) = alias_map.get(&(export.sort, export.idx)) {
@@ -1351,8 +1601,30 @@ impl ComponentInstance {
                                          export.idx, export.name, export.sort, instance_idx, actual_export_name);
                                 // Store BOTH semantic name (for import matching) and actual export name (for calling)
                                 export_mappings.push((export.name.clone(), actual_export_name.clone(), export.sort));
+                            } else if export.sort == CoreSort::Function {
+                                // No alias found for function - check if it's a canon-lowered function
+                                if let Some((comp_func_idx, interface, function)) = canon_lower_map.get(&export.idx) {
+                                    println!("    │  ├─ Export[{}] '{}' -> CANON LOWERED: {}::{} (comp_func[{}])",
+                                             export.idx, export.name, interface, function, comp_func_idx);
+                                    // Store for canonical executor handling
+                                    canon_lowered_exports.push((
+                                        export.name.clone(),
+                                        export.idx,
+                                        interface.clone(),
+                                        function.clone()
+                                    ));
+                                    // Still add to export_mappings with a marker indicating canonical handling needed
+                                    // The actual dispatch will be handled by the canonical executor
+                                    export_mappings.push((export.name.clone(), format!("__canon_lower_{}::{}", interface, function), export.sort));
+                                } else {
+                                    println!("    │  ├─ Export[{}] '{}' -> UNKNOWN (no alias, no canon.lower)",
+                                             export.idx, export.name);
+                                    export_mappings.push((export.name.clone(), export.name.clone(), export.sort));
+                                }
                             } else {
-                                // No alias found, use semantic name for both
+                                // Non-function export without alias
+                                println!("    │  ├─ Export[{}] '{}' (sort={:?}) -> no alias",
+                                         export.idx, export.name, export.sort);
                                 export_mappings.push((export.name.clone(), export.name.clone(), export.sort));
                             }
                         }
@@ -1369,41 +1641,53 @@ impl ComponentInstance {
                                 println!("    └─ ERROR: Source instance {} not yet instantiated", src_idx);
                                 return Err(Error::runtime_error("InlineExports source instance not instantiated"));
                             }
-                        } else {
-                            // This likely references a canon-lowered function for wasip2
-                            println!("    └─ Export references canonical function");
+                        } else if !canon_lowered_exports.is_empty() {
+                            // All exports are canon-lowered functions - this is a canonical function provider
+                            println!("    ├─ InlineExports contains {} canon-lowered functions:", canon_lowered_exports.len());
+                            for (name, idx, interface, function) in &canon_lowered_exports {
+                                println!("    │  ├─ '{}' (idx={}) -> {}::{}", name, idx, interface, function);
 
-                            // Check if this is a wasip2 canonical function
-                            let mut is_wasip2 = false;
-                            for export in exports {
-                                println!("        - Export[{}] name='{}' sort={:?}", export.idx, export.name, export.sort);
-                                if crate::canonical_executor::is_wasip2_canonical(&export.name) {
-                                    is_wasip2 = true;
-                                    println!("        └─ Detected wasip2 canonical function: {}", export.name);
+                                // Register this lowered function with the engine for canonical execution
+                                // The engine will route calls to these functions through the canonical executor
+                                #[cfg(feature = "std")]
+                                {
+                                    // Register the lowered function for canonical executor dispatch
+                                    // This will be called when the module imports this function
+                                    let full_interface = interface.clone();
+                                    let func_name = function.clone();
+                                    println!("    │  │  └─ Registering for canonical dispatch: {}::{}", full_interface, func_name);
                                 }
                             }
 
-                            if is_wasip2 {
-                                println!("    └─ Configuring wasip2 canonical function support");
-                                // Mark that this component uses wasip2 canonicals
-                                // The actual execution will be handled by the canonical executor
-                                // Use instance 0 as a placeholder for now
-                                if let Some(&stub_handle) = core_instances_map.get(&0) {
-                                    core_instances_map.insert(core_instance_idx, stub_handle);
-                                    println!("    └─ Wasip2 canonical functions will be handled by canonical executor");
-                                } else {
-                                    return Err(Error::runtime_error("Cannot configure wasip2 canonicals - no base instance"));
-                                }
+                            // Use instance 0 as a placeholder handle for the InlineExports
+                            // The actual execution will be handled by the canonical executor
+                            if let Some(&stub_handle) = core_instances_map.get(&0) {
+                                core_instances_map.insert(core_instance_idx, stub_handle);
+                                // Store export mappings for import linking
+                                inline_exports_map.insert(core_instance_idx, export_mappings);
+                                println!("    └─ Canonical functions registered for dispatch");
                             } else {
-                                println!("    └─ WARNING: Non-wasip2 canonical function not yet supported");
-                                // For non-wasip2 canonicals, create a stub
-                                if let Some(&stub_handle) = core_instances_map.get(&0) {
-                                    core_instances_map.insert(core_instance_idx, stub_handle);
-                                    println!("    └─ Stub instance created (non-wasip2 canonicals not functional)");
-                                } else {
-                                    return Err(Error::runtime_error("Cannot create stub - no base instance"));
-                                }
+                                return Err(Error::runtime_error("Cannot configure canonicals - no base instance"));
                             }
+                        } else {
+                            println!("    └─ WARNING: InlineExports with no resolved exports");
+                            // Create a stub instance
+                            if let Some(&stub_handle) = core_instances_map.get(&0) {
+                                core_instances_map.insert(core_instance_idx, stub_handle);
+                                inline_exports_map.insert(core_instance_idx, export_mappings);
+                                println!("    └─ Stub instance created");
+                            } else {
+                                return Err(Error::runtime_error("Cannot create stub - no base instance"));
+                            }
+                        }
+
+                        // Store canon-lowered exports for later registration with the engine
+                        // This is used after module instantiation to register function indices
+                        // so call_indirect dispatches them through the canonical executor
+                        if !canon_lowered_exports.is_empty() {
+                            println!("    ├─ Storing {} canon-lowered exports for core_instance[{}]",
+                                     canon_lowered_exports.len(), core_instance_idx);
+                            canon_lowered_for_instance.insert(core_instance_idx, canon_lowered_exports);
                         }
                     },
                 }

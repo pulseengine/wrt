@@ -530,6 +530,31 @@ impl CapabilityAwareEngine {
     pub fn set_wasi_env(&mut self, env_vars: Vec<(String, String)>) {
         self.inner.set_wasi_env(env_vars);
     }
+
+    /// Register a lowered function from a canon.lower operation
+    ///
+    /// When a module calls a function at this (instance_id, func_idx), the engine
+    /// will dispatch to the canonical executor instead of executing bytecode.
+    /// This prevents infinite recursion in shim modules with self-referential tables.
+    #[cfg(feature = "std")]
+    pub fn register_lowered_function(
+        &mut self,
+        instance_id: usize,
+        func_idx: usize,
+        interface: String,
+        function: String,
+        memory_idx: Option<u32>,
+        realloc_idx: Option<u32>,
+    ) {
+        self.inner.register_lowered_function(
+            instance_id,
+            func_idx,
+            interface,
+            function,
+            memory_idx,
+            realloc_idx,
+        );
+    }
 }
 
 impl CapabilityEngine for CapabilityAwareEngine {
@@ -570,15 +595,6 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
         // Debug: list all exports
         #[cfg(feature = "std")]
-        {
-            let export_names: Vec<_> = runtime_module.exports.keys()
-                .map(|k| k.as_str().unwrap_or("?"))
-                .collect();
-            if export_names.iter().any(|n| *n == "_start" || *n == "memory") {
-                eprintln!("[LOAD_MODULE] Module exports ({} total): {:?}", export_names.len(), export_names);
-            }
-        }
-
         #[cfg(feature = "tracing")]
         {
             let elem_count = runtime_module.elements.len();
@@ -1008,9 +1024,6 @@ impl CapabilityEngine for CapabilityAwareEngine {
             // If the module exports it (like wasi:cli/run@0.2.3#run), we should call
             // the module's implementation, not dispatch to host.
             let is_module_export = instance.module().find_function_by_name(func_name).is_some();
-            if func_name.starts_with("wasi:") {
-                eprintln!("[EXECUTE] wasi: function '{}', is_module_export={}", func_name, is_module_export);
-            }
             if func_name.starts_with("wasi:") && !is_module_export {
                 // Extract just the function name part (last component after #)
                 if let Some(hash_pos) = func_name.rfind('#') {
@@ -1069,9 +1082,10 @@ impl CapabilityEngine for CapabilityAwareEngine {
         #[cfg(not(feature = "std"))]
         let stackless_instance_id = self.inner.set_current_module(Arc::clone(instance))?;
 
+        // Reset call depth before each top-level invocation
+        self.inner.reset_call_depth();
+
         // Execute the function using the stackless engine's instance ID
-        eprintln!("[CAP_ENGINE] Calling inner.execute(instance_id={}, func_idx={}, func_name='{}')",
-                  stackless_instance_id, func_idx, func_name);
         let results =
             self.inner.execute(stackless_instance_id, func_idx as usize, args.to_vec())?;
 

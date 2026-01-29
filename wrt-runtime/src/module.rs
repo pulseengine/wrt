@@ -195,6 +195,8 @@ pub enum ExportKind {
     Memory,
     /// Global export
     Global,
+    /// Tag export (exception handling)
+    Tag,
 }
 
 /// Represents an export in a WebAssembly module
@@ -1540,10 +1542,7 @@ impl Module {
                 FormatExportKind::Table => ExportKind::Table,
                 FormatExportKind::Memory => ExportKind::Memory,
                 FormatExportKind::Global => ExportKind::Global,
-                FormatExportKind::Tag => {
-                    // Skip Tag exports for now as they're not supported in the runtime
-                    continue;
-                },
+                FormatExportKind::Tag => ExportKind::Tag,
             };
 
             let runtime_export = Export {
@@ -2160,10 +2159,7 @@ impl Module {
                 FormatExportKind::Table => ExportKind::Table,
                 FormatExportKind::Memory => ExportKind::Memory,
                 FormatExportKind::Global => ExportKind::Global,
-                FormatExportKind::Tag => {
-                    // Skip Tag exports for now as they're not supported in the runtime
-                    continue;
-                },
+                FormatExportKind::Tag => ExportKind::Tag,
             };
 
             // Create the export name with runtime provider
@@ -2628,11 +2624,7 @@ impl Module {
             wrt_format::module::ExportKind::Table => ExportKind::Table,
             wrt_format::module::ExportKind::Memory => ExportKind::Memory,
             wrt_format::module::ExportKind::Global => ExportKind::Global,
-            wrt_format::module::ExportKind::Tag => {
-                return Err(Error::not_supported_unsupported_operation(
-                    "Tag exports not supported",
-                ))
-            },
+            wrt_format::module::ExportKind::Tag => ExportKind::Tag,
         };
         // Convert BoundedString to String - use default empty string if conversion
         // fails
@@ -3679,6 +3671,50 @@ impl Module {
                 "Function not found in exports",
             )),
         }
+    }
+
+    /// Get the import identity for a tag (module_name, field_name)
+    /// Returns Some((module, name)) if the tag is imported, None if it's locally defined
+    #[cfg(feature = "std")]
+    pub fn get_tag_import_identity(&self, tag_idx: u32) -> Option<(String, String)> {
+        let num_tag_imports = self.count_tag_imports();
+        if (tag_idx as usize) < num_tag_imports {
+            // This is an imported tag - find the corresponding import entry
+            let mut tag_import_idx = 0;
+            let mut import_order_idx = 0;
+            for desc in &self.import_types {
+                if let RuntimeImportDesc::Tag(_) = desc {
+                    if tag_import_idx == tag_idx as usize {
+                        // Found the tag import - get the module/name from import_order
+                        if let Some((module, name)) = self.import_order.get(import_order_idx) {
+                            return Some((module.clone(), name.clone()));
+                        }
+                    }
+                    tag_import_idx += 1;
+                }
+                import_order_idx += 1;
+            }
+            None
+        } else {
+            // This is a locally defined tag, not imported
+            None
+        }
+    }
+
+    /// Get the export name for a locally defined tag
+    /// Returns Some(export_name) if the tag is exported, None otherwise
+    #[cfg(feature = "std")]
+    pub fn get_tag_export_name(&self, tag_idx: u32) -> Option<String> {
+        // Look through exports to find if this tag is exported
+        for export in self.exports.values() {
+            if export.kind == ExportKind::Tag && export.index == tag_idx {
+                // Found the export - return the name
+                if let Ok(name_str) = export.name.as_str() {
+                    return Some(name_str.to_string());
+                }
+            }
+        }
+        None
     }
 }
 
