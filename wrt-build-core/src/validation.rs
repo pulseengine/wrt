@@ -96,7 +96,18 @@ impl CodeValidator {
         // Walk through all Cargo.toml files to find crates
         let crates = self.find_workspace_crates()?;
 
+        // Crates that legitimately contain test-related files as part of their implementation
+        // (not unit tests, but testing infrastructure code)
+        let excluded_crates = ["cargo-wrt", "wrt-build-core"];
+
         for crate_path in crates {
+            // Skip excluded crates that legitimately contain test infrastructure
+            if let Some(crate_name) = crate_path.file_name().and_then(|n| n.to_str()) {
+                if excluded_crates.contains(&crate_name) {
+                    continue;
+                }
+            }
+
             let src_dir = crate_path.join("src");
             if src_dir.exists() {
                 self.check_directory_for_test_files(&src_dir, &mut errors)?;
