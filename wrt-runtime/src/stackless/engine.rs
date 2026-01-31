@@ -353,7 +353,9 @@ pub struct StacklessEngine {
     /// Storage for caught exceptions (for throw_ref to re-throw)
     /// Maps exnref index to (tag_idx, payload)
     #[cfg(feature = "std")]
-    exception_storage:     Vec<(u32, Vec<Value>)>,
+    /// Exception storage: (tag_idx, tag_identity, payload)
+    /// tag_identity is Some((module, name)) for imported tags, None for local tags
+    exception_storage:     Vec<(u32, Option<(String, String)>, Vec<Value>)>,
     /// Lowered function registry: (instance_id, func_idx) -> LoweredFunction
     /// Used for canon.lower synthesized functions that dispatch to canonical executor
     #[cfg(feature = "std")]
@@ -606,6 +608,35 @@ impl StacklessEngine {
     #[cfg(feature = "std")]
     pub fn get_instance_registered_name(&self, instance_id: usize) -> Option<&String> {
         self.instance_registry.get(&instance_id)
+    }
+
+    /// Get the effective tag identity for exception matching.
+    ///
+    /// This function returns an identity that can be used to match exceptions across modules:
+    /// - For imported tags: returns the import source (module_name, field_name)
+    /// - For exported local tags (with registered instance): returns (registered_name, export_name)
+    /// - For non-exported local tags: returns None (only matches within same module)
+    #[cfg(feature = "std")]
+    fn get_effective_tag_identity(
+        &self,
+        instance_id: usize,
+        module: &crate::module::Module,
+        tag_idx: u32,
+    ) -> Option<(String, String)> {
+        // First check if the tag is imported
+        if let Some(import_identity) = module.get_tag_import_identity(tag_idx) {
+            return Some(import_identity);
+        }
+
+        // Tag is local - check if it's exported and instance is registered
+        if let Some(export_name) = module.get_tag_export_name(tag_idx) {
+            if let Some(registered_name) = self.get_instance_registered_name(instance_id) {
+                return Some((registered_name.clone(), export_name));
+            }
+        }
+
+        // Local tag without export or unregistered instance - no cross-module identity
+        None
     }
 
     /// Check if a function is a lowered function (from canon.lower)
@@ -946,9 +977,9 @@ impl StacklessEngine {
     fn find_and_apply_exception_handler(&mut self, frame: &mut SuspendedFrame) -> bool {
         use wrt_foundation::types::Instruction;
 
-        // Get the active exception
-        let (ex_tag_idx, ex_payload) = match &self.active_exception {
-            Some((_inst_id, tag_idx, _identity, payload)) => (*tag_idx, payload.clone()),
+        // Get the active exception (including tag identity for imported tags)
+        let (ex_tag_idx, ex_identity, ex_payload) = match &self.active_exception {
+            Some((_inst_id, tag_idx, identity, payload)) => (*tag_idx, identity.clone(), payload.clone()),
             None => return false,
         };
 
@@ -990,10 +1021,26 @@ impl StacklessEngine {
                                 let handler_val = handler.clone();
                                 let (matches, lbl, is_ref) = match handler_val {
                                     wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
-                                        (htag == ex_tag_idx, hlbl, false)
+                                        // Get the handler tag's effective identity
+                                        let handler_identity = self.get_effective_tag_identity(frame.instance_id, &actual_module, htag);
+                                        // Match by identity if both have identity, by index if both local-only
+                                        let tag_matches = match (&ex_identity, &handler_identity) {
+                                            (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                            (None, None) => htag == ex_tag_idx,
+                                            _ => false,
+                                        };
+                                        (tag_matches, hlbl, false)
                                     }
                                     wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
-                                        (htag == ex_tag_idx, hlbl, true)
+                                        // Get the handler tag's effective identity
+                                        let handler_identity = self.get_effective_tag_identity(frame.instance_id, &actual_module, htag);
+                                        // Match by identity if both have identity, by index if both local-only
+                                        let tag_matches = match (&ex_identity, &handler_identity) {
+                                            (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                            (None, None) => htag == ex_tag_idx,
+                                            _ => false,
+                                        };
+                                        (tag_matches, hlbl, true)
                                     }
                                     wrt_foundation::types::CatchHandler::CatchAll { label } => {
                                         (true, label, false)
@@ -1047,7 +1094,7 @@ impl StacklessEngine {
             }
             if handler_is_ref {
                 let exn_idx = self.exception_storage.len() as u32;
-                self.exception_storage.push((ex_tag_idx, payload));
+                self.exception_storage.push((ex_tag_idx, ex_identity.clone(), payload));
                 frame.operand_stack.push(Value::ExnRef(Some(exn_idx)));
             }
             // Set pc past end of instructions so the resumed function returns immediately
@@ -1075,7 +1122,7 @@ impl StacklessEngine {
         }
         if handler_is_ref {
             let exn_idx = self.exception_storage.len() as u32;
-            self.exception_storage.push((ex_tag_idx, payload));
+            self.exception_storage.push((ex_tag_idx, ex_identity, payload));
             frame.operand_stack.push(Value::ExnRef(Some(exn_idx)));
         }
 
@@ -9100,6 +9147,10 @@ impl StacklessEngine {
                             }
                         }
 
+                        // Get the effective tag identity for identity-based matching
+                        // This handles both imported tags and exported local tags
+                        let thrown_tag_identity = self.get_effective_tag_identity(instance_id, &module, tag_idx);
+
                         // Walk block_stack from top to bottom looking for try_table with matching handler
                         let mut found_handler = false;
                         let mut handler_label = 0u32;
@@ -9117,10 +9168,26 @@ impl StacklessEngine {
                                                 let handler_val = handler.clone();
                                                 let (matches, lbl, is_ref) = match handler_val {
                                                     wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
-                                                        (htag == tag_idx, hlbl, false)
+                                                        // Get handler tag's effective identity for comparison
+                                                        let handler_identity = self.get_effective_tag_identity(instance_id, &module, htag);
+                                                        // Match by identity if both have identity, by index if both local-only
+                                                        let tag_matches = match (&thrown_tag_identity, &handler_identity) {
+                                                            (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                                            (None, None) => htag == tag_idx,
+                                                            _ => false,
+                                                        };
+                                                        (tag_matches, hlbl, false)
                                                     }
                                                     wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
-                                                        (htag == tag_idx, hlbl, true)
+                                                        // Get handler tag's effective identity for comparison
+                                                        let handler_identity = self.get_effective_tag_identity(instance_id, &module, htag);
+                                                        // Match by identity if both have identity, by index if both local-only
+                                                        let tag_matches = match (&thrown_tag_identity, &handler_identity) {
+                                                            (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                                            (None, None) => htag == tag_idx,
+                                                            _ => false,
+                                                        };
+                                                        (tag_matches, hlbl, true)
                                                     }
                                                     wrt_foundation::types::CatchHandler::CatchAll { label } => {
                                                         (true, label, false)
@@ -9196,7 +9263,7 @@ impl StacklessEngine {
                             if handler_is_ref {
                                 // Store exception in exception_storage for throw_ref
                                 let exn_idx = self.exception_storage.len() as u32;
-                                self.exception_storage.push((tag_idx, exception_payload.clone()));
+                                self.exception_storage.push((tag_idx, thrown_tag_identity.clone(), exception_payload.clone()));
                                 operand_stack.push(Value::ExnRef(Some(exn_idx)));
                             }
 
@@ -9248,8 +9315,9 @@ impl StacklessEngine {
                             // No handler found in current function - store exception state for propagation
                             #[cfg(feature = "std")]
                             {
-                                // Get tag identity for cross-module exception matching
-                                let tag_identity = module.get_tag_import_identity(tag_idx);
+                                // Get effective tag identity for cross-module exception matching
+                                // This handles both imported tags and exported local tags
+                                let tag_identity = self.get_effective_tag_identity(instance_id, &module, tag_idx);
                                 self.active_exception = Some((instance_id, tag_idx, tag_identity, exception_payload));
                             }
                             #[cfg(feature = "tracing")]
@@ -9267,11 +9335,11 @@ impl StacklessEngine {
                         // Throw an exception from an exnref on the stack
                         // Pop the exnref and re-throw with original tag and payload
                         if let Some(ref_val) = operand_stack.pop() {
-                            let (tag_idx, exception_payload) = match ref_val {
+                            let (tag_idx, thrown_tag_identity, exception_payload) = match ref_val {
                                 Value::ExnRef(Some(exn_idx)) => {
-                                    // Look up the exception from storage
-                                    if let Some((stored_tag, stored_payload)) = self.exception_storage.get(exn_idx as usize) {
-                                        (*stored_tag, stored_payload.clone())
+                                    // Look up the exception from storage (includes tag identity)
+                                    if let Some((stored_tag, stored_identity, stored_payload)) = self.exception_storage.get(exn_idx as usize) {
+                                        (*stored_tag, stored_identity.clone(), stored_payload.clone())
                                     } else {
                                         return Err(wrt_error::Error::runtime_trap(
                                             "invalid exception reference",
@@ -9315,10 +9383,26 @@ impl StacklessEngine {
                                                     let handler_val = handler.clone();
                                                     let (matches, lbl, is_ref) = match handler_val {
                                                         wrt_foundation::types::CatchHandler::Catch { tag_idx: htag, label: hlbl } => {
-                                                            (htag == tag_idx, hlbl, false)
+                                                            // Get handler tag's effective identity for comparison
+                                                            let handler_identity = self.get_effective_tag_identity(instance_id, &module, htag);
+                                                            // Match by identity if both have identity, by index if both local-only
+                                                            let tag_matches = match (&thrown_tag_identity, &handler_identity) {
+                                                                (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                                                (None, None) => htag == tag_idx,
+                                                                _ => false,
+                                                            };
+                                                            (tag_matches, hlbl, false)
                                                         }
                                                         wrt_foundation::types::CatchHandler::CatchRef { tag_idx: htag, label: hlbl } => {
-                                                            (htag == tag_idx, hlbl, true)
+                                                            // Get handler tag's effective identity for comparison
+                                                            let handler_identity = self.get_effective_tag_identity(instance_id, &module, htag);
+                                                            // Match by identity if both have identity, by index if both local-only
+                                                            let tag_matches = match (&thrown_tag_identity, &handler_identity) {
+                                                                (Some(ex_id), Some(h_id)) => ex_id == h_id,
+                                                                (None, None) => htag == tag_idx,
+                                                                _ => false,
+                                                            };
+                                                            (tag_matches, hlbl, true)
                                                         }
                                                         wrt_foundation::types::CatchHandler::CatchAll { label } => {
                                                             (true, label, false)
@@ -9376,7 +9460,7 @@ impl StacklessEngine {
                                 // If handler is *Ref variant, store and push new exnref
                                 if handler_is_ref {
                                     let new_exn_idx = self.exception_storage.len() as u32;
-                                    self.exception_storage.push((tag_idx, exception_payload.clone()));
+                                    self.exception_storage.push((tag_idx, thrown_tag_identity.clone(), exception_payload.clone()));
                                     operand_stack.push(Value::ExnRef(Some(new_exn_idx)));
                                 }
 
@@ -9414,9 +9498,9 @@ impl StacklessEngine {
                                 // No handler - propagate to caller
                                 #[cfg(feature = "std")]
                                 {
-                                    // Get tag identity for cross-module exception matching
-                                    let tag_identity = module.get_tag_import_identity(tag_idx);
-                                    self.active_exception = Some((instance_id, tag_idx, tag_identity, exception_payload));
+                                    // Use the stored tag identity for cross-module exception matching
+                                    // (thrown_tag_identity was retrieved from exception_storage)
+                                    self.active_exception = Some((instance_id, tag_idx, thrown_tag_identity, exception_payload));
                                 }
                                 return Err(wrt_error::Error::runtime_trap("exception"));
                             }

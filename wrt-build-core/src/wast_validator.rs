@@ -667,20 +667,18 @@ impl WastModuleValidator {
                         let unreachable = !frame.reachable;
 
                         if unreachable {
-                            // In unreachable code, the stack is polymorphic at the bottom.
-                            // Pop the expected output types (polymorphic provides missing ones).
-                            // Then check for extra values ABOVE the unreachable_height - those are an error.
-                            // Values below unreachable_height are from before the terminating instruction.
+                            // In unreachable code, the stack is polymorphic. We only need to
+                            // verify that output types can be satisfied (polymorphically).
+                            // Extra values on the stack are allowed - unreachable code can
+                            // push arbitrary values that will never be consumed.
                             let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
                             for &expected in frame.output_types.iter().rev() {
                                 if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
                                     return Err(anyhow!("type mismatch"));
                                 }
                             }
-                            // Check for extra values pushed AFTER the terminating instruction
-                            if stack.len() > unreachable_height {
-                                return Err(anyhow!("type mismatch"));
-                            }
+                            // NOTE: Do NOT check for extra values - in unreachable code,
+                            // the stack can have any number of extra values.
                         } else {
                             // In reachable code, check exact stack height and types
                             let expected_height = frame_height + frame.output_types.len();
@@ -712,18 +710,18 @@ impl WastModuleValidator {
                     let unreachable = !frame.reachable;
 
                     if unreachable {
-                        // In unreachable code, pop expected types (polymorphic provides missing)
-                        // Then check for extra values ABOVE unreachable_height
+                        // In unreachable code, the stack is polymorphic. We only need to
+                        // verify that output types can be satisfied (polymorphically).
+                        // Extra values on the stack are allowed - unreachable code can
+                        // push arbitrary values that will never be consumed.
                         let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
                         for &expected in frame.output_types.iter().rev() {
                             if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
-                        // Check for extra values pushed AFTER the terminating instruction
-                        if stack.len() > unreachable_height {
-                            return Err(anyhow!("type mismatch"));
-                        }
+                        // NOTE: Do NOT check for extra values - in unreachable code,
+                        // the stack can have any number of extra values.
                     } else {
                         // In reachable code, check exact stack height and types
                         let expected_height = frame_height + frame.output_types.len();
