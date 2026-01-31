@@ -194,6 +194,9 @@ pub fn value_type_to_format_val_type(
         ValueType::StructRef(_) => Err(Error::runtime_execution_error("StructRef not supported in component model")),
         ValueType::ArrayRef(_) => Err(Error::runtime_execution_error("ArrayRef not supported in component model")),
         ValueType::ExnRef => Err(Error::runtime_execution_error("ExnRef not supported in component model")),
+        ValueType::I31Ref => Err(Error::runtime_execution_error("I31Ref not supported in component model")),
+        ValueType::AnyRef => Err(Error::runtime_execution_error("AnyRef not supported in component model")),
+        ValueType::EqRef => Err(Error::runtime_execution_error("EqRef not supported in component model")),
     }
 }
 
@@ -288,6 +291,9 @@ pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(value_type
         ValueType::StructRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
         ValueType::ArrayRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
         ValueType::ExnRef => WrtTypesValType::Ref(0), // Map ExnRef to Ref with default index
+        ValueType::I31Ref => WrtTypesValType::S32, // i31 fits in s32
+        ValueType::AnyRef => WrtTypesValType::Ref(0), // Map to Ref with default index
+        ValueType::EqRef => WrtTypesValType::Ref(0), // Map to Ref with default index
     }
 }
 

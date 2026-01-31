@@ -3738,6 +3738,13 @@ impl FuelAsyncExecutor {
                     result.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
                     result.extend_from_slice(bytes);
                 },
+                wrt_foundation::Value::I31Ref(opt_ref) => match opt_ref {
+                    Some(v) => {
+                        result.extend_from_slice(&[1u8]);
+                        result.extend_from_slice(&v.to_le_bytes());
+                    },
+                    None => result.extend_from_slice(&[0u8]),
+                },
                 wrt_foundation::Value::List(_)
                 | wrt_foundation::Value::Tuple(_)
                 | wrt_foundation::Value::Record(_)

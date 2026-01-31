@@ -8,29 +8,17 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     process::Command,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
-use anyhow::{
-    Context,
-    Result,
-};
+use anyhow::{Context, Result};
 use colored::Colorize;
 use wrt_build_core::{
-    config::{
-        AsilLevel,
-        BuildProfile,
-    },
+    config::{AsilLevel, BuildProfile},
     formatters::OutputFormat,
 };
 
-use super::{
-    GlobalArgs,
-    OutputManager,
-};
+use super::{GlobalArgs, OutputManager};
 
 /// Serialize Duration as seconds with decimal precision
 fn serialize_duration<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
@@ -44,28 +32,28 @@ where
 #[derive(Debug, Clone)]
 pub struct TestConfig {
     /// ASIL level to run tests for
-    pub asil_level:    AsilLevel,
+    pub asil_level: AsilLevel,
     /// Test filter pattern
-    pub filter:        Option<String>,
+    pub filter: Option<String>,
     /// Run only no_std tests
-    pub no_std_only:   bool,
+    pub no_std_only: bool,
     /// Output format
     pub output_format: OutputFormat,
     /// Verbose output
-    pub verbose:       bool,
+    pub verbose: bool,
     /// Number of threads for parallel execution
-    pub test_threads:  Option<usize>,
+    pub test_threads: Option<usize>,
 }
 
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            asil_level:    AsilLevel::QM,
-            filter:        None,
-            no_std_only:   false,
+            asil_level: AsilLevel::QM,
+            filter: None,
+            no_std_only: false,
             output_format: OutputFormat::Human,
-            verbose:       false,
-            test_threads:  None,
+            verbose: false,
+            test_threads: None,
         }
     }
 }
@@ -74,17 +62,17 @@ impl Default for TestConfig {
 #[derive(Debug, Clone)]
 pub struct TestResult {
     /// Test name
-    pub name:        String,
+    pub name: String,
     /// Test package
-    pub package:     String,
+    pub package: String,
     /// Success status
-    pub success:     bool,
+    pub success: bool,
     /// Execution duration
-    pub duration:    Duration,
+    pub duration: Duration,
     /// Error message if failed
-    pub error:       Option<String>,
+    pub error: Option<String>,
     /// Whether test was skipped
-    pub skipped:     bool,
+    pub skipped: bool,
     /// Skip reason
     pub skip_reason: Option<String>,
 }
@@ -182,12 +170,12 @@ impl TestRunner {
         // Check if package should be skipped for no_std
         if self.config.no_std_only && self.requires_std(package) {
             return Ok(TestResult {
-                name:        format!("{} tests", package),
-                package:     package.to_string(),
-                success:     true,
-                duration:    Duration::default(),
-                error:       None,
-                skipped:     true,
+                name: format!("{} tests", package),
+                package: package.to_string(),
+                success: true,
+                duration: Duration::default(),
+                error: None,
+                skipped: true,
                 skip_reason: Some("Requires std".to_string()),
             });
         }
@@ -313,16 +301,16 @@ impl TestRunner {
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TestSummary {
     /// Number of passed tests
-    pub passed:        usize,
+    pub passed: usize,
     /// Number of failed tests  
-    pub failed:        usize,
+    pub failed: usize,
     /// Number of skipped tests
-    pub skipped:       usize,
+    pub skipped: usize,
     /// Total execution time
     #[serde(serialize_with = "serialize_duration")]
-    pub duration:      Duration,
+    pub duration: Duration,
     /// Failed test details
-    pub failures:      HashMap<String, Option<String>>,
+    pub failures: HashMap<String, Option<String>>,
     /// Skipped test details
     pub skipped_tests: HashMap<String, String>,
 }

@@ -44,7 +44,8 @@ impl StackType {
             ValueType::ExternRef => StackType::ExternRef,
             ValueType::ExnRef => StackType::ExnRef,
             // WebAssembly 3.0 GC types - not yet fully supported, treat as unknown
-            ValueType::I16x8 | ValueType::StructRef(_) | ValueType::ArrayRef(_) => StackType::Unknown,
+            ValueType::I16x8 | ValueType::StructRef(_) | ValueType::ArrayRef(_)
+            | ValueType::I31Ref | ValueType::AnyRef | ValueType::EqRef => StackType::Unknown,
         }
     }
 }
@@ -2921,21 +2922,44 @@ impl WastModuleValidator {
 
         let block_type = match byte {
             0x40 => BlockType::Empty,
+            // Standard value types
             0x7F => BlockType::ValueType(ValueType::I32),
             0x7E => BlockType::ValueType(ValueType::I64),
             0x7D => BlockType::ValueType(ValueType::F32),
             0x7C => BlockType::ValueType(ValueType::F64),
             0x7B => BlockType::ValueType(ValueType::V128),
+            // Reference types
             0x70 => BlockType::ValueType(ValueType::FuncRef),
             0x6F => BlockType::ValueType(ValueType::ExternRef),
             0x69 => BlockType::ValueType(ValueType::ExnRef),
+            // GC abstract heap types (shorthand reference types)
+            0x6E => BlockType::ValueType(ValueType::AnyRef),
+            0x6D => BlockType::ValueType(ValueType::EqRef),
+            0x6C => BlockType::ValueType(ValueType::I31Ref),
+            0x6B => BlockType::ValueType(ValueType::StructRef(0)), // abstract structref
+            0x6A => BlockType::ValueType(ValueType::ArrayRef(0)),  // abstract arrayref
+            0x73 => BlockType::ValueType(ValueType::FuncRef),      // nofunc (bottom for func)
+            0x72 => BlockType::ValueType(ValueType::ExternRef),    // noextern (bottom for extern)
+            0x71 => BlockType::ValueType(ValueType::AnyRef),       // none (bottom for any)
+            // GC typed references: (ref null? heaptype)
+            0x63 | 0x64 => {
+                // 0x63 = ref null heaptype (nullable)
+                // 0x64 = ref heaptype (non-nullable)
+                // Parse the heap type following the prefix
+                let (heap_type, new_offset) = Self::parse_heap_type(code, offset + 1)?;
+                return Ok((BlockType::ValueType(heap_type), new_offset));
+            }
             _ if byte >= 0 => {
-                // Function type index
-                let type_idx = byte as u32;
+                // Function type index (encoded as positive s33)
+                // For larger indices, need to parse as LEB128
+                let (type_idx, new_offset) = Self::parse_varint32(code, offset)?;
+                if type_idx < 0 {
+                    return Err(anyhow!("invalid block type index"));
+                }
                 if type_idx as usize >= module.types.len() {
                     return Err(anyhow!("invalid function type index {}", type_idx));
                 }
-                BlockType::FuncType(type_idx)
+                return Ok((BlockType::FuncType(type_idx as u32), new_offset));
             }
             _ => {
                 // Negative index (encoded as varint), parse it properly
@@ -2951,6 +2975,42 @@ impl WastModuleValidator {
         };
 
         Ok((block_type, offset + 1))
+    }
+
+    /// Parse a GC heap type and convert to ValueType
+    fn parse_heap_type(code: &[u8], offset: usize) -> Result<(ValueType, usize)> {
+        if offset >= code.len() {
+            return Err(anyhow!("truncated heap type"));
+        }
+
+        // Parse as signed LEB128 (s33)
+        let (heap_type_val, new_offset) = Self::parse_varint64(code, offset)?;
+
+        // Abstract heap types are encoded as negative values:
+        // -16 = func (0x70), -17 = extern (0x6F), -18 = any (0x6E), etc.
+        // Positive values are concrete type indices.
+        let value_type = if heap_type_val < 0 {
+            match heap_type_val {
+                -16 => ValueType::FuncRef,     // func (0x70)
+                -17 => ValueType::ExternRef,   // extern (0x6F)
+                -18 => ValueType::AnyRef,      // any (0x6E)
+                -19 => ValueType::EqRef,       // eq (0x6D)
+                -20 => ValueType::I31Ref,      // i31 (0x6C)
+                -21 => ValueType::StructRef(0), // struct (0x6B) - abstract
+                -22 => ValueType::ArrayRef(0),  // array (0x6A) - abstract
+                -23 => ValueType::ExnRef,      // exn (0x69)
+                -13 => ValueType::FuncRef,     // nofunc (0x73) - bottom for func
+                -14 => ValueType::ExternRef,   // noextern (0x72) - bottom for extern
+                -15 => ValueType::AnyRef,      // none (0x71) - bottom for any
+                _ => ValueType::AnyRef,        // fallback
+            }
+        } else {
+            // Concrete type index - reference to a defined type
+            // For now, map to StructRef with the type index
+            ValueType::StructRef(heap_type_val as u32)
+        };
+
+        Ok((value_type, new_offset))
     }
 
     /// Convert block type to input/output stack types

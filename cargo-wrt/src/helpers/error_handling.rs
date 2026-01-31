@@ -3,10 +3,7 @@
 //! Provides consistent error formatting, categorization, and reporting
 //! across all cargo-wrt commands.
 
-use anyhow::{
-    Context,
-    Result,
-};
+use anyhow::{Context, Result};
 use colored::Colorize;
 use serde_json;
 use wrt_build_core::formatters::OutputFormat;
@@ -76,9 +73,9 @@ impl ErrorCategory {
 /// Categorized error with context
 #[derive(Debug)]
 pub struct CategorizedError {
-    pub category:    ErrorCategory,
-    pub message:     String,
-    pub context:     Vec<String>,
+    pub category: ErrorCategory,
+    pub message: String,
+    pub context: Vec<String>,
     pub suggestions: Vec<String>,
 }
 

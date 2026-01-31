@@ -82,6 +82,9 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
         ValueType::ExnRef => Ok(FormatValType::Own(0)), // Map exception reference to handle
+        ValueType::I31Ref => Ok(FormatValType::S32), // i31 fits in s32
+        ValueType::AnyRef => Ok(FormatValType::Own(0)), // Map any reference to handle
+        ValueType::EqRef => Ok(FormatValType::Own(0)), // Map eq reference to handle
     }
 }
 
@@ -112,6 +115,9 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> wrt_error::Result<FormatValT
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
         ValueType::ExnRef => Ok(FormatValType::Own(0)), // Map exception reference to handle
+        ValueType::I31Ref => Ok(FormatValType::S32), // i31 fits in s32
+        ValueType::AnyRef => Ok(FormatValType::Own(0)), // Map any reference to handle
+        ValueType::EqRef => Ok(FormatValType::Own(0)), // Map eq reference to handle
     }
 }
 
@@ -138,6 +144,10 @@ pub fn map_wasm_type_to_component<
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
+        ValueType::ExnRef => Ok(FormatValType::Own(0)), // Map exception reference to handle
+        ValueType::I31Ref => Ok(FormatValType::S32), // i31 fits in s32
+        ValueType::AnyRef => Ok(FormatValType::Own(0)), // Map any reference to handle
+        ValueType::EqRef => Ok(FormatValType::Own(0)), // Map eq reference to handle
     }
 }
 

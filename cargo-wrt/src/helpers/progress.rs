@@ -4,14 +4,8 @@
 //! to improve user experience during long-running operations.
 
 use std::{
-    io::{
-        self,
-        Write,
-    },
-    time::{
-        Duration,
-        Instant,
-    },
+    io::{self, Write},
+    time::{Duration, Instant},
 };
 
 use colored::Colorize;
@@ -33,34 +27,34 @@ pub enum ProgressStyle {
 /// Progress indicator configuration
 #[derive(Debug, Clone)]
 pub struct ProgressConfig {
-    pub style:           ProgressStyle,
-    pub message:         String,
-    pub show_elapsed:    bool,
-    pub show_eta:        bool,
+    pub style: ProgressStyle,
+    pub message: String,
+    pub show_elapsed: bool,
+    pub show_eta: bool,
     pub update_interval: Duration,
-    pub use_colors:      bool,
+    pub use_colors: bool,
 }
 
 impl Default for ProgressConfig {
     fn default() -> Self {
         Self {
-            style:           ProgressStyle::Spinner,
-            message:         "Processing...".to_string(),
-            show_elapsed:    true,
-            show_eta:        false,
+            style: ProgressStyle::Spinner,
+            message: "Processing...".to_string(),
+            show_elapsed: true,
+            show_eta: false,
             update_interval: Duration::from_millis(100),
-            use_colors:      true,
+            use_colors: true,
         }
     }
 }
 
 /// Enhanced progress indicator
 pub struct ProgressIndicator {
-    config:        ProgressConfig,
-    start_time:    Instant,
-    last_update:   Instant,
-    frame:         usize,
-    is_active:     bool,
+    config: ProgressConfig,
+    start_time: Instant,
+    last_update: Instant,
+    frame: usize,
+    is_active: bool,
     output_format: OutputFormat,
 }
 
@@ -368,9 +362,9 @@ fn format_duration(duration: Duration) -> String {
 
 /// Progress tracking for multi-step operations
 pub struct MultiStepProgress {
-    steps:             Vec<String>,
-    current_step:      usize,
-    step_indicator:    ProgressIndicator,
+    steps: Vec<String>,
+    current_step: usize,
+    step_indicator: ProgressIndicator,
     current_operation: Option<ProgressIndicator>,
 }
 

@@ -4,34 +4,28 @@
 //! safety reports, and documentation compliance reports. Optimized for
 //! posting as GitHub PR comments.
 
-use std::{
-    collections::HashMap,
-    fmt::Write,
-};
+use std::{collections::HashMap, fmt::Write};
 
 use anyhow::Result;
 use serde::Serialize;
 
 use crate::formatters::html::{
-    DocumentationReportData,
-    RequirementData,
-    SafetyReportData,
-    TestSummaryData,
+    DocumentationReportData, RequirementData, SafetyReportData, TestSummaryData,
 };
 
 /// Markdown formatter for cargo-wrt reports
 #[derive(Clone)]
 pub struct MarkdownFormatter {
-    github_flavor:        bool,
-    include_summary:      bool,
+    github_flavor: bool,
+    include_summary: bool,
     collapsible_sections: bool,
 }
 
 impl Default for MarkdownFormatter {
     fn default() -> Self {
         Self {
-            github_flavor:        true,
-            include_summary:      true,
+            github_flavor: true,
+            include_summary: true,
             collapsible_sections: true,
         }
     }
@@ -44,16 +38,16 @@ impl MarkdownFormatter {
 
     pub fn github() -> Self {
         Self {
-            github_flavor:        true,
-            include_summary:      true,
+            github_flavor: true,
+            include_summary: true,
             collapsible_sections: true,
         }
     }
 
     pub fn standard() -> Self {
         Self {
-            github_flavor:        false,
-            include_summary:      true,
+            github_flavor: false,
+            include_summary: true,
             collapsible_sections: false,
         }
     }

@@ -4,27 +4,16 @@
 //! and helper functions, ensuring consistent behavior across the application.
 
 use anyhow::Result;
-use atty::{
-    self,
-    Stream,
-};
+use atty::{self, Stream};
 use wrt_build_core::{
     config::BuildProfile,
     diagnostics::Severity,
-    filtering::{
-        FilterOptionsBuilder,
-        GroupBy,
-    },
+    filtering::{FilterOptionsBuilder, GroupBy},
     formatters::OutputFormat,
 };
 
 use super::OutputManager;
-use crate::{
-    Cli,
-    GroupByArg,
-    OutputFormatArg,
-    ProfileArg,
-};
+use crate::{Cli, GroupByArg, OutputFormatArg, ProfileArg};
 
 /// Parse severity strings to Severity enum
 fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
@@ -83,10 +72,10 @@ pub struct GlobalArgs {
 
     // Raw filter data for lazy initialization
     pub filter_severity: Option<Vec<String>>,
-    pub filter_source:   Option<Vec<String>>,
-    pub filter_file:     Option<Vec<String>>,
-    pub group_by:        Option<GroupBy>,
-    pub limit:           Option<usize>,
+    pub filter_source: Option<Vec<String>>,
+    pub filter_file: Option<Vec<String>>,
+    pub group_by: Option<GroupBy>,
+    pub limit: Option<usize>,
 }
 
 impl std::fmt::Debug for GlobalArgs {
@@ -115,23 +104,23 @@ impl std::fmt::Debug for GlobalArgs {
 impl Clone for GlobalArgs {
     fn clone(&self) -> Self {
         Self {
-            verbose:         self.verbose,
-            dry_run:         self.dry_run,
-            trace_commands:  self.trace_commands,
-            profile:         self.profile.clone(),
-            features:        self.features.clone(),
-            workspace:       self.workspace.clone(),
-            output_format:   self.output_format,
-            output:          self.output.clone(),
-            cache:           self.cache,
-            clear_cache:     self.clear_cache,
-            diff_only:       self.diff_only,
-            filter_options:  None, // Reset lazy field on clone
+            verbose: self.verbose,
+            dry_run: self.dry_run,
+            trace_commands: self.trace_commands,
+            profile: self.profile.clone(),
+            features: self.features.clone(),
+            workspace: self.workspace.clone(),
+            output_format: self.output_format,
+            output: self.output.clone(),
+            cache: self.cache,
+            clear_cache: self.clear_cache,
+            diff_only: self.diff_only,
+            filter_options: None, // Reset lazy field on clone
             filter_severity: self.filter_severity.clone(),
-            filter_source:   self.filter_source.clone(),
-            filter_file:     self.filter_file.clone(),
-            group_by:        self.group_by,
-            limit:           self.limit,
+            filter_source: self.filter_source.clone(),
+            filter_file: self.filter_file.clone(),
+            group_by: self.group_by,
+            limit: self.limit,
         }
     }
 }

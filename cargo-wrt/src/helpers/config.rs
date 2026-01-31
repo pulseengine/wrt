@@ -4,19 +4,10 @@
 //! arguments, and handling default values consistently across cargo-wrt
 //! commands.
 
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
-use anyhow::{
-    Context,
-    Result,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 
 use super::validation::validate_file_path;
 use crate::Cli;
@@ -48,21 +39,21 @@ pub struct CargoWrtConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiagnosticFilters {
-    pub default_severity:      Option<Vec<String>>,
-    pub default_sources:       Option<Vec<String>>,
+    pub default_severity: Option<Vec<String>>,
+    pub default_sources: Option<Vec<String>>,
     pub default_file_patterns: Option<Vec<String>>,
 }
 
 impl Default for CargoWrtConfig {
     fn default() -> Self {
         Self {
-            output_format:      Some("human".to_string()),
-            default_asil:       Some("qm".to_string()),
-            enable_cache:       Some(true),
-            requirements_file:  Some("requirements.toml".to_string()),
-            tool_versions:      None,
+            output_format: Some("human".to_string()),
+            default_asil: Some("qm".to_string()),
+            enable_cache: Some(true),
+            requirements_file: Some("requirements.toml".to_string()),
+            tool_versions: None,
             diagnostic_filters: None,
-            browser_command:    None,
+            browser_command: None,
         }
     }
 }
@@ -96,43 +87,43 @@ pub fn load_config_file(workspace_root: &Path) -> Result<CargoWrtConfig> {
 /// Merge global CLI arguments with configuration file settings
 pub fn merge_global_args(cli: &Cli, config: &CargoWrtConfig) -> MergedConfig {
     MergedConfig {
-        cache_enabled:   cli.cache || config.enable_cache.unwrap_or(false),
-        clear_cache:     cli.clear_cache,
-        diff_only:       cli.diff_only,
+        cache_enabled: cli.cache || config.enable_cache.unwrap_or(false),
+        clear_cache: cli.clear_cache,
+        diff_only: cli.diff_only,
         filter_severity: cli
             .filter_severity
             .clone()
             .or_else(|| config.diagnostic_filters.as_ref()?.default_severity.clone()),
-        filter_source:   cli
+        filter_source: cli
             .filter_source
             .clone()
             .or_else(|| config.diagnostic_filters.as_ref()?.default_sources.clone()),
-        filter_file:     cli
+        filter_file: cli
             .filter_file
             .clone()
             .or_else(|| config.diagnostic_filters.as_ref()?.default_file_patterns.clone()),
-        group_by:        cli.group_by.map(Into::into),
-        limit:           cli.limit,
-        verbose:         cli.verbose,
-        dry_run:         cli.dry_run,
-        workspace:       cli.workspace.clone(),
+        group_by: cli.group_by.map(Into::into),
+        limit: cli.limit,
+        verbose: cli.verbose,
+        dry_run: cli.dry_run,
+        workspace: cli.workspace.clone(),
     }
 }
 
 /// Merged configuration after combining CLI args and config file
 #[derive(Debug, Clone)]
 pub struct MergedConfig {
-    pub cache_enabled:   bool,
-    pub clear_cache:     bool,
-    pub diff_only:       bool,
+    pub cache_enabled: bool,
+    pub clear_cache: bool,
+    pub diff_only: bool,
     pub filter_severity: Option<Vec<String>>,
-    pub filter_source:   Option<Vec<String>>,
-    pub filter_file:     Option<Vec<String>>,
-    pub group_by:        Option<wrt_build_core::filtering::GroupBy>,
-    pub limit:           Option<usize>,
-    pub verbose:         bool,
-    pub dry_run:         bool,
-    pub workspace:       Option<String>,
+    pub filter_source: Option<Vec<String>>,
+    pub filter_file: Option<Vec<String>>,
+    pub group_by: Option<wrt_build_core::filtering::GroupBy>,
+    pub limit: Option<usize>,
+    pub verbose: bool,
+    pub dry_run: bool,
+    pub workspace: Option<String>,
 }
 
 /// Load JSON configuration files (for test results, coverage data, etc.)

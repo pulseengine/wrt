@@ -7,17 +7,8 @@ pub mod html;
 pub mod markdown;
 pub mod templates;
 
-pub use html::{
-    HtmlFormatter,
-    HtmlReportGenerator,
-};
-pub use markdown::{
-    create_github_pr_comment,
-    MarkdownFormatter,
-    MarkdownReportGenerator,
-};
+pub use html::{HtmlFormatter, HtmlReportGenerator};
+pub use markdown::{MarkdownFormatter, MarkdownReportGenerator, create_github_pr_comment};
 pub use templates::{
-    DocumentationReportTemplate,
-    RequirementsMatrixTemplate,
-    SafetyReportTemplate,
+    DocumentationReportTemplate, RequirementsMatrixTemplate, SafetyReportTemplate,
 };

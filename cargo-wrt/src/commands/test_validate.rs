@@ -7,18 +7,9 @@ use anyhow::Result;
 use colored::Colorize;
 use wrt_build_core::BuildSystem;
 
-use crate::helpers::{
-    ErrorContext,
-    GlobalArgs,
-};
+use crate::helpers::{ErrorContext, GlobalArgs};
 #[cfg(test)]
-use crate::testing::{
-    ProjectFeature,
-    TestConfig,
-    TestContext,
-    TestValidator,
-    WorkspaceType,
-};
+use crate::testing::{ProjectFeature, TestConfig, TestContext, TestValidator, WorkspaceType};
 
 /// Test validation command arguments
 #[derive(Debug, Clone)]
@@ -146,10 +137,7 @@ async fn run_basic_validation(args: &TestValidateArgs, global: &mut GlobalArgs) 
 async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
     use std::time::Duration;
 
-    use crate::helpers::{
-        MultiStepProgress,
-        ProgressIndicator,
-    };
+    use crate::helpers::{MultiStepProgress, ProgressIndicator};
 
     let output = global.output.clone();
     output.info("Validating progress indicators...");
@@ -332,12 +320,7 @@ async fn validate_performance_system(
 
 /// Validate error handling
 async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
-    use crate::helpers::{
-        build_errors,
-        config_errors,
-        CategorizedError,
-        ErrorCategory,
-    };
+    use crate::helpers::{CategorizedError, ErrorCategory, build_errors, config_errors};
 
     let output = global.output.clone();
     output.info("Validating error handling system...");
@@ -380,10 +363,7 @@ async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalAr
 async fn validate_output_system(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
     use wrt_build_core::formatters::OutputFormat;
 
-    use crate::helpers::{
-        OutputManager,
-        SimpleResponse,
-    };
+    use crate::helpers::{OutputManager, SimpleResponse};
 
     let output = global.output.clone();
     output.info("Validating output system...");

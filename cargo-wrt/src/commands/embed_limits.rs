@@ -5,29 +5,17 @@
 
 use std::{
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use anyhow::{
-    Context,
-    Result,
-};
+use anyhow::{Context, Result};
 use clap::Args;
 use wrt_decoder::{
     resource_limits_section::RESOURCE_LIMITS_SECTION_NAME,
-    toml_config::{
-        TomlQualification,
-        TomlResourceLimits,
-    },
+    toml_config::{TomlQualification, TomlResourceLimits},
 };
 
-use crate::helpers::{
-    output_result,
-    OutputManager,
-};
+use crate::helpers::{OutputManager, output_result};
 
 /// Arguments for the embed-limits command
 #[derive(Debug, Args)]

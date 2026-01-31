@@ -161,11 +161,11 @@ edition = "2021"
     #[test]
     fn test_smart_defaults() {
         let context = ProjectContext {
-            workspace_root:  std::path::PathBuf::from("/test"),
-            project_type:    ProjectType::WrtWorkspace,
-            features:        ProjectFeatures::default(),
-            git_context:     None,
-            ci_context:      None,
+            workspace_root: std::path::PathBuf::from("/test"),
+            project_type: ProjectType::WrtWorkspace,
+            features: ProjectFeatures::default(),
+            git_context: None,
+            ci_context: None,
             recommendations: vec![],
         };
 
@@ -409,10 +409,7 @@ mod performance_tests {
 mod error_handling_tests {
     use wrt_build_core::formatters::OutputFormat;
 
-    use super::super::{
-        error_handling::*,
-        OutputManager,
-    };
+    use super::super::{OutputManager, error_handling::*};
 
     #[test]
     fn test_error_category() {
@@ -550,16 +547,16 @@ mod help_system_tests {
         let mut help_system = HelpSystem::new();
 
         let test_doc = CommandDoc {
-            name:        "test-command",
-            brief:       "Test command",
+            name: "test-command",
+            brief: "Test command",
             description: "This is a test command for unit testing",
-            examples:    vec![CommandExample {
-                command:       "cargo-wrt test-command",
-                description:   "Run test command",
+            examples: vec![CommandExample {
+                command: "cargo-wrt test-command",
+                description: "Run test command",
                 output_sample: None,
             }],
-            see_also:    vec!["help"],
-            category:    CommandCategory::Utility,
+            see_also: vec!["help"],
+            category: CommandCategory::Utility,
         };
 
         help_system.register_command(test_doc);
@@ -619,8 +616,8 @@ mod help_system_tests {
     #[test]
     fn test_command_example() {
         let example = CommandExample {
-            command:       "cargo-wrt test --verbose",
-            description:   "Run tests with verbose output",
+            command: "cargo-wrt test --verbose",
+            description: "Run tests with verbose output",
             output_sample: Some("Running tests...\ntest result: ok"),
         };
 

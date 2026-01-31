@@ -94,6 +94,7 @@ use crate::{
     },
     verification::Checksum,
     MemoryProvider,
+    NoStdProvider,
 };
 
 // Result is already imported from wrt_error - no need for alias
@@ -208,6 +209,12 @@ pub enum ValueType {
     ArrayRef(u32), // type index
     /// Exception reference (Exception Handling proposal)
     ExnRef,
+    /// i31 reference (WebAssembly 3.0 GC) - unboxed 31-bit integer
+    I31Ref,
+    /// Any reference (WebAssembly 3.0 GC) - top of aggregate hierarchy
+    AnyRef,
+    /// Eq reference (WebAssembly 3.0 GC) - types supporting ref.eq
+    EqRef,
 }
 
 impl core::fmt::Debug for ValueType {
@@ -225,6 +232,9 @@ impl core::fmt::Debug for ValueType {
             Self::StructRef(idx) => f.debug_tuple("StructRef").field(idx).finish(),
             Self::ArrayRef(idx) => f.debug_tuple("ArrayRef").field(idx).finish(),
             Self::ExnRef => write!(f, "ExnRef"),
+            Self::I31Ref => write!(f, "I31Ref"),
+            Self::AnyRef => write!(f, "AnyRef"),
+            Self::EqRef => write!(f, "EqRef"),
         }
     }
 }
@@ -247,6 +257,9 @@ impl ValueType {
             0x79 => Ok(ValueType::I16x8),
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
+            0x6E => Ok(ValueType::AnyRef),  // GC: any heap type
+            0x6D => Ok(ValueType::EqRef),   // GC: eq heap type
+            0x6C => Ok(ValueType::I31Ref),  // GC: i31 heap type
             0x69 => Ok(ValueType::ExnRef),
             _ => Err(Error::runtime_execution_error("Invalid value type byte")),
         }
@@ -264,8 +277,11 @@ impl ValueType {
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
             0x69 => Ok(ValueType::ExnRef),
-            0x6E => Ok(ValueType::StructRef(type_index)), // GC: struct reference
-            0x6D => Ok(ValueType::ArrayRef(type_index)),  // GC: array reference
+            0x6E => Ok(ValueType::AnyRef),               // GC: any heap type
+            0x6D => Ok(ValueType::EqRef),                // GC: eq heap type
+            0x6C => Ok(ValueType::I31Ref),               // GC: i31 heap type
+            0x6B => Ok(ValueType::StructRef(type_index)), // GC: struct reference
+            0x6A => Ok(ValueType::ArrayRef(type_index)),  // GC: array reference
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
@@ -278,6 +294,9 @@ impl ValueType {
     ///
     /// Uses the standardized conversion utility for consistency
     /// across all crates.
+    ///
+    /// Note: GC reference types (I31Ref, AnyRef, EqRef) use heap type codes
+    /// as their binary representation. Full encoding uses 0x63/0x64 prefix.
     #[must_use]
     pub fn to_binary(self) -> u8 {
         match self {
@@ -289,9 +308,12 @@ impl ValueType {
             ValueType::I16x8 => 0x79,
             ValueType::FuncRef => 0x70,
             ValueType::ExternRef => 0x6F,
+            ValueType::AnyRef => 0x6E,  // GC: any heap type
+            ValueType::EqRef => 0x6D,   // GC: eq heap type
+            ValueType::I31Ref => 0x6C,  // GC: i31 heap type
+            ValueType::StructRef(_) => 0x6B, // GC: struct heap type
+            ValueType::ArrayRef(_) => 0x6A,  // GC: array heap type
             ValueType::ExnRef => 0x69,
-            ValueType::StructRef(_) => 0x6E,
-            ValueType::ArrayRef(_) => 0x6D,
         }
     }
 
@@ -311,11 +333,18 @@ impl ValueType {
             Self::I32 | Self::F32 => 4,
             Self::I64 | Self::F64 => 8,
             Self::V128 | Self::I16x8 => 16, // COMBINED ARMS
-            Self::FuncRef | Self::ExternRef | Self::ExnRef | Self::StructRef(_) | Self::ArrayRef(_) => {
+            Self::FuncRef
+            | Self::ExternRef
+            | Self::ExnRef
+            | Self::StructRef(_)
+            | Self::ArrayRef(_)
+            | Self::I31Ref
+            | Self::AnyRef
+            | Self::EqRef => {
                 // Size of a reference can vary. Using usize for simplicity.
                 // In a real scenario, this might depend on target architecture (32/64 bit).
                 core::mem::size_of::<usize>()
-            },
+            }
         }
     }
 }
@@ -368,10 +397,130 @@ impl FromBytes for ValueType {
     }
 }
 
+/// WebAssembly GC heap types
+///
+/// Heap types classify the target of reference types in the GC proposal.
+/// They form three disjoint hierarchies: functions, aggregates, and externals.
+///
+/// Binary encoding:
+/// - 0x70 = func, 0x6F = extern, 0x6E = any, 0x6D = eq
+/// - 0x6C = i31, 0x6B = struct, 0x6A = array
+/// - 0x73 = nofunc, 0x72 = noextern, 0x71 = none
+/// - Positive s33 = concrete type index
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HeapType {
+    /// Function heap type (0x70) - supertype of all function types
+    Func,
+    /// External heap type (0x6F) - supertype of all external types
+    Extern,
+    /// Any heap type (0x6E) - supertype of all aggregate types
+    Any,
+    /// Equality heap type (0x6D) - types that support ref.eq
+    Eq,
+    /// i31 heap type (0x6C) - unboxed 31-bit integers
+    I31,
+    /// Struct heap type (0x6B) - supertype of all struct types
+    Struct,
+    /// Array heap type (0x6A) - supertype of all array types
+    Array,
+    /// Exception heap type (0x69) - for exception references
+    Exn,
+    /// No-func heap type (0x73) - bottom type for functions
+    NoFunc,
+    /// No-extern heap type (0x72) - bottom type for externals
+    NoExtern,
+    /// None heap type (0x71) - bottom type for aggregates
+    None,
+    /// Concrete type index - references a defined type
+    Concrete(u32),
+}
+
+impl Default for HeapType {
+    fn default() -> Self {
+        HeapType::Func
+    }
+}
+
+impl HeapType {
+    /// Parse heap type from binary format
+    pub fn from_binary(byte: u8) -> Result<Self> {
+        match byte {
+            0x70 => Ok(HeapType::Func),
+            0x6F => Ok(HeapType::Extern),
+            0x6E => Ok(HeapType::Any),
+            0x6D => Ok(HeapType::Eq),
+            0x6C => Ok(HeapType::I31),
+            0x6B => Ok(HeapType::Struct),
+            0x6A => Ok(HeapType::Array),
+            0x69 => Ok(HeapType::Exn),
+            0x73 => Ok(HeapType::NoFunc),
+            0x72 => Ok(HeapType::NoExtern),
+            0x71 => Ok(HeapType::None),
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
+                "Invalid heap type byte",
+            )),
+        }
+    }
+
+    /// Convert to binary format
+    #[must_use]
+    pub fn to_binary(self) -> Option<u8> {
+        match self {
+            HeapType::Func => Some(0x70),
+            HeapType::Extern => Some(0x6F),
+            HeapType::Any => Some(0x6E),
+            HeapType::Eq => Some(0x6D),
+            HeapType::I31 => Some(0x6C),
+            HeapType::Struct => Some(0x6B),
+            HeapType::Array => Some(0x6A),
+            HeapType::Exn => Some(0x69),
+            HeapType::NoFunc => Some(0x73),
+            HeapType::NoExtern => Some(0x72),
+            HeapType::None => Some(0x71),
+            HeapType::Concrete(_) => None, // Type index requires s33 encoding
+        }
+    }
+
+    /// Check if this is an abstract heap type (not a concrete type index)
+    #[must_use]
+    pub fn is_abstract(self) -> bool {
+        !matches!(self, HeapType::Concrete(_))
+    }
+
+    /// Get the concrete type index if this is a Concrete heap type
+    #[must_use]
+    pub fn type_index(self) -> Option<u32> {
+        match self {
+            HeapType::Concrete(idx) => Some(idx),
+            _ => None,
+        }
+    }
+}
+
+impl Checksummable for HeapType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            HeapType::Concrete(idx) => {
+                checksum.update_slice(&[0xFF]); // Marker for concrete type
+                checksum.update_slice(&idx.to_le_bytes());
+            }
+            _ => {
+                if let Some(byte) = self.to_binary() {
+                    checksum.update_slice(&[byte]);
+                }
+            }
+        }
+    }
+}
+
 /// WebAssembly reference types (funcref, externref)
 ///
 /// These are subtypes of `ValueType` and used in table elements, function
 /// returns, etc.
+///
+/// Note: For full GC support, use `GcRefType` which includes HeapType and nullability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RefType {
     /// Function reference type
@@ -460,6 +609,248 @@ impl TryFrom<ValueType> for RefType {
                 "Invalid ValueType for RefType try_from conversion",
             )),
         }
+    }
+}
+
+/// WebAssembly GC reference type with full heap type and nullability support.
+///
+/// This is the expanded reference type system from the GC proposal, which
+/// allows references to any heap type with explicit nullability.
+///
+/// Binary encoding:
+/// - 0x63 + heaptype = ref null heaptype (nullable)
+/// - 0x64 + heaptype = ref heaptype (non-nullable)
+/// - 0x70 (funcref) = shorthand for ref null func
+/// - 0x6F (externref) = shorthand for ref null extern
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GcRefType {
+    /// Whether the reference is nullable (ref null ht) or not (ref ht)
+    pub nullable: bool,
+    /// The heap type this reference points to
+    pub heap_type: HeapType,
+}
+
+impl Default for GcRefType {
+    fn default() -> Self {
+        // Default to nullable funcref (same as RefType::Funcref)
+        Self {
+            nullable: true,
+            heap_type: HeapType::Func,
+        }
+    }
+}
+
+impl GcRefType {
+    /// Create a new GC reference type
+    #[must_use]
+    pub const fn new(nullable: bool, heap_type: HeapType) -> Self {
+        Self { nullable, heap_type }
+    }
+
+    /// Create a nullable reference type
+    #[must_use]
+    pub const fn nullable(heap_type: HeapType) -> Self {
+        Self {
+            nullable: true,
+            heap_type,
+        }
+    }
+
+    /// Create a non-nullable reference type
+    #[must_use]
+    pub const fn non_nullable(heap_type: HeapType) -> Self {
+        Self {
+            nullable: false,
+            heap_type,
+        }
+    }
+
+    /// Shorthand for ref null func (funcref)
+    pub const FUNCREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Func,
+    };
+
+    /// Shorthand for ref null extern (externref)
+    pub const EXTERNREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Extern,
+    };
+
+    /// Shorthand for ref null any (anyref)
+    pub const ANYREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Any,
+    };
+
+    /// Shorthand for ref null eq (eqref)
+    pub const EQREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Eq,
+    };
+
+    /// Shorthand for ref null i31 (i31ref)
+    pub const I31REF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::I31,
+    };
+
+    /// Shorthand for ref null struct (structref)
+    pub const STRUCTREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Struct,
+    };
+
+    /// Shorthand for ref null array (arrayref)
+    pub const ARRAYREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Array,
+    };
+
+    /// Shorthand for ref null exn (exnref)
+    pub const EXNREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::Exn,
+    };
+
+    /// Shorthand for ref null none (nullref - bottom type)
+    pub const NULLREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::None,
+    };
+
+    /// Shorthand for ref null nofunc (nullfuncref)
+    pub const NULLFUNCREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::NoFunc,
+    };
+
+    /// Shorthand for ref null noextern (nullexternref)
+    pub const NULLEXTERNREF: Self = Self {
+        nullable: true,
+        heap_type: HeapType::NoExtern,
+    };
+
+    /// Check if this is a nullable reference
+    #[must_use]
+    pub const fn is_nullable(&self) -> bool {
+        self.nullable
+    }
+
+    /// Check if this is a function reference type
+    #[must_use]
+    pub fn is_func_type(&self) -> bool {
+        matches!(
+            self.heap_type,
+            HeapType::Func | HeapType::NoFunc | HeapType::Concrete(_)
+        )
+    }
+
+    /// Check if this is an external reference type
+    #[must_use]
+    pub fn is_extern_type(&self) -> bool {
+        matches!(self.heap_type, HeapType::Extern | HeapType::NoExtern)
+    }
+
+    /// Check if this is an aggregate reference type (struct, array, i31, etc.)
+    #[must_use]
+    pub fn is_aggregate_type(&self) -> bool {
+        matches!(
+            self.heap_type,
+            HeapType::Any
+                | HeapType::Eq
+                | HeapType::I31
+                | HeapType::Struct
+                | HeapType::Array
+                | HeapType::None
+        )
+    }
+
+    /// Convert from MVP RefType
+    #[must_use]
+    pub fn from_ref_type(rt: RefType) -> Self {
+        match rt {
+            RefType::Funcref => Self::FUNCREF,
+            RefType::Externref => Self::EXTERNREF,
+        }
+    }
+
+    /// Try to convert to MVP RefType (only works for funcref/externref)
+    pub fn to_ref_type(&self) -> Option<RefType> {
+        if self.nullable {
+            match self.heap_type {
+                HeapType::Func => Some(RefType::Funcref),
+                HeapType::Extern => Some(RefType::Externref),
+                _ => None,
+            }
+        } else {
+            None // MVP RefType is always nullable
+        }
+    }
+
+    /// Check if a value of type `other` can be assigned to this type (subtyping)
+    ///
+    /// Returns true if `other` is a subtype of `self`.
+    #[must_use]
+    pub fn is_supertype_of(&self, other: &GcRefType) -> bool {
+        // Nullability: nullable types accept non-nullable values
+        if !self.nullable && other.nullable {
+            return false;
+        }
+
+        // Heap type subtyping
+        self.heap_type.is_supertype_of(&other.heap_type)
+    }
+}
+
+impl HeapType {
+    /// Check if `other` is a subtype of `self`
+    #[must_use]
+    pub fn is_supertype_of(&self, other: &HeapType) -> bool {
+        if self == other {
+            return true;
+        }
+
+        match (self, other) {
+            // any is the top of the aggregate hierarchy
+            (HeapType::Any, HeapType::Eq)
+            | (HeapType::Any, HeapType::I31)
+            | (HeapType::Any, HeapType::Struct)
+            | (HeapType::Any, HeapType::Array)
+            | (HeapType::Any, HeapType::None) => true,
+
+            // eq subtypes
+            (HeapType::Eq, HeapType::I31)
+            | (HeapType::Eq, HeapType::Struct)
+            | (HeapType::Eq, HeapType::Array)
+            | (HeapType::Eq, HeapType::None) => true,
+
+            // struct subtypes
+            (HeapType::Struct, HeapType::None) => true,
+
+            // array subtypes
+            (HeapType::Array, HeapType::None) => true,
+
+            // i31 subtypes
+            (HeapType::I31, HeapType::None) => true,
+
+            // func subtypes
+            (HeapType::Func, HeapType::NoFunc) => true,
+
+            // extern subtypes
+            (HeapType::Extern, HeapType::NoExtern) => true,
+
+            // Concrete types - would need type definitions for full check
+            // For now, only exact match
+            _ => false,
+        }
+    }
+}
+
+impl Checksummable for GcRefType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&[if self.nullable { 0x63 } else { 0x64 }]);
+        self.heap_type.update_checksum(checksum);
     }
 }
 
@@ -3653,6 +4044,120 @@ impl Default for BlockType {
 // Constants for aggregate types
 pub const MAX_STRUCT_FIELDS: usize = 64;
 pub const MAX_ARRAY_ELEMENTS: usize = 1024;
+pub const MAX_SUPERTYPES: usize = 1; // GC spec allows exactly 0 or 1 supertype
+pub const MAX_REC_GROUP_SIZE: usize = 64; // Maximum types in a recursive group
+
+/// WebAssembly GC composite type definition.
+///
+/// Composite types represent the three kinds of type definitions that can
+/// appear in the type section: function types, struct types, and array types.
+/// All share a single type index space.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompositeType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq = NoStdProvider<1024>> {
+    /// Function type: params -> results
+    Func(FuncType),
+    /// Struct type: sequence of mutable/immutable fields
+    Struct(StructType<P>),
+    /// Array type: homogeneous mutable/immutable elements
+    Array(ArrayType),
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> CompositeType<P> {
+    /// Check if this is a function type
+    pub fn is_func(&self) -> bool {
+        matches!(self, CompositeType::Func(_))
+    }
+
+    /// Check if this is a struct type
+    pub fn is_struct(&self) -> bool {
+        matches!(self, CompositeType::Struct(_))
+    }
+
+    /// Check if this is an array type
+    pub fn is_array(&self) -> bool {
+        matches!(self, CompositeType::Array(_))
+    }
+
+    /// Get as function type if this is one
+    pub fn as_func(&self) -> Option<&FuncType> {
+        match self {
+            CompositeType::Func(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// Get as struct type if this is one
+    pub fn as_struct(&self) -> Option<&StructType<P>> {
+        match self {
+            CompositeType::Struct(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Get as array type if this is one
+    pub fn as_array(&self) -> Option<&ArrayType> {
+        match self {
+            CompositeType::Array(a) => Some(a),
+            _ => None,
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for CompositeType<P> {
+    fn default() -> Self {
+        // Default to an empty function type
+        CompositeType::Func(FuncType::default())
+    }
+}
+
+/// WebAssembly GC sub type definition.
+///
+/// A sub type wraps a composite type with optional subtyping information.
+/// In the GC proposal, types can declare at most one supertype.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq = NoStdProvider<1024>> {
+    /// Whether this type is final (cannot be subtyped)
+    pub is_final: bool,
+    /// Optional supertype index (GC allows exactly 0 or 1 supertype)
+    pub supertype: Option<TypeIdx>,
+    /// The composite type being defined
+    pub composite_type: CompositeType<P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> SubType<P> {
+    /// Create a new non-final sub type with no supertype
+    pub fn new(composite_type: CompositeType<P>) -> Self {
+        Self {
+            is_final: false,
+            supertype: None,
+            composite_type,
+        }
+    }
+
+    /// Create a final sub type with no supertype
+    pub fn new_final(composite_type: CompositeType<P>) -> Self {
+        Self {
+            is_final: true,
+            supertype: None,
+            composite_type,
+        }
+    }
+
+    /// Create a sub type with a supertype
+    pub fn with_supertype(composite_type: CompositeType<P>, supertype: TypeIdx, is_final: bool) -> Self {
+        Self {
+            is_final,
+            supertype: Some(supertype),
+            composite_type,
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for SubType<P> {
+    fn default() -> Self {
+        Self::new_final(CompositeType::default())
+    }
+}
 
 /// WebAssembly 3.0 aggregate types for struct and array operations
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

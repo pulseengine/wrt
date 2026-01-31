@@ -92,6 +92,75 @@ pub const FUNCREF_TYPE: u8 = 0x70;
 pub const EXTERNREF_TYPE: u8 = 0x6F;
 pub const EXNREF_TYPE: u8 = 0x69;
 
+/// WebAssembly GC heap type opcodes (GC proposal)
+pub const HEAP_TYPE_FUNC: u8 = 0x70;     // func
+pub const HEAP_TYPE_EXTERN: u8 = 0x6F;   // extern
+pub const HEAP_TYPE_ANY: u8 = 0x6E;      // any (GC)
+pub const HEAP_TYPE_EQ: u8 = 0x6D;       // eq (GC)
+pub const HEAP_TYPE_I31: u8 = 0x6C;      // i31 (GC)
+pub const HEAP_TYPE_STRUCT: u8 = 0x6B;   // struct (GC)
+pub const HEAP_TYPE_ARRAY: u8 = 0x6A;    // array (GC)
+pub const HEAP_TYPE_EXN: u8 = 0x69;      // exn (exception handling)
+pub const HEAP_TYPE_NOFUNC: u8 = 0x73;   // nofunc (bottom type for func)
+pub const HEAP_TYPE_NOEXTERN: u8 = 0x72; // noextern (bottom type for extern)
+pub const HEAP_TYPE_NONE: u8 = 0x71;     // none (bottom type for any)
+
+/// WebAssembly GC reference type prefixes
+pub const REF_TYPE_NON_NULLABLE: u8 = 0x64; // ref ht (non-nullable)
+pub const REF_TYPE_NULLABLE: u8 = 0x63;     // ref null ht (nullable)
+
+/// WebAssembly GC composite type markers
+pub const COMPOSITE_TYPE_ARRAY: u8 = 0x5E;     // array field
+pub const COMPOSITE_TYPE_STRUCT: u8 = 0x5F;    // struct fields
+pub const COMPOSITE_TYPE_FUNC: u8 = 0x60;      // func params results
+pub const COMPOSITE_TYPE_REC: u8 = 0x4E;       // rec types
+pub const COMPOSITE_TYPE_SUB_FINAL: u8 = 0x4F; // sub final supertypes
+pub const COMPOSITE_TYPE_SUB: u8 = 0x50;       // sub supertypes
+
+/// WebAssembly GC field mutability
+pub const FIELD_MUTABLE: u8 = 0x01;
+pub const FIELD_IMMUTABLE: u8 = 0x00;
+
+/// FB-prefixed opcodes (GC proposal)
+pub const PREFIX_FB: u8 = 0xFB;
+// GC struct instructions
+pub const GC_STRUCT_NEW: u8 = 0x00;
+pub const GC_STRUCT_NEW_DEFAULT: u8 = 0x01;
+pub const GC_STRUCT_GET: u8 = 0x02;
+pub const GC_STRUCT_GET_S: u8 = 0x03;
+pub const GC_STRUCT_GET_U: u8 = 0x04;
+pub const GC_STRUCT_SET: u8 = 0x05;
+// GC array instructions
+pub const GC_ARRAY_NEW: u8 = 0x06;
+pub const GC_ARRAY_NEW_DEFAULT: u8 = 0x07;
+pub const GC_ARRAY_NEW_FIXED: u8 = 0x08;
+pub const GC_ARRAY_NEW_DATA: u8 = 0x09;
+pub const GC_ARRAY_NEW_ELEM: u8 = 0x0A;
+pub const GC_ARRAY_GET: u8 = 0x0B;
+pub const GC_ARRAY_GET_S: u8 = 0x0C;
+pub const GC_ARRAY_GET_U: u8 = 0x0D;
+pub const GC_ARRAY_SET: u8 = 0x0E;
+pub const GC_ARRAY_LEN: u8 = 0x0F;
+pub const GC_ARRAY_FILL: u8 = 0x10;
+pub const GC_ARRAY_COPY: u8 = 0x11;
+pub const GC_ARRAY_INIT_DATA: u8 = 0x12;
+pub const GC_ARRAY_INIT_ELEM: u8 = 0x13;
+// GC reference type testing/casting
+pub const GC_REF_TEST: u8 = 0x14;
+pub const GC_REF_TEST_NULL: u8 = 0x15;
+pub const GC_REF_CAST: u8 = 0x16;
+pub const GC_REF_CAST_NULL: u8 = 0x17;
+// GC branching
+pub const GC_BR_ON_CAST: u8 = 0x18;
+pub const GC_BR_ON_CAST_FAIL: u8 = 0x19;
+// GC any/extern conversions
+pub const GC_ANY_CONVERT_EXTERN: u8 = 0x1A;
+pub const GC_EXTERN_CONVERT_ANY: u8 = 0x1B;
+// i31 operations
+pub const GC_REF_I31: u8 = 0x1C;
+pub const GC_I31_GET_S: u8 = 0x1D;
+pub const GC_I31_GET_U: u8 = 0x1E;
+
 /// WebAssembly control instructions
 pub const UNREACHABLE: u8 = 0x00;
 pub const NOP: u8 = 0x01;

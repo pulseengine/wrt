@@ -6,27 +6,21 @@
 use std::{
     collections::HashMap,
     path::PathBuf,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Performance metrics collector
 #[derive(Debug, Clone, Default)]
 pub struct PerformanceMetrics {
-    pub command_times:    HashMap<String, Duration>,
-    pub cache_hits:       usize,
-    pub cache_misses:     usize,
-    pub memory_peak:      usize,
-    pub disk_reads:       usize,
-    pub disk_writes:      usize,
+    pub command_times: HashMap<String, Duration>,
+    pub cache_hits: usize,
+    pub cache_misses: usize,
+    pub memory_peak: usize,
+    pub disk_reads: usize,
+    pub disk_writes: usize,
     pub network_requests: usize,
 }
 
@@ -62,21 +56,21 @@ impl Default for PerformanceConfig {
     fn default() -> Self {
         Self {
             parallel_execution: true,
-            max_parallel_jobs:  num_cpus::get().max(1),
+            max_parallel_jobs: num_cpus::get().max(1),
             aggressive_caching: true,
-            cache_ttl:          3600, // 1 hour
-            artifact_reuse:     true,
-            memory_limit_mb:    None,
+            cache_ttl: 3600, // 1 hour
+            artifact_reuse: true,
+            memory_limit_mb: None,
             incremental_builds: true,
-            compiler_cache:     true,
+            compiler_cache: true,
         }
     }
 }
 
 /// Performance optimizer
 pub struct PerformanceOptimizer {
-    config:         PerformanceConfig,
-    metrics:        PerformanceMetrics,
+    config: PerformanceConfig,
+    metrics: PerformanceMetrics,
     command_timers: HashMap<String, Instant>,
 }
 
@@ -121,11 +115,7 @@ impl PerformanceOptimizer {
     /// Get cache hit ratio
     pub fn cache_hit_ratio(&self) -> f64 {
         let total = self.metrics.cache_hits + self.metrics.cache_misses;
-        if total == 0 {
-            0.0
-        } else {
-            self.metrics.cache_hits as f64 / total as f64
-        }
+        if total == 0 { 0.0 } else { self.metrics.cache_hits as f64 / total as f64 }
     }
 
     /// Get performance recommendations
@@ -136,26 +126,26 @@ impl PerformanceOptimizer {
         let cache_ratio = self.cache_hit_ratio();
         if cache_ratio < 0.5 && self.metrics.cache_hits + self.metrics.cache_misses > 10 {
             recommendations.push(PerformanceRecommendation {
-                category:    RecommendationCategory::Caching,
-                title:       "Low Cache Hit Ratio".to_string(),
+                category: RecommendationCategory::Caching,
+                title: "Low Cache Hit Ratio".to_string(),
                 description: format!(
                     "Cache hit ratio is {:.1}%. Consider enabling more aggressive caching.",
                     cache_ratio * 100.0
                 ),
-                impact:      ImpactLevel::Medium,
-                action:      "Enable aggressive caching with --cache --aggressive".to_string(),
+                impact: ImpactLevel::Medium,
+                action: "Enable aggressive caching with --cache --aggressive".to_string(),
             });
         }
 
         // Parallel execution
         if !self.config.parallel_execution {
             recommendations.push(PerformanceRecommendation {
-                category:    RecommendationCategory::Parallelization,
-                title:       "Parallel Execution Disabled".to_string(),
+                category: RecommendationCategory::Parallelization,
+                title: "Parallel Execution Disabled".to_string(),
                 description: "Parallel execution could significantly improve build times"
                     .to_string(),
-                impact:      ImpactLevel::High,
-                action:      "Enable parallel execution in configuration".to_string(),
+                impact: ImpactLevel::High,
+                action: "Enable parallel execution in configuration".to_string(),
             });
         }
 
@@ -163,15 +153,15 @@ impl PerformanceOptimizer {
         for (command, duration) in &self.metrics.command_times {
             if duration.as_secs() > 30 {
                 recommendations.push(PerformanceRecommendation {
-                    category:    RecommendationCategory::CommandOptimization,
-                    title:       format!("Slow {} Command", command),
+                    category: RecommendationCategory::CommandOptimization,
+                    title: format!("Slow {} Command", command),
                     description: format!(
                         "Command '{}' took {:.1}s. Consider optimization.",
                         command,
                         duration.as_secs_f64()
                     ),
-                    impact:      ImpactLevel::Medium,
-                    action:      format!("Profile {} command for bottlenecks", command),
+                    impact: ImpactLevel::Medium,
+                    action: format!("Profile {} command for bottlenecks", command),
                 });
             }
         }
@@ -180,14 +170,14 @@ impl PerformanceOptimizer {
         if let Some(limit) = self.config.memory_limit_mb {
             if self.metrics.memory_peak > limit {
                 recommendations.push(PerformanceRecommendation {
-                    category:    RecommendationCategory::Memory,
-                    title:       "Memory Limit Exceeded".to_string(),
+                    category: RecommendationCategory::Memory,
+                    title: "Memory Limit Exceeded".to_string(),
                     description: format!(
                         "Peak memory usage ({} MB) exceeded limit ({} MB)",
                         self.metrics.memory_peak, limit
                     ),
-                    impact:      ImpactLevel::High,
-                    action:      "Increase memory limit or optimize memory usage".to_string(),
+                    impact: ImpactLevel::High,
+                    action: "Increase memory limit or optimize memory usage".to_string(),
                 });
             }
         }
@@ -199,10 +189,10 @@ impl PerformanceOptimizer {
     /// Generate performance report
     pub fn generate_report(&self) -> PerformanceReport {
         PerformanceReport {
-            metrics:         self.metrics.clone(),
-            config:          self.config.clone(),
+            metrics: self.metrics.clone(),
+            config: self.config.clone(),
             recommendations: self.get_recommendations(),
-            timestamp:       std::time::SystemTime::now(),
+            timestamp: std::time::SystemTime::now(),
         }
     }
 
@@ -246,11 +236,11 @@ impl PerformanceOptimizer {
 /// Performance recommendation
 #[derive(Debug, Clone)]
 pub struct PerformanceRecommendation {
-    pub category:    RecommendationCategory,
-    pub title:       String,
+    pub category: RecommendationCategory,
+    pub title: String,
     pub description: String,
-    pub impact:      ImpactLevel,
-    pub action:      String,
+    pub impact: ImpactLevel,
+    pub action: String,
 }
 
 /// Recommendation categories
@@ -288,10 +278,10 @@ impl ImpactLevel {
 /// Performance report
 #[derive(Debug, Clone)]
 pub struct PerformanceReport {
-    pub metrics:         PerformanceMetrics,
-    pub config:          PerformanceConfig,
+    pub metrics: PerformanceMetrics,
+    pub config: PerformanceConfig,
     pub recommendations: Vec<PerformanceRecommendation>,
-    pub timestamp:       std::time::SystemTime,
+    pub timestamp: std::time::SystemTime,
 }
 
 impl PerformanceReport {
@@ -377,27 +367,27 @@ impl PerformanceReport {
     pub fn format_json(&self) -> Result<String> {
         #[derive(Serialize)]
         struct JsonReport {
-            timestamp:       String,
-            metrics:         JsonMetrics,
+            timestamp: String,
+            metrics: JsonMetrics,
             recommendations: Vec<JsonRecommendation>,
         }
 
         #[derive(Serialize)]
         struct JsonMetrics {
-            command_times:   HashMap<String, f64>,
-            cache_hits:      usize,
-            cache_misses:    usize,
+            command_times: HashMap<String, f64>,
+            cache_hits: usize,
+            cache_misses: usize,
             cache_hit_ratio: f64,
-            memory_peak_mb:  usize,
+            memory_peak_mb: usize,
         }
 
         #[derive(Serialize)]
         struct JsonRecommendation {
-            category:    String,
-            title:       String,
+            category: String,
+            title: String,
             description: String,
-            impact:      String,
-            action:      String,
+            impact: String,
+            action: String,
         }
 
         let cache_total = self.metrics.cache_hits + self.metrics.cache_misses;
@@ -408,28 +398,28 @@ impl PerformanceReport {
         };
 
         let report = JsonReport {
-            timestamp:       format!("{:?}", self.timestamp),
-            metrics:         JsonMetrics {
-                command_times:   self
+            timestamp: format!("{:?}", self.timestamp),
+            metrics: JsonMetrics {
+                command_times: self
                     .metrics
                     .command_times
                     .iter()
                     .map(|(k, v)| (k.clone(), v.as_secs_f64()))
                     .collect(),
-                cache_hits:      self.metrics.cache_hits,
-                cache_misses:    self.metrics.cache_misses,
+                cache_hits: self.metrics.cache_hits,
+                cache_misses: self.metrics.cache_misses,
                 cache_hit_ratio: cache_ratio,
-                memory_peak_mb:  self.metrics.memory_peak,
+                memory_peak_mb: self.metrics.memory_peak,
             },
             recommendations: self
                 .recommendations
                 .iter()
                 .map(|r| JsonRecommendation {
-                    category:    format!("{:?}", r.category),
-                    title:       r.title.clone(),
+                    category: format!("{:?}", r.category),
+                    title: r.title.clone(),
                     description: r.description.clone(),
-                    impact:      format!("{:?}", r.impact),
-                    action:      r.action.clone(),
+                    impact: format!("{:?}", r.impact),
+                    action: r.action.clone(),
                 })
                 .collect(),
         };

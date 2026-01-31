@@ -11,7 +11,7 @@ use serde::Serialize;
 /// HTML formatter for cargo-wrt reports
 pub struct HtmlFormatter {
     include_css: bool,
-    theme:       HtmlTheme,
+    theme: HtmlTheme,
 }
 
 /// HTML theme configuration
@@ -26,7 +26,7 @@ impl Default for HtmlFormatter {
     fn default() -> Self {
         Self {
             include_css: true,
-            theme:       HtmlTheme::Professional,
+            theme: HtmlTheme::Professional,
         }
     }
 }
@@ -352,37 +352,37 @@ impl HtmlReportGenerator {
 /// Data structures for HTML generation
 #[derive(Debug, Serialize)]
 pub struct RequirementData {
-    pub id:              String,
-    pub title:           String,
-    pub asil_level:      String,
-    pub req_type:        String,
-    pub status:          String,
+    pub id: String,
+    pub title: String,
+    pub asil_level: String,
+    pub req_type: String,
+    pub status: String,
     pub implementations: Vec<String>,
-    pub tests:           Vec<String>,
-    pub documentation:   Vec<String>,
+    pub tests: Vec<String>,
+    pub documentation: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct SafetyReportData {
     pub overall_compliance: f64,
-    pub asil_compliance:    HashMap<String, f64>,
-    pub test_summary:       TestSummaryData,
-    pub recommendations:    Vec<String>,
+    pub asil_compliance: HashMap<String, f64>,
+    pub test_summary: TestSummaryData,
+    pub recommendations: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct TestSummaryData {
-    pub total_tests:         usize,
-    pub passed_tests:        usize,
-    pub failed_tests:        usize,
+    pub total_tests: usize,
+    pub passed_tests: usize,
+    pub failed_tests: usize,
     pub coverage_percentage: f64,
 }
 
 #[derive(Debug, Serialize)]
 pub struct DocumentationReportData {
-    pub overall_compliance:  f64,
-    pub total_requirements:  usize,
-    pub total_violations:    usize,
+    pub overall_compliance: f64,
+    pub total_requirements: usize,
+    pub total_violations: usize,
     pub critical_violations: usize,
-    pub asil_compliance:     HashMap<String, f64>,
+    pub asil_compliance: HashMap<String, f64>,
 }

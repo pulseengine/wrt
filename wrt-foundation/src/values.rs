@@ -212,6 +212,10 @@ pub enum Value {
     ArrayRef(Option<ArrayRef<DefaultMemoryProvider>>),
     /// Exception reference (Exception Handling proposal)
     ExnRef(Option<u32>),
+    /// i31 reference (WebAssembly 3.0 GC) - unboxed 31-bit integer
+    /// The value is stored as a 32-bit signed integer but only 31 bits are used.
+    /// None represents a null i31ref.
+    I31Ref(Option<i32>),
     /// Component Model extensions
     Bool(bool),
     S8(i8),
@@ -260,6 +264,7 @@ impl PartialEq for Value {
             (Value::FuncRef(a), Value::FuncRef(b)) => a == b,
             (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
             (Value::ExnRef(a), Value::ExnRef(b)) => a == b,
+            (Value::I31Ref(a), Value::I31Ref(b)) => a == b,
             (Value::Ref(a), Value::Ref(b)) => a == b,
             (Value::I16x8(a), Value::I16x8(b)) => a == b,
             (Value::StructRef(a), Value::StructRef(b)) => a == b,
@@ -356,6 +361,9 @@ impl Value {
             ValueType::StructRef(_) => Value::StructRef(None),
             ValueType::ArrayRef(_) => Value::ArrayRef(None),
             ValueType::ExnRef => Value::ExnRef(None),
+            ValueType::I31Ref => Value::I31Ref(None),
+            ValueType::AnyRef => Value::ExternRef(None), // AnyRef uses externref representation
+            ValueType::EqRef => Value::I31Ref(None),     // EqRef defaults to i31ref
         }
     }
 
@@ -377,6 +385,7 @@ impl Value {
             Self::StructRef(None) => ValueType::StructRef(0), // Default type index for null
             Self::ArrayRef(Some(a)) => ValueType::ArrayRef(a.type_index),
             Self::ArrayRef(None) => ValueType::ArrayRef(0), // Default type index for null
+            Self::I31Ref(_) => ValueType::I31Ref,
             // Component Model types - these are not standard WebAssembly types
             // Stream/Future handles are represented as I32 in the canonical ABI
             Self::Bool(_) | Self::S8(_) | Self::U8(_) | Self::S16(_) | Self::U16(_) |
@@ -640,6 +649,7 @@ impl Value {
             Self::FuncRef(v) => Self::FuncRef(*v),
             Self::ExternRef(v) => Self::ExternRef(*v),
             Self::ExnRef(v) => Self::ExnRef(*v),
+            Self::I31Ref(v) => Self::I31Ref(*v),
             Self::Ref(v) => Self::Ref(*v),
             // Simple Copy types from Component Model
             Self::Bool(v) => Self::Bool(*v),
@@ -734,6 +744,8 @@ impl Value {
                 writer.write_all(&0u32.to_le_bytes())
             },
             Value::ExnRef(Some(idx)) => writer.write_all(&idx.to_le_bytes()),
+            Value::I31Ref(Some(v)) => writer.write_all(&v.to_le_bytes()),
+            Value::I31Ref(None) => writer.write_all(&0i32.to_le_bytes()),
             Value::StructRef(Some(s)) => writer.write_all(&s.type_index.to_le_bytes()),
             Value::StructRef(None) => writer.write_all(&0u32.to_le_bytes()),
             Value::ArrayRef(Some(a)) => writer.write_all(&a.type_index.to_le_bytes()),
@@ -851,6 +863,28 @@ impl Value {
                 // Exception references not yet supported for byte deserialization
                 Ok(Value::ExnRef(None))
             },
+            ValueType::I31Ref => {
+                if bytes.len() < 4 {
+                    return Err(Error::parse_error("Insufficient bytes for I31Ref"));
+                }
+                let val = i32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
+                    Error::runtime_execution_error("Failed to convert bytes to I31Ref")
+                })?);
+                // Zero is interpreted as null
+                if val == 0 {
+                    Ok(Value::I31Ref(None))
+                } else {
+                    Ok(Value::I31Ref(Some(val)))
+                }
+            },
+            ValueType::AnyRef => {
+                // AnyRef uses externref representation for now
+                Ok(Value::ExternRef(None))
+            },
+            ValueType::EqRef => {
+                // EqRef defaults to null i31ref
+                Ok(Value::I31Ref(None))
+            },
         }
     }
 }
@@ -869,6 +903,8 @@ impl fmt::Display for Value {
             Value::ExternRef(None) => write!(f, "externref:null"),
             Value::ExnRef(Some(v)) => write!(f, "exnref:{v}"),
             Value::ExnRef(None) => write!(f, "exnref:null"),
+            Value::I31Ref(Some(v)) => write!(f, "i31ref:{v}"),
+            Value::I31Ref(None) => write!(f, "i31ref:null"),
             Value::Ref(v) => write!(f, "ref:{v}"),
             Value::I16x8(v) => write!(f, "i16x8:{v:?}"),
             Value::StructRef(Some(v)) => write!(f, "structref:type{}", v.type_index),
@@ -1053,6 +1089,7 @@ impl Checksummable for Value {
             Value::FuncRef(_) => 5u8,
             Value::ExternRef(_) => 6u8,
             Value::ExnRef(_) => 35u8,   // Exception reference
+            Value::I31Ref(_) => 36u8,   // i31 reference (GC)
             Value::Ref(_) => 7u8,       // Generic Ref
             Value::I16x8(_) => 8u8,     // I16x8, distinct from V128 for checksum
             Value::StructRef(_) => 9u8, // Struct reference
@@ -1147,6 +1184,7 @@ impl Checksummable for Value {
             },
             Value::Void => {},
             Value::ExnRef(v) => v.update_checksum(checksum),
+            Value::I31Ref(v) => v.update_checksum(checksum),
         }
     }
 }
@@ -1164,6 +1202,7 @@ impl ToBytes for Value {
             Value::FuncRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::ExternRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::ExnRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::I31Ref(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::Ref(_) => 4,
             Value::StructRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
             Value::ArrayRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
@@ -1229,6 +1268,7 @@ impl ToBytes for Value {
             Value::Stream(_) => 33u8,
             Value::Future(_) => 34u8,
             Value::ExnRef(_) => 35u8,
+            Value::I31Ref(_) => 36u8,
         };
         writer.write_u8(discriminant)?;
 
@@ -1294,6 +1334,13 @@ impl ToBytes for Value {
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
                 if let Some(v) = opt_v {
                     writer.write_u32_le(*v)?;
+                }
+            },
+            Value::I31Ref(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    writer.write_i32_le(*v)?;
                 }
             },
         }

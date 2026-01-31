@@ -593,6 +593,7 @@ pub use type_factory::{
     TypeFactory,
 };
 pub use types::{
+    // Core types
     BlockType,
     DataMode,
     ElementMode,
@@ -604,6 +605,21 @@ pub use types::{
     RefType,
     TableType,
     ValueType,
+    // GC types (WebAssembly 3.0)
+    ArrayType,
+    CompositeType,
+    FieldType,
+    HeapType,
+    GcRefType,
+    PackedType,
+    StorageType,
+    StructType,
+    SubType,
+    // GC constants
+    MAX_STRUCT_FIELDS,
+    MAX_ARRAY_ELEMENTS,
+    MAX_SUPERTYPES,
+    MAX_REC_GROUP_SIZE,
 };
 // Re-export unified types for backward compatibility and new functionality
 pub use unified_types_simple::{

@@ -5,26 +5,20 @@
 
 use std::{
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
 use anyhow::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Project context detected from the workspace
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectContext {
-    pub workspace_root:  PathBuf,
-    pub project_type:    ProjectType,
-    pub features:        ProjectFeatures,
-    pub git_context:     Option<GitContext>,
-    pub ci_context:      Option<CiContext>,
+    pub workspace_root: PathBuf,
+    pub project_type: ProjectType,
+    pub features: ProjectFeatures,
+    pub git_context: Option<GitContext>,
+    pub ci_context: Option<CiContext>,
     pub recommendations: Vec<Recommendation>,
 }
 
@@ -46,36 +40,36 @@ pub enum ProjectType {
 /// Features detected in the project
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProjectFeatures {
-    pub has_tests:               bool,
-    pub has_benchmarks:          bool,
-    pub has_examples:            bool,
-    pub has_docs:                bool,
-    pub has_ci:                  bool,
-    pub has_fuzzing:             bool,
+    pub has_tests: bool,
+    pub has_benchmarks: bool,
+    pub has_examples: bool,
+    pub has_docs: bool,
+    pub has_ci: bool,
+    pub has_fuzzing: bool,
     pub has_safety_verification: bool,
-    pub no_std_support:          bool,
-    pub webassembly_targets:     bool,
+    pub no_std_support: bool,
+    pub webassembly_targets: bool,
 }
 
 /// Git context information
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitContext {
-    pub current_branch:       String,
-    pub is_clean:             bool,
-    pub has_staged_changes:   bool,
+    pub current_branch: String,
+    pub is_clean: bool,
+    pub has_staged_changes: bool,
     pub has_unstaged_changes: bool,
-    pub remote_url:           Option<String>,
-    pub is_github:            bool,
+    pub remote_url: Option<String>,
+    pub is_github: bool,
 }
 
 /// CI/CD context information
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CiContext {
-    pub provider:         CiProvider,
+    pub provider: CiProvider,
     pub is_running_in_ci: bool,
-    pub branch:           Option<String>,
-    pub pr_number:        Option<u32>,
-    pub build_number:     Option<String>,
+    pub branch: Option<String>,
+    pub pr_number: Option<u32>,
+    pub build_number: Option<String>,
 }
 
 /// CI providers
@@ -92,11 +86,11 @@ pub enum CiProvider {
 /// Smart recommendation for user
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Recommendation {
-    pub category:    RecommendationCategory,
-    pub title:       String,
+    pub category: RecommendationCategory,
+    pub title: String,
     pub description: String,
-    pub command:     Option<String>,
-    pub priority:    RecommendationPriority,
+    pub command: Option<String>,
+    pub priority: RecommendationPriority,
 }
 
 /// Recommendation categories
@@ -293,12 +287,12 @@ impl ContextDetector {
         }
 
         Ok(GitContext {
-            current_branch:       "main".to_string(), // Would query actual branch
-            is_clean:             true,               // Would check git status
-            has_staged_changes:   false,
+            current_branch: "main".to_string(), // Would query actual branch
+            is_clean: true,                     // Would check git status
+            has_staged_changes: false,
             has_unstaged_changes: false,
-            remote_url:           None, // Would query git remote
-            is_github:            false,
+            remote_url: None, // Would query git remote
+            is_github: false,
         })
     }
 
@@ -345,23 +339,23 @@ impl ContextDetector {
             ProjectType::WrtWorkspace => {
                 if !features.has_safety_verification {
                     recommendations.push(Recommendation {
-                        category:    RecommendationCategory::Setup,
-                        title:       "Initialize Safety Verification".to_string(),
+                        category: RecommendationCategory::Setup,
+                        title: "Initialize Safety Verification".to_string(),
                         description: "Set up safety verification framework for ASIL compliance"
                             .to_string(),
-                        command:     Some("cargo-wrt init --wrt-requirements".to_string()),
-                        priority:    RecommendationPriority::High,
+                        command: Some("cargo-wrt init --wrt-requirements".to_string()),
+                        priority: RecommendationPriority::High,
                     });
                 }
             },
             ProjectType::Unknown => {
                 recommendations.push(Recommendation {
-                    category:    RecommendationCategory::Setup,
-                    title:       "Project Setup".to_string(),
+                    category: RecommendationCategory::Setup,
+                    title: "Project Setup".to_string(),
                     description: "Initialize a new WRT project or navigate to existing project"
                         .to_string(),
-                    command:     Some("cargo-wrt init".to_string()),
-                    priority:    RecommendationPriority::Critical,
+                    command: Some("cargo-wrt init".to_string()),
+                    priority: RecommendationPriority::Critical,
                 });
             },
             _ => {},
@@ -370,33 +364,33 @@ impl ContextDetector {
         // Test recommendations
         if !features.has_tests {
             recommendations.push(Recommendation {
-                category:    RecommendationCategory::Test,
-                title:       "Add Tests".to_string(),
+                category: RecommendationCategory::Test,
+                title: "Add Tests".to_string(),
                 description: "Create test suite to ensure code quality and reliability".to_string(),
-                command:     Some("cargo-wrt test --create-template".to_string()),
-                priority:    RecommendationPriority::Medium,
+                command: Some("cargo-wrt test --create-template".to_string()),
+                priority: RecommendationPriority::Medium,
             });
         }
 
         // Documentation recommendations
         if !features.has_docs {
             recommendations.push(Recommendation {
-                category:    RecommendationCategory::Documentation,
-                title:       "Generate Documentation".to_string(),
+                category: RecommendationCategory::Documentation,
+                title: "Generate Documentation".to_string(),
                 description: "Create comprehensive API documentation".to_string(),
-                command:     Some("cargo-wrt docs --open".to_string()),
-                priority:    RecommendationPriority::Low,
+                command: Some("cargo-wrt docs --open".to_string()),
+                priority: RecommendationPriority::Low,
             });
         }
 
         // CI/CD recommendations
         if git_context.is_some() && !features.has_ci {
             recommendations.push(Recommendation {
-                category:    RecommendationCategory::Maintenance,
-                title:       "Set Up Continuous Integration".to_string(),
+                category: RecommendationCategory::Maintenance,
+                title: "Set Up Continuous Integration".to_string(),
                 description: "Add automated testing and verification workflows".to_string(),
-                command:     Some("cargo-wrt setup --ci".to_string()),
-                priority:    RecommendationPriority::Medium,
+                command: Some("cargo-wrt setup --ci".to_string()),
+                priority: RecommendationPriority::Medium,
             });
         }
 
@@ -407,12 +401,12 @@ impl ContextDetector {
         ) {
             if !features.has_benchmarks {
                 recommendations.push(Recommendation {
-                    category:    RecommendationCategory::Performance,
-                    title:       "Add Benchmarks".to_string(),
+                    category: RecommendationCategory::Performance,
+                    title: "Add Benchmarks".to_string(),
                     description: "Set up performance benchmarks to track runtime performance"
                         .to_string(),
-                    command:     Some("cargo-wrt benchmark --init".to_string()),
-                    priority:    RecommendationPriority::Suggestion,
+                    command: Some("cargo-wrt benchmark --init".to_string()),
+                    priority: RecommendationPriority::Suggestion,
                 });
             }
         }

@@ -5,34 +5,22 @@
 
 use std::env;
 
-use anyhow::{
-    Context,
-    Result,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 
 use crate::formatters::{
-    create_github_pr_comment,
-    html::{
-        DocumentationReportData,
-        RequirementData,
-        SafetyReportData,
-    },
-    MarkdownFormatter,
-    MarkdownReportGenerator,
+    MarkdownFormatter, MarkdownReportGenerator, create_github_pr_comment,
+    html::{DocumentationReportData, RequirementData, SafetyReportData},
 };
 
 /// GitHub context information from environment variables
 #[derive(Debug, Clone)]
 pub struct GitHubContext {
-    pub token:      String,
+    pub token: String,
     pub repository: String,
-    pub pr_number:  Option<u32>,
-    pub sha:        Option<String>,
-    pub workflow:   Option<String>,
+    pub pr_number: Option<u32>,
+    pub sha: Option<String>,
+    pub workflow: Option<String>,
 }
 
 impl GitHubContext {

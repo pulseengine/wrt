@@ -10,19 +10,19 @@ use colored::Colorize;
 /// Command documentation structure
 #[derive(Debug, Clone)]
 pub struct CommandDoc {
-    pub name:        &'static str,
-    pub brief:       &'static str,
+    pub name: &'static str,
+    pub brief: &'static str,
     pub description: &'static str,
-    pub examples:    Vec<CommandExample>,
-    pub see_also:    Vec<&'static str>,
-    pub category:    CommandCategory,
+    pub examples: Vec<CommandExample>,
+    pub see_also: Vec<&'static str>,
+    pub category: CommandCategory,
 }
 
 /// Command example with description
 #[derive(Debug, Clone)]
 pub struct CommandExample {
-    pub command:       &'static str,
-    pub description:   &'static str,
+    pub command: &'static str,
+    pub description: &'static str,
     pub output_sample: Option<&'static str>,
 }
 
@@ -79,110 +79,110 @@ impl HelpSystem {
     fn register_builtin_commands(&mut self) {
         // Build commands
         self.register_command(CommandDoc {
-            name:        "build",
-            brief:       "Build all WRT components",
+            name: "build",
+            brief: "Build all WRT components",
             description: "Compiles the WRT runtime and all its components with support for \
                           package-specific builds, clippy integration, and format checking.",
-            examples:    vec![
+            examples: vec![
                 CommandExample {
-                    command:       "cargo-wrt build",
-                    description:   "Build all components",
+                    command: "cargo-wrt build",
+                    description: "Build all components",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt build --package wrt-foundation",
-                    description:   "Build only the wrt-foundation package",
+                    command: "cargo-wrt build --package wrt-foundation",
+                    description: "Build only the wrt-foundation package",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt build --clippy --output json",
-                    description:   "Build with clippy checks and JSON diagnostic output",
+                    command: "cargo-wrt build --clippy --output json",
+                    description: "Build with clippy checks and JSON diagnostic output",
                     output_sample: None,
                 },
             ],
-            see_also:    vec!["check", "test", "verify"],
-            category:    CommandCategory::Build,
+            see_also: vec!["check", "test", "verify"],
+            category: CommandCategory::Build,
         });
 
         // Test commands
         self.register_command(CommandDoc {
-            name:        "test",
-            brief:       "Run tests across the workspace",
+            name: "test",
+            brief: "Run tests across the workspace",
             description: "Executes unit tests, integration tests, and doc tests with support for \
                           filtering, package-specific testing, and detailed output control.",
-            examples:    vec![
+            examples: vec![
                 CommandExample {
-                    command:       "cargo-wrt test",
-                    description:   "Run all tests",
+                    command: "cargo-wrt test",
+                    description: "Run all tests",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt test --package wrt-foundation --filter memory",
-                    description:   "Run memory-related tests in wrt-foundation",
+                    command: "cargo-wrt test --package wrt-foundation --filter memory",
+                    description: "Run memory-related tests in wrt-foundation",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt test --nocapture --unit-only",
-                    description:   "Run unit tests only with output capture disabled",
+                    command: "cargo-wrt test --nocapture --unit-only",
+                    description: "Run unit tests only with output capture disabled",
                     output_sample: None,
                 },
             ],
-            see_also:    vec!["build", "verify", "coverage"],
-            category:    CommandCategory::Test,
+            see_also: vec!["build", "verify", "coverage"],
+            category: CommandCategory::Test,
         });
 
         // Verification commands
         self.register_command(CommandDoc {
-            name:        "verify",
-            brief:       "Run safety verification and compliance checks",
+            name: "verify",
+            brief: "Run safety verification and compliance checks",
             description: "Performs comprehensive safety verification including ASIL compliance \
                           checks, formal verification with KANI, and Miri validation.",
-            examples:    vec![
+            examples: vec![
                 CommandExample {
-                    command:       "cargo-wrt verify --asil d",
-                    description:   "Run ASIL-D compliance verification",
+                    command: "cargo-wrt verify --asil d",
+                    description: "Run ASIL-D compliance verification",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt verify --asil c --detailed",
-                    description:   "Detailed ASIL-C verification with full report",
+                    command: "cargo-wrt verify --asil c --detailed",
+                    description: "Detailed ASIL-C verification with full report",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt verify --no-kani --no-miri",
-                    description:   "Basic verification without formal verification tools",
+                    command: "cargo-wrt verify --no-kani --no-miri",
+                    description: "Basic verification without formal verification tools",
                     output_sample: None,
                 },
             ],
-            see_also:    vec!["kani-verify", "safety", "check"],
-            category:    CommandCategory::Verification,
+            see_also: vec!["kani-verify", "safety", "check"],
+            category: CommandCategory::Verification,
         });
 
         // Check commands
         self.register_command(CommandDoc {
-            name:        "check",
-            brief:       "Run static analysis and formatting checks",
+            name: "check",
+            brief: "Run static analysis and formatting checks",
             description: "Performs static analysis using clippy, formatting checks, and other \
                           code quality validations with auto-fix capabilities.",
-            examples:    vec![
+            examples: vec![
                 CommandExample {
-                    command:       "cargo-wrt check",
-                    description:   "Run standard static analysis",
+                    command: "cargo-wrt check",
+                    description: "Run standard static analysis",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt check --strict --fix",
-                    description:   "Strict checking with automatic fixes applied",
+                    command: "cargo-wrt check --strict --fix",
+                    description: "Strict checking with automatic fixes applied",
                     output_sample: None,
                 },
                 CommandExample {
-                    command:       "cargo-wrt check --output json --filter-severity error",
-                    description:   "JSON output showing only errors",
+                    command: "cargo-wrt check --output json --filter-severity error",
+                    description: "JSON output showing only errors",
                     output_sample: None,
                 },
             ],
-            see_also:    vec!["build", "verify", "autofix"],
-            category:    CommandCategory::Build,
+            see_also: vec!["build", "verify", "autofix"],
+            category: CommandCategory::Build,
         });
     }
 

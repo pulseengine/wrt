@@ -7,28 +7,25 @@ use std::collections::HashMap;
 
 use colored::Colorize;
 
-use super::{
-    ProjectContext,
-    RecommendationPriority,
-};
+use super::{ProjectContext, RecommendationPriority};
 
 /// Command suggestion engine
 pub struct CommandSuggestionEngine {
     /// Known commands and their metadata
-    commands:         HashMap<String, CommandInfo>,
+    commands: HashMap<String, CommandInfo>,
     /// Common typos and their corrections
     typo_corrections: HashMap<String, String>,
     /// Workflow patterns
-    workflows:        Vec<WorkflowPattern>,
+    workflows: Vec<WorkflowPattern>,
 }
 
 /// Information about a command
 #[derive(Debug, Clone)]
 struct CommandInfo {
-    name:            String,
-    aliases:         Vec<String>,
-    category:        String,
-    description:     String,
+    name: String,
+    aliases: Vec<String>,
+    category: String,
+    description: String,
     usage_frequency: f64,
     typical_context: Vec<String>,
 }
@@ -36,9 +33,9 @@ struct CommandInfo {
 /// Workflow pattern definition
 #[derive(Debug, Clone)]
 struct WorkflowPattern {
-    name:             String,
-    description:      String,
-    commands:         Vec<String>,
+    name: String,
+    description: String,
+    commands: Vec<String>,
     context_triggers: Vec<String>,
 }
 
@@ -46,10 +43,10 @@ struct WorkflowPattern {
 #[derive(Debug, Clone)]
 pub struct Suggestion {
     pub suggestion_type: SuggestionType,
-    pub command:         String,
-    pub description:     String,
-    pub confidence:      f64,
-    pub reason:          String,
+    pub command: String,
+    pub description: String,
+    pub confidence: f64,
+    pub reason: String,
 }
 
 /// Types of suggestions
@@ -71,9 +68,9 @@ impl CommandSuggestionEngine {
     /// Create a new suggestion engine
     pub fn new() -> Self {
         let mut engine = Self {
-            commands:         HashMap::new(),
+            commands: HashMap::new(),
             typo_corrections: HashMap::new(),
-            workflows:        Vec::new(),
+            workflows: Vec::new(),
         };
 
         engine.initialize_commands();
@@ -86,58 +83,58 @@ impl CommandSuggestionEngine {
     fn initialize_commands(&mut self) {
         let commands = vec![
             CommandInfo {
-                name:            "build".to_string(),
-                aliases:         vec!["b".to_string(), "compile".to_string()],
-                category:        "Build".to_string(),
-                description:     "Build all WRT components".to_string(),
+                name: "build".to_string(),
+                aliases: vec!["b".to_string(), "compile".to_string()],
+                category: "Build".to_string(),
+                description: "Build all WRT components".to_string(),
                 usage_frequency: 0.9,
                 typical_context: vec!["development".to_string(), "ci".to_string()],
             },
             CommandInfo {
-                name:            "test".to_string(),
-                aliases:         vec!["t".to_string(), "tests".to_string()],
-                category:        "Test".to_string(),
-                description:     "Run tests across the workspace".to_string(),
+                name: "test".to_string(),
+                aliases: vec!["t".to_string(), "tests".to_string()],
+                category: "Test".to_string(),
+                description: "Run tests across the workspace".to_string(),
                 usage_frequency: 0.8,
                 typical_context: vec!["development".to_string(), "ci".to_string()],
             },
             CommandInfo {
-                name:            "check".to_string(),
-                aliases:         vec!["c".to_string(), "lint".to_string()],
-                category:        "Quality".to_string(),
-                description:     "Run static analysis and formatting checks".to_string(),
+                name: "check".to_string(),
+                aliases: vec!["c".to_string(), "lint".to_string()],
+                category: "Quality".to_string(),
+                description: "Run static analysis and formatting checks".to_string(),
                 usage_frequency: 0.7,
                 typical_context: vec!["development".to_string(), "pre-commit".to_string()],
             },
             CommandInfo {
-                name:            "verify".to_string(),
-                aliases:         vec!["v".to_string(), "safety".to_string()],
-                category:        "Verification".to_string(),
-                description:     "Run safety verification and compliance checks".to_string(),
+                name: "verify".to_string(),
+                aliases: vec!["v".to_string(), "safety".to_string()],
+                category: "Verification".to_string(),
+                description: "Run safety verification and compliance checks".to_string(),
                 usage_frequency: 0.6,
                 typical_context: vec!["ci".to_string(), "release".to_string()],
             },
             CommandInfo {
-                name:            "clean".to_string(),
-                aliases:         vec!["clear".to_string()],
-                category:        "Maintenance".to_string(),
-                description:     "Clean build artifacts".to_string(),
+                name: "clean".to_string(),
+                aliases: vec!["clear".to_string()],
+                category: "Maintenance".to_string(),
+                description: "Clean build artifacts".to_string(),
                 usage_frequency: 0.3,
                 typical_context: vec!["troubleshooting".to_string()],
             },
             CommandInfo {
-                name:            "docs".to_string(),
-                aliases:         vec!["doc".to_string(), "documentation".to_string()],
-                category:        "Documentation".to_string(),
-                description:     "Generate documentation".to_string(),
+                name: "docs".to_string(),
+                aliases: vec!["doc".to_string(), "documentation".to_string()],
+                category: "Documentation".to_string(),
+                description: "Generate documentation".to_string(),
                 usage_frequency: 0.4,
                 typical_context: vec!["development".to_string(), "release".to_string()],
             },
             CommandInfo {
-                name:            "help".to_string(),
-                aliases:         vec!["h".to_string(), "--help".to_string()],
-                category:        "Help".to_string(),
-                description:     "Show help information".to_string(),
+                name: "help".to_string(),
+                aliases: vec!["h".to_string(), "--help".to_string()],
+                category: "Help".to_string(),
+                description: "Show help information".to_string(),
                 usage_frequency: 0.5,
                 typical_context: vec!["learning".to_string()],
             },
@@ -179,19 +176,15 @@ impl CommandSuggestionEngine {
     fn initialize_workflows(&mut self) {
         self.workflows = vec![
             WorkflowPattern {
-                name:             "Development Cycle".to_string(),
-                description:      "Typical development workflow".to_string(),
-                commands:         vec![
-                    "build".to_string(),
-                    "test".to_string(),
-                    "check".to_string(),
-                ],
+                name: "Development Cycle".to_string(),
+                description: "Typical development workflow".to_string(),
+                commands: vec!["build".to_string(), "test".to_string(), "check".to_string()],
                 context_triggers: vec!["development".to_string(), "feature".to_string()],
             },
             WorkflowPattern {
-                name:             "CI/CD Pipeline".to_string(),
-                description:      "Continuous integration workflow".to_string(),
-                commands:         vec![
+                name: "CI/CD Pipeline".to_string(),
+                description: "Continuous integration workflow".to_string(),
+                commands: vec![
                     "build".to_string(),
                     "test".to_string(),
                     "verify".to_string(),
@@ -199,19 +192,15 @@ impl CommandSuggestionEngine {
                 context_triggers: vec!["ci".to_string(), "pipeline".to_string()],
             },
             WorkflowPattern {
-                name:             "Release Preparation".to_string(),
-                description:      "Preparing for a release".to_string(),
-                commands:         vec![
-                    "verify".to_string(),
-                    "docs".to_string(),
-                    "test".to_string(),
-                ],
+                name: "Release Preparation".to_string(),
+                description: "Preparing for a release".to_string(),
+                commands: vec!["verify".to_string(), "docs".to_string(), "test".to_string()],
                 context_triggers: vec!["release".to_string(), "tag".to_string()],
             },
             WorkflowPattern {
-                name:             "Quick Check".to_string(),
-                description:      "Quick validation before commit".to_string(),
-                commands:         vec!["check".to_string(), "test".to_string()],
+                name: "Quick Check".to_string(),
+                description: "Quick validation before commit".to_string(),
+                commands: vec!["check".to_string(), "test".to_string()],
                 context_triggers: vec!["commit".to_string(), "quick".to_string()],
             },
         ];
@@ -226,10 +215,10 @@ impl CommandSuggestionEngine {
         if let Some(cmd) = self.commands.get(&input_lower) {
             suggestions.push(Suggestion {
                 suggestion_type: SuggestionType::Exact,
-                command:         cmd.name.clone(),
-                description:     cmd.description.clone(),
-                confidence:      1.0,
-                reason:          "Exact match".to_string(),
+                command: cmd.name.clone(),
+                description: cmd.description.clone(),
+                confidence: 1.0,
+                reason: "Exact match".to_string(),
             });
             return suggestions;
         }
@@ -239,10 +228,10 @@ impl CommandSuggestionEngine {
             if cmd.aliases.contains(&input_lower) {
                 suggestions.push(Suggestion {
                     suggestion_type: SuggestionType::Exact,
-                    command:         cmd.name.clone(),
-                    description:     cmd.description.clone(),
-                    confidence:      1.0,
-                    reason:          format!("Alias for '{}'", cmd.name),
+                    command: cmd.name.clone(),
+                    description: cmd.description.clone(),
+                    confidence: 1.0,
+                    reason: format!("Alias for '{}'", cmd.name),
                 });
                 return suggestions;
             }
@@ -253,10 +242,10 @@ impl CommandSuggestionEngine {
             if let Some(cmd) = self.commands.get(correction) {
                 suggestions.push(Suggestion {
                     suggestion_type: SuggestionType::TypoCorrection,
-                    command:         cmd.name.clone(),
-                    description:     cmd.description.clone(),
-                    confidence:      0.9,
-                    reason:          format!("Did you mean '{}'?", cmd.name),
+                    command: cmd.name.clone(),
+                    description: cmd.description.clone(),
+                    confidence: 0.9,
+                    reason: format!("Did you mean '{}'?", cmd.name),
                 });
             }
         }
@@ -267,10 +256,10 @@ impl CommandSuggestionEngine {
             if similarity > 0.6 {
                 suggestions.push(Suggestion {
                     suggestion_type: SuggestionType::Similar,
-                    command:         cmd.name.clone(),
-                    description:     cmd.description.clone(),
-                    confidence:      similarity,
-                    reason:          format!("Similar to '{}'", input),
+                    command: cmd.name.clone(),
+                    description: cmd.description.clone(),
+                    confidence: similarity,
+                    reason: format!("Similar to '{}'", input),
                 });
             }
         }
@@ -370,13 +359,13 @@ impl CommandSuggestionEngine {
                         if let Some(cmd_info) = self.commands.get(cmd) {
                             suggestions.push(Suggestion {
                                 suggestion_type: SuggestionType::Workflow,
-                                command:         cmd.clone(),
-                                description:     format!(
+                                command: cmd.clone(),
+                                description: format!(
                                     "{} (part of {})",
                                     cmd_info.description, workflow.name
                                 ),
-                                confidence:      0.7,
-                                reason:          format!("Suggested by {} workflow", workflow.name),
+                                confidence: 0.7,
+                                reason: format!("Suggested by {} workflow", workflow.name),
                             });
                         }
                     }

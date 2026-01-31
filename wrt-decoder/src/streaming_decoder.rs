@@ -264,8 +264,20 @@ impl<'a> StreamingDecoder<'a> {
     }
 
     /// Process type section
+    ///
+    /// Handles both MVP function types (0x60) and GC proposal types:
+    /// - 0x60 = func (function type)
+    /// - 0x5F = struct (struct type) - parsed but stored separately
+    /// - 0x5E = array (array type) - parsed but stored separately
+    /// - 0x4E = rec (recursive type group)
+    /// - 0x50 = sub (subtype declaration)
+    /// - 0x4F = sub final (final subtype declaration)
     fn process_type_section(&mut self, data: &[u8]) -> Result<()> {
-        use wrt_format::binary::read_leb128_u32;
+        use wrt_format::binary::{
+            read_leb128_u32,
+            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
+            COMPOSITE_TYPE_REC, COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL,
+        };
         use wrt_foundation::types::ValueType;
 
         let mut offset = 0;
@@ -275,79 +287,354 @@ impl<'a> StreamingDecoder<'a> {
         #[cfg(feature = "tracing")]
         trace!(count = count, data_len = data.len(), "process_type_section");
 
-        // Process each type one at a time
-        for i in 0..count {
-            // Check for function type marker (0x60)
+        // Process each type entry one at a time
+        // Note: A type entry can be a single composite type, a subtype, or a rec group
+        let mut i = 0u32;
+        while i < count {
             if offset >= data.len() {
                 return Err(Error::parse_error("Unexpected end of type section"));
             }
 
             let type_marker = data[offset];
-            offset += 1;
 
-            if type_marker != 0x60 {
-                return Err(Error::parse_error("Invalid function type marker"));
-            }
+            match type_marker {
+                COMPOSITE_TYPE_REC => {
+                    // rec group: 0x4E count subtype*
+                    offset += 1;
+                    let (rec_count, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
 
-            // Parse parameter types
-            let (param_count, bytes_read) = read_leb128_u32(data, offset)?;
-            offset += bytes_read;
+                    #[cfg(feature = "tracing")]
+                    trace!(rec_count = rec_count, "process_type_section: rec group");
 
-            #[cfg(feature = "std")]
-            let mut params = Vec::new();
-            #[cfg(not(feature = "std"))]
-            let mut params = alloc::vec::Vec::new();
-
-            for _ in 0..param_count {
-                if offset >= data.len() {
-                    return Err(Error::parse_error("Unexpected end of parameter types"));
+                    // Process each subtype in the recursive group
+                    for _j in 0..rec_count {
+                        offset = self.parse_subtype_entry(data, offset)?;
+                    }
+                    // A rec group with N types counts as N type entries
+                    // But the loop already counted as 1, so we need to account for the rest
+                    // Actually, for type indexing, the rec group entries each get their own index
+                    // The outer count counts rec groups as single entries, but we need to adjust
+                    // For now, treat rec as consuming one entry (the spec says rec is one type entry
+                    // that defines multiple types with consecutive indices)
+                    i += 1;
                 }
-                let param_type = ValueType::from_binary(data[offset])?;
-                offset += 1;
-                params.push(param_type);
-            }
-
-            // Parse result types
-            let (result_count, bytes_read) = read_leb128_u32(data, offset)?;
-            offset += bytes_read;
-
-            #[cfg(feature = "std")]
-            let mut results = Vec::new();
-            #[cfg(not(feature = "std"))]
-            let mut results = alloc::vec::Vec::new();
-
-            for _ in 0..result_count {
-                if offset >= data.len() {
-                    return Err(Error::parse_error("Unexpected end of result types"));
+                COMPOSITE_TYPE_SUB | COMPOSITE_TYPE_SUB_FINAL => {
+                    // subtype: 0x50/0x4F supertype* comptype
+                    offset = self.parse_subtype_entry(data, offset)?;
+                    i += 1;
                 }
-                let result_type = ValueType::from_binary(data[offset])?;
-                offset += 1;
-                results.push(result_type);
-            }
-
-            // Create function type and add to module
-            #[cfg(feature = "std")]
-            {
-                use wrt_foundation::CleanCoreFuncType;
-                let func_type = CleanCoreFuncType { params, results };
-                self.module.types.push(func_type);
-            }
-
-            #[cfg(not(feature = "std"))]
-            {
-                use wrt_foundation::types::FuncType;
-                let func_type = FuncType::new(params.into_iter(), results.into_iter())?;
-                let _ = self.module.types.push(func_type);
+                COMPOSITE_TYPE_FUNC | COMPOSITE_TYPE_STRUCT | COMPOSITE_TYPE_ARRAY => {
+                    // Direct composite type without subtype wrapper
+                    offset = self.parse_composite_type(data, offset)?;
+                    i += 1;
+                }
+                _ => {
+                    return Err(Error::parse_error("Invalid type section marker"));
+                }
             }
 
             #[cfg(feature = "tracing")]
-            trace!(type_index = i, "process_type_section: parsed type");
+            trace!(type_index = i - 1, "process_type_section: parsed type");
         }
 
         #[cfg(feature = "tracing")]
         trace!(types_count = self.module.types.len(), "process_type_section: complete");
 
         Ok(())
+    }
+
+    /// Parse a subtype entry (sub, sub final, or bare composite type)
+    fn parse_subtype_entry(&mut self, data: &[u8], mut offset: usize) -> Result<usize> {
+        use wrt_format::binary::{
+            read_leb128_u32,
+            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
+            COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL,
+        };
+
+        if offset >= data.len() {
+            return Err(Error::parse_error("Unexpected end of subtype entry"));
+        }
+
+        let marker = data[offset];
+
+        match marker {
+            COMPOSITE_TYPE_SUB | COMPOSITE_TYPE_SUB_FINAL => {
+                // sub/sub_final: marker supertype_count supertype* comptype
+                offset += 1;
+                let (supertype_count, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+
+                // Skip supertype indices
+                for _ in 0..supertype_count {
+                    let (_supertype_idx, bytes_read) = read_leb128_u32(data, offset)?;
+                    offset += bytes_read;
+                }
+
+                // Parse the composite type
+                offset = self.parse_composite_type(data, offset)?;
+            }
+            COMPOSITE_TYPE_FUNC | COMPOSITE_TYPE_STRUCT | COMPOSITE_TYPE_ARRAY => {
+                // Direct composite type (implicitly final with no supertypes)
+                offset = self.parse_composite_type(data, offset)?;
+            }
+            _ => {
+                return Err(Error::parse_error("Invalid subtype marker"));
+            }
+        }
+
+        Ok(offset)
+    }
+
+    /// Parse a composite type (func, struct, or array)
+    fn parse_composite_type(&mut self, data: &[u8], mut offset: usize) -> Result<usize> {
+        use wrt_format::binary::{
+            read_leb128_u32,
+            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
+        };
+        use wrt_foundation::types::ValueType;
+
+        if offset >= data.len() {
+            return Err(Error::parse_error("Unexpected end of composite type"));
+        }
+
+        let type_marker = data[offset];
+        offset += 1;
+
+        match type_marker {
+            COMPOSITE_TYPE_FUNC => {
+                // Parse function type: param_count param* result_count result*
+                let (param_count, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+
+                #[cfg(feature = "std")]
+                let mut params = Vec::new();
+                #[cfg(not(feature = "std"))]
+                let mut params = alloc::vec::Vec::new();
+
+                for _ in 0..param_count {
+                    let (vt, new_offset) = self.parse_value_type(data, offset)?;
+                    offset = new_offset;
+                    params.push(vt);
+                }
+
+                let (result_count, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+
+                #[cfg(feature = "std")]
+                let mut results = Vec::new();
+                #[cfg(not(feature = "std"))]
+                let mut results = alloc::vec::Vec::new();
+
+                for _ in 0..result_count {
+                    let (vt, new_offset) = self.parse_value_type(data, offset)?;
+                    offset = new_offset;
+                    results.push(vt);
+                }
+
+                // Store function type
+                #[cfg(feature = "std")]
+                {
+                    use wrt_foundation::CleanCoreFuncType;
+                    let func_type = CleanCoreFuncType { params, results };
+                    self.module.types.push(func_type);
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    use wrt_foundation::types::FuncType;
+                    let func_type = FuncType::new(params.into_iter(), results.into_iter())?;
+                    let _ = self.module.types.push(func_type);
+                }
+            }
+            COMPOSITE_TYPE_STRUCT => {
+                // Parse struct type: field_count field*
+                // field = storage_type mutability
+                let (field_count, bytes_read) = read_leb128_u32(data, offset)?;
+                offset += bytes_read;
+
+                #[cfg(feature = "tracing")]
+                trace!(field_count = field_count, "parse_composite_type: struct");
+
+                for _ in 0..field_count {
+                    // Parse storage type (value type or packed type)
+                    let (_, new_offset) = self.parse_storage_type(data, offset)?;
+                    offset = new_offset;
+
+                    // Parse mutability flag
+                    if offset >= data.len() {
+                        return Err(Error::parse_error("Unexpected end of struct field"));
+                    }
+                    offset += 1; // mut flag
+                }
+
+                // TODO: Store struct type when we have proper GC type storage
+                // For now, we add a placeholder func type to maintain index alignment
+                #[cfg(feature = "std")]
+                {
+                    use wrt_foundation::CleanCoreFuncType;
+                    let placeholder = CleanCoreFuncType { params: Vec::new(), results: Vec::new() };
+                    self.module.types.push(placeholder);
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    use wrt_foundation::types::FuncType;
+                    let placeholder = FuncType::new(core::iter::empty(), core::iter::empty())?;
+                    let _ = self.module.types.push(placeholder);
+                }
+            }
+            COMPOSITE_TYPE_ARRAY => {
+                // Parse array type: storage_type mutability
+                let (_, new_offset) = self.parse_storage_type(data, offset)?;
+                offset = new_offset;
+
+                // Parse mutability flag
+                if offset >= data.len() {
+                    return Err(Error::parse_error("Unexpected end of array type"));
+                }
+                offset += 1; // mut flag
+
+                #[cfg(feature = "tracing")]
+                trace!("parse_composite_type: array");
+
+                // TODO: Store array type when we have proper GC type storage
+                // For now, we add a placeholder func type to maintain index alignment
+                #[cfg(feature = "std")]
+                {
+                    use wrt_foundation::CleanCoreFuncType;
+                    let placeholder = CleanCoreFuncType { params: Vec::new(), results: Vec::new() };
+                    self.module.types.push(placeholder);
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    use wrt_foundation::types::FuncType;
+                    let placeholder = FuncType::new(core::iter::empty(), core::iter::empty())?;
+                    let _ = self.module.types.push(placeholder);
+                }
+            }
+            _ => {
+                return Err(Error::parse_error("Invalid composite type marker"));
+            }
+        }
+
+        Ok(offset)
+    }
+
+    /// Parse a storage type (value type or packed type)
+    fn parse_storage_type(&self, data: &[u8], mut offset: usize) -> Result<(u8, usize)> {
+        use wrt_format::binary::read_leb128_u32;
+
+        if offset >= data.len() {
+            return Err(Error::parse_error("Unexpected end of storage type"));
+        }
+
+        let byte = data[offset];
+
+        // Check for packed types first (i8 = 0x78, i16 = 0x77)
+        if byte == 0x78 || byte == 0x77 {
+            return Ok((byte, offset + 1));
+        }
+
+        // Otherwise parse as value type
+        let (_, new_offset) = self.parse_value_type(data, offset)?;
+        Ok((byte, new_offset))
+    }
+
+    /// Parse a value type (may include GC reference types)
+    fn parse_value_type(&self, data: &[u8], mut offset: usize) -> Result<(wrt_foundation::types::ValueType, usize)> {
+        use wrt_format::binary::{
+            REF_TYPE_NULLABLE, REF_TYPE_NON_NULLABLE,
+        };
+        use wrt_foundation::types::ValueType;
+
+        if offset >= data.len() {
+            return Err(Error::parse_error("Unexpected end of value type"));
+        }
+
+        let byte = data[offset];
+
+        match byte {
+            // Standard value types
+            0x7F => Ok((ValueType::I32, offset + 1)),
+            0x7E => Ok((ValueType::I64, offset + 1)),
+            0x7D => Ok((ValueType::F32, offset + 1)),
+            0x7C => Ok((ValueType::F64, offset + 1)),
+            0x7B => Ok((ValueType::V128, offset + 1)),
+            // Reference types
+            0x70 => Ok((ValueType::FuncRef, offset + 1)),
+            0x6F => Ok((ValueType::ExternRef, offset + 1)),
+            0x69 => Ok((ValueType::ExnRef, offset + 1)),
+            // GC abstract heap type references (shorthand form)
+            0x6E => Ok((ValueType::AnyRef, offset + 1)),      // anyref
+            0x6D => Ok((ValueType::EqRef, offset + 1)),       // eqref
+            0x6C => Ok((ValueType::I31Ref, offset + 1)),      // i31ref
+            0x6B => Ok((ValueType::StructRef(0), offset + 1)), // structref (abstract)
+            0x6A => Ok((ValueType::ArrayRef(0), offset + 1)),  // arrayref (abstract)
+            0x73 => Ok((ValueType::FuncRef, offset + 1)),     // nofunc (bottom for func)
+            0x72 => Ok((ValueType::ExternRef, offset + 1)),   // noextern (bottom for extern)
+            0x71 => Ok((ValueType::AnyRef, offset + 1)),      // none (bottom for any)
+            // GC typed references: (ref null? ht)
+            REF_TYPE_NULLABLE | REF_TYPE_NON_NULLABLE => {
+                offset += 1;
+                // Parse heap type as s33 (signed 33-bit LEB128)
+                let (heap_type_idx, new_offset) = self.parse_heap_type(data, offset)?;
+
+                // Abstract heap types are encoded as negative s33 values:
+                // - 0x70 (func) -> single-byte s33 = -16
+                // - 0x6F (extern) -> -17
+                // - 0x6E (any) -> -18
+                // - 0x6D (eq) -> -19
+                // - 0x6C (i31) -> -20
+                // - 0x6B (struct) -> -21
+                // - 0x6A (array) -> -22
+                // - 0x69 (exn) -> -23
+                // - 0x73 (nofunc) -> -13
+                // - 0x72 (noextern) -> -14
+                // - 0x71 (none) -> -15
+                // Concrete type indices are non-negative.
+
+                if heap_type_idx < 0 {
+                    // Abstract heap type
+                    match heap_type_idx {
+                        -16 => Ok((ValueType::FuncRef, new_offset)),     // func (0x70)
+                        -17 => Ok((ValueType::ExternRef, new_offset)),   // extern (0x6F)
+                        -18 => Ok((ValueType::AnyRef, new_offset)),      // any (0x6E)
+                        -19 => Ok((ValueType::EqRef, new_offset)),       // eq (0x6D)
+                        -20 => Ok((ValueType::I31Ref, new_offset)),      // i31 (0x6C)
+                        -21 => Ok((ValueType::StructRef(0), new_offset)), // struct (0x6B)
+                        -22 => Ok((ValueType::ArrayRef(0), new_offset)),  // array (0x6A)
+                        -23 => Ok((ValueType::ExnRef, new_offset)),      // exn (0x69)
+                        -13 => Ok((ValueType::FuncRef, new_offset)),     // nofunc (0x73) - bottom for func
+                        -14 => Ok((ValueType::ExternRef, new_offset)),   // noextern (0x72)
+                        -15 => Ok((ValueType::AnyRef, new_offset)),      // none (0x71) - bottom for any
+                        _ => Ok((ValueType::AnyRef, new_offset)),        // fallback for unknown
+                    }
+                } else {
+                    // Concrete type index - reference to a defined type
+                    // Use FuncRef for function type refs, StructRef for struct types
+                    Ok((ValueType::StructRef(heap_type_idx as u32), new_offset))
+                }
+            }
+            _ => {
+                // Try to parse as ValueType using existing method
+                let vt = ValueType::from_binary(byte)?;
+                Ok((vt, offset + 1))
+            }
+        }
+    }
+
+    /// Parse a heap type (for GC reference types)
+    fn parse_heap_type(&self, data: &[u8], offset: usize) -> Result<(i64, usize)> {
+        use wrt_format::binary::read_leb128_i64;
+
+        // Heap type is encoded as s33 (signed 33-bit LEB128)
+        // We use i64 reading since it can handle the s33 range.
+        // Abstract heap types are encoded as negative values (0x6E-0x73 range)
+        // Concrete type indices are non-negative
+        let (value, bytes_read) = read_leb128_i64(data, offset)?;
+        Ok((value, offset + bytes_read))
     }
 
     /// Process import section

@@ -5,20 +5,14 @@
 
 use anyhow::Result;
 use wrt_build_core::{
+    BuildSystem,
     cache::CacheManager,
-    diagnostics::{
-        DiagnosticCollection,
-        Severity,
-    },
+    diagnostics::{DiagnosticCollection, Severity},
     filtering::FilterOptionsBuilder,
     formatters::OutputFormat,
-    BuildSystem,
 };
 
-use super::output::{
-    output_diagnostics,
-    OutputManager,
-};
+use super::output::{OutputManager, output_diagnostics};
 use crate::Cli;
 
 /// Parse severity strings to Severity enum
@@ -143,7 +137,7 @@ where
 /// Enhanced diagnostic helper with better integration
 pub struct DiagnosticHelper {
     output: OutputManager,
-    cli:    Cli,
+    cli: Cli,
 }
 
 impl DiagnosticHelper {

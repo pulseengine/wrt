@@ -101,9 +101,10 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                     )),
                     source:      None,
                 }),
-                ValueType::StructRef(_) | ValueType::ArrayRef(_) | ValueType::ExnRef => Err(ConversionError {
+                ValueType::StructRef(_) | ValueType::ArrayRef(_) | ValueType::ExnRef
+                | ValueType::I31Ref | ValueType::AnyRef | ValueType::EqRef => Err(ConversionError {
                     kind:        ConversionErrorKind::InvalidVariant,
-                    source_type: "ValueType::StructRef/ArrayRef/ExnRef",
+                    source_type: "ValueType::StructRef/ArrayRef/ExnRef/GC",
                     target_type: "FormatValType",
                     context:     Some(String::from(
                         "GC/EH types not supported in component model"
@@ -161,9 +162,10 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                 }),
                 ValueType::FuncRef => Ok(TypesValType::<ComponentProvider>::Own(0)), // Default to resource type 0
                 ValueType::ExternRef => Ok(TypesValType::<ComponentProvider>::Ref(0)), // Default to type index 0
-                ValueType::StructRef(_) | ValueType::ArrayRef(_) | ValueType::ExnRef => Err(ConversionError {
+                ValueType::StructRef(_) | ValueType::ArrayRef(_) | ValueType::ExnRef
+                | ValueType::I31Ref | ValueType::AnyRef | ValueType::EqRef => Err(ConversionError {
                     kind:        ConversionErrorKind::InvalidVariant,
-                    source_type: "ValueType::StructRef/ArrayRef/ExnRef",
+                    source_type: "ValueType::StructRef/ArrayRef/ExnRef/GC",
                     target_type: "TypesValType",
                     context:     Some(String::from(
                         "GC/EH types not supported in component model"
