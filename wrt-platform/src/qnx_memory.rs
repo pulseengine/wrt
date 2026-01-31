@@ -73,7 +73,8 @@ mod ffi {
     pub type qnx_mode_t = u32;
     pub type mem_partition_id_t = u32;
 
-    extern "C" {
+    // SAFETY: Edition 2024 requires unsafe extern blocks
+    unsafe extern "C" {
         // Binary std/no_std choice
         pub fn mmap(
             addr: *mut c_void,

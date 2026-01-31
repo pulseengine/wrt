@@ -70,7 +70,8 @@ impl PlatformTime {
             tv_nsec: i64,
         }
 
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
         }
 
@@ -228,7 +229,8 @@ impl PlatformTime {
             tv_nsec: i64,
         }
 
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
         }
 
@@ -255,7 +257,8 @@ impl PlatformTime {
             tv_nsec: i64,
         }
 
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
         }
 

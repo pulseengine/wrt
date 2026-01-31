@@ -83,7 +83,8 @@ mod ffi {
     pub type qnx_pid_t = i32;
     pub type qnx_off_t = i64;
 
-    extern "C" {
+    // SAFETY: Edition 2024 requires unsafe extern blocks
+    unsafe extern "C" {
         // Binary std/no_std choice
         pub fn malloc(size: qnx_size_t) -> *mut c_void;
         pub fn calloc(nmemb: qnx_size_t, size: qnx_size_t) -> *mut c_void;

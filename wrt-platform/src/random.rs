@@ -184,7 +184,8 @@ impl PlatformRandom {
     /// VxWorks implementation using randBytes
     #[cfg(all(feature = "std", target_os = "vxworks"))]
     fn vxworks_random(buffer: &mut [u8]) -> Result<()> {
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn randBytes(pBuf: *mut u8, numBytes: i32) -> i32;
         }
 
@@ -242,8 +243,8 @@ impl PlatformRandom {
     /// Tock OS random implementation
     #[cfg(all(not(feature = "std"), feature = "platform-tock"))]
     fn tock_random(buffer: &mut [u8]) -> Result<()> {
-        // Tock provides a random syscall
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks - Tock provides a random syscall
+        unsafe extern "C" {
             fn tock_random_bytes(buf: *mut u8, len: usize) -> i32;
         }
 

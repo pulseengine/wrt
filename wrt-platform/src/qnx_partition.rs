@@ -49,7 +49,8 @@ mod ffi {
         Container       = 4,
     }
 
-    extern "C" {
+    // SAFETY: Edition 2024 requires unsafe extern blocks
+    unsafe extern "C" {
         // Memory partition management functions
         pub fn mem_partition_create(
             flags: u32,

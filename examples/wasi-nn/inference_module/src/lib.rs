@@ -8,8 +8,9 @@
 use core::panic::PanicInfo;
 
 // WASI-NN imports
+// SAFETY: Edition 2024 requires unsafe extern blocks
 #[link(wasm_import_module = "wasi:nn/inference")]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "load"]
     fn nn_load(
         data_ptr: *const u8,

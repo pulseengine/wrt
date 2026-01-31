@@ -439,7 +439,8 @@ pub mod cbmc_integration {
     /// CBMC-specific annotations for C-level verification
     #[cfg(feature = "cbmc")]
     pub mod cbmc_annotations {
-        extern "C" {
+        // SAFETY: Edition 2024 requires unsafe extern blocks
+        unsafe extern "C" {
             fn __CPROVER_assume(condition: bool);
             fn __CPROVER_assert(condition: bool, description: *const u8);
             fn __CPROVER_cover(condition: bool, description: *const u8);

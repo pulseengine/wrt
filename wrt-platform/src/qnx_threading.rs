@@ -108,7 +108,8 @@ mod ffi {
         pub reserved:          [i32; 6],
     }
 
-    extern "C" {
+    // SAFETY: Edition 2024 requires unsafe extern blocks
+    unsafe extern "C" {
         // Thread creation
         pub fn pthread_create(
             thread: *mut pthread_t,

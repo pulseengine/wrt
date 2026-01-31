@@ -73,7 +73,8 @@ mod ffi {
         Code2     = 0x02,
     }
 
-    extern "C" {
+    // SAFETY: Edition 2024 requires unsafe extern blocks
+    unsafe extern "C" {
         // Channel creation/destruction
         pub fn ChannelCreate(flags: qnx_int_t) -> qnx_chid_t;
         pub fn ChannelDestroy(chid: qnx_chid_t) -> qnx_int_t;
