@@ -6,56 +6,27 @@
 // Core modules
 use core::str;
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use std::{
-    format,
-    string::String,
-};
+use std::{format, string::String};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::{
-    format,
-    string::String,
-    vec::Vec,
-};
+use std::{format, string::String, vec::Vec};
 
 #[cfg(feature = "std")]
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 // Conditional imports for different environments
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    CrateId,
-    WrtVec,
-};
+use wrt_foundation::allocator::{CrateId, WrtVec};
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{
-    BoundedString,
-    BoundedVec,
-};
+use wrt_foundation::bounded::{BoundedString, BoundedVec};
 // wrt_error is imported above unconditionally
 #[cfg(feature = "std")]
-use wrt_foundation::{
-    RefType,
-    ValueType,
-};
+use wrt_foundation::{RefType, ValueType};
 
 use crate::error::parse_error;
 #[cfg(feature = "std")]
-use crate::module::{
-    Element,
-    ElementInit,
-    Module,
-};
+use crate::module::{Element, ElementInit, Module};
 #[cfg(feature = "std")]
 use crate::pure_format_types::{
-    PureDataMode,
-    PureDataSegment,
-    PureElementInit,
-    PureElementMode,
-    PureElementSegment,
+    PureDataMode, PureDataSegment, PureElementInit, PureElementMode, PureElementSegment,
 };
 #[cfg(feature = "std")]
 use crate::types::FormatBlockType;
@@ -93,29 +64,29 @@ pub const EXTERNREF_TYPE: u8 = 0x6F;
 pub const EXNREF_TYPE: u8 = 0x69;
 
 /// WebAssembly GC heap type opcodes (GC proposal)
-pub const HEAP_TYPE_FUNC: u8 = 0x70;     // func
-pub const HEAP_TYPE_EXTERN: u8 = 0x6F;   // extern
-pub const HEAP_TYPE_ANY: u8 = 0x6E;      // any (GC)
-pub const HEAP_TYPE_EQ: u8 = 0x6D;       // eq (GC)
-pub const HEAP_TYPE_I31: u8 = 0x6C;      // i31 (GC)
-pub const HEAP_TYPE_STRUCT: u8 = 0x6B;   // struct (GC)
-pub const HEAP_TYPE_ARRAY: u8 = 0x6A;    // array (GC)
-pub const HEAP_TYPE_EXN: u8 = 0x69;      // exn (exception handling)
-pub const HEAP_TYPE_NOFUNC: u8 = 0x73;   // nofunc (bottom type for func)
+pub const HEAP_TYPE_FUNC: u8 = 0x70; // func
+pub const HEAP_TYPE_EXTERN: u8 = 0x6F; // extern
+pub const HEAP_TYPE_ANY: u8 = 0x6E; // any (GC)
+pub const HEAP_TYPE_EQ: u8 = 0x6D; // eq (GC)
+pub const HEAP_TYPE_I31: u8 = 0x6C; // i31 (GC)
+pub const HEAP_TYPE_STRUCT: u8 = 0x6B; // struct (GC)
+pub const HEAP_TYPE_ARRAY: u8 = 0x6A; // array (GC)
+pub const HEAP_TYPE_EXN: u8 = 0x69; // exn (exception handling)
+pub const HEAP_TYPE_NOFUNC: u8 = 0x73; // nofunc (bottom type for func)
 pub const HEAP_TYPE_NOEXTERN: u8 = 0x72; // noextern (bottom type for extern)
-pub const HEAP_TYPE_NONE: u8 = 0x71;     // none (bottom type for any)
+pub const HEAP_TYPE_NONE: u8 = 0x71; // none (bottom type for any)
 
 /// WebAssembly GC reference type prefixes
 pub const REF_TYPE_NON_NULLABLE: u8 = 0x64; // ref ht (non-nullable)
-pub const REF_TYPE_NULLABLE: u8 = 0x63;     // ref null ht (nullable)
+pub const REF_TYPE_NULLABLE: u8 = 0x63; // ref null ht (nullable)
 
 /// WebAssembly GC composite type markers
-pub const COMPOSITE_TYPE_ARRAY: u8 = 0x5E;     // array field
-pub const COMPOSITE_TYPE_STRUCT: u8 = 0x5F;    // struct fields
-pub const COMPOSITE_TYPE_FUNC: u8 = 0x60;      // func params results
-pub const COMPOSITE_TYPE_REC: u8 = 0x4E;       // rec types
+pub const COMPOSITE_TYPE_ARRAY: u8 = 0x5E; // array field
+pub const COMPOSITE_TYPE_STRUCT: u8 = 0x5F; // struct fields
+pub const COMPOSITE_TYPE_FUNC: u8 = 0x60; // func params results
+pub const COMPOSITE_TYPE_REC: u8 = 0x4E; // rec types
 pub const COMPOSITE_TYPE_SUB_FINAL: u8 = 0x4F; // sub final supertypes
-pub const COMPOSITE_TYPE_SUB: u8 = 0x50;       // sub supertypes
+pub const COMPOSITE_TYPE_SUB: u8 = 0x50; // sub supertypes
 
 /// WebAssembly GC field mutability
 pub const FIELD_MUTABLE: u8 = 0x01;
@@ -251,7 +222,7 @@ pub const MEMORY_INIT_SUFFIX: u8 = 0x08; // memory.init d:datasegidx, x:memidx (
 pub const DATA_DROP_SUFFIX: u8 = 0x09; // data.drop d:datasegidx
 pub const MEMORY_COPY_SUFFIX: u8 = 0x0A; // memory.copy d:memidx, s:memidx (implicit 0,0)
 pub const MEMORY_FILL_SUFFIX: u8 = 0x0B; // memory.fill d:memidx (implicit 0)
-                                         // Table Operations (FC prefix)
+// Table Operations (FC prefix)
 pub const TABLE_INIT_SUFFIX: u8 = 0x0C; // table.init x:tableidx, e:elemsegidx
 pub const ELEM_DROP_SUFFIX: u8 = 0x0D; // elem.drop e:elemsegidx
 pub const TABLE_COPY_SUFFIX: u8 = 0x0E; // table.copy x:tableidx, y:tableidx
@@ -323,7 +294,7 @@ pub const I8X16_MIN_S_OPCODE_SUFFIX: u32 = 0x4E; // Wasm 2.0
 pub const I8X16_MIN_U_OPCODE_SUFFIX: u32 = 0x4F; // Wasm 2.0
 pub const I8X16_MAX_S_OPCODE_SUFFIX: u32 = 0x50; // Wasm 2.0
 pub const I8X16_MAX_U_OPCODE_SUFFIX: u32 = 0x51; // Wasm 2.0
-                                                 // ... other i8x16 arithmetic (mul, avgr_u)
+// ... other i8x16 arithmetic (mul, avgr_u)
 
 // v128 bitwise operations
 pub const V128_AND_OPCODE_SUFFIX: u32 = 0x5C;
@@ -1642,7 +1613,7 @@ pub mod with_alloc {
                     match case_type {
                         Some(_ty) => {
                             result.push(1); // Has type flag
-                                            // ty is now ValTypeRef, need type store to resolve
+                            // ty is now ValTypeRef, need type store to resolve
                             result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder
                         },
                         None => {
@@ -1727,7 +1698,9 @@ pub mod with_alloc {
         let layer_version = bytes[4];
         if layer_version == 0 || layer_version > 0x1F {
             // Layer 0 is invalid, accept up to layer 31 for future compatibility
-            return Err(parse_error("Unsupported WebAssembly component layer version"));
+            return Err(parse_error(
+                "Unsupported WebAssembly component layer version",
+            ));
         }
 
         if bytes.len() < 10 {
@@ -1881,9 +1854,9 @@ pub mod with_alloc {
 
         Ok((
             crate::types::Limits {
-                min:      min.into(),
-                max:      max.map(Into::into),
-                shared:   false,
+                min: min.into(),
+                max: max.map(Into::into),
+                shared: false,
                 memory64: false,
             }, // Assuming default shared/memory64
             current_offset,
@@ -1970,7 +1943,7 @@ pub mod with_alloc {
                 // constant. Vector ops (v128.const) could also be here if SIMD
                 // consts are allowed.
                 _ => { // other opcodes - assuming they have no immediates or are
-                     // invalid in const expr
+                    // invalid in const expr
                 },
             }
         }
@@ -1989,7 +1962,12 @@ pub mod with_alloc {
         })?;
         offset = next_offset;
 
-        let (element_type, init, mode, stored_offset_expr): (RefType, ElementInit, PureElementMode, Vec<u8>);
+        let (element_type, init, mode, stored_offset_expr): (
+            RefType,
+            ElementInit,
+            PureElementMode,
+            Vec<u8>,
+        );
 
         match prefix_val {
             0x00 => {
@@ -2160,7 +2138,7 @@ pub mod with_alloc {
             0x04 => {
                 // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
                 let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows
-                                   // tableidx field
+                // tableidx field
                 let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
                     crate::error::parse_error_dynamic(format!(
                         "(offset {}): Failed to parse offset_expr for element segment (type 4): {}",
@@ -2331,7 +2309,7 @@ pub mod with_alloc {
                     "(offset {}): Invalid element segment prefix: 0x{:02X}",
                     offset.saturating_sub(1),
                     prefix_val
-                )))
+                )));
             },
         }
 
@@ -2378,12 +2356,12 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode:              PureDataMode::Active {
+                        mode: PureDataMode::Active {
                             memory_index,
                             offset_expr_len: offset_expr.len() as u32,
                         },
                         offset_expr_bytes: offset_expr,
-                        data_bytes:        init_data,
+                        data_bytes: init_data,
                     },
                     offset,
                 ))
@@ -2403,9 +2381,9 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode:              PureDataMode::Passive,
+                        mode: PureDataMode::Passive,
                         offset_expr_bytes: Vec::new(), // Not applicable for passive
-                        data_bytes:        init_data,
+                        data_bytes: init_data,
                     },
                     offset,
                 ))
@@ -2431,12 +2409,12 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode:              PureDataMode::Active {
+                        mode: PureDataMode::Active {
                             memory_index,
                             offset_expr_len: offset_expr.len() as u32,
                         },
                         offset_expr_bytes: offset_expr,
-                        data_bytes:        init_data,
+                        data_bytes: init_data,
                     },
                     offset,
                 ))
@@ -2810,7 +2788,7 @@ pub mod with_alloc {
                     "(offset {}): Invalid element segment prefix: 0x{:02X}",
                     offset.saturating_sub(1),
                     prefix_val
-                )))
+                )));
             },
         }
 

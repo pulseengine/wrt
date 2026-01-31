@@ -111,71 +111,36 @@ pub mod toml_config;
 #[cfg(feature = "std")]
 pub use component::decode_no_alloc;
 pub use decoder_no_alloc::{
-    create_memory_provider,
-    decode_module_header,
-    extract_section_info,
-    validate_module_no_alloc,
+    MAX_MODULE_SIZE, SectionId, SectionInfo, ValidatorType, WasmModuleHeader,
+    create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
     verify_wasm_header,
-    SectionId,
-    SectionInfo,
-    ValidatorType,
-    WasmModuleHeader,
-    MAX_MODULE_SIZE,
 };
 // Lazy detection exports
 pub use lazy_detection::{
-    create_fast_detector,
+    ComponentDetection, DetectionConfig, LazyDetector, create_fast_detector,
     create_thorough_detector,
-    ComponentDetection,
-    DetectionConfig,
-    LazyDetector,
 };
 // Shared cache exports
 pub use shared_cache::{
-    create_cache_with_size,
+    CacheManager, CacheStats, DecodedCache, SectionData, create_cache_with_size,
     create_default_cache,
-    CacheManager,
-    CacheStats,
-    DecodedCache,
-    SectionData,
 };
 // Streaming validator exports
 pub use streaming_validator::{
-    CodeSection,
-    ComprehensivePlatformLimits,
-    MemorySection,
-    PlatformId,
-    PlatformWasmValidatorFactory,
-    Section,
-    StreamingWasmValidator,
-    WasmConfiguration,
+    CodeSection, ComprehensivePlatformLimits, MemorySection, PlatformId,
+    PlatformWasmValidatorFactory, Section, StreamingWasmValidator, WasmConfiguration,
     WasmRequirements,
 };
 // Unified loader exports
 pub use unified_loader::{
-    load_wasm_unified,
-    ComponentInfo,
-    ExportInfo,
-    ExportType,
-    ImportInfo,
-    ImportType,
-    ModuleInfo,
-    WasmFormat,
-    WasmInfo,
+    ComponentInfo, ExportInfo, ExportType, ImportInfo, ImportType, ModuleInfo, WasmFormat,
+    WasmInfo, load_wasm_unified,
 };
-pub use wrt_error::{
-    codes,
-    kinds,
-    Error,
-    Result,
-};
+pub use wrt_error::{Error, Result, codes, kinds};
 // Essential re-exports only
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
-pub use wrt_foundation::safe_memory::{
-    MemoryProvider,
-    SafeSlice,
-};
+pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 
 /// Validate WebAssembly header
 ///

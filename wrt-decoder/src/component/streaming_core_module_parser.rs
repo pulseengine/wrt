@@ -32,18 +32,9 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::{
-    binary::{
-        read_leb128_u32,
-        WASM_MAGIC,
-        WASM_VERSION,
-    },
+    binary::{WASM_MAGIC, WASM_VERSION, read_leb128_u32},
     module::Module,
 };
 
@@ -53,18 +44,13 @@ type CoreModule = Module;
 #[cfg(feature = "std")]
 use wrt_format::component::Component;
 use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_memory::NoStdProvider,
-    BoundedVec,
-    VerificationLevel,
+    BoundedVec, VerificationLevel, budget_aware_provider::CrateId, safe_memory::NoStdProvider,
 };
 
 // Import the unified bounded decoder infrastructure
 #[cfg(not(feature = "std"))]
 use crate::bounded_decoder_infra::{
-    create_decoder_provider,
-    BoundedModuleVec,
-    MAX_MODULES_PER_COMPONENT,
+    BoundedModuleVec, MAX_MODULES_PER_COMPONENT, create_decoder_provider,
 };
 
 // For std mode, provide basic constants
@@ -85,9 +71,9 @@ type DecoderProvider = NoStdProvider<65536>;
 /// system.
 pub struct StreamingCoreModuleParser<'a> {
     /// Binary data being parsed
-    data:               &'a [u8],
+    data: &'a [u8],
     /// Current parsing offset
-    offset:             usize,
+    offset: usize,
     /// Verification level for parsing strictness
     verification_level: VerificationLevel,
 }
@@ -96,13 +82,13 @@ pub struct StreamingCoreModuleParser<'a> {
 #[derive(Debug)]
 pub struct CoreModuleSection {
     /// Number of modules parsed
-    pub module_count:   u32,
+    pub module_count: u32,
     /// Total bytes consumed
     pub bytes_consumed: usize,
     /// Modules parsed using capability-managed storage (simplified for core
     /// module streaming)
-    modules:            Vec<CoreModule>, /* Use Vec for now until Module implements all required
-                                          * traits */
+    modules: Vec<CoreModule>, /* Use Vec for now until Module implements all required
+                               * traits */
 }
 
 impl<'a> StreamingCoreModuleParser<'a> {

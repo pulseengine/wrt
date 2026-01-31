@@ -2,35 +2,29 @@
 
 use std::path::PathBuf;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::error::{
-    BuildError,
-    BuildResult,
-};
+use crate::error::{BuildError, BuildResult};
 
 /// Build configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildConfig {
     /// Whether to enable verbose output
-    pub verbose:        bool,
+    pub verbose: bool,
     /// Number of parallel jobs (-1 for auto)
-    pub jobs:           i32,
+    pub jobs: i32,
     /// Build profile (dev, release, test)
-    pub profile:        BuildProfile,
+    pub profile: BuildProfile,
     /// Target architecture filter
-    pub target_filter:  Vec<String>,
+    pub target_filter: Vec<String>,
     /// Feature flags to enable
-    pub features:       Vec<String>,
+    pub features: Vec<String>,
     /// Whether to run clippy checks
-    pub clippy:         bool,
+    pub clippy: bool,
     /// Whether to run format checks
-    pub format_check:   bool,
+    pub format_check: bool,
     /// Show commands without executing them
-    pub dry_run:        bool,
+    pub dry_run: bool,
     /// Trace all external commands being executed
     pub trace_commands: bool,
 }
@@ -55,14 +49,14 @@ impl Default for BuildProfile {
 impl Default for BuildConfig {
     fn default() -> Self {
         Self {
-            verbose:        false,
-            jobs:           -1, // Auto-detect
-            profile:        BuildProfile::default(),
-            target_filter:  vec![],
-            features:       vec![],
-            clippy:         true,
-            format_check:   true,
-            dry_run:        false,
+            verbose: false,
+            jobs: -1, // Auto-detect
+            profile: BuildProfile::default(),
+            target_filter: vec![],
+            features: vec![],
+            clippy: true,
+            format_check: true,
+            dry_run: false,
             trace_commands: false,
         }
     }
@@ -72,13 +66,13 @@ impl Default for BuildConfig {
 #[derive(Debug, Clone)]
 pub struct WorkspaceConfig {
     /// Root directory of the workspace
-    pub root:         PathBuf,
+    pub root: PathBuf,
     /// List of member crates
-    pub members:      Vec<String>,
+    pub members: Vec<String>,
     /// Workspace-level dependencies
     pub dependencies: Vec<String>,
     /// ASIL level for safety verification
-    pub asil_level:   AsilLevel,
+    pub asil_level: AsilLevel,
 }
 
 /// ASIL (Automotive Safety Integrity Level) configuration

@@ -10,60 +10,33 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
     time::Duration,
 };
 
 use wrt_component::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_bridge::{
-            AsyncBridgeConfig,
-            FuelAsyncBridge,
-        },
+        fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
 
-        fuel_async_channels::{
-            ChannelId,
-            FuelAsyncChannelManager,
-        },
+        fuel_async_channels::{ChannelId, FuelAsyncChannelManager},
         // Phase 1 components
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
-        fuel_async_scheduler::{
-            FuelAsyncScheduler,
-            SchedulingPolicy,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
+        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
         // Phase 3 components
         fuel_deadline_scheduler::{
-            AsilLevel,
-            CriticalityMode,
-            DeadlineSchedulerConfig,
-            FuelDeadlineScheduler,
+            AsilLevel, CriticalityMode, DeadlineSchedulerConfig, FuelDeadlineScheduler,
         },
-        fuel_preemptive_scheduler::{
-            FuelPreemptiveScheduler,
-            PreemptiveSchedulerConfig,
-        },
+        fuel_preemptive_scheduler::{FuelPreemptiveScheduler, PreemptiveSchedulerConfig},
 
         // Phase 2 components
-        fuel_priority_inheritance::{
-            FuelPriorityInheritanceProtocol,
-            ResourceId,
-        },
+        fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
         fuel_wcet_analyzer::{
-            FuelWcetAnalyzer,
-            WcetAnalysisMethod,
-            WcetAnalysisResult,
-            WcetAnalyzerConfig,
+            FuelWcetAnalyzer, WcetAnalysisMethod, WcetAnalysisResult, WcetAnalyzerConfig,
         },
     },
     prelude::*,
     task_manager::TaskId,
-    ComponentInstanceId,
 };
 use wrt_foundation::verification::VerificationLevel;
 use wrt_platform::advanced_sync::Priority;
@@ -71,32 +44,32 @@ use wrt_platform::advanced_sync::Priority;
 /// Deadline-constrained test task with WCET profile
 struct DeadlineConstrainedTask {
     /// Task identifier
-    task_id:          TaskId,
+    task_id: TaskId,
     /// Component this task belongs to
-    component_id:     ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// ASIL criticality level
-    asil_level:       AsilLevel,
+    asil_level: AsilLevel,
     /// Task period
-    period:           Duration,
+    period: Duration,
     /// Task deadline (≤ period)
-    deadline:         Duration,
+    deadline: Duration,
     /// Simulated execution phases with different fuel consumption
     execution_phases: Vec<ExecutionPhase>,
     /// Current phase index
-    current_phase:    usize,
+    current_phase: usize,
     /// Fuel consumed so far in this execution
-    fuel_consumed:    u64,
+    fuel_consumed: u64,
     /// Whether task completed successfully
-    completed:        bool,
+    completed: bool,
 }
 
 /// Phase of task execution with specific fuel consumption
 #[derive(Clone, Copy)]
 struct ExecutionPhase {
     /// Fuel to consume in this phase
-    fuel_cost:          u64,
+    fuel_cost: u64,
     /// Minimum execution time for this phase
-    min_duration:       u64,
+    min_duration: u64,
     /// Whether this phase can vary in execution time
     variable_execution: bool,
 }
@@ -104,86 +77,86 @@ struct ExecutionPhase {
 impl DeadlineConstrainedTask {
     fn new_asil_c_control_task() -> Self {
         Self {
-            task_id:          TaskId::new(1),
-            component_id:     ComponentInstanceId::new(1),
-            asil_level:       AsilLevel::C,
-            period:           Duration::from_millis(50),
-            deadline:         Duration::from_millis(40), // Constrained deadline
+            task_id: TaskId::new(1),
+            component_id: ComponentInstanceId::new(1),
+            asil_level: AsilLevel::C,
+            period: Duration::from_millis(50),
+            deadline: Duration::from_millis(40), // Constrained deadline
             execution_phases: vec![
                 ExecutionPhase {
-                    fuel_cost:          15,
-                    min_duration:       5,
+                    fuel_cost: 15,
+                    min_duration: 5,
                     variable_execution: false,
                 }, // Sensor reading
                 ExecutionPhase {
-                    fuel_cost:          25,
-                    min_duration:       10,
+                    fuel_cost: 25,
+                    min_duration: 10,
                     variable_execution: true,
                 }, // Control calculation
                 ExecutionPhase {
-                    fuel_cost:          10,
-                    min_duration:       3,
+                    fuel_cost: 10,
+                    min_duration: 3,
                     variable_execution: false,
                 }, // Actuator command
             ],
-            current_phase:    0,
-            fuel_consumed:    0,
-            completed:        false,
+            current_phase: 0,
+            fuel_consumed: 0,
+            completed: false,
         }
     }
 
     fn new_asil_b_monitoring_task() -> Self {
         Self {
-            task_id:          TaskId::new(2),
-            component_id:     ComponentInstanceId::new(2),
-            asil_level:       AsilLevel::B,
-            period:           Duration::from_millis(100),
-            deadline:         Duration::from_millis(80),
+            task_id: TaskId::new(2),
+            component_id: ComponentInstanceId::new(2),
+            asil_level: AsilLevel::B,
+            period: Duration::from_millis(100),
+            deadline: Duration::from_millis(80),
             execution_phases: vec![
                 ExecutionPhase {
-                    fuel_cost:          20,
-                    min_duration:       8,
+                    fuel_cost: 20,
+                    min_duration: 8,
                     variable_execution: true,
                 }, // Data collection
                 ExecutionPhase {
-                    fuel_cost:          15,
-                    min_duration:       5,
+                    fuel_cost: 15,
+                    min_duration: 5,
                     variable_execution: false,
                 }, // Analysis
                 ExecutionPhase {
-                    fuel_cost:          8,
-                    min_duration:       2,
+                    fuel_cost: 8,
+                    min_duration: 2,
                     variable_execution: false,
                 }, // Report
             ],
-            current_phase:    0,
-            fuel_consumed:    0,
-            completed:        false,
+            current_phase: 0,
+            fuel_consumed: 0,
+            completed: false,
         }
     }
 
     fn new_background_task() -> Self {
         Self {
-            task_id:          TaskId::new(3),
-            component_id:     ComponentInstanceId::new(3),
-            asil_level:       AsilLevel::QM,
-            period:           Duration::from_millis(200),
-            deadline:         Duration::from_millis(200), // Deadline = period
+            task_id: TaskId::new(3),
+            component_id: ComponentInstanceId::new(3),
+            asil_level: AsilLevel::QM,
+            period: Duration::from_millis(200),
+            deadline: Duration::from_millis(200), // Deadline = period
             execution_phases: vec![
                 ExecutionPhase {
-                    fuel_cost:          30,
-                    min_duration:       15,
+                    fuel_cost: 30,
+                    min_duration: 15,
                     variable_execution: true,
                 }, // Background processing
                 ExecutionPhase {
-                    fuel_cost:          20,
-                    min_duration:       10,
+                    fuel_cost: 20,
+                    min_duration: 10,
                     variable_execution: true,
                 }, // Cleanup
             ],
-            current_phase:    0,
-            fuel_consumed:    0,
-            completed:        false,
+            current_phase: 0,
+            fuel_consumed: 0,
+            completed: false,
         }
     }
 
@@ -193,7 +166,7 @@ impl DeadlineConstrainedTask {
             .map(|phase| {
                 if phase.variable_execution {
                     phase.fuel_cost + (phase.fuel_cost / 4) // Add 25% for
-                                                            // variability
+                // variability
                 } else {
                     phase.fuel_cost
                 }
@@ -207,7 +180,7 @@ impl DeadlineConstrainedTask {
             .map(|phase| {
                 if phase.variable_execution {
                     phase.fuel_cost - (phase.fuel_cost / 4) // Subtract 25% for
-                                                            // best case
+                // best case
                 } else {
                     phase.fuel_cost
                 }
@@ -329,14 +302,14 @@ mod tests {
     fn test_phase3_deadline_scheduler_configuration() {
         // Test deadline scheduler with ASIL-C configuration
         let config = DeadlineSchedulerConfig {
-            enable_hybrid_scheduling:     true,
+            enable_hybrid_scheduling: true,
             enable_criticality_switching: true,
-            enable_wcet_enforcement:      true,
-            enable_deadline_monitoring:   true,
-            max_utilization_per_level:    0.7,
-            global_utilization_bound:     0.69, // RM bound
-            deadline_miss_threshold:      2,
-            scheduling_overhead_factor:   1.1,
+            enable_wcet_enforcement: true,
+            enable_deadline_monitoring: true,
+            max_utilization_per_level: 0.7,
+            global_utilization_bound: 0.69, // RM bound
+            deadline_miss_threshold: 2,
+            scheduling_overhead_factor: 1.1,
         };
 
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Full).unwrap();
@@ -691,26 +664,26 @@ mod tests {
 
         // 1. Set up WCET analyzer with strict safety margins
         let wcet_config = WcetAnalyzerConfig {
-            default_method:         WcetAnalysisMethod::Hybrid,
-            required_confidence:    0.999, // 99.9% confidence for ASIL-C
-            safety_margin_factor:   1.3,   // 30% safety margin
+            default_method: WcetAnalysisMethod::Hybrid,
+            required_confidence: 0.999, // 99.9% confidence for ASIL-C
+            safety_margin_factor: 1.3,  // 30% safety margin
             enable_online_sampling: true,
-            enable_path_analysis:   true,
-            min_samples_for_stats:  20,
+            enable_path_analysis: true,
+            min_samples_for_stats: 20,
         };
         let mut wcet_analyzer =
             FuelWcetAnalyzer::new(wcet_config, VerificationLevel::Full).unwrap();
 
         // 2. Set up deadline scheduler with ASIL-C configuration
         let scheduler_config = DeadlineSchedulerConfig {
-            enable_hybrid_scheduling:     true,
+            enable_hybrid_scheduling: true,
             enable_criticality_switching: true,
-            enable_wcet_enforcement:      true,
-            enable_deadline_monitoring:   true,
-            max_utilization_per_level:    0.6, // Conservative for ASIL-C
-            global_utilization_bound:     0.5, // Very conservative
-            deadline_miss_threshold:      1,   // Strict threshold
-            scheduling_overhead_factor:   1.15, // Account for analysis overhead
+            enable_wcet_enforcement: true,
+            enable_deadline_monitoring: true,
+            max_utilization_per_level: 0.6, // Conservative for ASIL-C
+            global_utilization_bound: 0.5,  // Very conservative
+            deadline_miss_threshold: 1,     // Strict threshold
+            scheduling_overhead_factor: 1.15, // Account for analysis overhead
         };
         let mut scheduler =
             FuelDeadlineScheduler::new(scheduler_config, VerificationLevel::Full).unwrap();
@@ -990,14 +963,14 @@ mod examples {
 
         // 2. Create deadline scheduler with ASIL-C constraints
         let scheduler_config = DeadlineSchedulerConfig {
-            enable_hybrid_scheduling:     true,
+            enable_hybrid_scheduling: true,
             enable_criticality_switching: true,
-            enable_wcet_enforcement:      true,
-            enable_deadline_monitoring:   true,
-            max_utilization_per_level:    0.6,
-            global_utilization_bound:     0.5,
-            deadline_miss_threshold:      1,
-            scheduling_overhead_factor:   1.15,
+            enable_wcet_enforcement: true,
+            enable_deadline_monitoring: true,
+            max_utilization_per_level: 0.6,
+            global_utilization_bound: 0.5,
+            deadline_miss_threshold: 1,
+            scheduling_overhead_factor: 1.15,
         };
         let deadline_scheduler =
             FuelDeadlineScheduler::new(scheduler_config, VerificationLevel::Full)?;

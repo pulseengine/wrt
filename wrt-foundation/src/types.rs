@@ -1856,6 +1856,94 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     // Atomic fence
     AtomicFence,
 
+    // =========================================================================
+    // GC Instructions (0xFB prefix) - WebAssembly GC Proposal
+    // =========================================================================
+
+    // Struct operations
+    /// struct.new: allocate struct with field values from stack (0xFB 0x00)
+    StructNew(TypeIdx),
+    /// struct.new_default: allocate struct with default field values (0xFB 0x01)
+    StructNewDefault(TypeIdx),
+    /// struct.get: read struct field (0xFB 0x02)
+    StructGet(TypeIdx, u32), // type_idx, field_idx
+    /// struct.get_s: read struct field with sign extension (0xFB 0x03)
+    StructGetS(TypeIdx, u32),
+    /// struct.get_u: read struct field with zero extension (0xFB 0x04)
+    StructGetU(TypeIdx, u32),
+    /// struct.set: write struct field (0xFB 0x05)
+    StructSet(TypeIdx, u32),
+
+    // Array operations
+    /// array.new: allocate array with initial value (0xFB 0x06)
+    ArrayNew(TypeIdx),
+    /// array.new_default: allocate array with default values (0xFB 0x07)
+    ArrayNewDefault(TypeIdx),
+    /// array.new_fixed: allocate array with fixed size from stack (0xFB 0x08)
+    ArrayNewFixed(TypeIdx, u32), // type_idx, length
+    /// array.new_data: allocate array from data segment (0xFB 0x09)
+    ArrayNewData(TypeIdx, u32), // type_idx, data_idx
+    /// array.new_elem: allocate array from element segment (0xFB 0x0A)
+    ArrayNewElem(TypeIdx, u32), // type_idx, elem_idx
+    /// array.get: read array element (0xFB 0x0B)
+    ArrayGet(TypeIdx),
+    /// array.get_s: read array element with sign extension (0xFB 0x0C)
+    ArrayGetS(TypeIdx),
+    /// array.get_u: read array element with zero extension (0xFB 0x0D)
+    ArrayGetU(TypeIdx),
+    /// array.set: write array element (0xFB 0x0E)
+    ArraySet(TypeIdx),
+    /// array.len: get array length (0xFB 0x0F)
+    ArrayLen,
+    /// array.fill: fill array range with value (0xFB 0x10)
+    ArrayFill(TypeIdx),
+    /// array.copy: copy between arrays (0xFB 0x11)
+    ArrayCopy(TypeIdx, TypeIdx), // dst_type, src_type
+    /// array.init_data: initialize array from data segment (0xFB 0x12)
+    ArrayInitData(TypeIdx, u32), // type_idx, data_idx
+    /// array.init_elem: initialize array from element segment (0xFB 0x13)
+    ArrayInitElem(TypeIdx, u32), // type_idx, elem_idx
+
+    // Reference type testing and casting
+    /// ref.test: test if reference is of given type (0xFB 0x14)
+    RefTest(HeapType),
+    /// ref.test null: test if reference is null or of given type (0xFB 0x15)
+    RefTestNull(HeapType),
+    /// ref.cast: cast reference to given type (0xFB 0x16)
+    RefCast(HeapType),
+    /// ref.cast null: cast reference allowing null (0xFB 0x17)
+    RefCastNull(HeapType),
+
+    // Branch on cast operations
+    /// br_on_cast: branch if cast succeeds (0xFB 0x18)
+    BrOnCast {
+        flags:       u8,
+        label:       LabelIdx,
+        from_type:   HeapType,
+        to_type:     HeapType,
+    },
+    /// br_on_cast_fail: branch if cast fails (0xFB 0x19)
+    BrOnCastFail {
+        flags:       u8,
+        label:       LabelIdx,
+        from_type:   HeapType,
+        to_type:     HeapType,
+    },
+
+    // Extern/any conversions
+    /// any.convert_extern: convert externref to anyref (0xFB 0x1A)
+    AnyConvertExtern,
+    /// extern.convert_any: convert anyref to externref (0xFB 0x1B)
+    ExternConvertAny,
+
+    // i31 operations
+    /// ref.i31: wrap i32 to i31ref (0xFB 0x1C)
+    RefI31,
+    /// i31.get_s: extract i32 with sign extension (0xFB 0x1D)
+    I31GetS,
+    /// i31.get_u: extract i32 with zero extension (0xFB 0x1E)
+    I31GetU,
+
     #[doc(hidden)]
     _Phantom(core::marker::PhantomData<P>),
 }

@@ -7,9 +7,9 @@
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use alloc::vec::Vec;
-    use alloc::vec;
     use alloc::format;
+    use alloc::vec;
+    use alloc::vec::Vec;
 
     use wrt_error::ErrorCategory;
 
@@ -183,8 +183,7 @@ mod tests {
         let binary = create_minimal_component_binary();
 
         // Test basic validation
-        let mut basic_parser =
-            ComponentBinaryParser::with_validation_level(ValidationLevel::Basic);
+        let mut basic_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Basic);
         let result1 = basic_parser.parse(&binary);
         assert!(result1.is_ok());
 
@@ -195,8 +194,7 @@ mod tests {
         assert!(result2.is_ok());
 
         // Test strict validation
-        let mut strict_parser =
-            ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
+        let mut strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
         let result3 = strict_parser.parse(&binary);
         assert!(result3.is_ok());
     }
@@ -317,33 +315,33 @@ mod tests {
     fn test_component_header_validation() {
         // Valid header
         let valid_header = ComponentHeader {
-            magic:   [0x00, 0x61, 0x73, 0x6D],
+            magic: [0x00, 0x61, 0x73, 0x6D],
             version: 1,
-            layer:   1,
+            layer: 1,
         };
         assert!(valid_header.validate().is_ok());
 
         // Invalid magic
         let invalid_magic_header = ComponentHeader {
-            magic:   [0xFF, 0xFF, 0xFF, 0xFF],
+            magic: [0xFF, 0xFF, 0xFF, 0xFF],
             version: 1,
-            layer:   1,
+            layer: 1,
         };
         assert!(invalid_magic_header.validate().is_err());
 
         // Invalid version
         let invalid_version_header = ComponentHeader {
-            magic:   [0x00, 0x61, 0x73, 0x6D],
+            magic: [0x00, 0x61, 0x73, 0x6D],
             version: 999,
-            layer:   1,
+            layer: 1,
         };
         assert!(invalid_version_header.validate().is_err());
 
         // Invalid layer
         let invalid_layer_header = ComponentHeader {
-            magic:   [0x00, 0x61, 0x73, 0x6D],
+            magic: [0x00, 0x61, 0x73, 0x6D],
             version: 1,
-            layer:   0, // Should be 1 for components
+            layer: 0, // Should be 1 for components
         };
         assert!(invalid_layer_header.validate().is_err());
     }

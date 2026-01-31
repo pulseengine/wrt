@@ -19,10 +19,7 @@
 #![cfg(test)]
 
 use wrt_component::*;
-use wrt_foundation::{
-    component_value::ComponentValue,
-    types::ValueType,
-};
+use wrt_foundation::{component_value::ComponentValue, types::ValueType};
 
 #[cfg(feature = "std")]
 mod async_context_tests {
@@ -179,12 +176,7 @@ mod task_management_tests {
 mod waitable_set_tests {
     use super::*;
     use crate::async_types::{
-        Future,
-        FutureHandle,
-        FutureState,
-        Stream,
-        StreamHandle,
-        StreamState,
+        Future, FutureHandle, FutureState, Stream, StreamHandle, StreamState,
     };
 
     #[test]
@@ -196,7 +188,7 @@ mod waitable_set_tests {
 
         let future = Future {
             handle: FutureHandle::new(),
-            state:  FutureState::Pending,
+            state: FutureState::Pending,
         };
 
         let waitable_id =
@@ -218,7 +210,7 @@ mod waitable_set_tests {
         // Add pending future
         let pending = Future {
             handle: FutureHandle::new(),
-            state:  FutureState::Pending,
+            state: FutureState::Pending,
         };
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(pending)).unwrap();
 
@@ -247,11 +239,11 @@ mod waitable_set_tests {
         // Add different types of waitables
         let future = Future {
             handle: FutureHandle::new(),
-            state:  FutureState::Pending,
+            state: FutureState::Pending,
         };
         let stream = Stream {
             handle: StreamHandle::new(),
-            state:  StreamState::Open,
+            state: StreamState::Open,
         };
 
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
@@ -267,11 +259,11 @@ mod waitable_set_tests {
         let futures = vec![
             Future {
                 handle: FutureHandle::new(),
-                state:  FutureState::Pending,
+                state: FutureState::Pending,
             },
             Future {
                 handle: FutureHandle::new(),
-                state:  FutureState::Resolved(ComponentValue::Bool(true)),
+                state: FutureState::Resolved(ComponentValue::Bool(true)),
             },
         ];
 
@@ -371,9 +363,7 @@ mod error_context_tests {
 mod advanced_threading_tests {
     use super::*;
     use crate::thread_builtins::{
-        FunctionSignature,
-        ThreadSpawnConfig,
-        ValueType as ThreadValueType,
+        FunctionSignature, ThreadSpawnConfig, ValueType as ThreadValueType,
     };
 
     #[test]
@@ -383,7 +373,7 @@ mod advanced_threading_tests {
         let func_ref = FunctionReference::new(
             "test_func".to_string(),
             FunctionSignature {
-                params:  vec![ThreadValueType::I32],
+                params: vec![ThreadValueType::I32],
                 results: vec![ThreadValueType::I32],
             },
             0,
@@ -392,7 +382,7 @@ mod advanced_threading_tests {
 
         let config = ThreadSpawnConfig {
             stack_size: Some(65536),
-            priority:   Some(5),
+            priority: Some(5),
         };
 
         let thread_id =
@@ -409,7 +399,7 @@ mod advanced_threading_tests {
         let func_ref = FunctionReference::new(
             "test_func".to_string(),
             FunctionSignature {
-                params:  vec![],
+                params: vec![],
                 results: vec![],
             },
             0,
@@ -418,7 +408,7 @@ mod advanced_threading_tests {
 
         let config = ThreadSpawnConfig {
             stack_size: Some(65536),
-            priority:   Some(5),
+            priority: Some(5),
         };
 
         let thread_id =
@@ -465,7 +455,7 @@ mod advanced_threading_tests {
 
         let config = ThreadSpawnConfig {
             stack_size: Some(65536),
-            priority:   Some(5),
+            priority: Some(5),
         };
 
         let thread_id =
@@ -482,7 +472,7 @@ mod advanced_threading_tests {
         let func_ref = FunctionReference::new(
             "parent_func".to_string(),
             FunctionSignature {
-                params:  vec![],
+                params: vec![],
                 results: vec![],
             },
             0,
@@ -491,7 +481,7 @@ mod advanced_threading_tests {
 
         let config = ThreadSpawnConfig {
             stack_size: Some(65536),
-            priority:   Some(5),
+            priority: Some(5),
         };
 
         let parent_id =
@@ -746,21 +736,21 @@ mod cross_feature_integration_tests {
         // Add future
         let future = Future {
             handle: FutureHandle::new(),
-            state:  FutureState::Resolved(ComponentValue::I32(42)),
+            state: FutureState::Resolved(ComponentValue::I32(42)),
         };
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
         // Add stream
         let stream = Stream {
             handle: StreamHandle::new(),
-            state:  StreamState::Open,
+            state: StreamState::Open,
         };
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Stream(stream)).unwrap();
 
         // Check for ready items
         let ready = WaitableSetBuiltins::waitable_set_poll_all(set_id).unwrap();
         assert!(ready.len() >= 1); // At least the resolved future should be
-                                   // ready
+        // ready
     }
 
     #[test]
@@ -783,7 +773,7 @@ mod cross_feature_integration_tests {
         let func_ref = FunctionReference::new(
             "list_processor".to_string(),
             FunctionSignature {
-                params:  vec![ThreadValueType::I32], // Simplified for test
+                params: vec![ThreadValueType::I32], // Simplified for test
                 results: vec![ThreadValueType::I32],
             },
             0,
@@ -792,7 +782,7 @@ mod cross_feature_integration_tests {
 
         let config = ThreadSpawnConfig {
             stack_size: Some(65536),
-            priority:   Some(5),
+            priority: Some(5),
         };
 
         let thread_id =
@@ -816,7 +806,7 @@ mod test_helpers {
     pub fn create_test_future(resolved: bool) -> Future {
         Future {
             handle: FutureHandle::new(),
-            state:  if resolved {
+            state: if resolved {
                 FutureState::Resolved(ComponentValue::Bool(true))
             } else {
                 FutureState::Pending
@@ -827,7 +817,7 @@ mod test_helpers {
     pub fn create_test_stream(open: bool) -> Stream {
         Stream {
             handle: StreamHandle::new(),
-            state:  if open { StreamState::Open } else { StreamState::Closed },
+            state: if open { StreamState::Open } else { StreamState::Closed },
         }
     }
 

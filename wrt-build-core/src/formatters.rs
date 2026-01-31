@@ -4,22 +4,12 @@
 //! including human-readable output (default) and structured JSON formats
 //! compatible with LSP and CI/CD systems.
 
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
-use colored::{
-    ColoredString,
-    Colorize,
-};
+use colored::{ColoredString, Colorize};
 use serde_json;
 
-use crate::diagnostics::{
-    Diagnostic,
-    DiagnosticCollection,
-    Severity,
-};
+use crate::diagnostics::{Diagnostic, DiagnosticCollection, Severity};
 
 /// Output format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,9 +63,9 @@ pub trait OutputFormatter {
 /// Human-readable formatter with colors and grouping
 pub struct HumanFormatter {
     /// Whether to use colors in output
-    use_colors:    bool,
+    use_colors: bool,
     /// Whether to show related information
-    show_related:  bool,
+    show_related: bool,
     /// Group diagnostics by file
     group_by_file: bool,
 }
@@ -84,8 +74,8 @@ impl HumanFormatter {
     /// Create a new human formatter
     pub fn new() -> Self {
         Self {
-            use_colors:    true,
-            show_related:  true,
+            use_colors: true,
+            show_related: true,
             group_by_file: true,
         }
     }
@@ -93,8 +83,8 @@ impl HumanFormatter {
     /// Create formatter without colors (for piped output)
     pub fn no_colors() -> Self {
         Self {
-            use_colors:    false,
-            show_related:  true,
+            use_colors: false,
+            show_related: true,
             group_by_file: true,
         }
     }
@@ -319,23 +309,11 @@ impl OutputFormatter for HumanFormatter {
             let summary_text = parts.join(", ");
 
             let icon = if summary.errors > 0 {
-                if self.use_colors {
-                    "❌"
-                } else {
-                    "error"
-                }
+                if self.use_colors { "❌" } else { "error" }
             } else if summary.warnings > 0 {
-                if self.use_colors {
-                    "⚠️"
-                } else {
-                    "warning"
-                }
+                if self.use_colors { "⚠️" } else { "warning" }
             } else {
-                if self.use_colors {
-                    "ℹ️"
-                } else {
-                    "info"
-                }
+                if self.use_colors { "ℹ️" } else { "info" }
             };
 
             output.push_str(&format!(
@@ -493,10 +471,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::diagnostics::{
-        Position,
-        Range,
-    };
+    use crate::diagnostics::{Position, Range};
 
     fn create_test_collection() -> DiagnosticCollection {
         let mut collection =

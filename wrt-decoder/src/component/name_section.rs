@@ -10,27 +10,15 @@
 
 use wrt_format::binary;
 #[cfg(feature = "std")]
-use wrt_format::{
-    write_leb128_u32,
-    write_string,
-};
+use wrt_format::{write_leb128_u32, write_string};
 #[cfg(not(feature = "std"))]
-use wrt_format::{
-    write_leb128_u32_bounded,
-    write_string_bounded,
-};
+use wrt_format::{write_leb128_u32_bounded, write_string_bounded};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    capabilities::CapabilityAwareProvider,
-    safe_memory::NoStdProvider,
-    traits::BoundedCapacity,
+    capabilities::CapabilityAwareProvider, safe_memory::NoStdProvider, traits::BoundedCapacity,
 };
 
-use crate::{
-    prelude::*,
-    Error,
-    Result,
-};
+use crate::{Error, Result, prelude::*};
 
 // Type aliases for generated data to avoid confusion
 #[cfg(feature = "std")]
@@ -55,44 +43,44 @@ pub const COMPONENT_NAME_TYPE: u8 = 5;
 
 /// Component name section subsection identifiers
 pub enum ComponentNameSubsectionId {
-    Module       = 0,
-    Function     = 1,
+    Module = 0,
+    Function = 1,
     CoreFunction = 2,
-    CoreTable    = 3,
-    CoreMemory   = 4,
-    CoreGlobal   = 5,
-    CoreType     = 6,
-    Type         = 7,
-    Component    = 8,
-    Instance     = 9,
+    CoreTable = 3,
+    CoreMemory = 4,
+    CoreGlobal = 5,
+    CoreType = 6,
+    Type = 7,
+    Component = 8,
+    Instance = 9,
     CoreInstance = 10,
 }
 
 /// Core sort identifier for subsections
 pub enum CoreSortIdentifier {
     Function = 0,
-    Table    = 1,
-    Memory   = 2,
-    Global   = 3,
-    Type     = 4,
+    Table = 1,
+    Memory = 2,
+    Global = 3,
+    Type = 4,
 }
 
 /// Sort identifier for subsections
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SortIdentifier {
     #[default]
-    Module       = 0,
-    Function     = 1,
+    Module = 0,
+    Function = 1,
     CoreFunction = 2,
-    CoreTable    = 3,
-    CoreMemory   = 4,
-    CoreGlobal   = 5,
-    CoreType     = 6,
-    Type         = 7,
-    Component    = 8,
-    Instance     = 9,
+    CoreTable = 3,
+    CoreMemory = 4,
+    CoreGlobal = 5,
+    CoreType = 6,
+    Type = 7,
+    Component = 8,
+    Instance = 9,
     CoreInstance = 10,
-    Value        = 11,
+    Value = 11,
 }
 
 /// Entry in a name map
@@ -100,7 +88,7 @@ pub enum SortIdentifier {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMapEntry {
     pub index: u32,
-    pub name:  String,
+    pub name: String,
 }
 
 /// Entry in a name map (no_std version)
@@ -108,7 +96,7 @@ pub struct NameMapEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMapEntry {
     pub index: u32,
-    pub name:  &'static str,
+    pub name: &'static str,
 }
 
 // Implement required traits for NameMapEntry
@@ -366,13 +354,12 @@ impl wrt_foundation::traits::Checksummable for NameMap {
 pub struct ComponentNameSection {
     /// Name of the component itself
     #[cfg(feature = "std")]
-    pub component_name:  Option<alloc::string::String>,
+    pub component_name: Option<alloc::string::String>,
     #[cfg(not(feature = "std"))]
-    pub component_name:
-        Option<wrt_foundation::BoundedString<256>>,
+    pub component_name: Option<wrt_foundation::BoundedString<256>>,
     /// Map of names for various sorted items (functions, instances, etc.)
     #[cfg(feature = "std")]
-    pub sort_names:      alloc::vec::Vec<(SortIdentifier, NameMap)>,
+    pub sort_names: alloc::vec::Vec<(SortIdentifier, NameMap)>,
     #[cfg(not(feature = "std"))]
     pub sort_names: wrt_foundation::BoundedVec<
         (SortIdentifier, NameMap),
@@ -380,13 +367,13 @@ pub struct ComponentNameSection {
         wrt_foundation::NoStdProvider<4096>,
     >,
     /// Map of import names
-    pub import_names:    NameMap,
+    pub import_names: NameMap,
     /// Map of export names
-    pub export_names:    NameMap,
+    pub export_names: NameMap,
     /// Map of canonical names
     pub canonical_names: NameMap,
     /// Map of type names
-    pub type_names:      NameMap,
+    pub type_names: NameMap,
 }
 
 /// Parse a WebAssembly Component Model name section
@@ -425,8 +412,8 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     let (name_bytes, _) = binary::read_string(subsection_data, 0)?;
                     #[cfg(feature = "std")]
                     {
-                        let name =
-                            alloc::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default();
+                        let name = alloc::string::String::from_utf8(name_bytes.to_vec())
+                            .unwrap_or_default();
                         name_section.component_name = Some(name);
                     }
                     #[cfg(not(feature = "std"))]
@@ -965,10 +952,7 @@ fn generate_name_map(
 
 #[cfg(not(feature = "std"))]
 fn write_leb128_u32(value: u32) -> Result<wrt_foundation::BoundedVec<u8, 5, SmallProvider>> {
-    use wrt_foundation::{
-        budget_aware_provider::CrateId,
-        safe_managed_alloc,
-    };
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
     let provider = safe_managed_alloc!(5, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_leb128_u32_bounded(value, &mut vec)
@@ -978,10 +962,7 @@ fn write_leb128_u32(value: u32) -> Result<wrt_foundation::BoundedVec<u8, 5, Smal
 
 #[cfg(not(feature = "std"))]
 fn write_string(value: &str) -> Result<wrt_foundation::BoundedVec<u8, 512, StringProvider>> {
-    use wrt_foundation::{
-        budget_aware_provider::CrateId,
-        safe_managed_alloc,
-    };
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
     let provider = safe_managed_alloc!(512, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_string_bounded(value, &mut vec)
@@ -994,18 +975,12 @@ pub fn parse_error(message: &str) -> Error {
 }
 
 pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
-    use wrt_error::{
-        codes,
-        ErrorCategory,
-    };
+    use wrt_error::{ErrorCategory, codes};
     Error::parse_error("Parse error with context ")
 }
 
 pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
-    use wrt_error::{
-        codes,
-        ErrorCategory,
-    };
+    use wrt_error::{ErrorCategory, codes};
     Error::parse_error("Parse error at position ")
 }
 
@@ -1023,9 +998,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             if let Ok(provider) = crate::prelude::create_decoder_provider::<4096>() {
-                if let Ok(name) =
-                    wrt_foundation::BoundedString::try_from_str("test_component")
-                {
+                if let Ok(name) = wrt_foundation::BoundedString::try_from_str("test_component") {
                     name_section.component_name = Some(name);
                 }
             }
@@ -1053,22 +1026,22 @@ mod tests {
         {
             name_map.entries.push(NameMapEntry {
                 index: 0,
-                name:  "func0".to_string(),
+                name: "func0".to_string(),
             });
             name_map.entries.push(NameMapEntry {
                 index: 1,
-                name:  "func1".to_string(),
+                name: "func1".to_string(),
             });
         }
         #[cfg(not(feature = "std"))]
         {
             let _ = name_map.entries.push(NameMapEntry {
                 index: 0,
-                name:  "func0",
+                name: "func0",
             });
             let _ = name_map.entries.push(NameMapEntry {
                 index: 1,
-                name:  "func1",
+                name: "func1",
             });
         }
 
@@ -1083,20 +1056,44 @@ mod tests {
         let parsed = parse_component_name_section(bytes.as_slice()).unwrap();
 
         assert_eq!(parsed.sort_names.len(), 1);
-        assert!(matches!(parsed.sort_names.get(0).unwrap().0, SortIdentifier::Function));
+        assert!(matches!(
+            parsed.sort_names.get(0).unwrap().0,
+            SortIdentifier::Function
+        ));
         assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.len(), 2);
-        assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().index, 0);
+        assert_eq!(
+            parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().index,
+            0
+        );
         #[cfg(feature = "std")]
         {
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name,
+                "func0"
+            );
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index,
+                1
+            );
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name,
+                "func1"
+            );
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name, "func0");
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index, 1);
-            assert_eq!(parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name, "func1");
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(0).unwrap().name,
+                "func0"
+            );
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().index,
+                1
+            );
+            assert_eq!(
+                parsed.sort_names.get(0).unwrap().1.entries.get(1).unwrap().name,
+                "func1"
+            );
         }
     }
 }

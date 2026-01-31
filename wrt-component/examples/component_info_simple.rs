@@ -3,33 +3,18 @@
 //! This example demonstrates how to use wrt-decoder, wrt-component, and
 //! wrt-format to analyze WebAssembly modules and components in depth.
 
-use std::{
-    env,
-    fs,
-    path::Path,
-    str,
-};
+use std::{env, fs, path::Path, str};
 
 use wrt_decoder::{
-    component::{
-        analyze_component,
-        analyze_component_extended,
-        extract_embedded_modules,
-        is_valid_module,
-        ComponentAnalyzer,
-        ComponentSummary,
-        ExtendedExportInfo,
-        ExtendedImportInfo,
-        ModuleExportInfo,
-        ModuleImportInfo,
-    },
     Module,
+    component::{
+        ComponentAnalyzer, ComponentSummary, ExtendedExportInfo, ExtendedImportInfo,
+        ModuleExportInfo, ModuleImportInfo, analyze_component, analyze_component_extended,
+        extract_embedded_modules, is_valid_module,
+    },
 };
 use wrt_error::Result;
-use wrt_format::{
-    binary,
-    wasmparser::SectionId,
-};
+use wrt_format::{binary, wasmparser::SectionId};
 
 /// Displays a hexadecimal dump of a portion of a binary slice.
 fn hex_dump(data: &[u8], offset: usize, len: usize) {

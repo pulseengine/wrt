@@ -6,16 +6,11 @@
 
 //! Optimized string processing utilities that avoid unnecessary allocations
 
-use core::str;
 #[cfg(feature = "std")]
 use alloc::string::String;
+use core::str;
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 
@@ -40,10 +35,7 @@ pub fn parse_utf8_string_inplace(
 pub fn parse_utf8_string_inplace(
     bytes: &[u8],
     offset: usize,
-) -> Result<(
-    wrt_foundation::BoundedString<256>,
-    usize,
-)> {
+) -> Result<(wrt_foundation::BoundedString<256>, usize)> {
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
     // Validate UTF-8 without creating intermediate Vec
@@ -55,10 +47,7 @@ pub fn parse_utf8_string_inplace(
         )
     })?;
 
-    use wrt_foundation::{
-        safe_managed_alloc,
-        CrateId,
-    };
+    use wrt_foundation::{CrateId, safe_managed_alloc};
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     let bounded_string = wrt_foundation::BoundedString::try_from_str(string_str)
         .map_err(|_| Error::runtime_execution_error("Failed to create bounded string"))?;

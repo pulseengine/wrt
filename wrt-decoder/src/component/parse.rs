@@ -8,25 +8,12 @@ mod std_parsing {
     #[cfg(feature = "tracing")]
     use wrt_foundation::tracing::trace;
 
-    use wrt_error::{
-        kinds,
-        Error,
-        Result,
-    };
+    use wrt_error::{Error, Result, kinds};
     use wrt_format::{
         binary,
         component::{
-            Alias,
-            Canon,
-            Component,
-            ComponentType,
-            CoreInstance,
-            CoreType,
-            Export,
-            Import,
-            Instance,
-            Start,
-            Value,
+            Alias, Canon, Component, ComponentType, CoreInstance, CoreType, Export, Import,
+            Instance, Start, Value,
         },
         module::Module,
     };
@@ -91,7 +78,11 @@ mod std_parsing {
 
         #[cfg(feature = "tracing")]
         {
-            trace!(section_size = bytes.len(), count = count, "parse_core_module_section");
+            trace!(
+                section_size = bytes.len(),
+                count = count,
+                "parse_core_module_section"
+            );
             if count == 0 && bytes.len() > 8 {
                 trace!("count is 0 but section has data - checking if inline format");
                 // Check for WASM magic at start
@@ -179,7 +170,12 @@ mod std_parsing {
                 // Instantiate a module
                 let (module_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 #[cfg(feature = "tracing")]
-                trace!(tag = 0x00u8, module_idx = module_idx, bytes_read = bytes_read, "core instance: instantiate");
+                trace!(
+                    tag = 0x00u8,
+                    module_idx = module_idx,
+                    bytes_read = bytes_read,
+                    "core instance: instantiate"
+                );
                 offset += bytes_read;
 
                 // Read argument vector
@@ -197,7 +193,9 @@ mod std_parsing {
                     // According to Component Model spec: modulearg := name:string kind:byte idx:u32
                     // kind: 0x00=Func, 0x01=Table, 0x02=Mem, 0x03=Global, 0x12=Instance
                     if offset >= bytes.len() {
-                        return Err(Error::parse_error("Unexpected end of input while parsing arg kind"));
+                        return Err(Error::parse_error(
+                            "Unexpected end of input while parsing arg kind",
+                        ));
                     }
                     let kind_byte = bytes[offset];
                     offset += 1;
@@ -209,7 +207,11 @@ mod std_parsing {
                     #[cfg(feature = "tracing")]
                     trace!(arg_name = %name, kind = kind_byte, idx = idx, "core instance arg");
 
-                    args.push(wrt_format::component::CoreArgReference { name, kind: kind_byte, idx });
+                    args.push(wrt_format::component::CoreArgReference {
+                        name,
+                        kind: kind_byte,
+                        idx,
+                    });
                 }
 
                 Ok((
@@ -392,12 +394,14 @@ mod std_parsing {
                 let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read module name
-                    let (module_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                    let (module_name_bytes, bytes_read) =
+                        wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let module_name = bytes_to_string(module_name_bytes);
 
                     // Read field name
-                    let (field_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                    let (field_name_bytes, bytes_read) =
+                        wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let field_name = bytes_to_string(field_name_bytes);
 
@@ -481,7 +485,7 @@ mod std_parsing {
                     };
                     Ok((
                         wrt_format::component::CoreExternType::Function {
-                            params:  empty_params.to_vec(),
+                            params: empty_params.to_vec(),
                             results: empty_results.to_vec(),
                         },
                         offset,
@@ -592,7 +596,9 @@ mod std_parsing {
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid global value type (component import)")));
+                        return Err(Error::from(kinds::ParseError(
+                            "Invalid global value type (component import)",
+                        )));
                     },
                 };
                 offset += 1;
@@ -648,14 +654,10 @@ mod std_parsing {
 
         // Parse the component binary using the decoder
         match crate::component::decode_component(bytes) {
-            Ok(component) => {
-                Ok((vec![component], bytes.len()))
-            },
-            Err(_e) => {
-                Err(Error::from(kinds::ParseError(
-                    "Failed to parse nested component",
-                )))
-            },
+            Ok(component) => Ok((vec![component], bytes.len())),
+            Err(_e) => Err(Error::from(kinds::ParseError(
+                "Failed to parse nested component",
+            ))),
         }
     }
 
@@ -886,8 +888,8 @@ mod std_parsing {
                 Ok((
                     wrt_format::component::CanonOperation::Resource(
                         wrt_format::component::FormatResourceOperation::New(
-                            resource::ResourceNew { type_idx }
-                        )
+                            resource::ResourceNew { type_idx },
+                        ),
                     ),
                     offset,
                 ))
@@ -900,8 +902,8 @@ mod std_parsing {
                 Ok((
                     wrt_format::component::CanonOperation::Resource(
                         wrt_format::component::FormatResourceOperation::Drop(
-                            resource::ResourceDrop { type_idx }
-                        )
+                            resource::ResourceDrop { type_idx },
+                        ),
                     ),
                     offset,
                 ))
@@ -914,8 +916,8 @@ mod std_parsing {
                 Ok((
                     wrt_format::component::CanonOperation::Resource(
                         wrt_format::component::FormatResourceOperation::Rep(
-                            resource::ResourceRep { type_idx }
-                        )
+                            resource::ResourceRep { type_idx },
+                        ),
                     ),
                     offset,
                 ))
@@ -993,14 +995,14 @@ mod std_parsing {
                 },
                 _ => {
                     return Err(Error::from(kinds::ParseError("Invalid canon option tag")));
-                }
+                },
             }
         }
 
         Ok((
             wrt_format::component::LiftOptions {
                 memory_idx,
-                string_encoding:      Some(string_encoding),
+                string_encoding: Some(string_encoding),
                 realloc_func_idx,
                 post_return_func_idx,
                 is_async,
@@ -1074,17 +1076,17 @@ mod std_parsing {
                 },
                 _ => {
                     return Err(Error::from(kinds::ParseError("Invalid canon option tag")));
-                }
+                },
             }
         }
 
         Ok((
             wrt_format::component::LowerOptions {
                 memory_idx,
-                string_encoding:  Some(string_encoding),
+                string_encoding: Some(string_encoding),
                 realloc_func_idx,
                 is_async,
-                error_mode:       None,
+                error_mode: None,
             },
             offset,
         ))
@@ -1188,7 +1190,8 @@ mod std_parsing {
                 let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read namespace
-                    let (namespace_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                    let (namespace_bytes, bytes_read) =
+                        wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let namespace = bytes_to_string(namespace_bytes);
 
@@ -1242,7 +1245,9 @@ mod std_parsing {
                 let mut exports = Vec::new();
                 for _ in 0..decl_count {
                     if offset >= bytes.len() {
-                        return Err(Error::parse_error("Unexpected end of instance declarations"));
+                        return Err(Error::parse_error(
+                            "Unexpected end of instance declarations",
+                        ));
                     }
 
                     let decl_tag = bytes[offset];
@@ -1255,7 +1260,8 @@ mod std_parsing {
                             #[cfg(feature = "tracing")]
                             trace!(offset = offset, "instancedecl: parsing inline core type");
 
-                            let (_core_type_def, bytes_read) = parse_core_type_definition(&bytes[offset..])?;
+                            let (_core_type_def, bytes_read) =
+                                parse_core_type_definition(&bytes[offset..])?;
                             offset += bytes_read;
                         },
                         0x01 => {
@@ -1265,10 +1271,15 @@ mod std_parsing {
                             #[cfg(feature = "tracing")]
                             trace!(offset = offset, "instancedecl: parsing inline type");
 
-                            let (_type_def, bytes_read) = parse_component_type_definition(&bytes[offset..])?;
+                            let (_type_def, bytes_read) =
+                                parse_component_type_definition(&bytes[offset..])?;
 
                             #[cfg(feature = "tracing")]
-                            trace!(bytes_read = bytes_read, new_offset = offset + bytes_read, "instancedecl: inline type consumed");
+                            trace!(
+                                bytes_read = bytes_read,
+                                new_offset = offset + bytes_read,
+                                "instancedecl: inline type consumed"
+                            );
 
                             offset += bytes_read;
                         },
@@ -1281,7 +1292,8 @@ mod std_parsing {
                         },
                         0x04 => {
                             // Export declaration: name + externdesc
-                            let (name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                            let (name_bytes, bytes_read) =
+                                wrt_format::binary::read_string(bytes, offset)?;
                             offset += bytes_read;
                             let name = bytes_to_string(name_bytes);
 
@@ -1292,7 +1304,7 @@ mod std_parsing {
                         },
                         _ => {
                             return Err(Error::parse_error("Invalid instance declaration tag"));
-                        }
+                        },
                     }
                 }
 
@@ -1336,7 +1348,7 @@ mod std_parsing {
 
                 Ok((
                     wrt_format::component::ComponentTypeDefinition::Function {
-                        params:  params
+                        params: params
                             .into_iter()
                             .map(|(name, ty)| {
                                 let name_str = core::str::from_utf8(name)
@@ -1442,7 +1454,7 @@ mod std_parsing {
                     Err(_e) => {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read field count in resource record representation",
-                        )))
+                        )));
                     },
                 };
                 offset += bytes_read;
@@ -1450,14 +1462,15 @@ mod std_parsing {
                 let mut fields = Vec::with_capacity(field_count as usize);
                 for _i in 0..field_count {
                     // Read field name
-                    let (name_bytes, bytes_read) = match wrt_format::binary::read_string(bytes, offset) {
-                        Ok(result) => result,
-                        Err(_e) => {
-                            return Err(Error::from(kinds::ParseError(
-                                "Failed to read field name in resource record representation",
-                            )))
-                        },
-                    };
+                    let (name_bytes, bytes_read) =
+                        match wrt_format::binary::read_string(bytes, offset) {
+                            Ok(result) => result,
+                            Err(_e) => {
+                                return Err(Error::from(kinds::ParseError(
+                                    "Failed to read field name in resource record representation",
+                                )));
+                            },
+                        };
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
 
@@ -1468,10 +1481,8 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let bounded_fields = {
                     use wrt_foundation::{
+                        BoundedString, BoundedVec, NoStdProvider,
                         resource::MAX_RESOURCE_FIELD_NAME_LEN,
-                        BoundedString,
-                        BoundedVec,
-                        NoStdProvider,
                     };
                     let provider = wrt_foundation::safe_managed_alloc!(
                         4096,
@@ -1479,12 +1490,13 @@ mod std_parsing {
                     )?;
                     let mut bounded = BoundedVec::new(provider.clone())?;
                     for field in fields {
-                        let bounded_string = BoundedString::<
-                            MAX_RESOURCE_FIELD_NAME_LEN
-                        >::try_from_str(&field)
-                        .map_err(|_| {
-                            Error::runtime_execution_error("Failed to create bounded string")
-                        })?;
+                        let bounded_string =
+                            BoundedString::<MAX_RESOURCE_FIELD_NAME_LEN>::try_from_str(&field)
+                                .map_err(|_| {
+                                    Error::runtime_execution_error(
+                                        "Failed to create bounded string",
+                                    )
+                                })?;
                         if bounded.push(bounded_string).is_err() {
                             return Err(Error::new(
                                 wrt_error::ErrorCategory::Memory,
@@ -1520,7 +1532,7 @@ mod std_parsing {
                     Err(_e) => {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read index count in resource aggregate representation",
-                        )))
+                        )));
                     },
                 };
                 offset += bytes_read;
@@ -1533,7 +1545,7 @@ mod std_parsing {
                         Err(_e) => {
                             return Err(Error::parse_error(
                                 "Failed to read type index in resource aggregate representation",
-                            ))
+                            ));
                         },
                     };
                     offset += bytes_read;
@@ -1543,10 +1555,7 @@ mod std_parsing {
 
                 #[cfg(feature = "std")]
                 let repr = {
-                    use wrt_foundation::{
-                        BoundedVec,
-                        NoStdProvider,
-                    };
+                    use wrt_foundation::{BoundedVec, NoStdProvider};
                     let provider = wrt_foundation::safe_managed_alloc!(
                         4096,
                         wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1593,7 +1602,9 @@ mod std_parsing {
             0x00 => {
                 // Core module: 0x00 0x11 i:<core:typeidx>
                 if offset >= bytes.len() {
-                    return Err(Error::parse_error("Unexpected end of core module extern type"));
+                    return Err(Error::parse_error(
+                        "Unexpected end of core module extern type",
+                    ));
                 }
 
                 let sort_tag = bytes[offset];
@@ -1618,10 +1629,7 @@ mod std_parsing {
                 let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((
-                    wrt_format::component::ExternType::Type(type_idx),
-                    offset,
-                ))
+                Ok((wrt_format::component::ExternType::Type(type_idx), offset))
             },
             0x02 => {
                 // Value bound: 0x02 b:<valuebound>
@@ -1640,16 +1648,21 @@ mod std_parsing {
                         let (value_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                         offset += bytes_read;
                         // Use a simple type as placeholder for value reference
-                        Ok((wrt_format::component::ExternType::Value(
-                            wrt_format::component::FormatValType::Bool
-                        ), offset))
+                        Ok((
+                            wrt_format::component::ExternType::Value(
+                                wrt_format::component::FormatValType::Bool,
+                            ),
+                            offset,
+                        ))
                     },
                     0x01 => {
                         // Direct value type
                         let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                         offset += bytes_read;
                         Ok((
-                            wrt_format::component::ExternType::Value(val_type_to_format_val_type(val_type)),
+                            wrt_format::component::ExternType::Value(val_type_to_format_val_type(
+                                val_type,
+                            )),
                             offset,
                         ))
                     },
@@ -1697,10 +1710,7 @@ mod std_parsing {
                 let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((
-                    wrt_format::component::ExternType::Type(type_idx),
-                    offset,
-                ))
+                Ok((wrt_format::component::ExternType::Type(type_idx), offset))
             },
             _ => Err(Error::parse_error("Invalid external type tag")),
         }
@@ -1796,7 +1806,9 @@ mod std_parsing {
 
                     // Read trailing 0x00 byte
                     if offset >= bytes.len() {
-                        return Err(Error::parse_error("Unexpected end parsing variant case trailer"));
+                        return Err(Error::parse_error(
+                            "Unexpected end parsing variant case trailer",
+                        ));
                     }
                     if bytes[offset] != 0x00 {
                         return Err(Error::parse_error("Expected 0x00 trailer in variant case"));
@@ -1826,13 +1838,22 @@ mod std_parsing {
                 offset += bytes_read;
 
                 #[cfg(feature = "tracing")]
-                trace!(elem_count = elem_count, offset = offset, "parse_val_type: tuple element count");
+                trace!(
+                    elem_count = elem_count,
+                    offset = offset,
+                    "parse_val_type: tuple element count"
+                );
 
                 let mut elements = Vec::with_capacity(elem_count as usize);
                 for i in 0..elem_count {
                     let (elem_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     #[cfg(feature = "tracing")]
-                    trace!(elem_index = i, bytes_read = bytes_read, new_offset = offset + bytes_read, "parse_val_type: tuple element");
+                    trace!(
+                        elem_index = i,
+                        bytes_read = bytes_read,
+                        new_offset = offset + bytes_read,
+                        "parse_val_type: tuple element"
+                    );
                     offset += bytes_read;
                     elements.push(elem_type);
                 }
@@ -1840,7 +1861,10 @@ mod std_parsing {
                 #[cfg(feature = "tracing")]
                 trace!(offset = offset, "parse_val_type: tuple complete");
 
-                Ok((wrt_format::component::FormatValType::Tuple(elements), offset))
+                Ok((
+                    wrt_format::component::FormatValType::Tuple(elements),
+                    offset,
+                ))
             },
             0x6E => {
                 // Flags type: 0x6e l*:vec(<label'>) => (flags l+)
@@ -1903,7 +1927,9 @@ mod std_parsing {
 
                 // Read error type (optional)
                 if offset >= bytes.len() {
-                    return Err(Error::parse_error("Unexpected end parsing result error type"));
+                    return Err(Error::parse_error(
+                        "Unexpected end parsing result error type",
+                    ));
                 }
                 let has_err_flag = bytes[offset];
                 offset += 1;
@@ -1920,9 +1946,13 @@ mod std_parsing {
                 // FormatValType::Result expects a single Box<FormatValType>
                 // We'll use a tuple or variant to represent both ok/error
                 // For now, simplify to just the ok type
-                let result_type = ok_type.unwrap_or_else(|| Box::new(wrt_format::component::FormatValType::Void));
+                let result_type =
+                    ok_type.unwrap_or_else(|| Box::new(wrt_format::component::FormatValType::Void));
 
-                Ok((wrt_format::component::FormatValType::Result(result_type), offset))
+                Ok((
+                    wrt_format::component::FormatValType::Result(result_type),
+                    offset,
+                ))
             },
             0x69 => {
                 // Own type: 0x69 i:<typeidx> => (own i)
@@ -1955,7 +1985,10 @@ mod std_parsing {
             // We don't have these in FormatValType yet, so skip them for now
             0x66 | 0x65 => {
                 #[cfg(feature = "tracing")]
-                trace!(tag = tag, "val_type: skipping async type (stream/future not yet implemented)");
+                trace!(
+                    tag = tag,
+                    "val_type: skipping async type (stream/future not yet implemented)"
+                );
                 // For now, treat as Void
                 Ok((wrt_format::component::FormatValType::Void, offset))
             },
@@ -1963,7 +1996,10 @@ mod std_parsing {
             _ => {
                 // Not a known opcode - try to parse as a type index (unsigned LEB128)
                 #[cfg(feature = "tracing")]
-                trace!(tag = tag, "val_type: not a known opcode, parsing as type index");
+                trace!(
+                    tag = tag,
+                    "val_type: not a known opcode, parsing as type index"
+                );
 
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, 0)?;
                 Ok((wrt_format::component::FormatValType::Ref(idx), bytes_read))
@@ -2035,7 +2071,7 @@ mod std_parsing {
                     nested: Vec::new(),
                     package: None,
                 },
-                ty:   extern_type,
+                ty: extern_type,
             });
         }
 
@@ -2066,7 +2102,9 @@ mod std_parsing {
 
             // Read sortidx: sort byte + index
             if offset >= bytes.len() {
-                return Err(Error::parse_error("Unexpected end of input while parsing export sort"));
+                return Err(Error::parse_error(
+                    "Unexpected end of input while parsing export sort",
+                ));
             }
             let sort_byte = bytes[offset];
             offset += 1;
@@ -2144,7 +2182,8 @@ mod std_parsing {
                 offset += 1;
 
                 if has_name {
-                    let (value_name_bytes, bytes_read) = wrt_format::binary::read_string(bytes, offset)?;
+                    let (value_name_bytes, bytes_read) =
+                        wrt_format::binary::read_string(bytes, offset)?;
                     offset += bytes_read;
                     let value_name = bytes_to_string(value_name_bytes);
                     name = Some(value_name);
@@ -2407,7 +2446,13 @@ mod std_parsing {
     /// This is the complete alias production: alias ::= s:<sort> t:<aliastarget>
     pub fn parse_alias(bytes: &[u8]) -> Result<(Alias, usize)> {
         let (target, bytes_read) = parse_alias_target(bytes)?;
-        Ok((Alias { target, dest_idx: None }, bytes_read))
+        Ok((
+            Alias {
+                target,
+                dest_idx: None,
+            },
+            bytes_read,
+        ))
     }
 
     /// Parse an alias section
@@ -2417,7 +2462,11 @@ mod std_parsing {
         let mut aliases = Vec::with_capacity(count as usize);
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, section_size = bytes.len(), "parse_alias_section");
+        trace!(
+            count = count,
+            section_size = bytes.len(),
+            "parse_alias_section"
+        );
 
         for i in 0..count {
             #[cfg(feature = "tracing")]
@@ -2455,7 +2504,10 @@ mod std_parsing {
         let mut offset = 1;
 
         #[cfg(feature = "tracing")]
-        wrt_foundation::tracing::trace!(sort_byte = format!("0x{:02x}", sort_byte), "Parsing alias");
+        wrt_foundation::tracing::trace!(
+            sort_byte = format!("0x{:02x}", sort_byte),
+            "Parsing alias"
+        );
 
         // Parse the sort - this may be a CoreSort (if sort_byte == 0x00) or a full Sort
         let parsed_sort: wrt_format::component::Sort;
@@ -2471,7 +2523,10 @@ mod std_parsing {
             offset += 1;
 
             #[cfg(feature = "tracing")]
-            wrt_foundation::tracing::trace!(core_sort_byte = format!("0x{:02x}", core_sort_byte), "Core sort byte");
+            wrt_foundation::tracing::trace!(
+                core_sort_byte = format!("0x{:02x}", core_sort_byte),
+                "Core sort byte"
+            );
 
             let core_sort = match core_sort_byte {
                 binary::COMPONENT_CORE_SORT_FUNC => wrt_format::component::CoreSort::Function,
@@ -2483,7 +2538,10 @@ mod std_parsing {
                 binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
                 _ => {
                     #[cfg(feature = "tracing")]
-                    wrt_foundation::tracing::warn!(core_sort_byte = format!("0x{:02x}", core_sort_byte), "Invalid core sort byte");
+                    wrt_foundation::tracing::warn!(
+                        core_sort_byte = format!("0x{:02x}", core_sort_byte),
+                        "Invalid core sort byte"
+                    );
                     return Err(Error::from(kinds::ParseError("Invalid core sort byte")));
                 },
             };
@@ -2499,7 +2557,10 @@ mod std_parsing {
                 binary::COMPONENT_SORT_MODULE => wrt_format::component::Sort::Component,
                 _ => {
                     #[cfg(feature = "tracing")]
-                    wrt_foundation::tracing::warn!(sort_byte = format!("0x{:02x}", sort_byte), "Invalid sort byte");
+                    wrt_foundation::tracing::warn!(
+                        sort_byte = format!("0x{:02x}", sort_byte),
+                        "Invalid sort byte"
+                    );
                     return Err(Error::from(kinds::ParseError("Invalid sort byte")));
                 },
             };
@@ -2551,8 +2612,10 @@ mod std_parsing {
                     _ => {
                         #[cfg(feature = "tracing")]
                         wrt_foundation::tracing::warn!(parsed_sort = ?parsed_sort, "Core export must have CoreSort");
-                        return Err(Error::from(kinds::ParseError("Core export must have CoreSort")));
-                    }
+                        return Err(Error::from(kinds::ParseError(
+                            "Core export must have CoreSort",
+                        )));
+                    },
                 };
 
                 // Read instance index
@@ -2594,14 +2657,17 @@ mod std_parsing {
                     wrt_format::component::AliasTarget::Outer {
                         count,
                         kind: parsed_sort,
-                        idx
+                        idx,
                     },
                     offset,
                 ))
             },
             _ => {
                 #[cfg(feature = "tracing")]
-                wrt_foundation::tracing::warn!(tag = format!("0x{:02x}", tag), "Unsupported alias target tag");
+                wrt_foundation::tracing::warn!(
+                    tag = format!("0x{:02x}", tag),
+                    "Unsupported alias target tag"
+                );
                 Err(Error::from(kinds::ParseError("Invalid alias target tag")))
             },
         }
@@ -2724,16 +2790,8 @@ mod std_parsing {
 // No_std implementation with bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_parsing {
-    use wrt_error::{
-        codes,
-        Error,
-        ErrorCategory,
-        Result,
-    };
-    use wrt_foundation::{
-        BoundedVec,
-        NoStdProvider,
-    };
+    use wrt_error::{Error, ErrorCategory, Result, codes};
+    use wrt_foundation::{BoundedVec, NoStdProvider};
     // Define local stub types for no_std parsing
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     pub struct Component;

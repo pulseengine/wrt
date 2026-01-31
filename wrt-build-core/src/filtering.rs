@@ -5,66 +5,50 @@
 //! issues.
 
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
 };
 
 use regex::Regex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    diagnostics::{
-        Diagnostic,
-        DiagnosticCollection,
-        Severity,
-    },
-    error::{
-        BuildError,
-        BuildResult,
-    },
+    diagnostics::{Diagnostic, DiagnosticCollection, Severity},
+    error::{BuildError, BuildResult},
 };
 
 /// Filter criteria for diagnostics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiagnosticFilter {
     /// Filter by severity levels
-    pub severities:       Option<HashSet<Severity>>,
+    pub severities: Option<HashSet<Severity>>,
     /// Filter by diagnostic sources (tools)
-    pub sources:          Option<HashSet<String>>,
+    pub sources: Option<HashSet<String>>,
     /// Filter by file patterns (glob-style)
-    pub file_patterns:    Option<Vec<String>>,
+    pub file_patterns: Option<Vec<String>>,
     /// Filter by diagnostic codes
-    pub codes:            Option<HashSet<String>>,
+    pub codes: Option<HashSet<String>>,
     /// Filter by message content (regex)
-    pub message_pattern:  Option<String>,
+    pub message_pattern: Option<String>,
     /// Exclude patterns (files to ignore)
     pub exclude_patterns: Option<Vec<String>>,
     /// Minimum number of diagnostics to include a file
-    pub min_count:        Option<usize>,
+    pub min_count: Option<usize>,
     /// Maximum number of diagnostics to include a file
-    pub max_count:        Option<usize>,
+    pub max_count: Option<usize>,
 }
 
 impl Default for DiagnosticFilter {
     fn default() -> Self {
         Self {
-            severities:       None,
-            sources:          None,
-            file_patterns:    None,
-            codes:            None,
-            message_pattern:  None,
+            severities: None,
+            sources: None,
+            file_patterns: None,
+            codes: None,
+            message_pattern: None,
             exclude_patterns: None,
-            min_count:        None,
-            max_count:        None,
+            min_count: None,
+            max_count: None,
         }
     }
 }
@@ -114,41 +98,41 @@ pub enum SortDirection {
 #[derive(Debug)]
 pub struct GroupedDiagnostics {
     /// Groups with their diagnostics
-    pub groups:      HashMap<String, Vec<Diagnostic>>,
+    pub groups: HashMap<String, Vec<Diagnostic>>,
     /// Total number of diagnostics across all groups
     pub total_count: usize,
     /// Number of groups
     pub group_count: usize,
     /// Grouping method used
-    pub grouped_by:  GroupBy,
+    pub grouped_by: GroupBy,
 }
 
 /// Filtering and grouping options
 #[derive(Debug, Clone)]
 pub struct FilterOptions {
     /// Filter criteria
-    pub filter:         DiagnosticFilter,
+    pub filter: DiagnosticFilter,
     /// Grouping method
-    pub group_by:       GroupBy,
+    pub group_by: GroupBy,
     /// Sorting method
-    pub sort_by:        SortBy,
+    pub sort_by: SortBy,
     /// Sorting direction
     pub sort_direction: SortDirection,
     /// Limit number of results
-    pub limit:          Option<usize>,
+    pub limit: Option<usize>,
     /// Skip first N results
-    pub offset:         Option<usize>,
+    pub offset: Option<usize>,
 }
 
 impl Default for FilterOptions {
     fn default() -> Self {
         Self {
-            filter:         DiagnosticFilter::default(),
-            group_by:       GroupBy::None,
-            sort_by:        SortBy::File,
+            filter: DiagnosticFilter::default(),
+            group_by: GroupBy::None,
+            sort_by: SortBy::File,
             sort_direction: SortDirection::Ascending,
-            limit:          None,
-            offset:         None,
+            limit: None,
+            offset: None,
         }
     }
 }
@@ -559,10 +543,7 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::diagnostics::{
-        Position,
-        Range,
-    };
+    use crate::diagnostics::{Position, Range};
 
     fn create_test_diagnostic(
         file: &str,

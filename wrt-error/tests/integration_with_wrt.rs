@@ -19,10 +19,7 @@ extern crate alloc;
     clippy::uninlined_format_args
 )]
 mod tests {
-    use wrt_error::{
-        Error,
-        Result,
-    };
+    use wrt_error::{Error, Result};
 
     // Binary std/no_std choice
     // Binary std/no_std choice
@@ -44,10 +41,7 @@ mod tests {
 
     #[cfg(feature = "std")]
     mod std_alloc_tests {
-        use wrt_error::{
-            kinds,
-            Error,
-        };
+        use wrt_error::{Error, kinds};
         // Re-import necessary items if not directly available or for clarity
         // use crate::Error; // Assuming Error is pub from lib.rs
 

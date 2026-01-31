@@ -5,11 +5,7 @@
 
 #[cfg(feature = "std")]
 fn main() {
-    use wrt_decoder::memory_optimized::{
-        check_bounds_u32,
-        safe_usize_conversion,
-        MemoryPool,
-    };
+    use wrt_decoder::memory_optimized::{MemoryPool, check_bounds_u32, safe_usize_conversion};
     use wrt_foundation::NoStdProvider;
 
     println!("=== WRT-Decoder Memory Optimization Demo ===\n");

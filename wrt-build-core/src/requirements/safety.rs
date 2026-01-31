@@ -4,36 +4,17 @@
 //! cargo-wrt's diagnostic system, requirements traceability, and ASIL-tagged
 //! testing. Inspired by SCORE's verification methodology.
 
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use super::model::{
-    CoverageLevel,
-    RequirementId,
-    RequirementRegistry,
-    SafetyRequirement,
-    VerificationStatus,
+    CoverageLevel, RequirementId, RequirementRegistry, SafetyRequirement, VerificationStatus,
 };
 use crate::{
     config::AsilLevel,
-    diagnostics::{
-        Diagnostic,
-        DiagnosticCollection,
-        Position,
-        Range,
-        Severity,
-    },
-    error::{
-        BuildError,
-        BuildResult,
-    },
+    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity},
+    error::{BuildError, BuildResult},
     formatters::OutputFormat,
 };
 
@@ -84,15 +65,15 @@ impl DiagnosticCollection {
 #[derive(Debug)]
 pub struct SafetyVerificationFramework {
     /// Registry of all safety requirements
-    requirement_registry:   RequirementRegistry,
+    requirement_registry: RequirementRegistry,
     /// Test execution results
-    test_results:           Vec<TestResult>,
+    test_results: Vec<TestResult>,
     /// Code coverage data
-    coverage_data:          CoverageData,
+    coverage_data: CoverageData,
     /// Platform verification data
     platform_verifications: Vec<PlatformVerification>,
     /// Workspace root for file operations
-    workspace_root:         std::path::PathBuf,
+    workspace_root: std::path::PathBuf,
 }
 
 impl SafetyVerificationFramework {
@@ -170,8 +151,8 @@ impl SafetyVerificationFramework {
                 let violation = ComplianceViolation {
                     requirement_id: requirement.id.clone(),
                     violation_type: ViolationType::MissingImplementation,
-                    description:    format!("Requirement {} lacks implementation", requirement.id),
-                    severity:       self.determine_violation_severity(&requirement.asil_level),
+                    description: format!("Requirement {} lacks implementation", requirement.id),
+                    severity: self.determine_violation_severity(&requirement.asil_level),
                 };
 
                 let diagnostic_severity = match violation.severity {
@@ -183,21 +164,21 @@ impl SafetyVerificationFramework {
                 };
 
                 diagnostics.add_diagnostic(Diagnostic {
-                    file:         "safety-requirements".to_string(),
-                    range:        Range {
+                    file: "safety-requirements".to_string(),
+                    range: Range {
                         start: Position {
-                            line:      0,
+                            line: 0,
                             character: 0,
                         },
-                        end:   Position {
-                            line:      0,
+                        end: Position {
+                            line: 0,
                             character: 0,
                         },
                     },
-                    severity:     diagnostic_severity,
-                    message:      violation.description.clone(),
-                    code:         Some("missing-implementation".to_string()),
-                    source:       "safety-verification".to_string(),
+                    severity: diagnostic_severity,
+                    message: violation.description.clone(),
+                    code: Some("missing-implementation".to_string()),
+                    source: "safety-verification".to_string(),
                     related_info: vec![],
                 });
 
@@ -209,11 +190,11 @@ impl SafetyVerificationFramework {
                 let violation = ComplianceViolation {
                     requirement_id: requirement.id.clone(),
                     violation_type: ViolationType::InsufficientTesting,
-                    description:    format!(
+                    description: format!(
                         "Requirement {} needs more testing coverage",
                         requirement.id
                     ),
-                    severity:       self.determine_violation_severity(&requirement.asil_level),
+                    severity: self.determine_violation_severity(&requirement.asil_level),
                 };
 
                 let diagnostic_severity = match violation.severity {
@@ -225,21 +206,21 @@ impl SafetyVerificationFramework {
                 };
 
                 diagnostics.add_diagnostic(Diagnostic {
-                    file:         "safety-requirements".to_string(),
-                    range:        Range {
+                    file: "safety-requirements".to_string(),
+                    range: Range {
                         start: Position {
-                            line:      0,
+                            line: 0,
                             character: 0,
                         },
-                        end:   Position {
-                            line:      0,
+                        end: Position {
+                            line: 0,
                             character: 0,
                         },
                     },
-                    severity:     diagnostic_severity,
-                    message:      violation.description.clone(),
-                    code:         Some("insufficient-testing".to_string()),
-                    source:       "safety-verification".to_string(),
+                    severity: diagnostic_severity,
+                    message: violation.description.clone(),
+                    code: Some("insufficient-testing".to_string()),
+                    source: "safety-verification".to_string(),
                     related_info: vec![],
                 });
 
@@ -395,9 +376,9 @@ impl SafetyVerificationFramework {
         .collect();
 
         let test_summary = TestSummary {
-            total_tests:         self.test_results.len(),
-            passed_tests:        self.test_results.iter().filter(|r| r.passed).count(),
-            failed_tests:        self.test_results.iter().filter(|r| !r.passed).count(),
+            total_tests: self.test_results.len(),
+            passed_tests: self.test_results.iter().filter(|r| r.passed).count(),
+            failed_tests: self.test_results.iter().filter(|r| !r.passed).count(),
             coverage_percentage: self.coverage_data.overall_coverage(),
         };
 
@@ -407,8 +388,8 @@ impl SafetyVerificationFramework {
                 .iter()
                 .filter(|v| v.verification_passed)
                 .count(),
-            total_platforms:    self.platform_verifications.len(),
-            platform_results:   self.platform_verifications.clone(),
+            total_platforms: self.platform_verifications.len(),
+            platform_results: self.platform_verifications.clone(),
         };
 
         let critical_violations = self.get_critical_violations();
@@ -597,10 +578,7 @@ impl SafetyVerificationFramework {
     // Private helper methods
 
     fn generate_wrt_safety_requirements(&self) -> Vec<SafetyRequirement> {
-        use super::model::{
-            RequirementType,
-            VerificationMethod,
-        };
+        use super::model::{RequirementType, VerificationMethod};
 
         vec![
             {
@@ -735,8 +713,8 @@ impl SafetyVerificationFramework {
                 violations.push(ComplianceViolation {
                     requirement_id: req.id.clone(),
                     violation_type: ViolationType::FailedVerification,
-                    description:    format!("Critical requirement {} not verified", req.id),
-                    severity:       ViolationSeverity::Critical,
+                    description: format!("Critical requirement {} not verified", req.id),
+                    severity: ViolationSeverity::Critical,
                 });
             }
         }
@@ -824,21 +802,21 @@ impl SafetyVerificationFramework {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceVerificationResult {
     /// Target ASIL level being verified.
-    pub target_asil:                  AsilLevel,
+    pub target_asil: AsilLevel,
     /// Total number of requirements for this ASIL level.
-    pub total_requirements:           usize,
+    pub total_requirements: usize,
     /// Number of requirements that passed verification.
-    pub verified_requirements:        usize,
+    pub verified_requirements: usize,
     /// Percentage of requirements that are compliant.
-    pub compliance_percentage:        f64,
+    pub compliance_percentage: f64,
     /// List of compliance violations found.
-    pub violations:                   Vec<ComplianceViolation>,
+    pub violations: Vec<ComplianceViolation>,
     /// Count of requirements missing implementation.
     pub missing_implementation_count: usize,
     /// Count of requirements missing tests.
-    pub missing_testing_count:        usize,
+    pub missing_testing_count: usize,
     /// Whether the verification passed all compliance checks.
-    pub is_compliant:                 bool,
+    pub is_compliant: bool,
 }
 
 /// A compliance violation that needs to be addressed
@@ -849,9 +827,9 @@ pub struct ComplianceViolation {
     /// Type of violation that occurred.
     pub violation_type: ViolationType,
     /// Human-readable description of the violation.
-    pub description:    String,
+    pub description: String,
     /// Severity level of this violation.
-    pub severity:       ViolationSeverity,
+    pub severity: ViolationSeverity,
 }
 
 /// Types of compliance violations
@@ -912,19 +890,19 @@ impl fmt::Display for ViolationSeverity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
     /// Name of the test that was executed.
-    pub test_name:             String,
+    pub test_name: String,
     /// Whether the test passed.
-    pub passed:                bool,
+    pub passed: bool,
     /// Execution time in milliseconds.
-    pub execution_time_ms:     u64,
+    pub execution_time_ms: u64,
     /// List of requirements verified by this test.
     pub verified_requirements: Vec<RequirementId>,
     /// Type of coverage achieved by this test.
-    pub coverage_type:         TestCoverageType,
+    pub coverage_type: TestCoverageType,
     /// Reason for failure if test did not pass.
-    pub failure_reason:        String,
+    pub failure_reason: String,
     /// ASIL level of this test.
-    pub asil_level:            AsilLevel,
+    pub asil_level: AsilLevel,
 }
 
 /// Type of test coverage achieved
@@ -952,23 +930,23 @@ impl fmt::Display for TestCoverageType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoverageData {
     /// Percentage of lines covered by tests.
-    pub line_coverage:     f64,
+    pub line_coverage: f64,
     /// Percentage of branches covered by tests.
-    pub branch_coverage:   f64,
+    pub branch_coverage: f64,
     /// Percentage of functions covered by tests.
     pub function_coverage: f64,
     /// Coverage data for individual files.
-    pub file_coverages:    Vec<FileCoverage>,
+    pub file_coverages: Vec<FileCoverage>,
 }
 
 impl CoverageData {
     /// Create new coverage data with zero coverage.
     pub fn new() -> Self {
         Self {
-            line_coverage:     0.0,
-            branch_coverage:   0.0,
+            line_coverage: 0.0,
+            branch_coverage: 0.0,
             function_coverage: 0.0,
-            file_coverages:    Vec::new(),
+            file_coverages: Vec::new(),
         }
     }
 
@@ -988,11 +966,11 @@ impl Default for CoverageData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileCoverage {
     /// Path to the source file.
-    pub file_path:         String,
+    pub file_path: String,
     /// Percentage of lines covered in this file.
-    pub line_coverage:     f64,
+    pub line_coverage: f64,
     /// Percentage of branches covered in this file.
-    pub branch_coverage:   f64,
+    pub branch_coverage: f64,
     /// Percentage of functions covered in this file.
     pub function_coverage: f64,
 }
@@ -1001,47 +979,47 @@ pub struct FileCoverage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformVerification {
     /// Name of the platform being verified.
-    pub platform_name:       String,
+    pub platform_name: String,
     /// Whether platform verification passed.
     pub verification_passed: bool,
     /// List of features that passed verification.
-    pub verified_features:   Vec<String>,
+    pub verified_features: Vec<String>,
     /// List of features that failed verification.
-    pub failed_features:     Vec<String>,
+    pub failed_features: Vec<String>,
     /// ASIL compliance level achieved.
-    pub asil_compliance:     AsilLevel,
+    pub asil_compliance: AsilLevel,
 }
 
 /// Comprehensive safety report
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SafetyReport {
     /// Overall compliance percentage across all ASIL levels.
-    pub overall_compliance:      f64,
+    pub overall_compliance: f64,
     /// Compliance percentage by ASIL level.
-    pub asil_compliance:         HashMap<AsilLevel, f64>,
+    pub asil_compliance: HashMap<AsilLevel, f64>,
     /// Summary of test execution results.
-    pub test_summary:            TestSummary,
+    pub test_summary: TestSummary,
     /// Summary of platform verification results.
-    pub platform_summary:        PlatformSummary,
+    pub platform_summary: PlatformSummary,
     /// Code coverage data.
-    pub coverage_data:           CoverageData,
+    pub coverage_data: CoverageData,
     /// Number of requirements not yet verified.
     pub unverified_requirements: usize,
     /// List of critical compliance violations.
-    pub critical_violations:     Vec<ComplianceViolation>,
+    pub critical_violations: Vec<ComplianceViolation>,
     /// List of recommendations for improving safety compliance.
-    pub recommendations:         Vec<String>,
+    pub recommendations: Vec<String>,
 }
 
 /// Test execution summary
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TestSummary {
     /// Total number of tests executed.
-    pub total_tests:         usize,
+    pub total_tests: usize,
     /// Number of tests that passed.
-    pub passed_tests:        usize,
+    pub passed_tests: usize,
     /// Number of tests that failed.
-    pub failed_tests:        usize,
+    pub failed_tests: usize,
     /// Overall test coverage percentage.
     pub coverage_percentage: f64,
 }
@@ -1052,30 +1030,30 @@ pub struct PlatformSummary {
     /// Number of platforms that passed verification.
     pub verified_platforms: usize,
     /// Total number of platforms verified.
-    pub total_platforms:    usize,
+    pub total_platforms: usize,
     /// Detailed verification results for each platform.
-    pub platform_results:   Vec<PlatformVerification>,
+    pub platform_results: Vec<PlatformVerification>,
 }
 
 /// Certification readiness assessment
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CertificationReadiness {
     /// ASIL level being assessed for certification.
-    pub asil_level:            AsilLevel,
+    pub asil_level: AsilLevel,
     /// Whether the system is ready for certification.
-    pub is_ready:              bool,
+    pub is_ready: bool,
     /// Current compliance percentage.
     pub compliance_percentage: f64,
     /// Required compliance percentage for certification.
-    pub required_compliance:   f64,
+    pub required_compliance: f64,
     /// Current code coverage percentage.
-    pub coverage_percentage:   f64,
+    pub coverage_percentage: f64,
     /// Required coverage percentage for certification.
-    pub required_coverage:     f64,
+    pub required_coverage: f64,
     /// List of issues blocking certification.
-    pub blocking_issues:       Vec<String>,
+    pub blocking_issues: Vec<String>,
     /// Recommendations for achieving certification readiness.
-    pub recommendations:       Vec<String>,
+    pub recommendations: Vec<String>,
 }
 
 #[cfg(test)]
@@ -1083,10 +1061,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::requirements::model::{
-        RequirementType,
-        VerificationMethod,
-    };
+    use crate::requirements::model::{RequirementType, VerificationMethod};
 
     #[test]
     fn test_safety_verification_framework_creation() {
@@ -1127,13 +1102,13 @@ mod tests {
         let mut framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
 
         let test_result = TestResult {
-            test_name:             "test_memory_safety".to_string(),
-            passed:                true,
-            execution_time_ms:     150,
+            test_name: "test_memory_safety".to_string(),
+            passed: true,
+            execution_time_ms: 150,
             verified_requirements: vec![RequirementId::new("REQ_MEM_001")],
-            coverage_type:         TestCoverageType::Comprehensive,
-            failure_reason:        String::new(),
-            asil_level:            AsilLevel::C,
+            coverage_type: TestCoverageType::Comprehensive,
+            failure_reason: String::new(),
+            asil_level: AsilLevel::C,
         };
 
         let _diagnostics = framework.record_test_result(test_result);

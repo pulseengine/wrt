@@ -6,64 +6,58 @@
 use std::collections::HashMap;
 
 use colored::Colorize;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     build::BuildSystem,
-    error::{
-        BuildError,
-        BuildResult,
-    },
+    error::{BuildError, BuildResult},
 };
 
 /// Platform-specific memory budget configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformMemoryBudget {
     /// Platform name
-    pub name:         String,
+    pub name: String,
     /// Total memory budget in bytes
     pub total_budget: usize,
     /// Stack size in bytes
-    pub stack_size:   usize,
+    pub stack_size: usize,
     /// Heap size in bytes
-    pub heap_size:    usize,
+    pub heap_size: usize,
     /// Static data size in bytes
-    pub static_data:  usize,
+    pub static_data: usize,
 }
 
 /// Memory analysis results
 #[derive(Debug, Serialize)]
 pub struct MemoryAnalysisResult {
     /// Target platform
-    pub platform:         String,
+    pub platform: String,
     /// Total memory used in bytes
-    pub total_used:       usize,
+    pub total_used: usize,
     /// Total memory budget in bytes
-    pub total_budget:     usize,
+    pub total_budget: usize,
     /// Memory usage as percentage
     pub usage_percentage: f64,
     /// Detailed memory breakdown
-    pub breakdown:        MemoryBreakdown,
+    pub breakdown: MemoryBreakdown,
     /// Memory analysis warnings
-    pub warnings:         Vec<String>,
+    pub warnings: Vec<String>,
 }
 
 /// Detailed memory usage breakdown
 #[derive(Debug, Serialize)]
 pub struct MemoryBreakdown {
     /// Text/code segment size in bytes
-    pub text_size:   usize,
+    pub text_size: usize,
     /// Initialized data segment size in bytes
-    pub data_size:   usize,
+    pub data_size: usize,
     /// Uninitialized data (BSS) segment size in bytes
-    pub bss_size:    usize,
+    pub bss_size: usize,
     /// Stack usage in bytes
     pub stack_usage: usize,
     /// Heap usage in bytes
-    pub heap_usage:  usize,
+    pub heap_usage: usize,
 }
 
 impl BuildSystem {
@@ -73,25 +67,25 @@ impl BuildSystem {
 
         let platforms = vec![
             PlatformMemoryBudget {
-                name:         "embedded".to_string(),
+                name: "embedded".to_string(),
                 total_budget: 256 * 1024, // 256KB
-                stack_size:   8 * 1024,   // 8KB
-                heap_size:    32 * 1024,  // 32KB
-                static_data:  16 * 1024,  // 16KB
+                stack_size: 8 * 1024,     // 8KB
+                heap_size: 32 * 1024,     // 32KB
+                static_data: 16 * 1024,   // 16KB
             },
             PlatformMemoryBudget {
-                name:         "iot".to_string(),
+                name: "iot".to_string(),
                 total_budget: 1024 * 1024, // 1MB
-                stack_size:   32 * 1024,   // 32KB
-                heap_size:    128 * 1024,  // 128KB
-                static_data:  64 * 1024,   // 64KB
+                stack_size: 32 * 1024,     // 32KB
+                heap_size: 128 * 1024,     // 128KB
+                static_data: 64 * 1024,    // 64KB
             },
             PlatformMemoryBudget {
-                name:         "desktop".to_string(),
+                name: "desktop".to_string(),
                 total_budget: 16 * 1024 * 1024, // 16MB
-                stack_size:   1024 * 1024,      // 1MB
-                heap_size:    8 * 1024 * 1024,  // 8MB
-                static_data:  512 * 1024,       // 512KB
+                stack_size: 1024 * 1024,        // 1MB
+                heap_size: 8 * 1024 * 1024,     // 8MB
+                static_data: 512 * 1024,        // 512KB
             },
         ];
 
@@ -118,11 +112,11 @@ impl BuildSystem {
 
         // For now, use placeholder values
         let breakdown = MemoryBreakdown {
-            text_size:   64 * 1024,                      // Simulated code size
-            data_size:   8 * 1024,                       // Simulated initialized data
-            bss_size:    4 * 1024,                       // Simulated uninitialized data
+            text_size: 64 * 1024,                        // Simulated code size
+            data_size: 8 * 1024,                         // Simulated initialized data
+            bss_size: 4 * 1024,                          // Simulated uninitialized data
             stack_usage: platform.stack_size * 60 / 100, // 60% stack usage
-            heap_usage:  platform.heap_size * 40 / 100,  // 40% heap usage
+            heap_usage: platform.heap_size * 40 / 100,   // 40% heap usage
         };
 
         let total_used = breakdown.text_size

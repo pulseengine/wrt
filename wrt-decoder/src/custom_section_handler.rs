@@ -7,41 +7,20 @@
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use alloc::{string::String, vec::Vec};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    CrateId,
-    WrtHashMap,
-};
+use wrt_foundation::allocator::{CrateId, WrtHashMap};
 
 use crate::{
-    branch_hint_section::{
-        parse_branch_hint_section,
-        BranchHintSection,
-        BRANCH_HINT_SECTION_NAME,
-    },
-    resource_limits_section::{
-        ResourceLimitsSection,
-        RESOURCE_LIMITS_SECTION_NAME,
-    },
+    branch_hint_section::{BRANCH_HINT_SECTION_NAME, BranchHintSection, parse_branch_hint_section},
+    resource_limits_section::{RESOURCE_LIMITS_SECTION_NAME, ResourceLimitsSection},
 };
 
 /// Represents a parsed custom section
@@ -55,7 +34,7 @@ pub enum CustomSection {
     /// Name section for debugging information
     Name {
         /// Module name
-        module_name:    Option<String>,
+        module_name: Option<String>,
         /// Function names
         #[cfg(all(feature = "std", feature = "safety-critical"))]
         function_names: WrtHashMap<u32, String, { CrateId::Decoder as u8 }, 256>,
@@ -116,10 +95,7 @@ impl CustomSectionHandler {
 
                 CustomSection::ResourceLimits(resource_limits)
             },
-            "name" => {
-                
-                parse_name_section(data)?
-            },
+            "name" => parse_name_section(data)?,
             _ => {
                 // Unknown section - preserve raw data
                 CustomSection::Unknown {
@@ -272,10 +248,7 @@ pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::branch_hint_section::{
-        BranchHintValue,
-        FunctionBranchHints,
-    };
+    use crate::branch_hint_section::{BranchHintValue, FunctionBranchHints};
 
     #[cfg(feature = "std")]
     #[test]

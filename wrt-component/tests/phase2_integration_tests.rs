@@ -9,46 +9,25 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
     time::Duration,
 };
 
 use wrt_component::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_bridge::{
-            AsyncBridgeConfig,
-            FuelAsyncBridge,
-        },
+        fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
 
-        fuel_async_channels::{
-            ChannelId,
-            FuelAsyncChannelManager,
-        },
+        fuel_async_channels::{ChannelId, FuelAsyncChannelManager},
         // Phase 1 components
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
-        fuel_async_scheduler::{
-            FuelAsyncScheduler,
-            SchedulingPolicy,
-        },
-        fuel_preemptive_scheduler::{
-            FuelPreemptiveScheduler,
-            PreemptiveSchedulerConfig,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
+        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
+        fuel_preemptive_scheduler::{FuelPreemptiveScheduler, PreemptiveSchedulerConfig},
         // Phase 2 components
-        fuel_priority_inheritance::{
-            FuelPriorityInheritanceProtocol,
-            ResourceId,
-        },
+        fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
     },
     prelude::*,
     task_manager::TaskId,
-    ComponentInstanceId,
 };
 use wrt_foundation::verification::VerificationLevel;
 use wrt_platform::advanced_sync::Priority;
@@ -56,10 +35,10 @@ use wrt_platform::advanced_sync::Priority;
 /// Test future that simulates different types of async work
 struct SimulatedAsyncWork {
     polls_remaining: usize,
-    fuel_per_poll:   u64,
-    result:          Option<u32>,
-    priority:        Priority,
-    can_block:       bool,
+    fuel_per_poll: u64,
+    result: Option<u32>,
+    priority: Priority,
+    can_block: bool,
 }
 
 impl SimulatedAsyncWork {
@@ -220,14 +199,14 @@ mod tests {
     fn test_phase2_preemptive_scheduler() {
         // Test preemptive scheduler with priority and fuel-based time slicing
         let config = PreemptiveSchedulerConfig {
-            default_fuel_quantum:        1000,
-            enable_priority_aging:       true,
-            aging_fuel_threshold:        2000,
-            max_priority_boost:          2,
-            enable_deadline_scheduling:  true,
+            default_fuel_quantum: 1000,
+            enable_priority_aging: true,
+            aging_fuel_threshold: 2000,
+            max_priority_boost: 2,
+            enable_deadline_scheduling: true,
             enable_priority_inheritance: true,
-            min_fuel_quantum:            100,
-            max_fuel_quantum:            5000,
+            min_fuel_quantum: 100,
+            max_fuel_quantum: 5000,
         };
 
         let mut scheduler =
@@ -505,12 +484,12 @@ mod tests {
         executor.set_global_fuel_limit(30000); // System-wide resource limit
 
         let config = PreemptiveSchedulerConfig {
-            default_fuel_quantum:        500, // Small quanta for responsive scheduling
-            enable_priority_aging:       false, // Disabled for deterministic behavior
-            enable_deadline_scheduling:  true,
+            default_fuel_quantum: 500,    // Small quanta for responsive scheduling
+            enable_priority_aging: false, // Disabled for deterministic behavior
+            enable_deadline_scheduling: true,
             enable_priority_inheritance: true,
-            min_fuel_quantum:            100,
-            max_fuel_quantum:            2000,
+            min_fuel_quantum: 100,
+            max_fuel_quantum: 2000,
         };
         let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Full).unwrap();
 
@@ -531,7 +510,7 @@ mod tests {
             .add_task(
                 application_task,
                 ComponentInstanceId::new(2), // Different component for isolation
-                128, // Normal priority
+                128,                         // Normal priority
                 10000,
                 Some(Duration::from_millis(5000)),
                 true, // Preemptible
@@ -543,7 +522,7 @@ mod tests {
             .add_task(
                 maintenance_task,
                 ComponentInstanceId::new(3), // Separate component
-                64, // Low priority
+                64,                          // Low priority
                 15000,
                 None, // No deadline - best effort
                 true,

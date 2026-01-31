@@ -6,31 +6,15 @@
 // recursive types
 #[cfg(feature = "std")]
 mod component_decode {
-    use wrt_error::{
-        codes,
-        Error,
-        ErrorCategory,
-        Result,
-    };
-    use wrt_format::{
-        binary,
-        component::Component,
-    };
+    use wrt_error::{Error, ErrorCategory, Result, codes};
+    use wrt_format::{binary, component::Component};
 
     use crate::{
         component::parse::{
-            parse_alias_section,
-            parse_canon_section,
-            parse_component_section,
-            parse_component_type_section,
-            parse_core_instance_section,
-            parse_core_module_section,
-            parse_core_type_section,
-            parse_export_section,
-            parse_import_section,
-            parse_instance_section,
-            parse_start_section,
-            parse_value_section,
+            parse_alias_section, parse_canon_section, parse_component_section,
+            parse_component_type_section, parse_core_instance_section, parse_core_module_section,
+            parse_core_type_section, parse_export_section, parse_import_section,
+            parse_instance_section, parse_start_section, parse_value_section,
         },
         prelude::*,
     };
@@ -302,26 +286,15 @@ mod component_decode {
 // Re-export public APIs when std feature is enabled
 #[cfg(feature = "std")]
 pub use component_decode::{
-    decode_component,
-    decode_error,
-    decode_error_with_context,
-    decode_error_with_position,
-    decode_error_with_type,
-    decode_error_with_value,
-    parse_error,
-    parse_error_with_context,
+    decode_component, decode_error, decode_error_with_context, decode_error_with_position,
+    decode_error_with_type, decode_error_with_value, parse_error, parse_error_with_context,
     parse_error_with_position,
 };
 
 // No-std stub implementations
 #[cfg(not(feature = "std"))]
 pub mod no_std_stubs {
-    use wrt_error::{
-        codes,
-        Error,
-        ErrorCategory,
-        Result,
-    };
+    use wrt_error::{Error, ErrorCategory, Result, codes};
 
     /// Stub component type for no_std decoding
     #[derive(Debug, Clone)]

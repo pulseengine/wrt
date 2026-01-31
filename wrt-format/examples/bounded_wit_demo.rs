@@ -3,10 +3,7 @@
 //! This example shows how to use the bounded WIT parser to parse simple
 //! WIT definitions in constrained environments without allocation.
 
-use wrt_format::wit_parser_bounded::{
-    parse_wit_bounded,
-    BoundedWitParser,
-};
+use wrt_format::wit_parser_bounded::{BoundedWitParser, parse_wit_bounded};
 use wrt_foundation::NoStdProvider;
 
 fn main() -> Result<(), wrt_error::Error> {

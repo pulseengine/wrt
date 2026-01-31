@@ -1,103 +1,36 @@
-use core::sync::atomic::{
-    AtomicU32,
-    Ordering,
-};
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use wrt_component::{
-    async_types::{
-        AsyncType,
-        ErrorContext,
-        Future,
-        FutureState,
-        Stream,
-        StreamState,
-    },
-    canonical_options::{
-        CanonicalOptions,
-        LiftContext,
-        LowerContext,
-    },
-    canonical_realloc::{
-        AllocationInfo,
-        ReallocManager,
-    },
-    component_linker::{
-        ComponentLinker,
-        LinkingResult,
-    },
-    component_resolver::{
-        ComponentResolver,
-        ResolutionResult,
-    },
+    ComponentInstance, ComponentInstanceId, ResourceHandle, TypeId, ValType,
+    async_types::{AsyncType, ErrorContext, Future, FutureState, Stream, StreamState},
+    canonical_options::{CanonicalOptions, LiftContext, LowerContext},
+    canonical_realloc::{AllocationInfo, ReallocManager},
+    component_linker::{ComponentLinker, LinkingResult},
+    component_resolver::{ComponentResolver, ResolutionResult},
     cross_component_resource_sharing::{
+        CrossComponentResourceSharingManager, PolicyRule, SharingLifetime, TransferPolicy,
         create_basic_sharing_policy,
-        CrossComponentResourceSharingManager,
-        PolicyRule,
-        SharingLifetime,
-        TransferPolicy,
     },
-    generative_types::{
-        GenerativeResourceType,
-        GenerativeTypeRegistry,
-    },
-    handle_representation::{
-        AccessRights,
-        HandleOperation,
-        HandleRepresentationManager,
-    },
-    post_return::{
-        CleanupTask,
-        CleanupTaskType,
-        PostReturnRegistry,
-    },
+    generative_types::{GenerativeResourceType, GenerativeTypeRegistry},
+    handle_representation::{AccessRights, HandleOperation, HandleRepresentationManager},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
     start_function_validation::{
-        create_start_function_descriptor,
+        StartFunctionValidator, ValidationLevel, ValidationState, create_start_function_descriptor,
         create_start_function_param,
-        StartFunctionValidator,
-        ValidationLevel,
-        ValidationState,
     },
-    task_manager::{
-        TaskManager,
-        TaskState,
-    },
-    thread_spawn::{
-        ComponentThreadManager,
-        ThreadConfiguration,
-        ThreadId,
-        ThreadSpawnRequest,
-    },
+    task_manager::{TaskManager, TaskState},
+    thread_spawn::{ComponentThreadManager, ThreadConfiguration, ThreadId, ThreadSpawnRequest},
     thread_spawn_fuel::{
-        create_fuel_thread_config,
-        FuelThreadConfiguration,
-        FuelTrackedThreadManager,
+        FuelThreadConfiguration, FuelTrackedThreadManager, create_fuel_thread_config,
     },
-    type_bounds::{
-        TypeBound,
-        TypeBoundKind,
-        TypeBoundsChecker,
-    },
+    type_bounds::{TypeBound, TypeBoundKind, TypeBoundsChecker},
     virtualization::{
-        Capability,
-        ExportVisibility,
-        IsolationLevel,
-        MemoryPermissions,
-        VirtualExport,
-        VirtualImport,
-        VirtualSource,
-        VirtualizationManager,
+        Capability, ExportVisibility, IsolationLevel, MemoryPermissions, VirtualExport,
+        VirtualImport, VirtualSource, VirtualizationManager,
     },
-    ComponentInstance,
-    ComponentInstanceId,
-    ResourceHandle,
-    TypeId,
-    ValType,
 };
 use wrt_foundation::{
-    bounded_collections::{
-        BoundedHashMap,
-        BoundedVec,
-    },
+    bounded_collections::{BoundedHashMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::SafeMemory,
 };
@@ -159,9 +92,9 @@ fn test_generative_types_with_bounds(
 
     // Establish type bounds
     let bound = TypeBound {
-        sub_type:   derived_type.type_id,
+        sub_type: derived_type.type_id,
         super_type: base_type.type_id,
-        kind:       TypeBoundKind::Sub,
+        kind: TypeBoundKind::Sub,
     };
 
     bounds_checker.add_bound(bound).unwrap();
@@ -314,8 +247,8 @@ fn test_virtualization_integration() {
 
     // Allocate virtual memory
     let permissions = MemoryPermissions {
-        read:    true,
-        write:   true,
+        read: true,
+        write: true,
         execute: false,
     };
 
@@ -324,10 +257,10 @@ fn test_virtualization_integration() {
 
     // Create virtual import
     let virtual_import = VirtualImport {
-        name:                "host-function".to_string(),
-        val_type:            ValType::I32,
-        required:            true,
-        virtual_source:      Some(VirtualSource::HostFunction {
+        name: "host-function".to_string(),
+        val_type: ValType::I32,
+        required: true,
+        virtual_source: Some(VirtualSource::HostFunction {
             name: "get-time".to_string(),
         }),
         capability_required: None,
@@ -337,9 +270,9 @@ fn test_virtualization_integration() {
 
     // Create virtual export
     let virtual_export = VirtualExport {
-        name:                "compute-result".to_string(),
-        val_type:            ValType::I32,
-        visibility:          ExportVisibility::Public,
+        name: "compute-result".to_string(),
+        val_type: ValType::I32,
+        visibility: ExportVisibility::Public,
         capability_required: None,
     };
 
@@ -360,10 +293,10 @@ fn test_thread_spawn_integration() {
 
     // Create thread configuration
     let thread_config = ThreadConfiguration {
-        stack_size:   128 * 1024,
-        priority:     None,
-        name:         Some("test-thread".to_string()),
-        detached:     false,
+        stack_size: 128 * 1024,
+        priority: None,
+        name: Some("test-thread".to_string()),
+        detached: false,
         cpu_affinity: None,
         capabilities: BoundedVec::new(),
     };
@@ -766,10 +699,7 @@ fn test_resource_lifecycle_integration() {
 #[cfg(feature = "std")]
 #[test]
 fn test_std_specific_features() {
-    use std::{
-        sync::Arc,
-        thread,
-    };
+    use std::{sync::Arc, thread};
 
     // Test thread safety of our implementations
     let type_registry = Arc::new(GenerativeTypeRegistry::new());

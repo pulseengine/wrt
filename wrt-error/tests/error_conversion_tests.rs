@@ -1,16 +1,8 @@
 //! Tests for error conversion and `FromError` implementations
 
 use wrt_error::{
-    codes,
-    kinds::{
-        ComponentError,
-        ParseError,
-        ResourceError,
-        RuntimeError,
-        ValidationError,
-    },
-    Error,
-    ErrorCategory,
+    Error, ErrorCategory, codes,
+    kinds::{ComponentError, ParseError, ResourceError, RuntimeError, ValidationError},
 };
 
 #[test]

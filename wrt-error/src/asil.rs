@@ -11,17 +11,14 @@
 //! This module provides ASIL-specific functionality for safety-critical
 //! error handling as per ISO 26262 standard.
 
-use crate::{
-    Error,
-    ErrorCategory,
-};
+use crate::{Error, ErrorCategory};
 
 /// ASIL (Automotive Safety Integrity Level) as defined by ISO 26262
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum AsilLevel {
     /// Quality Management (no safety requirements)
-    QM    = 0,
+    QM = 0,
     /// ASIL-A (lowest safety integrity level)
     AsilA = 1,
     /// ASIL-B (medium-low safety integrity level, ≥90% SPFM)
@@ -85,7 +82,7 @@ impl AsilLevel {
 /// Safety monitor for ASIL-C and above
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 pub struct SafetyMonitor {
-    error_count:     core::sync::atomic::AtomicU32,
+    error_count: core::sync::atomic::AtomicU32,
     last_error_code: core::sync::atomic::AtomicU16,
 }
 
@@ -102,7 +99,7 @@ impl SafetyMonitor {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            error_count:     core::sync::atomic::AtomicU32::new(0),
+            error_count: core::sync::atomic::AtomicU32::new(0),
             last_error_code: core::sync::atomic::AtomicU16::new(0),
         }
     }
@@ -145,13 +142,13 @@ impl SafetyMonitor {
 #[derive(Debug, Clone)]
 pub struct AsilErrorContext {
     /// The error itself
-    pub error:      Error,
+    pub error: Error,
     /// ASIL level when error occurred
     pub asil_level: AsilLevel,
     /// Timestamp (if available)
-    pub timestamp:  Option<u64>,
+    pub timestamp: Option<u64>,
     /// Source module ID
-    pub module_id:  Option<u32>,
+    pub module_id: Option<u32>,
 }
 
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]

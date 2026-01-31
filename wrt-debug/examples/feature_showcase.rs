@@ -31,11 +31,7 @@ pub extern "C" fn basic_debug_functionality() -> u32 {
     // Basic query always works
     let has_debug = debug_info.has_debug_info();
 
-    if has_debug {
-        1
-    } else {
-        0
-    }
+    if has_debug { 1 } else { 0 }
 }
 
 /// Available only with line-info feature (default)

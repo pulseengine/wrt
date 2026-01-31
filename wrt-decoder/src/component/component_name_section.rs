@@ -7,24 +7,13 @@
 //! This module provides utilities for encoding and decoding custom name
 //! sections in WebAssembly Component Model binaries.
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(feature = "std")]
-use wrt_format::binary::with_alloc::{
-    read_leb128_u32,
-    read_string,
-};
+use wrt_format::binary::with_alloc::{read_leb128_u32, read_string};
 #[cfg(feature = "std")]
 use wrt_format::component::Sort;
 #[cfg(feature = "std")]
-use wrt_format::{
-    write_leb128_u32,
-    write_string,
-};
+use wrt_format::{write_leb128_u32, write_string};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::BoundedVec;
 #[cfg(not(feature = "std"))]
@@ -37,17 +26,17 @@ use crate::prelude::*;
 #[derive(Default, Debug, Clone)]
 pub struct ComponentNameSection {
     /// Component name
-    pub component_name:  Option<String>,
+    pub component_name: Option<String>,
     /// Names for each sort (function, instance, etc.)
-    pub sort_names:      Vec<(Sort, Vec<(u32, String)>)>,
+    pub sort_names: Vec<(Sort, Vec<(u32, String)>)>,
     /// Import names
-    pub import_names:    Vec<(u32, String)>,
+    pub import_names: Vec<(u32, String)>,
     /// Export names
-    pub export_names:    Vec<(u32, String)>,
+    pub export_names: Vec<(u32, String)>,
     /// Canonical function names
     pub canonical_names: Vec<(u32, String)>,
     /// Type names
-    pub type_names:      Vec<(u32, String)>,
+    pub type_names: Vec<(u32, String)>,
 }
 
 /// Component name section (no_std version - simplified)
@@ -55,17 +44,17 @@ pub struct ComponentNameSection {
 #[derive(Default, Debug, Clone)]
 pub struct ComponentNameSection {
     /// Component name (simplified for no_std)
-    pub component_name:  Option<&'static str>,
+    pub component_name: Option<&'static str>,
     /// Simplified names for no_std - only sort IDs
-    pub sort_names:      (),
+    pub sort_names: (),
     /// Import names (disabled in no_std)
-    pub import_names:    (),
+    pub import_names: (),
     /// Export names (disabled in no_std)
-    pub export_names:    (),
+    pub export_names: (),
     /// Canonical function names (disabled in no_std)
     pub canonical_names: (),
     /// Type names (disabled in no_std)
-    pub type_names:      (),
+    pub type_names: (),
 }
 
 /// Name subsection IDs

@@ -62,7 +62,6 @@ mod mock_deps {
 #[path = "src/runtime_api.rs"]
 mod runtime_api_test {
 
-
     // Mock BasicType
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum BasicType {

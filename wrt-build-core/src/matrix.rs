@@ -5,40 +5,28 @@
 //! architectural issues that could impact ASIL compliance.
 
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
+    collections::{HashMap, HashSet},
     io::Write,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     process::Command,
     time::Instant,
 };
 
 use chrono::Local;
 use colored::Colorize;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::error::{
-    BuildError,
-    BuildResult,
-};
+use crate::error::{BuildError, BuildResult};
 
 /// Build configuration for matrix testing
 #[derive(Debug, Clone)]
 pub struct BuildConfiguration {
     /// Configuration name
-    pub name:       String,
+    pub name: String,
     /// Package to build
-    pub package:    String,
+    pub package: String,
     /// Features to enable
-    pub features:   Vec<String>,
+    pub features: Vec<String>,
     /// ASIL level
     pub asil_level: AsilLevel,
 }
@@ -128,44 +116,44 @@ impl ArchitecturalIssue {
 #[derive(Debug, Serialize)]
 pub struct ConfigurationResult {
     /// Name of the configuration
-    pub name:                 String,
+    pub name: String,
     /// Package being tested
-    pub package:              String,
+    pub package: String,
     /// Features enabled for this configuration
-    pub features:             Vec<String>,
+    pub features: Vec<String>,
     /// ASIL level for this configuration
-    pub asil_level:           AsilLevel,
+    pub asil_level: AsilLevel,
     /// Whether the build passed
-    pub build_passed:         bool,
+    pub build_passed: bool,
     /// Whether tests passed
-    pub test_passed:          bool,
+    pub test_passed: bool,
     /// Whether ASIL compliance checks passed
-    pub asil_check_passed:    Option<bool>,
+    pub asil_check_passed: Option<bool>,
     /// Architectural issues found
     pub architectural_issues: Vec<ArchitecturalIssue>,
     /// Error output if any
-    pub error_output:         Option<String>,
+    pub error_output: Option<String>,
 }
 
 /// Overall verification results
 #[derive(Debug, Serialize)]
 pub struct VerificationResults {
     /// Results for each configuration tested
-    pub configurations:       Vec<ConfigurationResult>,
+    pub configurations: Vec<ConfigurationResult>,
     /// Whether all configurations passed
-    pub all_passed:           bool,
+    pub all_passed: bool,
     /// Unique architectural issues found across all configurations
     pub architectural_issues: HashSet<ArchitecturalIssue>,
     /// Timestamp of the verification run
-    pub timestamp:            String,
+    pub timestamp: String,
     /// Result of Kani formal verification if run
-    pub kani_result:          Option<bool>,
+    pub kani_result: Option<bool>,
 }
 
 /// Build matrix verifier
 pub struct MatrixVerifier {
     configurations: Vec<BuildConfiguration>,
-    verbose:        bool,
+    verbose: bool,
 }
 
 impl MatrixVerifier {
@@ -191,45 +179,45 @@ impl MatrixVerifier {
         vec![
             // WRT Library Configurations
             BuildConfiguration {
-                name:       "WRT no_std + alloc".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["alloc".to_string()],
+                name: "WRT no_std + alloc".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["alloc".to_string()],
                 asil_level: AsilLevel::Core,
             },
             BuildConfiguration {
-                name:       "WRT ASIL-D (no_std + alloc)".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["alloc".to_string(), "safety-asil-d".to_string()],
+                name: "WRT ASIL-D (no_std + alloc)".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["alloc".to_string(), "safety-asil-d".to_string()],
                 asil_level: AsilLevel::AsilD,
             },
             BuildConfiguration {
-                name:       "WRT ASIL-C (no_std + alloc)".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["alloc".to_string(), "safety-asil-c".to_string()],
+                name: "WRT ASIL-C (no_std + alloc)".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["alloc".to_string(), "safety-asil-c".to_string()],
                 asil_level: AsilLevel::AsilC,
             },
             BuildConfiguration {
-                name:       "WRT ASIL-B (no_std + alloc)".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["alloc".to_string(), "safety-asil-b".to_string()],
+                name: "WRT ASIL-B (no_std + alloc)".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["alloc".to_string(), "safety-asil-b".to_string()],
                 asil_level: AsilLevel::AsilB,
             },
             BuildConfiguration {
-                name:       "WRT Development (std)".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["std".to_string()],
+                name: "WRT Development (std)".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["std".to_string()],
                 asil_level: AsilLevel::Development,
             },
             BuildConfiguration {
-                name:       "WRT Development with Optimization".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec!["std".to_string(), "optimize".to_string()],
+                name: "WRT Development with Optimization".to_string(),
+                package: "wrt".to_string(),
+                features: vec!["std".to_string(), "optimize".to_string()],
                 asil_level: AsilLevel::Development,
             },
             BuildConfiguration {
-                name:       "WRT Server".to_string(),
-                package:    "wrt".to_string(),
-                features:   vec![
+                name: "WRT Server".to_string(),
+                package: "wrt".to_string(),
+                features: vec![
                     "std".to_string(),
                     "optimize".to_string(),
                     "platform".to_string(),
@@ -238,9 +226,9 @@ impl MatrixVerifier {
             },
             // WRTD Binary Configurations
             BuildConfiguration {
-                name:       "WRTD ASIL-D Runtime".to_string(),
-                package:    "wrtd".to_string(),
-                features:   vec![
+                name: "WRTD ASIL-D Runtime".to_string(),
+                package: "wrtd".to_string(),
+                features: vec![
                     "safety-asil-d".to_string(),
                     "wrt-execution".to_string(),
                     "enable-panic-handler".to_string(),
@@ -248,9 +236,9 @@ impl MatrixVerifier {
                 asil_level: AsilLevel::AsilD,
             },
             BuildConfiguration {
-                name:       "WRTD ASIL-C Runtime".to_string(),
-                package:    "wrtd".to_string(),
-                features:   vec![
+                name: "WRTD ASIL-C Runtime".to_string(),
+                package: "wrtd".to_string(),
+                features: vec![
                     "safety-asil-c".to_string(),
                     "wrt-execution".to_string(),
                     "enable-panic-handler".to_string(),
@@ -258,9 +246,9 @@ impl MatrixVerifier {
                 asil_level: AsilLevel::AsilC,
             },
             BuildConfiguration {
-                name:       "WRTD ASIL-B Runtime".to_string(),
-                package:    "wrtd".to_string(),
-                features:   vec![
+                name: "WRTD ASIL-B Runtime".to_string(),
+                package: "wrtd".to_string(),
+                features: vec![
                     "safety-asil-b".to_string(),
                     "wrt-execution".to_string(),
                     "asil-b-panic".to_string(),
@@ -268,9 +256,9 @@ impl MatrixVerifier {
                 asil_level: AsilLevel::AsilB,
             },
             BuildConfiguration {
-                name:       "WRTD Development Runtime".to_string(),
-                package:    "wrtd".to_string(),
-                features:   vec![
+                name: "WRTD Development Runtime".to_string(),
+                package: "wrtd".to_string(),
+                features: vec![
                     "std".to_string(),
                     "wrt-execution".to_string(),
                     "dev-panic".to_string(),
@@ -278,16 +266,16 @@ impl MatrixVerifier {
                 asil_level: AsilLevel::Development,
             },
             BuildConfiguration {
-                name:       "WRTD Server Runtime".to_string(),
-                package:    "wrtd".to_string(),
-                features:   vec!["std".to_string(), "wrt-execution".to_string()],
+                name: "WRTD Server Runtime".to_string(),
+                package: "wrtd".to_string(),
+                features: vec!["std".to_string(), "wrt-execution".to_string()],
                 asil_level: AsilLevel::Server,
             },
             // Component Model Tests
             BuildConfiguration {
-                name:       "Component Model Core".to_string(),
-                package:    "wrt-component".to_string(),
-                features:   vec![
+                name: "Component Model Core".to_string(),
+                package: "wrt-component".to_string(),
+                features: vec![
                     "no_std".to_string(),
                     "alloc".to_string(),
                     "component-model-core".to_string(),
@@ -295,9 +283,9 @@ impl MatrixVerifier {
                 asil_level: AsilLevel::Component,
             },
             BuildConfiguration {
-                name:       "Component Model Full".to_string(),
-                package:    "wrt-component".to_string(),
-                features:   vec!["std".to_string(), "component-model-all".to_string()],
+                name: "Component Model Full".to_string(),
+                package: "wrt-component".to_string(),
+                features: vec!["std".to_string(), "component-model-all".to_string()],
                 asil_level: AsilLevel::Component,
             },
         ]

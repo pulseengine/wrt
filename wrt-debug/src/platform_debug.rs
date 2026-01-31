@@ -14,11 +14,11 @@ mod platform_stubs {
     /// that debug operations do not exceed platform resource constraints.
     pub struct ComprehensivePlatformLimits {
         /// Maximum total memory available on the platform (bytes)
-        pub max_total_memory:   usize,
+        pub max_total_memory: usize,
         /// Maximum memory overhead allowed for debug features (bytes)
         pub max_debug_overhead: usize,
         /// Platform identifier for platform-specific optimizations
-        pub platform_id:        PlatformId,
+        pub platform_id: PlatformId,
     }
 
     /// Platform identifier enumeration
@@ -48,43 +48,40 @@ mod platform_stubs {
     impl Default for ComprehensivePlatformLimits {
         fn default() -> Self {
             Self {
-                max_total_memory:   1024 * 1024 * 1024,
+                max_total_memory: 1024 * 1024 * 1024,
                 max_debug_overhead: 64 * 1024 * 1024,
-                platform_id:        PlatformId::Unknown,
+                platform_id: PlatformId::Unknown,
             }
         }
     }
 }
 
-pub use platform_stubs::{
-    ComprehensivePlatformLimits,
-    PlatformId,
-};
+pub use platform_stubs::{ComprehensivePlatformLimits, PlatformId};
 
 /// Debug capability levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DebugLevel {
     /// No debug capabilities
-    None         = 0,
+    None = 0,
     /// Basic profiling only
     BasicProfile = 1,
     /// Full debug with breakpoints and inspection
-    FullDebug    = 2,
+    FullDebug = 2,
 }
 
 /// Platform-specific debug limits
 #[derive(Debug, Clone)]
 pub struct PlatformDebugLimits {
     /// Maximum number of debug sections
-    pub max_debug_sections:     usize,
+    pub max_debug_sections: usize,
     /// Maximum size of DWARF section in bytes
     pub max_dwarf_section_size: usize,
     /// Maximum number of breakpoints
-    pub max_breakpoints:        usize,
+    pub max_breakpoints: usize,
     /// Maximum number of stack traces
-    pub max_stack_traces:       usize,
+    pub max_stack_traces: usize,
     /// Debug level supported on this platform
-    pub debug_level:            DebugLevel,
+    pub debug_level: DebugLevel,
 }
 
 impl PlatformDebugLimits {
@@ -144,31 +141,31 @@ impl PlatformDebugLimits {
     /// Create minimal debug limits for embedded systems
     pub fn minimal_embedded() -> Self {
         Self {
-            max_debug_sections:     8,
+            max_debug_sections: 8,
             max_dwarf_section_size: 32 * 1024, // 32KB
-            max_breakpoints:        4,
-            max_stack_traces:       4,
-            debug_level:            DebugLevel::BasicProfile,
+            max_breakpoints: 4,
+            max_stack_traces: 4,
+            debug_level: DebugLevel::BasicProfile,
         }
     }
 
     /// Create limits for production systems (minimal debugging)
     pub fn production() -> Self {
         Self {
-            max_debug_sections:     0,
+            max_debug_sections: 0,
             max_dwarf_section_size: 0,
-            max_breakpoints:        0,
-            max_stack_traces:       1, // Allow minimal crash reporting
-            debug_level:            DebugLevel::None,
+            max_breakpoints: 0,
+            max_stack_traces: 1, // Allow minimal crash reporting
+            debug_level: DebugLevel::None,
         }
     }
 
     /// Create limits for development systems (full debugging)
     pub fn development(memory_size: usize) -> Self {
         let mock_limits = ComprehensivePlatformLimits {
-            max_total_memory:   memory_size,
+            max_total_memory: memory_size,
             max_debug_overhead: memory_size / 8, // 12.5% for debug
-            platform_id:        PlatformId::Unknown,
+            platform_id: PlatformId::Unknown,
         };
 
         Self::from_platform_limits(&mock_limits, DebugLevel::FullDebug)
@@ -178,15 +175,15 @@ impl PlatformDebugLimits {
 /// Platform-aware debug manager
 pub struct PlatformDebugManager {
     /// Debug limits for this platform
-    limits:               PlatformDebugLimits,
+    limits: PlatformDebugLimits,
     /// Current memory usage for debug features
     current_debug_memory: usize,
     /// Number of active debug sections
-    active_sections:      usize,
+    active_sections: usize,
     /// Number of active breakpoints
-    active_breakpoints:   usize,
+    active_breakpoints: usize,
     /// Number of active stack traces
-    active_stack_traces:  usize,
+    active_stack_traces: usize,
 }
 
 impl PlatformDebugManager {
@@ -318,9 +315,9 @@ impl PlatformDebugManager {
 
 /// Platform debug configuration builder
 pub struct PlatformDebugConfigBuilder {
-    debug_level:          DebugLevel,
-    memory_override:      Option<usize>,
-    breakpoint_override:  Option<usize>,
+    debug_level: DebugLevel,
+    memory_override: Option<usize>,
+    breakpoint_override: Option<usize>,
     stack_trace_override: Option<usize>,
 }
 
@@ -328,9 +325,9 @@ impl PlatformDebugConfigBuilder {
     /// Create new debug config builder
     pub fn new() -> Self {
         Self {
-            debug_level:          DebugLevel::BasicProfile,
-            memory_override:      None,
-            breakpoint_override:  None,
+            debug_level: DebugLevel::BasicProfile,
+            memory_override: None,
+            breakpoint_override: None,
             stack_trace_override: None,
         }
     }
@@ -393,9 +390,9 @@ mod tests {
     #[test]
     fn test_debug_limits_from_platform() {
         let platform_limits = ComprehensivePlatformLimits {
-            max_total_memory:   256 * 1024 * 1024, // 256MB
-            max_debug_overhead: 25 * 1024 * 1024,  // 25MB
-            platform_id:        PlatformId::Linux,
+            max_total_memory: 256 * 1024 * 1024,  // 256MB
+            max_debug_overhead: 25 * 1024 * 1024, // 25MB
+            platform_id: PlatformId::Linux,
         };
 
         let debug_limits =

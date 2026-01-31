@@ -73,7 +73,7 @@ pub struct MemoryAccessOutOfBoundsError {
     /// The memory address that was accessed
     pub address: u64,
     /// The length of memory being accessed
-    pub length:  u64,
+    pub length: u64,
 }
 
 /// Type mismatch error
@@ -203,7 +203,7 @@ pub struct MalformedWasm30TypeInformationSection(pub &'static str);
 #[derive(Debug, Clone, Copy)]
 pub struct InvalidMemoryIndexWasm30 {
     /// The invalid memory index that was used.
-    pub index:        u32,
+    pub index: u32,
     /// The maximum number of allowed memories (if applicable).
     pub max_memories: u32,
 }
@@ -216,9 +216,9 @@ pub struct UnknownOpcodeForVersion {
     /// Minor version number of Wasm.
     pub version_minor: u16,
     /// The first byte of the opcode.
-    pub opcode_byte1:  u8,
+    pub opcode_byte1: u8,
     /// The second byte of the opcode, if it's a multi-byte opcode.
-    pub opcode_byte2:  Option<u8>,
+    pub opcode_byte2: Option<u8>,
 }
 
 /// Error for an invalid import/export kind byte for the detected/specified Wasm
@@ -230,7 +230,7 @@ pub struct InvalidImportExportKindForVersion {
     /// Minor version number of Wasm.
     pub version_minor: u16,
     /// The kind byte that was encountered.
-    pub kind_byte:     u8,
+    pub kind_byte: u8,
 }
 
 /// Helper function for creating `ValidationError`
@@ -566,7 +566,7 @@ pub struct BulkOperationError {
     /// "table.init").
     pub operation_name: &'static str,
     /// Detailed message about the error.
-    pub reason:         &'static str,
+    pub reason: &'static str,
 }
 
 /// Error specific to Wasm 2.0 SIMD operations.
@@ -576,7 +576,7 @@ pub struct SimdOperationError {
     pub instruction_name: &'static str,
     /// Detailed message about the SIMD error (e.g., invalid lane index, type
     /// mismatch).
-    pub reason:           &'static str,
+    pub reason: &'static str,
 }
 
 /// Error related to Wasm 2.0 tail call instructions.

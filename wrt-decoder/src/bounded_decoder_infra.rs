@@ -5,22 +5,15 @@
 //!
 //! Migrated from Provider-based BoundedVec to heapless-inspired StaticVec.
 
-use wrt_foundation::collections::{StaticVec, StaticMap};
+use wrt_foundation::collections::{StaticMap, StaticVec};
 
+pub use wrt_foundation::bounded::WasmName;
+pub use wrt_foundation::safe_memory::NoStdProvider;
 /// New static collections eliminate Provider abstraction
 /// All memory is inline with compile-time capacity enforcement
 // Re-export foundation types for simplified migration
 // These will be fully migrated later when wrt-foundation types are updated
-pub use wrt_foundation::types::{
-    FuncType,
-    Import,
-    ImportDesc,
-    TableType,
-    MemoryType,
-    GlobalType,
-};
-pub use wrt_foundation::bounded::WasmName;
-pub use wrt_foundation::safe_memory::NoStdProvider;
+pub use wrt_foundation::types::{FuncType, GlobalType, Import, ImportDesc, MemoryType, TableType};
 
 // Temporary: Keep DecoderProvider alias for gradual migration
 // TODO: Remove once all wrt-foundation types are migrated to StaticVec
@@ -245,9 +238,6 @@ pub const MAX_ALIASES_PER_COMPONENT: usize = 256;
 /// Create a decoder provider (temporary - for gradual migration)
 /// TODO: Remove once all code uses StaticVec instead of Provider-based collections
 pub fn create_decoder_provider<const N: usize>() -> wrt_error::Result<NoStdProvider<N>> {
-    use wrt_foundation::{
-        budget_aware_provider::CrateId,
-        safe_managed_alloc,
-    };
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
     safe_managed_alloc!(N, CrateId::Decoder)
 }

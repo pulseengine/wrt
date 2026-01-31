@@ -8,21 +8,12 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::format;
 
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_foundation::{
-    BlockType,
-    ValueType,
-};
+use wrt_error::{Error, Result};
+use wrt_foundation::{BlockType, ValueType};
 
 use crate::{
     error::parse_error,
-    types::{
-        FormatBlockType,
-        Limits,
-    },
+    types::{FormatBlockType, Limits},
 };
 
 /// Convert from FormatBlockType to BlockType
@@ -216,11 +207,7 @@ pub fn validate<T, F>(condition: bool, error_fn: F, value: T) -> Result<T>
 where
     F: FnOnce() -> Error,
 {
-    if condition {
-        Ok(value)
-    } else {
-        Err(error_fn())
-    }
+    if condition { Ok(value) } else { Err(error_fn()) }
 }
 
 /// Validate an optional type

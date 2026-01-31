@@ -11,10 +11,7 @@ use wrt_error::Error;
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 use wrt_error::SafetyMonitor;
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-use wrt_error::{
-    AsilErrorContext,
-    AsilLevel,
-};
+use wrt_error::{AsilErrorContext, AsilLevel};
 
 fn main() {
     println!("WRT Error ASIL Demo");

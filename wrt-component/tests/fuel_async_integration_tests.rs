@@ -7,30 +7,18 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 use wrt_component::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_bridge::{
-            AsyncBridgeConfig,
-            FuelAsyncBridge,
-        },
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
-        fuel_async_scheduler::{
-            FuelAsyncScheduler,
-            SchedulingPolicy,
-        },
+        fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
+        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
     },
     prelude::*,
     task_manager::TaskId,
-    ComponentInstanceId,
 };
 use wrt_foundation::verification::VerificationLevel;
 use wrt_platform::advanced_sync::Priority;
@@ -38,14 +26,14 @@ use wrt_platform::advanced_sync::Priority;
 /// Simple test future that completes after a certain number of polls
 struct TestFuture {
     polls_remaining: usize,
-    result:          Option<u32>,
+    result: Option<u32>,
 }
 
 impl TestFuture {
     fn new(polls_until_ready: usize, result: u32) -> Self {
         Self {
             polls_remaining: polls_until_ready,
-            result:          Some(result),
+            result: Some(result),
         }
     }
 }
@@ -127,7 +115,7 @@ mod tests {
             .add_task(
                 task_id,
                 component_id,
-                128, // Normal priority
+                128,  // Normal priority
                 1000, // fuel quota
                 None, // no deadline
             )
@@ -199,12 +187,12 @@ mod tests {
     #[test]
     fn test_fuel_async_bridge_configuration() {
         let config = AsyncBridgeConfig {
-            default_fuel_budget:   5000,
+            default_fuel_budget: 5000,
             default_time_limit_ms: Some(2000),
-            default_priority:      192, // High priority
-            scheduling_policy:     SchedulingPolicy::PriorityBased,
-            allow_fuel_extension:  true,
-            fuel_check_interval:   500,
+            default_priority: 192, // High priority
+            scheduling_policy: SchedulingPolicy::PriorityBased,
+            allow_fuel_extension: true,
+            fuel_check_interval: 500,
         };
 
         let bridge = FuelAsyncBridge::new(config.clone(), VerificationLevel::Standard).unwrap();
@@ -296,7 +284,12 @@ mod tests {
             .unwrap();
 
         let _task2 = executor
-            .spawn_task(component_id, 1000, 128 /* Normal priority */, TestFuture::new(5, 84))
+            .spawn_task(
+                component_id,
+                1000,
+                128, /* Normal priority */
+                TestFuture::new(5, 84),
+            )
             .unwrap();
 
         let status_before = executor.get_global_fuel_status();

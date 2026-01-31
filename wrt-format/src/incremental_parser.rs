@@ -4,25 +4,12 @@
 //! enabling efficient re-parsing when source files are modified.
 
 #[cfg(feature = "std")]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 #[cfg(not(feature = "std"))]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_foundation::{
-    prelude::*,
-    BoundedString,
-    NoStdProvider,
-};
+use wrt_error::{Error, Result};
+use wrt_foundation::{BoundedString, NoStdProvider, prelude::*};
 
 use crate::ast::*;
 
@@ -35,7 +22,7 @@ pub enum ChangeType {
     Delete { offset: u32, length: u32 },
     /// Text was replaced at a position
     Replace {
-        offset:     u32,
+        offset: u32,
         old_length: u32,
         new_length: u32,
     },
@@ -47,7 +34,7 @@ pub struct SourceChange {
     /// Type of change
     pub change_type: ChangeType,
     /// New text (for insert/replace)
-    pub text:        Option<BoundedString<1024>>,
+    pub text: Option<BoundedString<1024>>,
 }
 
 /// Parse tree node for incremental parsing
@@ -55,13 +42,13 @@ pub struct SourceChange {
 #[derive(Debug, Clone)]
 pub struct ParseNode {
     /// AST node at this position
-    pub node:     ParseNodeKind,
+    pub node: ParseNodeKind,
     /// Source span of this node
-    pub span:     SourceSpan,
+    pub span: SourceSpan,
     /// Child nodes
     pub children: Vec<ParseNode>,
     /// Whether this node needs re-parsing
-    pub dirty:    bool,
+    pub dirty: bool,
 }
 
 /// Kind of parse node
@@ -112,15 +99,15 @@ pub struct IncrementalParser {
 #[derive(Debug, Default, Clone)]
 pub struct ParseStats {
     /// Total parses performed
-    pub total_parses:       u32,
+    pub total_parses: u32,
     /// Incremental parses performed
     pub incremental_parses: u32,
     /// Full re-parses performed
-    pub full_reparses:      u32,
+    pub full_reparses: u32,
     /// Nodes reused
-    pub nodes_reused:       u32,
+    pub nodes_reused: u32,
     /// Nodes re-parsed
-    pub nodes_reparsed:     u32,
+    pub nodes_reparsed: u32,
 }
 
 #[cfg(feature = "std")]
@@ -128,11 +115,11 @@ impl IncrementalParser {
     /// Create a new incremental parser
     pub fn new() -> Self {
         Self {
-            parse_tree:   None,
-            source:       Vec::new(),
+            parse_tree: None,
+            source: Vec::new(),
             total_length: 0,
-            cached_ast:   None,
-            stats:        ParseStats::default(),
+            cached_ast: None,
+            stats: ParseStats::default(),
         }
     }
 
@@ -264,11 +251,7 @@ impl IncrementalParser {
     }
 
     /// Apply an insert change
-    fn apply_insert(
-        &mut self,
-        offset: u32,
-        text: &BoundedString<1024>,
-    ) -> Result<()> {
+    fn apply_insert(&mut self, offset: u32, text: &BoundedString<1024>) -> Result<()> {
         // Find the line containing this offset
         let (_line_idx, _line_offset) = self.offset_to_line_position(offset)?;
 
@@ -357,10 +340,10 @@ impl IncrementalParser {
         // Add package node if present
         if let Some(ref pkg) = doc.package {
             children.push(ParseNode {
-                node:     ParseNodeKind::Package,
-                span:     pkg.span,
+                node: ParseNodeKind::Package,
+                span: pkg.span,
                 children: Vec::new(),
-                dirty:    false,
+                dirty: false,
             });
         }
 
@@ -368,10 +351,10 @@ impl IncrementalParser {
         #[cfg(feature = "std")]
         for use_item in &doc.use_items {
             children.push(ParseNode {
-                node:     ParseNodeKind::UseItem,
-                span:     use_item.span,
+                node: ParseNodeKind::UseItem,
+                span: use_item.span,
                 children: Vec::new(),
-                dirty:    false,
+                dirty: false,
             });
         }
 
@@ -457,7 +440,7 @@ impl IncrementalParserCache {
     /// Create a new parser cache
     pub fn new() -> Self {
         Self {
-            parsers:      BTreeMap::new(),
+            parsers: BTreeMap::new(),
             global_stats: ParseStats::default(),
         }
     }
@@ -520,7 +503,7 @@ mod tests {
             length: 3,
         };
         let replace = ChangeType::Replace {
-            offset:     30,
+            offset: 30,
             old_length: 4,
             new_length: 6,
         };

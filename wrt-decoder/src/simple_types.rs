@@ -6,13 +6,9 @@
 //! This allows wrt-decoder to migrate incrementally without waiting for
 //! full wrt-foundation migration.
 
-use wrt_foundation::collections::StaticVec;
+use crate::bounded_decoder_infra::{MAX_FUNCTION_PARAMS, MAX_FUNCTION_RESULTS, MAX_NAME_LENGTH};
 use wrt_format::types::ValueType;
-use crate::bounded_decoder_infra::{
-    MAX_FUNCTION_PARAMS,
-    MAX_FUNCTION_RESULTS,
-    MAX_NAME_LENGTH,
-};
+use wrt_foundation::collections::StaticVec;
 
 /// Function type with static inline storage
 #[derive(Debug, Clone)]

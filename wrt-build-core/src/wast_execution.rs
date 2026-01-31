@@ -67,7 +67,7 @@ impl WastEngine {
         use wrt_runtime::module_instance::ModuleInstance;
 
         let module = Arc::new(
-            *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?
+            *Module::from_wrt_module(&wrt_module).context("Failed to convert to runtime module")?,
         );
 
         // Create a module instance from the module
@@ -155,19 +155,22 @@ impl WastEngine {
     ) -> Result<Vec<Value>> {
         // Get the module and instance_id - either from the specified module name or the current one
         let (module, instance_id) = if let Some(name) = module_name {
-            let module = self.modules
+            let module = self
+                .modules
                 .get(name)
                 .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?;
-            let instance_id = self.instance_ids
-                .get(name)
-                .copied()
-                .ok_or_else(|| anyhow::anyhow!("Instance ID for module '{}' not found", name))?;
+            let instance_id =
+                self.instance_ids.get(name).copied().ok_or_else(|| {
+                    anyhow::anyhow!("Instance ID for module '{}' not found", name)
+                })?;
             (module, instance_id)
         } else {
-            let module = self.current_module
+            let module = self
+                .current_module
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
-            let instance_id = self.current_instance_id
+            let instance_id = self
+                .current_instance_id
                 .ok_or_else(|| anyhow::anyhow!("No module loaded - cannot execute function"))?;
             (module, instance_id)
         };
@@ -202,36 +205,34 @@ impl WastEngine {
     }
 
     /// Get a global variable value by name
-    pub fn get_global(
-        &self,
-        module_name: Option<&str>,
-        global_name: &str,
-    ) -> Result<Value> {
+    pub fn get_global(&self, module_name: Option<&str>, global_name: &str) -> Result<Value> {
         use wrt_runtime::module::ExportKind;
 
         // Get the module and instance_id
         let (module, instance_id) = if let Some(name) = module_name {
-            let module = self.modules
+            let module = self
+                .modules
                 .get(name)
                 .ok_or_else(|| anyhow::anyhow!("Module '{}' not found", name))?;
-            let instance_id = self.instance_ids
-                .get(name)
-                .copied()
-                .ok_or_else(|| anyhow::anyhow!("Instance ID for module '{}' not found", name))?;
+            let instance_id =
+                self.instance_ids.get(name).copied().ok_or_else(|| {
+                    anyhow::anyhow!("Instance ID for module '{}' not found", name)
+                })?;
             (module, instance_id)
         } else {
-            let module = self.current_module
+            let module = self
+                .current_module
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
-            let instance_id = self.current_instance_id
-                .ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
+            let instance_id =
+                self.current_instance_id.ok_or_else(|| anyhow::anyhow!("No module loaded"))?;
             (module, instance_id)
         };
 
         // Find the exported global index
-        let export = module
-            .get_export(global_name)
-            .ok_or_else(|| anyhow::anyhow!("Global '{}' is not exported from module", global_name))?;
+        let export = module.get_export(global_name).ok_or_else(|| {
+            anyhow::anyhow!("Global '{}' is not exported from module", global_name)
+        })?;
 
         if export.kind != ExportKind::Global {
             return Err(anyhow::anyhow!("'{}' is not a global export", global_name));
@@ -240,14 +241,18 @@ impl WastEngine {
         let global_idx = export.index;
 
         // Get the instance from the engine
-        let instance = self.engine.get_instance(instance_id)
+        let instance = self
+            .engine
+            .get_instance(instance_id)
             .ok_or_else(|| anyhow::anyhow!("Instance {} not found in engine", instance_id))?;
 
         // Get the global value from the instance
-        let global_wrapper = instance.global(global_idx)
+        let global_wrapper = instance
+            .global(global_idx)
             .map_err(|e| anyhow::anyhow!("Failed to get global {}: {:?}", global_idx, e))?;
 
-        let value = global_wrapper.get()
+        let value = global_wrapper
+            .get()
             .map_err(|e| anyhow::anyhow!("Failed to read global value: {:?}", e))?;
 
         Ok(value)
@@ -296,8 +301,8 @@ impl WastEngine {
         module: &Module,
         module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
     ) -> Result<()> {
-        use wrt_foundation::types::{Limits, MemoryType};
         use wrt_foundation::clean_core_types::CoreMemoryType;
+        use wrt_foundation::types::{Limits, MemoryType};
         use wrt_runtime::memory::Memory;
         use wrt_runtime::module::{MemoryWrapper, RuntimeImportDesc};
 
@@ -313,13 +318,15 @@ impl WastEngine {
                         shared: mem_type.shared,
                     };
 
-                    let memory = Memory::new(core_mem_type)
-                        .map_err(|e| anyhow::anyhow!("Failed to create spectest memory: {:?}", e))?;
+                    let memory = Memory::new(core_mem_type).map_err(|e| {
+                        anyhow::anyhow!("Failed to create spectest memory: {:?}", e)
+                    })?;
 
                     let wrapper = MemoryWrapper::new(memory);
 
                     // Add the memory to the instance (at index 0 since it's an import)
-                    module_instance.set_memory(0, wrapper)
+                    module_instance
+                        .set_memory(0, wrapper)
                         .map_err(|e| anyhow::anyhow!("Failed to set spectest memory: {:?}", e))?;
                 }
             }
@@ -338,10 +345,10 @@ impl WastEngine {
         module: &Module,
         module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
     ) -> Result<()> {
+        use std::sync::{Arc as StdArc, RwLock};
         use wrt_foundation::values::{FloatBits32, FloatBits64};
         use wrt_runtime::global::Global;
         use wrt_runtime::module::GlobalWrapper;
-        use std::sync::{Arc as StdArc, RwLock};
 
         // The global_import_types stores global types in order of appearance
         // We need to match them with the corresponding import names
@@ -366,21 +373,22 @@ impl WastEngine {
                         _ => {
                             global_import_idx += 1;
                             continue;
-                        }
+                        },
                     };
 
                     // Create a new global with the spectest value
-                    let global = Global::new(
-                        global_type.value_type,
-                        global_type.mutable,
-                        value,
-                    ).map_err(|e| anyhow::anyhow!("Failed to create spectest global: {:?}", e))?;
+                    let global = Global::new(global_type.value_type, global_type.mutable, value)
+                        .map_err(|e| {
+                            anyhow::anyhow!("Failed to create spectest global: {:?}", e)
+                        })?;
 
                     // Set the global in the module instance
-                    module_instance.set_global(
-                        global_import_idx,
-                        GlobalWrapper(StdArc::new(RwLock::new(global))),
-                    ).map_err(|e| anyhow::anyhow!("Failed to set spectest global: {:?}", e))?;
+                    module_instance
+                        .set_global(
+                            global_import_idx,
+                            GlobalWrapper(StdArc::new(RwLock::new(global))),
+                        )
+                        .map_err(|e| anyhow::anyhow!("Failed to set spectest global: {:?}", e))?;
 
                     global_import_idx += 1;
                 } else if is_global {
@@ -399,9 +407,9 @@ impl WastEngine {
         module: &Module,
         module_instance: &Arc<wrt_runtime::module_instance::ModuleInstance>,
     ) -> Result<()> {
+        use std::sync::{Arc as StdArc, RwLock};
         use wrt_runtime::global::Global;
         use wrt_runtime::module::GlobalWrapper;
-        use std::sync::{Arc as StdArc, RwLock};
 
         let mut global_import_idx = 0usize;
 
@@ -424,7 +432,10 @@ impl WastEngine {
                 // Look up the registered module
                 if let Some(source_module) = self.modules.get(mod_name) {
                     // Find the exported global in the source module
-                    let bounded_field = wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(field_name)
+                    let bounded_field =
+                        wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(
+                            field_name,
+                        )
                         .map_err(|e| anyhow::anyhow!("Field name too long: {:?}", e))?;
 
                     if let Some(export) = source_module.exports.get(&bounded_field) {
@@ -432,20 +443,34 @@ impl WastEngine {
                             let source_global_idx = export.index as usize;
 
                             // Get the value from the source module's global
-                            if let Ok(global_wrapper) = source_module.globals.get(source_global_idx) {
+                            if let Ok(global_wrapper) = source_module.globals.get(source_global_idx)
+                            {
                                 if let Ok(guard) = global_wrapper.0.read() {
                                     let value = guard.get();
-                                    let global_type = &module.global_import_types[global_import_idx];
+                                    let global_type =
+                                        &module.global_import_types[global_import_idx];
 
                                     // Create a new global with the resolved value
-                                    let global = Global::new(global_type.value_type, global_type.mutable, value.clone())
-                                        .map_err(|e| anyhow::anyhow!("Failed to create imported global: {:?}", e))?;
+                                    let global = Global::new(
+                                        global_type.value_type,
+                                        global_type.mutable,
+                                        value.clone(),
+                                    )
+                                    .map_err(|e| {
+                                        anyhow::anyhow!("Failed to create imported global: {:?}", e)
+                                    })?;
 
-                                    module_instance.set_global(
-                                        global_import_idx,
-                                        GlobalWrapper(StdArc::new(RwLock::new(global))),
-                                    ).map_err(|e| anyhow::anyhow!("Failed to set imported global: {:?}", e))?;
-
+                                    module_instance
+                                        .set_global(
+                                            global_import_idx,
+                                            GlobalWrapper(StdArc::new(RwLock::new(global))),
+                                        )
+                                        .map_err(|e| {
+                                            anyhow::anyhow!(
+                                                "Failed to set imported global: {:?}",
+                                                e
+                                            )
+                                        })?;
                                 }
                             }
                         }
@@ -487,7 +512,10 @@ impl WastEngine {
                 if let Some(&source_instance_id) = self.instance_ids.get(mod_name) {
                     // Check if the source module exports this function
                     if let Some(source_module) = self.modules.get(mod_name) {
-                        let bounded_field = wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(field_name)
+                        let bounded_field =
+                            wrt_foundation::bounded::BoundedString::<256>::from_str_truncate(
+                                field_name,
+                            )
                             .map_err(|e| anyhow::anyhow!("Field name too long: {:?}", e))?;
 
                         if let Some(export) = source_module.exports.get(&bounded_field) {
@@ -552,8 +580,8 @@ pub fn execute_wast_execute(engine: &mut WastEngine, execute: &WastExecute) -> R
 /// Simple WAST runner for basic testing
 pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
     use wast::{
-        parser::{self, ParseBuffer},
         Wast, WastDirective,
+        parser::{self, ParseBuffer},
     };
 
     let buf = ParseBuffer::new(wast_content).context("Failed to create parse buffer")?;
@@ -572,7 +600,9 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                     None
                 };
                 let binary = module.encode().context("Failed to encode module to binary")?;
-                engine.load_module(module_name.as_deref(), &binary).context("Failed to load module")?;
+                engine
+                    .load_module(module_name.as_deref(), &binary)
+                    .context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => match exec {
                 WastExecute::Invoke(invoke) => {
@@ -605,7 +635,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 _ => {
                     return Err(anyhow::anyhow!(
                         "Unsupported execution type for assert_return"
-                    ))
+                    ));
                 },
             },
             WastDirective::AssertTrap { exec, message, .. } => {
@@ -734,8 +764,8 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wast::core::WastArgCore;
     use wast::WastArg;
+    use wast::core::WastArgCore;
 
     #[test]
     fn test_wast_engine_creation() {

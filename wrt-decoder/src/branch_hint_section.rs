@@ -23,29 +23,12 @@
 // Core/std library imports
 
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    vec::Vec,
-};
+use std::{collections::HashMap, vec::Vec};
 
 // External crates
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
-use wrt_format::binary::{
-    read_leb128_u32,
-    read_u8,
-};
-use wrt_foundation::traits::{
-    Checksummable,
-    FromBytes,
-    ReadStream,
-    ToBytes,
-    WriteStream,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
+use wrt_format::binary::{read_leb128_u32, read_u8};
+use wrt_foundation::traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream};
 // NoStdProvider import removed - not used
 use wrt_foundation::verification::Checksum;
 
@@ -73,7 +56,7 @@ pub enum BranchHintValue {
     #[default]
     LikelyFalse = 0,
     /// Branch is likely to be taken (0x01)
-    LikelyTrue  = 1,
+    LikelyTrue = 1,
 }
 
 impl BranchHintValue {
@@ -142,7 +125,7 @@ pub struct BranchHint {
     /// Byte offset of the instruction within the function body
     pub instruction_offset: u32,
     /// Hint about whether the branch is likely to be taken
-    pub hint_value:         BranchHintValue,
+    pub hint_value: BranchHintValue,
 }
 
 impl BranchHint {
@@ -168,9 +151,9 @@ pub struct FunctionBranchHints {
     pub function_index: u32,
     /// Map from instruction offset to branch hint
     #[cfg(feature = "std")]
-    pub hints:          HashMap<u32, BranchHintValue>,
+    pub hints: HashMap<u32, BranchHintValue>,
     #[cfg(not(feature = "std"))]
-    pub hints:          BTreeMap<u32, BranchHintValue>,
+    pub hints: BTreeMap<u32, BranchHintValue>,
 }
 
 impl FunctionBranchHints {
@@ -227,9 +210,9 @@ impl BranchHintSection {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
-            function_hints:                                   HashMap::new(),
+            function_hints: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            function_hints:                                   BTreeMap::new(),
+            function_hints: BTreeMap::new(),
         }
     }
 

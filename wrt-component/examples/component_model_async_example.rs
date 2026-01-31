@@ -4,26 +4,12 @@
 //! the futures crate or Rust's async/await syntax.
 
 use wrt_component::{
+    ComponentInstanceId, ValType,
     async_canonical::AsyncCanonicalAbi,
-    async_types::{
-        Future,
-        FutureHandle,
-        FutureState,
-        Stream,
-        StreamHandle,
-        StreamState,
-    },
-    task_manager::{
-        TaskManager,
-        TaskState,
-    },
-    ComponentInstanceId,
-    ValType,
+    async_types::{Future, FutureHandle, FutureState, Stream, StreamHandle, StreamState},
+    task_manager::{TaskManager, TaskState},
 };
-use wrt_foundation::{
-    bounded_collections::BoundedVec,
-    component_value::ComponentValue,
-};
+use wrt_foundation::{bounded_collections::BoundedVec, component_value::ComponentValue};
 
 fn main() {
     println!("=== WebAssembly Component Model Async Example ===\n");

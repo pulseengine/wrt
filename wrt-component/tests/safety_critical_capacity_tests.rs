@@ -17,11 +17,8 @@ use wrt_component::bounded_component_infra::*;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::collections::StaticMap as BoundedHashMap;
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::BoundedString,
-    budget_aware_provider::CrateId,
-    managed_alloc,
-    WrtError,
+    WrtError, bounded::BoundedString, budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec, managed_alloc,
 };
 
 #[cfg(test)]
@@ -127,7 +124,7 @@ mod capacity_limit_tests {
         #[derive(Clone, Debug)]
         struct CallFrame {
             function_idx: u32,
-            return_addr:  u32,
+            return_addr: u32,
         }
 
         let result = new_call_stack::<CallFrame>();
@@ -139,7 +136,7 @@ mod capacity_limit_tests {
         for depth in 0..MAX_CALL_STACK_DEPTH {
             let frame = CallFrame {
                 function_idx: depth as u32,
-                return_addr:  (depth * 4) as u32,
+                return_addr: (depth * 4) as u32,
             };
 
             let push_result = stack.try_push(frame);
@@ -151,7 +148,7 @@ mod capacity_limit_tests {
         // Stack overflow should be caught
         let overflow_frame = CallFrame {
             function_idx: 9999,
-            return_addr:  0,
+            return_addr: 0,
         };
 
         let overflow_result = stack.try_push(overflow_frame);

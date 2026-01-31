@@ -8,21 +8,13 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    string::String,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
 use crate::{
     prelude::*,
-    unified_loader::{
-        ExportInfo,
-        ImportInfo,
-        WasmFormat,
-    },
+    unified_loader::{ExportInfo, ImportInfo, WasmFormat},
 };
 
 /// Cached section data to avoid re-parsing
@@ -58,15 +50,15 @@ pub enum SectionData {
 #[derive(Debug, Clone)]
 pub struct DecodedCache {
     /// WASM format type
-    pub format_type:     WasmFormat,
+    pub format_type: WasmFormat,
     /// Raw binary size
-    pub binary_size:     usize,
+    pub binary_size: usize,
     /// Parsed section data by section ID
-    pub sections:        HashMap<u8, SectionData>,
+    pub sections: HashMap<u8, SectionData>,
     /// Cached import section for quick builtin scanning
-    pub import_cache:    Option<Vec<ImportInfo>>,
+    pub import_cache: Option<Vec<ImportInfo>>,
     /// Cached export section for quick lookups
-    pub export_cache:    Option<Vec<ExportInfo>>,
+    pub export_cache: Option<Vec<ExportInfo>>,
     /// Builtin imports extracted from import section
     pub builtin_imports: Option<Vec<String>>,
 }
@@ -236,11 +228,11 @@ impl DecodedCache {
 pub struct CacheManager {
     /// Cache entries by binary hash
     #[cfg(feature = "std")]
-    caches:             HashMap<u64, DecodedCache>,
+    caches: HashMap<u64, DecodedCache>,
     #[cfg(not(feature = "std"))]
-    caches:             HashMap<u64, DecodedCache>,
+    caches: HashMap<u64, DecodedCache>,
     /// Maximum cache size in bytes
-    max_cache_size:     usize,
+    max_cache_size: usize,
     /// Current cache size estimate
     current_cache_size: usize,
 }
@@ -268,11 +260,7 @@ impl CacheManager {
             // Detect format
             let format_type = if binary.len() >= 8 && &binary[0..4] == b"\0asm" {
                 let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
-                if version == 1 {
-                    WasmFormat::CoreModule
-                } else {
-                    WasmFormat::Component
-                }
+                if version == 1 { WasmFormat::CoreModule } else { WasmFormat::Component }
             } else {
                 WasmFormat::Unknown
             };
@@ -304,8 +292,8 @@ impl CacheManager {
     pub fn stats(&self) -> CacheStats {
         CacheStats {
             cache_count: self.caches.len(),
-            total_size:  self.current_cache_size,
-            max_size:    self.max_cache_size,
+            total_size: self.current_cache_size,
+            max_size: self.max_cache_size,
         }
     }
 
@@ -328,9 +316,9 @@ pub struct CacheStats {
     /// Number of cached entries
     pub cache_count: usize,
     /// Total cache size in bytes
-    pub total_size:  usize,
+    pub total_size: usize,
     /// Maximum cache size in bytes
-    pub max_size:    usize,
+    pub max_size: usize,
 }
 
 /// Create a default cache manager for use in applications
@@ -383,9 +371,9 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
             let section_data = &binary[offset..section_end];
             let mut dummy_info = crate::unified_loader::ModuleInfo {
                 function_types: Vec::new(),
-                imports:        Vec::new(),
-                exports:        Vec::new(),
-                memory_pages:   None,
+                imports: Vec::new(),
+                exports: Vec::new(),
+                memory_pages: None,
                 start_function: None,
             };
             parse_import_section_info(section_data, &mut dummy_info)?;
@@ -428,9 +416,9 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
             let section_data = &binary[offset..section_end];
             let mut dummy_info = crate::unified_loader::ModuleInfo {
                 function_types: Vec::new(),
-                imports:        Vec::new(),
-                exports:        Vec::new(),
-                memory_pages:   None,
+                imports: Vec::new(),
+                exports: Vec::new(),
+                memory_pages: None,
                 start_function: None,
             };
             parse_export_section_info(section_data, &mut dummy_info)?;

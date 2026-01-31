@@ -1,28 +1,19 @@
 #![cfg(feature = "runtime-breakpoints")]
 
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_DWARF_FILE_TABLE,
-    },
     NoStdProvider,
+    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
 };
 
 use crate::bounded_debug_infra;
 /// Runtime breakpoint management implementation
 /// Provides breakpoint setting, hit detection, and condition evaluation
 use crate::{
+    FileTable, LineInfo,
     runtime_api::{
-        Breakpoint,
-        BreakpointCondition,
-        BreakpointId,
-        DebugAction,
-        DebugError,
-        RuntimeDebugger,
+        Breakpoint, BreakpointCondition, BreakpointId, DebugAction, DebugError, RuntimeDebugger,
         RuntimeState,
     },
-    FileTable,
-    LineInfo,
 };
 
 /// Breakpoint manager for runtime debugging
@@ -31,9 +22,9 @@ pub struct BreakpointManager {
     breakpoints:
         BoundedVec<Breakpoint, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
     /// Next breakpoint ID
-    next_id:     u32,
+    next_id: u32,
     /// Global enable/disable
-    enabled:     bool,
+    enabled: bool,
 }
 
 impl BreakpointManager {
@@ -41,8 +32,8 @@ impl BreakpointManager {
     pub fn new() -> Self {
         Self {
             breakpoints: BoundedVec::new(NoStdProvider),
-            next_id:     1,
-            enabled:     true,
+            next_id: 1,
+            enabled: true,
         }
     }
 
@@ -187,11 +178,7 @@ impl BreakpointManager {
             },
             Some(BreakpointCondition::LocalEquals { index, value }) => {
                 if let Some(local_val) = state.read_local(*index) {
-                    if local_val == *value {
-                        Some(bp)
-                    } else {
-                        None
-                    }
+                    if local_val == *value { Some(bp) } else { None }
                 } else {
                     None
                 }
@@ -218,26 +205,26 @@ impl BreakpointManager {
 /// Default debugger implementation
 pub struct DefaultDebugger {
     /// Breakpoint manager
-    breakpoints:     BreakpointManager,
+    breakpoints: BreakpointManager,
     /// Current action
-    action:          DebugAction,
+    action: DebugAction,
     /// Single step mode
-    single_step:     bool,
+    single_step: bool,
     /// Step over depth
     step_over_depth: Option<u32>,
     /// File table for display
-    file_table:      Option<FileTable<'static>>,
+    file_table: Option<FileTable<'static>>,
 }
 
 impl DefaultDebugger {
     /// Create a new debugger
     pub fn new() -> Self {
         Self {
-            breakpoints:     BreakpointManager::new(),
-            action:          DebugAction::Continue,
-            single_step:     false,
+            breakpoints: BreakpointManager::new(),
+            action: DebugAction::Continue,
+            single_step: false,
             step_over_depth: None,
-            file_table:      None,
+            file_table: None,
         }
     }
 

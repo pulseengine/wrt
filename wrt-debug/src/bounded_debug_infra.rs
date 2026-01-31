@@ -6,28 +6,18 @@
 // Import standard traits for bounds
 use core::{
     clone::Clone,
-    cmp::{
-        Eq,
-        PartialEq,
-    },
+    cmp::{Eq, PartialEq},
     default::Default,
 };
 
 use wrt_error::Result;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::{BoundedString, BoundedVec},
     bounded_collections::BoundedMap as BoundedHashMap,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 
 /// Maximum stack trace depth
@@ -86,17 +76,13 @@ where
 /// Macro to simplify debug vector creation
 #[macro_export]
 macro_rules! debug_vec {
-    ($capacity:expr) => {{
-        $crate::bounded_debug_infra::create_debug_vec::<_, $capacity>()
-    }};
+    ($capacity:expr) => {{ $crate::bounded_debug_infra::create_debug_vec::<_, $capacity>() }};
 }
 
 /// Macro to simplify debug string creation
 #[macro_export]
 macro_rules! debug_string {
-    ($s:expr) => {{
-        $crate::bounded_debug_infra::create_debug_string($s)
-    }};
+    ($s:expr) => {{ $crate::bounded_debug_infra::create_debug_string($s) }};
 }
 
 /// Maximum diagnostic message length
@@ -350,9 +336,7 @@ pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
 }
 
 /// Create a bounded debug string from str
-pub fn bounded_debug_string_from_str(
-    s: &str,
-) -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
+pub fn bounded_debug_string_from_str(s: &str) -> Result<BoundedString<MAX_DEBUG_STRING_LEN>> {
     let _guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let _provider = _guard.clone();
     BoundedString::try_from_str(s)

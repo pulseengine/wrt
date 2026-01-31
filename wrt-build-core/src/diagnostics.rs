@@ -7,16 +7,10 @@
 use std::{
     collections::HashMap,
     fmt,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// LSP-compatible diagnostic severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -47,7 +41,7 @@ impl fmt::Display for Severity {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
     /// Line number (0-indexed)
-    pub line:      u32,
+    pub line: u32,
     /// Character offset (0-indexed, UTF-16 code units)
     pub character: u32,
 }
@@ -70,7 +64,7 @@ impl Position {
     /// 0-indexed)
     pub fn from_line_col_1_indexed(line: u32, column: u32) -> Self {
         Self {
-            line:      line.saturating_sub(1),
+            line: line.saturating_sub(1),
             character: column.saturating_sub(1),
         }
     }
@@ -82,7 +76,7 @@ pub struct Range {
     /// Start position (inclusive)
     pub start: Position,
     /// End position (exclusive)
-    pub end:   Position,
+    pub end: Position,
 }
 
 impl Range {
@@ -95,7 +89,7 @@ impl Range {
     pub fn single_line(line: u32, start_char: u32, end_char: u32) -> Self {
         Self {
             start: Position::new(line, start_char),
-            end:   Position::new(line, end_char),
+            end: Position::new(line, end_char),
         }
     }
 
@@ -103,7 +97,7 @@ impl Range {
     pub fn from_line_1_indexed(line: u32, start_char: u32, end_char: u32) -> Self {
         Self {
             start: Position::from_line_1_indexed(line, start_char),
-            end:   Position::from_line_1_indexed(line, end_char),
+            end: Position::from_line_1_indexed(line, end_char),
         }
     }
 
@@ -111,7 +105,7 @@ impl Range {
     pub fn entire_line(line: u32) -> Self {
         Self {
             start: Position::new(line, 0),
-            end:   Position::new(line, u32::MAX),
+            end: Position::new(line, u32::MAX),
         }
     }
 
@@ -120,7 +114,7 @@ impl Range {
     pub fn from_line_col_1_indexed(start_line: u32, start_col: u32, end_col: u32) -> Self {
         Self {
             start: Position::from_line_col_1_indexed(start_line, start_col),
-            end:   Position::from_line_col_1_indexed(start_line, end_col),
+            end: Position::from_line_col_1_indexed(start_line, end_col),
         }
     }
 }
@@ -129,9 +123,9 @@ impl Range {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RelatedInfo {
     /// File path relative to workspace root
-    pub file:    String,
+    pub file: String,
     /// Range within the file
-    pub range:   Range,
+    pub range: Range,
     /// Related message
     pub message: String,
 }
@@ -151,17 +145,17 @@ impl RelatedInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diagnostic {
     /// File path relative to workspace root
-    pub file:         String,
+    pub file: String,
     /// Range within the file
-    pub range:        Range,
+    pub range: Range,
     /// Severity level
-    pub severity:     Severity,
+    pub severity: Severity,
     /// Optional error/warning code
-    pub code:         Option<String>,
+    pub code: Option<String>,
     /// Human-readable message
-    pub message:      String,
+    pub message: String,
     /// Source tool that generated this diagnostic (e.g., "cargo", "kani")
-    pub source:       String,
+    pub source: String,
     /// Related information (e.g., where a symbol is defined)
     pub related_info: Vec<RelatedInfo>,
 }
@@ -209,19 +203,19 @@ impl Diagnostic {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticSummary {
     /// Total number of diagnostics
-    pub total:                  usize,
+    pub total: usize,
     /// Number of errors
-    pub errors:                 usize,
+    pub errors: usize,
     /// Number of warnings
-    pub warnings:               usize,
+    pub warnings: usize,
     /// Number of info messages
-    pub infos:                  usize,
+    pub infos: usize,
     /// Number of hints
-    pub hints:                  usize,
+    pub hints: usize,
     /// Number of files with diagnostics
     pub files_with_diagnostics: usize,
     /// Duration of operation in milliseconds
-    pub duration_ms:            u64,
+    pub duration_ms: u64,
 }
 
 impl DiagnosticSummary {
@@ -269,17 +263,17 @@ impl DiagnosticSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiagnosticCollection {
     /// Version of diagnostic format
-    pub version:        String,
+    pub version: String,
     /// Timestamp when diagnostics were generated
-    pub timestamp:      String,
+    pub timestamp: String,
     /// Workspace root path
     pub workspace_root: String,
     /// Command that generated these diagnostics
-    pub command:        String,
+    pub command: String,
     /// Individual diagnostics
-    pub diagnostics:    Vec<Diagnostic>,
+    pub diagnostics: Vec<Diagnostic>,
     /// Summary statistics
-    pub summary:        DiagnosticSummary,
+    pub summary: DiagnosticSummary,
 }
 
 impl DiagnosticCollection {
@@ -295,13 +289,13 @@ impl DiagnosticCollection {
             command,
             diagnostics: Vec::new(),
             summary: DiagnosticSummary {
-                total:                  0,
-                errors:                 0,
-                warnings:               0,
-                infos:                  0,
-                hints:                  0,
+                total: 0,
+                errors: 0,
+                warnings: 0,
+                infos: 0,
+                hints: 0,
                 files_with_diagnostics: 0,
-                duration_ms:            0,
+                duration_ms: 0,
             },
         }
     }

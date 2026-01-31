@@ -8,23 +8,10 @@
 
 use anyhow::Result;
 use wast::{
-    core::{
-        NanPattern,
-        V128Pattern,
-        WastArgCore,
-        WastRetCore,
-    },
-    WastArg,
-    WastRet,
+    WastArg, WastRet,
+    core::{NanPattern, V128Pattern, WastArgCore, WastRetCore},
 };
-use wrt_foundation::values::{
-    ExternRef,
-    FloatBits32,
-    FloatBits64,
-    FuncRef,
-    Value,
-    V128,
-};
+use wrt_foundation::values::{ExternRef, FloatBits32, FloatBits64, FuncRef, V128, Value};
 
 /// Convert WAST arguments to WRT values
 pub fn convert_wast_args_to_values(args: &[WastArg]) -> Result<Vec<Value>> {
@@ -51,8 +38,14 @@ pub fn convert_wast_arg_core_to_value(arg: &WastArgCore) -> Result<Value> {
             // ref.null funcref -> FuncRef(None), ref.null externref -> ExternRef(None)
             use wast::core::AbstractHeapType;
             match heap_type {
-                wast::core::HeapType::Abstract { ty: AbstractHeapType::Func, .. } => Ok(Value::FuncRef(None)),
-                wast::core::HeapType::Abstract { ty: AbstractHeapType::Extern, .. } => Ok(Value::ExternRef(None)),
+                wast::core::HeapType::Abstract {
+                    ty: AbstractHeapType::Func,
+                    ..
+                } => Ok(Value::FuncRef(None)),
+                wast::core::HeapType::Abstract {
+                    ty: AbstractHeapType::Extern,
+                    ..
+                } => Ok(Value::ExternRef(None)),
                 _ => Ok(Value::FuncRef(None)), // Default to FuncRef for other/unknown heap types
             }
         },
@@ -94,16 +87,20 @@ pub fn convert_wast_ret_core_to_value(ret: &WastRetCore) -> Result<Value> {
             // ref.null funcref -> FuncRef(None), ref.null externref -> ExternRef(None)
             use wast::core::AbstractHeapType;
             match heap_type {
-                Some(wast::core::HeapType::Abstract { ty: AbstractHeapType::Func, .. }) => Ok(Value::FuncRef(None)),
-                Some(wast::core::HeapType::Abstract { ty: AbstractHeapType::Extern, .. }) => Ok(Value::ExternRef(None)),
+                Some(wast::core::HeapType::Abstract {
+                    ty: AbstractHeapType::Func,
+                    ..
+                }) => Ok(Value::FuncRef(None)),
+                Some(wast::core::HeapType::Abstract {
+                    ty: AbstractHeapType::Extern,
+                    ..
+                }) => Ok(Value::ExternRef(None)),
                 _ => Ok(Value::FuncRef(None)), // Default to FuncRef for other/unknown heap types
             }
         },
-        WastRetCore::RefExtern(x) => {
-            match x {
-                Some(idx) => Ok(Value::ExternRef(Some(ExternRef { index: *idx as u32 }))),
-                None => Ok(Value::ExternRef(None)),
-            }
+        WastRetCore::RefExtern(x) => match x {
+            Some(idx) => Ok(Value::ExternRef(Some(ExternRef { index: *idx as u32 }))),
+            None => Ok(Value::ExternRef(None)),
         },
         WastRetCore::RefHost(x) => Ok(Value::ExternRef(Some(ExternRef { index: *x as u32 }))),
         WastRetCore::RefFunc(x) => {
@@ -244,21 +241,13 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
             // Handle NaN comparison
             let a_val = a.value();
             let b_val = b.value();
-            if a_val.is_nan() && b_val.is_nan() {
-                true
-            } else {
-                a == b
-            }
+            if a_val.is_nan() && b_val.is_nan() { true } else { a == b }
         },
         (Value::F64(a), Value::F64(b)) => {
             // Handle NaN comparison
             let a_val = a.value();
             let b_val = b.value();
-            if a_val.is_nan() && b_val.is_nan() {
-                true
-            } else {
-                a == b
-            }
+            if a_val.is_nan() && b_val.is_nan() { true } else { a == b }
         },
         (Value::V128(a), Value::V128(b)) => a == b,
         (Value::Ref(a), Value::Ref(b)) => a == b,

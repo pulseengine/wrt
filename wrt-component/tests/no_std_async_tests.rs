@@ -18,10 +18,7 @@ extern crate wrt_component;
 extern crate wrt_foundation;
 
 use wrt_component::*;
-use wrt_foundation::{
-    component_value::ComponentValue,
-    types::ValueType,
-};
+use wrt_foundation::{component_value::ComponentValue, types::ValueType};
 
 #[test]
 fn test_async_context_no_std() {
@@ -77,11 +74,7 @@ fn test_task_management_no_std() {
 
 #[test]
 fn test_waitable_sets_no_std() {
-    use crate::async_types::{
-        Future,
-        FutureHandle,
-        FutureState,
-    };
+    use crate::async_types::{Future, FutureHandle, FutureState};
 
     WaitableSetBuiltins::initialize().unwrap();
 
@@ -91,7 +84,7 @@ fn test_waitable_sets_no_std() {
     // Add future
     let future = Future {
         handle: FutureHandle::new(),
-        state:  FutureState::Pending,
+        state: FutureState::Pending,
     };
     let waitable_id =
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
@@ -136,9 +129,7 @@ fn test_error_context_no_std() {
 #[test]
 fn test_advanced_threading_no_std() {
     use crate::thread_builtins::{
-        FunctionSignature,
-        ThreadSpawnConfig,
-        ValueType as ThreadValueType,
+        FunctionSignature, ThreadSpawnConfig, ValueType as ThreadValueType,
     };
 
     AdvancedThreadingBuiltins::initialize().unwrap();
@@ -147,7 +138,7 @@ fn test_advanced_threading_no_std() {
     let func_ref = FunctionReference::new(
         "test_fn",
         FunctionSignature {
-            params:  vec![],
+            params: vec![],
             results: vec![],
         },
         0,
@@ -157,7 +148,7 @@ fn test_advanced_threading_no_std() {
 
     let config = ThreadSpawnConfig {
         stack_size: Some(4096),
-        priority:   Some(5),
+        priority: Some(5),
     };
 
     // Spawn thread

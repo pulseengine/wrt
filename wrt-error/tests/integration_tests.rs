@@ -7,11 +7,7 @@
 
 #[cfg(test)]
 mod tests {
-    use wrt_error::{
-        codes,
-        Error,
-        Result,
-    };
+    use wrt_error::{Error, Result, codes};
 
     #[test]
     fn test_error_creation() {

@@ -5,10 +5,7 @@
 
 use wrt_error::Result;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::{BoundedString, BoundedVec},
     no_std_hashmap::BoundedHashMap,
     safe_memory::NoStdProvider,
 };

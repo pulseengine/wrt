@@ -24,9 +24,9 @@ const MODULE_BYTES: &[u8] = &[
 
 /// Example structure to hold debug results
 struct DebugResult {
-    has_line_info:     bool,
+    has_line_info: bool,
     has_function_info: bool,
-    function_count:    usize,
+    function_count: usize,
 }
 
 #[no_mangle]
@@ -45,9 +45,9 @@ pub extern "C" fn demonstrate_debug_features() -> DebugResult {
     let info_init_result = debug_info.init_info_parser();
 
     let mut result = DebugResult {
-        has_line_info:     false,
+        has_line_info: false,
         has_function_info: false,
-        function_count:    0,
+        function_count: 0,
     };
 
     // Check for line information

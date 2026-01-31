@@ -4,53 +4,37 @@
 //! with configurable alerts and automatic visualization generation.
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
-use core::sync::atomic::{
-    AtomicBool,
-    AtomicUsize,
-    Ordering,
-};
+use alloc::{string::String, vec::Vec};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 #[cfg(feature = "std")]
 use std::{
     collections::VecDeque,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     thread,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 use wrt_foundation::budget_aware_provider::CrateId;
 
 /// Real-time monitoring configuration
 #[derive(Debug, Clone)]
 pub struct MonitorConfig {
     /// Monitoring interval in milliseconds
-    pub interval_ms:        u64,
+    pub interval_ms: u64,
     /// Memory usage threshold for alerts (percentage)
-    pub alert_threshold:    usize,
+    pub alert_threshold: usize,
     /// Critical threshold for emergency alerts (percentage)
     pub critical_threshold: usize,
     /// Maximum number of data points to keep in history
-    pub history_size:       usize,
+    pub history_size: usize,
     /// Automatically generate visualizations
-    pub auto_visualize:     bool,
+    pub auto_visualize: bool,
     /// Visualization output directory
     #[cfg(feature = "std")]
-    pub output_dir:         String,
+    pub output_dir: String,
     /// Enable console output
-    pub console_output:     bool,
+    pub console_output: bool,
 }
 
 impl Default for MonitorConfig {
@@ -72,13 +56,13 @@ impl Default for MonitorConfig {
 #[derive(Debug, Clone)]
 pub struct MemorySample {
     /// Timestamp (simplified for no_std)
-    pub timestamp:               u64,
+    pub timestamp: u64,
     /// Total allocated memory in bytes
-    pub total_allocated:         usize,
+    pub total_allocated: usize,
     /// Active provider count
-    pub active_providers:        usize,
+    pub active_providers: usize,
     /// Per-crate utilization percentages
-    pub crate_utilization:       [usize; 16],
+    pub crate_utilization: [usize; 16],
     /// Shared pool utilization percentage
     pub shared_pool_utilization: usize,
 }
@@ -89,15 +73,15 @@ pub struct MemoryAlert {
     /// Alert timestamp
     pub timestamp: u64,
     /// Alert level
-    pub level:     AlertLevel,
+    pub level: AlertLevel,
     /// Alert message
     #[cfg(any(feature = "std", feature = "alloc"))]
-    pub message:   String,
+    pub message: String,
     /// Alert message (static for no_std environments)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub message:   &'static str,
+    pub message: &'static str,
     /// Affected crate (if specific)
-    pub crate_id:  Option<CrateId>,
+    pub crate_id: Option<CrateId>,
 }
 
 /// Alert severity levels
@@ -115,17 +99,17 @@ pub enum AlertLevel {
 pub struct RealtimeMonitor {
     /// Monitoring configuration
     #[allow(dead_code)]
-    config:         MonitorConfig,
+    config: MonitorConfig,
     /// Monitoring active flag
-    active:         AtomicBool,
+    active: AtomicBool,
     /// Sample counter for timestamping
     sample_counter: AtomicUsize,
     /// Historical data storage
     #[cfg(feature = "std")]
-    history:        Arc<Mutex<VecDeque<MemorySample>>>,
+    history: Arc<Mutex<VecDeque<MemorySample>>>,
     /// Alert storage
     #[cfg(feature = "std")]
-    alerts:         Arc<Mutex<Vec<MemoryAlert>>>,
+    alerts: Arc<Mutex<Vec<MemoryAlert>>>,
 }
 
 impl RealtimeMonitor {
@@ -440,10 +424,7 @@ impl RealtimeMonitor {
     /// Export monitoring data to CSV
     #[cfg(feature = "std")]
     pub fn export_to_csv(&self, filename: &str) -> Result<()> {
-        use std::{
-            fs::File,
-            io::Write,
-        };
+        use std::{fs::File, io::Write};
 
         let mut file = File::create(filename)
             .map_err(|_e| Error::runtime_error("Failed to create CSV file"))?;

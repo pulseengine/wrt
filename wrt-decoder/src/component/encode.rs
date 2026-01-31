@@ -6,10 +6,7 @@
 #[cfg(feature = "std")]
 mod std_encoding {
     use wrt_error::Result;
-    use wrt_format::{
-        binary,
-        component::Component,
-    };
+    use wrt_format::{binary, component::Component};
 
     use crate::prelude::*;
 
@@ -32,12 +29,12 @@ mod std_encoding {
         if component.name.is_some() {
             // Create a name section with the component name
             let name_section = crate::component::name_section::ComponentNameSection {
-                component_name:  component.name.clone(),
-                sort_names:      Vec::new(),
-                import_names:    Default::default(),
-                export_names:    Default::default(),
+                component_name: component.name.clone(),
+                sort_names: Vec::new(),
+                import_names: Default::default(),
+                export_names: Default::default(),
                 canonical_names: Default::default(),
-                type_names:      Default::default(),
+                type_names: Default::default(),
             };
 
             let name_section_bytes =
@@ -654,16 +651,8 @@ mod std_encoding {
     #[cfg(test)]
     mod tests {
         use wrt_format::component::{
-            Component,
-            CoreInlineExport,
-            CoreInstance,
-            CoreInstanceExpr,
-            CoreSort,
-            Export,
-            ExportName,
-            Import,
-            ImportName,
-            Sort,
+            Component, CoreInlineExport, CoreInstance, CoreInstanceExpr, CoreSort, Export,
+            ExportName, Import, ImportName, Sort,
         };
 
         use super::*;
@@ -705,7 +694,7 @@ mod std_encoding {
                 instance_expr: CoreInstanceExpr::InlineExports(vec![CoreInlineExport {
                     name: "test_export".to_string(),
                     sort: CoreSort::Function,
-                    idx:  0,
+                    idx: 0,
                 }]),
             };
             component.core_instances.push(instance);
@@ -727,7 +716,7 @@ mod std_encoding {
             // Add an import
             let import = Import {
                 name: ImportName::new("test_namespace".to_string(), "test_import".to_string()),
-                ty:   wrt_format::component::ExternType::Value(
+                ty: wrt_format::component::ExternType::Value(
                     wrt_format::component::FormatValType::String,
                 ),
             };
@@ -751,8 +740,8 @@ mod std_encoding {
             let export = Export {
                 name: ExportName::new("test_export".to_string()),
                 sort: Sort::Function,
-                idx:  0,
-                ty:   None,
+                idx: 0,
+                ty: None,
             };
             component.exports.push(export);
 
@@ -775,23 +764,15 @@ pub use std_encoding::*;
 // No_std implementation following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_encoding {
-    use wrt_error::{
-        codes,
-        Error,
-        ErrorCategory,
-        Result,
-    };
-    use wrt_foundation::{
-        safe_memory::NoStdProvider,
-        BoundedVec,
-    };
+    use wrt_error::{Error, ErrorCategory, Result, codes};
+    use wrt_foundation::{BoundedVec, safe_memory::NoStdProvider};
 
     // No_std stub types for components that can't be fully encoded without heap
     // allocation
     #[derive(Debug, Clone)]
     pub struct Component {
         // Simplified component representation for no_std
-        pub magic:   [u8; 4],
+        pub magic: [u8; 4],
         pub version: [u8; 4],
     }
 

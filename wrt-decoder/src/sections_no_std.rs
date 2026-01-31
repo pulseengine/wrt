@@ -7,61 +7,30 @@
 //! This module contains parsers for various sections in WebAssembly modules
 //! using bounded collections for static memory allocation.
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::{
-    binary::{
-        self,
-    },
-    module::{
-        ElementInit,
-        Export as WrtExport,
-        ExportKind,
-    },
-    pure_format_types::{
-        PureDataMode,
-        PureDataSegment,
-        PureElementMode,
-        PureElementSegment,
-    },
-    types::{
-        parse_value_type,
-        RefType,
-    },
-    DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment,
-    WasmString,
+    DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, WasmString,
+    binary::{self},
+    module::{ElementInit, Export as WrtExport, ExportKind},
+    pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment},
+    types::{RefType, parse_value_type},
 };
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        WasmName,
-    },
+    bounded::{BoundedVec, WasmName},
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::BoundedCapacity,
     types::{
-        FuncType as WrtFuncType,
-        GlobalType as WrtGlobalType,
-        Import as WrtImport,
-        ImportDesc as WrtImportDesc,
-        MemoryType as WrtMemoryType,
-        TableType as WrtTableType,
+        FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
+        ImportDesc as WrtImportDesc, MemoryType as WrtMemoryType, TableType as WrtTableType,
     },
 };
 
 // Import bounded infrastructure
 use crate::{
     bounded_decoder_infra::*,
-    memory_optimized::{
-        check_bounds_u32,
-        safe_usize_conversion,
-    },
+    memory_optimized::{check_bounds_u32, safe_usize_conversion},
     optimized_string::parse_utf8_string_inplace,
 };
 use wrt_foundation::collections::StaticVec;
@@ -182,10 +151,10 @@ fn parse_element_segment(
     use wrt_foundation::prelude::*;
 
     let pure_element = PureElementSegment {
-        element_type:      wrt_format::types::RefType::Funcref,
-        mode:              PureElementMode::Passive,
+        element_type: wrt_format::types::RefType::Funcref,
+        mode: PureElementMode::Passive,
         offset_expr_bytes: Default::default(),
-        init_data:         wrt_format::pure_format_types::PureElementInit::FunctionIndices(
+        init_data: wrt_format::pure_format_types::PureElementInit::FunctionIndices(
             Default::default(),
         ),
     };
@@ -203,9 +172,9 @@ fn parse_data(
     use wrt_foundation::prelude::*;
 
     let pure_data = PureDataSegment {
-        mode:              PureDataMode::Passive,
+        mode: PureDataMode::Passive,
         offset_expr_bytes: Default::default(),
-        data_bytes:        Default::default(),
+        data_bytes: Default::default(),
     };
     Ok((pure_data, offset + 1))
 }
@@ -247,9 +216,7 @@ pub mod parsers {
     use super::*;
 
     /// Parse a type section with bounded memory
-    pub fn parse_type_section(
-        bytes: &[u8],
-    ) -> Result<BoundedTypeVec<WrtFuncType>> {
+    pub fn parse_type_section(bytes: &[u8]) -> Result<BoundedTypeVec<WrtFuncType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_TYPES as u32, "type count")?;
@@ -319,10 +286,7 @@ pub mod parsers {
             }
 
             // Create FuncType (no longer needs provider after StaticVec migration)
-            let func_type = WrtFuncType::new(
-                params.iter().copied(),
-                results.iter().copied(),
-            )?;
+            let func_type = WrtFuncType::new(params.iter().copied(), results.iter().copied())?;
 
             format_func_types
                 .push(func_type)
@@ -465,7 +429,7 @@ pub mod parsers {
             // Convert to WrtTableType - needs implementation
             let wrt_table_type = WrtTableType {
                 element_type: table_type.element_type,
-                limits:       table_type.limits,
+                limits: table_type.limits,
             };
 
             tables
@@ -524,7 +488,7 @@ pub mod parsers {
             // Convert to WrtGlobalType
             let wrt_global_type = WrtGlobalType {
                 value_type: global_type.value_type,
-                mutable:    global_type.mutable,
+                mutable: global_type.mutable,
             };
 
             globals
@@ -601,7 +565,8 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_ELEMENTS as u32, "element count")?;
 
-        let mut elements = StaticVec::<wrt_format::pure_format_types::PureElementSegment, MAX_ELEMENTS>::new();
+        let mut elements =
+            StaticVec::<wrt_format::pure_format_types::PureElementSegment, MAX_ELEMENTS>::new();
 
         for _ in 0..count {
             let (pure_element, new_offset) = parse_element_segment(bytes, offset)?;
@@ -666,10 +631,8 @@ pub mod parsers {
 
         check_bounds_u32(count, MAX_DATA_SEGMENTS as u32, "data count")?;
 
-        let mut data_segments = StaticVec::<
-            wrt_format::pure_format_types::PureDataSegment,
-            MAX_DATA_SEGMENTS,
-        >::new();
+        let mut data_segments =
+            StaticVec::<wrt_format::pure_format_types::PureDataSegment, MAX_DATA_SEGMENTS>::new();
 
         for _ in 0..count {
             let (pure_data, new_offset) = parse_data(bytes, offset)?;

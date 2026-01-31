@@ -34,20 +34,11 @@
 //! }
 //! ```
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::binary;
 use wrt_foundation::{
-    capabilities::CapabilityAwareProvider,
-    capability_context,
-    safe_capability_alloc,
-    traits::BoundedCapacity,
-    CrateId,
-    NoStdProvider,
+    CrateId, NoStdProvider, capabilities::CapabilityAwareProvider, capability_context,
+    safe_capability_alloc, traits::BoundedCapacity,
 };
 
 // Type aliases for cleaner signatures
@@ -80,30 +71,14 @@ fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
 // BoundedCapacity trait is private, using alternative approaches for length
 // operations
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-        MAX_COMPONENT_TYPES,
-    },
-    component::{
-        MAX_COMPONENT_EXPORTS,
-        MAX_COMPONENT_IMPORTS,
-    },
+    bounded::{BoundedString, BoundedVec, MAX_COMPONENT_TYPES},
+    component::{MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS},
     verification::VerificationLevel,
 };
 
 use crate::{
-    component::section::{
-        ComponentExport,
-        ComponentImport,
-        ComponentType,
-    },
-    decoder_no_alloc::{
-        create_error,
-        create_memory_provider,
-        NoAllocErrorCode,
-        MAX_MODULE_SIZE,
-    },
+    component::section::{ComponentExport, ComponentImport, ComponentType},
+    decoder_no_alloc::{MAX_MODULE_SIZE, NoAllocErrorCode, create_error, create_memory_provider},
     prelude::*,
 };
 
@@ -136,29 +111,29 @@ pub const COMPONENT_VERSION: u32 = 1;
 #[repr(u8)]
 pub enum ComponentSectionId {
     /// Custom section (0)
-    Custom            = 0,
+    Custom = 0,
     /// Component type section (1)
-    ComponentType     = 1,
+    ComponentType = 1,
     /// Component import section (2)
-    Import            = 2,
+    Import = 2,
     /// Core module section (3)
-    CoreModule        = 3,
+    CoreModule = 3,
     /// Component instance section (4)
-    Instance          = 4,
+    Instance = 4,
     /// Component alias section (5)
-    Alias             = 5,
+    Alias = 5,
     /// Component export section (6)
-    Export            = 6,
+    Export = 6,
     /// Component start section (7)
-    Start             = 7,
+    Start = 7,
     /// Component module section (8)
-    Module            = 8,
+    Module = 8,
     /// Component canonical function section (9)
     CanonicalFunction = 9,
     /// Component instance export section (10)
-    InstanceExport    = 10,
+    InstanceExport = 10,
     /// Unknown section
-    Unknown           = 255,
+    Unknown = 255,
 }
 
 impl From<u8> for ComponentSectionId {
@@ -184,9 +159,9 @@ impl From<u8> for ComponentSectionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ComponentSectionInfo {
     /// Section ID
-    pub id:     ComponentSectionId,
+    pub id: ComponentSectionId,
     /// Section size in bytes
-    pub size:   u32,
+    pub size: u32,
     /// Offset of the section data in the binary
     pub offset: usize,
 }
@@ -231,27 +206,25 @@ pub fn verify_component_header(bytes: &[u8]) -> Result<()> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentHeader {
     /// Component size in bytes
-    pub size:               usize,
+    pub size: usize,
     /// Number of sections detected in the component
-    pub section_count:      u8,
+    pub section_count: u8,
     /// Component types
-    pub types:              BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
+    pub types: BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
     /// Component exports
-    pub exports:
-        BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, DecoderProvider>,
+    pub exports: BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, DecoderProvider>,
     /// Component imports
-    pub imports:
-        BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, DecoderProvider>,
+    pub imports: BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, DecoderProvider>,
     /// Whether the component contains a start function
-    pub has_start:          bool,
+    pub has_start: bool,
     /// Whether the component contains core modules
-    pub has_core_modules:   bool,
+    pub has_core_modules: bool,
     /// Whether the component contains sub-components
     pub has_sub_components: bool,
     /// Whether the component uses resources
-    pub uses_resources:     bool,
+    pub uses_resources: bool,
     /// Section information
-    pub sections:           [Option<ComponentSectionInfo>; MAX_COMPONENT_SECTIONS],
+    pub sections: [Option<ComponentSectionInfo>; MAX_COMPONENT_SECTIONS],
     /// Verification level used for validation
     pub verification_level: VerificationLevel,
 }
@@ -311,8 +284,8 @@ impl ComponentHeader {
     pub fn find_custom_section(&self, bytes: &[u8], name: &str) -> Option<(usize, u32)> {
         for section_info in self.sections.iter().flatten() {
             if section_info.id == ComponentSectionId::Custom {
-                let section_data = &bytes
-                    [section_info.offset..section_info.offset + section_info.size as usize];
+                let section_data =
+                    &bytes[section_info.offset..section_info.offset + section_info.size as usize];
                 if let Ok((section_name, name_size)) = read_name(section_data, 0) {
                     if core::str::from_utf8(section_name) == Ok(name) {
                         return Some((
@@ -393,8 +366,8 @@ pub fn decode_component_header(
 
         // Save section info
         header.sections[section_index] = Some(ComponentSectionInfo {
-            id:     section_id_enum,
-            size:   section_size,
+            id: section_id_enum,
+            size: section_size,
             offset: section_data_offset,
         });
 
@@ -488,11 +461,7 @@ fn check_for_resource_types(bytes: &[u8], offset: usize, size: u32) -> bool {
 /// * `Result<()>` - Ok if successful
 fn scan_component_imports(
     section_data: &[u8],
-    imports: &mut BoundedVec<
-        ComponentImport,
-        MAX_COMPONENT_IMPORTS,
-        DecoderProvider,
-    >,
+    imports: &mut BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, DecoderProvider>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -519,7 +488,7 @@ fn scan_component_imports(
             // In a real implementation, we would read the import type here
             // For now, just store the name
             let import = ComponentImport {
-                name:       {
+                name: {
                     let name_str = core::str::from_utf8(name)
                         .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
                     BoundedString::from_str_truncate(name_str)?
@@ -554,11 +523,7 @@ fn scan_component_imports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_exports(
     section_data: &[u8],
-    exports: &mut BoundedVec<
-        ComponentExport,
-        MAX_COMPONENT_EXPORTS,
-        DecoderProvider,
-    >,
+    exports: &mut BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, DecoderProvider>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -585,13 +550,13 @@ fn scan_component_exports(
             // In a real implementation, we would read the export type here
             // For now, just store the name
             let export = ComponentExport {
-                name:       {
+                name: {
                     let name_str = core::str::from_utf8(name)
                         .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
                     BoundedString::from_str_truncate(name_str)?
                 },
                 type_index: 0, // Placeholder
-                kind:       0, // Placeholder
+                kind: 0,       // Placeholder
             };
 
             // Try to add the export to our bounded collection

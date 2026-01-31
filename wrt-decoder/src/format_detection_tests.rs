@@ -4,36 +4,21 @@
 //! ensuring robust identification of Core Modules vs Component Model binaries.
 
 use wrt_error::Result;
-use wrt_foundation::{
-    safe_managed_alloc,
-    traits::BoundedCapacity,
-    BoundedVec,
-    CrateId,
-};
+use wrt_foundation::{BoundedVec, CrateId, safe_managed_alloc, traits::BoundedCapacity};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 // Import assert macros for no_std
-#[cfg(not(feature = "std"))]
-use core::{
-    assert,
-    assert_eq,
-};
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::{assert, assert_eq};
 
 use crate::{
-    lazy_detection::{
-        ComponentDetection,
-        DetectionConfig,
-        LazyDetector,
-    },
-    unified_loader::{
-        load_wasm_unified,
-        WasmFormat,
-    },
+    lazy_detection::{ComponentDetection, DetectionConfig, LazyDetector},
+    unified_loader::{WasmFormat, load_wasm_unified},
 };
 
 // Type alias for test data - using a reasonably sized bounded vector
@@ -590,7 +575,10 @@ mod tests {
 
         let component = FormatTestData::minimal_component().unwrap();
         assert!(component.len() >= 8);
-        assert_eq!(&component.as_slice().unwrap()[0..4], &[0x00, 0x61, 0x73, 0x6d]);
+        assert_eq!(
+            &component.as_slice().unwrap()[0..4],
+            &[0x00, 0x61, 0x73, 0x6d]
+        );
         assert_eq!(component.as_slice().unwrap()[4], 0x0a); // Component version
     }
 

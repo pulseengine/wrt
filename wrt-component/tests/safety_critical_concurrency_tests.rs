@@ -16,12 +16,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
-use std::sync::{
-    Arc,
-    Barrier,
-    Mutex,
-    RwLock,
-};
+use std::sync::{Arc, Barrier, Mutex, RwLock};
 #[cfg(feature = "std")]
 use std::thread;
 
@@ -29,31 +24,17 @@ use wrt_component::{
     bounded_component_infra::*,
     resource_management::ResourceTable,
     resources::{
-        resource_lifecycle::{
-            Resource,
-            ResourceHandle,
-            ResourceState,
-            ResourceType,
-        },
         ResourceStrategy,
+        resource_lifecycle::{Resource, ResourceHandle, ResourceState, ResourceType},
     },
 };
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    managed_alloc,
-    WrtError,
+    WrtError, budget_aware_provider::CrateId, collections::StaticVec as BoundedVec, managed_alloc,
 };
 #[cfg(not(feature = "std"))]
-use wrt_platform::threading::{
-    spawn_bounded,
-    JoinHandle,
-};
+use wrt_platform::threading::{JoinHandle, spawn_bounded};
 #[cfg(not(feature = "std"))]
-use wrt_sync::{
-    Mutex,
-    RwLock,
-};
+use wrt_sync::{Mutex, RwLock};
 
 #[cfg(test)]
 mod concurrency_tests {
@@ -270,14 +251,13 @@ mod concurrency_tests {
     #[test]
     fn test_resource_lifecycle_concurrent() {
         use wrt_component::resources::resource_lifecycle::{
-            ResourceLifecycleManager,
-            ResourceMetadata,
+            ResourceLifecycleManager, ResourceMetadata,
         };
 
         // Create mock resource type
         let resource_type = ResourceType {
-            type_idx:   1,
-            name:       bounded_component_name_from_str("TestResource").unwrap(),
+            type_idx: 1,
+            name: bounded_component_name_from_str("TestResource").unwrap(),
             destructor: Some(100),
         };
 
@@ -302,11 +282,11 @@ mod concurrency_tests {
                 // Create resources
                 for i in 0..10 {
                     let metadata = ResourceMetadata {
-                        created_at:    Some(i as u64),
+                        created_at: Some(i as u64),
                         last_accessed: None,
-                        creator:       thread_id as u32,
-                        owner:         thread_id as u32,
-                        user_data:     None,
+                        creator: thread_id as u32,
+                        owner: thread_id as u32,
+                        user_data: None,
                     };
 
                     let mut manager = manager_clone.lock().unwrap();

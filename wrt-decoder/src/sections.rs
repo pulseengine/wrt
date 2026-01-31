@@ -6,29 +6,18 @@
 //!
 //! This module contains parsers for various sections in WebAssembly modules.
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    ErrorSource,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, ErrorSource, Result, codes};
 use wrt_format::{
-    binary::{
-        self,
-    },
+    binary::{self},
     types::ValueType as FormatValueType,
 };
 // Note: These functions should be available if they're exported by wrt_format
 // If not, we'll need to implement alternatives or define them locally
+use wrt_foundation::NoStdProvider;
 use wrt_foundation::types::{
-    FuncType,
-    GlobalType as WrtGlobalType,
-    Import as WrtImport,
-    MemoryType as WrtMemoryType,
+    FuncType, GlobalType as WrtGlobalType, Import as WrtImport, MemoryType as WrtMemoryType,
     TableType as WrtTableType,
 };
-use wrt_foundation::NoStdProvider;
 
 // Type aliases with result types for error propagation
 type WrtFuncType = FuncType;
@@ -36,16 +25,11 @@ type WrtFoundationImport = WrtImport<wrt_foundation::NoStdProvider<65536>>;
 
 // Import segment types from wrt-format
 use wrt_format::{
-    module::Export as WrtExport,
-    DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment,
+    DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, module::Export as WrtExport,
 };
 
 use crate::{
-    memory_optimized::{
-        check_bounds_u32,
-        safe_usize_conversion,
-    },
+    memory_optimized::{check_bounds_u32, safe_usize_conversion},
     optimized_string::parse_utf8_string_inplace,
 };
 // Type aliases to make Vec/String usage explicit
@@ -107,12 +91,10 @@ fn parse_element_segment(
     // For both std and no_std, implement basic element parsing
     // This is a simplified version that creates passive elements
     let pure_element = wrt_format::pure_format_types::PureElementSegment {
-        element_type:      wrt_format::types::RefType::Funcref,
-        mode:              wrt_format::pure_format_types::PureElementMode::Passive,
+        element_type: wrt_format::types::RefType::Funcref,
+        mode: wrt_format::pure_format_types::PureElementMode::Passive,
         offset_expr_bytes: Vec::new(),
-        init_data:         wrt_format::pure_format_types::PureElementInit::FunctionIndices(
-            Vec::new(),
-        ),
+        init_data: wrt_format::pure_format_types::PureElementInit::FunctionIndices(Vec::new()),
     };
     Ok((pure_element, offset + 1))
 }
@@ -124,7 +106,9 @@ fn parse_data(
     use wrt_format::pure_format_types::{PureDataMode, PureDataSegment};
 
     if offset >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end while parsing data segment"));
+        return Err(Error::parse_error(
+            "Unexpected end while parsing data segment",
+        ));
     }
 
     let tag = bytes[offset];
@@ -142,13 +126,15 @@ fn parse_data(
 
                 match opcode {
                     0x02..=0x04 => depth += 1, // block, loop, if
-                    0x0B => { // end
+                    0x0B => {
+                        // end
                         depth = depth.saturating_sub(1);
                         if depth == 0 {
                             break;
                         }
-                    }
-                    0x41 => { // i32.const
+                    },
+                    0x41 => {
+                        // i32.const
                         // Skip LEB128 i32
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -156,8 +142,9 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1; // Final byte
                         }
-                    }
-                    0x42 => { // i64.const
+                    },
+                    0x42 => {
+                        // i64.const
                         // Skip LEB128 i64
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -165,8 +152,9 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1; // Final byte
                         }
-                    }
-                    0x23 => { // global.get
+                    },
+                    0x23 => {
+                        // global.get
                         // Skip LEB128 global index
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -174,8 +162,8 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1;
                         }
-                    }
-                    _ => {} // Other opcodes we skip
+                    },
+                    _ => {}, // Other opcodes we skip
                 }
             }
             let offset_expr_bytes = bytes[expr_start..current_offset].to_vec();
@@ -202,7 +190,7 @@ fn parse_data(
                 },
                 current_offset,
             ))
-        }
+        },
         // Passive data segment
         0x01 => {
             // Parse data byte count and data
@@ -224,7 +212,7 @@ fn parse_data(
                 },
                 current_offset,
             ))
-        }
+        },
         // Active data segment with explicit memory index
         0x02 => {
             // Parse memory index
@@ -245,7 +233,7 @@ fn parse_data(
                         if depth == 0 {
                             break;
                         }
-                    }
+                    },
                     0x41 => {
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -253,7 +241,7 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1;
                         }
-                    }
+                    },
                     0x42 => {
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -261,7 +249,7 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1;
                         }
-                    }
+                    },
                     0x23 => {
                         while current_offset < bytes.len() && bytes[current_offset] & 0x80 != 0 {
                             current_offset += 1;
@@ -269,8 +257,8 @@ fn parse_data(
                         if current_offset < bytes.len() {
                             current_offset += 1;
                         }
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 }
             }
             let offset_expr_bytes = bytes[expr_start..current_offset].to_vec();
@@ -297,7 +285,7 @@ fn parse_data(
                 },
                 current_offset,
             ))
-        }
+        },
         _ => Err(Error::parse_error("Invalid data segment tag")),
     }
 }
@@ -493,8 +481,8 @@ pub mod parsers {
 
             format_imports.push(wrt_format::module::Import {
                 module: module_string,
-                name:   field_string,
-                desc:   format_desc,
+                name: field_string,
+                desc: format_desc,
             });
         }
 
@@ -508,12 +496,12 @@ pub mod parsers {
         )?;
 
         for format_import in format_imports {
-            let module_name = wrt_foundation::bounded::WasmName::try_from_str(&format_import.module)
-            .map_err(|_| Error::parse_error("Module name too long for bounded string"))?;
+            let module_name =
+                wrt_foundation::bounded::WasmName::try_from_str(&format_import.module)
+                    .map_err(|_| Error::parse_error("Module name too long for bounded string"))?;
 
-            let item_name =
-                wrt_foundation::bounded::WasmName::try_from_str(&format_import.name)
-                    .map_err(|_| Error::parse_error("Item name too long for bounded string"))?;
+            let item_name = wrt_foundation::bounded::WasmName::try_from_str(&format_import.name)
+                .map_err(|_| Error::parse_error("Item name too long for bounded string"))?;
 
             let wrt_desc = match format_import.desc {
                 wrt_format::module::ImportDesc::Function(type_idx) => {
@@ -611,7 +599,7 @@ pub mod parsers {
         Ok((
             wrt_foundation::TableType {
                 element_type: ref_type,
-                limits:       foundation_limits,
+                limits: foundation_limits,
             },
             offset,
         ))
@@ -737,14 +725,14 @@ pub mod parsers {
 
             let _format_global = wrt_format::module::Global {
                 global_type: format_global_type,
-                init:        init_expr_bytes.to_vec(),
+                init: init_expr_bytes.to_vec(),
             };
 
             // Convert FormatGlobalType to wrt_foundation::GlobalType
             // Both types have the same structure (value_type and mutable)
             let wrt_global = WrtGlobalType {
                 value_type: format_global_type.value_type,
-                mutable:    format_global_type.mutable,
+                mutable: format_global_type.mutable,
             };
 
             wrt_globals.push(wrt_global);

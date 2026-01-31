@@ -15,24 +15,15 @@ extern crate alloc;
 
 use wrt_component::{
     bounded_component_infra::*,
-    canonical_abi::{
-        CanonicalABI,
-        CanonicalOptions,
-    },
+    canonical_abi::{CanonicalABI, CanonicalOptions},
     resource_management::ResourceTable,
     resources::resource_lifecycle::{
-        Resource,
-        ResourceLifecycleManager,
-        ResourceMetadata,
-        ResourceType,
+        Resource, ResourceLifecycleManager, ResourceMetadata, ResourceType,
     },
 };
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
     WrtError,
+    bounded::{BoundedString, BoundedVec},
 };
 
 #[cfg(test)]
@@ -187,17 +178,17 @@ mod error_handling_tests {
         let mut manager = ResourceLifecycleManager::new();
 
         let resource_type = ResourceType {
-            type_idx:   1,
-            name:       bounded_component_name_from_str("TestResource").unwrap(),
+            type_idx: 1,
+            name: bounded_component_name_from_str("TestResource").unwrap(),
             destructor: Some(100),
         };
 
         let metadata = ResourceMetadata {
-            created_at:    Some(0),
+            created_at: Some(0),
             last_accessed: None,
-            creator:       0,
-            owner:         0,
-            user_data:     None,
+            creator: 0,
+            owner: 0,
+            user_data: None,
         };
 
         // Create resource

@@ -17,38 +17,24 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
 use wrt_component::{
     bounded_component_infra::*,
-    canonical_abi::canonical::{
-        CanonicalABI,
-        CanonicalOptions,
-    },
+    canonical_abi::canonical::{CanonicalABI, CanonicalOptions},
     resource_management::ResourceTable,
     resources::{
+        MemoryStrategy, VerificationLevel,
         resource_lifecycle::{
-            Resource,
-            ResourceLifecycleManager,
-            ResourceMetadata,
-            ResourceState,
-            ResourceType,
+            Resource, ResourceLifecycleManager, ResourceMetadata, ResourceState, ResourceType,
         },
-        MemoryStrategy,
-        VerificationLevel,
     },
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::collections::StaticMap as BoundedHashMap;
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::BoundedString,
-    budget_aware_provider::CrateId,
-    managed_alloc,
-    WrtError,
+    WrtError, bounded::BoundedString, budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec, managed_alloc,
 };
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
@@ -65,10 +51,10 @@ mod integration_tests {
 
         // Create mock component
         let component = MockComponent {
-            id:             1,
-            name:           "test_component".to_string(),
+            id: 1,
+            name: "test_component".to_string(),
             resource_count: 0,
-            state:          ComponentState::Initialized,
+            state: ComponentState::Initialized,
         };
 
         // Add to registry
@@ -115,17 +101,17 @@ mod integration_tests {
     fn test_cross_component_communication() {
         // Create two components
         let component1 = MockComponent {
-            id:             1,
-            name:           "sender".to_string(),
+            id: 1,
+            name: "sender".to_string(),
             resource_count: 0,
-            state:          ComponentState::Running,
+            state: ComponentState::Running,
         };
 
         let component2 = MockComponent {
-            id:             2,
-            name:           "receiver".to_string(),
+            id: 2,
+            name: "receiver".to_string(),
             resource_count: 0,
-            state:          ComponentState::Running,
+            state: ComponentState::Running,
         };
 
         // Create call manager
@@ -157,18 +143,18 @@ mod integration_tests {
 
         // Create resource type
         let resource_type = ResourceType {
-            type_idx:   1,
-            name:       bounded_component_name_from_str("SharedResource").unwrap(),
+            type_idx: 1,
+            name: bounded_component_name_from_str("SharedResource").unwrap(),
             destructor: Some(100),
         };
 
         // Component 1 creates resource
         let metadata1 = ResourceMetadata {
-            created_at:    Some(1000),
+            created_at: Some(1000),
             last_accessed: None,
-            creator:       1,
-            owner:         1,
-            user_data:     None,
+            creator: 1,
+            owner: 1,
+            user_data: None,
         };
 
         let handle = lifecycle_manager
@@ -204,7 +190,7 @@ mod integration_tests {
     #[test]
     fn test_memory_allocation_integration() {
         struct ComponentMemoryUsage {
-            types:     BoundedTypeMap<String>,
+            types: BoundedTypeMap<String>,
             resources: BoundedResourceVec<u32>,
         }
 
@@ -213,7 +199,7 @@ mod integration_tests {
         // Create multiple components with memory allocations
         for i in 0..5 {
             let usage = ComponentMemoryUsage {
-                types:     new_type_map()
+                types: new_type_map()
                     .unwrap_or_else(|_| panic!("Failed to allocate types for component {}", i)),
                 resources: new_resource_vec()
                     .unwrap_or_else(|_| panic!("Failed to allocate resources for component {}", i)),
@@ -249,18 +235,18 @@ mod integration_tests {
 
         // Create provider component
         let provider = MockComponent {
-            id:             1,
-            name:           "provider".to_string(),
+            id: 1,
+            name: "provider".to_string(),
             resource_count: 50,
-            state:          ComponentState::Initialized,
+            state: ComponentState::Initialized,
         };
 
         // Create consumer component
         let consumer = MockComponent {
-            id:             2,
-            name:           "consumer".to_string(),
+            id: 2,
+            name: "consumer".to_string(),
             resource_count: 0,
-            state:          ComponentState::Initialized,
+            state: ComponentState::Initialized,
         };
 
         // Link components
@@ -275,15 +261,17 @@ mod integration_tests {
     /// Test error propagation through component layers
     #[test]
     fn test_error_propagation_integration() {
-        fn create_component_stack(depth: usize) -> wrt_error::Result<BoundedComponentVec<MockComponent>> {
+        fn create_component_stack(
+            depth: usize,
+        ) -> wrt_error::Result<BoundedComponentVec<MockComponent>> {
             let mut components = new_component_vec()?;
 
             for i in 0..depth {
                 let component = MockComponent {
-                    id:             i as u32,
-                    name:           format!("comp_{}", i),
+                    id: i as u32,
+                    name: format!("comp_{}", i),
                     resource_count: 0,
-                    state:          ComponentState::Initialized,
+                    state: ComponentState::Initialized,
                 };
 
                 components.try_push(component)?;
@@ -399,23 +387,23 @@ enum ComponentState {
 /// Simplified mock component for testing
 #[derive(Clone, Debug)]
 struct MockComponent {
-    id:             u32,
-    name:           String,
+    id: u32,
+    name: String,
     resource_count: usize,
-    state:          ComponentState,
+    state: ComponentState,
 }
 
 /// Mock component linker
 struct ComponentLinker {
     components: BoundedComponentVec<MockComponent>,
-    links:      BoundedTypeMap<bool>,
+    links: BoundedTypeMap<bool>,
 }
 
 impl ComponentLinker {
     fn new() -> Self {
         Self {
             components: new_component_vec().expect("Failed to create component vec"),
-            links:      new_type_map().expect("Failed to create links map"),
+            links: new_type_map().expect("Failed to create links map"),
         }
     }
 
@@ -446,7 +434,7 @@ struct CrossComponentCallManager {
 struct CallFrame {
     caller_id: u32,
     callee_id: u32,
-    function:  String,
+    function: String,
 }
 
 impl CrossComponentCallManager {
@@ -519,10 +507,10 @@ mod safety_critical_integration {
         // 4. No panic guarantees - all operations return Result
         let mut test_components = new_component_vec::<MockComponent>().unwrap();
         let overflow_test = test_components.try_push(MockComponent {
-            id:             0,
-            name:           "test".to_string(),
+            id: 0,
+            name: "test".to_string(),
             resource_count: 0,
-            state:          ComponentState::Initialized,
+            state: ComponentState::Initialized,
         });
 
         // Even at capacity, operations don't panic

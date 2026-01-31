@@ -13,58 +13,28 @@ pub mod safety;
 
 // Export documentation verification framework
 pub use documentation::{
-    DocumentationAnalysis,
-    DocumentationLocation,
-    DocumentationReport,
-    DocumentationStandards,
-    DocumentationVerificationConfig,
-    DocumentationVerificationFramework,
-    DocumentationVerificationResult,
-    DocumentationViolation,
-    DocumentationViolationSeverity,
+    DocumentationAnalysis, DocumentationLocation, DocumentationReport, DocumentationStandards,
+    DocumentationVerificationConfig, DocumentationVerificationFramework,
+    DocumentationVerificationResult, DocumentationViolation, DocumentationViolationSeverity,
     DocumentationViolationType,
 };
 // Re-export simple requirements types for backward compatibility
 pub use legacy::{
-    EnhancedRequirementsVerifier,
-    Requirement,
-    Requirements,
-    RequirementsMetadata,
+    EnhancedRequirementsVerifier, Requirement, Requirements, RequirementsMetadata,
     RequirementsVerificationResult,
 };
 pub use model::{
-    ComplianceReport,
-    CoverageLevel,
-    RequirementId,
-    RequirementRegistry,
-    RequirementType,
-    SafetyRequirement,
-    VerificationMethod,
-    VerificationStatus,
+    ComplianceReport, CoverageLevel, RequirementId, RequirementRegistry, RequirementType,
+    SafetyRequirement, VerificationMethod, VerificationStatus,
 };
 // Export platform verification framework
 pub use platform::{
-    ComprehensivePlatformLimits,
-    ContainerRuntime,
-    ExternalLimitSources,
-    PlatformId,
-    PlatformVerificationConfig,
-    PlatformVerificationEngine,
+    ComprehensivePlatformLimits, ContainerRuntime, ExternalLimitSources, PlatformId,
+    PlatformVerificationConfig, PlatformVerificationEngine,
 };
 // Export safety verification framework
 pub use safety::{
-    CertificationReadiness,
-    ComplianceVerificationResult,
-    ComplianceViolation,
-    CoverageData,
-    FileCoverage,
-    PlatformSummary,
-    PlatformVerification,
-    SafetyReport,
-    SafetyVerificationFramework,
-    TestCoverageType,
-    TestResult,
-    TestSummary,
-    ViolationSeverity,
-    ViolationType,
+    CertificationReadiness, ComplianceVerificationResult, ComplianceViolation, CoverageData,
+    FileCoverage, PlatformSummary, PlatformVerification, SafetyReport, SafetyVerificationFramework,
+    TestCoverageType, TestResult, TestSummary, ViolationSeverity, ViolationType,
 };

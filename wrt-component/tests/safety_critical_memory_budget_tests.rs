@@ -15,30 +15,23 @@ extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    WrtError,
+    bounded::{BoundedString, BoundedVec},
     budget_aware_provider::CrateId,
     budget_provider::BudgetProvider,
-    managed_alloc,
-    safe_managed_alloc,
+    managed_alloc, safe_managed_alloc,
     safe_memory::NoStdProvider,
-    WrtError,
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     safe_managed_alloc,
     {
-        bounded::{
-            BoundedString,
-            BoundedVec,
-        },
+        WrtError,
+        bounded::{BoundedString, BoundedVec},
         budget_aware_provider::CrateId,
         budget_provider::BudgetProvider,
         managed_alloc,
         safe_memory::NoStdProvider,
-        WrtError,
     },
 };
 
@@ -249,8 +242,8 @@ mod memory_budget_tests {
     fn test_nested_structure_memory() {
         #[derive(Clone)]
         struct ComplexData {
-            id:    u32,
-            data:  [u8; 512],
+            id: u32,
+            data: [u8; 512],
             flags: u64,
         }
 
@@ -263,8 +256,8 @@ mod memory_budget_tests {
         // Fill with complex data
         for i in 0..MAX_COMPONENT_INSTANCES {
             let data = ComplexData {
-                id:    i as u32,
-                data:  [i as u8; 512],
+                id: i as u32,
+                data: [i as u8; 512],
                 flags: (i as u64) << 32,
             };
 

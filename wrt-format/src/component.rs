@@ -5,10 +5,7 @@
 
 // Use crate-level type aliases for collection types
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    format,
-};
+use std::{boxed::Box, format};
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -25,10 +22,7 @@ macro_rules! validation_error {
     };
 }
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 pub use wrt_foundation::component_value::ValType;
@@ -51,31 +45,17 @@ pub enum ValType {
     Char,
     String,
 }
-pub use wrt_foundation::resource::{
-    ResourceDrop,
-    ResourceNew,
-    ResourceRep,
-    ResourceRepresentation,
-};
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::NoStdProvider;
+pub use wrt_foundation::resource::{
+    ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation,
+};
 
-use crate::{
-    module::Module,
-    types::ValueType,
-    validation::Validatable,
-};
-#[cfg(feature = "std")]
-use crate::{
-    String,
-    Vec,
-};
 #[cfg(not(any(feature = "std")))]
-use crate::{
-    WasmString,
-    WasmVec,
-    MAX_TYPE_RECURSION_DEPTH,
-};
+use crate::{MAX_TYPE_RECURSION_DEPTH, WasmString, WasmVec};
+#[cfg(feature = "std")]
+use crate::{String, Vec};
+use crate::{module::Module, types::ValueType, validation::Validatable};
 
 // Conditional type aliases for collection types
 #[cfg(feature = "std")]
@@ -92,33 +72,33 @@ type ComponentVec<T> = WasmVec<T, NoStdProvider<1024>>;
 #[derive(Debug, Clone)]
 pub struct Component {
     /// Component name (if available from name section)
-    pub name:           Option<ComponentString>,
+    pub name: Option<ComponentString>,
     /// Core modules included in this component
-    pub modules:        ComponentVec<Module>,
+    pub modules: ComponentVec<Module>,
     /// Core instances defined in this component
     pub core_instances: ComponentVec<CoreInstance>,
     /// Core types defined in this component
-    pub core_types:     ComponentVec<CoreType>,
+    pub core_types: ComponentVec<CoreType>,
     /// Nested components
-    pub components:     ComponentVec<Component>,
+    pub components: ComponentVec<Component>,
     /// Component instances
-    pub instances:      ComponentVec<Instance>,
+    pub instances: ComponentVec<Instance>,
     /// Component aliases
-    pub aliases:        ComponentVec<Alias>,
+    pub aliases: ComponentVec<Alias>,
     /// Component types
-    pub types:          ComponentVec<ComponentType>,
+    pub types: ComponentVec<ComponentType>,
     /// Canonical function conversions
-    pub canonicals:     ComponentVec<Canon>,
+    pub canonicals: ComponentVec<Canon>,
     /// Component start function
-    pub start:          Option<Start>,
+    pub start: Option<Start>,
     /// Component imports
-    pub imports:        ComponentVec<Import>,
+    pub imports: ComponentVec<Import>,
     /// Component exports
-    pub exports:        ComponentVec<Export>,
+    pub exports: ComponentVec<Export>,
     /// Component values
-    pub values:         ComponentVec<Value>,
+    pub values: ComponentVec<Value>,
     /// Original binary (if available)
-    pub binary:         Option<ComponentVec<u8>>,
+    pub binary: Option<ComponentVec<u8>>,
 }
 
 impl Default for Component {
@@ -131,20 +111,20 @@ impl Component {
     /// Create a new empty component
     pub fn new() -> Self {
         Self {
-            name:           None,
-            modules:        Self::new_vec(),
+            name: None,
+            modules: Self::new_vec(),
             core_instances: Self::new_vec(),
-            core_types:     Self::new_vec(),
-            components:     Self::new_vec(),
-            instances:      Self::new_vec(),
-            aliases:        Self::new_vec(),
-            types:          Self::new_vec(),
-            canonicals:     Self::new_vec(),
-            start:          None,
-            imports:        Self::new_vec(),
-            exports:        Self::new_vec(),
-            values:         Self::new_vec(),
-            binary:         None,
+            core_types: Self::new_vec(),
+            components: Self::new_vec(),
+            instances: Self::new_vec(),
+            aliases: Self::new_vec(),
+            types: Self::new_vec(),
+            canonicals: Self::new_vec(),
+            start: None,
+            imports: Self::new_vec(),
+            exports: Self::new_vec(),
+            values: Self::new_vec(),
+            binary: None,
         }
     }
 
@@ -259,7 +239,7 @@ pub enum CoreInstanceExpr {
         /// Module index
         module_idx: u32,
         /// Format-only argument references
-        arg_refs:   Vec<CoreArgReference>,
+        arg_refs: Vec<CoreArgReference>,
     },
     /// Collection of inlined exports
     InlineExports(Vec<CoreInlineExport>),
@@ -269,15 +249,15 @@ pub enum CoreInstanceExpr {
 #[derive(Debug, Clone)]
 pub struct CoreArgReference {
     /// Name of the argument (import module/name as specified in the wasm module)
-    pub name:         String,
+    pub name: String,
     /// Sort/kind of the argument (0x00=Func, 0x01=Table, 0x02=Mem, 0x03=Global, 0x12=Instance, ...)
     /// This determines which index space `idx` refers to in the component.
-    pub kind:         u8,
+    pub kind: u8,
     /// Index in the corresponding component index space (not the instance index!)
     /// For kind=0x12 (Instance), this IS the instance index.
     /// For kind=0x00 (Func), this is a function index in the component's core func space.
     /// For kind=0x01 (Table), this is a table index in the component's core table space.
-    pub idx:          u32,
+    pub idx: u32,
 }
 
 /// Core WebAssembly inlined export
@@ -288,7 +268,7 @@ pub struct CoreInlineExport {
     /// Export reference
     pub sort: CoreSort,
     /// Index within the sort
-    pub idx:  u32,
+    pub idx: u32,
 }
 
 /// Core WebAssembly sort kinds
@@ -368,7 +348,7 @@ pub enum CoreTypeDefinition {
     /// Function type
     Function {
         /// Parameter types
-        params:  Vec<ValueType>,
+        params: Vec<ValueType>,
         /// Result types
         results: Vec<ValueType>,
     },
@@ -387,7 +367,7 @@ pub enum CoreExternType {
     /// Function type
     Function {
         /// Parameter types
-        params:  Vec<ValueType>,
+        params: Vec<ValueType>,
         /// Result types
         results: Vec<ValueType>,
     },
@@ -396,16 +376,16 @@ pub enum CoreExternType {
         /// Element type
         element_type: ValueType,
         /// Minimum size
-        min:          u32,
+        min: u32,
         /// Maximum size (optional)
-        max:          Option<u32>,
+        max: Option<u32>,
     },
     /// Memory type
     Memory {
         /// Minimum size in pages
-        min:    u32,
+        min: u32,
         /// Maximum size in pages (optional)
-        max:    Option<u32>,
+        max: Option<u32>,
         /// Whether the memory is shared
         shared: bool,
     },
@@ -414,7 +394,7 @@ pub enum CoreExternType {
         /// Value type
         value_type: ValueType,
         /// Whether the global is mutable
-        mutable:    bool,
+        mutable: bool,
     },
 }
 
@@ -434,7 +414,7 @@ pub enum InstanceExpr {
         /// Component index
         component_idx: u32,
         /// Format-only argument references
-        arg_refs:      Vec<InstantiateArgReference>,
+        arg_refs: Vec<InstantiateArgReference>,
     },
     /// Collection of inlined exports
     InlineExports(Vec<InlineExport>),
@@ -448,7 +428,7 @@ pub struct InstantiateArgReference {
     /// Sort of the referenced item (format-only)
     pub sort: Sort,
     /// Index within the sort (format-only)
-    pub idx:  u32,
+    pub idx: u32,
 }
 
 /// Component inlined export
@@ -459,7 +439,7 @@ pub struct InlineExport {
     /// Export reference
     pub sort: Sort,
     /// Index within the sort
-    pub idx:  u32,
+    pub idx: u32,
 }
 
 /// Component sort kinds
@@ -483,7 +463,7 @@ pub enum Sort {
 #[derive(Debug, Clone)]
 pub struct Alias {
     /// Alias target
-    pub target:   AliasTarget,
+    pub target: AliasTarget,
     /// Destination index in the appropriate index space (computed during parsing)
     /// This is the index this alias occupies, accounting for intermixed canon definitions
     pub dest_idx: Option<u32>,
@@ -497,27 +477,27 @@ pub enum AliasTarget {
         /// Instance index
         instance_idx: u32,
         /// Export name
-        name:         String,
+        name: String,
         /// Kind of the target
-        kind:         CoreSort,
+        kind: CoreSort,
     },
     /// Export from a component instance
     InstanceExport {
         /// Instance index
         instance_idx: u32,
         /// Export name
-        name:         String,
+        name: String,
         /// Kind of the target
-        kind:         Sort,
+        kind: Sort,
     },
     /// Outer definition from an enclosing component (forwarding from parent)
     Outer {
         /// Count of components to traverse outward
         count: u32,
         /// Kind of the target
-        kind:  Sort,
+        kind: Sort,
         /// Index within the kind
-        idx:   u32,
+        idx: u32,
     },
 }
 
@@ -546,7 +526,7 @@ pub enum ComponentTypeDefinition {
     /// Function type
     Function {
         /// Parameter types
-        params:  Vec<(String, FormatValType)>,
+        params: Vec<(String, FormatValType)>,
         /// Result types
         results: Vec<FormatValType>,
     },
@@ -557,7 +537,7 @@ pub enum ComponentTypeDefinition {
         /// Resource representation type
         representation: ResourceRepresentation,
         /// Whether the resource is nullable
-        nullable:       bool,
+        nullable: bool,
     },
 }
 
@@ -572,7 +552,7 @@ pub enum ExternType {
     /// Function type
     Function {
         /// Parameter types
-        params:  Vec<(String, FormatValType)>,
+        params: Vec<(String, FormatValType)>,
         /// Result types
         results: Vec<FormatValType>,
     },
@@ -600,7 +580,7 @@ pub type TypeRef = u32;
 #[derive(Debug, Clone)]
 pub struct TypeRegistry<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> {
     /// Type definitions stored in a bounded vector
-    types:    WasmVec<FormatValType<P>, P>,
+    types: WasmVec<FormatValType<P>, P>,
     /// Next available type reference
     next_ref: TypeRef,
 }
@@ -610,7 +590,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default> TypeRegistry<P> {
     /// Create a new type registry
     pub fn new() -> Result<Self, wrt_foundation::bounded::CapacityError> {
         Ok(Self {
-            types:    WasmVec::new(P::default())?,
+            types: WasmVec::new(P::default())?,
             next_ref: 0,
         })
     }
@@ -774,14 +754,14 @@ pub enum CanonOperation {
         /// Type index for the lifted function
         type_idx: u32,
         /// Options for lifting
-        options:  LiftOptions,
+        options: LiftOptions,
     },
     /// Lower a component function to the core ABI
     Lower {
         /// Component function index
         func_idx: u32,
         /// Options for lowering
-        options:  LowerOptions,
+        options: LowerOptions,
     },
     /// Resource operations
     Resource(FormatResourceOperation),
@@ -790,7 +770,7 @@ pub enum CanonOperation {
         /// Binary std/no_std choice
         alloc_func_idx: u32,
         /// Memory index to use
-        memory_idx:     u32,
+        memory_idx: u32,
     },
     /// Post-return operation (cleanup)
     PostReturn {
@@ -804,7 +784,7 @@ pub enum CanonOperation {
         /// Destination memory index
         dst_memory_idx: u32,
         /// Function index for the copy operation
-        func_idx:       u32,
+        func_idx: u32,
     },
     /// Async operation (stackful lift)
     Async {
@@ -813,7 +793,7 @@ pub enum CanonOperation {
         /// Type index for the async function
         type_idx: u32,
         /// Options for async operations
-        options:  AsyncOptions,
+        options: AsyncOptions,
     },
 }
 
@@ -821,41 +801,41 @@ pub enum CanonOperation {
 #[derive(Debug, Clone)]
 pub struct LiftOptions {
     /// Memory index to use for string/list conversions
-    pub memory_idx:           Option<u32>,
+    pub memory_idx: Option<u32>,
     /// String encoding to use
-    pub string_encoding:      Option<StringEncoding>,
+    pub string_encoding: Option<StringEncoding>,
     /// Binary std/no_std choice
-    pub realloc_func_idx:     Option<u32>,
+    pub realloc_func_idx: Option<u32>,
     /// Post-return function index (optional)
     pub post_return_func_idx: Option<u32>,
     /// Whether this is an async lift
-    pub is_async:             bool,
+    pub is_async: bool,
 }
 
 /// Options for lowering operations
 #[derive(Debug, Clone)]
 pub struct LowerOptions {
     /// Memory index to use for string/list conversions
-    pub memory_idx:       Option<u32>,
+    pub memory_idx: Option<u32>,
     /// String encoding to use
-    pub string_encoding:  Option<StringEncoding>,
+    pub string_encoding: Option<StringEncoding>,
     /// Binary std/no_std choice
     pub realloc_func_idx: Option<u32>,
     /// Whether this is an async lower
-    pub is_async:         bool,
+    pub is_async: bool,
     /// `Error` handling mode
-    pub error_mode:       Option<ErrorMode>,
+    pub error_mode: Option<ErrorMode>,
 }
 
 /// Options for async operations
 #[derive(Debug, Clone)]
 pub struct AsyncOptions {
     /// Memory index to use
-    pub memory_idx:       u32,
+    pub memory_idx: u32,
     /// Binary std/no_std choice
     pub realloc_func_idx: Option<u32>,
     /// String encoding to use
-    pub string_encoding:  Option<StringEncoding>,
+    pub string_encoding: Option<StringEncoding>,
 }
 
 /// String encoding options
@@ -888,9 +868,9 @@ pub struct Start {
     /// Function index
     pub func_idx: u32,
     /// Value arguments
-    pub args:     Vec<u32>,
+    pub args: Vec<u32>,
     /// Number of results
-    pub results:  u32,
+    pub results: u32,
 }
 
 /// Import definition in a component
@@ -899,7 +879,7 @@ pub struct Import {
     /// Import name in namespace.name format
     pub name: ImportName,
     /// Type of the import
-    pub ty:   ExternType,
+    pub ty: ExternType,
 }
 
 /// Import name with support for nested namespaces
@@ -908,22 +888,22 @@ pub struct ImportName {
     /// Namespace of the import
     pub namespace: String,
     /// Name of the import
-    pub name:      String,
+    pub name: String,
     /// Nested namespaces (if any)
-    pub nested:    Vec<String>,
+    pub nested: Vec<String>,
     /// Package reference (if any)
-    pub package:   Option<PackageReference>,
+    pub package: Option<PackageReference>,
 }
 
 /// Package reference for imports
 #[derive(Debug, Clone)]
 pub struct PackageReference {
     /// Package name
-    pub name:    String,
+    pub name: String,
     /// Package version
     pub version: Option<String>,
     /// Package hash (for content verification)
-    pub hash:    Option<String>,
+    pub hash: Option<String>,
 }
 
 /// Export definition in a component
@@ -934,24 +914,24 @@ pub struct Export {
     /// Sort of the exported item
     pub sort: Sort,
     /// Index within the sort
-    pub idx:  u32,
+    pub idx: u32,
     /// Declared type (optional)
-    pub ty:   Option<ExternType>,
+    pub ty: Option<ExternType>,
 }
 
 /// Export name with support for nested namespaces
 #[derive(Debug, Clone)]
 pub struct ExportName {
     /// Basic name
-    pub name:        String,
+    pub name: String,
     /// Whether this export is a resource
     pub is_resource: bool,
     /// Semver compatibility string
-    pub semver:      Option<String>,
+    pub semver: Option<String>,
     /// Integrity hash for content verification
-    pub integrity:   Option<String>,
+    pub integrity: Option<String>,
     /// Nested namespaces (if any)
-    pub nested:      Vec<String>,
+    pub nested: Vec<String>,
 }
 
 impl ImportName {
@@ -1050,13 +1030,13 @@ impl ExportName {
 #[derive(Debug, Clone)]
 pub struct Value {
     /// Type of the value
-    pub ty:         FormatValType,
+    pub ty: FormatValType,
     /// Encoded value data
-    pub data:       Vec<u8>,
+    pub data: Vec<u8>,
     /// Value expression (if available)
     pub expression: Option<ValueExpression>,
     /// Value name (if available from custom sections)
-    pub name:       Option<String>,
+    pub name: Option<String>,
 }
 
 /// Value expression types
@@ -1067,7 +1047,7 @@ pub enum ValueExpression {
         /// Sort of the referenced item
         sort: Sort,
         /// Index within the sort
-        idx:  u32,
+        idx: u32,
     },
     /// Global initialization expression
     GlobalInit {
@@ -1079,7 +1059,7 @@ pub enum ValueExpression {
         /// Function index
         func_idx: u32,
         /// Arguments (indices to other values)
-        args:     Vec<u32>,
+        args: Vec<u32>,
     },
     /// Direct constant value
     Const(ConstValue),

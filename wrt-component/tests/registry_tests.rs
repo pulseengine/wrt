@@ -4,9 +4,7 @@
 /// works correctly both with simple types and with more complex
 /// domain-specific conversions.
 use wrt_component::type_conversion::{
-    ConversionError,
-    ConversionErrorKind,
-    TypeConversionRegistry,
+    ConversionError, ConversionErrorKind, TypeConversionRegistry,
 };
 
 // Simple test types for basic validation
@@ -19,12 +17,12 @@ struct SimpleTarget(i32);
 #[derive(Debug, PartialEq)]
 struct ComplexSource {
     value: i32,
-    name:  String,
+    name: String,
 }
 
 #[derive(Debug, PartialEq)]
 struct ComplexTarget {
-    value:       i32,
+    value: i32,
     description: String,
 }
 
@@ -55,7 +53,7 @@ fn test_complex_conversion() {
     registry.register(
         |src: &ComplexSource| -> Result<ComplexTarget, ConversionError> {
             Ok(ComplexTarget {
-                value:       src.value,
+                value: src.value,
                 description: format!("Converted from: {}", src.name),
             })
         },
@@ -64,7 +62,7 @@ fn test_complex_conversion() {
     // Test the conversion
     let source = ComplexSource {
         value: 42,
-        name:  "Test Source".to_string(),
+        name: "Test Source".to_string(),
     };
 
     let target = registry.convert::<ComplexSource, ComplexTarget>(&source).unwrap();
@@ -72,7 +70,7 @@ fn test_complex_conversion() {
     assert_eq!(
         target,
         ComplexTarget {
-            value:       42,
+            value: 42,
             description: "Converted from: Test Source".to_string(),
         }
     );
@@ -87,11 +85,11 @@ fn test_conversion_error_handling() {
         |src: &SimpleSource| -> Result<SimpleTarget, ConversionError> {
             if src.0 < 0 {
                 return Err(ConversionError {
-                    kind:        ConversionErrorKind::OutOfRange,
+                    kind: ConversionErrorKind::OutOfRange,
                     source_type: std::any::type_name::<SimpleSource>(),
                     target_type: std::any::type_name::<SimpleTarget>(),
-                    context:     Some("Value must be non-negative".to_string()),
-                    source:      None,
+                    context: Some("Value must be non-negative".to_string()),
+                    source: None,
                 });
             }
             Ok(SimpleTarget(src.0))
@@ -156,22 +154,22 @@ fn test_chained_conversion_errors() {
 
     // Create a nested error
     let nested_error = ConversionError {
-        kind:        ConversionErrorKind::InvalidVariant,
+        kind: ConversionErrorKind::InvalidVariant,
         source_type: "InnerType",
         target_type: "OuterType",
-        context:     Some("Inner conversion failed".to_string()),
-        source:      None,
+        context: Some("Inner conversion failed".to_string()),
+        source: None,
     };
 
     // Register a conversion that returns a chained error
     registry.register(
         |_src: &SimpleSource| -> Result<SimpleTarget, ConversionError> {
             Err(ConversionError {
-                kind:        ConversionErrorKind::ConversionFailed,
+                kind: ConversionErrorKind::ConversionFailed,
                 source_type: std::any::type_name::<SimpleSource>(),
                 target_type: std::any::type_name::<SimpleTarget>(),
-                context:     Some("Outer conversion failed".to_string()),
-                source:      Some(Box::new(nested_error)),
+                context: Some("Outer conversion failed".to_string()),
+                source: Some(Box::new(nested_error)),
             })
         },
     );

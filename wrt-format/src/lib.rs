@@ -79,24 +79,14 @@ extern crate std;
 
 // Standard library imports (grouped by feature flags)
 #[cfg(feature = "std")]
-use std::{
-    format,
-    string::String,
-    vec::Vec,
-};
+use std::{format, string::String, vec::Vec};
 
 pub use wrt_error::Result;
 // External crates
-pub use wrt_error::{
-    Error,
-    ErrorCategory,
-};
+pub use wrt_error::{Error, ErrorCategory};
 // Internal crates (wrt_* imports)
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{
-    BoundedString,
-    BoundedVec,
-};
+use wrt_foundation::bounded::{BoundedString, BoundedVec};
 pub use wrt_foundation::resource::ResourceRepresentation;
 // Re-export core types from wrt-foundation (note: these now have generic parameters)
 // BlockType, FuncType, RefType, ValueType now require MemoryProvider parameters
@@ -106,17 +96,14 @@ pub use wrt_foundation::resource::ResourceRepresentation;
 
 // Binary std/no_std choice
 #[cfg(not(any(feature = "std")))]
-pub use wrt_foundation::{
-    BoundedMap,
-    BoundedSet,
-};
+pub use wrt_foundation::{BoundedMap, BoundedSet};
 
 // Type aliases for pure no_std mode
 #[cfg(not(any(feature = "std")))]
 pub type WasmString = BoundedString<MAX_WASM_STRING_SIZE>;
 #[cfg(not(any(feature = "std")))]
 pub type WasmVec<T, P> = BoundedVec<T, 1024, P>; // General purpose bounded vector
-                                                 // Module type aliases for pure no_std mode
+// Module type aliases for pure no_std mode
 #[cfg(not(any(feature = "std")))]
 pub type ModuleFunctions<P> = BoundedVec<crate::module::Function, MAX_MODULE_FUNCTIONS, P>;
 #[cfg(not(any(feature = "std")))]
@@ -304,10 +291,7 @@ mod ast_simple_tests;
 // Binary std/no_std choice
 // Pure format parsing functions (recommended)
 #[cfg(feature = "std")]
-pub use binary::with_alloc::{
-    parse_data,
-    parse_element_segment_pure,
-};
+pub use binary::with_alloc::{parse_data, parse_element_segment_pure};
 #[cfg(feature = "std")]
 pub use binary::with_alloc::{
     read_name,
@@ -323,86 +307,47 @@ pub use binary::with_alloc::{
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 pub use binary::with_alloc::{
-    write_leb128_i32,
-    write_leb128_i64,
-    write_leb128_u32,
-    write_leb128_u64,
-    write_string,
+    write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
 };
 // Re-export binary parsing functions
 // Core parsing functions available in all configurations
 pub use binary::{
-    read_leb128_i32,
-    read_leb128_i64,
-    read_leb128_u32,
-    read_leb128_u64,
-    read_u32,
-    read_u8,
+    read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u8, read_u32,
 };
 // Re-export no_std write functions
+pub use binary::{
+    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE,
+    COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE,
+    COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE,
+    COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE,
+    COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
+};
 #[cfg(not(any(feature = "std")))]
 pub use binary::{
-    write_leb128_u32_bounded,
-    write_leb128_u32_to_slice,
-    write_string_bounded,
+    write_leb128_u32_bounded, write_leb128_u32_to_slice, write_string_bounded,
     write_string_to_slice,
-};
-pub use binary::{
-    COMPONENT_CORE_SORT_FUNC,
-    COMPONENT_CORE_SORT_GLOBAL,
-    COMPONENT_CORE_SORT_INSTANCE,
-    COMPONENT_CORE_SORT_MEMORY,
-    COMPONENT_CORE_SORT_MODULE,
-    COMPONENT_CORE_SORT_TABLE,
-    COMPONENT_CORE_SORT_TYPE,
-    COMPONENT_MAGIC,
-    COMPONENT_SORT_COMPONENT,
-    COMPONENT_SORT_CORE,
-    COMPONENT_SORT_FUNC,
-    COMPONENT_SORT_INSTANCE,
-    COMPONENT_SORT_TYPE,
-    COMPONENT_SORT_VALUE,
-    COMPONENT_VERSION,
-    WASM_MAGIC,
-    WASM_VERSION,
 };
 #[cfg(feature = "std")]
 pub use component::Component;
 pub use compression::CompressionType;
 #[cfg(feature = "std")]
-pub use compression::{
-    rle_decode,
-    rle_encode,
-};
+pub use compression::{rle_decode, rle_encode};
 // Re-export conversion utilities
 pub use conversion::{
-    block_type_to_format_block_type,
-    format_block_type_to_block_type,
-    format_limits_to_wrt_limits,
+    block_type_to_format_block_type, format_block_type_to_block_type, format_limits_to_wrt_limits,
     wrt_limits_to_format_limits,
 };
 pub use error::{
-    parse_error,
-    wrt_runtime_error as runtime_error,
-    wrt_type_error as type_error,
+    parse_error, wrt_runtime_error as runtime_error, wrt_type_error as type_error,
     wrt_validation_error as validation_error,
 };
 // Note: Data, DataMode, ElementMode are deprecated - use pure_format_types instead
 #[allow(deprecated)]
 #[deprecated(note = "Use pure_format_types::PureDataSegment for clean separation")]
 pub use module::Data;
-pub use module::{
-    Element,
-    ElementInit,
-    Module,
-};
+pub use module::{Element, ElementInit, Module};
 // New pure format types (recommended)
-pub use pure_format_types::{
-    PureDataMode,
-    PureDataSegment,
-    PureElementMode,
-    PureElementSegment,
-};
+pub use pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment};
 // DataMode and ElementMode exports removed - use pure_format_types instead
 
 // Type aliases for compatibility (recommended to use pure_format_types
@@ -418,35 +363,17 @@ pub type LegacyElementSegment = module::Element;
 // Re-export safe memory utilities
 // Re-export enhanced bounded WIT parser (Agent C)
 pub use bounded_wit_parser::{
-    parse_wit_embedded,
-    parse_wit_linux,
-    parse_wit_qnx,
-    parse_wit_with_limits,
-    BoundedWitParser as EnhancedBoundedWitParser,
-    WarningSeverity,
-    WitParseMetadata,
-    WitParseResult,
-    WitParseWarning,
-    WitParsingLimits,
+    BoundedWitParser as EnhancedBoundedWitParser, WarningSeverity, WitParseMetadata,
+    WitParseResult, WitParseWarning, WitParsingLimits, parse_wit_embedded, parse_wit_linux,
+    parse_wit_qnx, parse_wit_with_limits,
 };
 pub use safe_memory::safe_slice;
-pub use section::{
-    CustomSection,
-    Section,
-};
+pub use section::{CustomSection, Section};
 // Use the conversion module versions for consistency
-pub use types::{
-    FormatBlockType,
-    Limits,
-    MemoryIndexType,
-};
+pub use types::{FormatBlockType, Limits, MemoryIndexType};
 pub use validation::Validatable;
 pub use version::{
-    ComponentModelFeature,
-    ComponentModelVersion,
-    FeatureStatus,
-    VersionInfo,
-    STATE_VERSION,
+    ComponentModelFeature, ComponentModelVersion, FeatureStatus, STATE_VERSION, VersionInfo,
 };
 // Binary std/no_std choice
 // Temporarily disabled - causes circular dependency issues
@@ -458,15 +385,8 @@ pub use version::{
 // Re-export bounded WIT parser (for no_std environments)
 #[cfg(feature = "wit-parsing")]
 pub use wit_parser_bounded::{
-    parse_wit_bounded,
-    BoundedWitExport,
-    BoundedWitFunction,
-    BoundedWitImport,
-    BoundedWitInterface,
-    BoundedWitParser,
-    BoundedWitType,
-    BoundedWitWorld,
-    HAS_BOUNDED_WIT_PARSING_NO_STD,
+    BoundedWitExport, BoundedWitFunction, BoundedWitImport, BoundedWitInterface, BoundedWitParser,
+    BoundedWitType, BoundedWitWorld, HAS_BOUNDED_WIT_PARSING_NO_STD, parse_wit_bounded,
 };
 
 // Public functions for feature detection
@@ -520,10 +440,7 @@ pub mod no_std_demo {
     /// Example showing TypeRef system working
     #[cfg(feature = "std")]
     pub fn demo_type_system() -> wrt_error::Result<()> {
-        use crate::component::{
-            FormatValType,
-            TypeRegistry,
-        };
+        use crate::component::{FormatValType, TypeRegistry};
 
         // Create a type registry
         let mut registry = TypeRegistry::new();

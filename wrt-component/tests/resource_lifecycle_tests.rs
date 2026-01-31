@@ -1,37 +1,16 @@
 //! Comprehensive tests for the resource lifecycle implementation
 
 use wrt_component::{
-    borrowed_handles::{
-        with_lifetime_scope,
-        BorrowHandle,
-        HandleLifetimeTracker,
-        OwnHandle,
-    },
+    borrowed_handles::{BorrowHandle, HandleLifetimeTracker, OwnHandle, with_lifetime_scope},
     resource_lifecycle_management::{
-        ComponentId,
-        DropHandlerFunction,
-        LifecyclePolicies,
-        ResourceCreateRequest,
-        ResourceId,
-        ResourceLifecycleManager,
-        ResourceMetadata,
-        ResourceType,
+        ComponentId, DropHandlerFunction, LifecyclePolicies, ResourceCreateRequest, ResourceId,
+        ResourceLifecycleManager, ResourceMetadata, ResourceType,
     },
     resource_representation::{
-        canon_resource_drop,
-        canon_resource_new,
-        canon_resource_rep,
-        FileHandle,
-        MemoryBuffer,
-        NetworkHandle,
-        RepresentationValue,
-        ResourceRepresentationManager,
+        FileHandle, MemoryBuffer, NetworkHandle, RepresentationValue,
+        ResourceRepresentationManager, canon_resource_drop, canon_resource_new, canon_resource_rep,
     },
-    task_cancellation::{
-        with_cancellation_scope,
-        CancellationToken,
-        SubtaskManager,
-    },
+    task_cancellation::{CancellationToken, SubtaskManager, with_cancellation_scope},
     task_manager::TaskId,
 };
 
@@ -41,9 +20,9 @@ fn test_resource_lifecycle_basic() {
 
     // Create a resource
     let request = ResourceCreateRequest {
-        resource_type:   ResourceType::Stream,
-        metadata:        ResourceMetadata::new("test-stream"),
-        owner:           ComponentId(1),
+        resource_type: ResourceType::Stream,
+        metadata: ResourceMetadata::new("test-stream"),
+        owner: ComponentId(1),
         custom_handlers: Vec::new(),
     };
 
@@ -212,9 +191,9 @@ fn test_garbage_collection() {
     // Create resources
     for i in 0..3 {
         let request = ResourceCreateRequest {
-            resource_type:   ResourceType::MemoryBuffer,
-            metadata:        ResourceMetadata::new(&format!("buffer-{}", i)),
-            owner:           ComponentId(1),
+            resource_type: ResourceType::MemoryBuffer,
+            metadata: ResourceMetadata::new(&format!("buffer-{}", i)),
+            owner: ComponentId(1),
             custom_handlers: Vec::new(),
         };
 
@@ -254,9 +233,9 @@ fn test_resource_with_drop_handlers() {
 
     // Create resource with custom handlers
     let request = ResourceCreateRequest {
-        resource_type:   ResourceType::Stream,
-        metadata:        ResourceMetadata::new("stream-with-handler"),
-        owner:           ComponentId(1),
+        resource_type: ResourceType::Stream,
+        metadata: ResourceMetadata::new("stream-with-handler"),
+        owner: ComponentId(1),
         custom_handlers: vec![DropHandlerFunction::StreamCleanup],
     };
 
@@ -272,21 +251,21 @@ fn test_resource_with_drop_handlers() {
 #[test]
 fn test_lifecycle_policies() {
     let policies = LifecyclePolicies {
-        enable_gc:           true,
-        gc_interval_ms:      5000,
-        max_lifetime_ms:     Some(60000),
+        enable_gc: true,
+        gc_interval_ms: 5000,
+        max_lifetime_ms: Some(60000),
         strict_ref_counting: true,
-        leak_detection:      true,
-        max_memory_bytes:    Some(1024 * 1024),
+        leak_detection: true,
+        max_memory_bytes: Some(1024 * 1024),
     };
 
     let mut manager = ResourceLifecycleManager::with_policies(policies);
 
     // Create a resource
     let request = ResourceCreateRequest {
-        resource_type:   ResourceType::FileHandle,
-        metadata:        ResourceMetadata::new("policy-test"),
-        owner:           ComponentId(1),
+        resource_type: ResourceType::FileHandle,
+        metadata: ResourceMetadata::new("policy-test"),
+        owner: ComponentId(1),
         custom_handlers: Vec::new(),
     };
 
@@ -326,9 +305,9 @@ fn test_complex_resource_scenario() {
     let resources: Vec<_> = (0..3)
         .map(|i| {
             let request = ResourceCreateRequest {
-                resource_type:   ResourceType::Custom(i as u32),
-                metadata:        ResourceMetadata::new(&format!("resource-{}", i)),
-                owner:           ComponentId(1),
+                resource_type: ResourceType::Custom(i as u32),
+                metadata: ResourceMetadata::new(&format!("resource-{}", i)),
+                owner: ComponentId(1),
                 custom_handlers: Vec::new(),
             };
             lifecycle_manager.create_resource(request).unwrap()

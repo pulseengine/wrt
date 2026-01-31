@@ -10,19 +10,9 @@ use core::cmp;
 use std::cmp;
 
 #[cfg(feature = "std")]
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(any(feature = "std")))]
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::MemoryProvider;
 
@@ -37,7 +27,7 @@ pub enum CompressionType {
     /// No compression
     None = 0,
     /// Run-length encoding
-    RLE  = 1,
+    RLE = 1,
 }
 
 impl CompressionType {
@@ -311,6 +301,6 @@ mod tests {
         let zero_count = vec![0, 0, 42]; // RLE sequence: [0x00, count=0, value=42]
         let result = rle_decode(&zero_count).unwrap();
         assert_eq!(result, vec![]); // Should decode to empty array since count
-                                    // is 0
+        // is 0
     }
 }

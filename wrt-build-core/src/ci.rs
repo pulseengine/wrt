@@ -6,69 +6,60 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     process::Command,
     time::Instant,
 };
 
 use chrono::Local;
 use colored::Colorize;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{
-        BuildError,
-        BuildResult,
-    },
     BuildSystem,
+    error::{BuildError, BuildResult},
 };
 
 /// CI workflow simulation results
 #[derive(Debug, Serialize)]
 pub struct CiSimulationResults {
     /// Timestamp of simulation
-    pub timestamp:          String,
+    pub timestamp: String,
     /// Workspace root path
-    pub workspace_root:     PathBuf,
+    pub workspace_root: PathBuf,
     /// Prerequisites check results
-    pub prerequisites:      PrerequisiteResults,
+    pub prerequisites: PrerequisiteResults,
     /// Configuration validation results
-    pub configuration:      ConfigurationResults,
+    pub configuration: ConfigurationResults,
     /// Build system validation results
-    pub build_system:       BuildSystemValidationResults,
+    pub build_system: BuildSystemValidationResults,
     /// Quick verification results
     pub quick_verification: VerificationResult,
     /// Matrix strategy configuration
-    pub matrix_strategy:    MatrixStrategy,
+    pub matrix_strategy: MatrixStrategy,
     /// Generated artifacts
-    pub artifacts:          Vec<PathBuf>,
+    pub artifacts: Vec<PathBuf>,
     /// Overall status
-    pub overall_passed:     bool,
+    pub overall_passed: bool,
     /// Detailed logs
-    pub logs:               HashMap<String, String>,
+    pub logs: HashMap<String, String>,
 }
 
 /// Prerequisites check results
 #[derive(Debug, Serialize)]
 pub struct PrerequisiteResults {
     /// Rust installation status
-    pub rust_installed:  bool,
+    pub rust_installed: bool,
     /// Rust version
-    pub rust_version:    Option<String>,
+    pub rust_version: Option<String>,
     /// Cargo installation status
     pub cargo_installed: bool,
     /// Cargo version
-    pub cargo_version:   Option<String>,
+    pub cargo_version: Option<String>,
     /// Kani installation status
-    pub kani_installed:  bool,
+    pub kani_installed: bool,
     /// Kani version
-    pub kani_version:    Option<String>,
+    pub kani_version: Option<String>,
 }
 
 /// Configuration validation results
@@ -77,22 +68,22 @@ pub struct ConfigurationResults {
     /// Workspace syntax valid
     pub workspace_syntax_valid: bool,
     /// Workspace KANI config present
-    pub workspace_kani_config:  bool,
+    pub workspace_kani_config: bool,
     /// Number of packages with KANI config
-    pub kani_packages:          usize,
+    pub kani_packages: usize,
     /// Integration Kani.toml present
-    pub integration_kani_toml:  bool,
+    pub integration_kani_toml: bool,
 }
 
 /// Build system validation results
 #[derive(Debug, Serialize)]
 pub struct BuildSystemValidationResults {
     /// KANI verification available via Rust implementation
-    pub kani_verify_available:    bool,
+    pub kani_verify_available: bool,
     /// Matrix verification available via Rust implementation
-    pub matrix_verify_available:  bool,
+    pub matrix_verify_available: bool,
     /// CI simulation available via Rust implementation
-    pub ci_simulation_available:  bool,
+    pub ci_simulation_available: bool,
     /// Legacy script compatibility (for backward compatibility)
     pub legacy_scripts_available: bool,
 }
@@ -101,22 +92,22 @@ pub struct BuildSystemValidationResults {
 #[derive(Debug, Serialize)]
 pub struct VerificationResult {
     /// Whether verification was run
-    pub executed:    bool,
+    pub executed: bool,
     /// Whether it passed
-    pub passed:      bool,
+    pub passed: bool,
     /// Execution time
     pub duration_ms: Option<u64>,
     /// Error message if failed
-    pub error:       Option<String>,
+    pub error: Option<String>,
 }
 
 /// Matrix strategy configuration
 #[derive(Debug, Serialize)]
 pub struct MatrixStrategy {
     /// Packages to test
-    pub packages:           Vec<String>,
+    pub packages: Vec<String>,
     /// ASIL levels to test
-    pub asil_levels:        Vec<String>,
+    pub asil_levels: Vec<String>,
     /// Total combinations
     pub total_combinations: usize,
 }
@@ -125,7 +116,7 @@ pub struct MatrixStrategy {
 pub struct CiSimulator {
     workspace_root: PathBuf,
     simulation_dir: PathBuf,
-    verbose:        bool,
+    verbose: bool,
 }
 
 impl CiSimulator {
@@ -331,9 +322,9 @@ impl CiSimulator {
 
         let mut results = ConfigurationResults {
             workspace_syntax_valid: true,
-            workspace_kani_config:  false,
-            kani_packages:          0,
-            integration_kani_toml:  false,
+            workspace_kani_config: false,
+            kani_packages: 0,
+            integration_kani_toml: false,
         };
 
         // Check workspace KANI config
@@ -434,10 +425,10 @@ impl CiSimulator {
             println!("  {} Quick verification would run", "✓".bright_green());
 
             Ok(VerificationResult {
-                executed:    true,
-                passed:      true,
+                executed: true,
+                passed: true,
                 duration_ms: Some(start.elapsed().as_millis() as u64),
-                error:       None,
+                error: None,
             })
         } else {
             println!("  Fallback: cargo test -p wrt-integration-tests --features kani");
@@ -451,28 +442,28 @@ impl CiSimulator {
                 Ok(result) if result.status.success() => {
                     println!("  {} Quick test simulation passed", "✓".bright_green());
                     Ok(VerificationResult {
-                        executed:    true,
-                        passed:      true,
+                        executed: true,
+                        passed: true,
                         duration_ms: Some(start.elapsed().as_millis() as u64),
-                        error:       None,
+                        error: None,
                     })
                 },
                 Ok(_) => {
                     println!("  {} Quick test simulation had issues", "⚠".bright_yellow());
                     Ok(VerificationResult {
-                        executed:    true,
-                        passed:      false,
+                        executed: true,
+                        passed: false,
                         duration_ms: Some(start.elapsed().as_millis() as u64),
-                        error:       Some("Test failed".to_string()),
+                        error: Some("Test failed".to_string()),
                     })
                 },
                 Err(e) => {
                     println!("  {} Quick test simulation error: {}", "✗".bright_red(), e);
                     Ok(VerificationResult {
-                        executed:    false,
-                        passed:      false,
+                        executed: false,
+                        passed: false,
                         duration_ms: None,
-                        error:       Some(e.to_string()),
+                        error: Some(e.to_string()),
                     })
                 },
             }

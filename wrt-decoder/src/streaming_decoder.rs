@@ -12,22 +12,12 @@ use alloc::vec::Vec;
 #[cfg(feature = "tracing")]
 use wrt_foundation::tracing::trace;
 
-use wrt_format::module::{
-    Function,
-    Module as WrtModule,
-};
-use wrt_foundation::{
-    bounded::BoundedVec,
-    safe_memory::NoStdProvider,
-    types::TagType,
-};
+use wrt_format::module::{Function, Module as WrtModule};
+use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider, types::TagType};
 
 use crate::{
     prelude::*,
-    streaming_validator::{
-        ComprehensivePlatformLimits,
-        StreamingWasmValidator,
-    },
+    streaming_validator::{ComprehensivePlatformLimits, StreamingWasmValidator},
 };
 
 /// Skip an LEB128-encoded unsigned integer and return the number of bytes consumed
@@ -97,41 +87,45 @@ fn find_expression_end(data: &[u8], start: usize) -> Result<usize> {
             0x0B => {
                 // end opcode - we found the end of the expression
                 return Ok(offset);
-            }
+            },
             0x41 => {
                 // i32.const - skip LEB128 i32 value
                 offset += skip_leb128_i32(data, offset);
-            }
+            },
             0x42 => {
                 // i64.const - skip LEB128 i64 value
                 offset += skip_leb128_i64(data, offset);
-            }
+            },
             0x43 => {
                 // f32.const - skip 4 bytes
                 offset += 4;
-            }
+            },
             0x44 => {
                 // f64.const - skip 8 bytes
                 offset += 8;
-            }
+            },
             0x23 => {
                 // global.get - skip LEB128 global index
                 offset += skip_leb128_u32(data, offset);
-            }
+            },
             0xD0 => {
                 // ref.null - skip LEB128 heap type
                 offset += skip_leb128_u32(data, offset);
-            }
+            },
             0xD2 => {
                 // ref.func - skip LEB128 function index
                 offset += skip_leb128_u32(data, offset);
-            }
+            },
             _ => {
                 // Unknown opcode in expression - this shouldn't happen in valid WASM
                 // but we'll continue and hope to find an end
                 #[cfg(feature = "tracing")]
-                trace!(opcode = opcode, offset = offset - 1, "Unknown opcode in expression");
-            }
+                trace!(
+                    opcode = opcode,
+                    offset = offset - 1,
+                    "Unknown opcode in expression"
+                );
+            },
         }
     }
 
@@ -141,9 +135,9 @@ fn find_expression_end(data: &[u8], start: usize) -> Result<usize> {
 /// Streaming decoder that processes WebAssembly modules section by section
 pub struct StreamingDecoder<'a> {
     /// The WebAssembly binary data
-    binary:          &'a [u8],
+    binary: &'a [u8],
     /// Current offset in the binary
-    offset:          usize,
+    offset: usize,
     /// Platform limits for validation
     platform_limits: ComprehensivePlatformLimits,
     /// Number of function imports (for proper function indexing)
@@ -152,10 +146,10 @@ pub struct StreamingDecoder<'a> {
     num_memory_imports: usize,
     /// The module being built (std version)
     #[cfg(feature = "std")]
-    module:          WrtModule,
+    module: WrtModule,
     /// The module being built (no_std version)
     #[cfg(not(feature = "std"))]
-    module:          WrtModule<NoStdProvider<8192>>,
+    module: WrtModule<NoStdProvider<8192>>,
 }
 
 impl<'a> StreamingDecoder<'a> {
@@ -274,9 +268,8 @@ impl<'a> StreamingDecoder<'a> {
     /// - 0x4F = sub final (final subtype declaration)
     fn process_type_section(&mut self, data: &[u8]) -> Result<()> {
         use wrt_format::binary::{
-            read_leb128_u32,
-            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
-            COMPOSITE_TYPE_REC, COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL,
+            COMPOSITE_TYPE_ARRAY, COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_REC, COMPOSITE_TYPE_STRUCT,
+            COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL, read_leb128_u32,
         };
         use wrt_foundation::types::ValueType;
 
@@ -318,20 +311,20 @@ impl<'a> StreamingDecoder<'a> {
                     // For now, treat rec as consuming one entry (the spec says rec is one type entry
                     // that defines multiple types with consecutive indices)
                     i += 1;
-                }
+                },
                 COMPOSITE_TYPE_SUB | COMPOSITE_TYPE_SUB_FINAL => {
                     // subtype: 0x50/0x4F supertype* comptype
                     offset = self.parse_subtype_entry(data, offset)?;
                     i += 1;
-                }
+                },
                 COMPOSITE_TYPE_FUNC | COMPOSITE_TYPE_STRUCT | COMPOSITE_TYPE_ARRAY => {
                     // Direct composite type without subtype wrapper
                     offset = self.parse_composite_type(data, offset)?;
                     i += 1;
-                }
+                },
                 _ => {
                     return Err(Error::parse_error("Invalid type section marker"));
-                }
+                },
             }
 
             #[cfg(feature = "tracing")]
@@ -339,7 +332,10 @@ impl<'a> StreamingDecoder<'a> {
         }
 
         #[cfg(feature = "tracing")]
-        trace!(types_count = self.module.types.len(), "process_type_section: complete");
+        trace!(
+            types_count = self.module.types.len(),
+            "process_type_section: complete"
+        );
 
         Ok(())
     }
@@ -347,9 +343,8 @@ impl<'a> StreamingDecoder<'a> {
     /// Parse a subtype entry (sub, sub final, or bare composite type)
     fn parse_subtype_entry(&mut self, data: &[u8], mut offset: usize) -> Result<usize> {
         use wrt_format::binary::{
-            read_leb128_u32,
-            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
-            COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL,
+            COMPOSITE_TYPE_ARRAY, COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_SUB,
+            COMPOSITE_TYPE_SUB_FINAL, read_leb128_u32,
         };
 
         if offset >= data.len() {
@@ -373,14 +368,14 @@ impl<'a> StreamingDecoder<'a> {
 
                 // Parse the composite type
                 offset = self.parse_composite_type(data, offset)?;
-            }
+            },
             COMPOSITE_TYPE_FUNC | COMPOSITE_TYPE_STRUCT | COMPOSITE_TYPE_ARRAY => {
                 // Direct composite type (implicitly final with no supertypes)
                 offset = self.parse_composite_type(data, offset)?;
-            }
+            },
             _ => {
                 return Err(Error::parse_error("Invalid subtype marker"));
-            }
+            },
         }
 
         Ok(offset)
@@ -389,8 +384,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Parse a composite type (func, struct, or array)
     fn parse_composite_type(&mut self, data: &[u8], mut offset: usize) -> Result<usize> {
         use wrt_format::binary::{
-            read_leb128_u32,
-            COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, COMPOSITE_TYPE_ARRAY,
+            COMPOSITE_TYPE_ARRAY, COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_STRUCT, read_leb128_u32,
         };
         use wrt_foundation::types::ValueType;
 
@@ -446,7 +440,7 @@ impl<'a> StreamingDecoder<'a> {
                     let func_type = FuncType::new(params.into_iter(), results.into_iter())?;
                     let _ = self.module.types.push(func_type);
                 }
-            }
+            },
             COMPOSITE_TYPE_STRUCT => {
                 // Parse struct type: field_count field*
                 // field = storage_type mutability
@@ -473,7 +467,10 @@ impl<'a> StreamingDecoder<'a> {
                 #[cfg(feature = "std")]
                 {
                     use wrt_foundation::CleanCoreFuncType;
-                    let placeholder = CleanCoreFuncType { params: Vec::new(), results: Vec::new() };
+                    let placeholder = CleanCoreFuncType {
+                        params: Vec::new(),
+                        results: Vec::new(),
+                    };
                     self.module.types.push(placeholder);
                 }
 
@@ -483,7 +480,7 @@ impl<'a> StreamingDecoder<'a> {
                     let placeholder = FuncType::new(core::iter::empty(), core::iter::empty())?;
                     let _ = self.module.types.push(placeholder);
                 }
-            }
+            },
             COMPOSITE_TYPE_ARRAY => {
                 // Parse array type: storage_type mutability
                 let (_, new_offset) = self.parse_storage_type(data, offset)?;
@@ -503,7 +500,10 @@ impl<'a> StreamingDecoder<'a> {
                 #[cfg(feature = "std")]
                 {
                     use wrt_foundation::CleanCoreFuncType;
-                    let placeholder = CleanCoreFuncType { params: Vec::new(), results: Vec::new() };
+                    let placeholder = CleanCoreFuncType {
+                        params: Vec::new(),
+                        results: Vec::new(),
+                    };
                     self.module.types.push(placeholder);
                 }
 
@@ -513,10 +513,10 @@ impl<'a> StreamingDecoder<'a> {
                     let placeholder = FuncType::new(core::iter::empty(), core::iter::empty())?;
                     let _ = self.module.types.push(placeholder);
                 }
-            }
+            },
             _ => {
                 return Err(Error::parse_error("Invalid composite type marker"));
-            }
+            },
         }
 
         Ok(offset)
@@ -543,10 +543,12 @@ impl<'a> StreamingDecoder<'a> {
     }
 
     /// Parse a value type (may include GC reference types)
-    fn parse_value_type(&self, data: &[u8], mut offset: usize) -> Result<(wrt_foundation::types::ValueType, usize)> {
-        use wrt_format::binary::{
-            REF_TYPE_NULLABLE, REF_TYPE_NON_NULLABLE,
-        };
+    fn parse_value_type(
+        &self,
+        data: &[u8],
+        mut offset: usize,
+    ) -> Result<(wrt_foundation::types::ValueType, usize)> {
+        use wrt_format::binary::{REF_TYPE_NON_NULLABLE, REF_TYPE_NULLABLE};
         use wrt_foundation::types::ValueType;
 
         if offset >= data.len() {
@@ -567,14 +569,14 @@ impl<'a> StreamingDecoder<'a> {
             0x6F => Ok((ValueType::ExternRef, offset + 1)),
             0x69 => Ok((ValueType::ExnRef, offset + 1)),
             // GC abstract heap type references (shorthand form)
-            0x6E => Ok((ValueType::AnyRef, offset + 1)),      // anyref
-            0x6D => Ok((ValueType::EqRef, offset + 1)),       // eqref
-            0x6C => Ok((ValueType::I31Ref, offset + 1)),      // i31ref
+            0x6E => Ok((ValueType::AnyRef, offset + 1)), // anyref
+            0x6D => Ok((ValueType::EqRef, offset + 1)),  // eqref
+            0x6C => Ok((ValueType::I31Ref, offset + 1)), // i31ref
             0x6B => Ok((ValueType::StructRef(0), offset + 1)), // structref (abstract)
-            0x6A => Ok((ValueType::ArrayRef(0), offset + 1)),  // arrayref (abstract)
-            0x73 => Ok((ValueType::FuncRef, offset + 1)),     // nofunc (bottom for func)
-            0x72 => Ok((ValueType::ExternRef, offset + 1)),   // noextern (bottom for extern)
-            0x71 => Ok((ValueType::AnyRef, offset + 1)),      // none (bottom for any)
+            0x6A => Ok((ValueType::ArrayRef(0), offset + 1)), // arrayref (abstract)
+            0x73 => Ok((ValueType::FuncRef, offset + 1)), // nofunc (bottom for func)
+            0x72 => Ok((ValueType::ExternRef, offset + 1)), // noextern (bottom for extern)
+            0x71 => Ok((ValueType::AnyRef, offset + 1)), // none (bottom for any)
             // GC typed references: (ref null? ht)
             REF_TYPE_NULLABLE | REF_TYPE_NON_NULLABLE => {
                 offset += 1;
@@ -598,30 +600,30 @@ impl<'a> StreamingDecoder<'a> {
                 if heap_type_idx < 0 {
                     // Abstract heap type
                     match heap_type_idx {
-                        -16 => Ok((ValueType::FuncRef, new_offset)),     // func (0x70)
-                        -17 => Ok((ValueType::ExternRef, new_offset)),   // extern (0x6F)
-                        -18 => Ok((ValueType::AnyRef, new_offset)),      // any (0x6E)
-                        -19 => Ok((ValueType::EqRef, new_offset)),       // eq (0x6D)
-                        -20 => Ok((ValueType::I31Ref, new_offset)),      // i31 (0x6C)
+                        -16 => Ok((ValueType::FuncRef, new_offset)), // func (0x70)
+                        -17 => Ok((ValueType::ExternRef, new_offset)), // extern (0x6F)
+                        -18 => Ok((ValueType::AnyRef, new_offset)),  // any (0x6E)
+                        -19 => Ok((ValueType::EqRef, new_offset)),   // eq (0x6D)
+                        -20 => Ok((ValueType::I31Ref, new_offset)),  // i31 (0x6C)
                         -21 => Ok((ValueType::StructRef(0), new_offset)), // struct (0x6B)
-                        -22 => Ok((ValueType::ArrayRef(0), new_offset)),  // array (0x6A)
-                        -23 => Ok((ValueType::ExnRef, new_offset)),      // exn (0x69)
-                        -13 => Ok((ValueType::FuncRef, new_offset)),     // nofunc (0x73) - bottom for func
-                        -14 => Ok((ValueType::ExternRef, new_offset)),   // noextern (0x72)
-                        -15 => Ok((ValueType::AnyRef, new_offset)),      // none (0x71) - bottom for any
-                        _ => Ok((ValueType::AnyRef, new_offset)),        // fallback for unknown
+                        -22 => Ok((ValueType::ArrayRef(0), new_offset)), // array (0x6A)
+                        -23 => Ok((ValueType::ExnRef, new_offset)),  // exn (0x69)
+                        -13 => Ok((ValueType::FuncRef, new_offset)), // nofunc (0x73) - bottom for func
+                        -14 => Ok((ValueType::ExternRef, new_offset)), // noextern (0x72)
+                        -15 => Ok((ValueType::AnyRef, new_offset)),  // none (0x71) - bottom for any
+                        _ => Ok((ValueType::AnyRef, new_offset)),    // fallback for unknown
                     }
                 } else {
                     // Concrete type index - reference to a defined type
                     // Use FuncRef for function type refs, StructRef for struct types
                     Ok((ValueType::StructRef(heap_type_idx as u32), new_offset))
                 }
-            }
+            },
             _ => {
                 // Try to parse as ValueType using existing method
                 let vt = ValueType::from_binary(byte)?;
                 Ok((vt, offset + 1))
-            }
+            },
         }
     }
 
@@ -646,7 +648,11 @@ impl<'a> StreamingDecoder<'a> {
         offset += bytes_read;
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, data_len = data.len(), "process_import_section");
+        trace!(
+            count = count,
+            data_len = data.len(),
+            "process_import_section"
+        );
 
         // Process each import one at a time
         for i in 0..count {
@@ -666,7 +672,13 @@ impl<'a> StreamingDecoder<'a> {
             offset += 1;
 
             #[cfg(feature = "tracing")]
-            trace!(import_index = i, module = module_name, field = field_name, kind = kind, "import parsed");
+            trace!(
+                import_index = i,
+                module = module_name,
+                field = field_name,
+                kind = kind,
+                "import parsed"
+            );
 
             // Parse import description and handle based on kind
             match kind {
@@ -703,7 +715,12 @@ impl<'a> StreamingDecoder<'a> {
                     }
 
                     #[cfg(feature = "tracing")]
-                    trace!(module = module_name, name = field_name, func_index = self.num_function_imports - 1, "recorded import");
+                    trace!(
+                        module = module_name,
+                        name = field_name,
+                        func_index = self.num_function_imports - 1,
+                        "recorded import"
+                    );
                 },
                 0x01 => {
                     // Table import - need to parse table type
@@ -736,7 +753,7 @@ impl<'a> StreamingDecoder<'a> {
                     #[cfg(feature = "std")]
                     {
                         use wrt_format::module::{Import, ImportDesc};
-                        use wrt_foundation::types::{TableType, Limits, RefType};
+                        use wrt_foundation::types::{Limits, RefType, TableType};
 
                         // Convert ref_type byte to RefType
                         let ref_type = match ref_type_byte {
@@ -745,10 +762,7 @@ impl<'a> StreamingDecoder<'a> {
                             _ => RefType::Funcref, // Default for unknown
                         };
 
-                        let limits = Limits {
-                            min,
-                            max,
-                        };
+                        let limits = Limits { min, max };
 
                         let table_type = TableType {
                             element_type: ref_type,
@@ -794,11 +808,15 @@ impl<'a> StreamingDecoder<'a> {
 
                         // Validate memory64 limits
                         if min64 > MAX_MEMORY_PAGES as u64 {
-                            return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                            return Err(Error::validation_error(
+                                "memory size must be at most 65536 pages (4 GiB)",
+                            ));
                         }
                         if let Some(max64) = max64 {
                             if max64 > MAX_MEMORY_PAGES as u64 {
-                                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                                return Err(Error::validation_error(
+                                    "memory size must be at most 65536 pages (4 GiB)",
+                                ));
                             }
                         }
 
@@ -816,11 +834,15 @@ impl<'a> StreamingDecoder<'a> {
 
                         // Validate regular memory limits
                         if min > MAX_MEMORY_PAGES {
-                            return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                            return Err(Error::validation_error(
+                                "memory size must be at most 65536 pages (4 GiB)",
+                            ));
                         }
                         if let Some(max_val) = max {
                             if max_val > MAX_MEMORY_PAGES {
-                                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                                return Err(Error::validation_error(
+                                    "memory size must be at most 65536 pages (4 GiB)",
+                                ));
                             }
                         }
 
@@ -834,12 +856,9 @@ impl<'a> StreamingDecoder<'a> {
                     #[cfg(feature = "std")]
                     {
                         use wrt_format::module::{Import, ImportDesc};
-                        use wrt_foundation::types::{MemoryType, Limits};
+                        use wrt_foundation::types::{Limits, MemoryType};
 
-                        let limits = Limits {
-                            min,
-                            max,
-                        };
+                        let limits = Limits { min, max };
 
                         let memory_type = MemoryType {
                             limits,
@@ -924,7 +943,12 @@ impl<'a> StreamingDecoder<'a> {
                     offset += bytes_read;
 
                     #[cfg(feature = "tracing")]
-                    trace!(import_index = i, attribute = attribute, type_idx = type_idx, "import: tag");
+                    trace!(
+                        import_index = i,
+                        attribute = attribute,
+                        type_idx = type_idx,
+                        "import: tag"
+                    );
 
                     // Store tag import in module.imports for runtime resolution
                     #[cfg(feature = "std")]
@@ -946,7 +970,10 @@ impl<'a> StreamingDecoder<'a> {
         }
 
         #[cfg(feature = "tracing")]
-        trace!(functions_count = self.module.functions.len(), "process_import_section: complete");
+        trace!(
+            functions_count = self.module.functions.len(),
+            "process_import_section: complete"
+        );
 
         Ok(())
     }
@@ -958,7 +985,11 @@ impl<'a> StreamingDecoder<'a> {
         offset += bytes_read;
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, data_len = data.len(), "process_function_section");
+        trace!(
+            count = count,
+            data_len = data.len(),
+            "process_function_section"
+        );
 
         // Reserve space for functions
         for i in 0..count {
@@ -966,7 +997,11 @@ impl<'a> StreamingDecoder<'a> {
             offset += bytes_read;
 
             #[cfg(feature = "tracing")]
-            trace!(func_index = i, type_idx = type_idx, "process_function_section: function parsed");
+            trace!(
+                func_index = i,
+                type_idx = type_idx,
+                "process_function_section: function parsed"
+            );
 
             // Create function with empty body for now
             let func = Function {
@@ -1008,14 +1043,18 @@ impl<'a> StreamingDecoder<'a> {
                 offset += 1;
                 // Read the reserved 0x00 byte
                 if offset >= data.len() || data[offset] != 0x00 {
-                    return Err(Error::parse_error("Expected 0x00 after 0x40 in table with init expr"));
+                    return Err(Error::parse_error(
+                        "Expected 0x00 after 0x40 in table with init expr",
+                    ));
                 }
                 offset += 1;
             }
 
             // Now parse the ref_type
             if offset >= data.len() {
-                return Err(Error::parse_error("Unexpected end of table section (ref_type)"));
+                return Err(Error::parse_error(
+                    "Unexpected end of table section (ref_type)",
+                ));
             }
             let ref_type_byte = data[offset];
             offset += 1;
@@ -1025,7 +1064,7 @@ impl<'a> StreamingDecoder<'a> {
                 0x6F => RefType::Externref, // externref
                 _ => {
                     return Err(Error::parse_error("Unknown table element type"));
-                }
+                },
             };
 
             // Parse limits (flags + min, optional max)
@@ -1050,7 +1089,10 @@ impl<'a> StreamingDecoder<'a> {
             if has_init_expr {
                 // Count global imports - at table section time, only imported globals exist
                 use wrt_format::module::ImportDesc;
-                let num_global_imports = self.module.imports.iter()
+                let num_global_imports = self
+                    .module
+                    .imports
+                    .iter()
                     .filter(|imp| matches!(imp.desc, ImportDesc::Global(..)))
                     .count();
 
@@ -1058,7 +1100,9 @@ impl<'a> StreamingDecoder<'a> {
                 let mut block_depth = 0u32;
                 loop {
                     if offset >= data.len() {
-                        return Err(Error::parse_error("Unexpected end of table init expression"));
+                        return Err(Error::parse_error(
+                            "Unexpected end of table init expression",
+                        ));
                     }
                     let opcode = data[offset];
                     offset += 1;
@@ -1067,14 +1111,14 @@ impl<'a> StreamingDecoder<'a> {
                         // Block-starting opcodes
                         0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x11 => {
                             block_depth += 1;
-                        }
+                        },
                         // End opcode
                         0x0B => {
                             if block_depth == 0 {
                                 break;
                             }
                             block_depth -= 1;
-                        }
+                        },
                         // global.get - validate global index
                         0x23 => {
                             // Read global index (LEB128)
@@ -1085,7 +1129,7 @@ impl<'a> StreamingDecoder<'a> {
                             if global_idx as usize >= num_global_imports {
                                 return Err(Error::validation_error("unknown global"));
                             }
-                        }
+                        },
                         // Skip LEB128 immediates for common opcodes
                         0x41 => {
                             // i32.const - skip LEB128
@@ -1095,7 +1139,7 @@ impl<'a> StreamingDecoder<'a> {
                             if offset < data.len() {
                                 offset += 1;
                             }
-                        }
+                        },
                         0x42 => {
                             // i64.const - skip LEB128
                             while offset < data.len() && (data[offset] & 0x80) != 0 {
@@ -1104,16 +1148,16 @@ impl<'a> StreamingDecoder<'a> {
                             if offset < data.len() {
                                 offset += 1;
                             }
-                        }
+                        },
                         0xD0 => {
                             // ref.null - skip heap type byte
                             if offset < data.len() {
                                 offset += 1;
                             }
-                        }
+                        },
                         _ => {
                             // Other opcodes - continue scanning
-                        }
+                        },
                     }
                 }
                 #[cfg(feature = "tracing")]
@@ -1128,7 +1172,11 @@ impl<'a> StreamingDecoder<'a> {
             self.module.tables.push(table_type);
 
             #[cfg(feature = "tracing")]
-            trace!(table_index = i, total_tables = self.module.tables.len(), "table added");
+            trace!(
+                table_index = i,
+                total_tables = self.module.tables.len(),
+                "table added"
+            );
         }
 
         Ok(())
@@ -1156,7 +1204,9 @@ impl<'a> StreamingDecoder<'a> {
         for i in 0..count {
             // Parse limits flag (0x00 = min only, 0x01 = min and max, 0x03 = min/max/shared)
             if offset >= data.len() {
-                return Err(Error::parse_error("Memory section truncated: missing limits flag"));
+                return Err(Error::parse_error(
+                    "Memory section truncated: missing limits flag",
+                ));
             }
             let flags = data[offset];
             offset += 1;
@@ -1184,11 +1234,15 @@ impl<'a> StreamingDecoder<'a> {
                 // Validate memory64 limits (still have a limit, though higher)
                 // For non-memory64 tests, values > 65536 pages should fail
                 if min64 > MAX_MEMORY_PAGES as u64 {
-                    return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                    return Err(Error::validation_error(
+                        "memory size must be at most 65536 pages (4 GiB)",
+                    ));
                 }
                 if let Some(max64) = max64 {
                     if max64 > MAX_MEMORY_PAGES as u64 {
-                        return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                        return Err(Error::validation_error(
+                            "memory size must be at most 65536 pages (4 GiB)",
+                        ));
                     }
                 }
 
@@ -1215,11 +1269,15 @@ impl<'a> StreamingDecoder<'a> {
             }
 
             if min > MAX_MEMORY_PAGES {
-                return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                return Err(Error::validation_error(
+                    "memory size must be at most 65536 pages (4 GiB)",
+                ));
             }
             if let Some(max_val) = max {
                 if max_val > MAX_MEMORY_PAGES {
-                    return Err(Error::validation_error("memory size must be at most 65536 pages (4 GiB)"));
+                    return Err(Error::validation_error(
+                        "memory size must be at most 65536 pages (4 GiB)",
+                    ));
                 }
             }
 
@@ -1233,7 +1291,11 @@ impl<'a> StreamingDecoder<'a> {
             self.module.memories.push(memory_type);
 
             #[cfg(feature = "tracing")]
-            trace!(memory_index = i, total_memories = self.module.memories.len(), "memory added");
+            trace!(
+                memory_index = i,
+                total_memories = self.module.memories.len(),
+                "memory added"
+            );
         }
 
         Ok(())
@@ -1242,14 +1304,19 @@ impl<'a> StreamingDecoder<'a> {
     /// Process global section
     fn process_global_section(&mut self, data: &[u8]) -> Result<()> {
         use wrt_format::binary::read_leb128_u32;
-        use wrt_foundation::types::ValueType;
-        use wrt_format::types::FormatGlobalType;
         use wrt_format::module::Global;
+        use wrt_format::types::FormatGlobalType;
+        use wrt_foundation::types::ValueType;
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, data_len = data.len(), offset = offset, "process_global_section");
+        trace!(
+            count = count,
+            data_len = data.len(),
+            offset = offset,
+            "process_global_section"
+        );
 
         for i in 0..count {
             #[cfg(feature = "tracing")]
@@ -1303,48 +1370,52 @@ impl<'a> StreamingDecoder<'a> {
                     0x0b => {
                         // End marker - we're done
                         break;
-                    }
+                    },
                     0x41 => {
                         // i32.const - followed by LEB128 i32
                         let (_, bytes_read) = wrt_format::binary::read_leb128_i32(data, offset)?;
                         offset += bytes_read;
-                    }
+                    },
                     0x42 => {
                         // i64.const - followed by LEB128 i64
                         let (_, bytes_read) = wrt_format::binary::read_leb128_i64(data, offset)?;
                         offset += bytes_read;
-                    }
+                    },
                     0x43 => {
                         // f32.const - followed by 4 bytes
                         offset += 4;
-                    }
+                    },
                     0x44 => {
                         // f64.const - followed by 8 bytes
                         offset += 8;
-                    }
+                    },
                     0x23 => {
                         // global.get - followed by LEB128 global index
                         let (_, bytes_read) = wrt_format::binary::read_leb128_u32(data, offset)?;
                         offset += bytes_read;
-                    }
+                    },
                     0xd0 => {
                         // ref.null - followed by heap type (single byte for common types)
                         if offset < data.len() {
                             offset += 1; // Skip the heap type byte
                         }
-                    }
+                    },
                     0xd2 => {
                         // ref.func - followed by LEB128 func index
                         let (_, bytes_read) = wrt_format::binary::read_leb128_u32(data, offset)?;
                         offset += bytes_read;
-                    }
+                    },
                     _ => {
                         // Unknown opcode in init expression - skip to find 0x0b
                         // This is a fallback for any opcodes we don't handle
                         #[cfg(feature = "tracing")]
-                        trace!(opcode = opcode, offset = offset - 1, "global: unknown init opcode");
+                        trace!(
+                            opcode = opcode,
+                            offset = offset - 1,
+                            "global: unknown init opcode"
+                        );
                         // Continue to next byte
-                    }
+                    },
                 }
             }
 
@@ -1379,7 +1450,12 @@ impl<'a> StreamingDecoder<'a> {
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, offset = offset, data_len = data.len(), "process_export_section");
+        trace!(
+            count = count,
+            offset = offset,
+            data_len = data.len(),
+            "process_export_section"
+        );
 
         for i in 0..count {
             // Parse export name - use validate_utf8_name for std builds to avoid
@@ -1388,7 +1464,12 @@ impl<'a> StreamingDecoder<'a> {
             trace!(export_index = i, offset = offset, "parsing export name");
             let (export_name_str, new_offset) = validate_utf8_name(data, offset)?;
             #[cfg(feature = "tracing")]
-            trace!(export_index = i, name = export_name_str, new_offset = new_offset, "export name parsed");
+            trace!(
+                export_index = i,
+                name = export_name_str,
+                new_offset = new_offset,
+                "export name parsed"
+            );
             offset = new_offset;
 
             if offset >= data.len() {
@@ -1400,7 +1481,12 @@ impl<'a> StreamingDecoder<'a> {
             offset += 1;
 
             #[cfg(feature = "tracing")]
-            trace!(export_index = i, kind_byte = kind_byte, offset = offset, "export kind parsed");
+            trace!(
+                export_index = i,
+                kind_byte = kind_byte,
+                offset = offset,
+                "export kind parsed"
+            );
             let kind = match kind_byte {
                 0x00 => wrt_format::module::ExportKind::Function,
                 0x01 => wrt_format::module::ExportKind::Table,
@@ -1419,7 +1505,12 @@ impl<'a> StreamingDecoder<'a> {
             offset += bytes_consumed;
 
             #[cfg(feature = "tracing")]
-            trace!(export_index = i, index = index, offset = offset, "export index parsed");
+            trace!(
+                export_index = i,
+                index = index,
+                offset = offset,
+                "export index parsed"
+            );
 
             // Add export to module
             #[cfg(feature = "std")]
@@ -1437,11 +1528,7 @@ impl<'a> StreamingDecoder<'a> {
                 let name = BoundedString::<1024>::try_from_str(export_name_str)
                     .map_err(|_| wrt_error::Error::parse_error("Export name too long"))?;
 
-                let _ = self.module.exports.push(wrt_format::module::Export {
-                    name,
-                    kind,
-                    index,
-                });
+                let _ = self.module.exports.push(wrt_format::module::Export { name, kind, index });
             }
         }
 
@@ -1464,7 +1551,11 @@ impl<'a> StreamingDecoder<'a> {
         offset += bytes_read;
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, data_len = data.len(), "process_element_section");
+        trace!(
+            count = count,
+            data_len = data.len(),
+            "process_element_section"
+        );
 
         for elem_idx in 0..count {
             // Parse element segment flags (see WebAssembly spec 5.5.10)
@@ -1491,10 +1582,17 @@ impl<'a> StreamingDecoder<'a> {
                     offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
-                    trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active table 0");
+                    trace!(
+                        elem_idx = elem_idx,
+                        offset_expr_len = offset_expr_bytes.len(),
+                        "element: active table 0"
+                    );
 
                     (
-                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active {
+                            table_index: 0,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
                         offset_expr_bytes,
                         wrt_format::types::RefType::Funcref,
                     )
@@ -1530,10 +1628,18 @@ impl<'a> StreamingDecoder<'a> {
                     offset += 1;
 
                     #[cfg(feature = "tracing")]
-                    trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), "element: active legacy funcidx");
+                    trace!(
+                        elem_idx = elem_idx,
+                        table_index = table_index,
+                        offset_expr_len = offset_expr_bytes.len(),
+                        "element: active legacy funcidx"
+                    );
 
                     (
-                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active {
+                            table_index,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
                         offset_expr_bytes,
                         wrt_format::types::RefType::Funcref,
                     )
@@ -1559,10 +1665,17 @@ impl<'a> StreamingDecoder<'a> {
                     offset = find_expression_end(data, offset)?;
                     let offset_expr_bytes: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
-                    trace!(elem_idx = elem_idx, offset_expr_len = offset_expr_bytes.len(), "element: active expressions table 0");
+                    trace!(
+                        elem_idx = elem_idx,
+                        offset_expr_len = offset_expr_bytes.len(),
+                        "element: active expressions table 0"
+                    );
 
                     (
-                        PureElementMode::Active { table_index: 0, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active {
+                            table_index: 0,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
                         offset_expr_bytes,
                         wrt_format::types::RefType::Funcref,
                     )
@@ -1593,7 +1706,9 @@ impl<'a> StreamingDecoder<'a> {
 
                     // Parse ref_type (comes after offset expression, before items)
                     if offset >= data.len() {
-                        return Err(Error::parse_error("Unexpected end of element segment (ref_type)"));
+                        return Err(Error::parse_error(
+                            "Unexpected end of element segment (ref_type)",
+                        ));
                     }
                     let ref_type_byte = data[offset];
                     offset += 1;
@@ -1607,7 +1722,10 @@ impl<'a> StreamingDecoder<'a> {
                     trace!(elem_idx = elem_idx, table_index = table_index, offset_expr_len = offset_expr_bytes.len(), ref_type = ?ref_type, "element: active with expressions");
 
                     (
-                        PureElementMode::Active { table_index, offset_expr_len: offset_expr_bytes.len() as u32 },
+                        PureElementMode::Active {
+                            table_index,
+                            offset_expr_len: offset_expr_bytes.len() as u32,
+                        },
                         offset_expr_bytes,
                         ref_type,
                     )
@@ -1627,7 +1745,7 @@ impl<'a> StreamingDecoder<'a> {
                 },
                 _ => {
                     return Err(Error::parse_error("Unknown element segment flags"));
-                }
+                },
             };
 
             // Parse element items
@@ -1635,7 +1753,11 @@ impl<'a> StreamingDecoder<'a> {
             offset += bytes_read;
 
             #[cfg(feature = "tracing")]
-            trace!(elem_idx = elem_idx, item_count = item_count, "element items");
+            trace!(
+                elem_idx = elem_idx,
+                item_count = item_count,
+                "element items"
+            );
 
             let init_data = if flags == 0 || flags == 1 || flags == 2 || flags == 3 {
                 // Function indices format (flags 0, 1, 2, 3 use elemkind + funcidx)
@@ -1646,7 +1768,11 @@ impl<'a> StreamingDecoder<'a> {
                     func_indices.push(func_idx);
                     #[cfg(feature = "tracing")]
                     if i < 5 || i == item_count - 1 {
-                        trace!(item_index = i, func_idx = func_idx, "element item: func index");
+                        trace!(
+                            item_index = i,
+                            func_idx = func_idx,
+                            "element item: func index"
+                        );
                     }
                 }
                 PureElementInit::FunctionIndices(func_indices)
@@ -1660,7 +1786,11 @@ impl<'a> StreamingDecoder<'a> {
                     let expr_data: Vec<u8> = data[expr_start..offset].to_vec();
                     #[cfg(feature = "tracing")]
                     if i < 5 {
-                        trace!(item_index = i, expr_len = expr_data.len(), "element item: expression");
+                        trace!(
+                            item_index = i,
+                            expr_len = expr_data.len(),
+                            "element item: expression"
+                        );
                     }
                     expr_bytes.push(expr_data);
                 }
@@ -1676,7 +1806,11 @@ impl<'a> StreamingDecoder<'a> {
 
             self.module.elements.push(elem_segment);
             #[cfg(feature = "tracing")]
-            trace!(elem_idx = elem_idx, total_elements = self.module.elements.len(), "element added");
+            trace!(
+                elem_idx = elem_idx,
+                total_elements = self.module.elements.len(),
+                "element added"
+            );
         }
 
         #[cfg(feature = "tracing")]
@@ -1699,7 +1833,11 @@ impl<'a> StreamingDecoder<'a> {
         let num_imports = self.num_function_imports;
 
         #[cfg(feature = "tracing")]
-        trace!(num_imports = num_imports, total_functions = self.module.functions.len(), "code section function mapping");
+        trace!(
+            num_imports = num_imports,
+            total_functions = self.module.functions.len(),
+            "code section function mapping"
+        );
 
         // Process each function body one at a time
         for i in 0..count {
@@ -1714,11 +1852,16 @@ impl<'a> StreamingDecoder<'a> {
 
             // Parse locals first (they come before instructions in the function body)
             let mut body_offset = 0;
-            let (local_count, local_bytes) = read_leb128_u32(&data[body_start..body_end], body_offset)?;
+            let (local_count, local_bytes) =
+                read_leb128_u32(&data[body_start..body_end], body_offset)?;
             body_offset += local_bytes;
 
             #[cfg(feature = "tracing")]
-            trace!(func_index = i, local_groups = local_count, "code section: function locals");
+            trace!(
+                func_index = i,
+                local_groups = local_count,
+                "code section: function locals"
+            );
 
             // Code section index i corresponds to module-defined function at index (num_imports + i)
             let func_index = num_imports + i as usize;
@@ -1760,7 +1903,12 @@ impl<'a> StreamingDecoder<'a> {
                 func.code.extend_from_slice(instructions_data);
 
                 #[cfg(feature = "tracing")]
-                trace!(func_index = i, locals_count = func.locals.len(), instruction_bytes = func.code.len(), "code section: function parsed");
+                trace!(
+                    func_index = i,
+                    locals_count = func.locals.len(),
+                    instruction_bytes = func.code.len(),
+                    "code section: function parsed"
+                );
             }
 
             offset = body_end;
@@ -1805,7 +1953,7 @@ impl<'a> StreamingDecoder<'a> {
                                 if depth == 0 {
                                     break;
                                 }
-                            }
+                            },
                             0x41 | 0x42 | 0x23 => {
                                 // i32.const, i64.const, global.get - skip LEB128
                                 while offset < data.len() && data[offset] & 0x80 != 0 {
@@ -1814,8 +1962,8 @@ impl<'a> StreamingDecoder<'a> {
                                 if offset < data.len() {
                                     offset += 1;
                                 }
-                            }
-                            _ => {}
+                            },
+                            _ => {},
                         }
                     }
                     let offset_expr_bytes = data[expr_start..offset].to_vec();
@@ -1832,7 +1980,13 @@ impl<'a> StreamingDecoder<'a> {
                     offset += data_len as usize;
 
                     #[cfg(feature = "tracing")]
-                    trace!(segment_index = i, memory_index = 0, offset_expr_len = offset_expr_bytes.len(), data_len = data_bytes.len(), "data segment: active");
+                    trace!(
+                        segment_index = i,
+                        memory_index = 0,
+                        offset_expr_len = offset_expr_bytes.len(),
+                        data_len = data_bytes.len(),
+                        "data segment: active"
+                    );
 
                     PureDataSegment {
                         mode: PureDataMode::Active {
@@ -1842,7 +1996,7 @@ impl<'a> StreamingDecoder<'a> {
                         offset_expr_bytes,
                         data_bytes,
                     }
-                }
+                },
                 // Passive data segment
                 0x01 => {
                     // Parse data byte count and data
@@ -1857,14 +2011,18 @@ impl<'a> StreamingDecoder<'a> {
                     offset += data_len as usize;
 
                     #[cfg(feature = "tracing")]
-                    trace!(segment_index = i, data_len = data_bytes.len(), "data segment: passive");
+                    trace!(
+                        segment_index = i,
+                        data_len = data_bytes.len(),
+                        "data segment: passive"
+                    );
 
                     PureDataSegment {
                         mode: PureDataMode::Passive,
                         offset_expr_bytes: Vec::new(),
                         data_bytes,
                     }
-                }
+                },
                 // Active data segment with explicit memory index
                 0x02 => {
                     // Parse memory index
@@ -1885,7 +2043,7 @@ impl<'a> StreamingDecoder<'a> {
                                 if depth == 0 {
                                     break;
                                 }
-                            }
+                            },
                             0x41 | 0x42 | 0x23 => {
                                 while offset < data.len() && data[offset] & 0x80 != 0 {
                                     offset += 1;
@@ -1893,8 +2051,8 @@ impl<'a> StreamingDecoder<'a> {
                                 if offset < data.len() {
                                     offset += 1;
                                 }
-                            }
-                            _ => {}
+                            },
+                            _ => {},
                         }
                     }
                     let offset_expr_bytes = data[expr_start..offset].to_vec();
@@ -1911,7 +2069,13 @@ impl<'a> StreamingDecoder<'a> {
                     offset += data_len as usize;
 
                     #[cfg(feature = "tracing")]
-                    trace!(segment_index = i, memory_index = memory_index, offset_expr_len = offset_expr_bytes.len(), data_len = data_bytes.len(), "data segment: active explicit");
+                    trace!(
+                        segment_index = i,
+                        memory_index = memory_index,
+                        offset_expr_len = offset_expr_bytes.len(),
+                        data_len = data_bytes.len(),
+                        "data segment: active explicit"
+                    );
 
                     PureDataSegment {
                         mode: PureDataMode::Active {
@@ -1921,10 +2085,10 @@ impl<'a> StreamingDecoder<'a> {
                         offset_expr_bytes,
                         data_bytes,
                     }
-                }
+                },
                 _ => {
                     return Err(Error::parse_error("Invalid data segment tag"));
-                }
+                },
             };
 
             // Add segment to module
@@ -1938,7 +2102,11 @@ impl<'a> StreamingDecoder<'a> {
         }
 
         #[cfg(feature = "tracing")]
-        trace!(count = count, total_segments = self.module.data.len(), "process_data_section: complete");
+        trace!(
+            count = count,
+            total_segments = self.module.data.len(),
+            "process_data_section: complete"
+        );
 
         Ok(())
     }
@@ -1977,12 +2145,17 @@ impl<'a> StreamingDecoder<'a> {
                 return Err(Error::validation_error("Invalid tag type index"));
             }
 
-            let tag = TagType { attribute, type_idx };
+            let tag = TagType {
+                attribute,
+                type_idx,
+            };
 
             #[cfg(feature = "std")]
             self.module.tags.push(tag);
             #[cfg(not(feature = "std"))]
-            self.module.tags.push(tag)
+            self.module
+                .tags
+                .push(tag)
                 .map_err(|_| Error::resource_exhausted("Too many tags"))?;
 
             #[cfg(feature = "tracing")]
@@ -2009,7 +2182,10 @@ impl<'a> StreamingDecoder<'a> {
     #[cfg(feature = "std")]
     pub fn finish(self) -> Result<WrtModule> {
         #[cfg(feature = "tracing")]
-        trace!(imports_count = self.module.imports.len(), "StreamingDecoder::finish");
+        trace!(
+            imports_count = self.module.imports.len(),
+            "StreamingDecoder::finish"
+        );
         Ok(self.module)
     }
 

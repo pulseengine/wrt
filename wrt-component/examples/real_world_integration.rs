@@ -6,15 +6,8 @@
 use std::collections::HashMap;
 
 use wrt_component::{
-    AgentConfiguration,
-    AgentId,
-    AgentRegistry,
-    ExecutionMode,
-    HybridModeFlags,
-    RuntimeBridgeConfig,
-    UnifiedExecutionAgent,
-    UnifiedExecutionState,
-    Value,
+    AgentConfiguration, AgentId, AgentRegistry, ExecutionMode, HybridModeFlags,
+    RuntimeBridgeConfig, UnifiedExecutionAgent, UnifiedExecutionState, Value,
 };
 
 /// A WebAssembly application manager using unified execution engines
@@ -73,11 +66,11 @@ pub enum ComponentType {
 /// Component execution result
 #[derive(Debug)]
 pub struct ComponentResult {
-    pub component_name:    String,
+    pub component_name: String,
     pub execution_time_ms: u64,
-    pub memory_used:       usize,
-    pub result_value:      Value,
-    pub success:           bool,
+    pub memory_used: usize,
+    pub result_value: Value,
+    pub success: bool,
 }
 
 impl WasmApplicationManager {
@@ -160,11 +153,11 @@ impl WasmApplicationManager {
 
         // Create result
         let component_result = ComponentResult {
-            component_name:    component_name.to_string(),
+            component_name: component_name.to_string(),
             execution_time_ms: execution_time.as_millis() as u64,
-            memory_used:       0, // Would be tracked by agent in real implementation
-            result_value:      result.unwrap_or(Value::Bool(false)),
-            success:           result.is_ok(),
+            memory_used: 0, // Would be tracked by agent in real implementation
+            result_value: result.unwrap_or(Value::Bool(false)),
+            success: result.is_ok(),
         };
 
         if component_result.success {
@@ -257,10 +250,10 @@ impl WasmApplicationManager {
         let migration_stats = self.agent_registry.migration_status();
 
         ApplicationStatistics {
-            total_components:     self.component_agents.len(),
-            active_agents:        registry_stats.active_agents,
-            unified_agents:       registry_stats.unified_agents_created,
-            legacy_agents:        registry_stats.legacy_agents_created,
+            total_components: self.component_agents.len(),
+            active_agents: registry_stats.active_agents,
+            unified_agents: registry_stats.unified_agents_created,
+            legacy_agents: registry_stats.legacy_agents_created,
             completed_migrations: migration_stats.completed_migrations,
         }
     }
@@ -289,9 +282,9 @@ impl WasmApplicationManager {
             ComponentType::BusinessLogic => {
                 // Business logic can use hybrid mode for flexibility
                 ExecutionMode::Hybrid(HybridModeFlags {
-                    async_enabled:     self.config.enable_async,
+                    async_enabled: self.config.enable_async,
                     stackless_enabled: false,
-                    cfi_enabled:       false,
+                    cfi_enabled: false,
                 })
             },
 
@@ -319,9 +312,9 @@ impl WasmApplicationManager {
                     ExecutionMode::CfiProtected
                 } else {
                     ExecutionMode::Hybrid(HybridModeFlags {
-                        async_enabled:     false,
+                        async_enabled: false,
                         stackless_enabled: true,
-                        cfi_enabled:       false,
+                        cfi_enabled: false,
                     })
                 }
             },
@@ -332,10 +325,7 @@ impl WasmApplicationManager {
         // Simple hash-based mapping (in real app, use proper function registry)
         use std::{
             collections::hash_map::DefaultHasher,
-            hash::{
-                Hash,
-                Hasher,
-            },
+            hash::{Hash, Hasher},
         };
 
         let mut hasher = DefaultHasher::new();
@@ -347,22 +337,22 @@ impl WasmApplicationManager {
 /// Application performance statistics
 #[derive(Debug)]
 pub struct ApplicationStatistics {
-    pub total_components:     usize,
-    pub active_agents:        u32,
-    pub unified_agents:       u32,
-    pub legacy_agents:        u32,
+    pub total_components: usize,
+    pub active_agents: u32,
+    pub unified_agents: u32,
+    pub legacy_agents: u32,
     pub completed_migrations: u32,
 }
 
 impl Default for ApplicationConfig {
     fn default() -> Self {
         Self {
-            max_memory_per_component:   1024 * 1024, // 1MB
-            max_call_depth:             128,
-            enable_async:               true,
-            enable_cfi:                 false, // Enable in production for security-critical apps
+            max_memory_per_component: 1024 * 1024, // 1MB
+            max_call_depth: 128,
+            enable_async: true,
+            enable_cfi: false, // Enable in production for security-critical apps
             enable_memory_optimization: true,
-            execution_timeout_ms:       5000, // 5 seconds
+            execution_timeout_ms: 5000, // 5 seconds
         }
     }
 }

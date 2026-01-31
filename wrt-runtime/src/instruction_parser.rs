@@ -867,6 +867,223 @@ fn parse_instruction_with_provider(
             Instruction::RefFunc(func_idx)
         },
 
+        // GC instructions (0xFB prefix)
+        0xFB => {
+            // Read the subopcode (LEB128 encoded)
+            let (subopcode, bytes_read) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes_read;
+
+            match subopcode {
+                // Struct operations
+                0x00 => {
+                    // struct.new: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructNew(type_idx)
+                }
+                0x01 => {
+                    // struct.new_default: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructNewDefault(type_idx)
+                }
+                0x02 => {
+                    // struct.get: type_idx, field_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (field_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructGet(type_idx, field_idx)
+                }
+                0x03 => {
+                    // struct.get_s: type_idx, field_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (field_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructGetS(type_idx, field_idx)
+                }
+                0x04 => {
+                    // struct.get_u: type_idx, field_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (field_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructGetU(type_idx, field_idx)
+                }
+                0x05 => {
+                    // struct.set: type_idx, field_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (field_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::StructSet(type_idx, field_idx)
+                }
+                // Array operations
+                0x06 => {
+                    // array.new: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayNew(type_idx)
+                }
+                0x07 => {
+                    // array.new_default: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayNewDefault(type_idx)
+                }
+                0x08 => {
+                    // array.new_fixed: type_idx, length
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (length, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayNewFixed(type_idx, length)
+                }
+                0x09 => {
+                    // array.new_data: type_idx, data_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (data_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayNewData(type_idx, data_idx)
+                }
+                0x0A => {
+                    // array.new_elem: type_idx, elem_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (elem_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayNewElem(type_idx, elem_idx)
+                }
+                0x0B => {
+                    // array.get: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayGet(type_idx)
+                }
+                0x0C => {
+                    // array.get_s: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayGetS(type_idx)
+                }
+                0x0D => {
+                    // array.get_u: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayGetU(type_idx)
+                }
+                0x0E => {
+                    // array.set: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArraySet(type_idx)
+                }
+                0x0F => {
+                    // array.len
+                    Instruction::ArrayLen
+                }
+                0x10 => {
+                    // array.fill: type_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayFill(type_idx)
+                }
+                0x11 => {
+                    // array.copy: dst_type_idx, src_type_idx
+                    let (dst_type, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (src_type, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayCopy(dst_type, src_type)
+                }
+                0x12 => {
+                    // array.init_data: type_idx, data_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (data_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayInitData(type_idx, data_idx)
+                }
+                0x13 => {
+                    // array.init_elem: type_idx, elem_idx
+                    let (type_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (elem_idx, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::ArrayInitElem(type_idx, elem_idx)
+                }
+                // Reference type testing/casting
+                0x14 => {
+                    // ref.test: heaptype
+                    let (heap_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::RefTest(heap_type)
+                }
+                0x15 => {
+                    // ref.test null: heaptype
+                    let (heap_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::RefTestNull(heap_type)
+                }
+                0x16 => {
+                    // ref.cast: heaptype
+                    let (heap_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::RefCast(heap_type)
+                }
+                0x17 => {
+                    // ref.cast null: heaptype
+                    let (heap_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::RefCastNull(heap_type)
+                }
+                // Branch on cast
+                0x18 => {
+                    // br_on_cast: flags, label, from_type, to_type
+                    if offset + consumed >= bytecode.len() {
+                        return Err(Error::parse_error("Unexpected end in br_on_cast"));
+                    }
+                    let flags = bytecode[offset + consumed];
+                    consumed += 1;
+                    let (label, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (from_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (to_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::BrOnCast { flags, label, from_type, to_type }
+                }
+                0x19 => {
+                    // br_on_cast_fail: flags, label, from_type, to_type
+                    if offset + consumed >= bytecode.len() {
+                        return Err(Error::parse_error("Unexpected end in br_on_cast_fail"));
+                    }
+                    let flags = bytecode[offset + consumed];
+                    consumed += 1;
+                    let (label, bytes_read) = read_leb128_u32(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (from_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    let (to_type, bytes_read) = parse_heap_type(bytecode, offset + consumed)?;
+                    consumed += bytes_read;
+                    Instruction::BrOnCastFail { flags, label, from_type, to_type }
+                }
+                // Extern/any conversions
+                0x1A => Instruction::AnyConvertExtern,
+                0x1B => Instruction::ExternConvertAny,
+                // i31 operations
+                0x1C => Instruction::RefI31,
+                0x1D => Instruction::I31GetS,
+                0x1E => Instruction::I31GetU,
+                _ => {
+                    #[cfg(feature = "tracing")]
+                    wrt_foundation::tracing::warn!(subopcode = format!("0xFB 0x{:02X}", subopcode), offset = offset, "Unknown FB subopcode");
+                    return Err(Error::parse_error("Unknown GC instruction"));
+                }
+            }
+        }
         // Multi-byte opcodes (bulk memory, SIMD, etc.)
         0xFC => {
             // Read the second byte to determine the actual instruction

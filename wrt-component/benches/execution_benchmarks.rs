@@ -13,28 +13,15 @@ compile_error!("Benchmarks require std feature for criterion");
 use std::{
     fs,
     sync::Arc,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
-use criterion::{
-    black_box,
-    criterion_group,
-    criterion_main,
-    BenchmarkId,
-    Criterion,
-};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 // Import the execution components
 use wrt_decoder::decoder::decode_module;
 use wrt_error::Result;
 use wrt_foundation::values::Value;
-use wrt_runtime::{
-    module::Module,
-    module_instance::ModuleInstance,
-    stackless::StacklessEngine,
-};
+use wrt_runtime::{module::Module, module_instance::ModuleInstance, stackless::StacklessEngine};
 
 // Benchmark sizes for different test scenarios
 const SMALL_ITERATION: usize = 10;

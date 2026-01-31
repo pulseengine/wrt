@@ -13,29 +13,13 @@ use std::fs;
 use std::path::Path;
 
 #[cfg(feature = "std")]
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
-use wrt_foundation::{
-    safe_managed_alloc,
-    BoundedString,
-    CrateId,
-    NoStdProvider,
-};
+use serde::{Deserialize, Serialize};
+use wrt_error::{Error, ErrorCategory, codes};
+use wrt_foundation::{BoundedString, CrateId, NoStdProvider, safe_managed_alloc};
 
 use crate::resource_limits_section::{
-    ResourceLimitsSection,
-    ResourceTypeLimit,
-    MAX_ASIL_STRING_LEN,
-    MAX_CUSTOM_LIMITS_PER_TYPE,
-    MAX_RESOURCE_NAME_LEN,
-    MAX_RESOURCE_TYPES,
+    MAX_ASIL_STRING_LEN, MAX_CUSTOM_LIMITS_PER_TYPE, MAX_RESOURCE_NAME_LEN, MAX_RESOURCE_TYPES,
+    ResourceLimitsSection, ResourceTypeLimit,
 };
 
 /// TOML configuration structure for resource limits

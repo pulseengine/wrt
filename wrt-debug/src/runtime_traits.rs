@@ -76,8 +76,7 @@ pub trait DebugMemory {
     fn read_u64(&self, addr: u32) -> Option<u64> {
         self.read_bytes(addr, 8).map(|bytes| {
             u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ])
         })
     }
@@ -171,11 +170,7 @@ pub trait RuntimeDebugger: Send + Sync {
     /// Called when a breakpoint is hit
     ///
     /// Returns the action to take after the breakpoint.
-    fn on_breakpoint(
-        &mut self,
-        bp: &Breakpoint,
-        state: &dyn RuntimeState,
-    ) -> DebugAction;
+    fn on_breakpoint(&mut self, bp: &Breakpoint, state: &dyn RuntimeState) -> DebugAction;
 
     /// Called on each instruction (if single-stepping is enabled)
     ///

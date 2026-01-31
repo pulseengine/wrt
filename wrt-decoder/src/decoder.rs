@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 
-use wrt_format::module::{Module as WrtModule, ImportDesc};
+use wrt_format::module::{ImportDesc, Module as WrtModule};
 use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::prelude::*;
@@ -82,7 +82,7 @@ fn convert_import_desc(
         wrt_foundation::types::ImportDesc::Global(global_type) => {
             wrt_format::module::ImportDesc::Global(wrt_format::types::FormatGlobalType {
                 value_type: global_type.value_type,
-                mutable:    global_type.mutable,
+                mutable: global_type.mutable,
             })
         },
         wrt_foundation::types::ImportDesc::Extern(_) => {
@@ -106,21 +106,21 @@ fn convert_import_desc(
 #[cfg(feature = "std")]
 fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result<WrtModule> {
     let mut module = WrtModule {
-        types:             Vec::new(),
-        functions:         Vec::new(),
-        tables:            Vec::new(),
-        memories:          Vec::new(),
-        globals:           Vec::new(),
-        elements:          Vec::new(),
-        data:              Vec::new(),
-        exports:           Vec::new(),
-        imports:           Vec::new(),
-        start:             None,
-        custom_sections:   Vec::new(),
-        binary:            None,
-        core_version:      wrt_format::types::CoreWasmVersion::default(),
+        types: Vec::new(),
+        functions: Vec::new(),
+        tables: Vec::new(),
+        memories: Vec::new(),
+        globals: Vec::new(),
+        elements: Vec::new(),
+        data: Vec::new(),
+        exports: Vec::new(),
+        imports: Vec::new(),
+        start: None,
+        custom_sections: Vec::new(),
+        binary: None,
+        core_version: wrt_format::types::CoreWasmVersion::default(),
         type_info_section: None,
-        tags:              Vec::new(),
+        tags: Vec::new(),
     };
 
     for section in sections {
@@ -129,7 +129,7 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                 for func_type in types {
                     // Convert FuncType to CleanCoreFuncType
                     let clean_func_type = wrt_foundation::CleanCoreFuncType {
-                        params:  func_type.params.into_iter().collect(),
+                        params: func_type.params.into_iter().collect(),
                         results: func_type.results.into_iter().collect(),
                     };
                     module.types.push(clean_func_type);
@@ -140,8 +140,8 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     // Convert from wrt_foundation Import to wrt_format Import
                     let format_import = wrt_format::module::Import {
                         module: import.module_name.as_str().unwrap_or("").to_string(),
-                        name:   import.item_name.as_str().unwrap_or("").to_string(),
-                        desc:   convert_import_desc(import.desc.clone()),
+                        name: import.item_name.as_str().unwrap_or("").to_string(),
+                        desc: convert_import_desc(import.desc.clone()),
                     };
                     module.imports.push(format_import);
 
@@ -183,10 +183,10 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     let global = wrt_format::module::Global {
                         global_type: wrt_format::types::FormatGlobalType {
                             value_type: global_type.value_type,
-                            mutable:    global_type.mutable,
+                            mutable: global_type.mutable,
                         },
-                        init:        Vec::new(), /* Empty init - should be populated from code
-                                                  * section */
+                        init: Vec::new(), /* Empty init - should be populated from code
+                                           * section */
                     };
                     module.globals.push(global);
                 }
@@ -214,7 +214,9 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                 // CRITICAL: The code section only contains code for local functions.
                 // Imported functions are already in the functions vector with empty code.
                 // We need to skip imported functions when assigning code.
-                let num_imports = module.imports.iter()
+                let num_imports = module
+                    .imports
+                    .iter()
                     .filter(|import| matches!(import.desc, ImportDesc::Function(..)))
                     .count();
 
@@ -231,13 +233,20 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     let func_idx = num_imports + idx;
 
                     #[cfg(feature = "tracing")]
-                    wrt_foundation::tracing::trace!(idx = idx, func_idx = func_idx, "Assigning code body to function");
+                    wrt_foundation::tracing::trace!(
+                        idx = idx,
+                        func_idx = func_idx,
+                        "Assigning code body to function"
+                    );
 
                     if let Some(func) = module.functions.get_mut(func_idx) {
                         func.code = body.into_iter().collect();
                     } else {
                         #[cfg(feature = "tracing")]
-                        wrt_foundation::tracing::warn!(func_idx = func_idx, "Function index not found in functions vector");
+                        wrt_foundation::tracing::warn!(
+                            func_idx = func_idx,
+                            "Function index not found in functions vector"
+                        );
                     }
                 }
             },
@@ -331,7 +340,9 @@ fn build_module_from_sections(
                 // Update function bodies
                 // CRITICAL: The code section only contains code for local functions.
                 // We need to skip imported functions when assigning code.
-                let num_imports = module.imports.iter()
+                let num_imports = module
+                    .imports
+                    .iter()
                     .filter(|import| matches!(import.desc, ImportDesc::Function(..)))
                     .count();
 

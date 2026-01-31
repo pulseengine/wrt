@@ -5,29 +5,15 @@
 
 #[cfg(test)]
 mod example {
-    use std::sync::{
-        Arc,
-        RwLock,
-    };
+    use std::sync::{Arc, RwLock};
 
     use wrt_foundation::prelude::*;
-    use wrt_runtime::{
-        Instance,
-        Memory,
-        Module,
-    };
+    use wrt_runtime::{Instance, Memory, Module};
 
     use crate::{
         canonical::CanonicalABI,
-        canonical_options::{
-            CanonicalLiftContext,
-            CanonicalLowerContext,
-            CanonicalOptions,
-        },
-        canonical_realloc::{
-            ReallocManager,
-            StringEncoding,
-        },
+        canonical_options::{CanonicalLiftContext, CanonicalLowerContext, CanonicalOptions},
+        canonical_realloc::{ReallocManager, StringEncoding},
         types::ComponentInstanceId,
     };
 

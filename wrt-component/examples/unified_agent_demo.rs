@@ -4,15 +4,8 @@
 //! WebAssembly execution scenarios.
 
 use wrt_component::{
-    AgentConfiguration,
-    AgentCreationOptions,
-    AgentRegistry,
-    ExecutionMode,
-    HybridModeFlags,
-    PreferredAgentType,
-    UnifiedExecutionAgent,
-    UnifiedExecutionState,
-    Value,
+    AgentConfiguration, AgentCreationOptions, AgentRegistry, ExecutionMode, HybridModeFlags,
+    PreferredAgentType, UnifiedExecutionAgent, UnifiedExecutionState, Value,
 };
 
 fn main() {
@@ -168,9 +161,9 @@ fn demo_hybrid_execution() {
 
     // Create engine with multiple capabilities enabled
     let flags = HybridModeFlags {
-        async_enabled:     cfg!(feature = "async"),
+        async_enabled: cfg!(feature = "async"),
         stackless_enabled: true,
-        cfi_enabled:       cfg!(feature = "cfi"),
+        cfi_enabled: cfg!(feature = "cfi"),
     };
 
     let mut engine = UnifiedExecutionAgent::new_hybrid(flags);

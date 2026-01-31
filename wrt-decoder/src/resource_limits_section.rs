@@ -14,34 +14,14 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
+use wrt_error::{Error, ErrorCategory, codes};
 use wrt_foundation::{
-    safe_managed_alloc,
-    traits::{
-        Checksummable,
-        ReadStream,
-        WriteStream,
-    },
-    BoundedMap,
-    BoundedString,
-    BoundedVec,
-    Checksum,
-    CrateId,
-    NoStdProvider,
+    BoundedMap, BoundedString, BoundedVec, Checksum, CrateId, NoStdProvider, safe_managed_alloc,
+    traits::{Checksummable, ReadStream, WriteStream},
 };
 
 /// Standard custom section name for resource limits
@@ -150,10 +130,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     fn default() -> Self {
         let provider = P::default();
         Self {
-            max_handles:               None,
-            max_memory:                None,
+            max_handles: None,
+            max_memory: None,
             max_operations_per_second: None,
-            custom_limits:             BoundedMap::new(provider)
+            custom_limits: BoundedMap::new(provider)
                 .expect("ASIL-D: Default map creation must succeed"),
         }
     }
@@ -254,16 +234,16 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     fn default() -> Self {
         let provider = P::default();
         Self {
-            version:                   RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step:         None,
-            max_memory_usage:          None,
-            max_call_depth:            None,
+            version: RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step: None,
+            max_memory_usage: None,
+            max_call_depth: None,
             max_instructions_per_step: None,
-            max_execution_slice_ms:    None,
-            resource_type_limits:      BoundedMap::new(provider)
+            max_execution_slice_ms: None,
+            resource_type_limits: BoundedMap::new(provider)
                 .expect("ASIL-D: Default map creation must succeed"),
-            qualification_hash:        None,
-            qualified_asil_level:      None,
+            qualification_hash: None,
+            qualified_asil_level: None,
         }
     }
 }
@@ -274,17 +254,17 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     /// Create a new resource limits section with provider
     pub fn new(provider: P) -> Result<Self, Error> {
         Ok(Self {
-            version:                   RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step:         None,
-            max_memory_usage:          None,
-            max_call_depth:            None,
+            version: RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step: None,
+            max_memory_usage: None,
+            max_call_depth: None,
             max_instructions_per_step: None,
-            max_execution_slice_ms:    None,
-            resource_type_limits:      BoundedMap::new(provider).map_err(|_| {
+            max_execution_slice_ms: None,
+            resource_type_limits: BoundedMap::new(provider).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
-            qualification_hash:        None,
-            qualified_asil_level:      None,
+            qualification_hash: None,
+            qualified_asil_level: None,
         })
     }
 
@@ -336,17 +316,17 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             .map_err(|_| Error::parse_error("Failed to create ASIL-D string "))?;
 
         Ok(Self {
-            version:                   RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step:         Some(max_fuel_per_step),
-            max_memory_usage:          Some(max_memory_usage),
-            max_call_depth:            Some(max_call_depth),
+            version: RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step: Some(max_fuel_per_step),
+            max_memory_usage: Some(max_memory_usage),
+            max_call_depth: Some(max_call_depth),
             max_instructions_per_step: Some(max_instructions_per_step),
-            max_execution_slice_ms:    Some(max_execution_slice_ms),
-            resource_type_limits:      BoundedMap::new(provider).map_err(|_| {
+            max_execution_slice_ms: Some(max_execution_slice_ms),
+            resource_type_limits: BoundedMap::new(provider).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
-            qualification_hash:        None,
-            qualified_asil_level:      Some(asil_level),
+            qualification_hash: None,
+            qualified_asil_level: Some(asil_level),
         })
     }
 
@@ -378,11 +358,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
     /// Set qualification information
     /// Validates ASIL-D bounds for qualification data
-    pub fn with_qualification(
-        mut self,
-        hash: [u8; 32],
-        asil_level: &str,
-    ) -> Result<Self, Error> {
+    pub fn with_qualification(mut self, hash: [u8; 32], asil_level: &str) -> Result<Self, Error> {
         if asil_level.len() > MAX_ASIL_STRING_LEN {
             return Err(Error::parse_error("Invalid parameter "));
         }
@@ -1116,10 +1092,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
     /// Create a new resource type limit
     pub fn new(provider: P) -> Result<Self, Error> {
         Ok(Self {
-            max_handles:               None,
-            max_memory:                None,
+            max_handles: None,
+            max_memory: None,
             max_operations_per_second: None,
-            custom_limits:             BoundedMap::new(provider)
+            custom_limits: BoundedMap::new(provider)
                 .map_err(|_| Error::runtime_execution_error("Failed to create custom limits "))?,
         })
     }
@@ -1278,10 +1254,8 @@ mod tests {
         )?;
         let hash = [0u8; 32];
         let asil_d_str = ["ASIL", "-", "D"].concat();
-        let limits = ResourceLimitsSection::new(provider.clone())?.with_qualification(
-            hash,
-            &asil_d_str,
-        )?;
+        let limits =
+            ResourceLimitsSection::new(provider.clone())?.with_qualification(hash, &asil_d_str)?;
 
         assert!(limits.is_qualified());
         let expected = ["ASIL", "-", "D"].concat();

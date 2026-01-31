@@ -15,11 +15,7 @@
 
 // Re-export error kind creation functions
 pub use crate::kinds::*;
-use crate::{
-    codes,
-    Error,
-    ErrorCategory,
-};
+use crate::{Error, ErrorCategory, codes};
 
 /// Create a safety violation error
 #[must_use]

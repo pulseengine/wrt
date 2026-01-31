@@ -3,24 +3,15 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
 };
 
 use wrt_component::{
-    resources::{
-        BufferPool,
-        HostResource,
-        MemoryManager,
-        MemoryStrategy,
-        ResourceId,
-        ResourceManager,
-        ResourceOperation,
-        ResourceStrategy,
-    },
     ComponentValue,
+    resources::{
+        BufferPool, HostResource, MemoryManager, MemoryStrategy, ResourceId, ResourceManager,
+        ResourceOperation, ResourceStrategy,
+    },
 };
 use wrt_error::Error;
 
@@ -116,7 +107,7 @@ fn test_resource_lifecycle() {
 
 /// Custom test resource that tracks whether it's been dropped
 struct DropTracker {
-    id:      usize,
+    id: usize,
     dropped: Rc<RefCell<Vec<usize>>>,
 }
 

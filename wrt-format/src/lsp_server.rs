@@ -8,45 +8,27 @@
 #![allow(clippy::cast_possible_truncation)]
 
 #[cfg(not(feature = "std"))]
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     collections::BTreeMap,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     vec::Vec,
 };
 
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_foundation::{
-    prelude::*,
-    BoundedString,
-    NoStdProvider,
-};
+use wrt_error::{Error, Result};
+use wrt_foundation::{BoundedString, NoStdProvider, prelude::*};
 
 use crate::{
     ast::*,
-    incremental_parser::{
-        ChangeType,
-        IncrementalParserCache,
-        SourceChange,
-    },
+    incremental_parser::{ChangeType, IncrementalParserCache, SourceChange},
 };
 
 /// LSP position (line and character)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
     /// Line position (0-based)
-    pub line:      u32,
+    pub line: u32,
     /// Character position (0-based)
     pub character: u32,
 }
@@ -57,44 +39,44 @@ pub struct Range {
     /// Start position
     pub start: Position,
     /// End position
-    pub end:   Position,
+    pub end: Position,
 }
 
 /// LSP diagnostic severity
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
-    Error       = 1,
-    Warning     = 2,
+    Error = 1,
+    Warning = 2,
     Information = 3,
-    Hint        = 4,
+    Hint = 4,
 }
 
 /// LSP diagnostic
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     /// Range where the diagnostic applies
-    pub range:    Range,
+    pub range: Range,
     /// Severity of the diagnostic
     pub severity: DiagnosticSeverity,
     /// Diagnostic message
-    pub message:  BoundedString<512, NoStdProvider<1024>>,
+    pub message: BoundedString<512, NoStdProvider<1024>>,
     /// Optional source of the diagnostic
-    pub source:   Option<BoundedString<64, NoStdProvider<1024>>>,
+    pub source: Option<BoundedString<64, NoStdProvider<1024>>>,
     /// Optional diagnostic code
-    pub code:     Option<u32>,
+    pub code: Option<u32>,
 }
 
 /// Text document item
 #[derive(Debug, Clone)]
 pub struct TextDocumentItem {
     /// Document URI
-    pub uri:         BoundedString<256, NoStdProvider<1024>>,
+    pub uri: BoundedString<256, NoStdProvider<1024>>,
     /// Language ID (should be "wit")
     pub language_id: BoundedString<16, NoStdProvider<1024>>,
     /// Version number
-    pub version:     i32,
+    pub version: i32,
     /// Document text
-    pub text:        Vec<BoundedString<1024, NoStdProvider<1024>>>,
+    pub text: Vec<BoundedString<1024, NoStdProvider<1024>>>,
 }
 
 /// Text document content change event
@@ -103,7 +85,7 @@ pub struct TextDocumentContentChangeEvent {
     /// Range of the change
     pub range: Option<Range>,
     /// Text that is being replaced
-    pub text:  BoundedString<1024, NoStdProvider<1024>>,
+    pub text: BoundedString<1024, NoStdProvider<1024>>,
 }
 
 /// Hover information
@@ -112,17 +94,17 @@ pub struct Hover {
     /// Hover content
     pub contents: BoundedString<1024, NoStdProvider<1024>>,
     /// Optional range
-    pub range:    Option<Range>,
+    pub range: Option<Range>,
 }
 
 /// Completion item kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionItemKind {
-    Keyword    = 14,
-    Function   = 3,
-    Interface  = 7,
-    Type       = 22,
-    Field      = 5,
+    Keyword = 14,
+    Function = 3,
+    Interface = 7,
+    Type = 22,
+    Field = 5,
     EnumMember = 20,
 }
 
@@ -130,22 +112,22 @@ pub enum CompletionItemKind {
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
     /// Label shown in completion list
-    pub label:         BoundedString<64, NoStdProvider<1024>>,
+    pub label: BoundedString<64, NoStdProvider<1024>>,
     /// Kind of completion
-    pub kind:          CompletionItemKind,
+    pub kind: CompletionItemKind,
     /// Detail information
-    pub detail:        Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub detail: Option<BoundedString<256, NoStdProvider<1024>>>,
     /// Documentation
     pub documentation: Option<BoundedString<512, NoStdProvider<1024>>>,
     /// Text to insert
-    pub insert_text:   Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub insert_text: Option<BoundedString<256, NoStdProvider<1024>>>,
 }
 
 /// Location in a document
 #[derive(Debug, Clone)]
 pub struct Location {
     /// Document URI
-    pub uri:   BoundedString<256, NoStdProvider<1024>>,
+    pub uri: BoundedString<256, NoStdProvider<1024>>,
     /// Range in the document
     pub range: Range,
 }
@@ -153,28 +135,28 @@ pub struct Location {
 /// Symbol kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
-    Interface  = 11,
-    Function   = 12,
-    Type       = 5,
-    Field      = 8,
+    Interface = 11,
+    Function = 12,
+    Type = 5,
+    Field = 8,
     EnumMember = 22,
-    Package    = 4,
+    Package = 4,
 }
 
 /// Document symbol
 #[derive(Debug, Clone)]
 pub struct DocumentSymbol {
     /// Symbol name
-    pub name:            BoundedString<64, NoStdProvider<1024>>,
+    pub name: BoundedString<64, NoStdProvider<1024>>,
     /// Symbol kind
-    pub kind:            SymbolKind,
+    pub kind: SymbolKind,
     /// Range of the symbol
-    pub range:           Range,
+    pub range: Range,
     /// Selection range
     pub selection_range: Range,
     /// Child symbols
     #[cfg(feature = "std")]
-    pub children:        Vec<DocumentSymbol>,
+    pub children: Vec<DocumentSymbol>,
 }
 
 /// WIT Language Server
@@ -197,28 +179,28 @@ pub struct WitLanguageServer {
 #[derive(Debug, Clone)]
 pub struct ServerCapabilities {
     /// Text document sync
-    pub text_document_sync:       bool,
+    pub text_document_sync: bool,
     /// Hover provider
-    pub hover_provider:           bool,
+    pub hover_provider: bool,
     /// Completion provider
-    pub completion_provider:      bool,
+    pub completion_provider: bool,
     /// Definition provider
-    pub definition_provider:      bool,
+    pub definition_provider: bool,
     /// Document symbol provider
     pub document_symbol_provider: bool,
     /// Diagnostic provider
-    pub diagnostic_provider:      bool,
+    pub diagnostic_provider: bool,
 }
 
 impl Default for ServerCapabilities {
     fn default() -> Self {
         Self {
-            text_document_sync:       true,
-            hover_provider:           true,
-            completion_provider:      true,
-            definition_provider:      true,
+            text_document_sync: true,
+            hover_provider: true,
+            completion_provider: true,
+            definition_provider: true,
             document_symbol_provider: true,
-            diagnostic_provider:      true,
+            diagnostic_provider: true,
         }
     }
 }
@@ -229,8 +211,8 @@ impl WitLanguageServer {
     pub fn new() -> Self {
         Self {
             parser_cache: Arc::new(Mutex::new(IncrementalParserCache::new())),
-            documents:    BTreeMap::new(),
-            diagnostics:  BTreeMap::new(),
+            documents: BTreeMap::new(),
+            diagnostics: BTreeMap::new(),
             capabilities: ServerCapabilities::default(),
         }
     }
@@ -307,7 +289,7 @@ impl WitLanguageServer {
                             old_length: length,
                             new_length: change.text.as_str().map(|s| s.len() as u32).unwrap_or(0),
                         },
-                        text:        Some(change.text),
+                        text: Some(change.text),
                     };
 
                     parser.apply_change(source_change)?;
@@ -497,11 +479,7 @@ impl WitLanguageServer {
     /// Find node at offset
     fn find_node_at_offset(&self, ast: &WitDocument, offset: u32) -> Option<NodeInfo> {
         // Simplified node finding - real implementation would traverse AST
-        if ast.span.contains_offset(offset) {
-            Some(NodeInfo::Document)
-        } else {
-            None
-        }
+        if ast.span.contains_offset(offset) { Some(NodeInfo::Document) } else { None }
     }
 
     /// Extract symbols from AST
@@ -538,20 +516,20 @@ impl WitLanguageServer {
                         match interface_item {
                             InterfaceItem::Function(func) => {
                                 children.push(DocumentSymbol {
-                                    name:            func.name.name.clone(),
-                                    kind:            SymbolKind::Function,
-                                    range:           self.span_to_range(func.span),
+                                    name: func.name.name.clone(),
+                                    kind: SymbolKind::Function,
+                                    range: self.span_to_range(func.span),
                                     selection_range: self.span_to_range(func.name.span),
-                                    children:        Vec::new(),
+                                    children: Vec::new(),
                                 });
                             },
                             InterfaceItem::Type(type_decl) => {
                                 children.push(DocumentSymbol {
-                                    name:            type_decl.name.name.clone(),
-                                    kind:            SymbolKind::Type,
-                                    range:           self.span_to_range(type_decl.span),
+                                    name: type_decl.name.name.clone(),
+                                    kind: SymbolKind::Type,
+                                    range: self.span_to_range(type_decl.span),
                                     selection_range: self.span_to_range(type_decl.name.span),
-                                    children:        Vec::new(),
+                                    children: Vec::new(),
                                 });
                             },
                             InterfaceItem::Use(_use_decl) => {
@@ -580,11 +558,11 @@ impl WitLanguageServer {
         // Simplified conversion - real implementation would use line/column mapping
         Range {
             start: Position {
-                line:      0,
+                line: 0,
                 character: span.start,
             },
-            end:   Position {
-                line:      0,
+            end: Position {
+                line: 0,
                 character: span.end,
             },
         }
@@ -641,16 +619,16 @@ mod tests {
     #[test]
     fn test_position_range() {
         let pos = Position {
-            line:      5,
+            line: 5,
             character: 10,
         };
         let range = Range {
             start: Position {
-                line:      5,
+                line: 5,
                 character: 5,
             },
-            end:   Position {
-                line:      5,
+            end: Position {
+                line: 5,
                 character: 15,
             },
         };

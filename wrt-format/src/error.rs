@@ -4,10 +4,7 @@
 //! specification.
 
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    string::String,
-};
+use std::{boxed::Box, string::String};
 
 use wrt_error::Error;
 #[cfg(not(feature = "std"))]
@@ -93,10 +90,7 @@ pub fn wrt_type_error(message: &'static str) -> Error {
 
 #[cfg(test)]
 mod tests {
-    use wrt_error::{
-        ErrorCategory,
-        ErrorSource,
-    };
+    use wrt_error::{ErrorCategory, ErrorSource};
 
     use super::*;
 

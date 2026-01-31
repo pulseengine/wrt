@@ -6,19 +6,11 @@
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    format,
-    string::String,
-    vec::Vec,
-};
+use alloc::{format, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
-use crate::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use crate::{Error, ErrorCategory, Result};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -51,11 +43,11 @@ impl Default for RecoveryStrategy {
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     /// Location where the error occurred
-    pub location:          String,
+    pub location: String,
     /// Additional context information
-    pub context:           HashMap<String, String>,
+    pub context: HashMap<String, String>,
     /// Stack trace if available
-    pub stack_trace:       Vec<String>,
+    pub stack_trace: Vec<String>,
     /// Recovery strategy to use
     pub recovery_strategy: RecoveryStrategy,
 }
@@ -64,9 +56,9 @@ impl ErrorContext {
     /// Create a new error context
     pub fn new(location: impl Into<String>) -> Self {
         Self {
-            location:          location.into(),
-            context:           HashMap::new(),
-            stack_trace:       Vec::new(),
+            location: location.into(),
+            context: HashMap::new(),
+            stack_trace: Vec::new(),
             recovery_strategy: RecoveryStrategy::default(),
         }
     }
@@ -97,11 +89,11 @@ impl ErrorContext {
 #[derive(Debug)]
 pub struct ErrorRecoveryManager {
     /// Global recovery strategies by error category
-    strategies:    HashMap<ErrorCategory, RecoveryStrategy>,
+    strategies: HashMap<ErrorCategory, RecoveryStrategy>,
     /// Error history for pattern detection
     error_history: Vec<(Error, ErrorContext)>,
     /// Maximum error history size
-    max_history:   usize,
+    max_history: usize,
 }
 
 impl Default for ErrorRecoveryManager {
@@ -228,13 +220,13 @@ pub enum RecoveryResult {
 #[derive(Debug, Clone)]
 pub struct ErrorPatternAnalysis {
     /// Total number of errors recorded
-    pub total_errors:    usize,
+    pub total_errors: usize,
     /// Count of errors by category
     pub category_counts: HashMap<ErrorCategory, usize>,
     /// Count of errors by location
     pub location_counts: HashMap<String, usize>,
     /// Most recent errors
-    pub recent_errors:   Vec<(Error, ErrorContext)>,
+    pub recent_errors: Vec<(Error, ErrorContext)>,
 }
 
 impl ErrorPatternAnalysis {
@@ -267,9 +259,9 @@ impl ErrorPatternAnalysis {
 #[derive(Debug, Clone)]
 pub struct RecoverableError {
     /// The underlying error
-    pub error:               Error,
+    pub error: Error,
     /// Recovery context
-    pub context:             ErrorContext,
+    pub context: ErrorContext,
     /// Suggested recovery action
     pub recovery_suggestion: RecoveryResult,
 }

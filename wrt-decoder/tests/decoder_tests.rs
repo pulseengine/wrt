@@ -1,8 +1,4 @@
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
+use wrt_error::{Error, ErrorCategory, codes};
 
 // Custom Result type for our tests
 type Result<T> = wrt_error::Result<T>;

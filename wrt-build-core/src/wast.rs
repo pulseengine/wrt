@@ -10,100 +10,67 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use anyhow::{
-    Context,
-    Result,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use wast::{
-    core::{
-        NanPattern,
-        V128Const,
-        V128Pattern,
-        WastArgCore,
-        WastRetCore,
-    },
-    parser::{
-        self,
-        ParseBuffer,
-    },
-    Wast,
-    WastArg,
-    WastDirective,
-    WastExecute,
-    WastInvoke,
-    WastRet,
+    Wast, WastArg, WastDirective, WastExecute, WastInvoke, WastRet,
+    core::{NanPattern, V128Const, V128Pattern, WastArgCore, WastRetCore},
+    parser::{self, ParseBuffer},
 };
 use wrt_foundation::values::Value;
 
 use crate::{
-    diagnostics::{
-        Diagnostic,
-        Position,
-        Range,
-        Severity,
-    },
+    diagnostics::{Diagnostic, Position, Range, Severity},
     wast_execution::{
-        convert_wast_args_to_values,
-        convert_wast_results_to_values,
-        execute_wast_execute,
-        execute_wast_invoke,
-        is_expected_trap,
-        values_equal,
-        WastEngine,
+        WastEngine, convert_wast_args_to_values, convert_wast_results_to_values,
+        execute_wast_execute, execute_wast_invoke, is_expected_trap, values_equal,
     },
 };
 
 /// WAST Test Runner that integrates with the build system
 pub struct WastTestRunner {
     /// Module registry for linking tests
-    module_registry:     HashMap<String, Vec<u8>>,
+    module_registry: HashMap<String, Vec<u8>>,
     /// Test statistics
-    pub stats:           WastTestStats,
+    pub stats: WastTestStats,
     /// Resource limits for exhaustion testing
     pub resource_limits: ResourceLimits,
     /// Test suite configuration
-    config:              WastConfig,
+    config: WastConfig,
     /// Collected diagnostics
-    diagnostics:         Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic>,
     /// WebAssembly execution engine (boxed to avoid stack overflow)
-    engine:              Box<WastEngine>,
+    engine: Box<WastEngine>,
 }
 
 /// Statistics for WAST test execution
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct WastTestStats {
     /// Number of files processed
-    pub files_processed:         usize,
+    pub files_processed: usize,
     /// Number of assert_return tests executed
-    pub assert_return_count:     usize,
+    pub assert_return_count: usize,
     /// Number of assert_trap tests executed
-    pub assert_trap_count:       usize,
+    pub assert_trap_count: usize,
     /// Number of assert_invalid tests executed
-    pub assert_invalid_count:    usize,
+    pub assert_invalid_count: usize,
     /// Number of assert_malformed tests executed
-    pub assert_malformed_count:  usize,
+    pub assert_malformed_count: usize,
     /// Number of assert_unlinkable tests executed
     pub assert_unlinkable_count: usize,
     /// Number of assert_exhaustion tests executed
     pub assert_exhaustion_count: usize,
     /// Number of module registration operations
-    pub register_count:          usize,
+    pub register_count: usize,
     /// Number of successful tests
-    pub passed:                  usize,
+    pub passed: usize,
     /// Number of failed tests
-    pub failed:                  usize,
+    pub failed: usize,
     /// Number of skipped tests
-    pub skipped:                 usize,
+    pub skipped: usize,
     /// Total execution time in milliseconds
     pub total_execution_time_ms: u128,
 }
@@ -112,9 +79,9 @@ pub struct WastTestStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceLimits {
     /// Maximum stack depth
-    pub max_stack_depth:     usize,
+    pub max_stack_depth: usize,
     /// Maximum memory size in bytes
-    pub max_memory_size:     usize,
+    pub max_memory_size: usize,
     /// Maximum execution steps
     pub max_execution_steps: u64,
 }
@@ -122,8 +89,8 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_stack_depth:     1024,
-            max_memory_size:     64 * 1024 * 1024, // 64MB
+            max_stack_depth: 1024,
+            max_memory_size: 64 * 1024 * 1024, // 64MB
             max_execution_steps: 1_000_000,
         }
     }
@@ -133,13 +100,13 @@ impl Default for ResourceLimits {
 #[derive(Debug, Clone)]
 pub struct WastConfig {
     /// Directory containing WAST files
-    pub test_directory:  PathBuf,
+    pub test_directory: PathBuf,
     /// Filter pattern for test files
-    pub file_filter:     Option<String>,
+    pub file_filter: Option<String>,
     /// Whether to show per-assertion results
-    pub per_assertion:   bool,
+    pub per_assertion: bool,
     /// Output format for reports
-    pub report_format:   ReportFormat,
+    pub report_format: ReportFormat,
     /// Timeout for individual tests in milliseconds
     pub test_timeout_ms: u64,
 }
@@ -183,17 +150,17 @@ impl std::fmt::Display for WastTestType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WastDirectiveInfo {
     /// Type of test
-    pub test_type:             WastTestType,
+    pub test_type: WastTestType,
     /// Name of the directive
-    pub directive_name:        String,
+    pub directive_name: String,
     /// Whether the test requires module state
     pub requires_module_state: bool,
     /// Whether the test modifies the engine state
     pub modifies_engine_state: bool,
     /// Result of the test
-    pub result:                TestResult,
+    pub result: TestResult,
     /// Error message if failed
-    pub error_message:         Option<String>,
+    pub error_message: Option<String>,
 }
 
 /// Result of a test execution
@@ -211,17 +178,17 @@ pub enum TestResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WastFileResult {
     /// File path relative to test directory
-    pub file_path:         String,
+    pub file_path: String,
     /// Number of directives processed
-    pub directives_count:  usize,
+    pub directives_count: usize,
     /// Results for each directive
     pub directive_results: Vec<WastDirectiveInfo>,
     /// Overall file status
-    pub status:            TestResult,
+    pub status: TestResult,
     /// Execution time in milliseconds
     pub execution_time_ms: u128,
     /// Error message if file failed to process
-    pub error_message:     Option<String>,
+    pub error_message: Option<String>,
 }
 
 impl WastTestRunner {
@@ -246,15 +213,12 @@ impl WastTestRunner {
 
     /// Run all WAST files in the configured directory
     pub fn run_all_tests(&mut self) -> Result<Vec<WastFileResult>> {
-
         let start_time = std::time::Instant::now();
         let mut results = Vec::new();
 
         // Collect WAST files
         let wast_files = match self.collect_wast_files() {
-            Ok(files) => {
-                files
-            },
+            Ok(files) => files,
             Err(e) => {
                 // If we can't even collect files, return the error
                 return Err(e);
@@ -266,7 +230,11 @@ impl WastTestRunner {
             // Reset engine state between files to avoid state pollution
             if let Err(e) = self.engine.reset() {
                 // Log but don't fail - some resets may fail gracefully
-                eprintln!("Warning: Failed to reset engine before {}: {}", file_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to reset engine before {}: {}",
+                    file_path.display(),
+                    e
+                );
             }
             match self.run_wast_file(&file_path) {
                 Ok(file_result) => {
@@ -283,12 +251,12 @@ impl WastTestRunner {
                         .to_string();
 
                     let failed_result = WastFileResult {
-                        file_path:         relative_path.clone(),
-                        directives_count:  0,
+                        file_path: relative_path.clone(),
+                        directives_count: 0,
                         directive_results: Vec::new(),
-                        status:            TestResult::Failed,
+                        status: TestResult::Failed,
                         execution_time_ms: 0,
-                        error_message:     Some(format!("Failed to parse WAST file: {}", e)),
+                        error_message: Some(format!("Failed to parse WAST file: {}", e)),
                     };
                     results.push(failed_result);
 
@@ -325,29 +293,27 @@ impl WastTestRunner {
             Ok(content) => content,
             Err(e) => {
                 return Ok(WastFileResult {
-                    file_path:         relative_path,
-                    directives_count:  0,
+                    file_path: relative_path,
+                    directives_count: 0,
                     directive_results: Vec::new(),
-                    status:            TestResult::Failed,
+                    status: TestResult::Failed,
                     execution_time_ms: start_time.elapsed().as_millis(),
-                    error_message:     Some(format!("Failed to read WAST file: {}", e)),
+                    error_message: Some(format!("Failed to read WAST file: {}", e)),
                 });
             },
         };
 
         // Parse WAST
         let buf = match ParseBuffer::new(&content) {
-            Ok(buf) => {
-                buf
-            },
+            Ok(buf) => buf,
             Err(e) => {
                 return Ok(WastFileResult {
-                    file_path:         relative_path,
-                    directives_count:  0,
+                    file_path: relative_path,
+                    directives_count: 0,
                     directive_results: Vec::new(),
-                    status:            TestResult::Failed,
+                    status: TestResult::Failed,
                     execution_time_ms: start_time.elapsed().as_millis(),
-                    error_message:     Some(format!("Failed to create parse buffer: {}", e)),
+                    error_message: Some(format!("Failed to create parse buffer: {}", e)),
                 });
             },
         };
@@ -355,12 +321,12 @@ impl WastTestRunner {
             Ok(wast) => wast,
             Err(e) => {
                 return Ok(WastFileResult {
-                    file_path:         relative_path,
-                    directives_count:  0,
+                    file_path: relative_path,
+                    directives_count: 0,
                     directive_results: Vec::new(),
-                    status:            TestResult::Failed,
+                    status: TestResult::Failed,
                     execution_time_ms: start_time.elapsed().as_millis(),
-                    error_message:     Some(format!("Failed to parse WAST file: {}", e)),
+                    error_message: Some(format!("Failed to parse WAST file: {}", e)),
                 });
             },
         };
@@ -382,12 +348,12 @@ impl WastTestRunner {
                 Err(e) => {
                     file_status = TestResult::Failed;
                     let error_info = WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "directive_error".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "directive_error".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
-                        result:                TestResult::Failed,
-                        error_message:         Some(e.to_string()),
+                        result: TestResult::Failed,
+                        error_message: Some(e.to_string()),
                     };
                     directive_results.push(error_info);
 
@@ -425,11 +391,12 @@ impl WastTestRunner {
         match directive {
             WastDirective::Module(wast_module) => {
                 // Extract module name BEFORE calling encode() (which consumes the value)
-                let module_name = if let wast::QuoteWat::Wat(wast::Wat::Module(module)) = wast_module {
-                    module.id.as_ref().map(|id| id.name())
-                } else {
-                    None
-                };
+                let module_name =
+                    if let wast::QuoteWat::Wat(wast::Wat::Module(module)) = wast_module {
+                        module.id.as_ref().map(|id| id.name())
+                    } else {
+                        None
+                    };
 
                 // QuoteWat::encode() handles ALL variants:
                 // - QuoteWat::Wat(Wat::Module(_)) - inline WAT
@@ -451,39 +418,42 @@ impl WastTestRunner {
                             Ok(()) => {
                                 self.stats.passed += 1;
                                 Ok(WastDirectiveInfo {
-                                    test_type:             WastTestType::Integration,
-                                    directive_name:        "module".to_string(),
+                                    test_type: WastTestType::Integration,
+                                    directive_name: "module".to_string(),
                                     requires_module_state: false,
                                     modifies_engine_state: true,
-                                    result:                TestResult::Passed,
-                                    error_message:         None,
+                                    result: TestResult::Passed,
+                                    error_message: None,
                                 })
                             },
                             Err(e) => {
                                 self.stats.failed += 1;
                                 Ok(WastDirectiveInfo {
-                                    test_type:             WastTestType::Integration,
-                                    directive_name:        "module".to_string(),
+                                    test_type: WastTestType::Integration,
+                                    directive_name: "module".to_string(),
                                     requires_module_state: false,
                                     modifies_engine_state: true,
-                                    result:                TestResult::Failed,
-                                    error_message:         Some(format!("Module instantiation failed: {}", e)),
+                                    result: TestResult::Failed,
+                                    error_message: Some(format!(
+                                        "Module instantiation failed: {}",
+                                        e
+                                    )),
                                 })
-                            }
+                            },
                         }
                     },
                     Err(e) => {
                         // Encoding/parsing failed - module is malformed or component (not yet supported)
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Integration,
-                            directive_name:        "module".to_string(),
+                            test_type: WastTestType::Integration,
+                            directive_name: "module".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: true,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!("Module encoding/parsing failed: {}", e)),
+                            result: TestResult::Failed,
+                            error_message: Some(format!("Module encoding/parsing failed: {}", e)),
                         })
-                    }
+                    },
                 }
             },
             WastDirective::AssertReturn {
@@ -519,18 +489,17 @@ impl WastTestRunner {
                 // Skip exhaustion tests for now
                 self.stats.assert_exhaustion_count += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Resource,
-                    directive_name:        "assert_exhaustion".to_string(),
+                    test_type: WastTestType::Resource,
+                    directive_name: "assert_exhaustion".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
-                    result:                TestResult::Skipped,
-                    error_message:         Some("Exhaustion tests not yet implemented".to_string()),
+                    result: TestResult::Skipped,
+                    error_message: Some("Exhaustion tests not yet implemented".to_string()),
                 })
             },
-            WastDirective::AssertException {
-                span: _,
-                exec,
-            } => self.handle_assert_exception_directive(exec, file_path),
+            WastDirective::AssertException { span: _, exec } => {
+                self.handle_assert_exception_directive(exec, file_path)
+            },
             WastDirective::Register {
                 span: _,
                 name,
@@ -543,12 +512,12 @@ impl WastTestRunner {
             _ => {
                 // Handle any other directive types
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "unknown".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "unknown".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
-                    result:                TestResult::Skipped,
-                    error_message:         Some("Unsupported directive type".to_string()),
+                    result: TestResult::Skipped,
+                    error_message: Some("Unsupported directive type".to_string()),
                 })
             },
         }
@@ -560,7 +529,6 @@ impl WastTestRunner {
         wast_module: &mut wast::core::Module,
         _file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
-
         // Get the binary from the WAST module
         match wast_module.encode() {
             Ok(binary) => {
@@ -573,26 +541,23 @@ impl WastTestRunner {
                     Ok(()) => {
                         self.stats.passed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Integration,
-                            directive_name:        "module".to_string(),
+                            test_type: WastTestType::Integration,
+                            directive_name: "module".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: true,
-                            result:                TestResult::Passed,
-                            error_message:         None,
+                            result: TestResult::Passed,
+                            error_message: None,
                         })
                     },
                     Err(e) => {
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Integration,
-                            directive_name:        "module".to_string(),
+                            test_type: WastTestType::Integration,
+                            directive_name: "module".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: true,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
-                                "Module instantiation failed: {}",
-                                e
-                            )),
+                            result: TestResult::Failed,
+                            error_message: Some(format!("Module instantiation failed: {}", e)),
                         })
                     },
                 }
@@ -600,12 +565,12 @@ impl WastTestRunner {
             Err(e) => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Integration,
-                    directive_name:        "module".to_string(),
+                    test_type: WastTestType::Integration,
+                    directive_name: "module".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: true,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!("Module encoding failed: {}", e)),
+                    result: TestResult::Failed,
+                    error_message: Some(format!("Module encoding failed: {}", e)),
                 })
             },
         }
@@ -639,12 +604,12 @@ impl WastTestRunner {
                             if results_match {
                                 self.stats.passed += 1;
                                 Ok(WastDirectiveInfo {
-                                    test_type:             WastTestType::Correctness,
-                                    directive_name:        "assert_return".to_string(),
+                                    test_type: WastTestType::Correctness,
+                                    directive_name: "assert_return".to_string(),
                                     requires_module_state: true,
                                     modifies_engine_state: false,
-                                    result:                TestResult::Passed,
-                                    error_message:         None,
+                                    result: TestResult::Passed,
+                                    error_message: None,
                                 })
                             } else {
                                 self.stats.failed += 1;
@@ -654,12 +619,12 @@ impl WastTestRunner {
                                     _ => "unknown".to_string(),
                                 };
                                 Ok(WastDirectiveInfo {
-                                    test_type:             WastTestType::Correctness,
-                                    directive_name:        "assert_return".to_string(),
+                                    test_type: WastTestType::Correctness,
+                                    directive_name: "assert_return".to_string(),
                                     requires_module_state: true,
                                     modifies_engine_state: false,
-                                    result:                TestResult::Failed,
-                                    error_message:         Some(format!(
+                                    result: TestResult::Failed,
+                                    error_message: Some(format!(
                                         "Function '{}': actual={:?}, expected={:?}",
                                         func_name, actual_results, expected_results
                                     )),
@@ -668,12 +633,12 @@ impl WastTestRunner {
                         } else {
                             self.stats.failed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::Correctness,
-                                directive_name:        "assert_return".to_string(),
+                                test_type: WastTestType::Correctness,
+                                directive_name: "assert_return".to_string(),
                                 requires_module_state: true,
                                 modifies_engine_state: false,
-                                result:                TestResult::Failed,
-                                error_message:         Some(format!(
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
                                     "Result count mismatch: actual={}, expected={}",
                                     actual_results.len(),
                                     expected_results.len()
@@ -684,12 +649,12 @@ impl WastTestRunner {
                     Err(e) => {
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Correctness,
-                            directive_name:        "assert_return".to_string(),
+                            test_type: WastTestType::Correctness,
+                            directive_name: "assert_return".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Failed to convert expected results: {}",
                                 e
                             )),
@@ -706,15 +671,12 @@ impl WastTestRunner {
                     _ => "unknown".to_string(),
                 };
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "assert_return".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "assert_return".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!(
-                        "Function '{}' failed: {}",
-                        func_name, e
-                    )),
+                    result: TestResult::Failed,
+                    error_message: Some(format!("Function '{}' failed: {}", func_name, e)),
                 })
             },
         }
@@ -742,12 +704,12 @@ impl WastTestRunner {
                 // Function executed successfully, but we expected a trap
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_trap".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_trap".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!(
+                    result: TestResult::Failed,
+                    error_message: Some(format!(
                         "Expected trap '{}' but function succeeded",
                         expected_message
                     )),
@@ -762,22 +724,22 @@ impl WastTestRunner {
                     if is_expected_trap(&wrt_error.to_string(), expected_message) {
                         self.stats.passed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_trap".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_trap".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Passed,
-                            error_message:         None,
+                            result: TestResult::Passed,
+                            error_message: None,
                         })
                     } else {
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_trap".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_trap".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Expected trap '{}' but got: {}",
                                 expected_message, error_str
                             )),
@@ -789,22 +751,22 @@ impl WastTestRunner {
                     {
                         self.stats.passed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_trap".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_trap".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Passed,
-                            error_message:         None,
+                            result: TestResult::Passed,
+                            error_message: None,
                         })
                     } else {
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_trap".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_trap".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Expected trap '{}' but got: {}",
                                 expected_message, error_str
                             )),
@@ -836,12 +798,12 @@ impl WastTestRunner {
                 // Function executed successfully, but we expected an exception
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_exception".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_exception".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!(
+                    result: TestResult::Failed,
+                    error_message: Some(format!(
                         "Expected exception but function '{}' succeeded",
                         func_name
                     )),
@@ -856,24 +818,24 @@ impl WastTestRunner {
                 if error_str.contains("exception") || error_str.contains("uncaught") {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_exception".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_exception".to_string(),
                         requires_module_state: true,
                         modifies_engine_state: false,
-                        result:                TestResult::Passed,
-                        error_message:         None,
+                        result: TestResult::Passed,
+                        error_message: None,
                     })
                 } else {
                     // Got an error but not an exception - could be a different trap
                     // For now, accept any trap as passing since exceptions cause traps
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_exception".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_exception".to_string(),
                         requires_module_state: true,
                         modifies_engine_state: false,
-                        result:                TestResult::Passed,
-                        error_message:         None,
+                        result: TestResult::Passed,
+                        error_message: None,
                     })
                 }
             },
@@ -898,12 +860,12 @@ impl WastTestRunner {
                         // Module loaded successfully, which means it's valid (test should fail)
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_invalid".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_invalid".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Expected invalid module '{}' but validation succeeded",
                                 expected_message
                             )),
@@ -920,22 +882,22 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_invalid".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_invalid".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Passed,
-                                error_message:         None,
+                                result: TestResult::Passed,
+                                error_message: None,
                             })
                         } else {
                             self.stats.failed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_invalid".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_invalid".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Failed,
-                                error_message:         Some(format!(
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
                                     "Expected validation error '{}' but got: {}",
                                     expected_message, validation_error
                                 )),
@@ -954,22 +916,22 @@ impl WastTestRunner {
                 {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_invalid".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_invalid".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
-                        result:                TestResult::Passed,
-                        error_message:         None,
+                        result: TestResult::Passed,
+                        error_message: None,
                     })
                 } else {
                     self.stats.failed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_invalid".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_invalid".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
-                        result:                TestResult::Failed,
-                        error_message:         Some(format!(
+                        result: TestResult::Failed,
+                        error_message: Some(format!(
                             "Expected validation error '{}' but got encoding error: {}",
                             expected_message, encode_error
                         )),
@@ -999,12 +961,12 @@ impl WastTestRunner {
                         // fail)
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_malformed".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_malformed".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Expected malformed module '{}' but binary decoding succeeded",
                                 expected_message
                             )),
@@ -1020,22 +982,22 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_malformed".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_malformed".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Passed,
-                                error_message:         None,
+                                result: TestResult::Passed,
+                                error_message: None,
                             })
                         } else {
                             self.stats.failed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_malformed".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_malformed".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Failed,
-                                error_message:         Some(format!(
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
                                     "Expected malformed error '{}' but got: {}",
                                     expected_message, decode_error
                                 )),
@@ -1054,22 +1016,22 @@ impl WastTestRunner {
                 {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_malformed".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_malformed".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
-                        result:                TestResult::Passed,
-                        error_message:         None,
+                        result: TestResult::Passed,
+                        error_message: None,
                     })
                 } else {
                     self.stats.failed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::ErrorHandling,
-                        directive_name:        "assert_malformed".to_string(),
+                        test_type: WastTestType::ErrorHandling,
+                        directive_name: "assert_malformed".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
-                        result:                TestResult::Failed,
-                        error_message:         Some(format!(
+                        result: TestResult::Failed,
+                        error_message: Some(format!(
                             "Expected malformed error '{}' but got encoding error: {}",
                             expected_message, encode_error
                         )),
@@ -1097,12 +1059,12 @@ impl WastTestRunner {
                         // Module instantiated successfully, which means it's linkable
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::ErrorHandling,
-                            directive_name:        "assert_unlinkable".to_string(),
+                            test_type: WastTestType::ErrorHandling,
+                            directive_name: "assert_unlinkable".to_string(),
                             requires_module_state: false,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
+                            result: TestResult::Failed,
+                            error_message: Some(format!(
                                 "Expected unlinkable module '{}' but linking succeeded",
                                 expected_message
                             )),
@@ -1118,22 +1080,22 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_unlinkable".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_unlinkable".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Passed,
-                                error_message:         None,
+                                result: TestResult::Passed,
+                                error_message: None,
                             })
                         } else {
                             self.stats.failed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type:             WastTestType::ErrorHandling,
-                                directive_name:        "assert_unlinkable".to_string(),
+                                test_type: WastTestType::ErrorHandling,
+                                directive_name: "assert_unlinkable".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
-                                result:                TestResult::Failed,
-                                error_message:         Some(format!(
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
                                     "Expected linking error '{}' but got: {}",
                                     expected_message, linking_error
                                 )),
@@ -1145,12 +1107,12 @@ impl WastTestRunner {
             Err(encode_error) => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_unlinkable".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_unlinkable".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!(
+                    result: TestResult::Failed,
+                    error_message: Some(format!(
                         "Module encoding failed before linking test: {}",
                         encode_error
                     )),
@@ -1171,8 +1133,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 // Convert arguments to runtime values for execution
-                let args_result: Result<Vec<Value>> =
-                    convert_wast_args_to_values(&invoke.args);
+                let args_result: Result<Vec<Value>> = convert_wast_args_to_values(&invoke.args);
 
                 match args_result {
                     Ok(_args) => {
@@ -1181,26 +1142,27 @@ impl WastTestRunner {
                             Ok(_result) => {
                                 // Function completed without exhaustion - check if that's expected
                                 let expected_msg = expected_message.to_lowercase();
-                                if expected_msg.contains("should not occur") ||
-                                   expected_msg.contains("no exhaustion") {
+                                if expected_msg.contains("should not occur")
+                                    || expected_msg.contains("no exhaustion")
+                                {
                                     self.stats.passed += 1;
                                     Ok(WastDirectiveInfo {
-                                        test_type:             WastTestType::Resource,
-                                        directive_name:        "assert_exhaustion".to_string(),
+                                        test_type: WastTestType::Resource,
+                                        directive_name: "assert_exhaustion".to_string(),
                                         requires_module_state: true,
                                         modifies_engine_state: false,
-                                        result:                TestResult::Passed,
-                                        error_message:         None,
+                                        result: TestResult::Passed,
+                                        error_message: None,
                                     })
                                 } else {
                                     self.stats.failed += 1;
                                     Ok(WastDirectiveInfo {
-                                        test_type:             WastTestType::Resource,
-                                        directive_name:        "assert_exhaustion".to_string(),
+                                        test_type: WastTestType::Resource,
+                                        directive_name: "assert_exhaustion".to_string(),
                                         requires_module_state: true,
                                         modifies_engine_state: false,
-                                        result:                TestResult::Failed,
-                                        error_message:         Some(format!(
+                                        result: TestResult::Failed,
+                                        error_message: Some(format!(
                                             "Expected exhaustion but function completed: {}",
                                             expected_message
                                         )),
@@ -1215,22 +1177,22 @@ impl WastTestRunner {
                                 if contains_exhaustion_keyword(&error_msg, &expected_msg) {
                                     self.stats.passed += 1;
                                     Ok(WastDirectiveInfo {
-                                        test_type:             WastTestType::Resource,
-                                        directive_name:        "assert_exhaustion".to_string(),
+                                        test_type: WastTestType::Resource,
+                                        directive_name: "assert_exhaustion".to_string(),
                                         requires_module_state: true,
                                         modifies_engine_state: false,
-                                        result:                TestResult::Passed,
-                                        error_message:         None,
+                                        result: TestResult::Passed,
+                                        error_message: None,
                                     })
                                 } else {
                                     self.stats.failed += 1;
                                     Ok(WastDirectiveInfo {
-                                        test_type:             WastTestType::Resource,
-                                        directive_name:        "assert_exhaustion".to_string(),
+                                        test_type: WastTestType::Resource,
+                                        directive_name: "assert_exhaustion".to_string(),
                                         requires_module_state: true,
                                         modifies_engine_state: false,
-                                        result:                TestResult::Failed,
-                                        error_message:         Some(format!(
+                                        result: TestResult::Failed,
+                                        error_message: Some(format!(
                                             "Expected exhaustion '{}' but got: {}",
                                             expected_message, execution_error
                                         )),
@@ -1242,15 +1204,12 @@ impl WastTestRunner {
                     Err(e) => {
                         self.stats.failed += 1;
                         Ok(WastDirectiveInfo {
-                            test_type:             WastTestType::Resource,
-                            directive_name:        "assert_exhaustion".to_string(),
+                            test_type: WastTestType::Resource,
+                            directive_name: "assert_exhaustion".to_string(),
                             requires_module_state: true,
                             modifies_engine_state: false,
-                            result:                TestResult::Failed,
-                            error_message:         Some(format!(
-                                "Failed to convert arguments: {}",
-                                e
-                            )),
+                            result: TestResult::Failed,
+                            error_message: Some(format!("Failed to convert arguments: {}", e)),
                         })
                     },
                 }
@@ -1258,12 +1217,12 @@ impl WastTestRunner {
             _ => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Resource,
-                    directive_name:        "assert_exhaustion".to_string(),
+                    test_type: WastTestType::Resource,
+                    directive_name: "assert_exhaustion".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
-                    result:                TestResult::Failed,
-                    error_message:         Some(
+                    result: TestResult::Failed,
+                    error_message: Some(
                         "Unsupported execution type for assert_exhaustion".to_string(),
                     ),
                 })
@@ -1289,12 +1248,12 @@ impl WastTestRunner {
                 // If we can't extract a module, treat as invalid (which is expected)
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_invalid".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_invalid".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
-                    result:                TestResult::Passed,
-                    error_message:         None,
+                    result: TestResult::Passed,
+                    error_message: None,
                 })
             },
         }
@@ -1318,12 +1277,12 @@ impl WastTestRunner {
                 // If we can't extract a module, treat as malformed (which is expected)
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_malformed".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_malformed".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
-                    result:                TestResult::Passed,
-                    error_message:         None,
+                    result: TestResult::Passed,
+                    error_message: None,
                 })
             },
         }
@@ -1347,12 +1306,12 @@ impl WastTestRunner {
                 // If we can't extract a module, treat as unlinkable (which is expected)
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::ErrorHandling,
-                    directive_name:        "assert_unlinkable".to_string(),
+                    test_type: WastTestType::ErrorHandling,
+                    directive_name: "assert_unlinkable".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
-                    result:                TestResult::Passed,
-                    error_message:         None,
+                    result: TestResult::Passed,
+                    error_message: None,
                 })
             },
         }
@@ -1374,7 +1333,9 @@ impl WastTestRunner {
             .unwrap_or_else(|| "current".to_string());
 
         // Try to register from the source module name, falling back to "current"
-        let binary = self.module_registry.get(&source_module_name)
+        let binary = self
+            .module_registry
+            .get(&source_module_name)
             .or_else(|| self.module_registry.get("current"))
             .cloned();
 
@@ -1383,42 +1344,47 @@ impl WastTestRunner {
 
             // Register the module in the execution engine
             // Try source module name first, then "current"
-            let result = self.engine.register_module(name, &source_module_name)
+            let result = self
+                .engine
+                .register_module(name, &source_module_name)
                 .or_else(|_| self.engine.register_module(name, "current"));
 
             match result {
                 Ok(()) => {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::Integration,
-                        directive_name:        "register".to_string(),
+                        test_type: WastTestType::Integration,
+                        directive_name: "register".to_string(),
                         requires_module_state: true,
                         modifies_engine_state: true,
-                        result:                TestResult::Passed,
-                        error_message:         None,
+                        result: TestResult::Passed,
+                        error_message: None,
                     })
                 },
                 Err(e) => {
                     self.stats.failed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type:             WastTestType::Integration,
-                        directive_name:        "register".to_string(),
+                        test_type: WastTestType::Integration,
+                        directive_name: "register".to_string(),
                         requires_module_state: true,
                         modifies_engine_state: true,
-                        result:                TestResult::Failed,
-                        error_message:         Some(format!("Module registration failed: {}", e)),
+                        result: TestResult::Failed,
+                        error_message: Some(format!("Module registration failed: {}", e)),
                     })
                 },
             }
         } else {
             self.stats.failed += 1;
             Ok(WastDirectiveInfo {
-                test_type:             WastTestType::Integration,
-                directive_name:        "register".to_string(),
+                test_type: WastTestType::Integration,
+                directive_name: "register".to_string(),
                 requires_module_state: true,
                 modifies_engine_state: true,
-                result:                TestResult::Failed,
-                error_message:         Some(format!("Module '{}' not found for registration", source_module_name)),
+                result: TestResult::Failed,
+                error_message: Some(format!(
+                    "Module '{}' not found for registration",
+                    source_module_name
+                )),
             })
         }
     }
@@ -1434,23 +1400,23 @@ impl WastTestRunner {
             Ok(_results) => {
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "invoke".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "invoke".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
-                    result:                TestResult::Passed,
-                    error_message:         None,
+                    result: TestResult::Passed,
+                    error_message: None,
                 })
             },
             Err(e) => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "invoke".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "invoke".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!("Function execution failed: {}", e)),
+                    result: TestResult::Failed,
+                    error_message: Some(format!("Function execution failed: {}", e)),
                 })
             },
         }
@@ -1467,23 +1433,23 @@ impl WastTestRunner {
             Ok(_results) => {
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "invoke".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "invoke".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
-                    result:                TestResult::Passed,
-                    error_message:         None,
+                    result: TestResult::Passed,
+                    error_message: None,
                 })
             },
             Err(e) => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type:             WastTestType::Correctness,
-                    directive_name:        "invoke".to_string(),
+                    test_type: WastTestType::Correctness,
+                    directive_name: "invoke".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
-                    result:                TestResult::Failed,
-                    error_message:         Some(format!("Function execution failed: {}", e)),
+                    result: TestResult::Failed,
+                    error_message: Some(format!("Function execution failed: {}", e)),
                 })
             },
         }
@@ -1532,8 +1498,7 @@ impl WastTestRunner {
         // Also check proposals subdirectory
         let proposals_dir = self.config.test_directory.join("proposals");
         if proposals_dir.exists() {
-            if let Err(e) = self.collect_wast_files_recursive(&proposals_dir, &mut files) {
-            }
+            if let Err(e) = self.collect_wast_files_recursive(&proposals_dir, &mut files) {}
         }
 
         files.sort();
@@ -1602,9 +1567,7 @@ impl WastTestRunner {
                     if let Some(ref msg) = directive.error_message {
                         failure_details.push_str(&format!(
                             "\n  [{}] {}: {}",
-                            result.file_path,
-                            directive.directive_name,
-                            msg
+                            result.file_path, directive.directive_name, msg
                         ));
                     }
                 }
@@ -1857,10 +1820,10 @@ mod tests {
     #[test]
     fn test_wast_runner_creation() {
         let config = WastConfig {
-            test_directory:  PathBuf::from("/tmp"),
-            file_filter:     None,
-            per_assertion:   false,
-            report_format:   ReportFormat::Human,
+            test_directory: PathBuf::from("/tmp"),
+            file_filter: None,
+            per_assertion: false,
+            report_format: ReportFormat::Human,
             test_timeout_ms: 5000,
         };
         let runner = WastTestRunner::new(config);

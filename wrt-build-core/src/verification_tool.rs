@@ -3,50 +3,44 @@
 //! Provides integrated access to verification capabilities including
 //! safety verification, documentation checking, and platform verification.
 
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
 use colored::Colorize;
 
 use crate::{
     build::BuildSystem,
-    error::{
-        BuildError,
-        BuildResult,
-    },
+    error::{BuildError, BuildResult},
 };
 
 /// Verification tool options
 #[derive(Debug, Clone)]
 pub struct VerificationToolOptions {
     /// Check for test files in src/ directories
-    pub check_test_files:      bool,
+    pub check_test_files: bool,
     /// Check module documentation coverage
-    pub check_docs:            bool,
+    pub check_docs: bool,
     /// Audit crate documentation comprehensively
-    pub audit_docs:            bool,
+    pub audit_docs: bool,
     /// Verify requirements traceability
-    pub check_requirements:    bool,
+    pub check_requirements: bool,
     /// Platform verification with external limits
     pub platform_verification: bool,
     /// Container runtime detection
-    pub container_detection:   bool,
+    pub container_detection: bool,
     /// Show verbose output
-    pub verbose:               bool,
+    pub verbose: bool,
 }
 
 impl Default for VerificationToolOptions {
     fn default() -> Self {
         Self {
-            check_test_files:      true,
-            check_docs:            true,
-            audit_docs:            false,
-            check_requirements:    false,
+            check_test_files: true,
+            check_docs: true,
+            audit_docs: false,
+            check_requirements: false,
             platform_verification: false,
-            container_detection:   false,
-            verbose:               false,
+            container_detection: false,
+            verbose: false,
         }
     }
 }
@@ -55,54 +49,54 @@ impl Default for VerificationToolOptions {
 #[derive(Debug)]
 pub struct VerificationToolResults {
     /// Overall success
-    pub success:             bool,
+    pub success: bool,
     /// Test file check results
-    pub test_files_result:   Option<TestFilesCheckResult>,
+    pub test_files_result: Option<TestFilesCheckResult>,
     /// Documentation check results
-    pub docs_result:         Option<DocsCheckResult>,
+    pub docs_result: Option<DocsCheckResult>,
     /// Requirements verification results
     pub requirements_result: Option<RequirementsCheckResult>,
     /// Platform verification results
-    pub platform_result:     Option<PlatformCheckResult>,
+    pub platform_result: Option<PlatformCheckResult>,
     /// Duration of verification
-    pub duration_ms:         u64,
+    pub duration_ms: u64,
 }
 
 /// Test files check result
 #[derive(Debug)]
 pub struct TestFilesCheckResult {
     /// Whether check passed
-    pub success:           bool,
+    pub success: bool,
     /// Test files found in src/ directories
     pub test_files_in_src: Vec<PathBuf>,
     /// Error message if any
-    pub error:             Option<String>,
+    pub error: Option<String>,
 }
 
 /// Documentation check result
 #[derive(Debug)]
 pub struct DocsCheckResult {
     /// Whether check passed
-    pub success:             bool,
+    pub success: bool,
     /// Coverage percentage
     pub coverage_percentage: f32,
     /// Missing documentation items
-    pub missing_docs:        Vec<String>,
+    pub missing_docs: Vec<String>,
     /// Error message if any
-    pub error:               Option<String>,
+    pub error: Option<String>,
 }
 
 /// Requirements check result
 #[derive(Debug)]
 pub struct RequirementsCheckResult {
     /// Whether check passed
-    pub success:                 bool,
+    pub success: bool,
     /// Total requirements found
-    pub total_requirements:      usize,
+    pub total_requirements: usize,
     /// Verified requirements
-    pub verified_requirements:   usize,
+    pub verified_requirements: usize,
     /// Missing files
-    pub missing_files:           Vec<PathBuf>,
+    pub missing_files: Vec<PathBuf>,
     /// Incomplete requirements
     pub incomplete_requirements: Vec<String>,
     /// Certification readiness percentage
@@ -113,15 +107,15 @@ pub struct RequirementsCheckResult {
 #[derive(Debug)]
 pub struct PlatformCheckResult {
     /// Whether check passed
-    pub success:           bool,
+    pub success: bool,
     /// Detected memory limits
-    pub max_memory_mb:     u64,
+    pub max_memory_mb: u64,
     /// Detected component limits
-    pub max_components:    u32,
+    pub max_components: u32,
     /// Container runtime detected
     pub container_runtime: String,
     /// Error message if any
-    pub error:             Option<String>,
+    pub error: Option<String>,
 }
 
 impl BuildSystem {
@@ -152,9 +146,9 @@ impl BuildSystem {
                 Err(e) => {
                     overall_success = false;
                     Some(TestFilesCheckResult {
-                        success:           false,
+                        success: false,
                         test_files_in_src: vec![],
-                        error:             Some(e.to_string()),
+                        error: Some(e.to_string()),
                     })
                 },
             }
@@ -174,10 +168,10 @@ impl BuildSystem {
                 Err(e) => {
                     overall_success = false;
                     Some(DocsCheckResult {
-                        success:             false,
+                        success: false,
                         coverage_percentage: 0.0,
-                        missing_docs:        vec![],
-                        error:               Some(e.to_string()),
+                        missing_docs: vec![],
+                        error: Some(e.to_string()),
                     })
                 },
             }
@@ -197,10 +191,10 @@ impl BuildSystem {
                 Err(e) => {
                     overall_success = false;
                     Some(RequirementsCheckResult {
-                        success:                 false,
-                        total_requirements:      0,
-                        verified_requirements:   0,
-                        missing_files:           vec![],
+                        success: false,
+                        total_requirements: 0,
+                        verified_requirements: 0,
+                        missing_files: vec![],
                         incomplete_requirements: vec![],
                         certification_readiness: 0.0,
                     })
@@ -222,11 +216,11 @@ impl BuildSystem {
                 Err(e) => {
                     overall_success = false;
                     Some(PlatformCheckResult {
-                        success:           false,
-                        max_memory_mb:     0,
-                        max_components:    0,
+                        success: false,
+                        max_memory_mb: 0,
+                        max_components: 0,
                         container_runtime: "unknown".to_string(),
-                        error:             Some(e.to_string()),
+                        error: Some(e.to_string()),
                     })
                 },
             }
@@ -337,10 +331,10 @@ impl BuildSystem {
         let req_path = self.workspace.root.join("requirements.toml");
         if !req_path.exists() {
             return Ok(RequirementsCheckResult {
-                success:                 true, // Not having requirements is OK
-                total_requirements:      0,
-                verified_requirements:   0,
-                missing_files:           vec![],
+                success: true, // Not having requirements is OK
+                total_requirements: 0,
+                verified_requirements: 0,
+                missing_files: vec![],
                 incomplete_requirements: vec![],
                 certification_readiness: 0.0,
             });
@@ -354,10 +348,10 @@ impl BuildSystem {
         })?;
 
         Ok(RequirementsCheckResult {
-            success:                 results.certification_readiness >= 80.0,
-            total_requirements:      results.total_requirements,
-            verified_requirements:   results.verified_requirements,
-            missing_files:           results.missing_files.into_iter().map(PathBuf::from).collect(),
+            success: results.certification_readiness >= 80.0,
+            total_requirements: results.total_requirements,
+            verified_requirements: results.verified_requirements,
+            missing_files: results.missing_files.into_iter().map(PathBuf::from).collect(),
             incomplete_requirements: results.incomplete_requirements,
             certification_readiness: results.certification_readiness as f32,
         })
@@ -410,9 +404,9 @@ mod tests {
     #[test]
     fn test_test_files_check_result() {
         let result = TestFilesCheckResult {
-            success:           true,
+            success: true,
             test_files_in_src: vec![],
-            error:             None,
+            error: None,
         };
 
         assert!(result.success);

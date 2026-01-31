@@ -1,20 +1,12 @@
 #![deny(warnings)]
 
 use wrt_component::{
-    canonical::{
-        CanonicalABI,
-        CanonicalOptions,
-        ValueType,
-    },
-    resources::ResourceStrategy,
     ComponentValue,
+    canonical::{CanonicalABI, CanonicalOptions, ValueType},
+    resources::ResourceStrategy,
 };
 use wrt_error::Error;
-use wrt_foundation::values::{
-    Integer,
-    Real,
-    Value,
-};
+use wrt_foundation::values::{Integer, Real, Value};
 
 /// Tests for encoding/decoding simple primitive types
 #[test]
@@ -172,7 +164,7 @@ fn test_encode_decode_variants() {
 
     // Simple variant
     let variant = ComponentValue::Variant {
-        case:  1,
+        case: 1,
         value: Box::new(ComponentValue::String("success".to_string())),
     };
 
@@ -189,7 +181,7 @@ fn test_encode_decode_variants() {
 
     // Another case
     let variant2 = ComponentValue::Variant {
-        case:  2,
+        case: 2,
         value: Box::new(ComponentValue::Bool(true)),
     };
 
@@ -199,7 +191,7 @@ fn test_encode_decode_variants() {
 
     // Empty variant case
     let variant0 = ComponentValue::Variant {
-        case:  0,
+        case: 0,
         value: Box::new(ComponentValue::I32(404)),
     };
 
@@ -300,7 +292,7 @@ fn test_encode_decode_results() {
     };
 
     let result_type = ValueType::Result {
-        ok:  Box::new(ValueType::String),
+        ok: Box::new(ValueType::String),
         err: Box::new(ValueType::I32),
     };
 
@@ -358,7 +350,7 @@ fn test_error_handling() {
 
     // Invalid variant case
     let invalid_variant = ComponentValue::Variant {
-        case:  5, // Out of bounds
+        case: 5, // Out of bounds
         value: Box::new(ComponentValue::I32(0)),
     };
 
@@ -526,18 +518,13 @@ impl CanonicalABI {
 fn test_type_conversion_bidirectional() {
     use wrt_component::type_conversion::bidirectional::*;
     use wrt_format::component::{
-        ExternType as FormatExternType,
-        ResourceRepresentation,
-        ValType as FormatValType,
+        ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
     use wrt_foundation::{
+        ExternType as TypesExternType,
         component::ResourceType,
         component_value::ValType as TypesValType,
-        types::{
-            FuncType as TypesFuncType,
-            ValueType,
-        },
-        ExternType as TypesExternType,
+        types::{FuncType as TypesFuncType, ValueType},
     };
 
     // Test conversion from core ValueType to format ValType
@@ -689,18 +676,13 @@ fn test_type_conversion_bidirectional() {
 fn test_complex_type_conversions() {
     use wrt_component::type_conversion::bidirectional::*;
     use wrt_format::component::{
-        ExternType as FormatExternType,
-        ResourceRepresentation,
-        ValType as FormatValType,
+        ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
     use wrt_foundation::{
+        ExternType as TypesExternType,
         component::ResourceType,
         component_value::ValType as TypesValType,
-        types::{
-            FuncType as TypesFuncType,
-            ValueType,
-        },
-        ExternType as TypesExternType,
+        types::{FuncType as TypesFuncType, ValueType},
     };
 
     // Test compound types
@@ -764,23 +746,18 @@ fn test_complex_type_conversions() {
 fn test_extern_type_conversion() {
     use wrt_component::type_conversion::bidirectional::*;
     use wrt_format::component::{
-        ExternType as FormatExternType,
-        ResourceRepresentation,
-        ValType as FormatValType,
+        ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
     use wrt_foundation::{
+        ExternType as TypesExternType,
         component::ResourceType,
         component_value::ValType as TypesValType,
-        types::{
-            FuncType as TypesFuncType,
-            ValueType,
-        },
-        ExternType as TypesExternType,
+        types::{FuncType as TypesFuncType, ValueType},
     };
 
     // Test function type conversion
     let format_func = FormatExternType::Function {
-        params:  vec![("arg".to_string(), FormatValType::S32)],
+        params: vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 
@@ -821,7 +798,7 @@ fn test_extern_type_conversion() {
 
     // Test resource type conversion
     let resource_extern_type = FormatExternType::Resource {
-        rep:      ResourceRepresentation::Handle32,
+        rep: ResourceRepresentation::Handle32,
         nullable: false,
     };
 
@@ -832,7 +809,7 @@ fn test_extern_type_conversion() {
             match resource_type {
                 ResourceType::Indexed(repr, _) => {
                     assert_eq!(repr, 0); // Representation should be mapped to
-                                         // index
+                    // index
                 },
                 _ => panic!("Expected indexed resource type"),
             }
@@ -845,21 +822,15 @@ fn test_extern_type_conversion() {
 #[test]
 fn test_conversion_traits() {
     use wrt_component::type_conversion::bidirectional::*;
-    use wrt_format::component::{
-        ExternType as FormatExternType,
-        ValType as FormatValType,
-    };
+    use wrt_format::component::{ExternType as FormatExternType, ValType as FormatValType};
     use wrt_foundation::{
-        types::{
-            FuncType as TypesFuncType,
-            ValueType,
-        },
         ExternType as TypesExternType,
+        types::{FuncType as TypesFuncType, ValueType},
     };
 
     // Test IntoRuntimeType for FormatExternType
     let format_func = FormatExternType::Function {
-        params:  vec![("arg".to_string(), FormatValType::S32)],
+        params: vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 

@@ -737,7 +737,7 @@ pub const ASYNC_RESOURCE_CLEANUP_FAILED: u16 = 27008;
 #[repr(u16)] // Optional: if we want to map them to specific numeric codes easily
 pub enum TrapCode {
     /// An `unreachable` instruction was executed.
-    Unreachable          = 1,
+    Unreachable = 1,
     /// Call to an indirect function with an out-of-bounds index.
     IndirectCallIndexOutOfBounds = 2,
     /// Indirect call to a null table entry.
@@ -745,24 +745,24 @@ pub enum TrapCode {
     /// Indirect call signature mismatch.
     IndirectCallSignatureMismatch = 4,
     /// Integer division by zero.
-    IntegerDivideByZero  = 5,
+    IntegerDivideByZero = 5,
     /// Integer overflow during conversion from a float, or float is
     /// NaN/Infinity.
     InvalidConversionToInteger = 6,
     /// Integer overflow for an operation that traps on overflow (e.g.
     /// `i32.div_s` specific case).
-    IntegerOverflow      = 7,
+    IntegerOverflow = 7,
     /// Out-of-bounds memory access.
-    MemoryOutOfBounds    = 8,
+    MemoryOutOfBounds = 8,
     /// Attempt to grow memory beyond its limit.
     MemoryGrowOutOfBounds = 9, // Not strictly a trap, but a runtime error condition
     /// Uninitialized element in a table.
     UninitializedElement = 10,
     /// Out-of-bounds table access (e.g. `table.get`, `table.set`).
-    TableOutOfBounds     = 11,
+    TableOutOfBounds = 11,
     // Add more specific trap codes as needed based on Wasm spec.
     /// A generic trap for conditions not covered by more specific codes.
-    GenericTrap          = 12,
+    GenericTrap = 12,
 }
 
 impl TrapCode {

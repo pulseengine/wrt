@@ -5,19 +5,9 @@
 
 use std::path::Path;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::diagnostics::{
-    Diagnostic,
-    Position,
-    Range,
-    RelatedInfo,
-    Severity,
-    ToolOutputParser,
-};
+use crate::diagnostics::{Diagnostic, Position, Range, RelatedInfo, Severity, ToolOutputParser};
 // Re-export parser types
 // Note: These are defined below in this module
 use crate::error::BuildResult;
@@ -26,22 +16,22 @@ use crate::error::BuildResult;
 #[derive(Debug, Deserialize)]
 pub struct CargoMessage {
     /// Message type (e.g., "compiler-message", "compiler-artifact")
-    pub reason:     String,
+    pub reason: String,
     /// Package ID
     pub package_id: Option<String>,
     /// Target information
-    pub target:     Option<Target>,
+    pub target: Option<Target>,
     /// Compiler message details
-    pub message:    Option<CompilerMessage>,
+    pub message: Option<CompilerMessage>,
 }
 
 /// Target information from cargo
 #[derive(Debug, Deserialize)]
 pub struct Target {
     /// Target name
-    pub name:     String,
+    pub name: String,
     /// Target kind (e.g., "bin", "lib")
-    pub kind:     Vec<String>,
+    pub kind: Vec<String>,
     /// Source root path
     pub src_path: String,
 }
@@ -50,13 +40,13 @@ pub struct Target {
 #[derive(Debug, Deserialize)]
 pub struct CompilerMessage {
     /// Message text
-    pub message:  String,
+    pub message: String,
     /// Message level (error, warning, etc.)
-    pub level:    String,
+    pub level: String,
     /// Error/warning code
-    pub code:     Option<ErrorCode>,
+    pub code: Option<ErrorCode>,
     /// Source spans showing where the issue is
-    pub spans:    Vec<Span>,
+    pub spans: Vec<Span>,
     /// Child messages (notes, helps, etc.)
     pub children: Vec<CompilerMessage>,
     /// Rendered message (formatted for display)
@@ -67,7 +57,7 @@ pub struct CompilerMessage {
 #[derive(Debug, Deserialize)]
 pub struct ErrorCode {
     /// Code string (e.g., "E0425")
-    pub code:        String,
+    pub code: String,
     /// Explanation text
     pub explanation: Option<String>,
 }
@@ -76,53 +66,53 @@ pub struct ErrorCode {
 #[derive(Debug, Deserialize)]
 pub struct Span {
     /// File name
-    pub file_name:                String,
+    pub file_name: String,
     /// Byte start position
-    pub byte_start:               u32,
+    pub byte_start: u32,
     /// Byte end position  
-    pub byte_end:                 u32,
+    pub byte_end: u32,
     /// Line start (1-indexed)
-    pub line_start:               u32,
+    pub line_start: u32,
     /// Line end (1-indexed)
-    pub line_end:                 u32,
+    pub line_end: u32,
     /// Column start (1-indexed)
-    pub column_start:             u32,
+    pub column_start: u32,
     /// Column end (1-indexed)
-    pub column_end:               u32,
+    pub column_end: u32,
     /// Whether this is the primary span
-    pub is_primary:               bool,
+    pub is_primary: bool,
     /// Span text
-    pub text:                     Vec<SpanText>,
+    pub text: Vec<SpanText>,
     /// Label for this span
-    pub label:                    Option<String>,
+    pub label: Option<String>,
     /// Suggested replacement
-    pub suggested_replacement:    Option<String>,
+    pub suggested_replacement: Option<String>,
     /// Suggestion applicability
     pub suggestion_applicability: Option<String>,
     /// Expansion information (for macros)
-    pub expansion:                Option<Box<Expansion>>,
+    pub expansion: Option<Box<Expansion>>,
 }
 
 /// Text content of a span
 #[derive(Debug, Deserialize)]
 pub struct SpanText {
     /// Text content
-    pub text:            String,
+    pub text: String,
     /// Highlight start (1-indexed)
     pub highlight_start: u32,
     /// Highlight end (1-indexed)
-    pub highlight_end:   u32,
+    pub highlight_end: u32,
 }
 
 /// Macro expansion information
 #[derive(Debug, Deserialize)]
 pub struct Expansion {
     /// Span of the expansion
-    pub span:            Span,
+    pub span: Span,
     /// Macro name
     pub macro_decl_name: String,
     /// Definition site
-    pub def_site_span:   Option<Span>,
+    pub def_site_span: Option<Span>,
 }
 
 /// Parser for cargo build output
@@ -315,7 +305,7 @@ struct BuildFinished {
 
 /// Generic parser for tools that don't have structured output
 pub struct GenericOutputParser {
-    tool_name:      String,
+    tool_name: String,
     workspace_root: String,
 }
 
@@ -1426,9 +1416,11 @@ backtrace:
 
         assert!(diagnostics.len() >= 2);
         assert!(diagnostics.iter().any(|d| d.code == Some("RUSTSEC-2021-0139".to_string())));
-        assert!(diagnostics
-            .iter()
-            .any(|d| d.message.contains("2 security vulnerabilities found")));
+        assert!(
+            diagnostics
+                .iter()
+                .any(|d| d.message.contains("2 security vulnerabilities found"))
+        );
     }
 
     #[test]
@@ -1468,9 +1460,11 @@ src/lib.rs: 45.00%
         // Should have overall coverage warning, file warning, and uncovered lines
         assert!(diagnostics.len() > 3);
         assert!(diagnostics.iter().any(|d| d.message.contains("Overall test coverage: 75.50%")));
-        assert!(diagnostics
-            .iter()
-            .any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning));
+        assert!(
+            diagnostics
+                .iter()
+                .any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning)
+        );
         assert!(diagnostics.iter().any(|d| d.code == Some("COV003".to_string())));
     }
 }

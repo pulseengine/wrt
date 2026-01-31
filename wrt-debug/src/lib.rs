@@ -28,60 +28,24 @@ pub mod bounded_debug_infra;
 
 // Re-export commonly used types based on features
 #[cfg(feature = "abbrev")]
-pub use abbrev::{
-    Abbreviation,
-    AbbreviationTable,
-    AttributeForm,
-    AttributeSpec,
-};
+pub use abbrev::{Abbreviation, AbbreviationTable, AttributeForm, AttributeSpec};
 pub use cursor::DwarfCursor;
-pub use file_table::{
-    FileEntry,
-    FilePath,
-    FileTable,
-};
+pub use file_table::{FileEntry, FilePath, FileTable};
 // Platform debug exports
 #[cfg(feature = "debug-info")]
-pub use info::{
-    CompilationUnitHeader,
-    DebugInfoParser,
-    FunctionInfo,
-};
+pub use info::{CompilationUnitHeader, DebugInfoParser, FunctionInfo};
 #[cfg(feature = "line-info")]
-pub use line_info::{
-    LineInfo,
-    LineNumberState,
-};
-pub use parameter::{
-    BasicType,
-    InlinedFunction,
-    InlinedFunctions,
-    Parameter,
-    ParameterList,
-};
+pub use line_info::{LineInfo, LineNumberState};
+pub use parameter::{BasicType, InlinedFunction, InlinedFunctions, Parameter, ParameterList};
 pub use platform_debug::{
-    ComprehensivePlatformLimits,
-    DebugLevel,
-    PlatformDebugConfigBuilder,
-    PlatformDebugLimits,
-    PlatformDebugManager,
-    PlatformId,
+    ComprehensivePlatformLimits, DebugLevel, PlatformDebugConfigBuilder, PlatformDebugLimits,
+    PlatformDebugManager, PlatformId,
 };
 // Runtime debug exports
 #[cfg(feature = "runtime-inspection")]
 pub use runtime_api::{
-    Breakpoint,
-    BreakpointCondition,
-    BreakpointId,
-    DebugAction,
-    DebugError,
-    DebugMemory,
-    DebuggableRuntime,
-    DwarfLocation,
-    LiveVariable,
-    RuntimeDebugger,
-    RuntimeState,
-    VariableValue,
+    Breakpoint, BreakpointCondition, BreakpointId, DebugAction, DebugError, DebugMemory,
+    DebuggableRuntime, DwarfLocation, LiveVariable, RuntimeDebugger, RuntimeState, VariableValue,
 };
 
 /// Real-time memory monitoring for debugging
@@ -90,114 +54,44 @@ pub mod realtime_monitor;
 // Re-export realtime monitoring types
 #[cfg(feature = "memory-profiling")]
 pub use memory_profiling::{
-    init_profiler,
-    with_profiler,
-    AccessPatternSummary,
-    AccessRecord,
-    AccessType,
-    AllocationRecord,
-    AllocationType,
-    LeakInfo,
-    MemoryHotspot,
-    MemoryProfiler,
-    PerformanceAnalysis,
-    PerformanceSample,
-    ProfileReport,
-    ProfilingHandle,
+    AccessPatternSummary, AccessRecord, AccessType, AllocationRecord, AllocationType, LeakInfo,
+    MemoryHotspot, MemoryProfiler, PerformanceAnalysis, PerformanceSample, ProfileReport,
+    ProfilingHandle, init_profiler, with_profiler,
 };
 pub use realtime_monitor::{
-    get_current_sample,
+    AlertLevel, MemoryAlert, MemorySample, MonitorConfig, RealtimeMonitor, get_current_sample,
     init_global_monitor,
-    AlertLevel,
-    MemoryAlert,
-    MemorySample,
-    MonitorConfig,
-    RealtimeMonitor,
 };
 #[cfg(feature = "std")]
-pub use realtime_monitor::{
-    start_global_monitoring,
-    stop_global_monitoring,
-};
+pub use realtime_monitor::{start_global_monitoring, stop_global_monitoring};
 #[cfg(feature = "runtime-breakpoints")]
-pub use runtime_break::{
-    BreakpointManager,
-    DefaultDebugger,
-};
+pub use runtime_break::{BreakpointManager, DefaultDebugger};
 #[cfg(feature = "runtime-memory")]
 pub use runtime_memory::{
-    CStringView,
-    HeapAllocation,
-    HeapStats,
-    MemoryDump,
-    MemoryInspector,
-    MemoryRegion,
-    MemoryRegionType,
-    MemoryView,
-    StackAnalysis,
+    CStringView, HeapAllocation, HeapStats, MemoryDump, MemoryInspector, MemoryRegion,
+    MemoryRegionType, MemoryView, StackAnalysis,
 };
 #[cfg(feature = "runtime-stepping")]
-pub use runtime_step::{
-    StepController,
-    StepMode,
-    SteppingDebugger,
-};
+pub use runtime_step::{StepController, StepMode, SteppingDebugger};
 #[cfg(feature = "runtime-variables")]
-pub use runtime_vars::{
-    ValueDisplay,
-    VariableDefinition,
-    VariableInspector,
-    VariableScope,
-};
+pub use runtime_vars::{ValueDisplay, VariableDefinition, VariableInspector, VariableScope};
 #[cfg(feature = "line-info")]
-pub use stack_trace::{
-    StackFrame,
-    StackTrace,
-    StackTraceBuilder,
-};
-pub use strings::{
-    DebugString,
-    StringTable,
-};
-pub use types::{
-    DebugSection,
-    DebugSectionRef,
-    DwarfSections,
-};
+pub use stack_trace::{StackFrame, StackTrace, StackTraceBuilder};
+pub use strings::{DebugString, StringTable};
+pub use types::{DebugSection, DebugSectionRef, DwarfSections};
 // WIT integration exports
 #[cfg(feature = "wit-integration")]
 pub use wit_aware_debugger::{
-    ComponentError,
-    ComponentMetadata,
-    FunctionMetadata,
-    TypeMetadata,
-    WitAwareDebugger,
-    WitDebugger,
-    WitStepMode,
-    WitTypeKind as DebugWitTypeKind,
+    ComponentError, ComponentMetadata, FunctionMetadata, TypeMetadata, WitAwareDebugger,
+    WitDebugger, WitStepMode, WitTypeKind as DebugWitTypeKind,
 };
 #[cfg(feature = "wit-integration")]
 pub use wit_source_map::{
-    ComponentBoundary,
-    ComponentId,
-    ContextLine,
-    DiagnosticSeverity,
-    FunctionId,
-    MemoryRegion as WitMemoryRegion,
-    MemoryRegionType as WitMemoryRegionType,
-    SourceContext,
-    SourceSpan,
-    TypeId,
-    WitDiagnostic,
-    WitSourceFile,
-    WitSourceMap,
-    WitTypeInfo,
-    WitTypeKind,
+    ComponentBoundary, ComponentId, ContextLine, DiagnosticSeverity, FunctionId,
+    MemoryRegion as WitMemoryRegion, MemoryRegionType as WitMemoryRegionType, SourceContext,
+    SourceSpan, TypeId, WitDiagnostic, WitSourceFile, WitSourceMap, WitTypeInfo, WitTypeKind,
 };
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 use wrt_foundation::prelude::*;
 
 #[cfg(feature = "abbrev")]
@@ -219,8 +113,6 @@ mod types;
 // Runtime debug modules
 #[cfg(feature = "memory-profiling")]
 mod memory_profiling;
-#[cfg(feature = "runtime-traits")]
-pub mod runtime_traits;
 #[cfg(feature = "runtime-inspection")]
 pub mod runtime_api;
 #[cfg(feature = "runtime-breakpoints")]
@@ -229,6 +121,8 @@ mod runtime_break;
 mod runtime_memory;
 #[cfg(feature = "runtime-stepping")]
 mod runtime_step;
+#[cfg(feature = "runtime-traits")]
+pub mod runtime_traits;
 #[cfg(feature = "runtime-variables")]
 mod runtime_vars;
 
@@ -417,13 +311,7 @@ pub mod prelude {
     // WIT debugging prelude
     #[cfg(feature = "wit-integration")]
     pub use crate::{
-        ComponentError,
-        ComponentId,
-        FunctionId,
-        SourceSpan,
-        TypeId,
-        WitAwareDebugger,
-        WitDebugger,
+        ComponentError, ComponentId, FunctionId, SourceSpan, TypeId, WitAwareDebugger, WitDebugger,
         WitSourceMap,
     };
 }
@@ -465,10 +353,10 @@ mod tests {
     fn test_line_info_basics() {
         // Test LineInfo structure creation
         let line_info = LineInfo {
-            file_index:   1,
-            line:         42,
-            column:       8,
-            is_stmt:      true,
+            file_index: 1,
+            line: 42,
+            column: 8,
+            is_stmt: true,
             end_sequence: false,
         };
 

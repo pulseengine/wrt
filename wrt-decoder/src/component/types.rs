@@ -8,29 +8,16 @@ use core::default::Default;
 // Re-export the main component types from wrt-format for convenience
 #[cfg(feature = "std")]
 pub use wrt_format::component::{
-    Component,
-    ComponentType,
-    CoreExternType,
-    CoreInstance,
-    CoreType,
-    Export,
-    ExternType,
-    Import,
-    Instance,
-    Start,
-    ValType,
+    Component, ComponentType, CoreExternType, CoreInstance, CoreType, Export, ExternType, Import,
+    Instance, Start, ValType,
 };
 
 // No_std bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_types {
     use wrt_foundation::{
-        budget_aware_provider::CrateId,
+        BoundedMap, BoundedString, BoundedVec, NoStdProvider, budget_aware_provider::CrateId,
         safe_managed_alloc,
-        BoundedMap,
-        BoundedString,
-        BoundedVec,
-        NoStdProvider,
     };
 
     use super::*;
@@ -49,7 +36,7 @@ mod no_std_types {
     /// - Graceful degradation when limits exceeded
     #[derive(Debug, Clone)]
     pub struct Component {
-        pub magic:   [u8; 4],
+        pub magic: [u8; 4],
         pub version: [u8; 4],
         pub exports: BoundedVec<Export, 128, NoStdProvider<4096>>,
         pub imports: BoundedVec<Import, 128, NoStdProvider<4096>>,
@@ -60,7 +47,7 @@ mod no_std_types {
             let exports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             let imports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             Ok(Self {
-                magic:   *b"\0asm",
+                magic: *b"\0asm",
                 version: [0x0a, 0x00, 0x01, 0x00], // Component format
                 exports: BoundedVec::new(exports_provider)?,
                 imports: BoundedVec::new(imports_provider)?,
@@ -92,7 +79,7 @@ mod no_std_types {
     /// Core instance reference
     #[derive(Debug, Clone)]
     pub struct CoreInstance {
-        pub id:      u32,
+        pub id: u32,
         pub exports: ComponentVec<ComponentString>,
     }
 
@@ -106,8 +93,8 @@ mod no_std_types {
     /// Export definition
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     pub struct Export {
-        pub name:  ComponentString,
-        pub kind:  ComponentType,
+        pub name: ComponentString,
+        pub kind: ComponentType,
         pub index: u32,
     }
 
@@ -125,14 +112,14 @@ mod no_std_types {
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     pub struct Import {
         pub module: ComponentString,
-        pub name:   ComponentString,
-        pub kind:   ComponentType,
+        pub name: ComponentString,
+        pub kind: ComponentType,
     }
 
     /// Instance reference
     #[derive(Debug, Clone)]
     pub struct Instance {
-        pub id:      u32,
+        pub id: u32,
         pub exports: ComponentVec<Export>,
     }
 
@@ -319,8 +306,7 @@ pub trait ComponentAnalyzer {
 }
 
 /// Export information
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ExportInfo {
     /// Export name
     #[cfg(feature = "std")]
@@ -346,17 +332,17 @@ impl ExportInfo {
     pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
-            name:      alloc::string::String::new(),
-            kind:      alloc::string::String::new(),
+            name: alloc::string::String::new(),
+            kind: alloc::string::String::new(),
             type_info: alloc::string::String::new(),
         });
 
         #[cfg(not(feature = "std"))]
         {
             Ok(Self {
-                name:      crate::prelude::DecoderString::try_from_str("")
+                name: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
-                kind:      crate::prelude::DecoderString::try_from_str("")
+                kind: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
                 type_info: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
@@ -365,10 +351,8 @@ impl ExportInfo {
     }
 }
 
-
 /// Import information
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ImportInfo {
     /// Import module
     #[cfg(feature = "std")]
@@ -400,20 +384,20 @@ impl ImportInfo {
     pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
-            module:    alloc::string::String::new(),
-            name:      alloc::string::String::new(),
-            kind:      alloc::string::String::new(),
+            module: alloc::string::String::new(),
+            name: alloc::string::String::new(),
+            kind: alloc::string::String::new(),
             type_info: alloc::string::String::new(),
         });
 
         #[cfg(not(feature = "std"))]
         {
             Ok(Self {
-                module:    crate::prelude::DecoderString::try_from_str("")
+                module: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
-                name:      crate::prelude::DecoderString::try_from_str("")
+                name: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
-                kind:      crate::prelude::DecoderString::try_from_str("")
+                kind: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
                 type_info: crate::prelude::DecoderString::try_from_str("")
                     .map_err(|_| wrt_error::Error::parse_error("Failed to create string"))?,
@@ -421,7 +405,6 @@ impl ImportInfo {
         }
     }
 }
-
 
 /// Component binary metadata
 #[derive(Debug, Clone)]
@@ -449,17 +432,17 @@ pub struct ComponentMetadata {
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     /// Module index
-    pub idx:            u32,
+    pub idx: u32,
     /// Module size in bytes
-    pub size:           usize,
+    pub size: usize,
     /// Module function count
     pub function_count: usize,
     /// Module memory count
-    pub memory_count:   usize,
+    pub memory_count: usize,
     /// Module table count
-    pub table_count:    usize,
+    pub table_count: usize,
     /// Module global count
-    pub global_count:   usize,
+    pub global_count: usize,
 }
 
 /// Implementation of ComponentAnalyzer for Component
@@ -468,16 +451,16 @@ impl ComponentAnalyzer for Component {
     fn analyze(&self) -> wrt_error::Result<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component
         Ok(crate::component::analysis::ComponentSummary {
-            name:                 String::new(), /* Keep as std String for now as this is used
-                                                  * in analysis */
-            core_modules_count:   self.modules.len() as u32,
+            name: String::new(), /* Keep as std String for now as this is used
+                                  * in analysis */
+            core_modules_count: self.modules.len() as u32,
             core_instances_count: self.core_instances.len() as u32,
-            imports_count:        self.imports.len() as u32,
-            exports_count:        self.exports.len() as u32,
-            aliases_count:        self.aliases.len() as u32,
-            module_info:          Vec::new(), // Keep as std Vec for analysis compatibility
-            export_info:          Vec::new(),
-            import_info:          Vec::new(),
+            imports_count: self.imports.len() as u32,
+            exports_count: self.exports.len() as u32,
+            aliases_count: self.aliases.len() as u32,
+            module_info: Vec::new(), // Keep as std Vec for analysis compatibility
+            export_info: Vec::new(),
+            import_info: Vec::new(),
         })
     }
 
@@ -509,22 +492,18 @@ impl ComponentAnalyzer for Component {
     fn analyze(&self) -> wrt_error::Result<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component (simplified for no_std)
         Ok(crate::component::analysis::ComponentSummary {
-            name:                 "",
-            core_modules_count:   0, // No modules field in no_std Component
+            name: "",
+            core_modules_count: 0,   // No modules field in no_std Component
             core_instances_count: 0, // No core_instances field in no_std Component
-            imports_count:        wrt_foundation::traits::BoundedCapacity::len(&self.imports)
-                as u32,
-            exports_count:        wrt_foundation::traits::BoundedCapacity::len(&self.exports)
-                as u32,
-            aliases_count:        0, // No aliases field in no_std Component
-            module_info:          wrt_foundation::BoundedVec::new(
-                wrt_foundation::safe_managed_alloc!(
-                    4096,
-                    wrt_foundation::budget_aware_provider::CrateId::Decoder
-                )?,
-            )?,
-            export_info:          (),
-            import_info:          (),
+            imports_count: wrt_foundation::traits::BoundedCapacity::len(&self.imports) as u32,
+            exports_count: wrt_foundation::traits::BoundedCapacity::len(&self.exports) as u32,
+            aliases_count: 0, // No aliases field in no_std Component
+            module_info: wrt_foundation::BoundedVec::new(wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?)?,
+            export_info: (),
+            import_info: (),
         })
     }
 
@@ -647,8 +626,8 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
             let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
             if parts.len() >= 3 {
                 Ok(ExportInfo {
-                    name:      String::from_utf8_lossy(parts[0]).to_string(),
-                    kind:      String::from_utf8_lossy(parts[1]).to_string(),
+                    name: String::from_utf8_lossy(parts[0]).to_string(),
+                    kind: String::from_utf8_lossy(parts[1]).to_string(),
                     type_info: String::from_utf8_lossy(parts[2]).to_string(),
                 })
             } else {
@@ -749,9 +728,9 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
             let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
             if parts.len() >= 4 {
                 Ok(ImportInfo {
-                    module:    String::from_utf8_lossy(parts[0]).to_string(),
-                    name:      String::from_utf8_lossy(parts[1]).to_string(),
-                    kind:      String::from_utf8_lossy(parts[2]).to_string(),
+                    module: String::from_utf8_lossy(parts[0]).to_string(),
+                    name: String::from_utf8_lossy(parts[1]).to_string(),
+                    kind: String::from_utf8_lossy(parts[2]).to_string(),
                     type_info: String::from_utf8_lossy(parts[3]).to_string(),
                 })
             } else {

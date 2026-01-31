@@ -4,10 +4,8 @@
 //! WebAssembly Component Model binaries with full cross-environment support.
 
 use wrt_decoder::component::{
-    parse_component_binary,
+    ComponentBinaryParser, ValidationLevel, parse_component_binary,
     parse_component_binary_with_validation,
-    ComponentBinaryParser,
-    ValidationLevel,
 };
 use wrt_error::Result;
 

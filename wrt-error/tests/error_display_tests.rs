@@ -154,7 +154,7 @@ mod tests {
         assert!(display.contains("corrupt data"));
 
         let invalid_memory_wasm30 = InvalidMemoryIndexWasm30 {
-            index:        5,
+            index: 5,
             max_memories: 3,
         };
         let display = invalid_memory_wasm30.to_string();
@@ -166,8 +166,8 @@ mod tests {
         let unknown_opcode = UnknownOpcodeForVersion {
             version_major: 2,
             version_minor: 1,
-            opcode_byte1:  0xAB,
-            opcode_byte2:  Some(0xCD),
+            opcode_byte1: 0xAB,
+            opcode_byte2: Some(0xCD),
         };
         let display = unknown_opcode.to_string();
         assert!(!display.is_empty());
@@ -178,8 +178,8 @@ mod tests {
         let unknown_opcode_no_byte2 = UnknownOpcodeForVersion {
             version_major: 1,
             version_minor: 0,
-            opcode_byte1:  0x12,
-            opcode_byte2:  None,
+            opcode_byte1: 0x12,
+            opcode_byte2: None,
         };
         let display = unknown_opcode_no_byte2.to_string();
         assert!(!display.is_empty());
@@ -190,7 +190,7 @@ mod tests {
         let invalid_import_export = InvalidImportExportKindForVersion {
             version_major: 1,
             version_minor: 1,
-            kind_byte:     0xFF,
+            kind_byte: 0xFF,
         };
         let display = invalid_import_export.to_string();
         assert!(!display.is_empty());
@@ -215,7 +215,7 @@ mod tests {
 
         let bulk_op_error = BulkOperationError {
             operation_name: "memory.copy",
-            reason:         "overlapping regions",
+            reason: "overlapping regions",
         };
         let display = bulk_op_error.to_string();
         assert!(!display.is_empty());
@@ -225,7 +225,7 @@ mod tests {
 
         let simd_error = SimdOperationError {
             instruction_name: "v128.load",
-            reason:           "misaligned address",
+            reason: "misaligned address",
         };
         let display = simd_error.to_string();
         assert!(!display.is_empty());

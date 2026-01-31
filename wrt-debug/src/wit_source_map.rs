@@ -4,32 +4,15 @@
 //! AST nodes, and component binary representations for enhanced debugging.
 
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(all(not(feature = "std")))]
-use std::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 /// Source location span (re-exported from wrt-format for consistency)
 #[cfg(feature = "wit-integration")]
 pub use wrt_format::ast::SourceSpan;
-use wrt_foundation::{
-    prelude::*,
-    safe_managed_alloc,
-    BoundedString,
-    BoundedVec,
-    NoStdProvider,
-};
+use wrt_foundation::{BoundedString, BoundedVec, NoStdProvider, prelude::*, safe_managed_alloc};
 
 use crate::bounded_debug_infra;
 
@@ -220,12 +203,12 @@ impl WitSourceMap {
     /// Create a new empty source map
     pub fn new() -> Self {
         Self {
-            binary_to_source:     BTreeMap::new(),
-            source_to_binary:     BTreeMap::new(),
-            type_definitions:     BTreeMap::new(),
+            binary_to_source: BTreeMap::new(),
+            source_to_binary: BTreeMap::new(),
+            type_definitions: BTreeMap::new(),
             function_definitions: BTreeMap::new(),
             component_boundaries: BTreeMap::new(),
-            source_files:         BTreeMap::new(),
+            source_files: BTreeMap::new(),
         }
     }
 
@@ -317,16 +300,16 @@ impl WitSourceMap {
         for i in context_start..context_end {
             if let Some(line) = file.lines.get(i as usize) {
                 context_lines_vec.push(ContextLine {
-                    line_number:    i + 1, // 1-based line numbers
-                    content:        line.clone(),
+                    line_number: i + 1, // 1-based line numbers
+                    content: line.clone(),
                     is_highlighted: i >= start_line && i <= end_line,
                 });
             }
         }
 
         Some(SourceContext {
-            file_path:        file.path.clone(),
-            lines:            context_lines_vec,
+            file_path: file.path.clone(),
+            lines: context_lines_vec,
             highlighted_span: span,
         })
     }
@@ -348,8 +331,11 @@ impl WitSourceMap {
         let message =
             BoundedString::try_from_str(&format!("Runtime error: {}", error), provider.clone())
                 .unwrap_or_else(|_| {
-                    BoundedString::try_from_str("Runtime error (message too long)", provider.clone())
-                        .unwrap()
+                    BoundedString::try_from_str(
+                        "Runtime error (message too long)",
+                        provider.clone(),
+                    )
+                    .unwrap()
                 });
 
         Some(WitDiagnostic {
@@ -516,11 +502,11 @@ mod tests {
     #[test]
     fn test_component_boundary() {
         let mut boundary = ComponentBoundary {
-            id:             ComponentId(1),
-            name:           None,
-            start_offset:   0,
-            end_offset:     1000,
-            source_span:    SourceSpan::empty(),
+            id: ComponentId(1),
+            name: None,
+            start_offset: 0,
+            end_offset: 1000,
+            source_span: SourceSpan::empty(),
             memory_regions: vec![
                 MemoryRegion::new(100, 200, MemoryRegionType::Linear),
                 MemoryRegion::new(300, 400, MemoryRegionType::Stack),

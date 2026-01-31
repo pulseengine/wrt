@@ -1,28 +1,22 @@
 // Enhanced Bounded WIT Parser with configurable limits
 // This is the enhanced implementation for the component module
 
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_foundation::{
-    MemoryProvider,
-    NoStdProvider,
-};
+use wrt_error::{Error, Result};
+use wrt_foundation::{MemoryProvider, NoStdProvider};
 extern crate alloc;
 
 /// Simple bounded string for no_std environments
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleBoundedString {
     data: [u8; 64], // 64 bytes should be enough for WIT identifiers
-    len:  usize,
+    len: usize,
 }
 
 impl SimpleBoundedString {
     pub fn new() -> Self {
         Self {
             data: [0; 64],
-            len:  0,
+            len: 0,
         }
     }
 
@@ -59,7 +53,7 @@ pub type BoundedWitName = SimpleBoundedString;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundedWitWorld {
     /// World name
-    pub name:         BoundedWitName,
+    pub name: BoundedWitName,
     /// Simple import/export counters for basic functionality
     pub import_count: u32,
     pub export_count: u32,
@@ -69,7 +63,7 @@ pub struct BoundedWitWorld {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundedWitInterface {
     /// Interface name
-    pub name:           BoundedWitName,
+    pub name: BoundedWitName,
     /// Simple function counter for basic functionality
     pub function_count: u32,
 }
@@ -78,9 +72,9 @@ pub struct BoundedWitInterface {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundedWitFunction {
     /// Function name
-    pub name:         BoundedWitName,
+    pub name: BoundedWitName,
     /// Parameter count (simplified)
-    pub param_count:  u32,
+    pub param_count: u32,
     /// Result count (simplified)
     pub result_count: u32,
 }
@@ -116,7 +110,7 @@ pub enum BoundedWitType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundedWitImport {
     /// Import name
-    pub name:        BoundedWitName,
+    pub name: BoundedWitName,
     /// Import is a function (simplified)
     pub is_function: bool,
 }
@@ -125,7 +119,7 @@ pub struct BoundedWitImport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundedWitExport {
     /// Export name
-    pub name:        BoundedWitName,
+    pub name: BoundedWitName,
     /// Export is a function (simplified)
     pub is_function: bool,
 }
@@ -133,25 +127,25 @@ pub struct BoundedWitExport {
 /// WIT parsing limits for platform-aware configuration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WitParsingLimits {
-    pub max_input_buffer:            usize,
-    pub max_worlds:                  usize,
-    pub max_interfaces:              usize,
+    pub max_input_buffer: usize,
+    pub max_worlds: usize,
+    pub max_interfaces: usize,
     pub max_functions_per_interface: usize,
-    pub max_identifier_length:       usize,
-    pub max_imports_per_world:       usize,
-    pub max_exports_per_world:       usize,
+    pub max_identifier_length: usize,
+    pub max_imports_per_world: usize,
+    pub max_exports_per_world: usize,
 }
 
 impl Default for WitParsingLimits {
     fn default() -> Self {
         Self {
-            max_input_buffer:            8192, // 8KB
-            max_worlds:                  4,
-            max_interfaces:              8,
+            max_input_buffer: 8192, // 8KB
+            max_worlds: 4,
+            max_interfaces: 8,
             max_functions_per_interface: 16,
-            max_identifier_length:       64,
-            max_imports_per_world:       32,
-            max_exports_per_world:       32,
+            max_identifier_length: 64,
+            max_imports_per_world: 32,
+            max_exports_per_world: 32,
         }
     }
 }
@@ -160,39 +154,39 @@ impl WitParsingLimits {
     /// Create limits for embedded platforms
     pub fn embedded() -> Self {
         Self {
-            max_input_buffer:            2048, // 2KB
-            max_worlds:                  2,
-            max_interfaces:              4,
+            max_input_buffer: 2048, // 2KB
+            max_worlds: 2,
+            max_interfaces: 4,
             max_functions_per_interface: 8,
-            max_identifier_length:       32,
-            max_imports_per_world:       8,
-            max_exports_per_world:       8,
+            max_identifier_length: 32,
+            max_imports_per_world: 8,
+            max_exports_per_world: 8,
         }
     }
 
     /// Create limits for QNX platforms
     pub fn qnx() -> Self {
         Self {
-            max_input_buffer:            16384, // 16KB
-            max_worlds:                  8,
-            max_interfaces:              16,
+            max_input_buffer: 16384, // 16KB
+            max_worlds: 8,
+            max_interfaces: 16,
             max_functions_per_interface: 32,
-            max_identifier_length:       64,
-            max_imports_per_world:       64,
-            max_exports_per_world:       64,
+            max_identifier_length: 64,
+            max_imports_per_world: 64,
+            max_exports_per_world: 64,
         }
     }
 
     /// Create limits for Linux platforms
     pub fn linux() -> Self {
         Self {
-            max_input_buffer:            32768, // 32KB
-            max_worlds:                  16,
-            max_interfaces:              32,
+            max_input_buffer: 32768, // 32KB
+            max_worlds: 16,
+            max_interfaces: 32,
             max_functions_per_interface: 64,
-            max_identifier_length:       128,
-            max_imports_per_world:       128,
-            max_exports_per_world:       128,
+            max_identifier_length: 128,
+            max_imports_per_world: 128,
+            max_exports_per_world: 128,
         }
     }
 
@@ -219,22 +213,22 @@ impl WitParsingLimits {
 /// WIT parse result with metadata
 #[derive(Debug, Clone)]
 pub struct WitParseResult {
-    pub worlds:     alloc::vec::Vec<BoundedWitWorld>,
+    pub worlds: alloc::vec::Vec<BoundedWitWorld>,
     pub interfaces: alloc::vec::Vec<BoundedWitInterface>,
-    pub metadata:   WitParseMetadata,
+    pub metadata: WitParseMetadata,
 }
 
 #[derive(Debug, Clone)]
 pub struct WitParseMetadata {
-    pub input_size:    usize,
+    pub input_size: usize,
     pub parse_time_us: u64, // Stub timestamp
-    pub memory_used:   usize,
-    pub warnings:      alloc::vec::Vec<WitParseWarning>,
+    pub memory_used: usize,
+    pub warnings: alloc::vec::Vec<WitParseWarning>,
 }
 
 #[derive(Debug, Clone)]
 pub struct WitParseWarning {
-    pub message:  alloc::string::String,
+    pub message: alloc::string::String,
     pub position: usize,
     pub severity: WarningSeverity,
 }
@@ -248,15 +242,15 @@ pub enum WarningSeverity {
 
 /// Enhanced bounded WIT parser with configurable limits
 pub struct BoundedWitParser {
-    limits:          WitParsingLimits,
-    input_buffer:    alloc::vec::Vec<u8>, // Dynamic size based on limits
-    input_len:       usize,
-    worlds:          alloc::vec::Vec<Option<BoundedWitWorld>>,
-    interfaces:      alloc::vec::Vec<Option<BoundedWitInterface>>,
-    world_count:     usize,
+    limits: WitParsingLimits,
+    input_buffer: alloc::vec::Vec<u8>, // Dynamic size based on limits
+    input_len: usize,
+    worlds: alloc::vec::Vec<Option<BoundedWitWorld>>,
+    interfaces: alloc::vec::Vec<Option<BoundedWitInterface>>,
+    world_count: usize,
     interface_count: usize,
-    warnings:        alloc::vec::Vec<WitParseWarning>,
-    memory_usage:    usize,
+    warnings: alloc::vec::Vec<WitParseWarning>,
+    memory_usage: usize,
 }
 
 impl BoundedWitParser {
@@ -363,10 +357,10 @@ impl BoundedWitParser {
         }
 
         let metadata = WitParseMetadata {
-            input_size:    wit_source.len(),
+            input_size: wit_source.len(),
             parse_time_us: end_time.saturating_sub(start_time),
-            memory_used:   self.memory_usage,
-            warnings:      self.warnings.clone(),
+            memory_used: self.memory_usage,
+            warnings: self.warnings.clone(),
         };
 
         Ok(WitParseResult {
@@ -461,7 +455,7 @@ impl BoundedWitParser {
                             position = self.skip_to_brace_end(final_pos);
                         } else {
                             self.add_warning(WitParseWarning {
-                                message:  "Expected world name after 'world' keyword".into(),
+                                message: "Expected world name after 'world' keyword".into(),
                                 position: new_pos,
                                 severity: WarningSeverity::Error,
                             });
@@ -480,8 +474,7 @@ impl BoundedWitParser {
                             position = self.skip_to_brace_end(final_pos);
                         } else {
                             self.add_warning(WitParseWarning {
-                                message:  "Expected interface name after 'interface' keyword"
-                                    .into(),
+                                message: "Expected interface name after 'interface' keyword".into(),
                                 position: new_pos,
                                 severity: WarningSeverity::Error,
                             });
@@ -500,7 +493,7 @@ impl BoundedWitParser {
         // Validate structure
         if brace_depth != 0 {
             self.add_warning(WitParseWarning {
-                message:  alloc::format!("Mismatched braces: {brace_depth} unclosed"),
+                message: alloc::format!("Mismatched braces: {brace_depth} unclosed"),
                 position: self.input_len,
                 severity: WarningSeverity::Error,
             });
@@ -588,7 +581,7 @@ impl BoundedWitParser {
                         brace_count -= 1;
                         if brace_count == 0 && found_opening {
                             return position + 1; // Return position after
-                                                 // closing brace
+                            // closing brace
                         }
                     }
                 },
@@ -794,7 +787,7 @@ mod tests {
         let parse_result = result.unwrap();
         assert_eq!(parse_result.worlds.len(), 1); // Only first world should be parsed
         assert!(!parse_result.metadata.warnings.is_empty()); // Should have
-                                                             // warnings
+        // warnings
     }
 
     #[test]

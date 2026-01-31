@@ -1,7 +1,4 @@
-use super::error::{
-    DebugError,
-    DebugResult,
-};
+use super::error::{DebugError, DebugResult};
 /// String extraction from DWARF .debug_str section
 /// Binary std/no_std choice
 use crate::cursor::DwarfCursor;
@@ -14,8 +11,7 @@ pub struct StringTable<'a> {
 
 /// A reference to a string in the debug string table
 /// Provides zero-copy access to string data
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DebugString<'a> {
     data: &'a str,
 }
@@ -90,7 +86,7 @@ impl<'a> StringTable<'a> {
     /// Iterator over all strings in the table
     pub fn strings(&self) -> StringTableIterator<'a> {
         StringTableIterator {
-            data:   self.data,
+            data: self.data,
             offset: 0,
         }
     }
@@ -140,7 +136,7 @@ impl<'a> DebugString<'a> {
 
 /// Iterator over strings in a string table
 pub struct StringTableIterator<'a> {
-    data:   &'a [u8],
+    data: &'a [u8],
     offset: usize,
 }
 
@@ -199,10 +195,10 @@ mod tests {
     #[cfg(all(not(feature = "std"), any(feature = "alloc", test)))]
     extern crate alloc;
 
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
 
     const TEST_STRING_DATA: &[u8] = &[
         0x00, // Empty string at offset 0

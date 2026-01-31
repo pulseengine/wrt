@@ -10,10 +10,10 @@
 //! This validator runs BEFORE module execution to reject invalid modules
 //! immediately, which is required for WAST conformance testing.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashSet;
 use wrt_format::module::{Function, Global, ImportDesc, Module};
-use wrt_format::pure_format_types::{PureElementInit, PureElementSegment, PureElementMode};
+use wrt_format::pure_format_types::{PureElementInit, PureElementMode, PureElementSegment};
 use wrt_format::types::RefType;
 use wrt_foundation::ValueType;
 
@@ -44,8 +44,12 @@ impl StackType {
             ValueType::ExternRef => StackType::ExternRef,
             ValueType::ExnRef => StackType::ExnRef,
             // WebAssembly 3.0 GC types - not yet fully supported, treat as unknown
-            ValueType::I16x8 | ValueType::StructRef(_) | ValueType::ArrayRef(_)
-            | ValueType::I31Ref | ValueType::AnyRef | ValueType::EqRef => StackType::Unknown,
+            ValueType::I16x8
+            | ValueType::StructRef(_)
+            | ValueType::ArrayRef(_)
+            | ValueType::I31Ref
+            | ValueType::AnyRef
+            | ValueType::EqRef => StackType::Unknown,
         }
     }
 }
@@ -134,13 +138,13 @@ impl WastModuleValidator {
                             return Err(anyhow!("unknown function"));
                         }
                     }
-                }
+                },
                 PureElementInit::ExpressionBytes(exprs) => {
                     // Parse expressions to find ref.func instructions
                     for expr_bytes in exprs {
                         Self::validate_element_expr_functions(expr_bytes, total_funcs)?;
                     }
-                }
+                },
             }
         }
         Ok(())
@@ -164,21 +168,21 @@ impl WastModuleValidator {
                     } else {
                         break;
                     }
-                }
+                },
                 0xD0 => {
                     // ref.null - skip heap type
                     if pos < expr.len() {
                         pos += 1;
                     }
-                }
+                },
                 0x0B => {
                     // end
                     break;
-                }
+                },
                 _ => {
                     // Skip other opcodes - may need to parse their immediates
                     // For now, just continue
-                }
+                },
             }
         }
         Ok(())
@@ -214,7 +218,10 @@ impl WastModuleValidator {
     }
 
     /// Get the function type for a function index (accounting for imports)
-    fn get_function_type(module: &Module, func_idx: u32) -> Result<&wrt_foundation::CleanCoreFuncType> {
+    fn get_function_type(
+        module: &Module,
+        func_idx: u32,
+    ) -> Result<&wrt_foundation::CleanCoreFuncType> {
         let num_func_imports = Self::count_function_imports(module);
 
         if (func_idx as usize) < num_func_imports {
@@ -224,8 +231,7 @@ impl WastModuleValidator {
                 if let ImportDesc::Function(type_idx) = &import.desc {
                     if import_idx == func_idx as usize {
                         let type_idx = *type_idx as usize;
-                        return module.types.get(type_idx)
-                            .ok_or_else(|| anyhow!("unknown type"));
+                        return module.types.get(type_idx).ok_or_else(|| anyhow!("unknown type"));
                     }
                     import_idx += 1;
                 }
@@ -234,9 +240,13 @@ impl WastModuleValidator {
         } else {
             // This is a defined function
             // Note: module.functions includes imports, so use func_idx directly
-            let func = module.functions.get(func_idx as usize)
+            let func = module
+                .functions
+                .get(func_idx as usize)
                 .ok_or_else(|| anyhow!("unknown function"))?;
-            let func_type = module.types.get(func.type_idx as usize)
+            let func_type = module
+                .types
+                .get(func.type_idx as usize)
                 .ok_or_else(|| anyhow!("unknown type"))?;
             Ok(func_type)
         }
@@ -307,7 +317,13 @@ impl WastModuleValidator {
 
         // Parse and validate the function body
         // Note: CleanCoreFuncType has the same structure as FuncType (params, results)
-        Self::validate_function_body(&func.code, func_type_clean, &func.locals, module, declared_functions)
+        Self::validate_function_body(
+            &func.code,
+            func_type_clean,
+            &func.locals,
+            module,
+            declared_functions,
+        )
     }
 
     /// Validate a function body bytecode
@@ -366,10 +382,10 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x01 => {
                     // nop
-                }
+                },
                 0x02 => {
                     // block
                     let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
@@ -381,7 +397,12 @@ impl WastModuleValidator {
                     // For blocks with inputs, verify and pop the input types
                     let frame_height = Self::current_frame_height(&frames);
                     for &expected in input_types.iter().rev() {
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -402,7 +423,7 @@ impl WastModuleValidator {
                     for input_type in &input_types {
                         stack.push(*input_type);
                     }
-                }
+                },
                 0x03 => {
                     // loop
                     let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
@@ -414,7 +435,12 @@ impl WastModuleValidator {
                     // For loops with inputs, verify and pop the input types
                     let frame_height = Self::current_frame_height(&frames);
                     for &expected in input_types.iter().rev() {
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -435,12 +461,17 @@ impl WastModuleValidator {
                     for input_type in &input_types {
                         stack.push(*input_type);
                     }
-                }
+                },
                 0x04 => {
                     // if
                     // Pop condition (must be i32)
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
@@ -452,7 +483,12 @@ impl WastModuleValidator {
 
                     // For if with inputs, verify and pop the input types
                     for &expected in input_types.iter().rev() {
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -473,7 +509,7 @@ impl WastModuleValidator {
                     for input_type in &input_types {
                         stack.push(*input_type);
                     }
-                }
+                },
                 0x05 => {
                     // else
                     if let Some(frame) = frames.last() {
@@ -494,7 +530,10 @@ impl WastModuleValidator {
                                 let stack_idx = frame.stack_height + i;
                                 if stack_idx < stack.len() {
                                     let actual = stack[stack_idx];
-                                    if actual != expected && actual != StackType::Unknown && expected != StackType::Unknown {
+                                    if actual != expected
+                                        && actual != StackType::Unknown
+                                        && expected != StackType::Unknown
+                                    {
                                         return Err(anyhow!("type mismatch"));
                                     }
                                 }
@@ -503,7 +542,8 @@ impl WastModuleValidator {
                     }
 
                     // Reset stack to frame start height and push input types for else branch
-                    let input_types_clone = frames.last().map(|f| f.input_types.clone()).unwrap_or_default();
+                    let input_types_clone =
+                        frames.last().map(|f| f.input_types.clone()).unwrap_or_default();
                     if let Some(frame) = frames.last() {
                         stack.truncate(frame.stack_height);
                     }
@@ -515,7 +555,7 @@ impl WastModuleValidator {
                         frame.frame_type = FrameType::Else;
                         frame.reachable = true;
                     }
-                }
+                },
 
                 // Exception handling instructions
                 0x06 => {
@@ -529,7 +569,12 @@ impl WastModuleValidator {
                     // Pop inputs from stack
                     let frame_height = Self::current_frame_height(&frames);
                     for input_type in input_types.iter().rev() {
-                        if !Self::pop_type(&mut stack, *input_type, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            *input_type,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -547,7 +592,7 @@ impl WastModuleValidator {
                     for input_type in &input_types {
                         stack.push(*input_type);
                     }
-                }
+                },
                 0x07 => {
                     // catch (legacy) - takes tag index, similar to else for if
                     let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -584,7 +629,7 @@ impl WastModuleValidator {
                     if let Some(frame) = frames.last_mut() {
                         frame.reachable = true;
                     }
-                }
+                },
                 0x08 => {
                     // throw - takes tag index, pops tag parameters, makes code unreachable
                     let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -603,7 +648,12 @@ impl WastModuleValidator {
                         if let Some(tag_type) = module.types.get(type_idx as usize) {
                             for param in tag_type.params.iter().rev() {
                                 let expected = StackType::from_value_type(*param);
-                                if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                                if !Self::pop_type(
+                                    &mut stack,
+                                    expected,
+                                    frame_height,
+                                    Self::is_unreachable(&frames),
+                                ) {
                                     return Err(anyhow!("type mismatch"));
                                 }
                             }
@@ -617,7 +667,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x09 => {
                     // rethrow (legacy) - takes relative depth to try block
                     let (depth, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -639,13 +689,18 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x0A => {
                     // throw_ref - pops exnref, throws it
                     let frame_height = Self::current_frame_height(&frames);
 
                     // Pop exnref
-                    if !Self::pop_type(&mut stack, StackType::ExnRef, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::ExnRef,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
@@ -656,7 +711,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
 
                 0x0B => {
                     // end
@@ -672,7 +727,8 @@ impl WastModuleValidator {
                             // verify that output types can be satisfied (polymorphically).
                             // Extra values on the stack are allowed - unreachable code can
                             // push arbitrary values that will never be consumed.
-                            let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
+                            let unreachable_height =
+                                frame.unreachable_height.unwrap_or(frame_height);
                             for &expected in frame.output_types.iter().rev() {
                                 if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
                                     return Err(anyhow!("type mismatch"));
@@ -702,7 +758,8 @@ impl WastModuleValidator {
                     // If this is an if without else, the input and output types must match
                     // (because when condition is false, the else is implicitly empty,
                     // so inputs must pass through as outputs)
-                    if frame.frame_type == FrameType::If && frame.input_types != frame.output_types {
+                    if frame.frame_type == FrameType::If && frame.input_types != frame.output_types
+                    {
                         return Err(anyhow!("type mismatch"));
                     }
 
@@ -739,13 +796,18 @@ impl WastModuleValidator {
                     // Reset stack to frame height and push output types
                     stack.truncate(frame.stack_height);
                     stack.extend(frame.output_types.iter());
-                }
+                },
                 0x0C => {
                     // br (branch) - unconditional, makes following code unreachable
                     let (label_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
-                    Self::validate_branch(&stack, label_idx, &frames, Self::is_unreachable(&frames))?;
+                    Self::validate_branch(
+                        &stack,
+                        label_idx,
+                        &frames,
+                        Self::is_unreachable(&frames),
+                    )?;
 
                     // Mark current frame as unreachable
                     if let Some(frame) = frames.last_mut() {
@@ -754,7 +816,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x0D => {
                     // br_if (branch if) - conditional, code after is still reachable
                     let (label_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -762,16 +824,25 @@ impl WastModuleValidator {
 
                     // Pop i32 condition (top of stack)
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
-                    Self::validate_branch(&stack, label_idx, &frames, Self::is_unreachable(&frames))?;
-                }
+                    Self::validate_branch(
+                        &stack,
+                        label_idx,
+                        &frames,
+                        Self::is_unreachable(&frames),
+                    )?;
+                },
                 0x0E => {
                     // br_table - unconditional, makes following code unreachable
-                    let (num_targets, mut new_offset) =
-                        Self::parse_varuint32(code, offset)?;
+                    let (num_targets, mut new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
                     // Collect all branch targets (including default)
@@ -790,7 +861,12 @@ impl WastModuleValidator {
 
                     // Pop operand (i32 condition/index)
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
@@ -812,17 +888,22 @@ impl WastModuleValidator {
                         match expected_arity {
                             None => {
                                 expected_arity = Some(branch_types.len());
-                            }
+                            },
                             Some(arity) => {
                                 if branch_types.len() != arity {
                                     return Err(anyhow!("type mismatch"));
                                 }
-                            }
+                            },
                         }
                     }
 
                     // Validate the stack has the required values for the branch
-                    Self::validate_branch(&stack, default_label, &frames, Self::is_unreachable(&frames))?;
+                    Self::validate_branch(
+                        &stack,
+                        default_label,
+                        &frames,
+                        Self::is_unreachable(&frames),
+                    )?;
 
                     // Mark current frame as unreachable
                     if let Some(frame) = frames.last_mut() {
@@ -831,13 +912,18 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x0F => {
                     // return
                     let frame_height = Self::current_frame_height(&frames);
                     if let Some(frame) = frames.first() {
                         for &expected in frame.output_types.iter().rev() {
-                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                expected,
+                                frame_height,
+                                Self::is_unreachable(&frames),
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
@@ -849,7 +935,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x10 => {
                     // call
                     let (func_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -865,7 +951,12 @@ impl WastModuleValidator {
                         let frame_height = Self::current_frame_height(&frames);
                         for param in func_type.params.iter().rev() {
                             let expected = StackType::from_value_type(*param);
-                            if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                expected,
+                                frame_height,
+                                Self::is_unreachable(&frames),
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
@@ -874,7 +965,7 @@ impl WastModuleValidator {
                             stack.push(StackType::from_value_type(*result));
                         }
                     }
-                }
+                },
                 0x11 => {
                     // call_indirect
                     let (type_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -898,14 +989,24 @@ impl WastModuleValidator {
                     let frame_height = Self::current_frame_height(&frames);
 
                     // Pop table index (must be i32)
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
                     // Pop arguments in reverse order
                     for param in func_type.params.iter().rev() {
                         let expected = StackType::from_value_type(*param);
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -914,7 +1015,7 @@ impl WastModuleValidator {
                     for result in &func_type.results {
                         stack.push(StackType::from_value_type(*result));
                     }
-                }
+                },
                 0x12 => {
                     // return_call (tail-call extension)
                     // Parse function index
@@ -929,8 +1030,8 @@ impl WastModuleValidator {
                     if called_func_type.results.len() != func_type.results.len() {
                         return Err(anyhow!("type mismatch"));
                     }
-                    for (called_result, current_result) in called_func_type.results.iter()
-                        .zip(func_type.results.iter())
+                    for (called_result, current_result) in
+                        called_func_type.results.iter().zip(func_type.results.iter())
                     {
                         if called_result != current_result {
                             return Err(anyhow!("type mismatch"));
@@ -942,7 +1043,12 @@ impl WastModuleValidator {
                     // Pop arguments in reverse order
                     for param in called_func_type.params.iter().rev() {
                         let expected = StackType::from_value_type(*param);
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -955,7 +1061,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
                 0x13 => {
                     // return_call_indirect (tail-call extension)
                     let (type_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -989,8 +1095,8 @@ impl WastModuleValidator {
                     if called_type.results.len() != func_type.results.len() {
                         return Err(anyhow!("type mismatch"));
                     }
-                    for (called_result, current_result) in called_type.results.iter()
-                        .zip(func_type.results.iter())
+                    for (called_result, current_result) in
+                        called_type.results.iter().zip(func_type.results.iter())
                     {
                         if called_result != current_result {
                             return Err(anyhow!("type mismatch"));
@@ -1000,14 +1106,24 @@ impl WastModuleValidator {
                     let frame_height = Self::current_frame_height(&frames);
 
                     // Pop table index (must be i32)
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
 
                     // Pop arguments in reverse order
                     for param in called_type.params.iter().rev() {
                         let expected = StackType::from_value_type(*param);
-                        if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            expected,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -1020,7 +1136,7 @@ impl WastModuleValidator {
                         }
                         frame.reachable = false;
                     }
-                }
+                },
 
                 // Exception handling (continued)
                 0x18 => {
@@ -1051,7 +1167,7 @@ impl WastModuleValidator {
                             stack.push(*output);
                         }
                     }
-                }
+                },
                 0x19 => {
                     // catch_all (legacy) - catches all exceptions
                     // Must be in a try block
@@ -1073,7 +1189,7 @@ impl WastModuleValidator {
                     if let Some(frame) = frames.last_mut() {
                         frame.reachable = true;
                     }
-                }
+                },
                 0x1F => {
                     // try_table - modern exception handling block
                     let (block_type, new_offset) = Self::parse_block_type(code, offset, module)?;
@@ -1108,7 +1224,7 @@ impl WastModuleValidator {
                                 let tag_params = Self::get_tag_param_types(module, tag_idx)?;
                                 // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &tag_params)?;
-                            }
+                            },
                             0x01 => {
                                 // catch_ref: pushes tag's param types + exnref
                                 let (tag_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -1122,14 +1238,14 @@ impl WastModuleValidator {
                                 handler_types.push(StackType::ExnRef);
                                 // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &handler_types)?;
-                            }
+                            },
                             0x02 => {
                                 // catch_all: pushes nothing
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
                                 offset = new_offset;
                                 // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &[])?;
-                            }
+                            },
                             0x03 => {
                                 // catch_all_ref: pushes exnref
                                 let (label, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -1137,7 +1253,7 @@ impl WastModuleValidator {
                                 let handler_types = vec![StackType::ExnRef];
                                 // Validate handler branch target BEFORE try_table frame is pushed
                                 Self::validate_handler_branch(&frames, label, &handler_types)?;
-                            }
+                            },
                             _ => return Err(anyhow!("invalid catch handler kind")),
                         }
                     }
@@ -1148,7 +1264,12 @@ impl WastModuleValidator {
                     // Pop inputs from stack
                     let frame_height = Self::current_frame_height(&frames);
                     for input_type in input_types.iter().rev() {
-                        if !Self::pop_type(&mut stack, *input_type, frame_height, Self::is_unreachable(&frames)) {
+                        if !Self::pop_type(
+                            &mut stack,
+                            *input_type,
+                            frame_height,
+                            Self::is_unreachable(&frames),
+                        ) {
                             return Err(anyhow!("type mismatch"));
                         }
                     }
@@ -1166,7 +1287,7 @@ impl WastModuleValidator {
                     for input_type in &input_types {
                         stack.push(*input_type);
                     }
-                }
+                },
 
                 // Memory operations - Load instructions
                 // All memory operations require at least one memory to be defined
@@ -1181,11 +1302,16 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 0x29 => {
                     // i64.load - pop i32 address, push i64 value
                     if !Self::has_memory(module) {
@@ -1197,11 +1323,16 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
                 0x2A => {
                     // f32.load - pop i32 address, push f32 value
                     if !Self::has_memory(module) {
@@ -1213,11 +1344,16 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F32);
-                }
+                },
                 0x2B => {
                     // f64.load - pop i32 address, push f64 value
                     if !Self::has_memory(module) {
@@ -1229,11 +1365,16 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F64);
-                }
+                },
                 0x2C..=0x35 => {
                     // Extended load operations (load8, load16, load32, etc.)
                     // All take i32 address and return the loaded value type
@@ -1246,7 +1387,12 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     // Push result based on opcode
@@ -1256,7 +1402,7 @@ impl WastModuleValidator {
                         _ => StackType::I32,
                     };
                     stack.push(result_type);
-                }
+                },
                 0x36 => {
                     // i32.store - pop i32 value and i32 address
                     if !Self::has_memory(module) {
@@ -1268,13 +1414,23 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x37 => {
                     // i64.store - pop i64 value and i32 address
                     if !Self::has_memory(module) {
@@ -1286,13 +1442,23 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x38 => {
                     // f32.store - pop f32 value and i32 address
                     if !Self::has_memory(module) {
@@ -1304,13 +1470,23 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x39 => {
                     // f64.store - pop f64 value and i32 address
                     if !Self::has_memory(module) {
@@ -1322,13 +1498,23 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x3A..=0x3E => {
                     // Extended store operations (store8, store16, store32)
                     if !Self::has_memory(module) {
@@ -1342,17 +1528,27 @@ impl WastModuleValidator {
                     let frame_height = Self::current_frame_height(&frames);
                     // Pop value type based on opcode
                     let value_type = match opcode {
-                        0x3A | 0x3B => StackType::I32, // i32.store8, i32.store16
+                        0x3A | 0x3B => StackType::I32,        // i32.store8, i32.store16
                         0x3C | 0x3D | 0x3E => StackType::I64, // i64.store8/16/32
                         _ => StackType::I32,
                     };
-                    if !Self::pop_type(&mut stack, value_type, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        value_type,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x3F => {
                     // memory.size - push i32 (current memory size in pages)
                     if !Self::has_memory(module) {
@@ -1363,7 +1559,7 @@ impl WastModuleValidator {
                         offset += 1;
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 0x40 => {
                     // memory.grow - pop i32 (delta pages), push i32 (previous size or -1)
                     if !Self::has_memory(module) {
@@ -1374,11 +1570,16 @@ impl WastModuleValidator {
                         offset += 1;
                     }
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // Variable operations
                 0x20 => {
@@ -1387,52 +1588,50 @@ impl WastModuleValidator {
                     offset = new_offset;
 
                     if local_idx as usize >= local_types.len() {
-                        return Err(anyhow!(
-                            "local.get: invalid local index {}",
-                            local_idx
-                        ));
+                        return Err(anyhow!("local.get: invalid local index {}", local_idx));
                     }
 
                     stack.push(StackType::from_value_type(local_types[local_idx as usize]));
-                }
+                },
                 0x21 => {
                     // local.set
                     let (local_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
                     if local_idx as usize >= local_types.len() {
-                        return Err(anyhow!(
-                            "local.set: invalid local index {}",
-                            local_idx
-                        ));
+                        return Err(anyhow!("local.set: invalid local index {}", local_idx));
                     }
 
                     let expected = StackType::from_value_type(local_types[local_idx as usize]);
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        expected,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
                 0x22 => {
                     // local.tee
                     let (local_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                     offset = new_offset;
 
                     if local_idx as usize >= local_types.len() {
-                        return Err(anyhow!(
-                            "local.tee: invalid local index {}",
-                            local_idx
-                        ));
+                        return Err(anyhow!("local.tee: invalid local index {}", local_idx));
                     }
 
                     // In unreachable code, the stack is polymorphic
                     if !Self::is_unreachable(&frames) {
                         let expected = StackType::from_value_type(local_types[local_idx as usize]);
-                        if stack.last() != Some(&expected) && stack.last() != Some(&StackType::Unknown) {
+                        if stack.last() != Some(&expected)
+                            && stack.last() != Some(&StackType::Unknown)
+                        {
                             return Err(anyhow!("local.tee: type mismatch"));
                         }
                     }
-                }
+                },
                 0x23 => {
                     // global.get
                     let (global_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -1446,7 +1645,7 @@ impl WastModuleValidator {
                     let global_type = Self::get_global_type(module, global_idx)
                         .ok_or_else(|| anyhow!("unknown global"))?;
                     stack.push(StackType::from_value_type(global_type));
-                }
+                },
                 0x24 => {
                     // global.set
                     let (global_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -1468,10 +1667,15 @@ impl WastModuleValidator {
                         .ok_or_else(|| anyhow!("unknown global"))?;
                     let expected = StackType::from_value_type(global_type);
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, expected, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        expected,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                }
+                },
 
                 // Constants
                 0x41 => {
@@ -1479,13 +1683,13 @@ impl WastModuleValidator {
                     let (_, new_offset) = Self::parse_varint32(code, offset)?;
                     offset = new_offset;
                     stack.push(StackType::I32);
-                }
+                },
                 0x42 => {
                     // i64.const
                     let (_, new_offset) = Self::parse_varint64(code, offset)?;
                     offset = new_offset;
                     stack.push(StackType::I64);
-                }
+                },
                 0x43 => {
                     // f32.const
                     if offset + 4 > code.len() {
@@ -1493,7 +1697,7 @@ impl WastModuleValidator {
                     }
                     offset += 4;
                     stack.push(StackType::F32);
-                }
+                },
                 0x44 => {
                     // f64.const
                     if offset + 8 > code.len() {
@@ -1501,7 +1705,7 @@ impl WastModuleValidator {
                     }
                     offset += 8;
                     stack.push(StackType::F64);
-                }
+                },
 
                 // Parametric operations
                 0x1A => {
@@ -1514,7 +1718,7 @@ impl WastModuleValidator {
                     if stack.len() > frame_height {
                         stack.pop();
                     }
-                }
+                },
                 0x1B => {
                     // select (untyped)
                     let frame_height = Self::current_frame_height(&frames);
@@ -1536,7 +1740,7 @@ impl WastModuleValidator {
                         // In unreachable code, push Unknown type
                         stack.push(StackType::Unknown);
                     }
-                }
+                },
                 0x1C => {
                     // select t* (typed select)
                     // Format: 0x1C vec(valtype)
@@ -1582,178 +1786,300 @@ impl WastModuleValidator {
 
                     // Push the result
                     stack.push(result_type);
-                }
+                },
 
                 // f32 unary operations (0x8B-0x91): abs, neg, ceil, floor, trunc, nearest, sqrt
                 0x8B | 0x8C | 0x8D | 0x8E | 0x8F | 0x90 | 0x91 => {
                     // f32 unary: f32 -> f32
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F32);
-                }
+                },
                 // f32 binary operations (0x92-0x98): add, sub, mul, div, min, max, copysign
                 0x92 | 0x93 | 0x94 | 0x95 | 0x96 | 0x97 | 0x98 => {
                     // f32 binary: f32 f32 -> f32
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F32);
-                }
+                },
                 // f64 unary operations (0x99-0x9F): abs, neg, ceil, floor, trunc, nearest, sqrt
                 0x99 | 0x9A | 0x9B | 0x9C | 0x9D | 0x9E | 0x9F => {
                     // f64 unary: f64 -> f64
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F64);
-                }
+                },
                 // f64 binary operations (0xA0-0xA6): add, sub, mul, div, min, max, copysign
                 0xA0 | 0xA1 | 0xA2 | 0xA3 | 0xA4 | 0xA5 | 0xA6 => {
                     // f64 binary: f64 f64 -> f64
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::F64);
-                }
+                },
                 // i32 unary: clz (0x67), ctz, popcnt
                 0x67 | 0x68 | 0x69 => {
                     // i32 unary operations
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 // i64 unary: clz (0x79), ctz, popcnt
                 0x79 | 0x7A | 0x7B => {
                     // i64 unary operations
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
 
                 // i32.eqz (0x45): i32 -> i32
                 0x45 => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // i32 comparison operations (0x46-0x4F): i32 i32 -> i32
                 0x46 | 0x47 | 0x48 | 0x49 | 0x4A | 0x4B | 0x4C | 0x4D | 0x4E | 0x4F => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // i64.eqz (0x50): i64 -> i32
                 0x50 => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // i64 comparison operations (0x51-0x5A): i64 i64 -> i32
                 0x51 | 0x52 | 0x53 | 0x54 | 0x55 | 0x56 | 0x57 | 0x58 | 0x59 | 0x5A => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // f32 comparison operations (0x5B-0x60): f32 f32 -> i32
                 0x5B | 0x5C | 0x5D | 0x5E | 0x5F | 0x60 => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::F32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // f64 comparison operations (0x61-0x66): f64 f64 -> i32
                 0x61 | 0x62 | 0x63 | 0x64 | 0x65 | 0x66 => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::F64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::F64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // i32 binary operations (0x6A-0x78): i32 i32 -> i32
-                0x6A | 0x6B | 0x6C | 0x6D | 0x6E | 0x6F | 0x70 | 0x71 | 0x72 | 0x73 | 0x74 | 0x75 | 0x76 | 0x77 | 0x78 => {
+                0x6A | 0x6B | 0x6C | 0x6D | 0x6E | 0x6F | 0x70 | 0x71 | 0x72 | 0x73 | 0x74
+                | 0x75 | 0x76 | 0x77 | 0x78 => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // i64 binary operations (0x7C-0x8A): i64 i64 -> i64
-                0x7C | 0x7D | 0x7E | 0x7F | 0x80 | 0x81 | 0x82 | 0x83 | 0x84 | 0x85 | 0x86 | 0x87 | 0x88 | 0x89 | 0x8A | 0x8B => {
+                0x7C | 0x7D | 0x7E | 0x7F | 0x80 | 0x81 | 0x82 | 0x83 | 0x84 | 0x85 | 0x86
+                | 0x87 | 0x88 | 0x89 | 0x8A | 0x8B => {
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
 
                 // Conversion operations: i32 -> i64
                 0xac | 0xad => {
                     // i64.extend_i32_s (0xac), i64.extend_i32_u (0xad)
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I32,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
 
                 // Conversion operations: i64 -> i32
                 0xa7 => {
                     // i32.wrap_i64
                     let frame_height = Self::current_frame_height(&frames);
-                    if !Self::pop_type(&mut stack, StackType::I64, frame_height, Self::is_unreachable(&frames)) {
+                    if !Self::pop_type(
+                        &mut stack,
+                        StackType::I64,
+                        frame_height,
+                        Self::is_unreachable(&frames),
+                    ) {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // Conversion operations: f32 <-> i32
                 0xa8 | 0xa9 | 0xaa | 0xab => {
@@ -1772,7 +2098,7 @@ impl WastModuleValidator {
                         }
                     }
                     stack.push(StackType::I32);
-                }
+                },
 
                 // Conversion operations: f32/f64 <-> i64
                 0xae | 0xaf | 0xb0 | 0xb1 => {
@@ -1791,7 +2117,7 @@ impl WastModuleValidator {
                         }
                     }
                     stack.push(StackType::I64);
-                }
+                },
 
                 // Conversion operations: i32/i64 -> f32
                 0xb2 | 0xb3 | 0xb4 | 0xb5 => {
@@ -1810,7 +2136,7 @@ impl WastModuleValidator {
                         }
                     }
                     stack.push(StackType::F32);
-                }
+                },
 
                 // Conversion operations: f64.demote_f32
                 0xb6 => {
@@ -1820,7 +2146,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("f32.demote_f64: operand must be f64"));
                     }
                     stack.push(StackType::F32);
-                }
+                },
 
                 // Conversion operations: i32/i64 -> f64
                 0xb7 | 0xb8 | 0xb9 | 0xba => {
@@ -1839,7 +2165,7 @@ impl WastModuleValidator {
                         }
                     }
                     stack.push(StackType::F64);
-                }
+                },
 
                 // Conversion operations: f64.promote_f32
                 0xbb => {
@@ -1849,7 +2175,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("f64.promote_f32: operand must be f32"));
                     }
                     stack.push(StackType::F64);
-                }
+                },
 
                 // Reinterpret operations (same size, different type)
                 0xbc => {
@@ -1860,7 +2186,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("i32.reinterpret_f32: operand must be f32"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 0xbd => {
                     // i64.reinterpret_f64
                     let frame_height = Self::current_frame_height(&frames);
@@ -1869,7 +2195,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("i64.reinterpret_f64: operand must be f64"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
                 0xbe => {
                     // f32.reinterpret_i32
                     let frame_height = Self::current_frame_height(&frames);
@@ -1878,7 +2204,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("f32.reinterpret_i32: operand must be i32"));
                     }
                     stack.push(StackType::F32);
-                }
+                },
                 0xbf => {
                     // f64.reinterpret_i64
                     let frame_height = Self::current_frame_height(&frames);
@@ -1887,7 +2213,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("f64.reinterpret_i64: operand must be i64"));
                     }
                     stack.push(StackType::F64);
-                }
+                },
 
                 // ref.null (0xD0)
                 0xD0 => {
@@ -1903,7 +2229,7 @@ impl WastModuleValidator {
                         0x6F => stack.push(StackType::ExternRef),
                         _ => stack.push(StackType::Unknown),
                     }
-                }
+                },
                 // ref.is_null (0xD1)
                 0xD1 => {
                     // Pops a reference, pushes i32
@@ -1922,7 +2248,7 @@ impl WastModuleValidator {
                         }
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 // ref.func (0xD2)
                 0xD2 => {
                     // Read function index
@@ -1941,7 +2267,7 @@ impl WastModuleValidator {
                     }
 
                     stack.push(StackType::FuncRef);
-                }
+                },
 
                 // Multi-byte prefix (0xFC) - saturating truncations, bulk memory, etc.
                 0xFC => {
@@ -1958,60 +2284,100 @@ impl WastModuleValidator {
                         // Saturating truncation instructions (non-trapping float-to-int)
                         // i32.trunc_sat_f32_s (0x00): f32 -> i32
                         0x00 => {
-                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I32);
-                        }
+                        },
                         // i32.trunc_sat_f32_u (0x01): f32 -> i32
                         0x01 => {
-                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I32);
-                        }
+                        },
                         // i32.trunc_sat_f64_s (0x02): f64 -> i32
                         0x02 => {
-                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F64,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I32);
-                        }
+                        },
                         // i32.trunc_sat_f64_u (0x03): f64 -> i32
                         0x03 => {
-                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F64,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I32);
-                        }
+                        },
                         // i64.trunc_sat_f32_s (0x04): f32 -> i64
                         0x04 => {
-                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I64);
-                        }
+                        },
                         // i64.trunc_sat_f32_u (0x05): f32 -> i64
                         0x05 => {
-                            if !Self::pop_type(&mut stack, StackType::F32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I64);
-                        }
+                        },
                         // i64.trunc_sat_f64_s (0x06): f64 -> i64
                         0x06 => {
-                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F64,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I64);
-                        }
+                        },
                         // i64.trunc_sat_f64_u (0x07): f64 -> i64
                         0x07 => {
-                            if !Self::pop_type(&mut stack, StackType::F64, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::F64,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I64);
-                        }
+                        },
                         // memory.init (0x08): [i32, i32, i32] -> []
                         0x08 => {
                             // Skip data_idx and mem_idx
@@ -2020,21 +2386,36 @@ impl WastModuleValidator {
                             let (_mem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n (length), s (source offset), d (dest offset) in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // data.drop (0x09): [] -> []
                         0x09 => {
                             let (_data_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
-                        }
+                        },
                         // memory.copy (0x0A): [i32, i32, i32] -> []
                         0x0A => {
                             let (_dst_mem, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -2042,31 +2423,61 @@ impl WastModuleValidator {
                             let (_src_mem, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n (length), s (source), d (dest) in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // memory.fill (0x0B): [i32, i32, i32] -> []
                         0x0B => {
                             let (_mem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n (length), val (value), d (dest) in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // table.init (0x0C): [i32, i32, i32] -> []
                         0x0C => {
                             let (_elem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -2074,21 +2485,36 @@ impl WastModuleValidator {
                             let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n, s, d in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // elem.drop (0x0D): [] -> []
                         0x0D => {
                             let (_elem_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
-                        }
+                        },
                         // table.copy (0x0E): [i32, i32, i32] -> []
                         0x0E => {
                             let (_dst_table, new_offset) = Self::parse_varuint32(code, offset)?;
@@ -2096,22 +2522,42 @@ impl WastModuleValidator {
                             let (_src_table, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n, s, d in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // table.grow (0x0F): [ref, i32] -> [i32]
                         0x0F => {
                             let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n (delta), then ref (init value)
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             // Pop reference type (could be funcref or externref)
@@ -2119,33 +2565,43 @@ impl WastModuleValidator {
                                 stack.pop();
                             }
                             stack.push(StackType::I32);
-                        }
+                        },
                         // table.size (0x10): [] -> [i32]
                         0x10 => {
                             let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             stack.push(StackType::I32);
-                        }
+                        },
                         // table.fill (0x11): [i32, ref, i32] -> []
                         0x11 => {
                             let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
                             // Pop n (length), then ref (val), then i (dest) in reverse
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
                             // Pop reference type
                             if !unreachable && stack.len() > frame_height {
                                 stack.pop();
                             }
-                            if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                            if !Self::pop_type(
+                                &mut stack,
+                                StackType::I32,
+                                frame_height,
+                                unreachable,
+                            ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                        }
+                        },
                         // Unknown 0xFC sub-opcode - skip
-                        _ => {}
+                        _ => {},
                     }
-                }
+                },
 
                 // SIMD prefix (0xFD)
                 0xFD => {
@@ -2177,14 +2633,14 @@ impl WastModuleValidator {
                     } else if unreachable {
                         stack.push(StackType::V128);
                     }
-                }
+                },
 
                 // Skip other opcodes for now (will be handled by instruction executor)
                 _ => {
                     // For all other opcodes, try to skip variable-length immediates
                     // This is a simplified approach - proper validation would parse every opcode
                     // But for WAST tests, the main issues are br_if and unreachable code
-                }
+                },
             }
         }
 
@@ -2201,8 +2657,14 @@ impl WastModuleValidator {
         // Validate that the initialization expression is a valid constant expression
         // and produces a value of the correct type
         let expected_type = StackType::from_value_type(global.global_type.value_type);
-        Self::validate_const_expr_typed(&global.init, module, global_idx, expected_type, declared_functions)
-            .with_context(|| format!("Invalid constant expression in global {}", global_idx))
+        Self::validate_const_expr_typed(
+            &global.init,
+            module,
+            global_idx,
+            expected_type,
+            declared_functions,
+        )
+        .with_context(|| format!("Invalid constant expression in global {}", global_idx))
     }
 
     /// Validate that an expression is a valid constant expression and produces the expected type
@@ -2233,17 +2695,17 @@ impl WastModuleValidator {
                         return Err(anyhow!("type mismatch"));
                     }
                     return Ok(());
-                }
+                },
                 // i32.const
                 0x41 => {
                     pos = Self::skip_leb128_signed(init_bytes, pos)?;
                     stack.push(StackType::I32);
-                }
+                },
                 // i64.const
                 0x42 => {
                     pos = Self::skip_leb128_signed(init_bytes, pos)?;
                     stack.push(StackType::I64);
-                }
+                },
                 // f32.const
                 0x43 => {
                     if pos + 4 > init_bytes.len() {
@@ -2251,7 +2713,7 @@ impl WastModuleValidator {
                     }
                     pos += 4;
                     stack.push(StackType::F32);
-                }
+                },
                 // f64.const
                 0x44 => {
                     if pos + 8 > init_bytes.len() {
@@ -2259,7 +2721,7 @@ impl WastModuleValidator {
                     }
                     pos += 8;
                     stack.push(StackType::F64);
-                }
+                },
                 // global.get
                 0x23 => {
                     let (ref_global_idx, new_pos) = Self::read_leb128_unsigned(init_bytes, pos)?;
@@ -2291,7 +2753,7 @@ impl WastModuleValidator {
                     } else {
                         return Err(anyhow!("unknown global"));
                     }
-                }
+                },
                 // ref.null
                 0xD0 => {
                     // Read heap type
@@ -2299,11 +2761,11 @@ impl WastModuleValidator {
                     pos = new_pos;
                     // 0x70 = funcref, 0x6F = externref
                     match heap_type {
-                        0x70 | -16 => stack.push(StackType::FuncRef),   // funcref
+                        0x70 | -16 => stack.push(StackType::FuncRef), // funcref
                         0x6F | -17 => stack.push(StackType::ExternRef), // externref
                         _ => stack.push(StackType::Unknown),
                     }
-                }
+                },
                 // ref.func
                 0xD2 => {
                     let (func_idx, new_pos) = Self::read_leb128_unsigned(init_bytes, pos)?;
@@ -2321,7 +2783,7 @@ impl WastModuleValidator {
                     }
 
                     stack.push(StackType::FuncRef);
-                }
+                },
                 // Extended constant expressions (WebAssembly 2.0)
                 // i32.add, i32.sub, i32.mul - pop 2 i32, push 1 i32
                 0x6A | 0x6B | 0x6C => {
@@ -2334,7 +2796,7 @@ impl WastModuleValidator {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I32);
-                }
+                },
                 // i64.add, i64.sub, i64.mul - pop 2 i64, push 1 i64
                 0x7C | 0x7D | 0x7E => {
                     if stack.len() < 2 {
@@ -2346,11 +2808,11 @@ impl WastModuleValidator {
                         return Err(anyhow!("type mismatch"));
                     }
                     stack.push(StackType::I64);
-                }
+                },
                 // Any other opcode is not allowed in a constant expression
                 _ => {
                     return Err(anyhow!("constant expression required"));
-                }
+                },
             }
         }
 
@@ -2444,12 +2906,20 @@ impl WastModuleValidator {
     /// Count the number of global imports in a module
     fn count_global_imports(module: &Module) -> usize {
         // wrt_format::Module has imports as a Vec, so iteration works correctly
-        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Global(_))).count()
+        module
+            .imports
+            .iter()
+            .filter(|i| matches!(&i.desc, ImportDesc::Global(_)))
+            .count()
     }
 
     /// Count the number of memory imports in a module
     fn count_memory_imports(module: &Module) -> usize {
-        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Memory(_))).count()
+        module
+            .imports
+            .iter()
+            .filter(|i| matches!(&i.desc, ImportDesc::Memory(_)))
+            .count()
     }
 
     /// Get the total number of memories (imports + defined)
@@ -2464,7 +2934,11 @@ impl WastModuleValidator {
 
     /// Count the number of table imports in a module
     fn count_table_imports(module: &Module) -> usize {
-        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Table(_))).count()
+        module
+            .imports
+            .iter()
+            .filter(|i| matches!(&i.desc, ImportDesc::Table(_)))
+            .count()
     }
 
     /// Get the total number of tables (imports + defined)
@@ -2560,7 +3034,11 @@ impl WastModuleValidator {
 
     /// Count the number of function imports in a module
     fn count_function_imports(module: &Module) -> usize {
-        module.imports.iter().filter(|i| matches!(&i.desc, ImportDesc::Function(_))).count()
+        module
+            .imports
+            .iter()
+            .filter(|i| matches!(&i.desc, ImportDesc::Function(_)))
+            .count()
     }
 
     /// Get the total number of functions (imports + defined)
@@ -2608,15 +3086,13 @@ impl WastModuleValidator {
     /// Tags are defined with a type index pointing to a function type,
     /// and the tag's params are the function type's params
     fn get_tag_param_types(module: &Module, tag_idx: u32) -> Result<Vec<StackType>> {
-        let type_idx = Self::get_tag_type_idx(module, tag_idx)
-            .ok_or_else(|| anyhow!("unknown tag"))?;
+        let type_idx =
+            Self::get_tag_type_idx(module, tag_idx).ok_or_else(|| anyhow!("unknown tag"))?;
 
-        let func_type = module.types.get(type_idx as usize)
-            .ok_or_else(|| anyhow!("unknown type"))?;
+        let func_type =
+            module.types.get(type_idx as usize).ok_or_else(|| anyhow!("unknown type"))?;
 
-        Ok(func_type.params.iter()
-            .map(|vt| StackType::from_value_type(*vt))
-            .collect())
+        Ok(func_type.params.iter().map(|vt| StackType::from_value_type(*vt)).collect())
     }
 
     /// Validate that a try_table handler can branch to the target label
@@ -2720,13 +3196,13 @@ impl WastModuleValidator {
                 for &idx in indices {
                     declared.insert(idx);
                 }
-            }
+            },
             PureElementInit::ExpressionBytes(exprs) => {
                 // Parse expression bytes to find ref.func instructions
                 for expr_bytes in exprs {
                     Self::extract_ref_func_from_expr(expr_bytes, declared);
                 }
-            }
+            },
         }
     }
 
@@ -2746,21 +3222,21 @@ impl WastModuleValidator {
                     } else {
                         break;
                     }
-                }
+                },
                 0xD0 => {
                     // ref.null - skip the heap type byte
                     if pos < expr.len() {
                         pos += 1;
                     }
-                }
+                },
                 0x0B => {
                     // end - stop parsing
                     break;
-                }
+                },
                 _ => {
                     // Unknown opcode in element expression - skip
                     break;
-                }
+                },
             }
         }
     }
@@ -2770,8 +3246,8 @@ impl WastModuleValidator {
     fn max_alignment_for_opcode(opcode: u8) -> Option<u32> {
         match opcode {
             // 4-byte operations (max align = 2, since 2^2 = 4)
-            0x28 | 0x36 => Some(2), // i32.load, i32.store
-            0x2A | 0x38 => Some(2), // f32.load, f32.store
+            0x28 | 0x36 => Some(2),        // i32.load, i32.store
+            0x2A | 0x38 => Some(2),        // f32.load, f32.store
             0x34 | 0x35 | 0x3E => Some(2), // i64.load32_s/u, i64.store32
 
             // 8-byte operations (max align = 3, since 2^3 = 8)
@@ -2876,11 +3352,7 @@ impl WastModuleValidator {
     /// Parse a variable-length signed 32-bit integer
     fn parse_varint32(code: &[u8], offset: usize) -> Result<(i32, usize)> {
         let (value, pos) = Self::parse_varuint32(code, offset)?;
-        let result = if value & 0x80000000 != 0 {
-            value as i32
-        } else {
-            value as i32
-        };
+        let result = if value & 0x80000000 != 0 { value as i32 } else { value as i32 };
         Ok((result, pos))
     }
 
@@ -2948,7 +3420,7 @@ impl WastModuleValidator {
                 // Parse the heap type following the prefix
                 let (heap_type, new_offset) = Self::parse_heap_type(code, offset + 1)?;
                 return Ok((BlockType::ValueType(heap_type), new_offset));
-            }
+            },
             _ if byte >= 0 => {
                 // Function type index (encoded as positive s33)
                 // For larger indices, need to parse as LEB128
@@ -2960,7 +3432,7 @@ impl WastModuleValidator {
                     return Err(anyhow!("invalid function type index {}", type_idx));
                 }
                 return Ok((BlockType::FuncType(type_idx as u32), new_offset));
-            }
+            },
             _ => {
                 // Negative index (encoded as varint), parse it properly
                 let (type_idx, new_offset) = Self::parse_varint32(code, offset)?;
@@ -2971,7 +3443,7 @@ impl WastModuleValidator {
                     return Err(anyhow!("invalid function type index {}", type_idx));
                 }
                 return Ok((BlockType::FuncType(type_idx as u32), new_offset));
-            }
+            },
         };
 
         Ok((block_type, offset + 1))
@@ -2991,18 +3463,18 @@ impl WastModuleValidator {
         // Positive values are concrete type indices.
         let value_type = if heap_type_val < 0 {
             match heap_type_val {
-                -16 => ValueType::FuncRef,     // func (0x70)
-                -17 => ValueType::ExternRef,   // extern (0x6F)
-                -18 => ValueType::AnyRef,      // any (0x6E)
-                -19 => ValueType::EqRef,       // eq (0x6D)
-                -20 => ValueType::I31Ref,      // i31 (0x6C)
+                -16 => ValueType::FuncRef,      // func (0x70)
+                -17 => ValueType::ExternRef,    // extern (0x6F)
+                -18 => ValueType::AnyRef,       // any (0x6E)
+                -19 => ValueType::EqRef,        // eq (0x6D)
+                -20 => ValueType::I31Ref,       // i31 (0x6C)
                 -21 => ValueType::StructRef(0), // struct (0x6B) - abstract
                 -22 => ValueType::ArrayRef(0),  // array (0x6A) - abstract
-                -23 => ValueType::ExnRef,      // exn (0x69)
-                -13 => ValueType::FuncRef,     // nofunc (0x73) - bottom for func
-                -14 => ValueType::ExternRef,   // noextern (0x72) - bottom for extern
-                -15 => ValueType::AnyRef,      // none (0x71) - bottom for any
-                _ => ValueType::AnyRef,        // fallback
+                -23 => ValueType::ExnRef,       // exn (0x69)
+                -13 => ValueType::FuncRef,      // nofunc (0x73) - bottom for func
+                -14 => ValueType::ExternRef,    // noextern (0x72) - bottom for extern
+                -15 => ValueType::AnyRef,       // none (0x71) - bottom for any
+                _ => ValueType::AnyRef,         // fallback
             }
         } else {
             // Concrete type index - reference to a defined type
@@ -3023,31 +3495,22 @@ impl WastModuleValidator {
             BlockType::ValueType(vt) => {
                 let st = StackType::from_value_type(*vt);
                 Ok((Vec::new(), vec![st]))
-            }
+            },
             BlockType::FuncType(type_idx) => {
                 if *type_idx as usize >= module.types.len() {
-                    return Err(anyhow!(
-                        "invalid function type index {}",
-                        type_idx
-                    ));
+                    return Err(anyhow!("invalid function type index {}", type_idx));
                 }
 
                 let func_type = &module.types[*type_idx as usize];
 
-                let inputs = func_type
-                    .params
-                    .iter()
-                    .map(|&vt| StackType::from_value_type(vt))
-                    .collect();
+                let inputs =
+                    func_type.params.iter().map(|&vt| StackType::from_value_type(vt)).collect();
 
-                let outputs = func_type
-                    .results
-                    .iter()
-                    .map(|&vt| StackType::from_value_type(vt))
-                    .collect();
+                let outputs =
+                    func_type.results.iter().map(|&vt| StackType::from_value_type(vt)).collect();
 
                 Ok((inputs, outputs))
-            }
+            },
         }
     }
 
@@ -3067,10 +3530,7 @@ impl WastModuleValidator {
         unreachable: bool,
     ) -> Result<()> {
         if label_idx as usize >= frames.len() {
-            return Err(anyhow!(
-                "br: label index {} out of range",
-                label_idx
-            ));
+            return Err(anyhow!("br: label index {} out of range", label_idx));
         }
 
         // In unreachable code, the stack is polymorphic - any values are acceptable
@@ -3108,7 +3568,10 @@ impl WastModuleValidator {
         for (i, expected) in expected_types.iter().rev().enumerate() {
             let stack_idx = stack.len() - 1 - i;
             let actual = &stack[stack_idx];
-            if actual != expected && *actual != StackType::Unknown && *expected != StackType::Unknown {
+            if actual != expected
+                && *actual != StackType::Unknown
+                && *expected != StackType::Unknown
+            {
                 return Err(anyhow!("type mismatch"));
             }
         }

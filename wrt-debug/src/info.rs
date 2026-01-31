@@ -9,88 +9,66 @@ use std::vec::Vec;
 #[cfg(all(not(feature = "std")))]
 use std::vec::Vec;
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_DWARF_FILE_TABLE,
-    },
     NoStdProvider,
+    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
 };
 
 use crate::{
-    abbrev::{
-        attributes,
-        tags,
-        AbbreviationTable,
-        AttributeForm,
-    },
+    abbrev::{AbbreviationTable, AttributeForm, attributes, tags},
     bounded_debug_infra,
     cursor::DwarfCursor,
-    parameter::{
-        BasicType,
-        InlinedFunction,
-        InlinedFunctions,
-        Parameter,
-        ParameterList,
-    },
-    strings::{
-        DebugString,
-        StringTable,
-    },
+    parameter::{BasicType, InlinedFunction, InlinedFunctions, Parameter, ParameterList},
+    strings::{DebugString, StringTable},
 };
 
 /// DWARF compilation unit header
 #[derive(Debug)]
 pub struct CompilationUnitHeader {
     /// Total length of the compilation unit
-    pub unit_length:   u32,
+    pub unit_length: u32,
     /// DWARF version
-    pub version:       u16,
+    pub version: u16,
     /// Offset into .debug_abbrev section
     pub abbrev_offset: u32,
     /// Size of addresses (4 or 8 bytes)
-    pub address_size:  u8,
+    pub address_size: u8,
 }
 
 /// Simple function information
 #[derive(Debug, Clone)]
 pub struct FunctionInfo<'a> {
     /// Function name (reference to string in .debug_str)
-    pub name:        Option<DebugString<'a>>,
+    pub name: Option<DebugString<'a>>,
     /// Low PC (start address)
-    pub low_pc:      u32,
+    pub low_pc: u32,
     /// High PC (end address or size)
-    pub high_pc:     u32,
+    pub high_pc: u32,
     /// Source file index
-    pub file_index:  u16,
+    pub file_index: u16,
     /// Source line number
-    pub line:        u32,
+    pub line: u32,
     /// Function parameters
-    pub parameters:  Option<ParameterList<'a>>,
+    pub parameters: Option<ParameterList<'a>>,
     /// Return type
     pub return_type: BasicType,
     /// Is this function inlined?
-    pub is_inline:   bool,
+    pub is_inline: bool,
 }
 
 /// DWARF debug info parser
 pub struct DebugInfoParser<'a> {
     /// Reference to .debug_info data
-    debug_info:        &'a [u8],
+    debug_info: &'a [u8],
     /// Reference to .debug_abbrev data
-    debug_abbrev:      &'a [u8],
+    debug_abbrev: &'a [u8],
     /// Reference to .debug_str data (optional)
-    debug_str:         Option<&'a [u8]>,
+    debug_str: Option<&'a [u8]>,
     /// Abbreviation table
-    abbrev_table:      AbbreviationTable,
+    abbrev_table: AbbreviationTable,
     /// String table for name resolution
-    string_table:      Option<StringTable<'a>>,
+    string_table: Option<StringTable<'a>>,
     /// Function cache
     functions: BoundedVec<
         FunctionInfo<'a>,
@@ -100,7 +78,7 @@ pub struct DebugInfoParser<'a> {
     /// Inlined functions
     inlined_functions: InlinedFunctions<'a>,
     /// Current compilation unit index
-    current_cu:        u32,
+    current_cu: u32,
 }
 
 impl<'a> DebugInfoParser<'a> {
@@ -221,14 +199,14 @@ impl<'a> DebugInfoParser<'a> {
         header: &CompilationUnitHeader,
     ) -> Result<()> {
         let mut func = FunctionInfo {
-            name:        None,
-            low_pc:      0,
-            high_pc:     0,
-            file_index:  0,
-            line:        0,
-            parameters:  None,
+            name: None,
+            low_pc: 0,
+            high_pc: 0,
+            file_index: 0,
+            line: 0,
+            parameters: None,
             return_type: BasicType::Void,
-            is_inline:   false,
+            is_inline: false,
         };
 
         // Parse attributes
@@ -426,10 +404,10 @@ impl<'a> DebugInfoParser<'a> {
                     cursor,
                     &attr_spec.form,
                     &CompilationUnitHeader {
-                        unit_length:   0,
-                        version:       4,
+                        unit_length: 0,
+                        version: 4,
                         abbrev_offset: 0,
-                        address_size:  4, // Assume 32-bit for WebAssembly
+                        address_size: 4, // Assume 32-bit for WebAssembly
                     },
                 )?;
             }
@@ -517,14 +495,14 @@ impl<'a> DebugInfoParser<'a> {
         header: &CompilationUnitHeader,
     ) -> Result<()> {
         let mut inlined = InlinedFunction {
-            name:            None,
+            name: None,
             abstract_origin: 0,
-            low_pc:          0,
-            high_pc:         0,
-            call_file:       0,
-            call_line:       0,
-            call_column:     0,
-            depth:           0,
+            low_pc: 0,
+            high_pc: 0,
+            call_file: 0,
+            call_line: 0,
+            call_column: 0,
+            depth: 0,
         };
 
         // Parse attributes

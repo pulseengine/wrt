@@ -11,14 +11,9 @@ mod no_alloc_tests {
     // Import from wrt-foundation that is available in all environments
     // Binary std/no_std choice
     use wrt_component::no_alloc::{
-        validate_component_no_alloc,
+        COMPONENT_MAGIC, ComponentHeader, ComponentSectionId, ComponentSectionInfo,
+        MinimalComponent, ValidationLevel, validate_component_no_alloc,
         validate_component_with_level,
-        ComponentHeader,
-        ComponentSectionId,
-        ComponentSectionInfo,
-        MinimalComponent,
-        ValidationLevel,
-        COMPONENT_MAGIC,
     };
     use wrt_foundation::verification::VerificationLevel;
 
@@ -111,8 +106,8 @@ mod no_alloc_tests {
     fn test_section_info() {
         // Create a section info
         let section_info = ComponentSectionInfo {
-            id:     ComponentSectionId::Export,
-            size:   100,
+            id: ComponentSectionId::Export,
+            size: 100,
             offset: 200,
         };
 

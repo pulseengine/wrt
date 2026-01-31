@@ -1,22 +1,12 @@
 use std::sync::Arc;
 
-use wrt_component::{
-    Component,
-    ComponentType,
-};
+use wrt_component::{Component, ComponentType};
 use wrt_error::Result;
 use wrt_foundation::values::Value;
-use wrt_host::{
-    function::CloneableFn,
-    CallbackRegistry,
-};
+use wrt_host::{CallbackRegistry, function::CloneableFn};
 use wrt_intercept::{
-    strategies::{
-        FirewallBuilder,
-        LoggingStrategy,
-        StatisticsStrategy,
-    },
     LinkInterceptor,
+    strategies::{FirewallBuilder, LoggingStrategy, StatisticsStrategy},
 };
 use wrt_runtime::RuntimeInstance;
 
