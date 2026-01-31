@@ -4,42 +4,21 @@
 //! operations according to the WebAssembly Component Model specification.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    vec::Vec,
-};
+use std::{boxed::Box, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    prelude::*,
-    safe_managed_alloc,
+    bounded::BoundedString, budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    prelude::*, safe_managed_alloc,
 };
 
 use crate::{
     canonical_abi::canonical_options::CanonicalOptions,
-    types::{
-        FutureHandle,
-        StreamHandle,
-        ValType,
-        Value,
-    },
+    types::{FutureHandle, StreamHandle, ValType, Value},
 };
 
 /// Maximum size for immediate values in no_std
@@ -133,7 +112,10 @@ impl AsyncCanonicalEncoder {
             Value::List(list) => self.encode_list(list.as_slice(), options),
             // Record stores just values, not (name, value) pairs - treat like tuple
             Value::Record(fields) => self.encode_tuple(fields.as_slice(), options),
-            Value::Variant { discriminant, value } => self.encode_variant(*discriminant, value.as_deref(), options),
+            Value::Variant {
+                discriminant,
+                value,
+            } => self.encode_variant(*discriminant, value.as_deref(), options),
             Value::Tuple(values) => self.encode_tuple(values.as_slice(), options),
             Value::Option(opt) => self.encode_option(opt.as_deref(), options),
             Value::Result(res) => self.encode_result(res, options),
@@ -285,11 +267,7 @@ impl AsyncCanonicalEncoder {
         match result {
             Ok(val_opt) => {
                 self.encode_u32(0)?; // Ok discriminant
-                if let Some(val) = val_opt {
-                    self.encode_value(val, options)
-                } else {
-                    Ok(())
-                }
+                if let Some(val) = val_opt { self.encode_value(val, options) } else { Ok(()) }
             },
             Err(val) => {
                 self.encode_u32(1)?; // Err discriminant
@@ -399,30 +377,50 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             ValType::List(elem_type) => {
                 let vec = self.decode_list(elem_type, options)?;
                 #[cfg(feature = "std")]
-                { Ok(Value::List(Box::new(vec))) }
+                {
+                    Ok(Value::List(Box::new(vec)))
+                }
                 #[cfg(not(any(feature = "std",)))]
-                { Ok(Value::List(Box::new(BoundedVec::from_slice(&vec)?))) }
+                {
+                    Ok(Value::List(Box::new(BoundedVec::from_slice(&vec)?)))
+                }
             },
             ValType::Record(fields) => {
                 let vec = self.decode_record(fields.fields.as_slice(), options)?;
                 #[cfg(feature = "std")]
-                { Ok(Value::Record(Box::new(vec))) }
+                {
+                    Ok(Value::Record(Box::new(vec)))
+                }
                 #[cfg(not(any(feature = "std",)))]
-                { Ok(Value::Record(Box::new(BoundedVec::from_slice(&vec)?))) }
+                {
+                    Ok(Value::Record(Box::new(BoundedVec::from_slice(&vec)?)))
+                }
             },
             ValType::Variant(variant) => self.decode_variant(variant.cases.as_slice(), options),
             ValType::Tuple(types) => {
                 let vec = self.decode_tuple(types.types.as_slice(), options)?;
                 #[cfg(feature = "std")]
-                { Ok(Value::Tuple(Box::new(vec))) }
+                {
+                    Ok(Value::Tuple(Box::new(vec)))
+                }
                 #[cfg(not(any(feature = "std",)))]
-                { Ok(Value::Tuple(Box::new(BoundedVec::from_slice(&vec)?))) }
+                {
+                    Ok(Value::Tuple(Box::new(BoundedVec::from_slice(&vec)?)))
+                }
             },
             ValType::Option(inner) => Ok(Value::Option(self.decode_option(inner, options)?)),
             ValType::Result(result_type) => {
-                let ok_type = result_type.ok.as_ref().ok_or_else(|| Error::runtime_type_mismatch("Result type missing ok type"))?;
-                let err_type = result_type.err.as_ref().ok_or_else(|| Error::runtime_type_mismatch("Result type missing err type"))?;
-                Ok(Value::Result(self.decode_result(ok_type, err_type, options)?))
+                let ok_type = result_type
+                    .ok
+                    .as_ref()
+                    .ok_or_else(|| Error::runtime_type_mismatch("Result type missing ok type"))?;
+                let err_type = result_type
+                    .err
+                    .as_ref()
+                    .ok_or_else(|| Error::runtime_type_mismatch("Result type missing err type"))?;
+                Ok(Value::Result(
+                    self.decode_result(ok_type, err_type, options)?,
+                ))
             },
             ValType::Flags(names) => Ok(Value::Flags(self.decode_flags(names.labels.len())?)),
             ValType::Enum(_) => Ok(Value::Enum(self.decode_enum()?)),
@@ -511,7 +509,8 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         let _ptr = self.decode_u32()?;
         // In real implementation, would read from linear memory
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-        BoundedString::try_from_str("decoded_string").map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
+        BoundedString::try_from_str("decoded_string")
+            .map_err(|e| wrt_error::Error::runtime_error("Failed to create BoundedString"))
     }
 
     fn decode_list(
@@ -551,7 +550,10 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             } else {
                 None
             };
-            Ok(Value::Variant { discriminant, value })
+            Ok(Value::Variant {
+                discriminant,
+                value,
+            })
         } else {
             Err(Error::runtime_execution_error(
                 "Invalid variant discriminant",

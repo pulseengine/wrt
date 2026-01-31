@@ -5,25 +5,15 @@
 //! provide hierarchical isolation with different containment levels.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
@@ -33,10 +23,7 @@ use wrt_foundation::{
 
 use crate::{
     // resource_lifecycle::ResourceLifecycleManager, // Module not available
-    types::{
-        ComponentInstance,
-        Value,
-    },
+    types::{ComponentInstance, Value},
 };
 
 // Placeholder types for missing imports
@@ -115,23 +102,23 @@ pub enum ZoneHealth {
 #[derive(Debug, Clone)]
 pub struct BlastZoneConfig {
     /// Unique zone identifier
-    pub zone_id:             u32,
+    pub zone_id: u32,
     /// Zone name for debugging
-    pub zone_name:           String,
+    pub zone_name: String,
     /// Isolation level for this zone
-    pub isolation_level:     IsolationLevel,
+    pub isolation_level: IsolationLevel,
     /// Containment policy for failures
-    pub containment_policy:  ContainmentPolicy,
+    pub containment_policy: ContainmentPolicy,
     /// Recovery strategy
-    pub recovery_strategy:   RecoveryStrategy,
+    pub recovery_strategy: RecoveryStrategy,
     /// Maximum number of components allowed in this zone
-    pub max_components:      usize,
+    pub max_components: usize,
     /// Memory budget for this zone (bytes)
-    pub memory_budget:       usize,
+    pub memory_budget: usize,
     /// Maximum number of resources
-    pub max_resources:       u32,
+    pub max_resources: u32,
     /// Failure threshold before triggering containment
-    pub failure_threshold:   u32,
+    pub failure_threshold: u32,
     /// Recovery timeout in milliseconds
     pub recovery_timeout_ms: u64,
 }
@@ -140,24 +127,24 @@ pub struct BlastZoneConfig {
 #[derive(Debug)]
 pub struct BlastZone {
     /// Zone configuration
-    config:            BlastZoneConfig,
+    config: BlastZoneConfig,
     /// Current health status
-    health:            ZoneHealth,
+    health: ZoneHealth,
     /// Components assigned to this zone
     #[cfg(feature = "std")]
-    components:        Vec<u32>,
+    components: Vec<u32>,
     #[cfg(not(any(feature = "std",)))]
-    components:        BoundedVec<u32, MAX_COMPONENTS_PER_ZONE>,
+    components: BoundedVec<u32, MAX_COMPONENTS_PER_ZONE>,
     /// Current failure count
-    failure_count:     u32,
+    failure_count: u32,
     /// Last failure timestamp
     last_failure_time: u64,
     /// Memory usage tracking
-    memory_used:       usize,
+    memory_used: usize,
     /// Resource usage tracking
-    resources_used:    u32,
+    resources_used: u32,
     /// Zone-specific resource manager
-    resource_manager:  Option<ResourceLifecycleManager>,
+    resource_manager: Option<ResourceLifecycleManager>,
     /// Recovery attempt count
     recovery_attempts: u32,
 }
@@ -166,20 +153,20 @@ pub struct BlastZone {
 #[derive(Debug, Clone)]
 pub struct IsolationPolicy {
     /// Policy identifier
-    pub policy_id:              u32,
+    pub policy_id: u32,
     /// Source zone pattern (None = any zone)
-    pub source_zone:            Option<u32>,
+    pub source_zone: Option<u32>,
     /// Target zone pattern (None = any zone)
-    pub target_zone:            Option<u32>,
+    pub target_zone: Option<u32>,
     /// Whether interaction is allowed
-    pub allowed:                bool,
+    pub allowed: bool,
     /// Required capabilities for interaction
     #[cfg(feature = "std")]
-    pub required_capabilities:  Vec<String>,
+    pub required_capabilities: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
-    pub required_capabilities:  BoundedVec<String, 8>,
+    pub required_capabilities: BoundedVec<String, 8>,
     /// Maximum data transfer size
-    pub max_transfer_size:      usize,
+    pub max_transfer_size: usize,
     /// Whether resource sharing is allowed
     pub allow_resource_sharing: bool,
 }
@@ -188,17 +175,17 @@ pub struct IsolationPolicy {
 #[derive(Debug, Clone)]
 pub struct ZoneFailure {
     /// Zone that failed
-    pub zone_id:      u32,
+    pub zone_id: u32,
     /// Component that triggered the failure
     pub component_id: u32,
     /// Failure timestamp
-    pub timestamp:    u64,
+    pub timestamp: u64,
     /// Failure reason
-    pub reason:       String,
+    pub reason: String,
     /// Stack trace or additional context
-    pub context:      String,
+    pub context: String,
     /// Whether the failure was contained
-    pub contained:    bool,
+    pub contained: bool,
 }
 
 /// Blast zone isolation manager
@@ -230,7 +217,7 @@ pub struct BlastZoneManager {
     /// Global failure threshold
     global_failure_threshold: u32,
     /// Current global failure count
-    global_failure_count:     u32,
+    global_failure_count: u32,
 }
 
 impl BlastZoneConfig {
@@ -538,9 +525,7 @@ impl BlastZoneManager {
                 }
             }
             if !zone_found {
-                return Err(wrt_error::Error::invalid_value(
-                    "Zone not found",
-                ));
+                return Err(wrt_error::Error::invalid_value("Zone not found"));
             }
             self.component_zones
                 .push((component_id, zone_id))
@@ -560,9 +545,9 @@ impl BlastZoneManager {
         self.global_failure_count += 1;
 
         // Find the zone containing this component
-        let zone_id = self.get_component_zone(component_id).ok_or_else(|| {
-            wrt_error::Error::invalid_value("Component not in any zone")
-        })?;
+        let zone_id = self
+            .get_component_zone(component_id)
+            .ok_or_else(|| wrt_error::Error::invalid_value("Component not in any zone"))?;
 
         // Record the failure
         let failure = ZoneFailure {
@@ -708,9 +693,7 @@ impl BlastZoneManager {
                     return zone.attempt_recovery();
                 }
             }
-            Err(wrt_error::Error::invalid_value(
-                "Zone not found",
-            ))
+            Err(wrt_error::Error::invalid_value("Zone not found"))
         }
     }
 

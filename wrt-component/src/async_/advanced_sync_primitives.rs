@@ -8,58 +8,50 @@
 //! Async sync primitives need Arc/Weak support for reference counting
 
 // Async sync primitives fundamentally require Arc/Weak from alloc
-#[cfg(not(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation")))]
-compile_error!("advanced_sync_primitives requires 'std', 'bounded-allocation', or 'managed-allocation' feature - async operations need Arc/Weak support");
+#[cfg(not(any(
+    feature = "std",
+    feature = "bounded-allocation",
+    feature = "managed-allocation"
+)))]
+compile_error!(
+    "advanced_sync_primitives requires 'std', 'bounded-allocation', or 'managed-allocation' feature - async operations need Arc/Weak support"
+);
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::sync::Weak;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Weak;
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    CrateId, Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     component_value::ComponentValue,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    CrateId,
-    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
         fuel_async_executor::AsyncTaskState,
         fuel_aware_waker::create_fuel_aware_waker,
-        task_manager_async_bridge::{
-            ComponentAsyncTaskType,
-            TaskManagerAsyncBridge,
-        },
+        task_manager_async_bridge::{ComponentAsyncTaskType, TaskManagerAsyncBridge},
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder TaskId when threading is not available
@@ -84,18 +76,17 @@ const CONDVAR_NOTIFY_FUEL: u64 = 20;
 /// Advanced synchronization primitives manager
 pub struct AdvancedSyncPrimitives {
     /// Bridge for task management
-    bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
+    bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active sync primitives
-    primitives:         BoundedMap<SyncPrimitiveId, SyncPrimitive, 512>,
+    primitives: BoundedMap<SyncPrimitiveId, SyncPrimitive, 512>,
     /// Component sync contexts
-    component_contexts:
-        BoundedMap<ComponentInstanceId, ComponentSyncContext, 128>,
+    component_contexts: BoundedMap<ComponentInstanceId, ComponentSyncContext, 128>,
     /// Next primitive ID
-    next_primitive_id:  AtomicU64,
+    next_primitive_id: AtomicU64,
     /// Sync statistics
-    sync_stats:         SyncStatistics,
+    sync_stats: SyncStatistics,
     /// Sync configuration
-    sync_config:        SyncConfiguration,
+    sync_config: SyncConfiguration,
 }
 
 /// Synchronization primitive identifier
@@ -105,12 +96,12 @@ pub struct SyncPrimitiveId(u64);
 /// Synchronization primitive
 #[derive(Debug)]
 struct SyncPrimitive {
-    id:             SyncPrimitiveId,
-    component_id:   ComponentInstanceId,
+    id: SyncPrimitiveId,
+    component_id: ComponentInstanceId,
     primitive_type: SyncPrimitiveType,
-    waiters:        BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE>,
-    created_at:     u64,
-    fuel_consumed:  AtomicU64,
+    waiters: BoundedVec<WaiterInfo, MAX_WAITERS_PER_PRIMITIVE>,
+    created_at: u64,
+    fuel_consumed: AtomicU64,
 }
 
 /// Type of synchronization primitive
@@ -118,40 +109,40 @@ struct SyncPrimitive {
 pub enum SyncPrimitiveType {
     /// Async mutex
     AsyncMutex {
-        locked:       AtomicBool,
-        owner:        Option<TaskId>,
-        lock_count:   AtomicU32, // For reentrant mutexes
+        locked: AtomicBool,
+        owner: Option<TaskId>,
+        lock_count: AtomicU32, // For reentrant mutexes
         is_reentrant: bool,
     },
     /// Async semaphore
     AsyncSemaphore {
-        permits:         AtomicU32,
-        max_permits:     u32,
+        permits: AtomicU32,
+        max_permits: u32,
         fair_scheduling: bool,
     },
     /// Async barrier
     AsyncBarrier {
-        parties:    u32,
-        waiting:    AtomicU32,
+        parties: u32,
+        waiting: AtomicU32,
         generation: AtomicU64,
-        broken:     AtomicBool,
+        broken: AtomicBool,
     },
     /// Async condition variable
     AsyncCondVar {
-        associated_mutex:   Option<SyncPrimitiveId>,
+        associated_mutex: Option<SyncPrimitiveId>,
         notification_count: AtomicU64,
     },
     /// Async read-write lock
     AsyncRwLock {
-        readers:         AtomicU32,
-        writer:          AtomicBool,
-        writer_waiting:  AtomicBool,
+        readers: AtomicU32,
+        writer: AtomicBool,
+        writer_waiting: AtomicBool,
         readers_waiting: AtomicU32,
-        prefer_writers:  bool,
+        prefer_writers: bool,
     },
     /// Async latch (countdown latch)
     AsyncLatch {
-        count:         AtomicU32,
+        count: AtomicU32,
         initial_count: u32,
     },
 }
@@ -159,12 +150,12 @@ pub enum SyncPrimitiveType {
 /// Waiter information
 #[derive(Debug, Clone)]
 struct WaiterInfo {
-    task_id:      TaskId,
+    task_id: TaskId,
     component_id: ComponentInstanceId,
-    waker:        Option<Waker>,
-    wait_type:    WaitType,
-    queued_at:    u64,
-    priority:     Priority,
+    waker: Option<Waker>,
+    wait_type: WaitType,
+    queued_at: u64,
+    priority: Priority,
 }
 
 /// Type of wait operation
@@ -189,46 +180,45 @@ pub enum WaitType {
 /// Component sync context
 #[derive(Debug)]
 struct ComponentSyncContext {
-    component_id:     ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Sync primitives owned by this component
-    owned_primitives:
-        BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT>,
+    owned_primitives: BoundedVec<SyncPrimitiveId, MAX_SYNC_PRIMITIVES_PER_COMPONENT>,
     /// Sync limits
-    sync_limits:      SyncLimits,
+    sync_limits: SyncLimits,
 }
 
 /// Sync limits per component
 #[derive(Debug, Clone)]
 pub struct SyncLimits {
-    pub max_mutexes:    usize,
+    pub max_mutexes: usize,
     pub max_semaphores: usize,
-    pub max_barriers:   usize,
-    pub max_condvars:   usize,
-    pub max_rwlocks:    usize,
-    pub max_latches:    usize,
-    pub fuel_budget:    u64,
+    pub max_barriers: usize,
+    pub max_condvars: usize,
+    pub max_rwlocks: usize,
+    pub max_latches: usize,
+    pub fuel_budget: u64,
 }
 
 /// Sync configuration
 #[derive(Debug, Clone)]
 pub struct SyncConfiguration {
     pub enable_priority_inheritance: bool,
-    pub enable_deadlock_detection:   bool,
-    pub enable_fair_scheduling:      bool,
-    pub max_wait_time_ms:            u64,
-    pub enable_reentrant_mutexes:    bool,
-    pub fuel_tracking:               bool,
+    pub enable_deadlock_detection: bool,
+    pub enable_fair_scheduling: bool,
+    pub max_wait_time_ms: u64,
+    pub enable_reentrant_mutexes: bool,
+    pub fuel_tracking: bool,
 }
 
 impl Default for SyncConfiguration {
     fn default() -> Self {
         Self {
             enable_priority_inheritance: true,
-            enable_deadlock_detection:   true,
-            enable_fair_scheduling:      true,
-            max_wait_time_ms:            30_000, // 30 seconds
-            enable_reentrant_mutexes:    false,
-            fuel_tracking:               true,
+            enable_deadlock_detection: true,
+            enable_fair_scheduling: true,
+            max_wait_time_ms: 30_000, // 30 seconds
+            enable_reentrant_mutexes: false,
+            fuel_tracking: true,
         }
     }
 }
@@ -236,20 +226,20 @@ impl Default for SyncConfiguration {
 /// Sync statistics
 #[derive(Debug, Default)]
 struct SyncStatistics {
-    total_mutexes_created:    AtomicU64,
-    total_mutex_locks:        AtomicU64,
-    total_mutex_unlocks:      AtomicU64,
+    total_mutexes_created: AtomicU64,
+    total_mutex_locks: AtomicU64,
+    total_mutex_unlocks: AtomicU64,
     total_semaphores_created: AtomicU64,
     total_semaphore_acquires: AtomicU64,
     total_semaphore_releases: AtomicU64,
-    total_barriers_created:   AtomicU64,
-    total_barrier_waits:      AtomicU64,
-    total_condvars_created:   AtomicU64,
-    total_condvar_waits:      AtomicU64,
-    total_condvar_notifies:   AtomicU64,
-    deadlocks_detected:       AtomicU64,
-    priority_inversions:      AtomicU64,
-    total_fuel_consumed:      AtomicU64,
+    total_barriers_created: AtomicU64,
+    total_barrier_waits: AtomicU64,
+    total_condvars_created: AtomicU64,
+    total_condvar_waits: AtomicU64,
+    total_condvar_notifies: AtomicU64,
+    deadlocks_detected: AtomicU64,
+    priority_inversions: AtomicU64,
+    total_fuel_consumed: AtomicU64,
 }
 
 impl AdvancedSyncPrimitives {
@@ -276,13 +266,13 @@ impl AdvancedSyncPrimitives {
         limits: Option<SyncLimits>,
     ) -> Result<()> {
         let limits = limits.unwrap_or_else(|| SyncLimits {
-            max_mutexes:    32,
+            max_mutexes: 32,
             max_semaphores: 16,
-            max_barriers:   8,
-            max_condvars:   16,
-            max_rwlocks:    16,
-            max_latches:    8,
-            fuel_budget:    50_000,
+            max_barriers: 8,
+            max_condvars: 16,
+            max_rwlocks: 16,
+            max_latches: 8,
+            fuel_budget: 50_000,
         });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
@@ -306,9 +296,14 @@ impl AdvancedSyncPrimitives {
         is_reentrant: bool,
     ) -> Result<SyncPrimitiveId> {
         // Extract values before mutable borrow
-        let max_mutexes = self.component_contexts.get(&component_id)
-            .ok_or_else(|| Error::validation_invalid_input("Component not initialized for sync operations"))?
-            .sync_limits.max_mutexes;
+        let max_mutexes = self
+            .component_contexts
+            .get(&component_id)
+            .ok_or_else(|| {
+                Error::validation_invalid_input("Component not initialized for sync operations")
+            })?
+            .sync_limits
+            .max_mutexes;
         let timestamp = self.get_timestamp();
 
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
@@ -383,7 +378,9 @@ impl AdvancedSyncPrimitives {
 
         // Check component exists before mutable borrow
         if !self.component_contexts.contains_key(&component_id) {
-            return Err(Error::validation_invalid_input("Component not initialized for sync operations"));
+            return Err(Error::validation_invalid_input(
+                "Component not initialized for sync operations",
+            ));
         }
 
         let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
@@ -610,13 +607,15 @@ impl AdvancedSyncPrimitives {
 
                     primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
                     self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
-                }
+                },
                 _ => return Err(Error::validation_invalid_input("Primitive is not a mutex")),
             }
         }
 
         // Wake next waiter after releasing the primitive borrow
-        let primitive = self.primitives.get_mut(&primitive_id)
+        let primitive = self
+            .primitives
+            .get_mut(&primitive_id)
             .ok_or_else(|| Error::validation_invalid_input("Mutex not found"))?;
         Self::wake_next_mutex_waiter(primitive)?;
 
@@ -703,15 +702,19 @@ impl AdvancedSyncPrimitives {
                     permits.fetch_add(1, Ordering::AcqRel);
                     primitive.fuel_consumed.fetch_add(SEMAPHORE_RELEASE_FUEL, Ordering::Relaxed);
                     self.sync_stats.total_semaphore_releases.fetch_add(1, Ordering::Relaxed);
-                }
-                _ => return Err(Error::validation_invalid_input(
-                    "Primitive is not a semaphore",
-                )),
+                },
+                _ => {
+                    return Err(Error::validation_invalid_input(
+                        "Primitive is not a semaphore",
+                    ));
+                },
             }
         }
 
         // Wake next waiter after releasing the primitive borrow
-        let primitive = self.primitives.get_mut(&primitive_id)
+        let primitive = self
+            .primitives
+            .get_mut(&primitive_id)
             .ok_or_else(|| Error::validation_invalid_input("Semaphore not found"))?;
         Self::wake_next_semaphore_waiter(primitive)?;
 
@@ -758,7 +761,9 @@ impl AdvancedSyncPrimitives {
                     let result = BarrierWaitResult::Leader;
                     // primitive reference drops here automatically
 
-                    let primitive = self.primitives.get_mut(&primitive_id)
+                    let primitive = self
+                        .primitives
+                        .get_mut(&primitive_id)
                         .ok_or_else(|| Error::validation_invalid_input("Barrier not found"))?;
                     Self::wake_all_barrier_waiters(primitive)?;
 
@@ -791,9 +796,9 @@ impl AdvancedSyncPrimitives {
     /// Get sync primitive statistics
     pub fn get_sync_statistics(&self) -> SyncStats {
         SyncStats {
-            total_mutexes_created:    self.sync_stats.total_mutexes_created.load(Ordering::Relaxed),
-            total_mutex_locks:        self.sync_stats.total_mutex_locks.load(Ordering::Relaxed),
-            total_mutex_unlocks:      self.sync_stats.total_mutex_unlocks.load(Ordering::Relaxed),
+            total_mutexes_created: self.sync_stats.total_mutexes_created.load(Ordering::Relaxed),
+            total_mutex_locks: self.sync_stats.total_mutex_locks.load(Ordering::Relaxed),
+            total_mutex_unlocks: self.sync_stats.total_mutex_unlocks.load(Ordering::Relaxed),
             total_semaphores_created: self
                 .sync_stats
                 .total_semaphores_created
@@ -806,24 +811,15 @@ impl AdvancedSyncPrimitives {
                 .sync_stats
                 .total_semaphore_releases
                 .load(Ordering::Relaxed),
-            total_barriers_created:   self
-                .sync_stats
-                .total_barriers_created
-                .load(Ordering::Relaxed),
-            total_barrier_waits:      self.sync_stats.total_barrier_waits.load(Ordering::Relaxed),
-            total_condvars_created:   self
-                .sync_stats
-                .total_condvars_created
-                .load(Ordering::Relaxed),
-            total_condvar_waits:      self.sync_stats.total_condvar_waits.load(Ordering::Relaxed),
-            total_condvar_notifies:   self
-                .sync_stats
-                .total_condvar_notifies
-                .load(Ordering::Relaxed),
-            active_primitives:        self.primitives.len() as u64,
-            deadlocks_detected:       self.sync_stats.deadlocks_detected.load(Ordering::Relaxed),
-            priority_inversions:      self.sync_stats.priority_inversions.load(Ordering::Relaxed),
-            total_fuel_consumed:      self.sync_stats.total_fuel_consumed.load(Ordering::Relaxed),
+            total_barriers_created: self.sync_stats.total_barriers_created.load(Ordering::Relaxed),
+            total_barrier_waits: self.sync_stats.total_barrier_waits.load(Ordering::Relaxed),
+            total_condvars_created: self.sync_stats.total_condvars_created.load(Ordering::Relaxed),
+            total_condvar_waits: self.sync_stats.total_condvar_waits.load(Ordering::Relaxed),
+            total_condvar_notifies: self.sync_stats.total_condvar_notifies.load(Ordering::Relaxed),
+            active_primitives: self.primitives.len() as u64,
+            deadlocks_detected: self.sync_stats.deadlocks_detected.load(Ordering::Relaxed),
+            priority_inversions: self.sync_stats.priority_inversions.load(Ordering::Relaxed),
+            total_fuel_consumed: self.sync_stats.total_fuel_consumed.load(Ordering::Relaxed),
         }
     }
 
@@ -927,27 +923,27 @@ pub enum BarrierWaitResult {
 /// Sync statistics
 #[derive(Debug, Clone)]
 pub struct SyncStats {
-    pub total_mutexes_created:    u64,
-    pub total_mutex_locks:        u64,
-    pub total_mutex_unlocks:      u64,
+    pub total_mutexes_created: u64,
+    pub total_mutex_locks: u64,
+    pub total_mutex_unlocks: u64,
     pub total_semaphores_created: u64,
     pub total_semaphore_acquires: u64,
     pub total_semaphore_releases: u64,
-    pub total_barriers_created:   u64,
-    pub total_barrier_waits:      u64,
-    pub total_condvars_created:   u64,
-    pub total_condvar_waits:      u64,
-    pub total_condvar_notifies:   u64,
-    pub active_primitives:        u64,
-    pub deadlocks_detected:       u64,
-    pub priority_inversions:      u64,
-    pub total_fuel_consumed:      u64,
+    pub total_barriers_created: u64,
+    pub total_barrier_waits: u64,
+    pub total_condvars_created: u64,
+    pub total_condvar_waits: u64,
+    pub total_condvar_notifies: u64,
+    pub active_primitives: u64,
+    pub deadlocks_detected: u64,
+    pub priority_inversions: u64,
+    pub total_fuel_consumed: u64,
 }
 
 /// Async mutex guard
 pub struct AsyncMutexGuard {
-    primitive_id:    SyncPrimitiveId,
-    task_id:         TaskId,
+    primitive_id: SyncPrimitiveId,
+    task_id: TaskId,
     sync_primitives: Weak<Mutex<AdvancedSyncPrimitives>>,
 }
 
@@ -962,7 +958,7 @@ impl Drop for AsyncMutexGuard {
 
 /// Async semaphore permit
 pub struct AsyncSemaphorePermit {
-    primitive_id:    SyncPrimitiveId,
+    primitive_id: SyncPrimitiveId,
     sync_primitives: Weak<Mutex<AdvancedSyncPrimitives>>,
 }
 
@@ -977,9 +973,9 @@ impl Drop for AsyncSemaphorePermit {
 
 /// Future for mutex lock operation
 pub struct MutexLockFuture {
-    primitive_id:    SyncPrimitiveId,
-    task_id:         TaskId,
-    component_id:    ComponentInstanceId,
+    primitive_id: SyncPrimitiveId,
+    task_id: TaskId,
+    component_id: ComponentInstanceId,
     sync_primitives: Weak<Mutex<AdvancedSyncPrimitives>>,
 }
 
@@ -989,14 +985,10 @@ impl CoreFuture for MutexLockFuture {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
             let mut primitives = sync_primitives.lock();
-            match primitives.lock_async_mutex(
-                self.primitive_id,
-                self.task_id,
-                self.component_id,
-            ) {
+            match primitives.lock_async_mutex(self.primitive_id, self.task_id, self.component_id) {
                 Ok(MutexLockResult::Acquired) => Poll::Ready(Ok(AsyncMutexGuard {
-                    primitive_id:    self.primitive_id,
-                    task_id:         self.task_id,
+                    primitive_id: self.primitive_id,
+                    task_id: self.task_id,
                     sync_primitives: self.sync_primitives.clone(),
                 })),
                 Ok(MutexLockResult::WouldBlock) => {

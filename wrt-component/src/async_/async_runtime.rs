@@ -5,42 +5,23 @@
 //! stream operations, and future management for the Component Model.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-    time::Duration,
-};
+use core::{fmt, mem, time::Duration};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::VecDeque,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::VecDeque, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-    time::Duration,
-};
+use std::{fmt, mem, time::Duration};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::{
-        BoundedError,
-        BoundedString,
-    },
+    MemoryProvider,
+    bounded::{BoundedError, BoundedString},
     budget_aware_provider::CrateId,
     collections::StaticVec as BoundedVec,
     prelude::*,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::Checksum,
-    MemoryProvider,
 };
 
 // Placeholder types when threading is not available
@@ -58,31 +39,12 @@ pub type TaskState = ();
 pub type TaskType = ();
 
 use super::async_types::{
-    AsyncReadResult,
-    Future,
-    FutureHandle,
-    FutureState,
-    Stream,
-    StreamHandle,
-    StreamState,
-    Waitable,
-    WaitableSet,
+    AsyncReadResult, Future, FutureHandle, FutureState, Stream, StreamHandle, StreamState,
+    Waitable, WaitableSet,
 };
 #[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    Task,
-    TaskContext,
-    TaskId,
-    TaskManager,
-    TaskState,
-    TaskType,
-};
-use crate::{
-    types::{
-        ValType,
-        Value,
-    },
-};
+use crate::threading::task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType};
+use crate::types::{ValType, Value};
 
 /// Maximum number of concurrent tasks in no_std environments
 const MAX_CONCURRENT_TASKS: usize = 128;
@@ -170,30 +132,30 @@ pub struct Reactor {
 #[derive(Debug, Clone)]
 pub struct RuntimeConfig {
     /// Maximum number of concurrent tasks
-    pub max_concurrent_tasks:  usize,
+    pub max_concurrent_tasks: usize,
     /// Task time slice in microseconds
-    pub task_time_slice_us:    u64,
+    pub task_time_slice_us: u64,
     /// Maximum time to run scheduler per iteration (microseconds)
     pub max_scheduler_time_us: u64,
     /// Enable task priority scheduling
-    pub priority_scheduling:   bool,
+    pub priority_scheduling: bool,
     /// Enable work stealing between tasks
-    pub work_stealing:         bool,
+    pub work_stealing: bool,
 }
 
 /// Runtime statistics
 #[derive(Debug, Clone)]
 pub struct RuntimeStats {
     /// Total tasks created
-    pub tasks_created:              u64,
+    pub tasks_created: u64,
     /// Total tasks completed
-    pub tasks_completed:            u64,
+    pub tasks_completed: u64,
     /// Current active tasks
-    pub active_tasks:               u32,
+    pub active_tasks: u32,
     /// Total scheduler iterations
-    pub scheduler_iterations:       u64,
+    pub scheduler_iterations: u64,
     /// Total time spent in scheduler (microseconds)
-    pub scheduler_time_us:          u64,
+    pub scheduler_time_us: u64,
     /// Average task execution time (microseconds)
     pub avg_task_execution_time_us: u64,
 }
@@ -207,9 +169,9 @@ pub struct StreamEntry {
     pub stream: Stream<Value>,
     /// Associated tasks
     #[cfg(feature = "std")]
-    pub tasks:  Vec<TaskId>,
+    pub tasks: Vec<TaskId>,
     #[cfg(not(any(feature = "std",)))]
-    pub tasks:  BoundedVec<TaskId, 16>,
+    pub tasks: BoundedVec<TaskId, 16>,
 }
 
 impl Clone for StreamEntry {
@@ -284,9 +246,9 @@ pub struct FutureEntry {
     pub future: Future<Value>,
     /// Associated tasks
     #[cfg(feature = "std")]
-    pub tasks:  Vec<TaskId>,
+    pub tasks: Vec<TaskId>,
     #[cfg(not(any(feature = "std",)))]
-    pub tasks:  BoundedVec<TaskId, 16>,
+    pub tasks: BoundedVec<TaskId, 16>,
 }
 
 impl Clone for FutureEntry {
@@ -356,13 +318,13 @@ impl wrt_runtime::FromBytes for FutureEntry {
 #[derive(Debug, Clone)]
 pub struct ScheduledTask {
     /// Task ID
-    pub task_id:           TaskId,
+    pub task_id: TaskId,
     /// Task priority (0 = highest)
-    pub priority:          u8,
+    pub priority: u8,
     /// Estimated execution time (microseconds)
     pub estimated_time_us: u64,
     /// Task function to execute
-    pub task_fn:           TaskFunction,
+    pub task_fn: TaskFunction,
 }
 
 impl Default for ScheduledTask {
@@ -418,8 +380,9 @@ impl wrt_runtime::FromBytes for ScheduledTask {
             priority: u8::from_bytes_with_provider(reader, provider)?,
             estimated_time_us: u64::from_bytes_with_provider(reader, provider)?,
             task_fn: TaskFunction::Custom {
-                name: BoundedString::from_str_truncate("")
-                    .map_err(|_| Error::foundation_bounded_capacity_exceeded("Failed to create task name"))?,
+                name: BoundedString::from_str_truncate("").map_err(|_| {
+                    Error::foundation_bounded_capacity_exceeded("Failed to create task name")
+                })?,
                 placeholder: 0,
             },
         })
@@ -430,11 +393,11 @@ impl wrt_runtime::FromBytes for ScheduledTask {
 #[derive(Debug, Clone)]
 pub struct WaitingTask {
     /// Task ID
-    pub task_id:        TaskId,
+    pub task_id: TaskId,
     /// What the task is waiting for
     pub wait_condition: WaitCondition,
     /// Timeout (absolute time in microseconds)
-    pub timeout_us:     Option<u64>,
+    pub timeout_us: Option<u64>,
 }
 
 impl Default for WaitingTask {
@@ -493,17 +456,17 @@ impl wrt_runtime::FromBytes for WaitingTask {
 pub enum TaskFunction {
     /// Stream operation
     StreamOp {
-        handle:    StreamHandle,
+        handle: StreamHandle,
         operation: StreamOperation,
     },
     /// Future operation
     FutureOp {
-        handle:    FutureHandle,
+        handle: FutureHandle,
         operation: FutureOperation,
     },
     /// Custom user function
     Custom {
-        name:        BoundedString<64>,
+        name: BoundedString<64>,
         // In a real implementation, this would be a function pointer
         // For now, we'll use a placeholder
         placeholder: u32,
@@ -551,11 +514,11 @@ pub enum WaitCondition {
 #[derive(Debug, Clone)]
 pub struct ReactorEvent {
     /// Event ID
-    pub id:         u32,
+    pub id: u32,
     /// Event type
     pub event_type: ReactorEventType,
     /// Associated data
-    pub data:       u64,
+    pub data: u64,
 }
 
 impl Default for ReactorEvent {
@@ -666,7 +629,9 @@ impl FromBytes for ReactorEventType {
             2 => Ok(Self::FutureReady),
             3 => Ok(Self::TimerExpired),
             4 => Ok(Self::TaskReady),
-            _ => Err(Error::validation_invalid_type("Invalid ReactorEventType tag")),
+            _ => Err(Error::validation_invalid_type(
+                "Invalid ReactorEventType tag",
+            )),
         }
     }
 }
@@ -675,11 +640,11 @@ impl FromBytes for ReactorEventType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventHandler {
     /// Handler ID
-    pub id:         u32,
+    pub id: u32,
     /// Event type to handle
     pub event_type: ReactorEventType,
     /// Associated task
-    pub task_id:    TaskId,
+    pub task_id: TaskId,
 }
 
 impl Default for EventHandler {
@@ -1016,9 +981,9 @@ impl TaskScheduler {
                 TaskExecutionResult::Waiting(condition) => {
                     // Add to waiting tasks
                     let waiting_task = WaitingTask {
-                        task_id:        task.task_id,
+                        task_id: task.task_id,
                         wait_condition: condition,
-                        timeout_us:     Some(self.current_time + 1_000_000), // 1 second timeout
+                        timeout_us: Some(self.current_time + 1_000_000), // 1 second timeout
                     };
                     #[cfg(feature = "std")]
                     {
@@ -1044,7 +1009,7 @@ impl TaskScheduler {
 
             // Simulate time progression
             self.current_time += task_duration.max(100); // At least 100us per
-                                                         // task
+            // task
         }
 
         // Check waiting tasks for timeouts or condition changes
@@ -1157,11 +1122,11 @@ impl TaskScheduler {
                 // Create a new scheduled task
                 let provider = safe_managed_alloc!(512, CrateId::Component)?;
                 let scheduled_task = ScheduledTask {
-                    task_id:           waiting_task.task_id,
-                    priority:          0, // Default priority
+                    task_id: waiting_task.task_id,
+                    priority: 0, // Default priority
                     estimated_time_us: 1000,
-                    task_fn:           TaskFunction::Custom {
-                        name:        BoundedString::try_from_str("timeout").unwrap_or_default(),
+                    task_fn: TaskFunction::Custom {
+                        name: BoundedString::try_from_str("timeout").unwrap_or_default(),
                         placeholder: 0,
                     },
                 };
@@ -1181,11 +1146,11 @@ impl Reactor {
     pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            pending_events:                                    VecDeque::new(),
+            pending_events: VecDeque::new(),
             #[cfg(not(any(feature = "std",)))]
             pending_events: BoundedVec::new(),
             #[cfg(feature = "std")]
-            event_handlers:                                    Vec::new(),
+            event_handlers: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
             event_handlers: BoundedVec::new(),
         })
@@ -1233,11 +1198,11 @@ impl Reactor {
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
-            max_concurrent_tasks:  MAX_CONCURRENT_TASKS,
-            task_time_slice_us:    1000,  // 1ms
+            max_concurrent_tasks: MAX_CONCURRENT_TASKS,
+            task_time_slice_us: 1000,     // 1ms
             max_scheduler_time_us: 10000, // 10ms
-            priority_scheduling:   true,
-            work_stealing:         false,
+            priority_scheduling: true,
+            work_stealing: false,
         }
     }
 }
@@ -1252,11 +1217,11 @@ impl RuntimeStats {
     /// Create new runtime statistics
     pub fn new() -> Self {
         Self {
-            tasks_created:              0,
-            tasks_completed:            0,
-            active_tasks:               0,
-            scheduler_iterations:       0,
-            scheduler_time_us:          0,
+            tasks_created: 0,
+            tasks_completed: 0,
+            active_tasks: 0,
+            scheduler_iterations: 0,
+            scheduler_time_us: 0,
             avg_task_execution_time_us: 0,
         }
     }

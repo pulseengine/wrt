@@ -9,11 +9,7 @@ pub fn to_format_resource_operation(
     type_idx: u32,
 ) -> wrt_format::component::FormatResourceOperation {
     use wrt_format::component::FormatResourceOperation as FormatOp;
-    use wrt_foundation::resource::{
-        ResourceDrop,
-        ResourceNew,
-        ResourceRep,
-    };
+    use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep};
 
     match op {
         ResourceOperation::Read => FormatOp::Rep(ResourceRep { type_idx }),

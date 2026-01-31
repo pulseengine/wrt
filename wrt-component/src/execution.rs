@@ -25,8 +25,7 @@ pub enum TimeBoundedOutcome {
 }
 
 /// Configuration for time-bounded execution
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct TimeBoundedConfig {
     /// Maximum execution time in milliseconds (None means unlimited)
     pub time_limit_ms: Option<u64>,
@@ -35,7 +34,6 @@ pub struct TimeBoundedConfig {
     /// Fuel limit for execution (None means unlimited)
     pub fuel_limit: Option<u64>,
 }
-
 
 /// Context for time-bounded execution
 #[derive(Debug)]
@@ -57,11 +55,19 @@ impl TimeBoundedContext {
     pub fn new(config: TimeBoundedConfig) -> Self {
         #[cfg(feature = "std")]
         {
-            Self { start_time: Instant::now(), config, terminated: false }
+            Self {
+                start_time: Instant::now(),
+                config,
+                terminated: false,
+            }
         }
         #[cfg(not(feature = "std"))]
         {
-            Self { config, terminated: false, elapsed_fuel: 0 }
+            Self {
+                config,
+                terminated: false,
+                elapsed_fuel: 0,
+            }
         }
     }
 
@@ -105,8 +111,8 @@ impl TimeBoundedContext {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_TIMEOUT,
-                "No execution time limit set"),
-            )
+                "No execution time limit set",
+            ))
         }
     }
 
@@ -184,7 +190,7 @@ where
             } else {
                 TimeBoundedOutcome::Error(Arc::new(*e))
             }
-        }
+        },
     };
 
     (result, outcome)

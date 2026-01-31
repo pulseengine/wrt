@@ -6,50 +6,30 @@
 
 use core::{
     cmp::Ordering as CmpOrdering,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 #[cfg(feature = "std")]
-use log::{
-    debug,
-    error,
-    info,
-    trace,
-    warn,
-};
+use log::{debug, error, info, trace, warn};
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
-        fuel_priority_inheritance::{
-            FuelPriorityInheritanceProtocol,
-            ResourceId,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
+        fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder TaskId when threading is not available
@@ -78,13 +58,13 @@ pub enum AsilLevel {
     /// Quality Management (QM) - No safety relevance
     QM = 0,
     /// ASIL-A - Lowest safety integrity
-    A  = 1,
+    A = 1,
     /// ASIL-B - Medium safety integrity  
-    B  = 2,
+    B = 2,
     /// ASIL-C - High safety integrity
-    C  = 3,
+    C = 3,
     /// ASIL-D - Highest safety integrity
-    D  = 4,
+    D = 4,
 }
 
 /// Criticality mode for mixed-criticality scheduling
@@ -102,72 +82,72 @@ pub enum CriticalityMode {
 #[derive(Debug)]
 pub struct DeadlineConstrainedTask {
     /// Task identifier
-    pub task_id:               TaskId,
+    pub task_id: TaskId,
     /// Component owning the task
-    pub component_id:          ComponentInstanceId,
+    pub component_id: ComponentInstanceId,
     /// ASIL criticality level
-    pub asil_level:            AsilLevel,
+    pub asil_level: AsilLevel,
     /// Base priority for rate monotonic ordering
-    pub base_priority:         Priority,
+    pub base_priority: Priority,
     /// Task period (rate monotonic scheduling basis)
-    pub period:                Duration,
+    pub period: Duration,
     /// Relative deadline (constrained: deadline ≤ period)
-    pub deadline:              Duration,
+    pub deadline: Duration,
     /// Worst-Case Execution Time fuel budget
-    pub wcet_fuel:             u64,
+    pub wcet_fuel: u64,
     /// Best-Case Execution Time fuel estimate
-    pub bcet_fuel:             u64,
+    pub bcet_fuel: u64,
     /// Current fuel consumption in this instance
     pub current_fuel_consumed: u64,
     /// Release time of current job (fuel time)
-    pub release_time:          u64,
+    pub release_time: u64,
     /// Absolute deadline of current job (fuel time)
-    pub absolute_deadline:     u64,
+    pub absolute_deadline: u64,
     /// Number of deadline misses
-    pub deadline_misses:       AtomicUsize,
+    pub deadline_misses: AtomicUsize,
     /// Task state
-    pub state:                 AsyncTaskState,
+    pub state: AsyncTaskState,
     /// Whether task is active in current criticality mode
-    pub active_in_mode:        bool,
+    pub active_in_mode: bool,
     /// Utilization factor (WCET/Period)
-    pub utilization:           f64,
+    pub utilization: f64,
 }
 
 /// Criticality level queue for hierarchical scheduling
 #[derive(Debug)]
 pub struct CriticalityLevelQueue {
     /// ASIL level for this queue
-    pub asil_level:        AsilLevel,
+    pub asil_level: AsilLevel,
     /// Tasks at this criticality level, sorted by Rate Monotonic order
-    pub rm_tasks:          BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>,
+    pub rm_tasks: BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>,
     /// EDF queue for tasks with same period (within RM band)
-    pub edf_ready_queue:   BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>,
+    pub edf_ready_queue: BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>,
     /// Total utilization at this criticality level
     pub total_utilization: f64,
     /// Fuel consumed by this criticality level
-    pub fuel_consumed:     AtomicU64,
+    pub fuel_consumed: AtomicU64,
     /// Number of deadline misses at this level
-    pub deadline_misses:   AtomicUsize,
+    pub deadline_misses: AtomicUsize,
 }
 
 /// Fuel-aware constrained deadline scheduler
 pub struct FuelDeadlineScheduler {
     /// Tasks indexed by TaskId
-    task_info:          BoundedMap<TaskId, DeadlineConstrainedTask, MAX_DEADLINE_TASKS>,
+    task_info: BoundedMap<TaskId, DeadlineConstrainedTask, MAX_DEADLINE_TASKS>,
     /// Criticality level queues (highest first)
     criticality_queues: BoundedVec<CriticalityLevelQueue, MAX_CRITICALITY_LEVELS>,
     /// Current criticality mode
-    current_mode:       CriticalityMode,
+    current_mode: CriticalityMode,
     /// Priority inheritance protocol
-    priority_protocol:  FuelPriorityInheritanceProtocol,
+    priority_protocol: FuelPriorityInheritanceProtocol,
     /// Scheduler configuration
-    config:             DeadlineSchedulerConfig,
+    config: DeadlineSchedulerConfig,
     /// Performance statistics
-    stats:              DeadlineSchedulerStats,
+    stats: DeadlineSchedulerStats,
     /// Current fuel time
-    current_fuel_time:  AtomicU64,
+    current_fuel_time: AtomicU64,
     /// Whether scheduler is in overload condition
-    overload_detected:  AtomicBool,
+    overload_detected: AtomicBool,
     /// Verification level for fuel tracking
     verification_level: VerificationLevel,
 }
@@ -176,76 +156,76 @@ pub struct FuelDeadlineScheduler {
 #[derive(Debug, Clone)]
 pub struct DeadlineSchedulerConfig {
     /// Enable Rate Monotonic + EDF hybrid scheduling
-    pub enable_hybrid_scheduling:     bool,
+    pub enable_hybrid_scheduling: bool,
     /// Enable criticality mode switching
     pub enable_criticality_switching: bool,
     /// Enable WCET enforcement
-    pub enable_wcet_enforcement:      bool,
+    pub enable_wcet_enforcement: bool,
     /// Enable deadline miss detection
-    pub enable_deadline_monitoring:   bool,
+    pub enable_deadline_monitoring: bool,
     /// Maximum allowed utilization per criticality level
-    pub max_utilization_per_level:    f64,
+    pub max_utilization_per_level: f64,
     /// Global utilization bound for schedulability
-    pub global_utilization_bound:     f64,
+    pub global_utilization_bound: f64,
     /// Deadline miss threshold for mode switching
-    pub deadline_miss_threshold:      usize,
+    pub deadline_miss_threshold: usize,
     /// Fuel overhead factor for scheduling operations
-    pub scheduling_overhead_factor:   f64,
+    pub scheduling_overhead_factor: f64,
 }
 
 /// Scheduler performance statistics
 #[derive(Debug)]
 pub struct DeadlineSchedulerStats {
     /// Total deadline-constrained tasks
-    pub total_tasks:             AtomicUsize,
+    pub total_tasks: AtomicUsize,
     /// Tasks currently active
-    pub active_tasks:            AtomicUsize,
+    pub active_tasks: AtomicUsize,
     /// Total deadline misses across all tasks
-    pub total_deadline_misses:   AtomicUsize,
+    pub total_deadline_misses: AtomicUsize,
     /// Total successful deadline meets
-    pub successful_deadlines:    AtomicUsize,
+    pub successful_deadlines: AtomicUsize,
     /// Total fuel consumed by scheduler
     pub scheduler_fuel_consumed: AtomicU64,
     /// Average response time in fuel units
-    pub average_response_time:   AtomicU64,
+    pub average_response_time: AtomicU64,
     /// Number of criticality mode switches
-    pub criticality_switches:    AtomicUsize,
+    pub criticality_switches: AtomicUsize,
     /// Tasks dropped due to overload
-    pub tasks_dropped:           AtomicUsize,
+    pub tasks_dropped: AtomicUsize,
     /// Current global utilization
-    pub current_utilization:     AtomicU64, // Fixed point: utilization * 1000
+    pub current_utilization: AtomicU64, // Fixed point: utilization * 1000
     /// WCET violations detected
-    pub wcet_violations:         AtomicUsize,
+    pub wcet_violations: AtomicUsize,
 }
 
 /// Schedulability analysis result
 #[derive(Debug, Clone)]
 pub struct SchedulabilityResult {
     /// Whether the task set is schedulable
-    pub schedulable:        bool,
+    pub schedulable: bool,
     /// Total utilization factor
-    pub total_utilization:  f64,
+    pub total_utilization: f64,
     /// Utilization bound for this configuration
-    pub utilization_bound:  f64,
+    pub utilization_bound: f64,
     /// Critical path fuel time
     pub critical_path_fuel: u64,
     /// Maximum response time for any task
-    pub max_response_time:  u64,
+    pub max_response_time: u64,
     /// Tasks that would miss deadlines
-    pub problematic_tasks:  BoundedVec<TaskId, MAX_DEADLINE_TASKS>,
+    pub problematic_tasks: BoundedVec<TaskId, MAX_DEADLINE_TASKS>,
 }
 
 impl Default for DeadlineSchedulerConfig {
     fn default() -> Self {
         Self {
-            enable_hybrid_scheduling:     true,
+            enable_hybrid_scheduling: true,
             enable_criticality_switching: true,
-            enable_wcet_enforcement:      true,
-            enable_deadline_monitoring:   true,
-            max_utilization_per_level:    0.7, // Conservative for safety
-            global_utilization_bound:     0.69, // Rate Monotonic bound
-            deadline_miss_threshold:      3,
-            scheduling_overhead_factor:   1.1, // 10% overhead
+            enable_wcet_enforcement: true,
+            enable_deadline_monitoring: true,
+            max_utilization_per_level: 0.7, // Conservative for safety
+            global_utilization_bound: 0.69, // Rate Monotonic bound
+            deadline_miss_threshold: 3,
+            scheduling_overhead_factor: 1.1, // 10% overhead
         }
     }
 }
@@ -292,16 +272,16 @@ impl FuelDeadlineScheduler {
             priority_protocol,
             config,
             stats: DeadlineSchedulerStats {
-                total_tasks:             AtomicUsize::new(0),
-                active_tasks:            AtomicUsize::new(0),
-                total_deadline_misses:   AtomicUsize::new(0),
-                successful_deadlines:    AtomicUsize::new(0),
+                total_tasks: AtomicUsize::new(0),
+                active_tasks: AtomicUsize::new(0),
+                total_deadline_misses: AtomicUsize::new(0),
+                successful_deadlines: AtomicUsize::new(0),
                 scheduler_fuel_consumed: AtomicU64::new(0),
-                average_response_time:   AtomicU64::new(0),
-                criticality_switches:    AtomicUsize::new(0),
-                tasks_dropped:           AtomicUsize::new(0),
-                current_utilization:     AtomicU64::new(0),
-                wcet_violations:         AtomicUsize::new(0),
+                average_response_time: AtomicU64::new(0),
+                criticality_switches: AtomicUsize::new(0),
+                tasks_dropped: AtomicUsize::new(0),
+                current_utilization: AtomicU64::new(0),
+                wcet_violations: AtomicUsize::new(0),
             },
             current_fuel_time: AtomicU64::new(0),
             overload_detected: AtomicBool::new(false),
@@ -438,7 +418,12 @@ impl FuelDeadlineScheduler {
             if let Some(task) = self.task_info.get_mut(&task_id) {
                 task.current_fuel_consumed += fuel_consumed;
                 task.state = new_state;
-                (task.current_fuel_consumed, task.wcet_fuel, task.absolute_deadline, task.asil_level)
+                (
+                    task.current_fuel_consumed,
+                    task.wcet_fuel,
+                    task.absolute_deadline,
+                    task.asil_level,
+                )
             } else {
                 return Ok(());
             }
@@ -520,13 +505,25 @@ impl FuelDeadlineScheduler {
         DeadlineSchedulerStats {
             total_tasks: AtomicUsize::new(self.stats.total_tasks.load(Ordering::Acquire)),
             active_tasks: AtomicUsize::new(self.stats.active_tasks.load(Ordering::Acquire)),
-            total_deadline_misses: AtomicUsize::new(self.stats.total_deadline_misses.load(Ordering::Acquire)),
-            successful_deadlines: AtomicUsize::new(self.stats.successful_deadlines.load(Ordering::Acquire)),
-            scheduler_fuel_consumed: AtomicU64::new(self.stats.scheduler_fuel_consumed.load(Ordering::Acquire)),
-            average_response_time: AtomicU64::new(self.stats.average_response_time.load(Ordering::Acquire)),
-            criticality_switches: AtomicUsize::new(self.stats.criticality_switches.load(Ordering::Acquire)),
+            total_deadline_misses: AtomicUsize::new(
+                self.stats.total_deadline_misses.load(Ordering::Acquire),
+            ),
+            successful_deadlines: AtomicUsize::new(
+                self.stats.successful_deadlines.load(Ordering::Acquire),
+            ),
+            scheduler_fuel_consumed: AtomicU64::new(
+                self.stats.scheduler_fuel_consumed.load(Ordering::Acquire),
+            ),
+            average_response_time: AtomicU64::new(
+                self.stats.average_response_time.load(Ordering::Acquire),
+            ),
+            criticality_switches: AtomicUsize::new(
+                self.stats.criticality_switches.load(Ordering::Acquire),
+            ),
             tasks_dropped: AtomicUsize::new(self.stats.tasks_dropped.load(Ordering::Acquire)),
-            current_utilization: AtomicU64::new(self.stats.current_utilization.load(Ordering::Acquire)),
+            current_utilization: AtomicU64::new(
+                self.stats.current_utilization.load(Ordering::Acquire),
+            ),
             wcet_violations: AtomicUsize::new(self.stats.wcet_violations.load(Ordering::Acquire)),
         }
     }
@@ -587,10 +584,10 @@ impl FuelDeadlineScheduler {
         let period_ms = period.as_millis() as u64;
 
         match period_ms {
-            0..=10 => Ok(255),  // ≤ 10ms - critical priority
-            11..=50 => Ok(192), // 11-50ms - high priority
+            0..=10 => Ok(255),   // ≤ 10ms - critical priority
+            11..=50 => Ok(192),  // 11-50ms - high priority
             51..=200 => Ok(128), // 51-200ms - normal priority
-            _ => Ok(64),        // > 200ms - low priority
+            _ => Ok(64),         // > 200ms - low priority
         }
     }
 
@@ -637,18 +634,23 @@ impl FuelDeadlineScheduler {
         asil_level: AsilLevel,
     ) -> Result<()> {
         // Extract task data before mutable borrow of queues
-        let task = self.task_info.get(&task_id)
+        let task = self
+            .task_info
+            .get(&task_id)
             .ok_or_else(|| Error::validation_invalid_input("Task not found"))?;
         let task_period = task.period;
         let task_utilization = task.utilization;
 
         // Find insert position before mutable borrow
-        let insert_pos_and_index = self.criticality_queues
+        let insert_pos_and_index = self
+            .criticality_queues
             .iter()
             .enumerate()
             .find(|(_, queue)| queue.asil_level == asil_level)
             .map(|(idx, queue)| {
-                let pos = self.find_rm_insert_position(&queue.rm_tasks, task_period).unwrap_or(queue.rm_tasks.len());
+                let pos = self
+                    .find_rm_insert_position(&queue.rm_tasks, task_period)
+                    .unwrap_or(queue.rm_tasks.len());
                 (idx, pos)
             });
 
@@ -667,9 +669,13 @@ impl FuelDeadlineScheduler {
                 let mut temp_vec = BoundedVec::new();
                 for (i, &id) in queue.rm_tasks.iter().enumerate() {
                     if i == insert_pos {
-                        temp_vec.push(task_id).map_err(|_| Error::resource_limit_exceeded("Criticality queue is full"))?;
+                        temp_vec.push(task_id).map_err(|_| {
+                            Error::resource_limit_exceeded("Criticality queue is full")
+                        })?;
                     }
-                    temp_vec.push(id).map_err(|_| Error::resource_limit_exceeded("Criticality queue is full"))?;
+                    temp_vec
+                        .push(id)
+                        .map_err(|_| Error::resource_limit_exceeded("Criticality queue is full"))?;
                 }
                 queue.rm_tasks = temp_vec;
             }
@@ -717,10 +723,7 @@ impl FuelDeadlineScheduler {
         Ok(None)
     }
 
-    fn select_task_from_criticality_level(
-        &mut self,
-        queue_index: usize,
-    ) -> Result<Option<TaskId>> {
+    fn select_task_from_criticality_level(&mut self, queue_index: usize) -> Result<Option<TaskId>> {
         if self.config.enable_hybrid_scheduling {
             // Use EDF within Rate Monotonic priority bands
             self.select_edf_within_rm_band(queue_index)
@@ -730,10 +733,7 @@ impl FuelDeadlineScheduler {
         }
     }
 
-    fn select_edf_within_rm_band(
-        &mut self,
-        queue_index: usize,
-    ) -> Result<Option<TaskId>> {
+    fn select_edf_within_rm_band(&mut self, queue_index: usize) -> Result<Option<TaskId>> {
         let current_time = self.current_fuel_time.load(Ordering::Acquire);
 
         // Build EDF ready queue
@@ -749,10 +749,9 @@ impl FuelDeadlineScheduler {
                         && task.active_in_mode
                         && current_time >= task.release_time
                     {
-                        queue
-                            .edf_ready_queue
-                            .push(task_id)
-                            .map_err(|_| Error::resource_limit_exceeded("EDF ready queue is full"))?;
+                        queue.edf_ready_queue.push(task_id).map_err(|_| {
+                            Error::resource_limit_exceeded("EDF ready queue is full")
+                        })?;
                     }
                 }
             }
@@ -1016,10 +1015,7 @@ impl FuelDeadlineScheduler {
         Ok(bound)
     }
 
-    fn calculate_worst_case_response_time(
-        &self,
-        queue: &CriticalityLevelQueue,
-    ) -> Result<u64> {
+    fn calculate_worst_case_response_time(&self, queue: &CriticalityLevelQueue) -> Result<u64> {
         let mut max_response_time = 0u64;
 
         for &task_id in queue.rm_tasks.iter() {
@@ -1058,5 +1054,4 @@ impl FuelDeadlineScheduler {
         self.stats.scheduler_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         Ok(())
     }
-
 }

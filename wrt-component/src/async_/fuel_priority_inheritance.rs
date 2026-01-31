@@ -4,35 +4,25 @@
 //! in async task execution, critical for ASIL-B functional safety requirements.
 
 use core::{
-    sync::atomic::{
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
-    async_::fuel_async_executor::{
-        AsyncTaskState,
-        FuelAsyncTask,
-    },
-    prelude::*,
     ComponentInstanceId,
+    async_::fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
+    prelude::*,
 };
 
 // Placeholder TaskId when threading is not available
@@ -54,22 +44,21 @@ const PRIORITY_RESTORATION_FUEL: u64 = 8;
 /// Priority inheritance protocol manager
 pub struct FuelPriorityInheritanceProtocol {
     /// Active inheritance chains indexed by resource ID
-    inheritance_chains:     BoundedMap<ResourceId, InheritanceChain, MAX_ACTIVE_PROTOCOLS>,
+    inheritance_chains: BoundedMap<ResourceId, InheritanceChain, MAX_ACTIVE_PROTOCOLS>,
     /// Task priority donations tracking
-    priority_donations:     BoundedMap<TaskId, PriorityDonation, MAX_ACTIVE_PROTOCOLS>,
+    priority_donations: BoundedMap<TaskId, PriorityDonation, MAX_ACTIVE_PROTOCOLS>,
     /// Original priorities before inheritance
-    original_priorities:    BoundedMap<TaskId, Priority, MAX_ACTIVE_PROTOCOLS>,
+    original_priorities: BoundedMap<TaskId, Priority, MAX_ACTIVE_PROTOCOLS>,
     /// Resource blocking relationships
     blocking_relationships: BoundedMap<TaskId, BlockingInfo, MAX_ACTIVE_PROTOCOLS>,
     /// Global protocol statistics
-    protocol_stats:         ProtocolStatistics,
+    protocol_stats: ProtocolStatistics,
     /// Verification level for fuel tracking
-    verification_level:     VerificationLevel,
+    verification_level: VerificationLevel,
 }
 
 /// Resource identifier for blocking relationships
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ResourceId(pub u64);
 
 impl ResourceId {
@@ -81,7 +70,6 @@ impl ResourceId {
         Self(task_id as u64)
     }
 }
-
 
 impl wrt_foundation::traits::Checksummable for ResourceId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -112,19 +100,19 @@ impl wrt_foundation::traits::FromBytes for ResourceId {
 #[derive(Debug)]
 pub struct InheritanceChain {
     /// Resource being contended for
-    pub resource_id:              ResourceId,
+    pub resource_id: ResourceId,
     /// Task currently holding the resource
-    pub holder:                   TaskId,
+    pub holder: TaskId,
     /// Tasks waiting for the resource (highest priority first)
-    pub waiters:                  BoundedVec<TaskId, MAX_INHERITANCE_CHAIN_LENGTH>,
+    pub waiters: BoundedVec<TaskId, MAX_INHERITANCE_CHAIN_LENGTH>,
     /// Current inherited priority level
-    pub inherited_priority:       Priority,
+    pub inherited_priority: Priority,
     /// Original priority of the holder
     pub holder_original_priority: Priority,
     /// Timestamp when inheritance started
-    pub inheritance_start_time:   AtomicU64,
+    pub inheritance_start_time: AtomicU64,
     /// Fuel consumed by inheritance operations
-    pub fuel_consumed:            AtomicU64,
+    pub fuel_consumed: AtomicU64,
 }
 
 impl Default for InheritanceChain {
@@ -160,7 +148,9 @@ impl Clone for InheritanceChain {
             waiters: self.waiters.clone(),
             inherited_priority: self.inherited_priority,
             holder_original_priority: self.holder_original_priority,
-            inheritance_start_time: AtomicU64::new(self.inheritance_start_time.load(Ordering::Relaxed)),
+            inheritance_start_time: AtomicU64::new(
+                self.inheritance_start_time.load(Ordering::Relaxed),
+            ),
             fuel_consumed: AtomicU64::new(self.fuel_consumed.load(Ordering::Relaxed)),
         }
     }
@@ -209,17 +199,17 @@ impl wrt_foundation::traits::FromBytes for InheritanceChain {
 #[derive(Debug)]
 pub struct PriorityDonation {
     /// Task receiving the priority donation
-    pub recipient:        TaskId,
+    pub recipient: TaskId,
     /// Task donating the priority
-    pub donor:            TaskId,
+    pub donor: TaskId,
     /// Donated priority level
     pub donated_priority: Priority,
     /// Resource causing the donation
-    pub resource_id:      ResourceId,
+    pub resource_id: ResourceId,
     /// When the donation was made
-    pub donation_time:    AtomicU64,
+    pub donation_time: AtomicU64,
     /// Whether the donation is still active
-    pub active:           bool,
+    pub active: bool,
 }
 
 impl Default for PriorityDonation {
@@ -304,17 +294,17 @@ impl wrt_foundation::traits::FromBytes for PriorityDonation {
 #[derive(Debug)]
 pub struct BlockingInfo {
     /// Task that is blocked
-    pub blocked_task:          TaskId,
+    pub blocked_task: TaskId,
     /// Resource being waited for
-    pub blocked_on_resource:   ResourceId,
+    pub blocked_on_resource: ResourceId,
     /// Task holding the resource
-    pub blocked_by_task:       Option<TaskId>,
+    pub blocked_by_task: Option<TaskId>,
     /// Priority of the blocked task
     pub blocked_task_priority: Priority,
     /// When the blocking started
-    pub blocking_start_time:   AtomicU64,
+    pub blocking_start_time: AtomicU64,
     /// Maximum blocking time allowed
-    pub max_blocking_time:     Option<Duration>,
+    pub max_blocking_time: Option<Duration>,
 }
 
 impl Default for BlockingInfo {
@@ -399,17 +389,17 @@ impl wrt_foundation::traits::FromBytes for BlockingInfo {
 #[derive(Debug)]
 pub struct ProtocolStatistics {
     /// Total number of priority inheritances performed
-    pub total_inheritances:      AtomicUsize,
+    pub total_inheritances: AtomicUsize,
     /// Total number of priority donations
-    pub total_donations:         AtomicUsize,
+    pub total_donations: AtomicUsize,
     /// Total number of priority inversions prevented
-    pub inversions_prevented:    AtomicUsize,
+    pub inversions_prevented: AtomicUsize,
     /// Total fuel consumed by inheritance protocol
-    pub total_fuel_consumed:     AtomicU64,
+    pub total_fuel_consumed: AtomicU64,
     /// Maximum inheritance chain length observed
-    pub max_chain_length:        AtomicUsize,
+    pub max_chain_length: AtomicUsize,
     /// Number of active inheritance chains
-    pub active_chains:           AtomicUsize,
+    pub active_chains: AtomicUsize,
     /// Average resolution time in fuel units
     pub average_resolution_fuel: AtomicU64,
 }
@@ -424,12 +414,12 @@ impl FuelPriorityInheritanceProtocol {
             original_priorities: BoundedMap::new(),
             blocking_relationships: BoundedMap::new(),
             protocol_stats: ProtocolStatistics {
-                total_inheritances:      AtomicUsize::new(0),
-                total_donations:         AtomicUsize::new(0),
-                inversions_prevented:    AtomicUsize::new(0),
-                total_fuel_consumed:     AtomicU64::new(0),
-                max_chain_length:        AtomicUsize::new(0),
-                active_chains:           AtomicUsize::new(0),
+                total_inheritances: AtomicUsize::new(0),
+                total_donations: AtomicUsize::new(0),
+                inversions_prevented: AtomicUsize::new(0),
+                total_fuel_consumed: AtomicU64::new(0),
+                max_chain_length: AtomicUsize::new(0),
+                active_chains: AtomicUsize::new(0),
                 average_resolution_fuel: AtomicU64::new(0),
             },
             verification_level,
@@ -504,11 +494,12 @@ impl FuelPriorityInheritanceProtocol {
             }
 
             // Now sort waiters - extract and reinsert to avoid borrow conflict
-            let mut waiters_to_sort = if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
-                chain.waiters.clone()
-            } else {
-                return Ok(());
-            };
+            let mut waiters_to_sort =
+                if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
+                    chain.waiters.clone()
+                } else {
+                    return Ok(());
+                };
 
             self.sort_waiters_by_priority(&mut waiters_to_sort)?;
 
@@ -519,9 +510,9 @@ impl FuelPriorityInheritanceProtocol {
             // Create new inheritance chain
             let provider = safe_managed_alloc!(1024, CrateId::Component)?;
             let mut waiters = BoundedVec::new().unwrap();
-            waiters.push(blocked_task).map_err(|_| {
-                Error::resource_limit_exceeded("Failed to add waiter to new chain")
-            })?;
+            waiters
+                .push(blocked_task)
+                .map_err(|_| Error::resource_limit_exceeded("Failed to add waiter to new chain"))?;
 
             let new_chain = InheritanceChain {
                 resource_id,
@@ -547,9 +538,11 @@ impl FuelPriorityInheritanceProtocol {
             if let Some(chain) = self.inheritance_chains.get_mut(&resource_id) {
                 chain.holder_original_priority = 128; // Normal priority
             }
-            self.original_priorities.insert(holder_task, 128 /* Normal priority */).map_err(|_| {
-                Error::resource_limit_exceeded("Too many original priorities tracked")
-            })?;
+            self.original_priorities
+                .insert(holder_task, 128 /* Normal priority */)
+                .map_err(|_| {
+                    Error::resource_limit_exceeded("Too many original priorities tracked")
+                })?;
         }
 
         // Create priority donation record
@@ -667,13 +660,27 @@ impl FuelPriorityInheritanceProtocol {
     /// Get priority inheritance statistics
     pub fn get_statistics(&self) -> ProtocolStatistics {
         ProtocolStatistics {
-            total_inheritances: AtomicUsize::new(self.protocol_stats.total_inheritances.load(Ordering::Acquire)),
-            total_donations: AtomicUsize::new(self.protocol_stats.total_donations.load(Ordering::Acquire)),
-            inversions_prevented: AtomicUsize::new(self.protocol_stats.inversions_prevented.load(Ordering::Acquire)),
-            total_fuel_consumed: AtomicU64::new(self.protocol_stats.total_fuel_consumed.load(Ordering::Acquire)),
-            max_chain_length: AtomicUsize::new(self.protocol_stats.max_chain_length.load(Ordering::Acquire)),
-            active_chains: AtomicUsize::new(self.protocol_stats.active_chains.load(Ordering::Acquire)),
-            average_resolution_fuel: AtomicU64::new(self.protocol_stats.average_resolution_fuel.load(Ordering::Acquire)),
+            total_inheritances: AtomicUsize::new(
+                self.protocol_stats.total_inheritances.load(Ordering::Acquire),
+            ),
+            total_donations: AtomicUsize::new(
+                self.protocol_stats.total_donations.load(Ordering::Acquire),
+            ),
+            inversions_prevented: AtomicUsize::new(
+                self.protocol_stats.inversions_prevented.load(Ordering::Acquire),
+            ),
+            total_fuel_consumed: AtomicU64::new(
+                self.protocol_stats.total_fuel_consumed.load(Ordering::Acquire),
+            ),
+            max_chain_length: AtomicUsize::new(
+                self.protocol_stats.max_chain_length.load(Ordering::Acquire),
+            ),
+            active_chains: AtomicUsize::new(
+                self.protocol_stats.active_chains.load(Ordering::Acquire),
+            ),
+            average_resolution_fuel: AtomicU64::new(
+                self.protocol_stats.average_resolution_fuel.load(Ordering::Acquire),
+            ),
         }
     }
 
@@ -803,5 +810,4 @@ impl Default for FuelPriorityInheritanceProtocol {
         Self::new(VerificationLevel::Standard)
             .expect("Failed to create default priority inheritance protocol")
     }
-
 }

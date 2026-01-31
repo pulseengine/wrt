@@ -6,32 +6,18 @@
 use crate::prelude::*;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    string::String,
-    sync::Arc,
-};
-use core::fmt::{
-    self,
-    Debug,
-};
+use alloc::{boxed::Box, string::String, sync::Arc};
+use core::fmt::{self, Debug};
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
 use wrt_error::kinds::PoisonedLockError;
-use wrt_foundation::{
-    bounded::BoundedString,
-    safe_memory::NoStdProvider,
-};
+use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
 
-use super::{
-    MemoryStrategy,
-    Resource,
-    resource_table_no_std::VerificationLevel,
-};
 #[cfg(feature = "std")]
 use super::ResourceArena;
 use super::resource_table_no_std::ResourceTable;
+use super::{MemoryStrategy, Resource, resource_table_no_std::VerificationLevel};
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -86,7 +72,9 @@ impl ResourceManager {
     /// Create a new resource manager with a specific instance ID
     pub fn new_with_id(instance_id: &str) -> Self {
         Self {
-            table: Arc::new(Mutex::new(ResourceTable::new().expect("Failed to create ResourceTable"))),
+            table: Arc::new(Mutex::new(
+                ResourceTable::new().expect("Failed to create ResourceTable"),
+            )),
             instance_id: instance_id.to_string(),
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
@@ -102,7 +90,9 @@ impl ResourceManager {
         verification_level: VerificationLevel,
     ) -> Self {
         Self {
-            table: Arc::new(Mutex::new(ResourceTable::new().expect("Failed to create ResourceTable"))),
+            table: Arc::new(Mutex::new(
+                ResourceTable::new().expect("Failed to create ResourceTable"),
+            )),
             instance_id: instance_id.to_string(),
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
@@ -113,8 +103,7 @@ impl ResourceManager {
     /// Create a new resource
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn create_resource(&self, type_idx: u32, data: Box<dyn Any + Send + Sync>) -> Result<u32> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         table.create_resource(type_idx, data)
     }
@@ -129,11 +118,14 @@ impl ResourceManager {
 
     /// Add a host resource - no_std version (without Box)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn add_host_resource<T: Any + Send + Sync + 'static>(&self, _data: T) -> Result<ResourceId> {
+    pub fn add_host_resource<T: Any + Send + Sync + 'static>(
+        &self,
+        _data: T,
+    ) -> Result<ResourceId> {
         // In pure no_std without alloc, we can't box the data
         // Return a placeholder error
         Err(Error::runtime_not_implemented(
-            "add_host_resource requires alloc feature in no_std mode"
+            "add_host_resource requires alloc feature in no_std mode",
         ))
     }
 
@@ -145,8 +137,7 @@ impl ResourceManager {
         data: Box<dyn Any + Send + Sync>,
         name: &str,
     ) -> Result<u32> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         // Create the resource
         let handle = table.create_resource(type_idx, data)?;
@@ -165,8 +156,7 @@ impl ResourceManager {
 
     /// Get a resource by handle
     pub fn get_resource(&self, handle: u32) -> Result<ResourceId> {
-        let table =
-            self.table.lock();
+        let table = self.table.lock();
 
         // Verify the resource exists, then return the ResourceId
         let _resource = table.get_resource(handle)?;
@@ -177,15 +167,15 @@ impl ResourceManager {
     pub fn get_resource_representation(&self, id: ResourceId) -> Result<u32> {
         let table = self.table.lock();
         let resource_id = table.get_resource(id.0)?;
-        let resource = table.get(resource_id)
+        let resource = table
+            .get(resource_id)
             .ok_or_else(|| Error::resource_error("Resource not found"))?;
         Ok(resource.data_ptr as u32)
     }
 
     /// Drop a resource
     pub fn drop_resource(&self, handle: u32) -> Result<()> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         table.drop_resource(handle)
     }
@@ -203,12 +193,15 @@ impl ResourceManager {
     pub fn get_host_resource<T: Any + 'static>(&self, id: ResourceId) -> Result<Arc<Mutex<T>>> {
         let table = self.table.lock();
         let resource_id = table.get_resource(id.0)?;
-        let _resource = table.get(resource_id)
+        let _resource = table
+            .get(resource_id)
             .ok_or_else(|| Error::resource_error("Resource not found"))?;
 
         // Try to downcast the data_ptr to the requested type
         // This is a simplified version - in production you'd need proper type checking
-        Err(Error::runtime_type_mismatch("Type mismatch - host resource access not fully implemented"))
+        Err(Error::runtime_type_mismatch(
+            "Type mismatch - host resource access not fully implemented",
+        ))
     }
 
     /// Delete a resource by ID
@@ -218,8 +211,7 @@ impl ResourceManager {
 
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
-        let table =
-            self.table.lock();
+        let table = self.table.lock();
 
         // ResourceTable doesn't have set_memory_strategy method
         // This would need to be implemented on ResourceTable or we need to get the resource and modify it
@@ -229,8 +221,7 @@ impl ResourceManager {
 
     /// Set verification level for a resource
     pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         table.set_verification_level(level);
         Ok(())
@@ -258,8 +249,7 @@ impl ResourceManager {
 
     /// Get the number of resources
     pub fn resource_count(&self) -> Result<usize> {
-        let table =
-            self.table.lock();
+        let table = self.table.lock();
 
         // ResourceTable doesn't have resource_count method - count resources manually
         // For now return 0 as placeholder
@@ -278,14 +268,18 @@ impl ResourceManager {
     pub fn create_arena(&self) -> Result<ResourceArena> {
         // Type mismatch: self.table is Arc<WrtMutex<ResourceTable>>
         // but ResourceArena::new expects Arc<std::sync::Mutex<ResourceTable>>
-        Err(Error::runtime_error("Arena creation not supported from no_std manager"))
+        Err(Error::runtime_error(
+            "Arena creation not supported from no_std manager",
+        ))
     }
 
     /// Create a new resource arena with the given name
     /// Note: Disabled in no_std context due to type incompatibility
     #[cfg(all(feature = "std", not(any())))] // Intentionally disabled
     pub fn create_named_arena(&self, name: &str) -> Result<ResourceArena> {
-        Err(Error::runtime_error("Arena creation not supported from no_std manager"))
+        Err(Error::runtime_error(
+            "Arena creation not supported from no_std manager",
+        ))
     }
 }
 

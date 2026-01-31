@@ -9,38 +9,24 @@ use alloc::sync::Weak;
 use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     marker::PhantomData,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    Arc, CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     traits::{Checksummable, FromBytes, ToBytes},
     verification::VerificationLevel,
-    Arc,
-    CrateId,
 };
 
 use crate::{
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
-        fuel_error_context::{
-            async_error,
-            AsyncErrorKind,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
+        fuel_error_context::{AsyncErrorKind, async_error},
     },
     prelude::*,
 };
@@ -59,10 +45,8 @@ const RESOURCE_DROP_FUEL: u64 = 10;
 const RESOURCE_TRANSFER_FUEL: u64 = 8;
 
 /// Resource handle type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ResourceHandle(pub u64);
-
 
 impl Checksummable for ResourceHandle {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -108,31 +92,31 @@ pub enum ResourceState {
 #[derive(Debug)]
 pub struct ResourceMetadata {
     /// Resource type name
-    pub type_name:       String,
+    pub type_name: String,
     /// Component that owns the resource
     pub owner_component: u64,
     /// Task that created the resource
-    pub creator_task:    Option<u64>,
+    pub creator_task: Option<u64>,
     /// Creation timestamp (in fuel units)
-    pub created_at:      u64,
+    pub created_at: u64,
     /// Last access timestamp (in fuel units)
-    pub last_accessed:   AtomicU64,
+    pub last_accessed: AtomicU64,
 }
 
 /// Tracked resource with lifetime management
 pub struct TrackedResource<T> {
     /// Resource handle
-    pub handle:             ResourceHandle,
+    pub handle: ResourceHandle,
     /// Resource data
-    pub data:               Option<T>,
+    pub data: Option<T>,
     /// Resource state
-    pub state:              ResourceState,
+    pub state: ResourceState,
     /// Reference count
-    pub ref_count:          AtomicU64,
+    pub ref_count: AtomicU64,
     /// Metadata
-    pub metadata:           ResourceMetadata,
+    pub metadata: ResourceMetadata,
     /// Fuel consumed by this resource
-    pub fuel_consumed:      AtomicU64,
+    pub fuel_consumed: AtomicU64,
     /// Verification level
     pub verification_level: VerificationLevel,
     /// Cleanup registered flag
@@ -272,21 +256,18 @@ pub struct ResourceLifetimeManager {
     resources: BoundedMap<
         ResourceHandle,
         Arc<dyn core::any::Any + Send + Sync>,
-        MAX_RESOURCES_PER_COMPONENT
+        MAX_RESOURCES_PER_COMPONENT,
     >,
     /// Next resource handle
-    next_handle:         AtomicU64,
+    next_handle: AtomicU64,
     /// Component ID
-    component_id:        u64,
+    component_id: u64,
     /// Global fuel budget for resources
-    global_fuel_budget:  u64,
+    global_fuel_budget: u64,
     /// Total fuel consumed
     total_fuel_consumed: AtomicU64,
     /// Cleanup callbacks
-    cleanup_callbacks: BoundedVec<
-        Box<dyn FnOnce() + Send>,
-        MAX_RESOURCES_PER_COMPONENT
-    >,
+    cleanup_callbacks: BoundedVec<Box<dyn FnOnce() + Send>, MAX_RESOURCES_PER_COMPONENT>,
 }
 
 impl ResourceLifetimeManager {
@@ -441,7 +422,7 @@ impl ResourceLifetimeManager {
 
 /// Resource scope for automatic cleanup
 pub struct ResourceScope {
-    manager:   Arc<wrt_sync::Mutex<ResourceLifetimeManager>>,
+    manager: Arc<wrt_sync::Mutex<ResourceLifetimeManager>>,
     resources: Vec<ResourceHandle>,
 }
 
@@ -487,7 +468,7 @@ impl Drop for ResourceScope {
 /// Component resource tracker
 pub struct ComponentResourceTracker {
     /// Resource managers by component ID
-    managers:           BoundedMap<u64, Arc<wrt_sync::Mutex<ResourceLifetimeManager>>, 128>,
+    managers: BoundedMap<u64, Arc<wrt_sync::Mutex<ResourceLifetimeManager>>, 128>,
     /// Global resource fuel budget
     global_fuel_budget: u64,
 }
@@ -530,5 +511,4 @@ impl ComponentResourceTracker {
         }
         Ok(())
     }
-
 }

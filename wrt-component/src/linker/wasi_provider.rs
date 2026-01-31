@@ -3,15 +3,15 @@
 //! Creates component instances that satisfy WASI Preview 2 imports.
 //! This is a stub implementation - instances don't have actual WASI logic yet.
 
-use wrt_error::Result;
-use crate::instantiation::{InstanceImport, ExportValue, FunctionExport};
-use crate::prelude::WrtComponentType;
 use crate::bounded_component_infra::ComponentProvider;
+use crate::instantiation::{ExportValue, FunctionExport, InstanceImport};
+use crate::prelude::WrtComponentType;
+use wrt_error::Result;
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 /// Provides WASI component instances
 ///
@@ -51,7 +51,10 @@ impl WasiInstanceProvider {
         self.next_instance_id += 1;
 
         #[cfg(feature = "std")]
-        println!("[WASI-PROVIDER] Creating instance {} for {}", id, interface_name);
+        println!(
+            "[WASI-PROVIDER] Creating instance {} for {}",
+            id, interface_name
+        );
 
         // Create instance with exports based on interface
         let mut instance = InstanceImport {
@@ -65,69 +68,76 @@ impl WasiInstanceProvider {
         match interface_name {
             name if name.starts_with("wasi:cli/stdout") => {
                 self.add_stdout_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/stdin") => {
                 self.add_stdin_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/stderr") => {
                 self.add_stderr_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/environment") => {
                 self.add_environment_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/exit") => {
                 self.add_exit_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:io/streams") => {
                 self.add_streams_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:io/error") => {
                 self.add_error_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:io/poll") => {
                 self.add_poll_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:filesystem/types") => {
                 self.add_filesystem_types_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:filesystem/preopens") => {
                 self.add_filesystem_preopens_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:clocks/monotonic-clock") => {
                 self.add_monotonic_clock_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:clocks/wall-clock") => {
                 self.add_wall_clock_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:random/random") => {
                 self.add_random_exports(&mut instance)?;
-            }
+            },
             // Terminal interfaces for C/C++ runtime support
             name if name.starts_with("wasi:cli/terminal-stdin") => {
                 self.add_terminal_stdin_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/terminal-stdout") => {
                 self.add_terminal_stdout_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/terminal-stderr") => {
                 self.add_terminal_stderr_exports(&mut instance)?;
-            }
+            },
             name if name.starts_with("wasi:cli/terminal-input") => {
                 // Resource-only interface - no function exports needed
                 // The resource-drop is handled by canonical ABI
-            }
+            },
             name if name.starts_with("wasi:cli/terminal-output") => {
                 // Resource-only interface - no function exports needed
                 // The resource-drop is handled by canonical ABI
-            }
+            },
             _ => {
                 #[cfg(feature = "std")]
-                println!("[WASI-PROVIDER] Warning: No exports for unknown interface '{}'", interface_name);
-            }
+                println!(
+                    "[WASI-PROVIDER] Warning: No exports for unknown interface '{}'",
+                    interface_name
+                );
+            },
         }
 
         #[cfg(feature = "std")]
-        println!("[WASI-PROVIDER] Instance {} created with {} exports", id, instance.exports.len());
+        println!(
+            "[WASI-PROVIDER] Instance {} created with {} exports",
+            id,
+            instance.exports.len()
+        );
 
         Ok(instance)
     }
@@ -156,12 +166,17 @@ impl WasiInstanceProvider {
         {
             use wrt_foundation::bounded::BoundedString;
             let name = BoundedString::try_from_str("get-stdout")?;
-            instance.exports.push((name, Box::new(ExportValue::Function(func_export))))
+            instance
+                .exports
+                .push((name, Box::new(ExportValue::Function(func_export))))
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many exports"))?;
         }
 
         #[cfg(feature = "std")]
-        println!("[WASI-PROVIDER] Added export: get-stdout (index {})", get_stdout_index);
+        println!(
+            "[WASI-PROVIDER] Added export: get-stdout (index {})",
+            get_stdout_index
+        );
 
         Ok(())
     }
@@ -304,12 +319,17 @@ impl WasiInstanceProvider {
         {
             use wrt_foundation::bounded::BoundedString;
             let bounded_name = BoundedString::try_from_str(name)?;
-            instance.exports.push((bounded_name, Box::new(ExportValue::Function(func_export))))
+            instance
+                .exports
+                .push((bounded_name, Box::new(ExportValue::Function(func_export))))
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many exports"))?;
         }
 
         #[cfg(feature = "std")]
-        println!("[WASI-PROVIDER] Added export: {} (index {})", name, func_index);
+        println!(
+            "[WASI-PROVIDER] Added export: {} (index {})",
+            name, func_index
+        );
 
         Ok(())
     }

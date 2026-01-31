@@ -31,31 +31,13 @@ extern crate alloc;
 
 // Cross-environment imports
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    format,
-    string::String,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap as HashMap, format, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    format,
-    string::String,
-    vec::Vec,
-};
+use std::{collections::HashMap, format, string::String, vec::Vec};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-use wrt_foundation::collections::{
-    StaticMap as BoundedMap,
-    StaticVec,
-};
+use wrt_foundation::collections::{StaticMap as BoundedMap, StaticVec};
 
 // For no_std, override prelude's bounded::BoundedVec with StaticVec
 #[cfg(not(feature = "std"))]
@@ -66,20 +48,9 @@ use crate::canonical_abi::ComponentValue;
 // No_std provider for bounded collections
 use crate::prelude::*;
 use crate::{
-    canonical_abi::{
-        CanonicalABI,
-        canonical_abi::ComponentType,
-    },
-    components::{
-        ComponentInstance,
-        FunctionSignature,
-        InstanceId,
-    },
-    resource_management::{
-        ResourceData,
-        ResourceHandle,
-        ResourceTypeId,
-    },
+    canonical_abi::{CanonicalABI, canonical_abi::ComponentType},
+    components::{ComponentInstance, FunctionSignature, InstanceId},
+    resource_management::{ResourceData, ResourceHandle, ResourceTypeId},
 };
 
 /// Maximum parameter data size per call (1MB)
@@ -102,55 +73,51 @@ const MAX_CALL_PARAMETERS: usize = 64;
 pub struct CallContextManager {
     /// Active call contexts by call ID
     #[cfg(feature = "std")]
-    contexts:             HashMap<u64, ManagedCallContext>,
+    contexts: HashMap<u64, ManagedCallContext>,
     #[cfg(not(feature = "std"))]
     contexts: StaticVec<(u64, ManagedCallContext), MAX_CALL_CONTEXTS>,
     /// Parameter marshaler
-    marshaler:            ParameterMarshaler,
+    marshaler: ParameterMarshaler,
     /// Resource coordinator
     resource_coordinator: ResourceCoordinator,
     /// Call validator
-    validator:            CallValidator,
+    validator: CallValidator,
     /// Performance monitor
     #[cfg(feature = "std")]
-    monitor:              PerformanceMonitor,
+    monitor: PerformanceMonitor,
     #[cfg(not(feature = "std"))]
-    monitor:              PerformanceMonitorNoStd,
+    monitor: PerformanceMonitorNoStd,
     /// Manager configuration
-    config:               CallContextConfig,
+    config: CallContextConfig,
 }
 
 /// Managed call context with full lifecycle tracking
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ManagedCallContext {
     /// Base call context
-    pub context:          super::component_communication::CallContext,
+    pub context: super::component_communication::CallContext,
     /// Parameter marshaling state
     pub marshaling_state: MarshalingState,
     /// Resource transfer state
-    pub resource_state:   ResourceState,
+    pub resource_state: ResourceState,
     /// Performance metrics for this call
-    pub metrics:          CallMetrics,
+    pub metrics: CallMetrics,
     /// Validation results
-    pub validation:       ValidationResults,
+    pub validation: ValidationResults,
 }
 
 /// Parameter marshaler for safe cross-component parameter passing
 #[derive(Debug)]
 pub struct ParameterMarshaler {
     /// Canonical ABI for parameter conversion
-    abi:        CanonicalABI,
+    abi: CanonicalABI,
     /// Marshaling configuration
-    config:     MarshalingConfig,
+    config: MarshalingConfig,
     /// Type compatibility cache
     #[cfg(feature = "std")]
     type_cache: HashMap<String, TypeCompatibility>,
     #[cfg(not(feature = "std"))]
-    type_cache: BoundedVec<
-        (BoundedString<128>, TypeCompatibility),
-        64
-    >,
+    type_cache: BoundedVec<(BoundedString<128>, TypeCompatibility), 64>,
 }
 
 /// Resource coordinator for managing resource transfers during calls
@@ -158,9 +125,9 @@ pub struct ParameterMarshaler {
 pub struct ResourceCoordinator {
     /// Active resource locks
     #[cfg(feature = "std")]
-    resource_locks:    HashMap<ResourceHandle, ResourceLock>,
+    resource_locks: HashMap<ResourceHandle, ResourceLock>,
     #[cfg(not(feature = "std"))]
-    resource_locks:    BoundedVec<(ResourceHandle, ResourceLock), 128>,
+    resource_locks: BoundedVec<(ResourceHandle, ResourceLock), 128>,
     /// Transfer pending queue
     #[cfg(feature = "std")]
     pending_transfers: Vec<PendingResourceTransfer>,
@@ -170,8 +137,7 @@ pub struct ResourceCoordinator {
     #[cfg(feature = "std")]
     transfer_policies: HashMap<(InstanceId, InstanceId), TransferPolicy>,
     #[cfg(not(feature = "std"))]
-    transfer_policies:
-        BoundedVec<((InstanceId, InstanceId), TransferPolicy), 32>,
+    transfer_policies: BoundedVec<((InstanceId, InstanceId), TransferPolicy), 32>,
 }
 
 /// Call validator for ensuring call safety and security
@@ -184,11 +150,11 @@ pub struct CallValidator {
     security_policies: BoundedVec<(InstanceId, SecurityPolicy), 64>,
     /// Validation rules
     #[cfg(feature = "std")]
-    validation_rules:  Vec<ValidationRule>,
+    validation_rules: Vec<ValidationRule>,
     #[cfg(not(feature = "std"))]
-    validation_rules:  BoundedVec<ValidationRule, 32>,
+    validation_rules: BoundedVec<ValidationRule, 32>,
     /// Validation configuration
-    config:            ValidationConfig,
+    config: ValidationConfig,
 }
 
 /// Performance monitor for tracking call performance
@@ -196,11 +162,11 @@ pub struct CallValidator {
 #[derive(Debug)]
 pub struct PerformanceMonitor {
     /// Call timing metrics
-    timing_metrics:           HashMap<String, TimingMetrics>,
+    timing_metrics: HashMap<String, TimingMetrics>,
     /// Parameter size metrics
-    parameter_metrics:        ParameterSizeMetrics,
+    parameter_metrics: ParameterSizeMetrics,
     /// Resource transfer metrics
-    resource_metrics:         ResourceTransferMetrics,
+    resource_metrics: ResourceTransferMetrics,
     /// Optimization suggestions
     optimization_suggestions: Vec<OptimizationSuggestion>,
 }
@@ -210,44 +176,39 @@ pub struct PerformanceMonitor {
 #[derive(Debug)]
 pub struct PerformanceMonitorNoStd {
     /// Call timing metrics
-    timing_metrics: BoundedVec<
-        (BoundedString<128>, TimingMetrics),
-        64
-    >,
+    timing_metrics: BoundedVec<(BoundedString<128>, TimingMetrics), 64>,
     /// Parameter size metrics
-    parameter_metrics:        ParameterSizeMetrics,
+    parameter_metrics: ParameterSizeMetrics,
     /// Resource transfer metrics
-    resource_metrics:         ResourceTransferMetrics,
+    resource_metrics: ResourceTransferMetrics,
     /// Optimization suggestions
     optimization_suggestions: BoundedVec<OptimizationSuggestion, 32>,
 }
 
 /// Parameter marshaling state
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MarshalingState {
     /// Original parameters
     #[cfg(feature = "std")]
-    pub original_parameters:  Vec<ComponentValue>,
+    pub original_parameters: Vec<ComponentValue>,
     #[cfg(not(feature = "std"))]
-    pub original_parameters:  BoundedVec<ComponentValue, 32>,
+    pub original_parameters: BoundedVec<ComponentValue, 32>,
     /// Marshaled parameters
     #[cfg(feature = "std")]
     pub marshaled_parameters: Vec<ComponentValue>,
     #[cfg(not(feature = "std"))]
     pub marshaled_parameters: BoundedVec<ComponentValue, 32>,
     /// Marshaling metadata
-    pub metadata:             MarshalingMetadata,
+    pub metadata: MarshalingMetadata,
     /// Marshaling errors (if any)
     #[cfg(feature = "std")]
-    pub errors:               Vec<String>,
+    pub errors: Vec<String>,
     #[cfg(not(feature = "std"))]
     pub errors: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Resource state during call execution
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ResourceState {
     /// Resources being transferred
     #[cfg(feature = "std")]
@@ -256,48 +217,47 @@ pub struct ResourceState {
     pub transferring_resources: BoundedVec<ResourceHandle, 64>,
     /// Resource locks acquired
     #[cfg(feature = "std")]
-    pub acquired_locks:         Vec<ResourceHandle>,
+    pub acquired_locks: Vec<ResourceHandle>,
     #[cfg(not(feature = "std"))]
-    pub acquired_locks:         BoundedVec<ResourceHandle, 64>,
+    pub acquired_locks: BoundedVec<ResourceHandle, 64>,
     /// Transfer results
     #[cfg(feature = "std")]
-    pub transfer_results:       Vec<TransferResult>,
+    pub transfer_results: Vec<TransferResult>,
     #[cfg(not(feature = "std"))]
-    pub transfer_results:       BoundedVec<TransferResult, 32>,
+    pub transfer_results: BoundedVec<TransferResult, 32>,
 }
 
 /// Call performance metrics
 #[derive(Debug, Clone, Default)]
 pub struct CallMetrics {
     /// Parameter marshaling time (microseconds)
-    pub marshaling_time_us:            u64,
+    pub marshaling_time_us: u64,
     /// Resource coordination time (microseconds)
     pub resource_coordination_time_us: u64,
     /// Function execution time (microseconds)
-    pub execution_time_us:             u64,
+    pub execution_time_us: u64,
     /// Total call overhead (microseconds)
-    pub overhead_time_us:              u64,
+    pub overhead_time_us: u64,
     /// Parameter data size (bytes)
-    pub parameter_data_size:           u32,
+    pub parameter_data_size: u32,
     /// Number of resource transfers
-    pub resource_transfer_count:       u32,
+    pub resource_transfer_count: u32,
 }
 
 /// Validation results for a call
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ValidationResults {
     /// Overall validation status
-    pub status:               ValidationStatus,
+    pub status: ValidationStatus,
     /// Parameter validation results
     pub parameter_validation: ParameterValidationResult,
     /// Security validation results
-    pub security_validation:  SecurityValidationResult,
+    pub security_validation: SecurityValidationResult,
     /// Resource validation results
-    pub resource_validation:  ResourceValidationResult,
+    pub resource_validation: ResourceValidationResult,
     /// Validation messages
     #[cfg(feature = "std")]
-    pub messages:             Vec<String>,
+    pub messages: Vec<String>,
     #[cfg(not(feature = "std"))]
     pub messages: BoundedVec<BoundedString<256>, 16>,
 }
@@ -306,47 +266,46 @@ pub struct ValidationResults {
 #[derive(Debug, Clone)]
 pub struct CallContextConfig {
     /// Enable call tracing
-    pub enable_tracing:                bool,
+    pub enable_tracing: bool,
     /// Enable performance monitoring
     pub enable_performance_monitoring: bool,
     /// Enable parameter validation
-    pub enable_parameter_validation:   bool,
+    pub enable_parameter_validation: bool,
     /// Enable resource coordination
-    pub enable_resource_coordination:  bool,
+    pub enable_resource_coordination: bool,
     /// Maximum call duration (microseconds)
-    pub max_call_duration_us:          u64,
+    pub max_call_duration_us: u64,
 }
 
 /// Parameter marshaling configuration
 #[derive(Debug, Clone)]
 pub struct MarshalingConfig {
     /// Enable type checking
-    pub enable_type_checking:       bool,
+    pub enable_type_checking: bool,
     /// Enable size validation
-    pub enable_size_validation:     bool,
+    pub enable_size_validation: bool,
     /// Enable encoding validation
     pub enable_encoding_validation: bool,
     /// Maximum parameter size
-    pub max_parameter_size:         u32,
+    pub max_parameter_size: u32,
     /// String encoding to use
-    pub string_encoding:            StringEncoding,
+    pub string_encoding: StringEncoding,
 }
 
 /// Validation configuration
 #[derive(Debug, Clone)]
 pub struct ValidationConfig {
     /// Validation level
-    pub level:                     ValidationLevel,
+    pub level: ValidationLevel,
     /// Enable security checks
-    pub enable_security_checks:    bool,
+    pub enable_security_checks: bool,
     /// Enable performance checks
     pub enable_performance_checks: bool,
     /// Custom validation rules
     #[cfg(feature = "std")]
-    pub custom_rules:              Vec<String>,
+    pub custom_rules: Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub custom_rules:
-        BoundedVec<BoundedString<128>, 16>,
+    pub custom_rules: BoundedVec<BoundedString<128>, 16>,
 }
 
 /// Resource lock for coordinating resource access
@@ -355,20 +314,20 @@ pub struct ResourceLock {
     /// Resource handle
     pub resource_handle: ResourceHandle,
     /// Lock owner (call ID)
-    pub owner_call_id:   u64,
+    pub owner_call_id: u64,
     /// Lock type
-    pub lock_type:       ResourceLockType,
+    pub lock_type: ResourceLockType,
     /// Lock acquired timestamp
-    pub acquired_at:     u64,
+    pub acquired_at: u64,
     /// Lock expiration time
-    pub expires_at:      u64,
+    pub expires_at: u64,
 }
 
 /// Pending resource transfer
 #[derive(Debug, Clone)]
 pub struct PendingResourceTransfer {
     /// Transfer ID
-    pub transfer_id:     u64,
+    pub transfer_id: u64,
     /// Resource handle
     pub resource_handle: ResourceHandle,
     /// Source instance
@@ -376,28 +335,26 @@ pub struct PendingResourceTransfer {
     /// Target instance
     pub target_instance: InstanceId,
     /// Transfer type
-    pub transfer_type:   super::component_communication::ResourceTransferType,
+    pub transfer_type: super::component_communication::ResourceTransferType,
     /// Request timestamp
-    pub requested_at:    u64,
+    pub requested_at: u64,
 }
 
 /// Resource transfer policy between instances
 #[derive(Debug, Clone)]
 pub struct TransferPolicy {
     /// Maximum simultaneous transfers
-    pub max_transfers:        u32,
+    pub max_transfers: u32,
     /// Allowed transfer types
     #[cfg(feature = "std")]
-    pub allowed_types:        Vec<super::component_communication::ResourceTransferType>,
+    pub allowed_types: Vec<super::component_communication::ResourceTransferType>,
     #[cfg(not(feature = "std"))]
-    pub allowed_types:
-        BoundedVec<super::component_communication::ResourceTransferType, 16>,
+    pub allowed_types: BoundedVec<super::component_communication::ResourceTransferType, 16>,
     /// Required permissions
     #[cfg(feature = "std")]
     pub required_permissions: Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub required_permissions:
-        BoundedVec<BoundedString<128>, 16>,
+    pub required_permissions: BoundedVec<BoundedString<128>, 16>,
 }
 
 /// Security policy for instance interactions
@@ -405,19 +362,18 @@ pub struct TransferPolicy {
 pub struct SecurityPolicy {
     /// Allowed target instances
     #[cfg(feature = "std")]
-    pub allowed_targets:      Vec<InstanceId>,
+    pub allowed_targets: Vec<InstanceId>,
     #[cfg(not(feature = "std"))]
-    pub allowed_targets:      BoundedVec<InstanceId, 32>,
+    pub allowed_targets: BoundedVec<InstanceId, 32>,
     /// Allowed function patterns
     #[cfg(feature = "std")]
-    pub allowed_functions:    Vec<String>,
+    pub allowed_functions: Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub allowed_functions:
-        BoundedVec<BoundedString<128>, 32>,
+    pub allowed_functions: BoundedVec<BoundedString<128>, 32>,
     /// Resource access permissions
     pub resource_permissions: ResourcePermissions,
     /// Memory access limits
-    pub memory_limits:        MemoryLimits,
+    pub memory_limits: MemoryLimits,
 }
 
 /// Validation rule for call checking
@@ -425,33 +381,33 @@ pub struct SecurityPolicy {
 pub struct ValidationRule {
     /// Rule name
     #[cfg(feature = "std")]
-    pub name:        String,
+    pub name: String,
     #[cfg(not(feature = "std"))]
-    pub name:        BoundedString<128>,
+    pub name: BoundedString<128>,
     /// Rule description
     #[cfg(feature = "std")]
     pub description: String,
     #[cfg(not(feature = "std"))]
     pub description: BoundedString<256>,
     /// Rule type
-    pub rule_type:   ValidationRuleType,
+    pub rule_type: ValidationRuleType,
     /// Rule severity
-    pub severity:    ValidationSeverity,
+    pub severity: ValidationSeverity,
 }
 
 /// Timing metrics for performance monitoring
 #[derive(Debug, Clone, Default)]
 pub struct TimingMetrics {
     /// Total calls
-    pub total_calls:         u64,
+    pub total_calls: u64,
     /// Average duration (microseconds)
     pub average_duration_us: u64,
     /// Minimum duration (microseconds)
-    pub min_duration_us:     u64,
+    pub min_duration_us: u64,
     /// Maximum duration (microseconds)
-    pub max_duration_us:     u64,
+    pub max_duration_us: u64,
     /// Standard deviation
-    pub std_deviation_us:    u64,
+    pub std_deviation_us: u64,
 }
 
 /// Parameter size metrics
@@ -460,22 +416,22 @@ pub struct ParameterSizeMetrics {
     /// Total parameters processed
     pub total_parameters: u64,
     /// Total parameter data size
-    pub total_data_size:  u64,
+    pub total_data_size: u64,
     /// Average parameter size
-    pub average_size:     u32,
+    pub average_size: u32,
     /// Largest parameter size
-    pub max_size:         u32,
+    pub max_size: u32,
 }
 
 /// Resource transfer metrics
 #[derive(Debug, Clone, Default)]
 pub struct ResourceTransferMetrics {
     /// Total transfers
-    pub total_transfers:          u64,
+    pub total_transfers: u64,
     /// Successful transfers
-    pub successful_transfers:     u64,
+    pub successful_transfers: u64,
     /// Failed transfers
-    pub failed_transfers:         u64,
+    pub failed_transfers: u64,
     /// Average transfer time
     pub average_transfer_time_us: u64,
 }
@@ -487,26 +443,26 @@ pub struct OptimizationSuggestion {
     pub suggestion_type: OptimizationType,
     /// Description
     #[cfg(feature = "std")]
-    pub description:     String,
+    pub description: String,
     #[cfg(not(feature = "std"))]
-    pub description:     BoundedString<256>,
+    pub description: BoundedString<256>,
     /// Potential impact
-    pub impact:          OptimizationImpact,
+    pub impact: OptimizationImpact,
     /// Implementation complexity
-    pub complexity:      OptimizationComplexity,
+    pub complexity: OptimizationComplexity,
 }
 
 /// Marshaling metadata
 #[derive(Debug, Clone, Default)]
 pub struct MarshalingMetadata {
     /// Original parameter count
-    pub original_count:     usize,
+    pub original_count: usize,
     /// Marshaled parameter count
-    pub marshaled_count:    usize,
+    pub marshaled_count: usize,
     /// Total marshaling time
     pub marshaling_time_us: u64,
     /// Memory used for marshaling
-    pub memory_used:        u32,
+    pub memory_used: u32,
 }
 
 /// Transfer result
@@ -515,40 +471,40 @@ pub struct TransferResult {
     /// Resource handle
     pub resource_handle: ResourceHandle,
     /// Transfer success
-    pub success:         bool,
+    pub success: bool,
     /// New handle (if ownership transferred)
-    pub new_handle:      Option<ResourceHandle>,
+    pub new_handle: Option<ResourceHandle>,
     /// Error message (if failed)
     #[cfg(feature = "std")]
-    pub error_message:   Option<String>,
+    pub error_message: Option<String>,
     #[cfg(not(feature = "std"))]
-    pub error_message:   Option<BoundedString<256>>,
+    pub error_message: Option<BoundedString<256>>,
 }
 
 /// Type compatibility information
 #[derive(Debug, Clone)]
 pub struct TypeCompatibility {
     /// Source type
-    pub source_type:         ComponentType,
+    pub source_type: ComponentType,
     /// Target type
-    pub target_type:         ComponentType,
+    pub target_type: ComponentType,
     /// Compatibility status
-    pub compatible:          bool,
+    pub compatible: bool,
     /// Conversion required
     pub conversion_required: bool,
     /// Conversion cost (performance impact)
-    pub conversion_cost:     u32,
+    pub conversion_cost: u32,
 }
 
 /// Resource permissions
 #[derive(Debug, Clone)]
 pub struct ResourcePermissions {
     /// Can read resources
-    pub can_read:      bool,
+    pub can_read: bool,
     /// Can write resources
-    pub can_write:     bool,
+    pub can_write: bool,
     /// Can transfer resources
-    pub can_transfer:  bool,
+    pub can_transfer: bool,
     /// Allowed resource types
     #[cfg(feature = "std")]
     pub allowed_types: Vec<ResourceTypeId>,
@@ -560,24 +516,23 @@ pub struct ResourcePermissions {
 #[derive(Debug, Clone)]
 pub struct MemoryLimits {
     /// Maximum memory size that can be accessed
-    pub max_memory_size:    u32,
+    pub max_memory_size: u32,
     /// Maximum parameter size
     pub max_parameter_size: u32,
     /// Maximum string length
-    pub max_string_length:  usize,
+    pub max_string_length: usize,
 }
 
 /// Parameter validation result
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ParameterValidationResult {
     /// Validation passed
-    pub valid:                   bool,
+    pub valid: bool,
     /// Type checking results
     #[cfg(feature = "std")]
-    pub type_check_results:      Vec<TypeCheckResult>,
+    pub type_check_results: Vec<TypeCheckResult>,
     #[cfg(not(feature = "std"))]
-    pub type_check_results:      BoundedVec<TypeCheckResult, 32>,
+    pub type_check_results: BoundedVec<TypeCheckResult, 32>,
     /// Size validation results
     #[cfg(feature = "std")]
     pub size_validation_results: Vec<SizeValidationResult>,
@@ -585,23 +540,21 @@ pub struct ParameterValidationResult {
     pub size_validation_results: BoundedVec<SizeValidationResult, 32>,
     /// Error messages
     #[cfg(feature = "std")]
-    pub error_messages:          Vec<String>,
+    pub error_messages: Vec<String>,
     #[cfg(not(feature = "std"))]
-    pub error_messages:
-        BoundedVec<BoundedString<256>, 16>,
+    pub error_messages: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Security validation result
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SecurityValidationResult {
     /// Security check passed
-    pub secure:                 bool,
+    pub secure: bool,
     /// Permission check results
     #[cfg(feature = "std")]
-    pub permission_results:     Vec<PermissionCheckResult>,
+    pub permission_results: Vec<PermissionCheckResult>,
     #[cfg(not(feature = "std"))]
-    pub permission_results:     BoundedVec<PermissionCheckResult, 32>,
+    pub permission_results: BoundedVec<PermissionCheckResult, 32>,
     /// Access control results
     #[cfg(feature = "std")]
     pub access_control_results: Vec<AccessControlResult>,
@@ -609,14 +562,13 @@ pub struct SecurityValidationResult {
     pub access_control_results: BoundedVec<AccessControlResult, 32>,
     /// Security warnings
     #[cfg(feature = "std")]
-    pub warnings:               Vec<String>,
+    pub warnings: Vec<String>,
     #[cfg(not(feature = "std"))]
     pub warnings: BoundedVec<BoundedString<256>, 16>,
 }
 
 /// Resource validation result
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ResourceValidationResult {
     /// Resource validation passed
     pub valid: bool,
@@ -629,8 +581,7 @@ pub struct ResourceValidationResult {
     #[cfg(feature = "std")]
     pub transfer_permission_results: Vec<TransferPermissionResult>,
     #[cfg(not(feature = "std"))]
-    pub transfer_permission_results:
-        BoundedVec<TransferPermissionResult, 32>,
+    pub transfer_permission_results: BoundedVec<TransferPermissionResult, 32>,
     /// Validation errors
     #[cfg(feature = "std")]
     pub errors: Vec<String>,
@@ -644,30 +595,29 @@ pub struct TypeCheckResult {
     /// Parameter index
     pub parameter_index: usize,
     /// Expected type
-    pub expected_type:   ComponentType,
+    pub expected_type: ComponentType,
     /// Actual type
-    pub actual_type:     ComponentType,
+    pub actual_type: ComponentType,
     /// Check passed
-    pub passed:          bool,
+    pub passed: bool,
     /// Error message
     #[cfg(feature = "std")]
-    pub error_message:   Option<String>,
+    pub error_message: Option<String>,
     #[cfg(not(feature = "std"))]
-    pub error_message:   Option<BoundedString<256>>,
+    pub error_message: Option<BoundedString<256>>,
 }
 
 /// Size validation result
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SizeValidationResult {
     /// Parameter index
     pub parameter_index: usize,
     /// Parameter size
-    pub size:            u32,
+    pub size: u32,
     /// Maximum allowed size
-    pub max_size:        u32,
+    pub max_size: u32,
     /// Validation passed
-    pub passed:          bool,
+    pub passed: bool,
 }
 
 /// Permission check result
@@ -675,11 +625,11 @@ pub struct SizeValidationResult {
 pub struct PermissionCheckResult {
     /// Permission name
     #[cfg(feature = "std")]
-    pub permission:    String,
+    pub permission: String,
     #[cfg(not(feature = "std"))]
-    pub permission:    BoundedString<128>,
+    pub permission: BoundedString<128>,
     /// Check passed
-    pub granted:       bool,
+    pub granted: bool,
     /// Reason for denial (if denied)
     #[cfg(feature = "std")]
     pub denial_reason: Option<String>,
@@ -696,12 +646,12 @@ pub struct AccessControlResult {
     #[cfg(not(feature = "std"))]
     pub accessed_item: BoundedString<128>,
     /// Access allowed
-    pub allowed:       bool,
+    pub allowed: bool,
     /// Access control rule applied
     #[cfg(feature = "std")]
-    pub rule_applied:  String,
+    pub rule_applied: String,
     #[cfg(not(feature = "std"))]
-    pub rule_applied:  BoundedString<128>,
+    pub rule_applied: BoundedString<128>,
 }
 
 /// Resource availability result
@@ -710,11 +660,11 @@ pub struct ResourceAvailabilityResult {
     /// Resource handle
     pub resource_handle: ResourceHandle,
     /// Resource available
-    pub available:       bool,
+    pub available: bool,
     /// Current owner
-    pub current_owner:   Option<InstanceId>,
+    pub current_owner: Option<InstanceId>,
     /// Lock status
-    pub locked:          bool,
+    pub locked: bool,
 }
 
 /// Transfer permission result
@@ -723,14 +673,14 @@ pub struct TransferPermissionResult {
     /// Resource handle
     pub resource_handle: ResourceHandle,
     /// Transfer type
-    pub transfer_type:   super::component_communication::ResourceTransferType,
+    pub transfer_type: super::component_communication::ResourceTransferType,
     /// Permission granted
-    pub permitted:       bool,
+    pub permitted: bool,
     /// Policy applied
     #[cfg(feature = "std")]
-    pub policy_applied:  String,
+    pub policy_applied: String,
     #[cfg(not(feature = "std"))]
-    pub policy_applied:  BoundedString<128>,
+    pub policy_applied: BoundedString<128>,
 }
 
 // Enumerations
@@ -863,11 +813,11 @@ pub enum OptimizationComplexity {
 impl Default for CallContextConfig {
     fn default() -> Self {
         Self {
-            enable_tracing:                false,
+            enable_tracing: false,
             enable_performance_monitoring: true,
-            enable_parameter_validation:   true,
-            enable_resource_coordination:  true,
-            max_call_duration_us:          30_000_000, // 30 seconds
+            enable_parameter_validation: true,
+            enable_resource_coordination: true,
+            max_call_duration_us: 30_000_000, // 30 seconds
         }
     }
 }
@@ -875,11 +825,11 @@ impl Default for CallContextConfig {
 impl Default for MarshalingConfig {
     fn default() -> Self {
         Self {
-            enable_type_checking:       true,
-            enable_size_validation:     true,
+            enable_type_checking: true,
+            enable_size_validation: true,
             enable_encoding_validation: true,
-            max_parameter_size:         MAX_PARAMETER_DATA_SIZE,
-            string_encoding:            StringEncoding::Utf8,
+            max_parameter_size: MAX_PARAMETER_DATA_SIZE,
+            string_encoding: StringEncoding::Utf8,
         }
     }
 }
@@ -915,9 +865,9 @@ impl Default for ResourcePermissions {
 impl Default for MemoryLimits {
     fn default() -> Self {
         Self {
-            max_memory_size:    64 * 1024 * 1024, // 64MB
+            max_memory_size: 64 * 1024 * 1024, // 64MB
             max_parameter_size: MAX_PARAMETER_DATA_SIZE,
-            max_string_length:  MAX_STRING_LENGTH,
+            max_string_length: MAX_STRING_LENGTH,
         }
     }
 }
@@ -972,8 +922,7 @@ impl CallContextManager {
                     #[cfg(feature = "std")]
                     size_validation_results: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
-                    size_validation_results: BoundedVec::new()
-                        .unwrap(),
+                    size_validation_results: BoundedVec::new().unwrap(),
                     #[cfg(feature = "std")]
                     error_messages: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
@@ -988,8 +937,7 @@ impl CallContextManager {
                     #[cfg(feature = "std")]
                     access_control_results: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
-                    access_control_results: BoundedVec::new()
-                        .unwrap(),
+                    access_control_results: BoundedVec::new().unwrap(),
                     #[cfg(feature = "std")]
                     warnings: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
@@ -1000,13 +948,11 @@ impl CallContextManager {
                     #[cfg(feature = "std")]
                     availability_results: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
-                    availability_results: BoundedVec::new()
-                        .unwrap(),
+                    availability_results: BoundedVec::new().unwrap(),
                     #[cfg(feature = "std")]
                     transfer_permission_results: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
-                    transfer_permission_results: BoundedVec::new()
-                        .unwrap(),
+                    transfer_permission_results: BoundedVec::new().unwrap(),
                     #[cfg(feature = "std")]
                     errors: std::vec::Vec::new(),
                     #[cfg(not(feature = "std"))]
@@ -1028,17 +974,17 @@ impl CallContextManager {
         } else {
             ResourceState {
                 #[cfg(feature = "std")]
-                transferring_resources:                              std::vec::Vec::new(),
+                transferring_resources: std::vec::Vec::new(),
                 #[cfg(not(feature = "std"))]
-                transferring_resources:                              BoundedVec::new().unwrap(),
+                transferring_resources: BoundedVec::new().unwrap(),
                 #[cfg(feature = "std")]
-                acquired_locks:                                      std::vec::Vec::new(),
+                acquired_locks: std::vec::Vec::new(),
                 #[cfg(not(feature = "std"))]
-                acquired_locks:                                      BoundedVec::new().unwrap(),
+                acquired_locks: BoundedVec::new().unwrap(),
                 #[cfg(feature = "std")]
-                transfer_results:                                    std::vec::Vec::new(),
+                transfer_results: std::vec::Vec::new(),
                 #[cfg(not(feature = "std"))]
-                transfer_results:                                    BoundedVec::new().unwrap(),
+                transfer_results: BoundedVec::new().unwrap(),
             }
         };
 
@@ -1152,10 +1098,10 @@ impl ParameterMarshaler {
 
         let end_time = 0; // Would use actual timestamp
         let metadata = MarshalingMetadata {
-            original_count:     parameters.len(),
-            marshaled_count:    marshaled_parameters.len(),
+            original_count: parameters.len(),
+            marshaled_count: marshaled_parameters.len(),
             marshaling_time_us: end_time - start_time,
-            memory_used:        total_size,
+            memory_used: total_size,
         };
 
         Ok(MarshalingState {
@@ -1211,7 +1157,7 @@ impl ParameterMarshaler {
                         return Err(Error::validation_error("Array parameter too long"));
                     }
                     self.calculate_parameter_size(items.as_slice())? + 4 // Array contents
-                                                                          // + size prefix
+                    // + size prefix
                 },
                 ComponentValue::Record(fields) => {
                     // Calculate size of each field's value
@@ -1221,7 +1167,9 @@ impl ParameterMarshaler {
                     }
                     size
                 },
-                ComponentValue::Tuple(elements) => self.calculate_parameter_size(elements.as_slice())?,
+                ComponentValue::Tuple(elements) => {
+                    self.calculate_parameter_size(elements.as_slice())?
+                },
                 ComponentValue::Variant(_, value) => {
                     4 + if let Some(v) = value {
                         // Discriminant + optional value
@@ -1262,17 +1210,17 @@ impl ResourceCoordinator {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
-            resource_locks:                                 std::collections::HashMap::new(),
+            resource_locks: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            resource_locks:                                 BoundedVec::new().unwrap(),
+            resource_locks: BoundedVec::new().unwrap(),
             #[cfg(feature = "std")]
-            pending_transfers:                              std::vec::Vec::new(),
+            pending_transfers: std::vec::Vec::new(),
             #[cfg(not(feature = "std"))]
-            pending_transfers:                              BoundedVec::new().unwrap(),
+            pending_transfers: BoundedVec::new().unwrap(),
             #[cfg(feature = "std")]
-            transfer_policies:                              std::collections::HashMap::new(),
+            transfer_policies: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            transfer_policies:                              BoundedVec::new().unwrap(),
+            transfer_policies: BoundedVec::new().unwrap(),
         }
     }
 
@@ -1290,10 +1238,10 @@ impl ResourceCoordinator {
         for &handle in resource_handles {
             let lock = ResourceLock {
                 resource_handle: handle,
-                owner_call_id:   0, // Would be set to actual call ID
-                lock_type:       ResourceLockType::SharedRead,
-                acquired_at:     0, // Would use actual timestamp
-                expires_at:      0, // Would calculate expiration
+                owner_call_id: 0, // Would be set to actual call ID
+                lock_type: ResourceLockType::SharedRead,
+                acquired_at: 0, // Would use actual timestamp
+                expires_at: 0,  // Would calculate expiration
             };
 
             #[cfg(feature = "std")]
@@ -1413,8 +1361,7 @@ impl CallValidator {
                 #[cfg(feature = "std")]
                 transfer_permission_results: std::vec::Vec::new(),
                 #[cfg(not(feature = "std"))]
-                transfer_permission_results: BoundedVec::new()
-                    .unwrap(),
+                transfer_permission_results: BoundedVec::new().unwrap(),
                 #[cfg(feature = "std")]
                 errors: std::vec::Vec::new(),
                 #[cfg(not(feature = "std"))]
@@ -1433,9 +1380,9 @@ impl PerformanceMonitor {
     /// Create a new performance monitor
     pub fn new() -> Self {
         Self {
-            timing_metrics:           std::collections::HashMap::new(),
-            parameter_metrics:        ParameterSizeMetrics::default(),
-            resource_metrics:         ResourceTransferMetrics::default(),
+            timing_metrics: std::collections::HashMap::new(),
+            parameter_metrics: ParameterSizeMetrics::default(),
+            resource_metrics: ResourceTransferMetrics::default(),
             optimization_suggestions: std::vec::Vec::new(),
         }
     }
@@ -1471,9 +1418,9 @@ impl PerformanceMonitorNoStd {
     /// Create a new performance monitor
     pub fn new() -> Self {
         Self {
-            timing_metrics:           BoundedVec::new().unwrap(),
-            parameter_metrics:        ParameterSizeMetrics::default(),
-            resource_metrics:         ResourceTransferMetrics::default(),
+            timing_metrics: BoundedVec::new().unwrap(),
+            parameter_metrics: ParameterSizeMetrics::default(),
+            resource_metrics: ResourceTransferMetrics::default(),
             optimization_suggestions: BoundedVec::new().unwrap(),
         }
     }
@@ -1502,5 +1449,4 @@ impl Default for ResourceCoordinator {
     fn default() -> Self {
         Self::new()
     }
-
 }

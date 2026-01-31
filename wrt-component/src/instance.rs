@@ -3,15 +3,9 @@
 //! This module provides the instance types for component instances.
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    string::String,
-    vec::Vec,
-};
+use std::{string::String, vec::Vec};
 
 use wrt_format::component::ComponentTypeDefinition;
 
@@ -24,9 +18,9 @@ pub type Instance = InstanceValue;
 #[derive(Debug, Clone)]
 pub struct InstanceValue {
     /// The name of the instance
-    pub name:    String,
+    pub name: String,
     /// Instance type
-    pub ty:      ComponentTypeDefinition,
+    pub ty: ComponentTypeDefinition,
     /// Instance exports
     pub exports: Vec<Export>,
 }

@@ -5,48 +5,25 @@
 //! in the Component Model MVP specification.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    component_value::ComponentValue,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    component_value::ComponentValue, safe_managed_alloc, safe_memory::NoStdProvider,
 };
 
 use crate::{
     async_::async_types::{
-        AsyncReadResult,
-        ErrorContext,
-        ErrorContextHandle,
-        Future,
-        FutureHandle,
-        Stream,
-        StreamHandle,
-        Waitable,
-        WaitableSet,
+        AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, Stream,
+        StreamHandle, Waitable, WaitableSet,
     },
     prelude::*,
     resources::resource_lifecycle::ResourceLifecycleManager,
-    types::{
-        ValType,
-        Value,
-    },
+    types::{ValType, Value},
 };
 
 /// Maximum number of tasks in no_std environments
@@ -111,34 +88,34 @@ pub struct TaskManager {
 #[derive(Debug, Clone)]
 pub struct Task {
     /// Task ID
-    pub id:               TaskId,
+    pub id: TaskId,
     /// Task state
-    pub state:            TaskState,
+    pub state: TaskState,
     /// Task type
-    pub task_type:        TaskType,
+    pub task_type: TaskType,
     /// Parent task (if this is a subtask)
-    pub parent:           Option<TaskId>,
+    pub parent: Option<TaskId>,
     /// Subtasks spawned by this task
     #[cfg(feature = "std")]
-    pub subtasks:         Vec<TaskId>,
+    pub subtasks: Vec<TaskId>,
     #[cfg(not(feature = "std"))]
-    pub subtasks:         BoundedVec<TaskId, MAX_SUBTASKS>,
+    pub subtasks: BoundedVec<TaskId, MAX_SUBTASKS>,
     /// Borrowed resource handles
     #[cfg(feature = "std")]
     pub borrowed_handles: Vec<ResourceHandle>,
     #[cfg(not(feature = "std"))]
     pub borrowed_handles: BoundedVec<ResourceHandle, 64>,
     /// Task-local storage
-    pub context:          TaskContext,
+    pub context: TaskContext,
     /// Waiting on waitables
-    pub waiting_on:       Option<WaitableSet>,
+    pub waiting_on: Option<WaitableSet>,
     /// Return values (when completed)
     #[cfg(feature = "std")]
-    pub return_values:    Option<Vec<Value>>,
+    pub return_values: Option<Vec<Value>>,
     #[cfg(not(feature = "std"))]
-    pub return_values:    Option<BoundedVec<Value, 16>>,
+    pub return_values: Option<BoundedVec<Value, 16>>,
     /// Error context (if failed)
-    pub error_context:    Option<ErrorContextHandle>,
+    pub error_context: Option<ErrorContextHandle>,
 }
 
 /// Task state enumeration
@@ -179,40 +156,37 @@ pub struct TaskContext {
     /// Component instance that owns this task
     pub component_instance: u32,
     /// Function being executed
-    pub function_index:     Option<u32>,
+    pub function_index: Option<u32>,
     /// Call stack for this task
     #[cfg(feature = "std")]
-    pub call_stack:         Vec<CallFrame>,
+    pub call_stack: Vec<CallFrame>,
     #[cfg(not(feature = "std"))]
-    pub call_stack:         BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH>,
+    pub call_stack: BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH>,
     /// Task-local storage
     #[cfg(feature = "std")]
-    pub storage:            BTreeMap<String, ComponentValue>,
+    pub storage: BTreeMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
-    pub storage: BoundedVec<
-        (BoundedString<64>, ComponentValue),
-        32,
-    >,
+    pub storage: BoundedVec<(BoundedString<64>, ComponentValue), 32>,
     /// Task creation time (simplified)
-    pub created_at:         u64,
+    pub created_at: u64,
     /// Task deadline (if any)
-    pub deadline:           Option<u64>,
+    pub deadline: Option<u64>,
 }
 
 /// Call frame for task call stack
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Function being called
-    pub function_index:     u32,
+    pub function_index: u32,
     /// Component instance
     pub component_instance: u32,
     /// Local variables
     #[cfg(feature = "std")]
-    pub locals:             Vec<Value>,
+    pub locals: Vec<Value>,
     #[cfg(not(feature = "std"))]
-    pub locals:             BoundedVec<Value, 32>,
+    pub locals: BoundedVec<Value, 32>,
     /// Return address
-    pub return_address:     Option<u32>,
+    pub return_address: Option<u32>,
 }
 
 /// Task execution result

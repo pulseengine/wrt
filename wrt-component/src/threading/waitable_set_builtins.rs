@@ -20,26 +20,14 @@ extern crate alloc;
 use std::{
     boxed::Box,
     cell::RefCell as AtomicRefCell,
-    collections::{
-        BTreeMap,
-        BTreeSet,
-        HashMap,
-        HashSet,
-    },
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     vec::Vec,
 };
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::BoundedVec,
-    bounded_collections::{
-        BoundedMap,
-        BoundedSet,
-    },
+    bounded_collections::{BoundedMap, BoundedSet},
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
     safe_managed_alloc,
@@ -47,18 +35,8 @@ use wrt_foundation::{
 };
 
 use crate::{
-    async_::async_types::{
-        Future,
-        FutureHandle,
-        Stream,
-        StreamHandle,
-        Waitable,
-        WaitableSet,
-    },
-    threading::task_builtins::{
-        TaskId as TaskBuiltinId,
-        TaskStatus,
-    },
+    async_::async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet},
+    threading::task_builtins::{TaskId as TaskBuiltinId, TaskStatus},
 };
 
 // Constants for no_std environments
@@ -138,9 +116,9 @@ impl WaitResult {
 /// Entry in a waitable set
 #[derive(Debug, Clone, PartialEq)]
 pub struct WaitableEntry {
-    pub id:       WaitableId,
+    pub id: WaitableId,
     pub waitable: Waitable,
-    pub ready:    bool,
+    pub ready: bool,
 }
 
 impl WaitableEntry {
@@ -211,12 +189,12 @@ impl Default for WaitableId {
 /// A set of waitable objects that can be waited on collectively
 #[derive(Debug, Clone)]
 pub struct WaitableSetImpl {
-    pub id:        WaitableSetId,
+    pub id: WaitableSetId,
     #[cfg(feature = "std")]
     pub waitables: BTreeMap<WaitableId, WaitableEntry>,
     #[cfg(not(any(feature = "std",)))]
     pub waitables: BoundedMap<WaitableId, WaitableEntry, MAX_WAITABLES_PER_SET>,
-    pub closed:    bool,
+    pub closed: bool,
 }
 
 impl WaitableSetImpl {
@@ -224,18 +202,18 @@ impl WaitableSetImpl {
         #[cfg(feature = "std")]
         {
             Ok(Self {
-                id:        WaitableSetId::new(),
+                id: WaitableSetId::new(),
                 waitables: BTreeMap::new(),
-                closed:    false,
+                closed: false,
             })
         }
         #[cfg(not(any(feature = "std",)))]
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
             Ok(Self {
-                id:        WaitableSetId::new(),
+                id: WaitableSetId::new(),
                 waitables: BoundedMap::new(),
-                closed:    false,
+                closed: false,
             })
         }
     }
@@ -299,12 +277,10 @@ impl WaitableSetImpl {
     }
 
     #[cfg(not(any(feature = "std",)))]
-    pub fn check_ready(
-        &mut self,
-    ) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
+    pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut ready = BoundedVec::new()
-            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        let mut ready =
+            BoundedVec::new().map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready
@@ -523,11 +499,7 @@ impl WaitableSetBuiltins {
     /// Get the number of waitables in a set
     pub fn waitable_set_count(set_id: WaitableSetId) -> Result<usize> {
         Self::with_registry(|registry| {
-            if let Some(set) = registry.get_set(set_id) {
-                set.waitable_count()
-            } else {
-                0
-            }
+            if let Some(set) = registry.get_set(set_id) { set.waitable_count() } else { 0 }
         })
     }
 
@@ -570,10 +542,7 @@ impl WaitableSetBuiltins {
     #[cfg(not(any(feature = "std")))]
     pub fn waitable_set_poll_all(
         set_id: WaitableSetId,
-    ) -> core::result::Result<
-        BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>,
-        wrt_error::Error,
-    > {
+    ) -> core::result::Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>, wrt_error::Error> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
                 set.check_ready()
@@ -664,5 +633,4 @@ pub mod waitable_set_helpers {
             state: crate::async_::async_types::StreamState::Open,
         })
     }
-
 }

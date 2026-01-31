@@ -4,40 +4,24 @@
 //! enabling deterministic timing guarantees required for ASIL-C compliance.
 
 use core::{
-    sync::atomic::{
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 #[cfg(feature = "std")]
-use log::{
-    debug,
-    error,
-    info,
-    trace,
-    warn,
-};
+use log::{debug, error, info, trace, warn};
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     traits::{Checksummable, FromBytes, ToBytes},
     verification::VerificationLevel,
-    CrateId,
 };
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
-use crate::{
-    prelude::*,
-    ComponentInstanceId,
-};
+use crate::{ComponentInstanceId, prelude::*};
 
 // Placeholder TaskId when threading is not available
 #[cfg(not(feature = "component-model-threading"))]
@@ -110,7 +94,9 @@ impl FromBytes for WcetAnalysisMethod {
             1 => Ok(WcetAnalysisMethod::MeasurementBased),
             2 => Ok(WcetAnalysisMethod::Hybrid),
             3 => Ok(WcetAnalysisMethod::Probabilistic),
-            _ => Err(wrt_error::Error::runtime_error("Invalid WcetAnalysisMethod discriminant")),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid WcetAnalysisMethod discriminant",
+            )),
         }
     }
 }
@@ -119,15 +105,15 @@ impl FromBytes for WcetAnalysisMethod {
 #[derive(Debug)]
 pub struct ControlFlowPath {
     /// Unique path identifier
-    pub path_id:          u32,
+    pub path_id: u32,
     /// Sequence of basic blocks in this path
-    pub basic_blocks:     BoundedVec<u32, MAX_CONTROL_FLOW_PATHS>,
+    pub basic_blocks: BoundedVec<u32, MAX_CONTROL_FLOW_PATHS>,
     /// Estimated fuel consumption for this path
-    pub estimated_fuel:   u64,
+    pub estimated_fuel: u64,
     /// Measured fuel consumption samples
     pub measured_samples: BoundedVec<u64, MAX_EXECUTION_SAMPLES>,
     /// Path execution frequency
-    pub execution_count:  AtomicUsize,
+    pub execution_count: AtomicUsize,
     /// Whether this is the critical (longest) path
     pub is_critical_path: bool,
 }
@@ -135,11 +121,11 @@ pub struct ControlFlowPath {
 impl Clone for ControlFlowPath {
     fn clone(&self) -> Self {
         Self {
-            path_id:          self.path_id,
-            basic_blocks:     self.basic_blocks.clone(),
-            estimated_fuel:   self.estimated_fuel,
+            path_id: self.path_id,
+            basic_blocks: self.basic_blocks.clone(),
+            estimated_fuel: self.estimated_fuel,
             measured_samples: self.measured_samples.clone(),
-            execution_count:  AtomicUsize::new(self.execution_count.load(Ordering::Relaxed)),
+            execution_count: AtomicUsize::new(self.execution_count.load(Ordering::Relaxed)),
             is_critical_path: self.is_critical_path,
         }
     }
@@ -151,7 +137,8 @@ impl PartialEq for ControlFlowPath {
             && self.basic_blocks == other.basic_blocks
             && self.estimated_fuel == other.estimated_fuel
             && self.measured_samples == other.measured_samples
-            && self.execution_count.load(Ordering::Relaxed) == other.execution_count.load(Ordering::Relaxed)
+            && self.execution_count.load(Ordering::Relaxed)
+                == other.execution_count.load(Ordering::Relaxed)
             && self.is_critical_path == other.is_critical_path
     }
 }
@@ -161,11 +148,11 @@ impl Eq for ControlFlowPath {}
 impl Default for ControlFlowPath {
     fn default() -> Self {
         Self {
-            path_id:          0,
-            basic_blocks:     BoundedVec::new().unwrap(),
-            estimated_fuel:   0,
+            path_id: 0,
+            basic_blocks: BoundedVec::new().unwrap(),
+            estimated_fuel: 0,
             measured_samples: BoundedVec::new().unwrap(),
-            execution_count:  AtomicUsize::new(0),
+            execution_count: AtomicUsize::new(0),
             is_critical_path: false,
         }
     }
@@ -192,7 +179,9 @@ impl ToBytes for ControlFlowPath {
         self.basic_blocks.to_bytes_with_provider(writer, provider)?;
         self.estimated_fuel.to_bytes_with_provider(writer, provider)?;
         self.measured_samples.to_bytes_with_provider(writer, provider)?;
-        self.execution_count.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.execution_count
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
         self.is_critical_path.to_bytes_with_provider(writer, provider)?;
         Ok(())
     }
@@ -204,11 +193,11 @@ impl FromBytes for ControlFlowPath {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         Ok(Self {
-            path_id:          u32::from_bytes_with_provider(reader, provider)?,
-            basic_blocks:     BoundedVec::from_bytes_with_provider(reader, provider)?,
-            estimated_fuel:   u64::from_bytes_with_provider(reader, provider)?,
+            path_id: u32::from_bytes_with_provider(reader, provider)?,
+            basic_blocks: BoundedVec::from_bytes_with_provider(reader, provider)?,
+            estimated_fuel: u64::from_bytes_with_provider(reader, provider)?,
             measured_samples: BoundedVec::from_bytes_with_provider(reader, provider)?,
-            execution_count:  AtomicUsize::new(usize::from_bytes_with_provider(reader, provider)?),
+            execution_count: AtomicUsize::new(usize::from_bytes_with_provider(reader, provider)?),
             is_critical_path: bool::from_bytes_with_provider(reader, provider)?,
         })
     }
@@ -220,11 +209,11 @@ pub struct ExecutionSample {
     /// Fuel consumed in this execution
     pub fuel_consumed: u64,
     /// Timestamp when sample was collected
-    pub timestamp:     u64,
+    pub timestamp: u64,
     /// Input characteristics that led to this execution
-    pub input_hash:    u32,
+    pub input_hash: u32,
     /// Control flow path taken
-    pub path_id:       u32,
+    pub path_id: u32,
 }
 
 impl Checksummable for ExecutionSample {
@@ -268,40 +257,40 @@ impl FromBytes for ExecutionSample {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WcetAnalysisResult {
     /// Task being analyzed
-    pub task_id:          TaskId,
+    pub task_id: TaskId,
     /// Analysis method used
-    pub method:           WcetAnalysisMethod,
+    pub method: WcetAnalysisMethod,
     /// Estimated WCET in fuel units
-    pub wcet_fuel:        u64,
+    pub wcet_fuel: u64,
     /// Best-case execution time
-    pub bcet_fuel:        u64,
+    pub bcet_fuel: u64,
     /// Average execution time
-    pub average_fuel:     u64,
+    pub average_fuel: u64,
     /// Standard deviation of execution times
-    pub std_deviation:    f64,
+    pub std_deviation: f64,
     /// Confidence level of the estimate (0.0-1.0)
     pub confidence_level: f64,
     /// Critical path that leads to WCET
-    pub critical_path:    Option<u32>,
+    pub critical_path: Option<u32>,
     /// Number of samples collected
-    pub sample_count:     usize,
+    pub sample_count: usize,
     /// Analysis timestamp
-    pub analysis_time:    u64,
+    pub analysis_time: u64,
 }
 
 impl Default for WcetAnalysisResult {
     fn default() -> Self {
         Self {
-            task_id:          0,
-            method:           WcetAnalysisMethod::Static,
-            wcet_fuel:        0,
-            bcet_fuel:        0,
-            average_fuel:     0,
-            std_deviation:    0.0,
+            task_id: 0,
+            method: WcetAnalysisMethod::Static,
+            wcet_fuel: 0,
+            bcet_fuel: 0,
+            average_fuel: 0,
+            std_deviation: 0.0,
             confidence_level: 0.0,
-            critical_path:    None,
-            sample_count:     0,
-            analysis_time:    0,
+            critical_path: None,
+            sample_count: 0,
+            analysis_time: 0,
         }
     }
 }
@@ -349,16 +338,16 @@ impl FromBytes for WcetAnalysisResult {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         Ok(Self {
-            task_id:          u32::from_bytes_with_provider(reader, provider)?,
-            method:           WcetAnalysisMethod::from_bytes_with_provider(reader, provider)?,
-            wcet_fuel:        u64::from_bytes_with_provider(reader, provider)?,
-            bcet_fuel:        u64::from_bytes_with_provider(reader, provider)?,
-            average_fuel:     u64::from_bytes_with_provider(reader, provider)?,
-            std_deviation:    f64::from_bits(u64::from_bytes_with_provider(reader, provider)?),
+            task_id: u32::from_bytes_with_provider(reader, provider)?,
+            method: WcetAnalysisMethod::from_bytes_with_provider(reader, provider)?,
+            wcet_fuel: u64::from_bytes_with_provider(reader, provider)?,
+            bcet_fuel: u64::from_bytes_with_provider(reader, provider)?,
+            average_fuel: u64::from_bytes_with_provider(reader, provider)?,
+            std_deviation: f64::from_bits(u64::from_bytes_with_provider(reader, provider)?),
             confidence_level: f64::from_bits(u64::from_bytes_with_provider(reader, provider)?),
-            critical_path:    Option::<u32>::from_bytes_with_provider(reader, provider)?,
-            sample_count:     usize::from_bytes_with_provider(reader, provider)?,
-            analysis_time:    u64::from_bytes_with_provider(reader, provider)?,
+            critical_path: Option::<u32>::from_bytes_with_provider(reader, provider)?,
+            sample_count: usize::from_bytes_with_provider(reader, provider)?,
+            analysis_time: u64::from_bytes_with_provider(reader, provider)?,
         })
     }
 }
@@ -366,7 +355,7 @@ impl FromBytes for WcetAnalysisResult {
 /// WCET analyzer for fuel-based timing analysis
 pub struct FuelWcetAnalyzer {
     /// WCET analysis results indexed by task
-    analysis_results:   BoundedMap<TaskId, WcetAnalysisResult, MAX_WCET_ENTRIES>,
+    analysis_results: BoundedMap<TaskId, WcetAnalysisResult, MAX_WCET_ENTRIES>,
     /// Control flow paths for each task
     task_paths:
         BoundedMap<TaskId, BoundedVec<ControlFlowPath, MAX_CONTROL_FLOW_PATHS>, MAX_WCET_ENTRIES>,
@@ -374,11 +363,11 @@ pub struct FuelWcetAnalyzer {
     execution_samples:
         BoundedMap<TaskId, BoundedVec<ExecutionSample, MAX_EXECUTION_SAMPLES>, MAX_WCET_ENTRIES>,
     /// Analysis configuration
-    config:             WcetAnalyzerConfig,
+    config: WcetAnalyzerConfig,
     /// Performance statistics
-    stats:              WcetAnalyzerStats,
+    stats: WcetAnalyzerStats,
     /// Current fuel time
-    current_fuel_time:  AtomicU64,
+    current_fuel_time: AtomicU64,
     /// Verification level for fuel tracking
     verification_level: VerificationLevel,
 }
@@ -387,60 +376,57 @@ pub struct FuelWcetAnalyzer {
 #[derive(Debug, Clone)]
 pub struct WcetAnalyzerConfig {
     /// Default analysis method
-    pub default_method:         WcetAnalysisMethod,
+    pub default_method: WcetAnalysisMethod,
     /// Confidence level required for WCET estimates
-    pub required_confidence:    f64,
+    pub required_confidence: f64,
     /// Maximum number of samples to collect per task
-    pub max_samples_per_task:   usize,
+    pub max_samples_per_task: usize,
     /// Statistical margin for safety factor
-    pub safety_margin_factor:   f64,
+    pub safety_margin_factor: f64,
     /// Enable online sample collection
     pub enable_online_sampling: bool,
     /// Enable path-based analysis
-    pub enable_path_analysis:   bool,
+    pub enable_path_analysis: bool,
     /// Minimum samples required for statistical analysis
-    pub min_samples_for_stats:  usize,
+    pub min_samples_for_stats: usize,
 }
 
 /// WCET analyzer statistics
 #[derive(Debug)]
 pub struct WcetAnalyzerStats {
     /// Total WCET analyses performed
-    pub total_analyses:         AtomicUsize,
+    pub total_analyses: AtomicUsize,
     /// Total execution samples collected
-    pub total_samples:          AtomicUsize,
+    pub total_samples: AtomicUsize,
     /// Total control flow paths discovered
-    pub total_paths:            AtomicUsize,
+    pub total_paths: AtomicUsize,
     /// Fuel consumed by WCET analysis
     pub analysis_fuel_consumed: AtomicU64,
     /// Number of WCET estimates that were too optimistic
-    pub underestimations:       AtomicUsize,
+    pub underestimations: AtomicUsize,
     /// Number of WCET estimates that were too pessimistic
-    pub overestimations:        AtomicUsize,
+    pub overestimations: AtomicUsize,
     /// Average analysis accuracy
-    pub average_accuracy:       AtomicU64, // Fixed point: accuracy * 1000
+    pub average_accuracy: AtomicU64, // Fixed point: accuracy * 1000
 }
 
 impl Default for WcetAnalyzerConfig {
     fn default() -> Self {
         Self {
-            default_method:         WcetAnalysisMethod::Hybrid,
-            required_confidence:    0.95, // 95% confidence
-            max_samples_per_task:   500,
-            safety_margin_factor:   1.2, // 20% safety margin
+            default_method: WcetAnalysisMethod::Hybrid,
+            required_confidence: 0.95, // 95% confidence
+            max_samples_per_task: 500,
+            safety_margin_factor: 1.2, // 20% safety margin
             enable_online_sampling: true,
-            enable_path_analysis:   true,
-            min_samples_for_stats:  50,
+            enable_path_analysis: true,
+            min_samples_for_stats: 50,
         }
     }
 }
 
 impl FuelWcetAnalyzer {
     /// Create a new WCET analyzer
-    pub fn new(
-        config: WcetAnalyzerConfig,
-        verification_level: VerificationLevel,
-    ) -> Result<Self> {
+    pub fn new(config: WcetAnalyzerConfig, verification_level: VerificationLevel) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         Ok(Self {
             analysis_results: BoundedMap::new(),
@@ -448,13 +434,13 @@ impl FuelWcetAnalyzer {
             execution_samples: BoundedMap::new(),
             config,
             stats: WcetAnalyzerStats {
-                total_analyses:         AtomicUsize::new(0),
-                total_samples:          AtomicUsize::new(0),
-                total_paths:            AtomicUsize::new(0),
+                total_analyses: AtomicUsize::new(0),
+                total_samples: AtomicUsize::new(0),
+                total_paths: AtomicUsize::new(0),
                 analysis_fuel_consumed: AtomicU64::new(0),
-                underestimations:       AtomicUsize::new(0),
-                overestimations:        AtomicUsize::new(0),
-                average_accuracy:       AtomicU64::new(0),
+                underestimations: AtomicUsize::new(0),
+                overestimations: AtomicUsize::new(0),
+                average_accuracy: AtomicU64::new(0),
             },
             current_fuel_time: AtomicU64::new(0),
             verification_level,
@@ -610,11 +596,7 @@ impl FuelWcetAnalyzer {
     }
 
     /// Validate WCET estimate against actual execution
-    pub fn validate_wcet_estimate(
-        &mut self,
-        task_id: TaskId,
-        actual_fuel: u64,
-    ) -> Result<bool> {
+    pub fn validate_wcet_estimate(&mut self, task_id: TaskId, actual_fuel: u64) -> Result<bool> {
         if let Some(result) = self.analysis_results.get(&task_id) {
             let within_estimate = actual_fuel <= result.wcet_fuel;
 
@@ -656,7 +638,9 @@ impl FuelWcetAnalyzer {
             total_analyses: AtomicUsize::new(self.stats.total_analyses.load(Ordering::Acquire)),
             total_samples: AtomicUsize::new(self.stats.total_samples.load(Ordering::Acquire)),
             total_paths: AtomicUsize::new(self.stats.total_paths.load(Ordering::Acquire)),
-            analysis_fuel_consumed: AtomicU64::new(self.stats.analysis_fuel_consumed.load(Ordering::Acquire)),
+            analysis_fuel_consumed: AtomicU64::new(
+                self.stats.analysis_fuel_consumed.load(Ordering::Acquire),
+            ),
             underestimations: AtomicUsize::new(self.stats.underestimations.load(Ordering::Acquire)),
             overestimations: AtomicUsize::new(self.stats.overestimations.load(Ordering::Acquire)),
             average_accuracy: AtomicU64::new(self.stats.average_accuracy.load(Ordering::Acquire)),
@@ -696,10 +680,7 @@ impl FuelWcetAnalyzer {
         })
     }
 
-    fn perform_measurement_analysis(
-        &mut self,
-        task_id: TaskId,
-    ) -> Result<WcetAnalysisResult> {
+    fn perform_measurement_analysis(&mut self, task_id: TaskId) -> Result<WcetAnalysisResult> {
         let samples = self.execution_samples.get(&task_id).ok_or_else(|| {
             Error::resource_not_found(
                 "No execution samples available for measurement-based analysis",
@@ -774,10 +755,7 @@ impl FuelWcetAnalyzer {
         }
     }
 
-    fn perform_probabilistic_analysis(
-        &mut self,
-        task_id: TaskId,
-    ) -> Result<WcetAnalysisResult> {
+    fn perform_probabilistic_analysis(&mut self, task_id: TaskId) -> Result<WcetAnalysisResult> {
         self.consume_analysis_fuel(STATISTICAL_ANALYSIS_FUEL)?;
 
         let samples = self.execution_samples.get(&task_id).ok_or_else(|| {
@@ -941,8 +919,8 @@ impl FuelWcetAnalyzer {
 /// Statistical data for execution samples
 #[derive(Debug, Clone)]
 struct ExecutionStatistics {
-    min_value:     u64,
-    max_value:     u64,
-    mean:          f64,
+    min_value: u64,
+    max_value: u64,
+    mean: f64,
     std_deviation: f64,
 }

@@ -6,22 +6,12 @@
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::MAX_BUFFER_SIZE,
-    resource::ResourceOperation,
+    bounded::MAX_BUFFER_SIZE, collections::StaticVec as BoundedVec, resource::ResourceOperation,
 };
 
-use super::{
-    resource_strategy::ResourceStrategy,
-    MemoryStrategy,
-};
+use super::{MemoryStrategy, resource_strategy::ResourceStrategy};
 
 /// No-std version of ResourceStrategy implementation
 /// This struct provides resource access strategies for no_std environments
@@ -44,20 +34,12 @@ impl ResourceStrategy for ResourceStrategyNoStd {
     }
 
     #[cfg(feature = "std")]
-    fn process_memory(
-        &self,
-        data: &[u8],
-        operation: ResourceOperation,
-    ) -> Result<Vec<u8>> {
+    fn process_memory(&self, data: &[u8], operation: ResourceOperation) -> Result<Vec<u8>> {
         match self.strategy {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {
-                ResourceOperation::Read => {
-                    Ok(data.to_vec())
-                },
-                ResourceOperation::Write => {
-                    Ok(data.to_vec())
-                },
+                ResourceOperation::Read => Ok(data.to_vec()),
+                ResourceOperation::Write => Ok(data.to_vec()),
                 _ => Ok(data.to_vec()), // Default for other operations
             },
             // Bounded-copy strategy - copies with size limit checks
@@ -72,13 +54,9 @@ impl ResourceStrategy for ResourceStrategyNoStd {
                 Ok(data.to_vec())
             },
             // Full isolation - creates independent copies
-            MemoryStrategy::FullIsolation => {
-                Ok(data.to_vec())
-            },
+            MemoryStrategy::FullIsolation => Ok(data.to_vec()),
             // Handle other memory strategies
-            _ => {
-                Ok(data.to_vec())
-            },
+            _ => Ok(data.to_vec()),
         }
     }
 
@@ -88,10 +66,14 @@ impl ResourceStrategy for ResourceStrategyNoStd {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        wrt_foundation::bounded::BoundedVec<u8, MAX_BUFFER_SIZE, wrt_foundation::safe_memory::NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        wrt_foundation::bounded::BoundedVec<
+            u8,
+            MAX_BUFFER_SIZE,
+            wrt_foundation::safe_memory::NoStdProvider<{ MAX_BUFFER_SIZE }>,
+        >,
         wrt_error::Error,
     > {
-        use wrt_foundation::{safe_managed_alloc, CrateId};
+        use wrt_foundation::{CrateId, safe_managed_alloc};
         let provider = safe_managed_alloc!(MAX_BUFFER_SIZE, CrateId::Component)?;
 
         match self.strategy {

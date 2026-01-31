@@ -3,11 +3,7 @@
 //! This module provides registry functionality for components.
 
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    string::ToString,
-    sync::Arc,
-};
+use std::{collections::HashMap, string::ToString, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;

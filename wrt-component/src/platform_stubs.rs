@@ -28,9 +28,9 @@ impl Default for ComprehensivePlatformLimits {
     fn default() -> Self {
         Self {
             platform_id: PlatformId::Linux,
-            max_total_memory: 1024 * 1024 * 1024, // 1GB
+            max_total_memory: 1024 * 1024 * 1024,      // 1GB
             max_wasm_linear_memory: 512 * 1024 * 1024, // 512MB
-            max_stack_bytes: 1024 * 1024, // 1MB
+            max_stack_bytes: 1024 * 1024,              // 1MB
             max_components: 256,
             max_component_instances: 1024,
             max_debug_overhead: 64 * 1024 * 1024, // 64MB
@@ -40,17 +40,21 @@ impl Default for ComprehensivePlatformLimits {
 }
 
 pub trait ComprehensiveLimitProvider: Send + Sync {
-    fn discover_limits(&self) -> core::result::Result<ComprehensivePlatformLimits, wrt_error::Error>;
+    fn discover_limits(
+        &self,
+    ) -> core::result::Result<ComprehensivePlatformLimits, wrt_error::Error>;
     fn platform_id(&self) -> PlatformId;
 }
 
 pub struct DefaultLimitProvider;
 
 impl ComprehensiveLimitProvider for DefaultLimitProvider {
-    fn discover_limits(&self) -> core::result::Result<ComprehensivePlatformLimits, wrt_error::Error> {
+    fn discover_limits(
+        &self,
+    ) -> core::result::Result<ComprehensivePlatformLimits, wrt_error::Error> {
         Ok(ComprehensivePlatformLimits::default())
     }
-    
+
     fn platform_id(&self) -> PlatformId {
         PlatformId::Linux
     }
@@ -75,14 +79,14 @@ pub struct PlatformDebugLimits {
 impl PlatformDebugLimits {
     pub fn from_platform_limits(
         limits: &ComprehensivePlatformLimits,
-        debug_level: DebugLevel
+        debug_level: DebugLevel,
     ) -> Self {
         let debug_overhead = match debug_level {
             DebugLevel::None => 0,
             DebugLevel::BasicProfile => limits.max_total_memory / 50,
             DebugLevel::FullDebug => limits.max_total_memory / 10,
         };
-        
+
         Self {
             max_debug_sections: if debug_overhead > 0 { 64 } else { 0 },
             max_dwarf_section_size: 1024 * 1024,

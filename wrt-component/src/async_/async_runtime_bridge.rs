@@ -16,34 +16,22 @@ type String = wrt_foundation::bounded::BoundedString<256>;
 
 use core::{
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
 };
 
 use wrt_error::Error;
 #[cfg(feature = "std")]
 use wrt_foundation::BoundedVec;
-use wrt_runtime::{Checksummable, ToBytes, FromBytes};
+use wrt_runtime::{Checksummable, FromBytes, ToBytes};
 
 use super::async_types::{
-    Future as WasmFuture,
-    FutureHandle,
-    FutureState,
-    Stream as WasmStream,
-    StreamHandle,
+    Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
 };
 #[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    TaskId,
-    TaskManager,
-    TaskState,
-};
+use crate::threading::task_manager::{TaskId, TaskManager, TaskState};
 // Use Value for all component values (non-generic)
-use crate::types::Value as ComponentValue;
 use crate::ComponentInstanceId;
+use crate::types::Value as ComponentValue;
 
 // Placeholder types when threading is not available
 #[cfg(not(feature = "component-model-threading"))]
@@ -67,10 +55,7 @@ pub mod rust_async_bridge {
     use std::{
         future::Future as RustFuture,
         string::String,
-        sync::{
-            Arc,
-            Mutex,
-        },
+        sync::{Arc, Mutex},
         task::Wake,
     };
 
@@ -81,12 +66,14 @@ pub mod rust_async_bridge {
     where
         T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
     {
-        wasm_future:  Arc<Mutex<WasmFuture<T>>>,
+        wasm_future: Arc<Mutex<WasmFuture<T>>>,
         task_manager: Arc<Mutex<TaskManager>>,
-        task_id:      TaskId,
+        task_id: TaskId,
     }
 
-    impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + Send + 'static> RustFuture for ComponentFutureAdapter<T> {
+    impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + Send + 'static>
+        RustFuture for ComponentFutureAdapter<T>
+    {
         type Output = core::result::Result<T, String>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -147,11 +134,10 @@ pub mod component_async {
         use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
         // Use a stack-allocated provider for error strings
         let provider1 = NoStdProvider::<1024>::default();
-        BoundedString::try_from_str(msg)
-            .unwrap_or_else(|_| {
-                let provider2 = NoStdProvider::<1024>::default();
-                BoundedString::try_from_str("Error").unwrap()
-            })
+        BoundedString::try_from_str(msg).unwrap_or_else(|_| {
+            let provider2 = NoStdProvider::<1024>::default();
+            BoundedString::try_from_str("Error").unwrap()
+        })
     }
 
     /// Execute an async Component Model operation without Rust's async runtime
@@ -240,8 +226,8 @@ pub mod component_async {
 
     #[derive(Debug, Clone)]
     pub struct AsyncOperation {
-        pub component_id:   ComponentInstanceId,
-        pub name:           String,
+        pub component_id: ComponentInstanceId,
+        pub name: String,
         pub operation_type: AsyncOperationType,
     }
 
@@ -266,5 +252,4 @@ pub mod component_async {
         Pending,
         Closed,
     }
-
 }

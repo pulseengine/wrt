@@ -4,39 +4,31 @@
 //! fuel consumption, priority, and deadline requirements.
 
 use core::{
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    safe_managed_alloc,
-    verification::VerificationLevel,
     // Note: Using BoundedVec instead of BoundedBinaryHeap
     // Priority ordering will need to be handled manually
     Arc,
     CrateId,
     Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    safe_managed_alloc,
+    verification::VerificationLevel,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
         fuel_dynamic_manager::FuelDynamicManager,
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder TaskId when threading is not available
@@ -52,17 +44,17 @@ const PREEMPTION_CHECK_FUEL: u64 = 100;
 /// Preemption manager for async tasks
 pub struct FuelPreemptionManager {
     /// Preemption policies
-    preemption_policy:  PreemptionPolicy,
+    preemption_policy: PreemptionPolicy,
     /// Task preemption state
-    task_states:        BoundedMap<TaskId, PreemptionState, 1024>,
+    task_states: BoundedMap<TaskId, PreemptionState, 1024>,
     /// Preemption queue ordered by priority
-    preemption_queue:   BoundedVec<PreemptionRequest, 256>,
+    preemption_queue: BoundedVec<PreemptionRequest, 256>,
     /// Active preemption points
-    preemption_points:  BoundedMap<TaskId, BoundedVec<PreemptionPoint, MAX_PREEMPTION_POINTS>, 512>,
+    preemption_points: BoundedMap<TaskId, BoundedVec<PreemptionPoint, MAX_PREEMPTION_POINTS>, 512>,
     /// Global preemption enabled flag
     preemption_enabled: AtomicBool,
     /// Preemption statistics
-    stats:              PreemptionStatistics,
+    stats: PreemptionStatistics,
 }
 
 /// Preemption policy configuration
@@ -83,29 +75,29 @@ pub enum PreemptionPolicy {
 /// Task preemption state
 #[derive(Debug)]
 struct PreemptionState {
-    task_id:             TaskId,
+    task_id: TaskId,
     /// Can this task be preempted
-    preemptible:         bool,
+    preemptible: bool,
     /// Current preemption priority
     preemption_priority: AtomicU32,
     /// Fuel consumed since last preemption check
-    fuel_since_check:    AtomicU64,
+    fuel_since_check: AtomicU64,
     /// Number of times preempted
-    preemption_count:    AtomicU32,
+    preemption_count: AtomicU32,
     /// Currently preempted
-    is_preempted:        AtomicBool,
+    is_preempted: AtomicBool,
     /// Time quantum remaining
-    quantum_remaining:   AtomicU64,
+    quantum_remaining: AtomicU64,
 }
 
 /// Preemption request
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct PreemptionRequest {
     requesting_task: TaskId,
-    target_task:     TaskId,
-    priority:        Priority,
-    reason:          PreemptionReason,
-    timestamp:       u64,
+    target_task: TaskId,
+    priority: Priority,
+    reason: PreemptionReason,
+    timestamp: u64,
 }
 
 impl Ord for PreemptionRequest {
@@ -139,9 +131,9 @@ pub enum PreemptionReason {
 #[derive(Debug, Clone)]
 pub struct PreemptionPoint {
     /// Location identifier
-    location_id:     u64,
+    location_id: u64,
     /// Fuel consumed at this point
-    fuel_consumed:   u64,
+    fuel_consumed: u64,
     /// Can safely preempt here
     safe_to_preempt: bool,
     /// State checkpoint data
@@ -156,18 +148,18 @@ pub struct StateCheckpoint {
     /// Task-specific state
     task_state: Vec<u8>,
     /// Timestamp of checkpoint
-    timestamp:  u64,
+    timestamp: u64,
 }
 
 /// Preemption statistics
 #[derive(Debug, Default)]
 struct PreemptionStatistics {
-    total_preemptions:      AtomicU64,
-    voluntary_yields:       AtomicU64,
-    priority_preemptions:   AtomicU64,
-    deadline_preemptions:   AtomicU64,
-    fuel_preemptions:       AtomicU64,
-    failed_preemptions:     AtomicU64,
+    total_preemptions: AtomicU64,
+    voluntary_yields: AtomicU64,
+    priority_preemptions: AtomicU64,
+    deadline_preemptions: AtomicU64,
+    fuel_preemptions: AtomicU64,
+    failed_preemptions: AtomicU64,
     avg_preemption_latency: AtomicU64,
 }
 
@@ -177,12 +169,12 @@ impl FuelPreemptionManager {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
 
         Ok(Self {
-            preemption_policy:  policy,
-            task_states:        BoundedMap::new(),
-            preemption_queue:   BoundedVec::new(),
-            preemption_points:  BoundedMap::new(),
+            preemption_policy: policy,
+            task_states: BoundedMap::new(),
+            preemption_queue: BoundedVec::new(),
+            preemption_points: BoundedMap::new(),
             preemption_enabled: AtomicBool::new(policy != PreemptionPolicy::Disabled),
-            stats:              PreemptionStatistics::default(),
+            stats: PreemptionStatistics::default(),
         })
     }
 
@@ -229,10 +221,9 @@ impl FuelPreemptionManager {
 
         // First, get state and update fuel tracking
         {
-            let state = self
-                .task_states
-                .get(&current_task)
-                .ok_or_else(|| Error::validation_invalid_input("Task not registered for preemption"))?;
+            let state = self.task_states.get(&current_task).ok_or_else(|| {
+                Error::validation_invalid_input("Task not registered for preemption")
+            })?;
 
             // Update fuel tracking
             state.fuel_since_check.fetch_add(fuel_consumed, Ordering::AcqRel);
@@ -367,12 +358,12 @@ impl FuelPreemptionManager {
     /// Get preemption statistics
     pub fn get_statistics(&self) -> PreemptionStats {
         PreemptionStats {
-            total_preemptions:      self.stats.total_preemptions.load(Ordering::Relaxed),
-            voluntary_yields:       self.stats.voluntary_yields.load(Ordering::Relaxed),
-            priority_preemptions:   self.stats.priority_preemptions.load(Ordering::Relaxed),
-            deadline_preemptions:   self.stats.deadline_preemptions.load(Ordering::Relaxed),
-            fuel_preemptions:       self.stats.fuel_preemptions.load(Ordering::Relaxed),
-            failed_preemptions:     self.stats.failed_preemptions.load(Ordering::Relaxed),
+            total_preemptions: self.stats.total_preemptions.load(Ordering::Relaxed),
+            voluntary_yields: self.stats.voluntary_yields.load(Ordering::Relaxed),
+            priority_preemptions: self.stats.priority_preemptions.load(Ordering::Relaxed),
+            deadline_preemptions: self.stats.deadline_preemptions.load(Ordering::Relaxed),
+            fuel_preemptions: self.stats.fuel_preemptions.load(Ordering::Relaxed),
+            failed_preemptions: self.stats.failed_preemptions.load(Ordering::Relaxed),
             avg_preemption_latency: self.stats.avg_preemption_latency.load(Ordering::Relaxed),
         }
     }
@@ -487,12 +478,12 @@ pub enum PreemptionDecision {
 /// Preemption statistics
 #[derive(Debug, Clone)]
 pub struct PreemptionStats {
-    pub total_preemptions:      u64,
-    pub voluntary_yields:       u64,
-    pub priority_preemptions:   u64,
-    pub deadline_preemptions:   u64,
-    pub fuel_preemptions:       u64,
-    pub failed_preemptions:     u64,
+    pub total_preemptions: u64,
+    pub voluntary_yields: u64,
+    pub priority_preemptions: u64,
+    pub deadline_preemptions: u64,
+    pub fuel_preemptions: u64,
+    pub failed_preemptions: u64,
     pub avg_preemption_latency: u64,
 }
 

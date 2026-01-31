@@ -28,38 +28,20 @@
 
 // Explicitly import the types we need to avoid confusion
 use wrt_error::{
-    codes,
-    kinds::{
-        InvalidArgumentError,
-        NotImplementedError,
-    },
-    Error,
-    ErrorCategory,
+    Error, ErrorCategory, codes,
+    kinds::{InvalidArgumentError, NotImplementedError},
 };
 use wrt_format::component::{
-    ComponentTypeDefinition,
-    ConstValue as FormatConstValue,
-    ExternType as FormatExternType,
-    FormatResourceOperation,
-    FormatValType,
-    ResourceRepresentation,
+    ComponentTypeDefinition, ConstValue as FormatConstValue, ExternType as FormatExternType,
+    FormatResourceOperation, FormatValType, ResourceRepresentation,
 };
 use wrt_foundation::{
-    component::{
-        ComponentType,
-        InstanceType,
-    },
-    component_value::ValType as TypesValType,
-    resource::{
-        ResourceOperation,
-        ResourceType,
-    },
-    types::{
-        FuncType as TypesFuncType,
-        ValueType,
-    },
-    values::Value,
     ExternType as TypesExternType,
+    component::{ComponentType, InstanceType},
+    component_value::ValType as TypesValType,
+    resource::{ResourceOperation, ResourceType},
+    types::{FuncType as TypesFuncType, ValueType},
+    values::Value,
 };
 
 // For no_std, override prelude's bounded::BoundedVec with StaticVec
@@ -69,7 +51,7 @@ use wrt_foundation::collections::StaticVec as BoundedVec;
 use crate::prelude::*;
 
 // Type aliases to ensure consistent generic parameters
-type WrtTypesValType<P> = WrtValType<P>;  // Use prelude's ValType
+type WrtTypesValType<P> = WrtValType<P>; // Use prelude's ValType
 type TypesWrtExternType<P> = TypesExternType<P>;
 type WrtExternType<P> = TypesExternType<P>;
 // WrtComponentValue is already available from prelude
@@ -77,9 +59,7 @@ type WrtExternType<P> = TypesExternType<P>;
 // Helper functions to handle type conversions with correct parameters
 
 // Special helper functions for FormatValType to ValueType conversion
-pub fn convert_format_valtype_to_valuetype(
-    format_val_type: &FormatValType,
-) -> Result<ValueType> {
+pub fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType) -> Result<ValueType> {
     match format_val_type {
         FormatValType::S32 => Ok(ValueType::I32),
         FormatValType::S64 => Ok(ValueType::I64),
@@ -90,7 +70,9 @@ pub fn convert_format_valtype_to_valuetype(
 }
 
 // Variant that accepts ValType (WrtTypesValType) for use at call sites
-pub fn convert_types_valtype_to_valuetype<P: wrt_foundation::MemoryProvider>(val_type: &WrtTypesValType<P>) -> Result<ValueType> {
+pub fn convert_types_valtype_to_valuetype<P: wrt_foundation::MemoryProvider>(
+    val_type: &WrtTypesValType<P>,
+) -> Result<ValueType> {
     match val_type {
         WrtTypesValType::S32 => Ok(ValueType::I32),
         WrtTypesValType::S64 => Ok(ValueType::I64),
@@ -126,7 +108,9 @@ pub fn convert_format_to_types_valtype<P: wrt_foundation::MemoryProvider>(
 }
 
 // Variant that takes a ValType directly for use at call sites
-pub fn convert_types_valtype_identity<P: wrt_foundation::MemoryProvider>(val_type: &WrtTypesValType<P>) -> WrtTypesValType<P> {
+pub fn convert_types_valtype_identity<P: wrt_foundation::MemoryProvider>(
+    val_type: &WrtTypesValType<P>,
+) -> WrtTypesValType<P> {
     val_type.clone()
 }
 
@@ -179,9 +163,7 @@ pub fn convert_types_to_format_valtype<P: wrt_foundation::MemoryProvider>(
 /// let format_type = value_type_to_format_val_type(&i32_type).unwrap();
 /// assert!(matches!(format_type, wrt_format::component::ValType::S32);
 /// ```
-pub fn value_type_to_format_val_type(
-    value_type: &ValueType,
-) -> Result<FormatValType> {
+pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
         ValueType::I64 => Ok(FormatValType::S64),
@@ -189,14 +171,30 @@ pub fn value_type_to_format_val_type(
         ValueType::F64 => Ok(FormatValType::F64),
         ValueType::FuncRef => Err(Error::runtime_execution_error("FuncRef not supported")),
         ValueType::ExternRef => Err(Error::runtime_execution_error("ExternRef not supported")),
-        ValueType::V128 => Err(Error::runtime_execution_error("V128 not supported in component model")),
-        ValueType::I16x8 => Err(Error::runtime_execution_error("I16x8 not supported in component model")),
-        ValueType::StructRef(_) => Err(Error::runtime_execution_error("StructRef not supported in component model")),
-        ValueType::ArrayRef(_) => Err(Error::runtime_execution_error("ArrayRef not supported in component model")),
-        ValueType::ExnRef => Err(Error::runtime_execution_error("ExnRef not supported in component model")),
-        ValueType::I31Ref => Err(Error::runtime_execution_error("I31Ref not supported in component model")),
-        ValueType::AnyRef => Err(Error::runtime_execution_error("AnyRef not supported in component model")),
-        ValueType::EqRef => Err(Error::runtime_execution_error("EqRef not supported in component model")),
+        ValueType::V128 => Err(Error::runtime_execution_error(
+            "V128 not supported in component model",
+        )),
+        ValueType::I16x8 => Err(Error::runtime_execution_error(
+            "I16x8 not supported in component model",
+        )),
+        ValueType::StructRef(_) => Err(Error::runtime_execution_error(
+            "StructRef not supported in component model",
+        )),
+        ValueType::ArrayRef(_) => Err(Error::runtime_execution_error(
+            "ArrayRef not supported in component model",
+        )),
+        ValueType::ExnRef => Err(Error::runtime_execution_error(
+            "ExnRef not supported in component model",
+        )),
+        ValueType::I31Ref => Err(Error::runtime_execution_error(
+            "I31Ref not supported in component model",
+        )),
+        ValueType::AnyRef => Err(Error::runtime_execution_error(
+            "AnyRef not supported in component model",
+        )),
+        ValueType::EqRef => Err(Error::runtime_execution_error(
+            "EqRef not supported in component model",
+        )),
     }
 }
 
@@ -223,9 +221,7 @@ pub fn value_type_to_format_val_type(
 /// let core_type = format_val_type_to_value_type(&s32_type).unwrap();
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32);
 /// ```
-pub fn format_val_type_to_value_type(
-    format_val_type: &FormatValType,
-) -> Result<ValueType> {
+pub fn format_val_type_to_value_type(format_val_type: &FormatValType) -> Result<ValueType> {
     convert_format_valtype_to_valuetype(format_val_type)
 }
 
@@ -252,7 +248,9 @@ pub fn format_val_type_to_value_type(
 /// let core_type = types_valtype_to_valuetype(&s32_type).unwrap();
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32);
 /// ```
-pub fn types_valtype_to_valuetype<P: wrt_foundation::MemoryProvider>(types_val_type: &WrtTypesValType<P>) -> Result<ValueType> {
+pub fn types_valtype_to_valuetype<P: wrt_foundation::MemoryProvider>(
+    types_val_type: &WrtTypesValType<P>,
+) -> Result<ValueType> {
     convert_types_valtype_to_valuetype(types_val_type)
 }
 
@@ -278,7 +276,9 @@ pub fn types_valtype_to_valuetype<P: wrt_foundation::MemoryProvider>(types_val_t
 /// let runtime_type = value_type_to_types_valtype(&i32_type;
 /// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType::S32);
 /// ```
-pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(value_type: &ValueType) -> WrtTypesValType<P> {
+pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(
+    value_type: &ValueType,
+) -> WrtTypesValType<P> {
     match value_type {
         ValueType::I32 => WrtTypesValType::S32,
         ValueType::I64 => WrtTypesValType::S64,
@@ -286,14 +286,14 @@ pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(value_type
         ValueType::F64 => WrtTypesValType::F64,
         ValueType::FuncRef => WrtTypesValType::Own(0), // Default to resource type 0
         ValueType::ExternRef => WrtTypesValType::Ref(0), // Default to type index 0
-        ValueType::V128 => WrtTypesValType::Void, // V128 not supported in component model
-        ValueType::I16x8 => WrtTypesValType::Void, // I16x8 not supported in component model
+        ValueType::V128 => WrtTypesValType::Void,      // V128 not supported in component model
+        ValueType::I16x8 => WrtTypesValType::Void,     // I16x8 not supported in component model
         ValueType::StructRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
         ValueType::ArrayRef(_) => WrtTypesValType::Ref(0), // Map to Ref with default index
-        ValueType::ExnRef => WrtTypesValType::Ref(0), // Map ExnRef to Ref with default index
-        ValueType::I31Ref => WrtTypesValType::S32, // i31 fits in s32
-        ValueType::AnyRef => WrtTypesValType::Ref(0), // Map to Ref with default index
-        ValueType::EqRef => WrtTypesValType::Ref(0), // Map to Ref with default index
+        ValueType::ExnRef => WrtTypesValType::Ref(0),  // Map ExnRef to Ref with default index
+        ValueType::I31Ref => WrtTypesValType::S32,     // i31 fits in s32
+        ValueType::AnyRef => WrtTypesValType::Ref(0),  // Map to Ref with default index
+        ValueType::EqRef => WrtTypesValType::Ref(0),   // Map to Ref with default index
     }
 }
 
@@ -338,7 +338,9 @@ pub fn format_valtype_to_types_valtype<P: wrt_foundation::MemoryProvider>(
 /// # Returns
 ///
 /// The corresponding TypesValType
-pub fn format_to_types_valtype<P: wrt_foundation::MemoryProvider>(val_type: &WrtTypesValType<P>) -> WrtTypesValType<P> {
+pub fn format_to_types_valtype<P: wrt_foundation::MemoryProvider>(
+    val_type: &WrtTypesValType<P>,
+) -> WrtTypesValType<P> {
     convert_types_valtype_identity(val_type)
 }
 
@@ -410,14 +412,16 @@ pub fn types_valtype_to_format_valtype<P: wrt_foundation::MemoryProvider>(
         },
         WrtTypesValType::Flags(names) => {
             // Convert BoundedVec<WasmName> to Vec<String>
-            let string_names: Vec<String> = names.iter()
+            let string_names: Vec<String> = names
+                .iter()
                 .filter_map(|name| name.as_str().ok().map(|s| s.to_string()))
                 .collect();
             FormatValType::Flags(string_names)
         },
         WrtTypesValType::Enum(variants) => {
             // Convert BoundedVec<WasmName> to Vec<String>
-            let string_variants: Vec<String> = variants.iter()
+            let string_variants: Vec<String> = variants
+                .iter()
                 .filter_map(|variant| variant.as_str().ok().map(|s| s.to_string()))
                 .collect();
             FormatValType::Enum(string_variants)
@@ -474,7 +478,9 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
     match format_extern_type {
         FormatExternType::Module { type_idx } => {
             // Core module type - not yet implemented
-            Err(Error::runtime_execution_error("Module extern types not yet supported"))
+            Err(Error::runtime_execution_error(
+                "Module extern types not yet supported",
+            ))
         },
         FormatExternType::Function { params, results } => {
             // Convert all parameter types to core ValueType
@@ -484,10 +490,8 @@ pub fn format_to_runtime_extern_type<P: wrt_foundation::MemoryProvider>(
                 .collect::<Result<Vec<_>>>()?;
 
             // Convert all result types to core ValueType
-            let converted_results = results
-                .iter()
-                .map(format_val_type_to_value_type)
-                .collect::<Result<Vec<_>>>()?;
+            let converted_results =
+                results.iter().map(format_val_type_to_value_type).collect::<Result<Vec<_>>>()?;
 
             let _provider = P::default();
             Ok(TypesWrtExternType::Func(TypesFuncType::new(
@@ -615,7 +619,7 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             }
 
             Ok(FormatExternType::Function {
-                params:  param_types,
+                params: param_types,
                 results: result_types,
             })
         },
@@ -631,18 +635,21 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         WrtExternType::Instance(instance_type) => {
             // Convert exports to FormatExternType
             // Note: instance_type.exports is BoundedVec<Export<P>>, not tuples
-            let exports_format: Result<Vec<(String, FormatExternType)>> =
-                instance_type
-                    .exports
-                    .iter()
-                    .map(|export| {
-                        let name_str = export.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert export name"))?
-                            .to_string();
-                        let format_extern = runtime_to_format_extern_type(&export.ty)?;
-                        Ok((name_str, format_extern))
-                    })
-                    .collect();
+            let exports_format: Result<Vec<(String, FormatExternType)>> = instance_type
+                .exports
+                .iter()
+                .map(|export| {
+                    let name_str = export
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert export name")
+                        })?
+                        .to_string();
+                    let format_extern = runtime_to_format_extern_type(&export.ty)?;
+                    Ok((name_str, format_extern))
+                })
+                .collect();
 
             Ok(FormatExternType::Instance {
                 exports: exports_format?,
@@ -651,39 +658,49 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         WrtExternType::Component(component_type) => {
             // Convert imports to FormatExternType
             // Note: component_type.imports is BoundedVec<Import<P>>, not tuples
-            let imports_format: Result<Vec<(String, String, FormatExternType)>> =
-                component_type
-                    .imports
-                    .iter()
-                    .map(|import| {
-                        // Convert Namespace to string (join elements with ':')
-                        let ns_str: String = import.key.namespace.elements
-                            .iter()
-                            .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                            .join(":");
-                        let name_str = import.key.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert import name"))?
-                            .to_string();
-                        let format_extern = runtime_to_format_extern_type(&import.ty)?;
-                        Ok((ns_str, name_str, format_extern))
-                    })
-                    .collect();
+            let imports_format: Result<Vec<(String, String, FormatExternType)>> = component_type
+                .imports
+                .iter()
+                .map(|import| {
+                    // Convert Namespace to string (join elements with ':')
+                    let ns_str: String = import
+                        .key
+                        .namespace
+                        .elements
+                        .iter()
+                        .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                        .join(":");
+                    let name_str = import
+                        .key
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert import name")
+                        })?
+                        .to_string();
+                    let format_extern = runtime_to_format_extern_type(&import.ty)?;
+                    Ok((ns_str, name_str, format_extern))
+                })
+                .collect();
 
             // Convert exports to FormatExternType
             // Note: component_type.exports is BoundedVec<Export<P>>, not tuples
-            let exports_format: Result<Vec<(String, FormatExternType)>> =
-                component_type
-                    .exports
-                    .iter()
-                    .map(|export| {
-                        let name_str = export.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert export name"))?
-                            .to_string();
-                        let format_extern = runtime_to_format_extern_type(&export.ty)?;
-                        Ok((name_str, format_extern))
-                    })
-                    .collect();
+            let exports_format: Result<Vec<(String, FormatExternType)>> = component_type
+                .exports
+                .iter()
+                .map(|export| {
+                    let name_str = export
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert export name")
+                        })?
+                        .to_string();
+                    let format_extern = runtime_to_format_extern_type(&export.ty)?;
+                    Ok((name_str, format_extern))
+                })
+                .collect();
 
             Ok(FormatExternType::Component {
                 type_idx: 0, // Placeholder type index
@@ -701,11 +718,15 @@ pub fn runtime_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         },
         WrtExternType::CoreModule(_module_type) => {
             // Core module types - not supported yet
-            Err(Error::runtime_execution_error("CoreModule types not supported"))
+            Err(Error::runtime_execution_error(
+                "CoreModule types not supported",
+            ))
         },
         WrtExternType::TypeDef(_type_def) => {
             // Type definitions - not supported yet
-            Err(Error::runtime_execution_error("TypeDef types not supported"))
+            Err(Error::runtime_execution_error(
+                "TypeDef types not supported",
+            ))
         },
     }
 }
@@ -742,9 +763,7 @@ pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> 
 ///
 /// Result containing the converted format value type, or an error if
 /// conversion is not possible
-pub fn common_to_format_val_type(
-    value_type: &ValueType,
-) -> Result<FormatValType> {
+pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
         ValueType::I64 => Ok(FormatValType::S64),
@@ -765,7 +784,9 @@ pub fn common_to_format_val_type(
 /// # Returns
 ///
 /// The function type if the extern type is a function, or an error otherwise
-pub fn extern_type_to_func_type<P: wrt_foundation::MemoryProvider>(extern_type: &WrtExternType<P>) -> Result<TypesFuncType> {
+pub fn extern_type_to_func_type<P: wrt_foundation::MemoryProvider>(
+    extern_type: &WrtExternType<P>,
+) -> Result<TypesFuncType> {
     match extern_type {
         WrtExternType::Func(func_type) => Ok(func_type.clone()),
         _ => Err(Error::runtime_type_mismatch(
@@ -786,7 +807,9 @@ pub trait IntoFormatType<T> {
     fn into_format_type(self) -> Result<T>;
 }
 
-impl<P: wrt_foundation::MemoryProvider> IntoRuntimeType<TypesWrtExternType<P>> for FormatExternType {
+impl<P: wrt_foundation::MemoryProvider> IntoRuntimeType<TypesWrtExternType<P>>
+    for FormatExternType
+{
     fn into_runtime_type(self) -> Result<TypesWrtExternType<P>> {
         format_to_runtime_extern_type::<P>(&self)
     }
@@ -846,8 +869,12 @@ pub fn format_constvalue_to_types_componentvalue(
         FormatConstValue::U32(v) => Ok(WrtComponentValue::U32(*v)),
         FormatConstValue::S64(v) => Ok(WrtComponentValue::S64(*v)),
         FormatConstValue::U64(v) => Ok(WrtComponentValue::U64(*v)),
-        FormatConstValue::F32(v) => Ok(WrtComponentValue::F32(wrt_foundation::FloatBits32::from_f32(*v))),
-        FormatConstValue::F64(v) => Ok(WrtComponentValue::F64(wrt_foundation::FloatBits64::from_f64(*v))),
+        FormatConstValue::F32(v) => Ok(WrtComponentValue::F32(
+            wrt_foundation::FloatBits32::from_f32(*v),
+        )),
+        FormatConstValue::F64(v) => Ok(WrtComponentValue::F64(
+            wrt_foundation::FloatBits64::from_f64(*v),
+        )),
         FormatConstValue::Char(v) => Ok(WrtComponentValue::Char(*v)),
         FormatConstValue::String(v) => Ok(WrtComponentValue::String(v.clone())),
         FormatConstValue::Null => Ok(WrtComponentValue::Void),
@@ -922,8 +949,12 @@ pub fn core_value_to_types_componentvalue(
     match value {
         wrt_foundation::values::Value::I32(v) => Ok(WrtComponentValue::S32(*v)),
         wrt_foundation::values::Value::I64(v) => Ok(WrtComponentValue::S64(*v)),
-        wrt_foundation::values::Value::F32(v) => Ok(WrtComponentValue::F32(wrt_foundation::FloatBits32::from_f32(v.value()))),
-        wrt_foundation::values::Value::F64(v) => Ok(WrtComponentValue::F64(wrt_foundation::FloatBits64::from_f64(v.value()))),
+        wrt_foundation::values::Value::F32(v) => Ok(WrtComponentValue::F32(
+            wrt_foundation::FloatBits32::from_f32(v.value()),
+        )),
+        wrt_foundation::values::Value::F64(v) => Ok(WrtComponentValue::F64(
+            wrt_foundation::FloatBits64::from_f64(v.value()),
+        )),
         wrt_foundation::values::Value::Ref(v) => Ok(WrtComponentValue::U32(*v)), // Map reference
         // to U32
         _ => Err(Error::runtime_type_mismatch(
@@ -971,8 +1002,12 @@ pub fn types_componentvalue_to_core_value(
         },
         WrtComponentValue::S64(v) => Ok(wrt_foundation::values::Value::I64(*v)),
         WrtComponentValue::U64(v) => Ok(wrt_foundation::values::Value::I64(*v as i64)),
-        WrtComponentValue::F32(v) => Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits()))),
-        WrtComponentValue::F64(v) => Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits()))),
+        WrtComponentValue::F32(v) => Ok(wrt_foundation::values::Value::F32(
+            wrt_foundation::FloatBits32::from_bits(v.to_bits()),
+        )),
+        WrtComponentValue::F64(v) => Ok(wrt_foundation::values::Value::F64(
+            wrt_foundation::FloatBits64::from_bits(v.to_bits()),
+        )),
         _ => Err(Error::runtime_type_mismatch(
             "Cannot convert component value to core WebAssembly value",
         )),
@@ -1036,7 +1071,7 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
             }
 
             Ok(FormatExternType::Function {
-                params:  param_types,
+                params: param_types,
                 results: result_types,
             })
         },
@@ -1057,18 +1092,21 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         wrt_foundation::ExternType::Instance(instance_type) => {
             // Convert instance exports
             // Note: instance_type.exports is BoundedVec<Export<P>>, not tuples
-            let exports_result: Result<Vec<(String, FormatExternType)>> =
-                instance_type
-                    .exports
-                    .iter()
-                    .map(|export| {
-                        let name_str = export.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert export name"))?
-                            .to_string();
-                        let format_extern = complete_types_to_format_extern_type(&export.ty)?;
-                        Ok((name_str, format_extern))
-                    })
-                    .collect();
+            let exports_result: Result<Vec<(String, FormatExternType)>> = instance_type
+                .exports
+                .iter()
+                .map(|export| {
+                    let name_str = export
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert export name")
+                        })?
+                        .to_string();
+                    let format_extern = complete_types_to_format_extern_type(&export.ty)?;
+                    Ok((name_str, format_extern))
+                })
+                .collect();
 
             Ok(FormatExternType::Instance {
                 exports: exports_result?,
@@ -1077,39 +1115,49 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         wrt_foundation::ExternType::Component(component_type) => {
             // Convert component imports
             // Note: component_type.imports is BoundedVec<Import<P>>, not tuples
-            let imports_result: Result<Vec<(String, String, FormatExternType)>> =
-                component_type
-                    .imports
-                    .iter()
-                    .map(|import| {
-                        // Convert Namespace to string (join elements with ':')
-                        let ns_str: String = import.key.namespace.elements
-                            .iter()
-                            .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                            .join(":");
-                        let name_str = import.key.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert import name"))?
-                            .to_string();
-                        let format_extern = complete_types_to_format_extern_type(&import.ty)?;
-                        Ok((ns_str, name_str, format_extern))
-                    })
-                    .collect();
+            let imports_result: Result<Vec<(String, String, FormatExternType)>> = component_type
+                .imports
+                .iter()
+                .map(|import| {
+                    // Convert Namespace to string (join elements with ':')
+                    let ns_str: String = import
+                        .key
+                        .namespace
+                        .elements
+                        .iter()
+                        .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                        .join(":");
+                    let name_str = import
+                        .key
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert import name")
+                        })?
+                        .to_string();
+                    let format_extern = complete_types_to_format_extern_type(&import.ty)?;
+                    Ok((ns_str, name_str, format_extern))
+                })
+                .collect();
 
             // Convert component exports
             // Note: component_type.exports is BoundedVec<Export<P>>, not tuples
-            let exports_result: Result<Vec<(String, FormatExternType)>> =
-                component_type
-                    .exports
-                    .iter()
-                    .map(|export| {
-                        let name_str = export.name.as_str()
-                            .map_err(|_| Error::runtime_execution_error("Failed to convert export name"))?
-                            .to_string();
-                        let format_extern = complete_types_to_format_extern_type(&export.ty)?;
-                        Ok((name_str, format_extern))
-                    })
-                    .collect();
+            let exports_result: Result<Vec<(String, FormatExternType)>> = component_type
+                .exports
+                .iter()
+                .map(|export| {
+                    let name_str = export
+                        .name
+                        .as_str()
+                        .map_err(|_| {
+                            Error::runtime_execution_error("Failed to convert export name")
+                        })?
+                        .to_string();
+                    let format_extern = complete_types_to_format_extern_type(&export.ty)?;
+                    Ok((name_str, format_extern))
+                })
+                .collect();
 
             Ok(FormatExternType::Component {
                 type_idx: 0, // Placeholder type index
@@ -1121,11 +1169,15 @@ pub fn complete_types_to_format_extern_type<P: wrt_foundation::MemoryProvider>(
         },
         wrt_foundation::ExternType::CoreModule(_module_type) => {
             // Core module types - not supported yet
-            Err(Error::runtime_execution_error("CoreModule types not supported"))
+            Err(Error::runtime_execution_error(
+                "CoreModule types not supported",
+            ))
         },
         wrt_foundation::ExternType::TypeDef(_type_def) => {
             // Type definitions - not supported yet
-            Err(Error::runtime_execution_error("TypeDef types not supported"))
+            Err(Error::runtime_execution_error(
+                "TypeDef types not supported",
+            ))
         },
     }
 }
@@ -1149,7 +1201,9 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
     match format_extern_type {
         FormatExternType::Module { type_idx } => {
             // Core module type - not yet implemented
-            Err(Error::runtime_execution_error("Module extern types not yet supported"))
+            Err(Error::runtime_execution_error(
+                "Module extern types not yet supported",
+            ))
         },
         FormatExternType::Function { params, results } => {
             // Convert parameter types - create an empty vector and then convert and add
@@ -1157,7 +1211,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             let mut param_types = Vec::new();
             for (_, format_val_type) in params {
                 // First convert to WrtTypesValType, then to ValueType if needed
-                let _types_val_type: wrt_foundation::ValType<P> = convert_format_to_types_valtype(format_val_type);
+                let _types_val_type: wrt_foundation::ValType<P> =
+                    convert_format_to_types_valtype(format_val_type);
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => param_types.push(value_type),
                     Err(_) => {
@@ -1175,7 +1230,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             let mut result_types = Vec::new();
             for format_val_type in results {
                 // First convert to WrtTypesValType, then to ValueType if needed
-                let _types_val_type: wrt_foundation::ValType<P> = convert_format_to_types_valtype(format_val_type);
+                let _types_val_type: wrt_foundation::ValType<P> =
+                    convert_format_to_types_valtype(format_val_type);
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => result_types.push(value_type),
                     Err(_) => {
@@ -1195,7 +1251,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
         FormatExternType::Value(format_val_type) => {
             // Value types typically map to globals in the runtime
             // First convert to WrtTypesValType, then to ValueType if needed
-            let _types_val_type: wrt_foundation::ValType<P> = convert_format_to_types_valtype(format_val_type);
+            let _types_val_type: wrt_foundation::ValType<P> =
+                convert_format_to_types_valtype(format_val_type);
             let value_type = match convert_format_valtype_to_valuetype(format_val_type) {
                 Ok(vt) => vt,
                 Err(_) => {
@@ -1225,11 +1282,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             let provider = P::default();
 
             // Convert instance exports to Export<P> structs
-            let mut export_vec: wrt_foundation::BoundedVec<
-                wrt_foundation::Export<P>,
-                128,
-                P,
-            > = wrt_foundation::BoundedVec::new(provider.clone())?;
+            let mut export_vec: wrt_foundation::BoundedVec<wrt_foundation::Export<P>, 128, P> =
+                wrt_foundation::BoundedVec::new(provider.clone())?;
 
             for (name, extern_type) in exports {
                 let types_extern = complete_format_to_types_extern_type::<P>(extern_type)?;
@@ -1240,7 +1294,8 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
                     ty: types_extern,
                     desc: None,
                 };
-                export_vec.push(export)
+                export_vec
+                    .push(export)
                     .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
             }
 
@@ -1255,27 +1310,21 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             let provider = P::default();
 
             // Convert component imports to Import<P> structs
-            let mut import_vec: wrt_foundation::BoundedVec<
-                wrt_foundation::Import<P>,
-                128,
-                P,
-            > = wrt_foundation::BoundedVec::new(provider.clone())?;
+            let mut import_vec: wrt_foundation::BoundedVec<wrt_foundation::Import<P>, 128, P> =
+                wrt_foundation::BoundedVec::new(provider.clone())?;
 
             // No imports/exports to iterate - type_idx is just a reference
             // Create empty bounded vecs
-            let export_vec: wrt_foundation::BoundedVec<
-                wrt_foundation::Export<P>,
-                128,
-                P,
-            > = wrt_foundation::BoundedVec::new(provider.clone())?;
+            let export_vec: wrt_foundation::BoundedVec<wrt_foundation::Export<P>, 128, P> =
+                wrt_foundation::BoundedVec::new(provider.clone())?;
 
             // Create empty instances BoundedVec
             let instances = wrt_foundation::BoundedVec::new(provider.clone())?;
 
             Ok(wrt_foundation::ExternType::Component(
                 wrt_foundation::ComponentType {
-                    imports:   import_vec,
-                    exports:   export_vec,
+                    imports: import_vec,
+                    exports: export_vec,
                     aliases: wrt_foundation::BoundedVec::new(provider.clone())?,
                     instances,
                     core_instances: wrt_foundation::BoundedVec::new(provider.clone())?,
@@ -1285,5 +1334,4 @@ pub fn complete_format_to_types_extern_type<P: wrt_foundation::MemoryProvider>(
             ))
         },
     }
-
 }

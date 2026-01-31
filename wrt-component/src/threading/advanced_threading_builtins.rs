@@ -18,57 +18,33 @@ extern crate alloc;
 
 use core::cell::RefCell as AtomicRefCell;
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, vec::Vec};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::BoundedString;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
-use wrt_foundation::BoundedString;
 use wrt_foundation::{
-    bounded::BoundedVec,
-    bounded_collections::BoundedMap,
-    types::ValueType,
+    BoundedMap as HashMap, BoundedVec as Vec, budget_aware_provider::CrateId, safe_managed_alloc,
 };
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    BoundedMap as HashMap,
-    BoundedVec as Vec,
-};
+use wrt_foundation::{bounded::BoundedVec, bounded_collections::BoundedMap, types::ValueType};
 
 // Type aliases for no_std compatibility
 #[cfg(not(feature = "std"))]
 type ThreadingString = BoundedString<256>;
 
+use crate::threading::{
+    task_cancellation::{CancellationToken, with_cancellation_scope},
+    thread_builtins::{
+        ComponentFunction, FunctionSignature, ParallelismInfo, ThreadBuiltins, ThreadError,
+        ThreadJoinResult, ThreadSpawnConfig, ValueType as ThreadValueType,
+    },
+};
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::threading::{
-    task_cancellation::{
-        with_cancellation_scope,
-        CancellationToken,
-    },
-    thread_builtins::{
-        ComponentFunction,
-        FunctionSignature,
-        ParallelismInfo,
-        ThreadBuiltins,
-        ThreadError,
-        ThreadJoinResult,
-        ThreadSpawnConfig,
-        ValueType as ThreadValueType,
-    },
-};
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std",)))]
@@ -107,8 +83,8 @@ pub struct FunctionReference {
     #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<MAX_FUNCTION_NAME_SIZE>,
 
-    pub signature:      FunctionSignature,
-    pub module_index:   u32,
+    pub signature: FunctionSignature,
+    pub module_index: u32,
     pub function_index: u32,
 }
 
@@ -156,13 +132,13 @@ impl FunctionReference {
 /// Indirect function call descriptor for thread.spawn_indirect
 #[derive(Debug, Clone)]
 pub struct IndirectCall {
-    pub table_index:    u32,
+    pub table_index: u32,
     pub function_index: u32,
-    pub type_index:     u32,
+    pub type_index: u32,
     #[cfg(feature = "std")]
-    pub arguments:      Vec<ComponentValue>,
+    pub arguments: Vec<ComponentValue>,
     #[cfg(not(any(feature = "std",)))]
-    pub arguments:      BoundedVec<ComponentValue<ComponentProvider>, 16>,
+    pub arguments: BoundedVec<ComponentValue<ComponentProvider>, 16>,
 }
 
 impl IndirectCall {
@@ -241,17 +217,17 @@ impl AdvancedThreadState {
 /// Thread local storage entry
 #[derive(Debug, Clone)]
 pub struct ThreadLocalEntry {
-    pub key:        u32,
-    pub value:      ComponentValue,
+    pub key: u32,
+    pub value: ComponentValue,
     pub destructor: Option<u32>, // Function index for destructor
 }
 
 /// Advanced thread context
 #[derive(Debug, Clone)]
 pub struct AdvancedThread {
-    pub id:                 AdvancedThreadId,
-    pub state:              AdvancedThreadState,
-    pub config:             ThreadSpawnConfig,
+    pub id: AdvancedThreadId,
+    pub state: AdvancedThreadState,
+    pub config: ThreadSpawnConfig,
     pub cancellation_token: CancellationToken,
 
     #[cfg(feature = "std")]
@@ -259,8 +235,8 @@ pub struct AdvancedThread {
     #[cfg(not(any(feature = "std",)))]
     pub thread_locals: BoundedMap<u32, ThreadLocalEntry, MAX_THREAD_LOCALS>,
 
-    pub result:        Option<ComponentValue>,
-    pub error:         Option<ThreadError>,
+    pub result: Option<ComponentValue>,
+    pub error: Option<ThreadError>,
     pub parent_thread: Option<AdvancedThreadId>,
 
     #[cfg(feature = "std")]
@@ -402,9 +378,9 @@ impl AdvancedThreadRegistry {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
-            threads:                                    HashMap::new(),
+            threads: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            threads:                                    {
+            threads: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedMap::new()
             },
@@ -790,5 +766,4 @@ pub mod advanced_threading_helpers {
         let token = CancellationToken::new();
         with_cancellation_scope(token.clone(), || f(token))
     }
-
 }

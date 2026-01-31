@@ -1,8 +1,5 @@
 #[cfg(feature = "std")]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::collections::StaticMap as BTreeMap;
@@ -16,12 +13,9 @@ use core::fmt;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
-    collections::{
-        StaticVec as BoundedVec,
-        StaticMap as BoundedMap,
-    },
     bounded::MAX_GENERATIVE_TYPES,
     budget_aware_provider::CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     safe_managed_alloc,
 };
 
@@ -29,28 +23,16 @@ use wrt_foundation::{
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
 use crate::{
-    generative_types::{
-        BoundKind,
-        TypeBound,
-    },
-    types::{
-        ComponentError,
-        TypeId,
-        ValType,
-    },
+    generative_types::{BoundKind, TypeBound},
+    types::{ComponentError, TypeId, ValType},
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeBoundsChecker {
     #[cfg(feature = "std")]
-    type_hierarchy:
-        BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>>,
+    type_hierarchy: BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>>,
     #[cfg(not(feature = "std"))]
-    type_hierarchy: BTreeMap<
-        TypeId,
-        BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>,
-        32,
-    >,
+    type_hierarchy: BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>, 32>,
     #[cfg(feature = "std")]
     cached_relations: BTreeMap<(TypeId, TypeId), RelationResult>,
     #[cfg(not(feature = "std"))]
@@ -59,10 +41,10 @@ pub struct TypeBoundsChecker {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TypeRelation {
-    pub sub_type:      TypeId,
-    pub super_type:    TypeId,
+    pub sub_type: TypeId,
+    pub super_type: TypeId,
     pub relation_kind: RelationKind,
-    pub confidence:    RelationConfidence,
+    pub confidence: RelationConfidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -99,9 +81,9 @@ pub enum RelationResult {
 }
 
 // Serialization trait implementations for TypeRelation
-use wrt_runtime::{Checksummable, ToBytes, FromBytes};
+use wrt_foundation::traits::{ReadStream, WriteStream};
 use wrt_foundation::{Checksum, MemoryProvider};
-use wrt_foundation::traits::{WriteStream, ReadStream};
+use wrt_runtime::{Checksummable, FromBytes, ToBytes};
 
 impl Checksummable for TypeRelation {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -216,14 +198,14 @@ impl TypeBoundsChecker {
         #[cfg(feature = "std")]
         {
             Ok(Self {
-                type_hierarchy:   BTreeMap::new(),
+                type_hierarchy: BTreeMap::new(),
                 cached_relations: BTreeMap::new(),
             })
         }
         #[cfg(not(feature = "std"))]
         {
             Ok(Self {
-                type_hierarchy:   BTreeMap::new(),
+                type_hierarchy: BTreeMap::new(),
                 cached_relations: BTreeMap::new(),
             })
         }
@@ -231,13 +213,13 @@ impl TypeBoundsChecker {
 
     pub fn add_type_bound(&mut self, bound: TypeBound) -> core::result::Result<(), ComponentError> {
         let relation = TypeRelation {
-            sub_type:      bound.type_id,
-            super_type:    bound.target_type,
+            sub_type: bound.type_id,
+            super_type: bound.target_type,
             relation_kind: match bound.bound_kind {
                 BoundKind::Eq => RelationKind::Eq,
                 BoundKind::Sub => RelationKind::Sub,
             },
-            confidence:    RelationConfidence::Definite,
+            confidence: RelationConfidence::Definite,
         };
 
         self.add_relation(relation)?;
@@ -335,13 +317,13 @@ impl TypeBoundsChecker {
                     if let Some(super_relations) = self.type_hierarchy.get(&relation.super_type) {
                         for super_relation in super_relations.iter() {
                             let new_relation = TypeRelation {
-                                sub_type:      *type_id,
-                                super_type:    super_relation.super_type,
+                                sub_type: *type_id,
+                                super_type: super_relation.super_type,
                                 relation_kind: self.combine_relations(
                                     &relation.relation_kind,
                                     &super_relation.relation_kind,
                                 ),
-                                confidence:    RelationConfidence::Inferred,
+                                confidence: RelationConfidence::Inferred,
                             };
 
                             if !self.relation_exists(&new_relation) {
@@ -401,8 +383,7 @@ impl TypeBoundsChecker {
     ) -> Result<BoundedVec<TypeId, 64>, ComponentError> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
             .map_err(|_| ComponentError::TooManyTypeBounds)?;
-        let mut supertypes =
-            BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
+        let mut supertypes = BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
         self.collect_supertypes(type_id, &mut supertypes)?;
         Ok(supertypes)
     }
@@ -430,8 +411,7 @@ impl TypeBoundsChecker {
         &self,
         type_id: TypeId,
     ) -> Result<BoundedVec<TypeId, 64>, ComponentError> {
-        let mut subtypes =
-            BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
+        let mut subtypes = BoundedVec::new().map_err(|| ComponentError::TooManyTypeBounds)?;
 
         for (sub_type_id, relations) in self.type_hierarchy.iter() {
             for relation in relations.iter() {
@@ -450,7 +430,8 @@ impl TypeBoundsChecker {
     fn add_relation(&mut self, relation: TypeRelation) -> core::result::Result<(), ComponentError> {
         #[cfg(feature = "std")]
         {
-            let relations = self.type_hierarchy.entry(relation.sub_type).or_insert_with(BoundedVec::new);
+            let relations =
+                self.type_hierarchy.entry(relation.sub_type).or_insert_with(BoundedVec::new);
             let _ = relations.push(relation);
         }
         #[cfg(not(feature = "std"))]

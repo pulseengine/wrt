@@ -7,10 +7,7 @@ use wrt_error::Result;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_BUFFER_SIZE,
-    },
+    bounded::{BoundedVec, MAX_BUFFER_SIZE},
     resource::ResourceOperation,
 };
 
@@ -32,7 +29,7 @@ pub trait ResourceStrategy: Send + Sync {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<{ MAX_BUFFER_SIZE }>>,
         wrt_error::Error,
     >;
 

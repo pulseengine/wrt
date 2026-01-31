@@ -4,28 +4,16 @@
 //! component instances, handling type adaptation and resource management.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    vec::Vec,
-};
+use std::{boxed::Box, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
-    component_value::{
-        ComponentValue,
-        ValType as WrtComponentType,
-    },
+    collections::StaticVec as BoundedVec,
+    component_value::{ComponentValue, ValType as WrtComponentType},
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
@@ -35,11 +23,7 @@ use crate::{
     canonical_abi::canonical::CanonicalABI,
     execution_engine::ComponentExecutionEngine,
     resources::resource_lifecycle::ResourceLifecycleManager,
-    types::{
-        ComponentInstance,
-        ValType,
-        Value,
-    },
+    types::{ComponentInstance, ValType, Value},
 };
 
 /// Maximum number of call targets in no_std environments
@@ -56,37 +40,37 @@ pub struct CallSiteKey {
     /// Target component instance ID  
     pub target_instance: u32,
     /// Function name or index
-    pub function_name:   String,
+    pub function_name: String,
     /// Function signature hash for type checking
-    pub signature_hash:  u64,
+    pub signature_hash: u64,
 }
 
 /// Cached call target with pre-resolved information
 #[derive(Debug, Clone)]
 pub struct CachedCallTarget {
     /// Target function index in the component
-    pub function_index:        u32,
+    pub function_index: u32,
     /// Pre-validated function signature
-    pub signature:             FunctionSignature,
+    pub signature: FunctionSignature,
     /// ABI adaptation information
-    pub abi_adapter:           Option<AbiAdapter>,
+    pub abi_adapter: Option<AbiAdapter>,
     /// Resource transfer requirements
     pub resource_requirements: ResourceRequirements,
     /// Last validation timestamp
-    pub last_validated:        u64,
+    pub last_validated: u64,
     /// Hit count for cache optimization
-    pub hit_count:             u32,
+    pub hit_count: u32,
 }
 
 /// Call statistics for performance optimization
 #[derive(Debug, Clone, Default)]
 pub struct CallStats {
     /// Total number of calls to this site
-    pub call_count:      u32,
+    pub call_count: u32,
     /// Average call duration in nanoseconds
     pub avg_duration_ns: u64,
     /// Last call timestamp
-    pub last_call_time:  u64,
+    pub last_call_time: u64,
     /// Whether this call site is eligible for inlining
     pub inline_eligible: bool,
 }
@@ -95,22 +79,22 @@ pub struct CallStats {
 #[derive(Debug, Clone)]
 pub struct PendingTransfer {
     /// Resource handle to transfer
-    pub resource_handle:  u32,
+    pub resource_handle: u32,
     /// Source component
     pub source_component: u32,
     /// Target component
     pub target_component: u32,
     /// Transfer type (move, copy, borrow)
-    pub transfer_type:    ResourceTransferType,
+    pub transfer_type: ResourceTransferType,
 }
 
 /// Function signature for type checking and caching
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionSignature {
     /// Parameter types
-    pub params:   Vec<ValType>,
+    pub params: Vec<ValType>,
     /// Return types
-    pub results:  Vec<ValType>,
+    pub results: Vec<ValType>,
     /// Whether function is async
     pub is_async: bool,
 }
@@ -119,7 +103,7 @@ pub struct FunctionSignature {
 #[derive(Debug, Clone)]
 pub struct AbiAdapter {
     /// Input type adaptations
-    pub input_adaptations:  Vec<TypeAdaptation>,
+    pub input_adaptations: Vec<TypeAdaptation>,
     /// Output type adaptations
     pub output_adaptations: Vec<TypeAdaptation>,
 }
@@ -128,9 +112,9 @@ pub struct AbiAdapter {
 #[derive(Debug, Clone)]
 pub struct TypeAdaptation {
     /// Source type
-    pub source_type:   ValType,
+    pub source_type: ValType,
     /// Target type
-    pub target_type:   ValType,
+    pub target_type: ValType,
     /// Conversion function
     pub conversion_fn: String, // Function name for conversion
 }
@@ -139,9 +123,9 @@ pub struct TypeAdaptation {
 #[derive(Debug, Clone, Default)]
 pub struct ResourceRequirements {
     /// Required memory in bytes
-    pub memory_required:  usize,
+    pub memory_required: usize,
     /// Maximum number of handles
-    pub max_handles:      u32,
+    pub max_handles: u32,
     /// Whether exclusive access is needed
     pub exclusive_access: bool,
 }
@@ -205,11 +189,11 @@ pub struct CallTarget {
     /// Target component instance ID
     pub target_instance: u32,
     /// Target function index within the component
-    pub function_index:  u32,
+    pub function_index: u32,
     /// Function signature
-    pub signature:       WrtComponentType<NoStdProvider<4096>>,
+    pub signature: WrtComponentType<NoStdProvider<4096>>,
     /// Call permissions
-    pub permissions:     CallPermissions,
+    pub permissions: CallPermissions,
     /// Resource transfer policy
     pub resource_policy: ResourceTransferPolicy,
 }
@@ -218,13 +202,13 @@ pub struct CallTarget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CallPermissions {
     /// Whether the call is allowed
-    pub allowed:                 bool,
+    pub allowed: bool,
     /// Whether resources can be transferred
     pub allow_resource_transfer: bool,
     /// Whether memory access is allowed
-    pub allow_memory_access:     bool,
+    pub allow_memory_access: bool,
     /// Maximum call frequency (calls per second, 0 for unlimited)
-    pub max_frequency:           u32,
+    pub max_frequency: u32,
 }
 
 /// Resource transfer policy
@@ -244,13 +228,13 @@ pub enum ResourceTransferPolicy {
 #[derive(Debug, Clone)]
 pub struct CrossCallFrame {
     /// Caller instance ID
-    pub caller_instance:       u32,
+    pub caller_instance: u32,
     /// Target instance ID
-    pub target_instance:       u32,
+    pub target_instance: u32,
     /// Function being called
-    pub function_index:        u32,
+    pub function_index: u32,
     /// Call start time (simplified - would use proper time type)
-    pub start_time:            u64,
+    pub start_time: u64,
     /// Resources transferred in this call
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
@@ -262,9 +246,9 @@ pub struct CrossCallFrame {
 #[derive(Debug, Clone)]
 pub struct TransferredResource {
     /// Resource handle
-    pub handle:         u32,
+    pub handle: u32,
     /// Transfer type
-    pub transfer_type:  ResourceTransferPolicy,
+    pub transfer_type: ResourceTransferPolicy,
     /// Original owner (for restoration on error)
     pub original_owner: u32,
 }
@@ -273,27 +257,27 @@ pub struct TransferredResource {
 #[derive(Debug, Clone)]
 pub struct CrossCallResult {
     /// Function call result
-    pub result:                wrt_error::Result<Value>,
+    pub result: wrt_error::Result<Value>,
     /// Resources that were transferred
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
     #[cfg(not(any(feature = "std",)))]
     pub transferred_resources: BoundedVec<TransferredResource, 32>,
     /// Call statistics
-    pub stats:                 CallStatistics,
+    pub stats: CallStatistics,
 }
 
 /// Call statistics
 #[derive(Debug, Clone)]
 pub struct CallStatistics {
     /// Call duration in nanoseconds
-    pub duration_ns:           u64,
+    pub duration_ns: u64,
     /// Number of arguments
-    pub arg_count:             u32,
+    pub arg_count: u32,
     /// Number of resources transferred
     pub resources_transferred: u32,
     /// Memory bytes accessed
-    pub memory_accessed:       u64,
+    pub memory_accessed: u64,
 }
 
 impl CrossComponentCallManager {
@@ -561,9 +545,11 @@ impl CrossComponentCallManager {
                             target.target_instance,
                             transfer_type,
                         )?;
-                        transferred_resources.push(transferred)
-                            .map_err(|_| wrt_error::Error::runtime_error("Too many transferred resources"))?;
-                        prepared_args.push(arg.clone())
+                        transferred_resources.push(transferred).map_err(|_| {
+                            wrt_error::Error::runtime_error("Too many transferred resources")
+                        })?;
+                        prepared_args
+                            .push(arg.clone())
                             .map_err(|_| wrt_error::Error::runtime_error("Too many arguments"))?;
                     } else {
                         return Err(wrt_error::Error::runtime_error(
@@ -572,7 +558,8 @@ impl CrossComponentCallManager {
                     }
                 },
                 _ => {
-                    prepared_args.push(arg.clone())
+                    prepared_args
+                        .push(arg.clone())
                         .map_err(|_| wrt_error::Error::runtime_error("Too many arguments"))?;
                 },
             }
@@ -624,7 +611,10 @@ impl CrossComponentCallManager {
     }
 
     /// Finalize resource transfers after successful call
-    fn finalize_resource_transfers(&mut self, transfers: &[TransferredResource]) -> wrt_error::Result<()> {
+    fn finalize_resource_transfers(
+        &mut self,
+        transfers: &[TransferredResource],
+    ) -> wrt_error::Result<()> {
         for transfer in transfers {
             match transfer.transfer_type {
                 ResourceTransferPolicy::Transfer => {
@@ -905,10 +895,7 @@ impl CrossComponentCallManager {
     /// Calculate a hash of the function signature for caching
     fn calculate_signature_hash(&self, signature: &WrtComponentType<NoStdProvider<4096>>) -> u64 {
         // Simple hash implementation - in real implementation would use a proper hasher
-        use core::hash::{
-            Hash,
-            Hasher,
-        };
+        use core::hash::{Hash, Hasher};
 
         struct SimpleHasher(u64);
 
@@ -996,10 +983,10 @@ impl CallTarget {
 impl Default for CallPermissions {
     fn default() -> Self {
         Self {
-            allowed:                 true,
+            allowed: true,
             allow_resource_transfer: false,
-            allow_memory_access:     false,
-            max_frequency:           0, // Unlimited
+            allow_memory_access: false,
+            max_frequency: 0, // Unlimited
         }
     }
 }

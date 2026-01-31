@@ -14,4 +14,4 @@ pub mod wasi_stdout;
 // Re-export unified ComponentLinker from its new location for convenience
 pub use crate::components::component_linker::ComponentLinker;
 pub use wasi_provider::WasiInstanceProvider;
-pub use wasi_stdout::{wasi_get_stdout, wasi_blocking_write_and_flush, write_stdout};
+pub use wasi_stdout::{wasi_blocking_write_and_flush, wasi_get_stdout, write_stdout};

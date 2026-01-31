@@ -133,7 +133,7 @@ pub mod kani_verification {
                     let mut params = Vec::new();
                     for _ in 0..param_count {
                         params.push(ValueType::I32); // Simplified for
-                                                     // verification
+                        // verification
                     }
 
                     let func_type = FuncType {
@@ -146,7 +146,7 @@ pub mod kani_verification {
 
                     // Type signature should be consistent
                     let same_func_type = FuncType {
-                        params:  func_type.params.clone(),
+                        params: func_type.params.clone(),
                         results: func_type.results.clone(),
                     };
 
@@ -288,4 +288,3 @@ pub mod kani_verification {
 // Expose verification module in docs but not for normal compilation
 #[cfg(any(doc, kani))]
 pub use kani_verification::*;
-    }

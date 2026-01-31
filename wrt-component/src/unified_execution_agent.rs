@@ -10,16 +10,9 @@
 //! - Component model execution
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{boxed::Box, sync::Arc, vec::Vec};
 
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
@@ -29,10 +22,7 @@ use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use wrt_foundation::{
-    bounded::BoundedString,
-    budget_aware_provider::CrateId,
-    prelude::*,
-    safe_managed_alloc,
+    bounded::BoundedString, budget_aware_provider::CrateId, prelude::*, safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 
@@ -45,34 +35,20 @@ use crate::bounded_component_infra::ComponentProvider;
 // Import async types when available
 #[cfg(feature = "async")]
 use crate::unified_execution_agent_stubs::{
-    AsyncReadResult,
-    Future as ComponentFuture,
-    FutureHandle,
-    FutureState,
-    Stream,
-    StreamHandle,
+    AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle,
     StreamState,
 };
 // Import CFI types when available
 #[cfg(feature = "cfi")]
 use crate::unified_execution_agent_stubs::{
-    CfiControlFlowProtection,
-    CfiExecutionContext,
-    CfiProtectedBranchTarget,
+    CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
     DefaultCfiControlFlowOps,
 };
 use crate::{
-    types::{
-        ValType,
-        Value,
-    },
+    types::{ValType, Value},
     unified_execution_agent_stubs::{
-        CanonicalAbi,
-        CanonicalOptions,
-        ComponentRuntimeBridge,
-        ResourceHandle,
-        ResourceLifecycleManager,
-        RuntimeBridgeConfig,
+        CanonicalAbi, CanonicalOptions, ComponentRuntimeBridge, ResourceHandle,
+        ResourceLifecycleManager, RuntimeBridgeConfig,
     },
 };
 
@@ -93,19 +69,19 @@ type AgentBoundedString = BoundedString<256>;
 #[derive(Debug, Clone)]
 pub struct UnifiedExecutionAgent {
     /// Core execution state
-    core_state:      CoreExecutionState,
+    core_state: CoreExecutionState,
     /// Async execution capabilities
     #[cfg(feature = "async")]
-    async_state:     AsyncExecutionState,
+    async_state: AsyncExecutionState,
     /// CFI protection capabilities  
     #[cfg(feature = "cfi")]
-    cfi_state:       CfiExecutionState,
+    cfi_state: CfiExecutionState,
     /// Stackless execution capabilities
     stackless_state: StacklessExecutionState,
     /// Agent configuration
-    config:          AgentConfiguration,
+    config: AgentConfiguration,
     /// Execution statistics
-    statistics:      UnifiedExecutionStatistics,
+    statistics: UnifiedExecutionStatistics,
 }
 
 /// Core execution state shared across all execution modes
@@ -167,11 +143,11 @@ pub struct AsyncExecutionState {
 #[derive(Debug, Clone)]
 pub struct CfiExecutionState {
     /// CFI control flow operations handler
-    cfi_ops:          DefaultCfiControlFlowOps,
+    cfi_ops: DefaultCfiControlFlowOps,
     /// CFI protection configuration
-    cfi_protection:   CfiControlFlowProtection,
+    cfi_protection: CfiControlFlowProtection,
     /// Current CFI execution context
-    cfi_context:      CfiExecutionContext,
+    cfi_context: CfiExecutionContext,
     /// CFI violation response policy
     violation_policy: CfiViolationPolicy,
 }
@@ -180,14 +156,14 @@ pub struct CfiExecutionState {
 #[derive(Debug, Clone)]
 pub struct StacklessExecutionState {
     /// Program counter
-    pc:             usize,
+    pc: usize,
     /// Current function index
-    func_idx:       u32,
+    func_idx: u32,
     /// Label stack for control flow
     #[cfg(feature = "std")]
-    labels:         Vec<Label>,
+    labels: Vec<Label>,
     #[cfg(not(feature = "std"))]
-    labels:         BoundedVec<Label, 128>,
+    labels: BoundedVec<Label, 128>,
     /// Stackless execution mode
     stackless_mode: bool,
 }
@@ -196,24 +172,24 @@ pub struct StacklessExecutionState {
 #[derive(Debug, Clone)]
 pub struct UnifiedCallFrame {
     /// Instance ID
-    pub instance_id:    u32,
+    pub instance_id: u32,
     /// Function index
     pub function_index: u32,
     /// Function name (for async and debugging)
-    pub function_name:  AgentBoundedString,
+    pub function_name: AgentBoundedString,
     /// Local variables
     #[cfg(feature = "std")]
-    pub locals:         Vec<Value>,
+    pub locals: Vec<Value>,
     #[cfg(not(feature = "std"))]
-    pub locals:         BoundedVec<Value, 64>,
+    pub locals: BoundedVec<Value, 64>,
     /// Return address
     pub return_address: Option<usize>,
     /// Async state for this frame
     #[cfg(feature = "async")]
-    pub async_state:    FrameAsyncState,
+    pub async_state: FrameAsyncState,
     /// CFI protection state
     #[cfg(feature = "cfi")]
-    pub cfi_state:      FrameCfiState,
+    pub cfi_state: FrameCfiState,
 }
 
 /// Execution context for current function
@@ -222,16 +198,15 @@ pub struct ExecutionContext {
     /// Current component instance
     pub component_instance: u32,
     /// Current function index
-    pub function_index:     u32,
+    pub function_index: u32,
     /// Memory layout information
-    pub memory_base:        u64,
+    pub memory_base: u64,
     /// Memory size
-    pub memory_size:        usize,
+    pub memory_size: usize,
 }
 
 /// Unified execution state
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum UnifiedExecutionState {
     /// Ready to execute
     #[default]
@@ -251,8 +226,7 @@ pub enum UnifiedExecutionState {
 }
 
 /// Execution mode determines which capabilities are active
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ExecutionMode {
     /// Synchronous component execution
     #[default]
@@ -272,26 +246,26 @@ pub enum ExecutionMode {
 /// Flags for hybrid execution mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HybridModeFlags {
-    pub async_enabled:     bool,
+    pub async_enabled: bool,
     pub stackless_enabled: bool,
-    pub cfi_enabled:       bool,
+    pub cfi_enabled: bool,
 }
 
 /// Configuration for the unified agent
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfiguration {
     /// Maximum call depth
-    pub max_call_depth:    usize,
+    pub max_call_depth: usize,
     /// Maximum memory usage
-    pub max_memory:        usize,
+    pub max_memory: usize,
     /// Execution mode
-    pub execution_mode:    ExecutionMode,
+    pub execution_mode: ExecutionMode,
     /// Enable bounded execution
     pub bounded_execution: bool,
     /// Initial fuel for bounded execution
-    pub initial_fuel:      Option<u64>,
+    pub initial_fuel: Option<u64>,
     /// Runtime bridge configuration
-    pub runtime_config:    RuntimeBridgeConfig,
+    pub runtime_config: RuntimeBridgeConfig,
 }
 
 /// Unified execution statistics
@@ -299,30 +273,30 @@ pub struct AgentConfiguration {
 pub struct UnifiedExecutionStatistics {
     /// Core execution statistics
     pub instructions_executed: u64,
-    pub function_calls:        u64,
-    pub execution_time_ns:     u64,
-    pub memory_allocated:      usize,
+    pub function_calls: u64,
+    pub execution_time_ns: u64,
+    pub memory_allocated: usize,
 
     /// Async execution statistics
     #[cfg(feature = "async")]
-    pub async_executions_started:   u64,
+    pub async_executions_started: u64,
     #[cfg(feature = "async")]
     pub async_executions_completed: u64,
     #[cfg(feature = "async")]
-    pub async_operations:           u64,
+    pub async_operations: u64,
 
     /// CFI statistics
     #[cfg(feature = "cfi")]
     pub cfi_instructions_protected: u64,
     #[cfg(feature = "cfi")]
-    pub cfi_violations_detected:    u64,
+    pub cfi_violations_detected: u64,
     #[cfg(feature = "cfi")]
-    pub cfi_overhead_ns:            u64,
+    pub cfi_overhead_ns: u64,
 
     /// Stackless execution statistics
     pub stackless_frames: u64,
-    pub stack_depth:      usize,
-    pub max_stack_depth:  usize,
+    pub stack_depth: usize,
+    pub max_stack_depth: usize,
 }
 
 /// Async frame state for async execution
@@ -344,11 +318,11 @@ pub enum FrameAsyncState {
 #[derive(Debug, Clone)]
 pub struct FrameCfiState {
     /// Shadow stack entry
-    pub shadow_entry:         Option<ShadowStackEntry>,
+    pub shadow_entry: Option<ShadowStackEntry>,
     /// Landing pad requirement
     pub landing_pad_required: bool,
     /// Call site ID for tracking
-    pub call_site_id:         u32,
+    pub call_site_id: u32,
 }
 
 /// Wait set for async operations
@@ -373,7 +347,7 @@ pub struct WaitSet {
 #[derive(Debug, Clone)]
 pub struct ShadowStackEntry {
     pub return_address: u32,
-    pub stack_pointer:  u32,
+    pub stack_pointer: u32,
     pub function_index: u32,
 }
 
@@ -394,9 +368,9 @@ pub enum CfiViolationPolicy {
 /// Label for stackless control flow
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Label {
-    pub kind:  LabelKind,
+    pub kind: LabelKind,
     pub arity: u32,
-    pub pc:    usize,
+    pub pc: usize,
 }
 
 /// Kind of control flow label
@@ -410,9 +384,9 @@ pub enum LabelKind {
 }
 
 // Serialization trait implementations for Label
-use wrt_runtime::{Checksummable, ToBytes, FromBytes};
+use wrt_foundation::traits::{ReadStream, WriteStream};
 use wrt_foundation::{Checksum, MemoryProvider};
-use wrt_foundation::traits::{WriteStream, ReadStream};
+use wrt_runtime::{Checksummable, FromBytes, ToBytes};
 
 impl Checksummable for Label {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -467,12 +441,12 @@ impl FromBytes for Label {
 #[cfg(feature = "async")]
 #[derive(Debug)]
 pub struct AsyncExecution {
-    pub id:        u64,
-    pub task_id:   u64,
-    pub state:     UnifiedExecutionState,
-    pub context:   AsyncExecutionContext,
+    pub id: u64,
+    pub task_id: u64,
+    pub state: UnifiedExecutionState,
+    pub context: AsyncExecutionContext,
     pub operation: AsyncOperation,
-    pub result:    Option<AsyncExecutionResult>,
+    pub result: Option<AsyncExecutionResult>,
 }
 
 /// Async execution context
@@ -480,26 +454,26 @@ pub struct AsyncExecution {
 #[derive(Debug, Clone)]
 pub struct AsyncExecutionContext {
     pub component_instance: u32,
-    pub function_name:      AgentBoundedString,
-    pub memory_views:       MemoryViews,
+    pub function_name: AgentBoundedString,
+    pub memory_views: MemoryViews,
 }
 
 /// Memory views for async execution
 #[cfg(feature = "async")]
 #[derive(Debug, Clone)]
 pub struct MemoryViews {
-    pub memory_base:  u64,
-    pub memory_size:  usize,
+    pub memory_base: u64,
+    pub memory_size: usize,
     pub stack_region: MemoryRegion,
-    pub heap_region:  MemoryRegion,
+    pub heap_region: MemoryRegion,
 }
 
 /// Memory region descriptor
 #[cfg(feature = "async")]
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryRegion {
-    pub start:       u64,
-    pub size:        usize,
+    pub start: u64,
+    pub size: usize,
     pub permissions: MemoryPermissions,
 }
 
@@ -507,8 +481,8 @@ pub struct MemoryRegion {
 #[cfg(feature = "async")]
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryPermissions {
-    pub read:    bool,
-    pub write:   bool,
+    pub read: bool,
+    pub write: bool,
     pub execute: bool,
 }
 
@@ -522,25 +496,25 @@ pub enum AsyncOperation {
     },
     StreamRead {
         handle: StreamHandle,
-        count:  u32,
+        count: u32,
     },
     StreamWrite {
         handle: StreamHandle,
-        data:   Vec<u8>,
+        data: Vec<u8>,
     },
     FutureGet {
         handle: FutureHandle,
     },
     FutureSet {
         handle: FutureHandle,
-        value:  Value,
+        value: Value,
     },
     WaitMultiple {
         wait_set: WaitSet,
     },
     SpawnSubtask {
         function: AgentBoundedString,
-        args:     Vec<Value>,
+        args: Vec<Value>,
     },
 }
 
@@ -548,9 +522,9 @@ pub enum AsyncOperation {
 #[cfg(feature = "async")]
 #[derive(Debug, Clone)]
 pub struct AsyncExecutionResult {
-    pub values:                Vec<Value>,
-    pub execution_time_us:     u64,
-    pub memory_allocated:      usize,
+    pub values: Vec<Value>,
+    pub execution_time_us: u64,
+    pub memory_allocated: usize,
     pub instructions_executed: u64,
 }
 
@@ -560,29 +534,31 @@ impl UnifiedExecutionAgent {
         Ok(Self {
             core_state: CoreExecutionState {
                 #[cfg(feature = "std")]
-                call_stack:                              Vec::new(),
+                call_stack: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                call_stack:                              {
+                call_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create call stack"))?
+                    BoundedVec::new().map_err(|| {
+                        wrt_error::Error::resource_exhausted("Failed to create call stack")
+                    })?
                 },
 
                 #[cfg(feature = "std")]
-                operand_stack:                              Vec::new(),
+                operand_stack: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                operand_stack:                              {
+                operand_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create operand stack"))?
+                    BoundedVec::new().map_err(|| {
+                        wrt_error::Error::resource_exhausted("Failed to create operand stack")
+                    })?
                 },
 
-                execution_mode:   config.execution_mode,
-                state:            UnifiedExecutionState::Ready,
-                canonical_abi:    CanonicalAbi::new(),
+                execution_mode: config.execution_mode,
+                state: UnifiedExecutionState::Ready,
+                canonical_abi: CanonicalAbi::new(),
                 resource_manager: ResourceLifecycleManager::new(),
-                runtime_bridge:   ComponentRuntimeBridge::with_config(
-                    config.runtime_config.clone(),
-                ),
-                current_context:  None,
+                runtime_bridge: ComponentRuntimeBridge::with_config(config.runtime_config.clone()),
+                current_context: None,
             },
 
             #[cfg(feature = "async")]
@@ -592,7 +568,9 @@ impl UnifiedExecutionAgent {
                 #[cfg(not(feature = "std"))]
                 executions: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create async executions"))?
+                    BoundedVec::new().map_err(|| {
+                        wrt_error::Error::resource_exhausted("Failed to create async executions")
+                    })?
                 },
                 next_execution_id: 1,
                 #[cfg(feature = "std")]
@@ -600,15 +578,17 @@ impl UnifiedExecutionAgent {
                 #[cfg(not(feature = "std"))]
                 context_pool: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create context pool"))?
+                    BoundedVec::new().map_err(|| {
+                        wrt_error::Error::resource_exhausted("Failed to create context pool")
+                    })?
                 },
             },
 
             #[cfg(feature = "cfi")]
             cfi_state: CfiExecutionState {
-                cfi_ops:          DefaultCfiControlFlowOps,
-                cfi_protection:   CfiControlFlowProtection::default(),
-                cfi_context:      CfiExecutionContext::default(),
+                cfi_ops: DefaultCfiControlFlowOps,
+                cfi_protection: CfiControlFlowProtection::default(),
+                cfi_context: CfiExecutionContext::default(),
                 violation_policy: CfiViolationPolicy::ReturnError,
             },
 
@@ -620,7 +600,9 @@ impl UnifiedExecutionAgent {
                 #[cfg(not(feature = "std"))]
                 labels: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create labels"))?
+                    BoundedVec::new().map_err(|| {
+                        wrt_error::Error::resource_exhausted("Failed to create labels")
+                    })?
                 },
                 stackless_mode: matches!(config.execution_mode, ExecutionMode::Stackless),
             },
@@ -699,7 +681,8 @@ impl UnifiedExecutionAgent {
             #[cfg(not(feature = "std"))]
             locals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                let mut locals = BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create locals"))?;
+                let mut locals = BoundedVec::new()
+                    .map_err(|| wrt_error::Error::resource_exhausted("Failed to create locals"))?;
                 for arg in args.iter().take(64) {
                     let _ = locals.push(arg.clone());
                 }
@@ -710,9 +693,9 @@ impl UnifiedExecutionAgent {
             async_state: FrameAsyncState::Sync,
             #[cfg(feature = "cfi")]
             cfi_state: FrameCfiState {
-                shadow_entry:         None,
+                shadow_entry: None,
                 landing_pad_required: false,
-                call_site_id:         0,
+                call_site_id: 0,
             },
         };
 
@@ -763,7 +746,8 @@ impl UnifiedExecutionAgent {
         #[cfg(feature = "std")]
         let _function_name_str = function_name;
         #[cfg(not(feature = "std"))]
-        let _function_name_str = function_name.as_str()
+        let _function_name_str = function_name
+            .as_str()
             .map_err(|_| wrt_error::Error::runtime_error("Invalid function name"))?;
 
         // Stubbed: return default value for now
@@ -806,36 +790,40 @@ impl UnifiedExecutionAgent {
 
     /// Execute async function call
     #[cfg(feature = "async")]
-    fn execute_async_call(&mut self, frame: UnifiedCallFrame, args: &[Value]) -> wrt_error::Result<Value> {
+    fn execute_async_call(
+        &mut self,
+        frame: UnifiedCallFrame,
+        args: &[Value],
+    ) -> wrt_error::Result<Value> {
         // Create async execution
         let execution_id = self.async_state.next_execution_id;
         self.async_state.next_execution_id += 1;
 
         let async_execution = AsyncExecution {
-            id:        execution_id,
-            task_id:   1, // Simplified
-            state:     UnifiedExecutionState::Running,
-            context:   AsyncExecutionContext {
+            id: execution_id,
+            task_id: 1, // Simplified
+            state: UnifiedExecutionState::Running,
+            context: AsyncExecutionContext {
                 component_instance: frame.instance_id,
-                function_name:      frame.function_name.clone(),
-                memory_views:       MemoryViews {
-                    memory_base:  0,
-                    memory_size:  self.config.max_memory,
+                function_name: frame.function_name.clone(),
+                memory_views: MemoryViews {
+                    memory_base: 0,
+                    memory_size: self.config.max_memory,
                     stack_region: MemoryRegion {
-                        start:       0,
-                        size:        1024,
+                        start: 0,
+                        size: 1024,
                         permissions: MemoryPermissions {
-                            read:    true,
-                            write:   true,
+                            read: true,
+                            write: true,
                             execute: false,
                         },
                     },
-                    heap_region:  MemoryRegion {
-                        start:       1024,
-                        size:        self.config.max_memory - 1024,
+                    heap_region: MemoryRegion {
+                        start: 1024,
+                        size: self.config.max_memory - 1024,
                         permissions: MemoryPermissions {
-                            read:    true,
-                            write:   true,
+                            read: true,
+                            write: true,
                             execute: false,
                         },
                     },
@@ -845,10 +833,10 @@ impl UnifiedExecutionAgent {
                 name: frame.function_name.clone(),
                 args: args.to_vec(),
             },
-            result:    Some(AsyncExecutionResult {
-                values:                vec![Value::U32(42)],
-                execution_time_us:     100,
-                memory_allocated:      0,
+            result: Some(AsyncExecutionResult {
+                values: vec![Value::U32(42)],
+                execution_time_us: 100,
+                memory_allocated: 0,
                 instructions_executed: 1,
             }),
         };
@@ -958,7 +946,10 @@ impl UnifiedExecutionAgent {
 
     /// Convert values to component values
     #[cfg(feature = "std")]
-    fn convert_values_to_component(&self, values: &[Value]) -> wrt_error::Result<Vec<ComponentValue<ComponentProvider>>> {
+    fn convert_values_to_component(
+        &self,
+        values: &[Value],
+    ) -> wrt_error::Result<Vec<ComponentValue<ComponentProvider>>> {
         let mut component_values = Vec::new();
         for value in values {
             component_values.push(value.clone().into());
@@ -972,7 +963,9 @@ impl UnifiedExecutionAgent {
         values: &[Value],
     ) -> wrt_error::Result<BoundedVec<Value, 16>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut component_values = BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create component values"))?;
+        let mut component_values = BoundedVec::new().map_err(|| {
+            wrt_error::Error::resource_exhausted("Failed to create component values")
+        })?;
         for value in values.iter().take(16) {
             component_values
                 .push(value.clone())
@@ -985,17 +978,15 @@ impl UnifiedExecutionAgent {
 impl Default for AgentConfiguration {
     fn default() -> Self {
         Self {
-            max_call_depth:    1024,
-            max_memory:        1024 * 1024, // 1MB
-            execution_mode:    ExecutionMode::Synchronous,
+            max_call_depth: 1024,
+            max_memory: 1024 * 1024, // 1MB
+            execution_mode: ExecutionMode::Synchronous,
             bounded_execution: false,
-            initial_fuel:      None,
-            runtime_config:    RuntimeBridgeConfig,
+            initial_fuel: None,
+            runtime_config: RuntimeBridgeConfig,
         }
     }
 }
-
-
 
 impl fmt::Display for UnifiedExecutionState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -2,41 +2,33 @@
 //!
 //! This module provides the Export type for component exports.
 
+use crate::bounded_component_infra::ComponentProvider;
 use wrt_format::component::ExternType;
 use wrt_foundation::{
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
-    ExternType as RuntimeExternType,
-    ToString,
+    ExternType as RuntimeExternType, ToString,
+    traits::{Checksummable, FromBytes, ToBytes},
 };
-use crate::bounded_component_infra::ComponentProvider;
 
 #[cfg(feature = "std")]
 use crate::components::component::ExternValue;
 #[cfg(not(feature = "std"))]
 use crate::components::component_no_std::ExternValue;
 
-use crate::{
-    prelude::*,
-    type_conversion::bidirectional,
-};
+use crate::{prelude::*, type_conversion::bidirectional};
 
 /// Export from a component
 #[derive(Debug, Clone)]
 pub struct Export {
     /// Export name
-    pub name:           String,
+    pub name: String,
     /// Export type
-    pub ty:             ExternType,
+    pub ty: ExternType,
     /// Export value
-    pub value:          ExternValue,
+    pub value: ExternValue,
     /// Export kind (function, value, instance, type)
-    pub kind:           ExportKind,
+    pub kind: ExportKind,
     /// Export attributes
-    pub attributes:     HashMap<String, String>,
+    pub attributes: HashMap<String, String>,
     /// Integrity hash for the export (if available)
     pub integrity_hash: Option<String>,
 }
@@ -45,11 +37,11 @@ pub struct Export {
 impl PartialEq for Export {
     fn eq(&self, other: &Self) -> bool {
         // Compare all fields except value since ExternValue may not implement PartialEq in no_std
-        self.name == other.name &&
-        self.ty == other.ty &&
-        self.kind == other.kind &&
-        self.attributes == other.attributes &&
-        self.integrity_hash == other.integrity_hash
+        self.name == other.name
+            && self.ty == other.ty
+            && self.kind == other.kind
+            && self.attributes == other.attributes
+            && self.integrity_hash == other.integrity_hash
         // Note: value field is intentionally not compared
     }
 }
@@ -65,39 +57,39 @@ impl Default for Export {
 
         #[cfg(feature = "std")]
         let func_value = FunctionValue {
-            ty:          wrt_foundation::types::FuncType::new([], []).unwrap_or_default(),
+            ty: wrt_foundation::types::FuncType::new([], []).unwrap_or_default(),
             export_name: String::new(),
         };
 
         #[cfg(not(feature = "std"))]
         let func_value = {
-            use wrt_foundation::safe_memory::NoStdProvider;
             use wrt_foundation::bounded::MAX_WASM_NAME_LENGTH;
+            use wrt_foundation::safe_memory::NoStdProvider;
 
             // Create function type using Default
             let func_type = wrt_foundation::types::FuncType::default();
 
             // Create export name using BoundedString
             let export_name_provider = NoStdProvider::<512>::default();
-            let export_name = wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH>
-                ::from_str_truncate("")
-                .unwrap_or_else(|_| panic!("Failed to create default export name"));
+            let export_name =
+                wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH>::from_str_truncate("")
+                    .unwrap_or_else(|_| panic!("Failed to create default export name"));
 
             FunctionValue {
-                ty:          func_type,
+                ty: func_type,
                 export_name,
             }
         };
 
         Self {
-            name:           String::new(),
-            ty:             ExternType::Function {
-                params:  vec![],
+            name: String::new(),
+            ty: ExternType::Function {
+                params: vec![],
                 results: vec![],
             },
-            value:          ExternValue::Function(func_value),
-            kind:           ExportKind::Function { function_index: 0 },
-            attributes:     HashMap::new(),
+            value: ExternValue::Function(func_value),
+            kind: ExportKind::Function { function_index: 0 },
+            attributes: HashMap::new(),
             integrity_hash: None,
         }
     }
@@ -134,8 +126,12 @@ impl Export {
     pub fn new(name: String, ty: ExternType, value: ExternValue) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
-            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => {
+                ExportKind::Function { function_index: 0 }
+            },
+            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => {
+                ExportKind::Value { value_index: 0 }
+            },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };
         Self {
@@ -157,8 +153,12 @@ impl Export {
     ) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
-            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => {
+                ExportKind::Function { function_index: 0 }
+            },
+            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => {
+                ExportKind::Value { value_index: 0 }
+            },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };
         Self {
@@ -180,8 +180,12 @@ impl Export {
     ) -> Self {
         // Derive kind from value
         let kind = match &value {
-            ExternValue::Function(_) | ExternValue::Func(_) => ExportKind::Function { function_index: 0 },
-            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => ExportKind::Value { value_index: 0 },
+            ExternValue::Function(_) | ExternValue::Func(_) => {
+                ExportKind::Function { function_index: 0 }
+            },
+            ExternValue::Memory(_) | ExternValue::Table(_) | ExternValue::Global(_) => {
+                ExportKind::Value { value_index: 0 }
+            },
             ExternValue::Trap(_) => ExportKind::Function { function_index: 0 }, // Trap is closest to function
         };
         Self {
@@ -223,5 +227,4 @@ impl Export {
         let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
         Ok(Self::new(name, format_type, value))
     }
-
 }

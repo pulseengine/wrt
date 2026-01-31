@@ -14,30 +14,20 @@ pub mod post_return;
 pub use canonical::*;
 // Re-export key types from canonical_abi module for consistent access
 pub use canonical_abi::{
-    CanonicalABI,
-    CanonicalCallContext,
-    CanonicalMemory,
-    ComponentType,
-    ComponentValue,
-    CoreValue,
-    LiftResult,
-    LowerResult,
+    CanonicalABI, CanonicalCallContext, CanonicalMemory, ComponentType, ComponentValue, CoreValue,
+    LiftResult, LowerResult,
 };
 
 #[cfg(feature = "std")]
 pub use canonical_abi::SimpleMemory;
 pub use canonical_options::*;
-pub use canonical_realloc::{
-    CanonicalOptionsWithRealloc,
-    MemoryLayout,
-    ReallocFn,
-    ReallocManager,
-    StringEncoding,
-};
 #[cfg(feature = "std")]
 pub use canonical_realloc::ReallocCallback;
 #[cfg(feature = "std")]
 pub use canonical_realloc::engine_integration;
+pub use canonical_realloc::{
+    CanonicalOptionsWithRealloc, MemoryLayout, ReallocFn, ReallocManager, StringEncoding,
+};
 pub use post_return::*;
 
 // Placeholder types for async canonical ABI support

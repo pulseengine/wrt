@@ -6,26 +6,16 @@
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-    },
+    sync::atomic::{AtomicU64, Ordering},
+    task::{Context, Poll},
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    clean_types::{
-        ComponentType,
-        FuncType,
-        ValType,
-    },
+    CrateId,
+    clean_types::{ComponentType, FuncType, ValType},
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     // resource::ResourceHandle, // Not available - using local placeholder
     safe_managed_alloc,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
@@ -79,30 +69,16 @@ impl wrt_foundation::traits::FromBytes for ResourceHandle {
 pub type FuelTrackedThreadManager = ();
 
 use crate::{
+    ComponentInstanceId,
     async_::{
-        async_types::{
-            Future,
-            FutureHandle,
-            Stream,
-            StreamHandle,
-            Waitable,
-            WaitableSet,
-        },
+        async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet},
         fuel_async_executor::AsyncTaskState,
-        task_manager_async_bridge::{
-            ComponentAsyncTaskType,
-            TaskManagerAsyncBridge,
-        },
+        task_manager_async_bridge::{ComponentAsyncTaskType, TaskManagerAsyncBridge},
     },
     bounded_component_infra::ComponentProvider,
-    canonical_abi::{
-        CanonicalOptions,
-        LiftingContext,
-        LoweringContext,
-    },
+    canonical_abi::{CanonicalOptions, LiftingContext, LoweringContext},
     prelude::*,
     types::Value,
-    ComponentInstanceId,
 };
 
 /// Maximum async ABI operations per component
@@ -117,23 +93,20 @@ const ABI_RESOURCE_ASYNC_FUEL: u64 = 40;
 /// Async Canonical ABI support
 pub struct AsyncCanonicalAbiSupport {
     /// Task manager bridge
-    bridge:            TaskManagerAsyncBridge,
+    bridge: TaskManagerAsyncBridge,
     /// Active async ABI operations
-    async_operations:
-        BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
+    async_operations: BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
     /// Component ABI contexts
     abi_contexts: BoundedMap<ComponentInstanceId, ComponentAbiContext, 128>,
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// ABI statistics
-    abi_stats:         AbiStatistics,
+    abi_stats: AbiStatistics,
 }
 
 /// Async ABI operation identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct AsyncAbiOperationId(u64);
-
 
 impl wrt_foundation::traits::Checksummable for AsyncAbiOperationId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -163,19 +136,19 @@ impl wrt_foundation::traits::FromBytes for AsyncAbiOperationId {
 /// Async ABI operation
 #[derive(Debug)]
 struct AsyncAbiOperation {
-    id:               AsyncAbiOperationId,
-    component_id:     ComponentInstanceId,
-    operation_type:   AsyncAbiOperationType,
-    function_type:    Option<FuncType>,
-    resource_handle:  Option<ResourceHandle>,
-    lifting_context:  Option<LiftingContext>,
+    id: AsyncAbiOperationId,
+    component_id: ComponentInstanceId,
+    operation_type: AsyncAbiOperationType,
+    function_type: Option<FuncType>,
+    resource_handle: Option<ResourceHandle>,
+    lifting_context: Option<LiftingContext>,
     lowering_context: Option<LoweringContext>,
     #[cfg(feature = "component-model-threading")]
-    task_id:          Option<crate::threading::task_manager::TaskId>,
+    task_id: Option<crate::threading::task_manager::TaskId>,
     #[cfg(not(feature = "component-model-threading"))]
-    task_id:          Option<u32>,
-    created_at:       u64,
-    fuel_consumed:    AtomicU64,
+    task_id: Option<u32>,
+    created_at: u64,
+    fuel_consumed: AtomicU64,
 }
 
 /// Type of async ABI operation
@@ -184,32 +157,32 @@ pub enum AsyncAbiOperationType {
     /// Async function call
     AsyncCall {
         function_name: String,
-        args:          Vec<WrtComponentValue<ComponentProvider>>,
+        args: Vec<WrtComponentValue<ComponentProvider>>,
     },
     /// Async resource method call
     ResourceAsync {
         method_name: String,
-        args:        Vec<WrtComponentValue<ComponentProvider>>,
+        args: Vec<WrtComponentValue<ComponentProvider>>,
     },
     /// Async value lifting
     AsyncLift {
-        target_type:   ComponentType,
+        target_type: ComponentType,
         source_values: Vec<Value>,
     },
     /// Async value lowering
     AsyncLower {
         source_values: Vec<WrtComponentValue<ComponentProvider>>,
-        target_type:   ValType,
+        target_type: ValType,
     },
     /// Future handling
     FutureOperation {
         future_handle: FutureHandle,
-        operation:     FutureOp,
+        operation: FutureOp,
     },
     /// Stream handling
     StreamOperation {
         stream_handle: StreamHandle,
-        operation:     StreamOp,
+        operation: StreamOp,
     },
 }
 
@@ -240,31 +213,30 @@ pub enum StreamOp {
 /// Component ABI context
 #[derive(Debug)]
 struct ComponentAbiContext {
-    component_id:        ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Default canonical options for async operations
-    default_options:     CanonicalOptions,
+    default_options: CanonicalOptions,
     /// Active async calls
-    active_calls:        BoundedVec<AsyncAbiOperationId, 64>,
+    active_calls: BoundedVec<AsyncAbiOperationId, 64>,
     /// Resource async operations
-    resource_operations:
-        BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
+    resource_operations: BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
     /// Future callbacks
-    future_callbacks:    BoundedMap<FutureHandle, AsyncAbiOperationId, 64>,
+    future_callbacks: BoundedMap<FutureHandle, AsyncAbiOperationId, 64>,
     /// Stream callbacks
-    stream_callbacks:    BoundedMap<StreamHandle, AsyncAbiOperationId, 32>,
+    stream_callbacks: BoundedMap<StreamHandle, AsyncAbiOperationId, 32>,
 }
 
 /// ABI operation statistics
 #[derive(Debug, Default)]
 struct AbiStatistics {
-    total_async_calls:   AtomicU64,
-    completed_calls:     AtomicU64,
-    failed_calls:        AtomicU64,
-    async_lifts:         AtomicU64,
-    async_lowers:        AtomicU64,
+    total_async_calls: AtomicU64,
+    completed_calls: AtomicU64,
+    failed_calls: AtomicU64,
+    async_lifts: AtomicU64,
+    async_lowers: AtomicU64,
     resource_operations: AtomicU64,
-    future_operations:   AtomicU64,
-    stream_operations:   AtomicU64,
+    future_operations: AtomicU64,
+    stream_operations: AtomicU64,
     total_fuel_consumed: AtomicU64,
 }
 
@@ -335,7 +307,7 @@ impl AsyncCanonicalAbiSupport {
             component_id,
             operation_type: AsyncAbiOperationType::AsyncCall {
                 function_name: function_name.clone(),
-                args:          args.clone(),
+                args: args.clone(),
             },
             function_type: Some(func_type.clone()),
             resource_handle: None,
@@ -407,7 +379,7 @@ impl AsyncCanonicalAbiSupport {
             component_id,
             operation_type: AsyncAbiOperationType::ResourceAsync {
                 method_name: method_name.clone(),
-                args:        args.clone(),
+                args: args.clone(),
             },
             function_type: None,
             resource_handle: Some(resource_handle),
@@ -473,7 +445,7 @@ impl AsyncCanonicalAbiSupport {
             id: operation_id,
             component_id,
             operation_type: AsyncAbiOperationType::AsyncLift {
-                target_type:   target_type.clone(),
+                target_type: target_type.clone(),
                 source_values: source_values.clone(),
             },
             function_type: None,
@@ -532,7 +504,7 @@ impl AsyncCanonicalAbiSupport {
             component_id,
             operation_type: AsyncAbiOperationType::AsyncLower {
                 source_values: source_values.clone(),
-                target_type:   target_type.clone(),
+                target_type: target_type.clone(),
             },
             function_type: None,
             resource_handle: None,
@@ -765,15 +737,15 @@ impl AsyncCanonicalAbiSupport {
     /// Get ABI statistics
     pub fn get_abi_statistics(&self) -> AbiStats {
         AbiStats {
-            total_async_calls:   self.abi_stats.total_async_calls.load(Ordering::Relaxed),
-            completed_calls:     self.abi_stats.completed_calls.load(Ordering::Relaxed),
-            failed_calls:        self.abi_stats.failed_calls.load(Ordering::Relaxed),
-            async_lifts:         self.abi_stats.async_lifts.load(Ordering::Relaxed),
-            async_lowers:        self.abi_stats.async_lowers.load(Ordering::Relaxed),
+            total_async_calls: self.abi_stats.total_async_calls.load(Ordering::Relaxed),
+            completed_calls: self.abi_stats.completed_calls.load(Ordering::Relaxed),
+            failed_calls: self.abi_stats.failed_calls.load(Ordering::Relaxed),
+            async_lifts: self.abi_stats.async_lifts.load(Ordering::Relaxed),
+            async_lowers: self.abi_stats.async_lowers.load(Ordering::Relaxed),
             resource_operations: self.abi_stats.resource_operations.load(Ordering::Relaxed),
-            future_operations:   self.abi_stats.future_operations.load(Ordering::Relaxed),
-            stream_operations:   self.abi_stats.stream_operations.load(Ordering::Relaxed),
-            active_operations:   self.async_operations.len() as u64,
+            future_operations: self.abi_stats.future_operations.load(Ordering::Relaxed),
+            stream_operations: self.abi_stats.stream_operations.load(Ordering::Relaxed),
+            active_operations: self.async_operations.len() as u64,
         }
     }
 
@@ -809,33 +781,33 @@ impl AsyncCanonicalAbiSupport {
 /// Async ABI operation status
 #[derive(Debug, Clone)]
 pub struct AsyncAbiOperationStatus {
-    pub operation_id:   AsyncAbiOperationId,
-    pub component_id:   ComponentInstanceId,
+    pub operation_id: AsyncAbiOperationId,
+    pub component_id: ComponentInstanceId,
     pub operation_type: AsyncAbiOperationType,
-    pub is_ready:       bool,
-    pub fuel_consumed:  u64,
-    pub created_at:     u64,
+    pub is_ready: bool,
+    pub fuel_consumed: u64,
+    pub created_at: u64,
 }
 
 /// ABI poll result
 #[derive(Debug, Clone)]
 pub struct AbiPollResult {
-    pub ready_operations:     usize,
+    pub ready_operations: usize,
     pub completed_operations: usize,
-    pub failed_operations:    usize,
-    pub total_fuel_consumed:  u64,
+    pub failed_operations: usize,
+    pub total_fuel_consumed: u64,
 }
 
 /// ABI statistics
 #[derive(Debug, Clone)]
 pub struct AbiStats {
-    pub total_async_calls:   u64,
-    pub completed_calls:     u64,
-    pub failed_calls:        u64,
-    pub async_lifts:         u64,
-    pub async_lowers:        u64,
+    pub total_async_calls: u64,
+    pub completed_calls: u64,
+    pub failed_calls: u64,
+    pub async_lifts: u64,
+    pub async_lowers: u64,
     pub resource_operations: u64,
-    pub future_operations:   u64,
-    pub stream_operations:   u64,
-    pub active_operations:   u64,
+    pub future_operations: u64,
+    pub stream_operations: u64,
+    pub active_operations: u64,
 }

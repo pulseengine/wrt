@@ -12,15 +12,13 @@ use std::{fmt, mem};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    collections::StaticVec as BoundedVec, component::ComponentType,
+    component_value::ComponentValue, prelude::*,
 };
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    safe_memory::NoStdProvider,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    BoundedString,
+    BoundedString, budget_aware_provider::CrateId, safe_managed_alloc, safe_memory::NoStdProvider,
 };
 
 use crate::{
@@ -62,37 +60,37 @@ pub struct ParsedComponent {
     /// Component type definitions
     #[cfg(feature = "std")]
     pub types: Vec<wrt_foundation::ComponentType<NoStdProvider<1024>>>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub types: BoundedVec<wrt_foundation::ComponentType<NoStdProvider<1024>>, MAX_PARSED_SECTIONS>,
 
     /// Component imports
     #[cfg(feature = "std")]
     pub imports: Vec<ParsedImport>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS>,
 
     /// Component exports
     #[cfg(feature = "std")]
     pub exports: Vec<ParsedExport>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS>,
 
     /// Embedded core modules
     #[cfg(feature = "std")]
     pub modules: Vec<ParsedModule>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub modules: BoundedVec<ParsedModule, 16>,
 
     /// Component instances
     #[cfg(feature = "std")]
     pub instances: Vec<ParsedInstance>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub instances: BoundedVec<ParsedInstance, 16>,
 
     /// Canonical function adapters
     #[cfg(feature = "std")]
     pub canonicals: Vec<ParsedCanonical>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS>,
 }
 
@@ -102,7 +100,7 @@ pub struct ParsedImport {
     /// Import name
     #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<64>,
     /// Import type
     pub import_type: ImportKind,
@@ -136,7 +134,7 @@ pub struct ParsedExport {
     /// Export name
     #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<64>,
     /// Export kind
     pub export_kind: ExportKind,
@@ -163,7 +161,7 @@ pub struct ParsedModule {
     /// Module binary data (simplified - would contain actual WASM bytes)
     #[cfg(feature = "std")]
     pub data: Vec<u8>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub data: BoundedVec<u8, 65536>, // 64KB max for no_std
 }
 
@@ -175,7 +173,7 @@ pub struct ParsedInstance {
     /// Instantiation arguments
     #[cfg(feature = "std")]
     pub args: Vec<InstantiationArg>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub args: BoundedVec<InstantiationArg, 32>,
 }
 
@@ -185,7 +183,7 @@ pub struct InstantiationArg {
     /// Argument name
     #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<64>,
     /// Argument index/value
     pub index: u32,
@@ -204,9 +202,16 @@ pub struct ParsedCanonical {
 #[derive(Debug, Clone)]
 pub enum CanonicalOperation {
     /// Lift operation (core to component)
-    Lift { core_func_index: u32, type_index: u32, options: CanonicalOptions },
+    Lift {
+        core_func_index: u32,
+        type_index: u32,
+        options: CanonicalOptions,
+    },
     /// Lower operation (component to core)
-    Lower { func_index: u32, options: CanonicalOptions },
+    Lower {
+        func_index: u32,
+        options: CanonicalOptions,
+    },
     /// Resource new operation
     ResourceNew { resource_type: u32 },
     /// Resource drop operation
@@ -246,7 +251,7 @@ impl ComponentLoader {
     pub fn new() -> Self {
         Self {
             canonical_abi: CanonicalABI::new(4096), // Default 4KB buffer pool
-            max_component_size: 16 * 1024 * 1024, // 16MB default
+            max_component_size: 16 * 1024 * 1024,   // 16MB default
             validation_level: ValidationLevel::Full,
         }
     }
@@ -267,17 +272,23 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> wrt_error::Result<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size"));
+            return Err(wrt_error::Error::validation_invalid_input(
+                "Component binary data exceeds maximum allowed size",
+            ));
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_error::Error::validation_invalid_input("Component binary data too small, minimum 8 bytes required"));
+            return Err(wrt_error::Error::validation_invalid_input(
+                "Component binary data too small, minimum 8 bytes required",
+            ));
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_error::Error::validation_invalid_input("Invalid WebAssembly magic bytes, expected '\\x00asm'"));
+            return Err(wrt_error::Error::validation_invalid_input(
+                "Invalid WebAssembly magic bytes, expected '\\x00asm'",
+            ));
         }
 
         // Parse sections (simplified implementation)
@@ -296,7 +307,11 @@ impl ComponentLoader {
     }
 
     /// Parse component sections from binary data
-    fn parse_sections(&self, _binary_data: &[u8], parsed: &mut ParsedComponent) -> wrt_error::Result<()> {
+    fn parse_sections(
+        &self,
+        _binary_data: &[u8],
+        parsed: &mut ParsedComponent,
+    ) -> wrt_error::Result<()> {
         // Simplified section parsing - in reality would parse actual WASM component format
 
         // Add a default type - need to provide a memory provider for ComponentType::Unit
@@ -307,12 +322,16 @@ impl ComponentLoader {
         // Add a default import
         #[cfg(feature = "std")]
         let import_name = "default".to_owned();
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let import_name = {
-            let provider = safe_managed_alloc!(512, CrateId::Component)
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::try_from_str("default")
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string"))?
+            let provider = safe_managed_alloc!(512, CrateId::Component).map_err(|_| {
+                wrt_error::Error::validation_invalid_input("Failed to allocate provider")
+            })?;
+            BoundedString::try_from_str("default").map_err(|_| {
+                wrt_error::Error::validation_invalid_input(
+                    "Failed to create default import name as bounded string",
+                )
+            })?
         };
 
         parsed.add_import(ParsedImport {
@@ -323,12 +342,16 @@ impl ComponentLoader {
         // Add a default export
         #[cfg(feature = "std")]
         let export_name = "main".to_owned();
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let export_name = {
-            let provider = safe_managed_alloc!(512, CrateId::Component)
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            BoundedString::try_from_str("main")
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string"))?
+            let provider = safe_managed_alloc!(512, CrateId::Component).map_err(|_| {
+                wrt_error::Error::validation_invalid_input("Failed to allocate provider")
+            })?;
+            BoundedString::try_from_str("main").map_err(|_| {
+                wrt_error::Error::validation_invalid_input(
+                    "Failed to create default export name as bounded string",
+                )
+            })?
         };
 
         parsed.add_export(ParsedExport {
@@ -344,7 +367,9 @@ impl ComponentLoader {
         if self.validation_level == ValidationLevel::Basic {
             // Basic validation - check we have at least some content
             if parsed.types.is_empty() {
-                return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"));
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Component validation failed: no types found",
+                ));
             }
         } else if self.validation_level == ValidationLevel::Full {
             // Full validation - check type consistency
@@ -365,7 +390,10 @@ impl ComponentLoader {
     }
 
     /// Validate import/export consistency
-    fn validate_import_export_consistency(&self, _parsed: &ParsedComponent) -> wrt_error::Result<()> {
+    fn validate_import_export_consistency(
+        &self,
+        _parsed: &ParsedComponent,
+    ) -> wrt_error::Result<()> {
         // In a full implementation, would validate:
         // - All import types are resolvable
         // - Export types match internal definitions
@@ -404,51 +432,61 @@ impl ComponentLoader {
     }
 
     /// Convert parsed import to runtime import
-    fn convert_import(&self, component: &mut Component, import: &ParsedImport) -> wrt_error::Result<()> {
+    fn convert_import(
+        &self,
+        component: &mut Component,
+        import: &ParsedImport,
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         let name: &str = import.name.as_str();
-        #[cfg(not(any(feature = "std", )))]
-        let name: &str = import.name.as_str()
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to get import name as string"))?;
+        #[cfg(not(any(feature = "std",)))]
+        let name: &str = import.name.as_str().map_err(|_| {
+            wrt_error::Error::validation_invalid_input("Failed to get import name as string")
+        })?;
 
         match &import.import_type {
             ImportKind::Function { type_index } => {
                 component.add_function_import(name, *type_index)?;
-            }
+            },
             ImportKind::Value { type_index } => {
                 component.add_value_import(name, *type_index)?;
-            }
+            },
             ImportKind::Instance { type_index } => {
                 component.add_instance_import(name, *type_index)?;
-            }
+            },
             ImportKind::Type { bounds: _ } => {
                 component.add_type_import(name)?;
-            }
+            },
         }
         Ok(())
     }
 
     /// Convert parsed export to runtime export
-    fn convert_export(&self, component: &mut Component, export: &ParsedExport) -> wrt_error::Result<()> {
+    fn convert_export(
+        &self,
+        component: &mut Component,
+        export: &ParsedExport,
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         let name: &str = export.name.as_str();
-        #[cfg(not(any(feature = "std", )))]
-        let name: &str = export.name.as_str()
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to get export name as string"))?;
+        #[cfg(not(any(feature = "std",)))]
+        let name: &str = export.name.as_str().map_err(|_| {
+            wrt_error::Error::validation_invalid_input("Failed to get export name as string")
+        })?;
 
         match &export.export_kind {
             ExportKind::Function { function_index } => {
                 component.add_function_export(name, *function_index)?;
-            }
+            },
             ExportKind::Value { value_index } => {
                 component.add_value_export(name, *value_index)?;
-            }
+            },
             ExportKind::Instance { instance_index } => {
                 component.add_instance_export(name, *instance_index)?;
-            }
+            },
             ExportKind::Type { type_index } => {
                 component.add_type_export(name, *type_index)?;
-            }
+            },
         }
         Ok(())
     }
@@ -458,12 +496,16 @@ impl ComponentLoader {
         #[cfg(feature = "std")]
         let adapter = CoreModuleAdapter::new("module".to_string());
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let adapter = {
-            let _provider = safe_managed_alloc!(512, CrateId::Component)
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate provider"))?;
-            let name = BoundedString::try_from_str("module")
-                .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string"))?;
+            let _provider = safe_managed_alloc!(512, CrateId::Component).map_err(|_| {
+                wrt_error::Error::validation_invalid_input("Failed to allocate provider")
+            })?;
+            let name = BoundedString::try_from_str("module").map_err(|_| {
+                wrt_error::Error::validation_invalid_input(
+                    "Failed to create module adapter name as bounded string",
+                )
+            })?;
             CoreModuleAdapter::new(name)?
         };
 
@@ -504,61 +546,90 @@ impl ParsedComponent {
         Ok(Self {
             #[cfg(feature = "std")]
             types: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component types"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component types",
+                    )
+                })?
             },
             #[cfg(feature = "std")]
             imports: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             imports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component imports"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component imports",
+                    )
+                })?
             },
             #[cfg(feature = "std")]
             exports: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             exports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component exports"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component exports",
+                    )
+                })?
             },
             #[cfg(feature = "std")]
             modules: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             modules: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component modules"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component modules",
+                    )
+                })?
             },
             #[cfg(feature = "std")]
             instances: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             instances: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component instances"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component instances",
+                    )
+                })?
             },
             #[cfg(feature = "std")]
             canonicals: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             canonicals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new().map_err(|| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component canonicals"))?
+                BoundedVec::new().map_err(|| {
+                    wrt_error::Error::resource_exhausted(
+                        "Failed to create bounded vector for component canonicals",
+                    )
+                })?
             },
         })
     }
 
     /// Add a type to the component
-    pub fn add_type(&mut self, component_type: wrt_foundation::ComponentType<NoStdProvider<1024>>) -> wrt_error::Result<()> {
+    pub fn add_type(
+        &mut self,
+        component_type: wrt_foundation::ComponentType<NoStdProvider<1024>>,
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             self.types.push(component_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.types
-                .push(component_type)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add type to component, capacity exceeded"))
+            self.types.push(component_type).map_err(|_| {
+                wrt_error::Error::resource_exhausted(
+                    "Failed to add type to component, capacity exceeded",
+                )
+            })
         }
     }
 
@@ -569,11 +640,13 @@ impl ParsedComponent {
             self.imports.push(import);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.imports
-                .push(import)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add import to component, capacity exceeded"))
+            self.imports.push(import).map_err(|_| {
+                wrt_error::Error::resource_exhausted(
+                    "Failed to add import to component, capacity exceeded",
+                )
+            })
         }
     }
 
@@ -584,11 +657,13 @@ impl ParsedComponent {
             self.exports.push(export);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.exports
-                .push(export)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add export to component, capacity exceeded"))
+            self.exports.push(export).map_err(|_| {
+                wrt_error::Error::resource_exhausted(
+                    "Failed to add export to component, capacity exceeded",
+                )
+            })
         }
     }
 }

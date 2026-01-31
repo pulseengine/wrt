@@ -6,33 +6,23 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap, StaticQueue as BoundedDeque},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId, MemoryProvider,
+    collections::{StaticMap as BoundedMap, StaticQueue as BoundedDeque, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::{Checksum, VerificationLevel},
-    CrateId,
-    MemoryProvider,
 };
 
 use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::{
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
         fuel_aware_waker::create_fuel_aware_waker,
     },
     prelude::*,
@@ -67,19 +57,19 @@ pub enum StreamState {
 #[derive(Debug)]
 pub struct FuelStream<T> {
     /// Stream identifier
-    pub id:                 u64,
+    pub id: u64,
     /// Stream state
-    pub state:              StreamState,
+    pub state: StreamState,
     /// Buffered items
-    pub buffer:             BoundedDeque<T, MAX_STREAM_BUFFER>,
+    pub buffer: BoundedDeque<T, MAX_STREAM_BUFFER>,
     /// Total fuel consumed by this stream
-    pub fuel_consumed:      u64,
+    pub fuel_consumed: u64,
     /// Fuel budget for this stream
-    pub fuel_budget:        u64,
+    pub fuel_budget: u64,
     /// Verification level for fuel tracking
     pub verification_level: VerificationLevel,
     /// Waker for async notifications
-    pub waker:              Option<core::task::Waker>,
+    pub waker: Option<core::task::Waker>,
 }
 
 impl<T> FuelStream<T>
@@ -237,28 +227,29 @@ where
 #[derive(Debug)]
 pub struct ComponentStream {
     /// Stream identifier
-    pub id:               u64,
+    pub id: u64,
     /// Source component instance
     pub source_component: u64,
     /// Target component instance
     pub target_component: u64,
     /// Stream of component values
-    pub value_stream:     FuelStream<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>>,
+    pub value_stream:
+        FuelStream<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>>,
     /// Stream metadata
-    pub metadata:         StreamMetadata,
+    pub metadata: StreamMetadata,
 }
 
 /// Metadata for component streams
 #[derive(Debug, Clone)]
 pub struct StreamMetadata {
     /// Stream name
-    pub name:       String,
+    pub name: String,
     /// Expected item type
-    pub item_type:  String,
+    pub item_type: String,
     /// Whether the stream is bounded
     pub is_bounded: bool,
     /// Maximum number of items (if bounded)
-    pub max_items:  Option<usize>,
+    pub max_items: Option<usize>,
 }
 
 impl ComponentStream {
@@ -283,7 +274,10 @@ impl ComponentStream {
     }
 
     /// Send a value through the stream
-    pub fn send(&mut self, value: wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>) -> Result<()> {
+    pub fn send(
+        &mut self,
+        value: wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>,
+    ) -> Result<()> {
         // Check bounded stream limits
         if self.metadata.is_bounded {
             if let Some(max_items) = self.metadata.max_items {
@@ -299,7 +293,9 @@ impl ComponentStream {
     }
 
     /// Receive a value from the stream
-    pub async fn receive(&mut self) -> Option<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>> {
+    pub async fn receive(
+        &mut self,
+    ) -> Option<wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>> {
         // Poll the stream directly using core::future::poll_fn
         core::future::poll_fn(|cx| self.value_stream.poll_next(cx)).await
     }
@@ -418,11 +414,11 @@ impl FromBytes for ComponentStream {
 /// Stream manager for tracking all active streams
 pub struct FuelStreamManager {
     /// Active streams by ID
-    streams:             BoundedMap<u64, ComponentStream, MAX_STREAM_BUFFER>,
+    streams: BoundedMap<u64, ComponentStream, MAX_STREAM_BUFFER>,
     /// Next stream ID
-    next_stream_id:      u64,
+    next_stream_id: u64,
     /// Global fuel budget for all streams
-    global_fuel_budget:  u64,
+    global_fuel_budget: u64,
     /// Total fuel consumed by all streams
     total_fuel_consumed: u64,
 }
@@ -515,5 +511,4 @@ impl FuelStreamManager {
 
         Ok(())
     }
-
 }

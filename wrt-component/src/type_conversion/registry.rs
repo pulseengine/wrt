@@ -1,17 +1,8 @@
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap as HashMap,
-    string::String,
-    sync::Arc,
-};
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, string::String, sync::Arc};
 #[cfg(not(feature = "std"))]
 use core::{
-    any::{
-        self,
-        Any,
-        TypeId,
-    },
+    any::{self, Any, TypeId},
     fmt,
     marker::PhantomData,
 };
@@ -22,11 +13,7 @@ use core::{
 
 #[cfg(feature = "std")]
 use std::{
-    any::{
-        self,
-        Any,
-        TypeId,
-    },
+    any::{self, Any, TypeId},
     boxed::Box,
     collections::HashMap,
     fmt,
@@ -38,15 +25,15 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct ConversionError {
     /// The specific kind of conversion error
-    pub kind:        ConversionErrorKind,
+    pub kind: ConversionErrorKind,
     /// Source type being converted from
     pub source_type: &'static str,
     /// Target type being converted to
     pub target_type: &'static str,
     /// Additional context information
-    pub context:     Option<String>,
+    pub context: Option<String>,
     /// Source error (for chaining)
-    pub source:      Option<Box<ConversionError>>,
+    pub source: Option<Box<ConversionError>>,
 }
 
 impl fmt::Display for ConversionError {
@@ -143,11 +130,11 @@ where
     To: Convertible + 'static,
     C: Conversion<From, To> + 'static,
 {
-    converter:        C,
+    converter: C,
     source_type_name: &'static str,
     target_type_name: &'static str,
-    _phantom_from:    PhantomData<From>,
-    _phantom_to:      PhantomData<To>,
+    _phantom_from: PhantomData<From>,
+    _phantom_to: PhantomData<To>,
 }
 
 impl<From, To, C> AnyConversion for ConversionAdapter<From, To, C>
@@ -159,11 +146,11 @@ where
     fn convert_any(&self, from: &dyn Any) -> core::result::Result<Box<dyn Any>, ConversionError> {
         // Try to downcast to the expected input type
         let from = from.downcast_ref::<From>().ok_or_else(|| ConversionError {
-            kind:        ConversionErrorKind::InvalidArgument,
+            kind: ConversionErrorKind::InvalidArgument,
             source_type: self.source_type_name,
             target_type: self.target_type_name,
-            context:     Some(String::from("Source value doesn't match expected type")),
-            source:      None,
+            context: Some(String::from("Source value doesn't match expected type")),
+            source: None,
         })?;
 
         // Perform the conversion
@@ -223,7 +210,7 @@ impl TypeConversionRegistry {
     #[cfg(not(feature = "std"))]
     pub fn new() -> Self {
         Self {
-            conversions:   HashMap::new(),
+            conversions: HashMap::new(),
             alloc_enabled: true,
         }
     }
@@ -268,11 +255,11 @@ impl TypeConversionRegistry {
 
         // Look up the converter in the registry
         let converter = self.conversions.get(&key).ok_or_else(|| ConversionError {
-            kind:        ConversionErrorKind::NoConverterFound,
+            kind: ConversionErrorKind::NoConverterFound,
             source_type: any::type_name::<From>(),
             target_type: any::type_name::<To>(),
-            context:     Some(String::from("No converter registered for this type pair")),
-            source:      None,
+            context: Some(String::from("No converter registered for this type pair")),
+            source: None,
         })?;
 
         // Perform the conversion
@@ -280,11 +267,11 @@ impl TypeConversionRegistry {
 
         // Downcast the result to the expected output type
         let result = result.downcast::<To>().map_err(|_| ConversionError {
-            kind:        ConversionErrorKind::ConversionFailed,
+            kind: ConversionErrorKind::ConversionFailed,
             source_type: any::type_name::<From>(),
             target_type: any::type_name::<To>(),
-            context:     Some(String::from("Failed to downcast conversion result")),
-            source:      None,
+            context: Some(String::from("Failed to downcast conversion result")),
+            source: None,
         })?;
 
         Ok(*result)
@@ -300,8 +287,7 @@ impl TypeConversionRegistry {
     /// Register all default conversions
     pub fn register_defaults(&mut self) -> &mut Self {
         use super::registry_conversions::{
-            register_component_instancetype_conversions,
-            register_externtype_conversions,
+            register_component_instancetype_conversions, register_externtype_conversions,
             register_valtype_conversions,
         };
 
@@ -325,7 +311,7 @@ impl TypeConversionRegistry {
         #[cfg(not(feature = "std"))]
         {
             Self {
-                conversions:   HashMap::new(),
+                conversions: HashMap::new(),
                 alloc_enabled: self.alloc_enabled,
             }
         }

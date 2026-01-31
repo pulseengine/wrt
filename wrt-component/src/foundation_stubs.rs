@@ -40,12 +40,12 @@ pub struct SafetyContext {
 
 impl SafetyContext {
     pub const fn new(compile_time: AsilLevel) -> Self {
-        Self { 
-            compile_time_asil: compile_time, 
-            runtime_asil: None 
+        Self {
+            compile_time_asil: compile_time,
+            runtime_asil: None,
         }
     }
-    
+
     pub fn effective_asil(&self) -> AsilLevel {
         self.runtime_asil.unwrap_or(self.compile_time_asil)
     }
@@ -88,16 +88,16 @@ impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
         self.allocated += size;
         Ok(&mut self.buffer[start..self.allocated])
     }
-    
+
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
         // Simple implementation - could reset if ptr is at end
         Ok(())
     }
-    
+
     fn available_memory(&self) -> usize {
         SIZE - self.allocated
     }
-    
+
     fn total_memory(&self) -> usize {
         SIZE
     }
@@ -146,17 +146,23 @@ impl ThreadManager {
         if self.thread_count >= self.max_threads {
             return Err(Error::resource_exhausted("Maximum threads reached"));
         }
-        
+
         let thread_id = self.thread_count;
         self.thread_count += 1;
         Ok(thread_id)
     }
 
-    pub fn get_thread_stats(&self, _thread_id: ThreadId) -> core::result::Result<ThreadExecutionStats, Error> {
+    pub fn get_thread_stats(
+        &self,
+        _thread_id: ThreadId,
+    ) -> core::result::Result<ThreadExecutionStats, Error> {
         Ok(ThreadExecutionStats::default())
     }
 
-    pub fn get_thread_state(&self, _thread_id: ThreadId) -> core::result::Result<ThreadState, Error> {
+    pub fn get_thread_state(
+        &self,
+        _thread_id: ThreadId,
+    ) -> core::result::Result<ThreadState, Error> {
         Ok(ThreadState::Ready)
     }
 

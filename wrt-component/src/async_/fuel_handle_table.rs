@@ -3,35 +3,21 @@
 //! This module provides fuel-aware handle table management for tracking
 //! component resources with deterministic performance characteristics.
 
-use core::sync::atomic::{
-    AtomicU32,
-    AtomicU64,
-    Ordering,
-};
+use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId, MemoryProvider,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::{Checksum, VerificationLevel},
-    CrateId,
-    MemoryProvider,
 };
 
 use crate::{
     async_::{
-        fuel_error_context::{
-            async_error,
-            AsyncErrorKind,
-        },
-        fuel_resource_lifetime::{
-            ResourceHandle,
-            ResourceState,
-        },
+        fuel_error_context::{AsyncErrorKind, async_error},
+        fuel_resource_lifetime::{ResourceHandle, ResourceState},
     },
     prelude::*,
 };
@@ -54,26 +40,26 @@ const TABLE_RESIZE_FUEL: u64 = 50;
 #[derive(Debug)]
 pub struct HandleEntry<T> {
     /// The actual data
-    pub data:          Option<T>,
+    pub data: Option<T>,
     /// Generation counter for ABA problem prevention
-    pub generation:    u32,
+    pub generation: u32,
     /// Resource state
-    pub state:         ResourceState,
+    pub state: ResourceState,
     /// Last access timestamp (in fuel units)
     pub last_accessed: AtomicU64,
     /// Access count
-    pub access_count:  AtomicU32,
+    pub access_count: AtomicU32,
 }
 
 impl<T> HandleEntry<T> {
     /// Create a new handle entry
     pub fn new(data: T) -> Self {
         Self {
-            data:          Some(data),
-            generation:    0,
-            state:         ResourceState::Available,
+            data: Some(data),
+            generation: 0,
+            state: ResourceState::Available,
             last_accessed: AtomicU64::new(wrt_foundation::operations::global_fuel_consumed()),
-            access_count:  AtomicU32::new(0),
+            access_count: AtomicU32::new(0),
         }
     }
 
@@ -88,11 +74,10 @@ impl<T> HandleEntry<T> {
 }
 
 /// Handle with generation for ABA prevention
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct GenerationalHandle {
     /// Index in the handle table
-    pub index:      u32,
+    pub index: u32,
     /// Generation counter
     pub generation: u32,
 }
@@ -112,12 +97,11 @@ impl GenerationalHandle {
     pub fn from_resource_handle(handle: ResourceHandle) -> Self {
         let value = handle.0;
         Self {
-            index:      value as u32,
+            index: value as u32,
             generation: (value >> 32) as u32,
         }
     }
 }
-
 
 impl Checksummable for GenerationalHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -151,39 +135,36 @@ impl FromBytes for GenerationalHandle {
 /// Handle table with fuel tracking
 pub struct FuelHandleTable<T> {
     /// Table identifier
-    pub table_id:       u64,
+    pub table_id: u64,
     /// Entries in the table
-    entries: BoundedVec<
-        HandleEntry<T>,
-        MAX_HANDLES_PER_TABLE,
-    >,
+    entries: BoundedVec<HandleEntry<T>, MAX_HANDLES_PER_TABLE>,
     /// Free list for handle reuse
-    free_list:          BoundedVec<u32, MAX_HANDLES_PER_TABLE>,
+    free_list: BoundedVec<u32, MAX_HANDLES_PER_TABLE>,
     /// Next generation counter
-    next_generation:    AtomicU32,
+    next_generation: AtomicU32,
     /// Total fuel consumed
-    fuel_consumed:      AtomicU64,
+    fuel_consumed: AtomicU64,
     /// Fuel budget for this table
-    fuel_budget:        u64,
+    fuel_budget: u64,
     /// Verification level
     verification_level: VerificationLevel,
     /// Statistics
-    stats:              HandleTableStats,
+    stats: HandleTableStats,
 }
 
 /// Statistics for handle table operations
 #[derive(Debug, Default)]
 pub struct HandleTableStats {
     /// Total allocations
-    pub total_allocations:   AtomicU64,
+    pub total_allocations: AtomicU64,
     /// Total deallocations
     pub total_deallocations: AtomicU64,
     /// Total lookups
-    pub total_lookups:       AtomicU64,
+    pub total_lookups: AtomicU64,
     /// Cache hits (fast path lookups)
-    pub cache_hits:          AtomicU64,
+    pub cache_hits: AtomicU64,
     /// Cache misses
-    pub cache_misses:        AtomicU64,
+    pub cache_misses: AtomicU64,
 }
 
 impl<T> FuelHandleTable<T> {
@@ -423,11 +404,11 @@ impl<T> FuelHandleTable<T> {
 /// Handle table manager for multiple tables
 pub struct HandleTableManager {
     /// Tables by ID
-    tables:              BoundedMap<u64, Box<dyn core::any::Any + Send + Sync>, MAX_HANDLE_TABLES>,
+    tables: BoundedMap<u64, Box<dyn core::any::Any + Send + Sync>, MAX_HANDLE_TABLES>,
     /// Next table ID
-    next_table_id:       AtomicU64,
+    next_table_id: AtomicU64,
     /// Global fuel budget
-    global_fuel_budget:  u64,
+    global_fuel_budget: u64,
     /// Total fuel consumed across all tables
     total_fuel_consumed: AtomicU64,
 }
@@ -513,5 +494,4 @@ impl HandleTableManager {
 
         Ok(())
     }
-
 }

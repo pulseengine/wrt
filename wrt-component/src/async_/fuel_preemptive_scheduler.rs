@@ -5,46 +5,29 @@
 
 use core::{
     cmp::Ordering as CmpOrdering,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
-        fuel_async_scheduler::{
-            ScheduledTask,
-            SchedulingPolicy,
-        },
-        fuel_priority_inheritance::{
-            FuelPriorityInheritanceProtocol,
-            ResourceId,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
+        fuel_async_scheduler::{ScheduledTask, SchedulingPolicy},
+        fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder TaskId when threading is not available
@@ -69,19 +52,19 @@ const AGING_CHECK_FUEL: u64 = 5;
 /// Preemptive scheduler with fuel-based time slicing
 pub struct FuelPreemptiveScheduler {
     /// Tasks organized by priority level
-    priority_queues:    BoundedVec<TaskPriorityQueue, MAX_PRIORITY_LEVELS>,
+    priority_queues: BoundedVec<TaskPriorityQueue, MAX_PRIORITY_LEVELS>,
     /// Currently running task
-    current_task:       Option<RunningTaskContext>,
+    current_task: Option<RunningTaskContext>,
     /// Task information indexed by TaskId
-    task_info:          BoundedMap<TaskId, PreemptiveTaskInfo, MAX_PREEMPTIVE_TASKS>,
+    task_info: BoundedMap<TaskId, PreemptiveTaskInfo, MAX_PREEMPTIVE_TASKS>,
     /// Scheduling configuration
-    config:             PreemptiveSchedulerConfig,
+    config: PreemptiveSchedulerConfig,
     /// Priority inheritance protocol
-    priority_protocol:  FuelPriorityInheritanceProtocol,
+    priority_protocol: FuelPriorityInheritanceProtocol,
     /// Scheduler statistics
-    stats:              PreemptiveSchedulerStats,
+    stats: PreemptiveSchedulerStats,
     /// Current fuel time for scheduling decisions
-    current_fuel_time:  AtomicU64,
+    current_fuel_time: AtomicU64,
     /// Whether preemption is enabled
     preemption_enabled: AtomicBool,
     /// Verification level for fuel tracking
@@ -92,15 +75,15 @@ pub struct FuelPreemptiveScheduler {
 #[derive(Debug)]
 pub struct TaskPriorityQueue {
     /// Priority level of this queue
-    pub priority:             Priority,
+    pub priority: Priority,
     /// Tasks at this priority level
-    pub tasks:                BoundedVec<TaskId, MAX_PREEMPTIVE_TASKS>,
+    pub tasks: BoundedVec<TaskId, MAX_PREEMPTIVE_TASKS>,
     /// Round-robin position for this priority level
     pub round_robin_position: AtomicUsize,
     /// Total fuel consumed by tasks at this priority
-    pub fuel_consumed:        AtomicU64,
+    pub fuel_consumed: AtomicU64,
     /// Number of context switches for this priority
-    pub context_switches:     AtomicUsize,
+    pub context_switches: AtomicUsize,
 }
 
 impl Default for TaskPriorityQueue {
@@ -120,7 +103,9 @@ impl Clone for TaskPriorityQueue {
         Self {
             priority: self.priority,
             tasks: self.tasks.clone(),
-            round_robin_position: AtomicUsize::new(self.round_robin_position.load(Ordering::Relaxed)),
+            round_robin_position: AtomicUsize::new(
+                self.round_robin_position.load(Ordering::Relaxed),
+            ),
             fuel_consumed: AtomicU64::new(self.fuel_consumed.load(Ordering::Relaxed)),
             context_switches: AtomicUsize::new(self.context_switches.load(Ordering::Relaxed)),
         }
@@ -172,33 +157,33 @@ impl wrt_foundation::traits::FromBytes for TaskPriorityQueue {
 #[derive(Debug, Clone)]
 pub struct PreemptiveTaskInfo {
     /// Task identifier
-    pub task_id:            TaskId,
+    pub task_id: TaskId,
     /// Component owning the task
-    pub component_id:       ComponentInstanceId,
+    pub component_id: ComponentInstanceId,
     /// Base priority of the task
-    pub base_priority:      Priority,
+    pub base_priority: Priority,
     /// Current effective priority (may be boosted)
     pub effective_priority: Priority,
     /// Fuel budget for the task
-    pub fuel_budget:        u64,
+    pub fuel_budget: u64,
     /// Fuel consumed by the task
-    pub fuel_consumed:      u64,
+    pub fuel_consumed: u64,
     /// Fuel quantum for time slicing
-    pub fuel_quantum:       u64,
+    pub fuel_quantum: u64,
     /// Current state of the task
-    pub state:              AsyncTaskState,
+    pub state: AsyncTaskState,
     /// Time when task last ran
-    pub last_run_time:      u64,
+    pub last_run_time: u64,
     /// Total time the task has been running
-    pub total_run_time:     u64,
+    pub total_run_time: u64,
     /// Number of times the task has been preempted
-    pub preemption_count:   usize,
+    pub preemption_count: usize,
     /// Priority boost level (0 = no boost)
-    pub priority_boost:     u32,
+    pub priority_boost: u32,
     /// Deadline for the task (if any)
-    pub deadline:           Option<Duration>,
+    pub deadline: Option<Duration>,
     /// Whether the task can be preempted
-    pub preemptible:        bool,
+    pub preemptible: bool,
 }
 
 impl Default for PreemptiveTaskInfo {
@@ -284,72 +269,72 @@ impl wrt_foundation::traits::FromBytes for PreemptiveTaskInfo {
 #[derive(Debug, Clone)]
 pub struct RunningTaskContext {
     /// Task identifier
-    pub task_id:           TaskId,
+    pub task_id: TaskId,
     /// When the task started running (fuel time)
-    pub start_time:        u64,
+    pub start_time: u64,
     /// Fuel quantum allocated for this run
     pub allocated_quantum: u64,
     /// Fuel consumed in current run
-    pub consumed_quantum:  u64,
+    pub consumed_quantum: u64,
     /// Priority when task started running
-    pub run_priority:      Priority,
+    pub run_priority: Priority,
     /// Whether task can be preempted
-    pub preemptible:       bool,
+    pub preemptible: bool,
 }
 
 /// Configuration for the preemptive scheduler
 #[derive(Debug, Clone)]
 pub struct PreemptiveSchedulerConfig {
     /// Default fuel quantum for time slicing
-    pub default_fuel_quantum:        u64,
+    pub default_fuel_quantum: u64,
     /// Whether to enable priority aging
-    pub enable_priority_aging:       bool,
+    pub enable_priority_aging: bool,
     /// Fuel threshold for priority aging
-    pub aging_fuel_threshold:        u64,
+    pub aging_fuel_threshold: u64,
     /// Maximum priority boost level
-    pub max_priority_boost:          u32,
+    pub max_priority_boost: u32,
     /// Whether to enable deadline scheduling
-    pub enable_deadline_scheduling:  bool,
+    pub enable_deadline_scheduling: bool,
     /// Whether to enable priority inheritance
     pub enable_priority_inheritance: bool,
     /// Minimum fuel quantum (prevents starvation)
-    pub min_fuel_quantum:            u64,
+    pub min_fuel_quantum: u64,
     /// Maximum fuel quantum
-    pub max_fuel_quantum:            u64,
+    pub max_fuel_quantum: u64,
 }
 
 /// Scheduler performance statistics
 #[derive(Debug)]
 pub struct PreemptiveSchedulerStats {
     /// Total number of preemptions
-    pub total_preemptions:       AtomicUsize,
+    pub total_preemptions: AtomicUsize,
     /// Total number of context switches
-    pub total_context_switches:  AtomicUsize,
+    pub total_context_switches: AtomicUsize,
     /// Total number of priority boosts
-    pub total_priority_boosts:   AtomicUsize,
+    pub total_priority_boosts: AtomicUsize,
     /// Total fuel consumed by scheduler overhead
     pub scheduler_fuel_consumed: AtomicU64,
     /// Average task run time in fuel units
-    pub average_task_run_time:   AtomicU64,
+    pub average_task_run_time: AtomicU64,
     /// Number of deadline misses
-    pub deadline_misses:         AtomicUsize,
+    pub deadline_misses: AtomicUsize,
     /// Total tasks scheduled
-    pub total_tasks_scheduled:   AtomicUsize,
+    pub total_tasks_scheduled: AtomicUsize,
     /// Current active tasks
-    pub active_tasks:            AtomicUsize,
+    pub active_tasks: AtomicUsize,
 }
 
 impl Default for PreemptiveSchedulerConfig {
     fn default() -> Self {
         Self {
-            default_fuel_quantum:        DEFAULT_FUEL_QUANTUM,
-            enable_priority_aging:       true,
-            aging_fuel_threshold:        5000,
-            max_priority_boost:          3,
-            enable_deadline_scheduling:  true,
+            default_fuel_quantum: DEFAULT_FUEL_QUANTUM,
+            enable_priority_aging: true,
+            aging_fuel_threshold: 5000,
+            max_priority_boost: 3,
+            enable_deadline_scheduling: true,
             enable_priority_inheritance: true,
-            min_fuel_quantum:            100,
-            max_fuel_quantum:            10000,
+            min_fuel_quantum: 100,
+            max_fuel_quantum: 10000,
         }
     }
 }
@@ -393,14 +378,14 @@ impl FuelPreemptiveScheduler {
             config,
             priority_protocol,
             stats: PreemptiveSchedulerStats {
-                total_preemptions:       AtomicUsize::new(0),
-                total_context_switches:  AtomicUsize::new(0),
-                total_priority_boosts:   AtomicUsize::new(0),
+                total_preemptions: AtomicUsize::new(0),
+                total_context_switches: AtomicUsize::new(0),
+                total_priority_boosts: AtomicUsize::new(0),
                 scheduler_fuel_consumed: AtomicU64::new(0),
-                average_task_run_time:   AtomicU64::new(0),
-                deadline_misses:         AtomicUsize::new(0),
-                total_tasks_scheduled:   AtomicUsize::new(0),
-                active_tasks:            AtomicUsize::new(0),
+                average_task_run_time: AtomicU64::new(0),
+                deadline_misses: AtomicUsize::new(0),
+                total_tasks_scheduled: AtomicUsize::new(0),
+                active_tasks: AtomicUsize::new(0),
             },
             current_fuel_time: AtomicU64::new(0),
             preemption_enabled: AtomicBool::new(true),
@@ -597,7 +582,10 @@ impl FuelPreemptiveScheduler {
                 if let Some(task_info) = self.task_info.get_mut(&current.task_id) {
                     task_info.preemption_count += 1;
                     task_info.total_run_time += current_time.saturating_sub(current.start_time);
-                    (task_info.state == AsyncTaskState::Ready, task_info.effective_priority)
+                    (
+                        task_info.state == AsyncTaskState::Ready,
+                        task_info.effective_priority,
+                    )
                 } else {
                     (false, 0)
                 }
@@ -615,11 +603,7 @@ impl FuelPreemptiveScheduler {
     }
 
     /// Start executing a task
-    pub fn start_task_execution(
-        &mut self,
-        task_id: TaskId,
-        current_time: u64,
-    ) -> Result<()> {
+    pub fn start_task_execution(&mut self, task_id: TaskId, current_time: u64) -> Result<()> {
         record_global_operation(OperationType::ControlFlow, self.verification_level);
         self.consume_scheduler_fuel(CONTEXT_SWITCH_FUEL)?;
 
@@ -655,7 +639,8 @@ impl FuelPreemptiveScheduler {
         self.consume_scheduler_fuel(AGING_CHECK_FUEL)?;
 
         // Collect tasks that need priority boosts to avoid double borrow
-        let mut tasks_to_boost = BoundedVec::<(TaskId, Priority, Priority), MAX_PREEMPTIVE_TASKS>::new();
+        let mut tasks_to_boost =
+            BoundedVec::<(TaskId, Priority, Priority), MAX_PREEMPTIVE_TASKS>::new();
 
         for (task_id, task_info) in self.task_info.iter() {
             if task_info.state == AsyncTaskState::Ready {
@@ -696,13 +681,25 @@ impl FuelPreemptiveScheduler {
     /// Get scheduler statistics
     pub fn get_statistics(&self) -> PreemptiveSchedulerStats {
         PreemptiveSchedulerStats {
-            total_preemptions: AtomicUsize::new(self.stats.total_preemptions.load(Ordering::Acquire)),
-            total_context_switches: AtomicUsize::new(self.stats.total_context_switches.load(Ordering::Acquire)),
-            total_priority_boosts: AtomicUsize::new(self.stats.total_priority_boosts.load(Ordering::Acquire)),
-            scheduler_fuel_consumed: AtomicU64::new(self.stats.scheduler_fuel_consumed.load(Ordering::Acquire)),
-            average_task_run_time: AtomicU64::new(self.stats.average_task_run_time.load(Ordering::Acquire)),
+            total_preemptions: AtomicUsize::new(
+                self.stats.total_preemptions.load(Ordering::Acquire),
+            ),
+            total_context_switches: AtomicUsize::new(
+                self.stats.total_context_switches.load(Ordering::Acquire),
+            ),
+            total_priority_boosts: AtomicUsize::new(
+                self.stats.total_priority_boosts.load(Ordering::Acquire),
+            ),
+            scheduler_fuel_consumed: AtomicU64::new(
+                self.stats.scheduler_fuel_consumed.load(Ordering::Acquire),
+            ),
+            average_task_run_time: AtomicU64::new(
+                self.stats.average_task_run_time.load(Ordering::Acquire),
+            ),
             deadline_misses: AtomicUsize::new(self.stats.deadline_misses.load(Ordering::Acquire)),
-            total_tasks_scheduled: AtomicUsize::new(self.stats.total_tasks_scheduled.load(Ordering::Acquire)),
+            total_tasks_scheduled: AtomicUsize::new(
+                self.stats.total_tasks_scheduled.load(Ordering::Acquire),
+            ),
             active_tasks: AtomicUsize::new(self.stats.active_tasks.load(Ordering::Acquire)),
         }
     }
@@ -721,10 +718,10 @@ impl FuelPreemptiveScheduler {
 
     fn calculate_fuel_quantum(&self, priority: Priority, fuel_budget: u64) -> u64 {
         let base_quantum = match priority {
-            225..=255 => self.config.max_fuel_quantum,            // Critical priority
-            161..=224 => self.config.default_fuel_quantum * 2,    // High priority
-            97..=160 => self.config.default_fuel_quantum,         // Normal priority
-            0..=96 => self.config.default_fuel_quantum / 2,       // Low priority
+            225..=255 => self.config.max_fuel_quantum, // Critical priority
+            161..=224 => self.config.default_fuel_quantum * 2, // High priority
+            97..=160 => self.config.default_fuel_quantum, // Normal priority
+            0..=96 => self.config.default_fuel_quantum / 2, // Low priority
         };
 
         // Ensure quantum is within bounds and doesn't exceed budget
@@ -745,11 +742,7 @@ impl FuelPreemptiveScheduler {
         }
     }
 
-    fn add_task_to_priority_queue(
-        &mut self,
-        task_id: TaskId,
-        priority: Priority,
-    ) -> Result<()> {
+    fn add_task_to_priority_queue(&mut self, task_id: TaskId, priority: Priority) -> Result<()> {
         for queue in self.priority_queues.iter_mut() {
             if queue.priority == priority {
                 queue
@@ -823,5 +816,4 @@ impl FuelPreemptiveScheduler {
         self.stats.scheduler_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         Ok(())
     }
-
 }

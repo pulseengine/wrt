@@ -7,10 +7,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
-use std::sync::{
-    Arc,
-    RwLock,
-};
+use std::sync::{Arc, RwLock};
 
 use wrt_runtime::Memory;
 // Instance is from wrt_format, not wrt_runtime
@@ -19,11 +16,7 @@ use wrt_format::component::Instance;
 use wrt_sync::RwLock;
 
 use crate::{
-    canonical_abi::canonical_realloc::{
-        ComponentInstanceId,
-        ReallocManager,
-        StringEncoding,
-    },
+    canonical_abi::canonical_realloc::{ComponentInstanceId, ReallocManager, StringEncoding},
     memory_layout::MemoryLayout,
     prelude::*,
 };
@@ -35,19 +28,19 @@ pub type ComponentError = Error;
 #[derive(Debug, Clone)]
 pub struct CanonicalOptions {
     /// Memory index for canonical operations
-    pub memory:          u32,
+    pub memory: u32,
     /// Binary std/no_std choice
-    pub realloc:         Option<u32>,
+    pub realloc: Option<u32>,
     /// Post-return function index (optional)
-    pub post_return:     Option<u32>,
+    pub post_return: Option<u32>,
     /// String encoding
     pub string_encoding: StringEncoding,
     /// Instance ID for this set of options
-    pub instance_id:     ComponentInstanceId,
+    pub instance_id: ComponentInstanceId,
     /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
     /// Memory.grow function index (MVP spec addition)
-    pub memory_grow:     Option<u32>,
+    pub memory_grow: Option<u32>,
 }
 
 /// Canonical lift context with full memory management
@@ -55,11 +48,11 @@ pub struct CanonicalLiftContext<'a> {
     /// Runtime instance
     pub instance: &'a Instance,
     /// Memory for lifting
-    pub memory:   &'a Memory,
+    pub memory: &'a Memory,
     /// Canonical options
-    pub options:  &'a CanonicalOptions,
+    pub options: &'a CanonicalOptions,
     /// Binary std/no_std choice
-    allocations:  Vec<TempAllocation>,
+    allocations: Vec<TempAllocation>,
 }
 
 /// Canonical lower context with full memory management
@@ -67,17 +60,17 @@ pub struct CanonicalLowerContext<'a> {
     /// Runtime instance
     pub instance: &'a mut Instance,
     /// Memory for lowering
-    pub memory:   &'a mut Memory,
+    pub memory: &'a mut Memory,
     /// Canonical options
-    pub options:  &'a CanonicalOptions,
+    pub options: &'a CanonicalOptions,
     /// Allocations made during lower
-    allocations:  Vec<TempAllocation>,
+    allocations: Vec<TempAllocation>,
 }
 
 #[derive(Debug)]
 pub struct TempAllocation {
-    ptr:   i32,
-    size:  i32,
+    ptr: i32,
+    size: i32,
     align: i32,
 }
 
@@ -178,7 +171,9 @@ impl<'a> CanonicalLiftContext<'a> {
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::resource_not_found("Realloc manager not available"));
+            return Err(ComponentError::resource_not_found(
+                "Realloc manager not available",
+            ));
         };
 
         // Binary std/no_std choice
@@ -198,14 +193,16 @@ impl<'a> CanonicalLiftContext<'a> {
         len: usize,
     ) -> core::result::Result<Vec<u8>, ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::runtime_type_mismatch("Invalid negative pointer for memory read"));
+            return Err(ComponentError::runtime_type_mismatch(
+                "Invalid negative pointer for memory read",
+            ));
         }
 
         let offset = ptr as u32;
         let mut buffer = vec![0u8; len];
-        self.memory
-            .read(offset, &mut buffer)
-            .map_err(|_| ComponentError::resource_not_found("Memory read failed: invalid address"))?;
+        self.memory.read(offset, &mut buffer).map_err(|_| {
+            ComponentError::resource_not_found("Memory read failed: invalid address")
+        })?;
         Ok(buffer)
     }
 
@@ -218,22 +215,26 @@ impl<'a> CanonicalLiftContext<'a> {
         let bytes = self.read_bytes(ptr, len)?;
 
         match self.options.string_encoding {
-            StringEncoding::Utf8 => {
-                String::from_utf8(bytes).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-8 string encoding"))
-            },
+            StringEncoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
+                ComponentError::runtime_type_mismatch("Invalid UTF-8 string encoding")
+            }),
             StringEncoding::Utf16Le => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-16LE string encoding"))
+                String::from_utf16(&u16_values).map_err(|_| {
+                    ComponentError::runtime_type_mismatch("Invalid UTF-16LE string encoding")
+                })
             },
             StringEncoding::Utf16Be => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values).map_err(|_| ComponentError::runtime_type_mismatch("Invalid UTF-16BE string encoding"))
+                String::from_utf16(&u16_values).map_err(|_| {
+                    ComponentError::runtime_type_mismatch("Invalid UTF-16BE string encoding")
+                })
             },
             StringEncoding::Latin1 => Ok(bytes.into_iter().map(|b| b as char).collect()),
         }
@@ -298,7 +299,9 @@ impl<'a> CanonicalLowerContext<'a> {
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::resource_not_found("Realloc manager not available"));
+            return Err(ComponentError::resource_not_found(
+                "Realloc manager not available",
+            ));
         };
 
         // Binary std/no_std choice
@@ -318,7 +321,9 @@ impl<'a> CanonicalLowerContext<'a> {
         data: &[u8],
     ) -> core::result::Result<(), ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::runtime_type_mismatch("Invalid negative pointer for memory write"));
+            return Err(ComponentError::runtime_type_mismatch(
+                "Invalid negative pointer for memory write",
+            ));
         }
 
         let offset = ptr as usize;
@@ -367,13 +372,13 @@ impl<'a> CanonicalLowerContext<'a> {
 
 /// Builder for canonical options
 pub struct CanonicalOptionsBuilder {
-    memory:          u32,
-    realloc:         Option<u32>,
-    post_return:     Option<u32>,
+    memory: u32,
+    realloc: Option<u32>,
+    post_return: Option<u32>,
     string_encoding: StringEncoding,
-    instance_id:     ComponentInstanceId,
+    instance_id: ComponentInstanceId,
     realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
-    memory_grow:     Option<u32>,
+    memory_grow: Option<u32>,
 }
 
 impl CanonicalOptionsBuilder {

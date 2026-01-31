@@ -43,20 +43,10 @@ use alloc::{
 };
 
 // Additional imports
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_format::component::{
-    ComponentTypeDefinition,
-    ExternType as FormatExternType,
-};
+use wrt_error::{Error, Result};
+use wrt_format::component::{ComponentTypeDefinition, ExternType as FormatExternType};
 use wrt_foundation::{
-    component::{
-        ComponentType,
-        ExternType as TypesExternType,
-        InstanceType,
-    },
+    component::{ComponentType, ExternType as TypesExternType, InstanceType},
     safe_memory::NoStdProvider,
 };
 
@@ -65,10 +55,7 @@ use wrt_foundation::{
 use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use super::bidirectional::{
-    format_to_runtime_extern_type,
-    runtime_to_format_extern_type,
-    IntoFormatType,
-    IntoRuntimeType,
+    IntoFormatType, IntoRuntimeType, format_to_runtime_extern_type, runtime_to_format_extern_type,
 };
 
 use crate::bounded_component_infra::ComponentProvider;
@@ -241,26 +228,30 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
         let runtime_type = runtime_type.into_inner();
 
         // Convert imports from Import<P> structs to tuples
-        let imports_result: Result<Vec<(String, String, FormatExternType)>> =
-            runtime_type
-                .imports
-                .into_iter()
-                .map(|import| {
-                    let namespace = namespace_to_string(&import.key.namespace)?;
-                    let name = import.key.name.as_str()
-                        .map_err(|_| Error::runtime_execution_error("Invalid import name"))?
-                        .to_owned();
-                    runtime_to_format_extern_type(&import.ty)
-                        .map(|format_type| (namespace, name, format_type))
-                })
-                .collect();
+        let imports_result: Result<Vec<(String, String, FormatExternType)>> = runtime_type
+            .imports
+            .into_iter()
+            .map(|import| {
+                let namespace = namespace_to_string(&import.key.namespace)?;
+                let name = import
+                    .key
+                    .name
+                    .as_str()
+                    .map_err(|_| Error::runtime_execution_error("Invalid import name"))?
+                    .to_owned();
+                runtime_to_format_extern_type(&import.ty)
+                    .map(|format_type| (namespace, name, format_type))
+            })
+            .collect();
 
         // Convert exports from Export<P> structs to tuples
         let exports_result: Result<Vec<(String, FormatExternType)>> = runtime_type
             .exports
             .into_iter()
             .map(|export| {
-                let name = export.name.as_str()
+                let name = export
+                    .name
+                    .as_str()
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?
                     .to_owned();
                 runtime_to_format_extern_type(&export.ty).map(|format_type| (name, format_type))
@@ -283,7 +274,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
         let provider = ComponentProvider::default();
         #[cfg(not(feature = "std"))]
         let provider = {
-            use wrt_foundation::{safe_managed_alloc, CrateId};
+            use wrt_foundation::{CrateId, safe_managed_alloc};
             safe_managed_alloc!(4096, CrateId::Component)?
         };
 
@@ -306,7 +297,8 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
                 },
                 ty: runtime_type,
             };
-            import_vec.push(import)
+            import_vec
+                .push(import)
                 .map_err(|_| Error::capacity_exceeded("Too many imports"))?;
         }
 
@@ -326,7 +318,8 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
                 ty: runtime_type,
                 desc: None,
             };
-            export_vec.push(export)
+            export_vec
+                .push(export)
                 .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
         }
 
@@ -356,7 +349,9 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
             .exports
             .into_iter()
             .map(|export| {
-                let name = export.name.as_str()
+                let name = export
+                    .name
+                    .as_str()
                     .map_err(|_| Error::runtime_execution_error("Invalid export name"))?
                     .to_owned();
                 runtime_to_format_extern_type(&export.ty).map(|format_type| (name, format_type))
@@ -378,7 +373,7 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
         let provider = ComponentProvider::default();
         #[cfg(not(feature = "std"))]
         let provider = {
-            use wrt_foundation::{safe_managed_alloc, CrateId};
+            use wrt_foundation::{CrateId, safe_managed_alloc};
             safe_managed_alloc!(4096, CrateId::Component)?
         };
 
@@ -398,7 +393,8 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
                 ty: runtime_type,
                 desc: None,
             };
-            export_vec.push(export)
+            export_vec
+                .push(export)
                 .map_err(|_| Error::capacity_exceeded("Too many exports"))?;
         }
 

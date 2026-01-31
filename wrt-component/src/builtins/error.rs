@@ -7,35 +7,20 @@
 // Note: Full functionality requires std feature for Arc/Mutex
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    string::String,
-    vec::Vec,
-};
+use alloc::{boxed::Box, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
     collections::HashMap,
     string::String,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     vec::Vec,
 };
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::component_value::ComponentValue;
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    safe_memory::NoStdProvider,
-};
+use wrt_foundation::{collections::StaticVec as BoundedVec, safe_memory::NoStdProvider};
 
 // Define a stub BuiltinType for no_std
 #[cfg(not(feature = "std"))]
@@ -54,9 +39,9 @@ use super::BuiltinHandler;
 #[derive(Clone, Debug)]
 pub struct ErrorContext {
     /// Error message
-    message:  String,
+    message: String,
     /// Optional trace information
-    trace:    Vec<String>,
+    trace: Vec<String>,
     /// Optional additional metadata
     metadata: HashMap<String, String>,
 }
@@ -65,8 +50,8 @@ impl ErrorContext {
     /// Create a new error context with the given message
     pub fn new(message: &str) -> Self {
         Self {
-            message:  message.to_string(),
-            trace:    Vec::new(),
+            message: message.to_string(),
+            trace: Vec::new(),
             metadata: HashMap::new(),
         }
     }
@@ -103,7 +88,7 @@ pub struct ErrorContextStore {
     /// Map of error context ID to error context
     contexts: HashMap<u64, ErrorContext>,
     /// Next available error context ID
-    next_id:  u64,
+    next_id: u64,
 }
 
 impl ErrorContextStore {
@@ -111,7 +96,7 @@ impl ErrorContextStore {
     pub fn new() -> Self {
         Self {
             contexts: HashMap::new(),
-            next_id:  1,
+            next_id: 1,
         }
     }
 

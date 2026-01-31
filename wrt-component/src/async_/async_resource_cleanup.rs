@@ -10,39 +10,22 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::BTreeMap,
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    prelude::*,
-    safe_managed_alloc,
+    bounded::BoundedString, budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    prelude::*, safe_managed_alloc,
 };
 
 // Note: ComponentInstanceId and TypeId may not exist - using placeholders
 pub use crate::types::ComponentInstanceId;
 use crate::{
-    async_::async_types::{
-        ErrorContextHandle,
-        FutureHandle,
-        StreamHandle,
-    },
+    async_::async_types::{ErrorContextHandle, FutureHandle, StreamHandle},
     types::Value,
 };
 pub type TypeId = u32;
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 
 /// Maximum number of cleanup entries in no_std
 const MAX_CLEANUP_ENTRIES: usize = 512;
@@ -60,12 +43,9 @@ pub struct AsyncResourceCleanupManager {
     cleanup_entries: BoundedVec<
         (
             ComponentInstanceId,
-            BoundedVec<
-                AsyncCleanupEntry,
-                MAX_ASYNC_RESOURCES_PER_INSTANCE
-            >,
+            BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>,
         ),
-        MAX_CLEANUP_ENTRIES
+        MAX_CLEANUP_ENTRIES,
     >,
 
     /// Global cleanup statistics
@@ -187,14 +167,14 @@ pub enum AsyncCleanupData {
 
     /// Stream cleanup data
     Stream {
-        handle:         StreamHandle,
+        handle: StreamHandle,
         close_readable: bool,
         close_writable: bool,
     },
 
     /// Future cleanup data
     Future {
-        handle:         FutureHandle,
+        handle: FutureHandle,
         cancel_pending: bool,
     },
 
@@ -203,36 +183,36 @@ pub enum AsyncCleanupData {
 
     /// Async task cleanup data
     AsyncTask {
-        task_id:      u32,
+        task_id: u32,
         execution_id: Option<u32>,
         force_cancel: bool,
     },
 
     /// Borrowed handle cleanup data
     BorrowedHandle {
-        handle:            u32,
+        handle: u32,
         lifetime_scope_id: u32,
-        source_component:  u32,
+        source_component: u32,
     },
 
     /// Lifetime scope cleanup data
     LifetimeScope {
-        scope_id:     u32,
+        scope_id: u32,
         component_id: u32,
-        task_id:      u32,
+        task_id: u32,
     },
 
     /// Resource representation cleanup data
     ResourceRepresentation {
-        handle:       u32,
-        resource_id:  u32,
+        handle: u32,
+        resource_id: u32,
         component_id: u32,
     },
 
     /// Subtask cleanup data
     Subtask {
-        execution_id:  u32,
-        task_id:       u32,
+        execution_id: u32,
+        task_id: u32,
         force_cleanup: bool,
     },
 
@@ -242,7 +222,7 @@ pub enum AsyncCleanupData {
         cleanup_id: String,
         #[cfg(not(any(feature = "std",)))]
         cleanup_id: BoundedString<64>,
-        data:       u64, // Generic data field
+        data: u64, // Generic data field
     },
 }
 
@@ -259,15 +239,15 @@ pub struct AsyncCleanupStats {
     pub failed_cleanups: u64,
 
     /// Cleanup by resource type
-    pub stream_cleanups:                  u64,
-    pub future_cleanups:                  u64,
-    pub error_context_cleanups:           u64,
-    pub async_task_cleanups:              u64,
-    pub borrowed_handle_cleanups:         u64,
-    pub lifetime_scope_cleanups:          u64,
+    pub stream_cleanups: u64,
+    pub future_cleanups: u64,
+    pub error_context_cleanups: u64,
+    pub async_task_cleanups: u64,
+    pub borrowed_handle_cleanups: u64,
+    pub lifetime_scope_cleanups: u64,
     pub resource_representation_cleanups: u64,
-    pub subtask_cleanups:                 u64,
-    pub custom_cleanups:                  u64,
+    pub subtask_cleanups: u64,
+    pub custom_cleanups: u64,
 
     /// Average cleanup time (simplified for no_std)
     pub avg_cleanup_time_ns: u64,
@@ -456,7 +436,11 @@ impl AsyncResourceCleanupManager {
                 #[cfg(not(feature = "std"))]
                 let id_str = match cleanup_id.as_str() {
                     Ok(s) => s,
-                    Err(_) => return CleanupResult::Failed(Error::runtime_error("Invalid cleanup ID string")),
+                    Err(_) => {
+                        return CleanupResult::Failed(Error::runtime_error(
+                            "Invalid cleanup ID string",
+                        ));
+                    },
                 };
                 self.cleanup_custom(id_str, *data)
             },

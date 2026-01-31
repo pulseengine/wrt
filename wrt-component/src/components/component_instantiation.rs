@@ -54,10 +54,8 @@ use std::{
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedString,
+    CrateId, bounded::BoundedString, collections::StaticVec as BoundedVec, safe_managed_alloc,
     safe_memory::NoStdProvider,
-    collections::StaticVec as BoundedVec,
-    safe_managed_alloc, CrateId,
 };
 
 #[cfg(feature = "std")]
@@ -83,33 +81,20 @@ use alloc::{
 
 // use crate::component_communication::{CallRouter, CallContext as CommCallContext};
 // use crate::call_context::CallContextManager;
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 
 use wrt_foundation::{
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
-    verification::Checksum,
     MemoryProvider,
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
+    verification::Checksum,
 };
 
 use crate::{
-    bounded_component_infra::{ComponentProvider, BufferProvider},
-    canonical_abi::{
-        CanonicalABI,
-        CanonicalMemory,
-        ComponentType,
-        ComponentValue,
-    },
+    bounded_component_infra::{BufferProvider, ComponentProvider},
+    canonical_abi::{CanonicalABI, CanonicalMemory, ComponentType, ComponentValue},
     components::component::Component as RuntimeComponent,
     resource_management::{
-        ResourceData,
-        ResourceHandle,
-        ResourceManager as ComponentResourceManager,
-        ResourceTypeId,
+        ResourceData, ResourceHandle, ResourceManager as ComponentResourceManager, ResourceTypeId,
     },
     types::{ComponentInstanceState, ComponentMetadata},
 };
@@ -173,11 +158,11 @@ pub struct InstanceConfig {
     /// Maximum memory size in bytes
     pub max_memory_size: u32,
     /// Maximum table size
-    pub max_table_size:  u32,
+    pub max_table_size: u32,
     /// Enable debug mode
-    pub debug_mode:      bool,
+    pub debug_mode: bool,
     /// Binary std/no_std choice
-    pub memory_config:   MemoryConfig,
+    pub memory_config: MemoryConfig,
 }
 
 /// Memory configuration for component instances
@@ -186,22 +171,21 @@ pub struct MemoryConfig {
     /// Initial memory size in pages (64KB each)
     pub initial_pages: u32,
     /// Maximum memory size in pages
-    pub max_pages:     Option<u32>,
+    pub max_pages: Option<u32>,
     /// Enable memory protection
-    pub protected:     bool,
+    pub protected: bool,
 }
 
 /// Component function signature
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FunctionSignature {
     /// Function name
-    pub name:    String,
+    pub name: String,
     /// Parameter types
     #[cfg(feature = "std")]
-    pub params:  Vec<ComponentType>,
+    pub params: Vec<ComponentType>,
     #[cfg(not(feature = "std"))]
-    pub params:  BoundedVec<ComponentType, 16>,
+    pub params: BoundedVec<ComponentType, 16>,
     /// Return types
     #[cfg(feature = "std")]
     pub returns: Vec<ComponentType>,
@@ -210,26 +194,24 @@ pub struct FunctionSignature {
 }
 
 /// Component export definition
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentExport {
     /// Export name
-    pub name:        String,
+    pub name: String,
     /// Export type
     pub export_type: ExportType,
     /// Index of the exported item within its sort (function index, table index, etc.)
     /// This is the actual index needed for function dispatch.
-    pub index:       u32,
+    pub index: u32,
 }
 
 /// Component import definition
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentImport {
     /// Import name
-    pub name:        String,
+    pub name: String,
     /// Module name (for namespace)
-    pub module:      String,
+    pub module: String,
     /// Import type
     pub import_type: ImportType,
 }
@@ -244,12 +226,12 @@ pub enum ExportType {
     /// Table export
     Table {
         element_type: ComponentType,
-        size:         u32,
+        size: u32,
     },
     /// Global export
     Global {
         value_type: ComponentType,
-        mutable:    bool,
+        mutable: bool,
     },
     /// Component type export
     Type(ComponentType),
@@ -271,13 +253,13 @@ pub enum ImportType {
     /// Table import
     Table {
         element_type: ComponentType,
-        min_size:     u32,
-        max_size:     Option<u32>,
+        min_size: u32,
+        max_size: Option<u32>,
     },
     /// Global import
     Global {
         value_type: ComponentType,
-        mutable:    bool,
+        mutable: bool,
     },
     /// Component type import
     Type(ComponentType),
@@ -296,16 +278,16 @@ pub use crate::types::ComponentInstance;
 #[derive(Debug)]
 pub struct ComponentInstanceImpl {
     /// Instance memory
-    pub memory:       Option<ComponentMemory>,
+    pub memory: Option<ComponentMemory>,
     /// Canonical ABI for value conversion
-    abi:              CanonicalABI,
+    abi: CanonicalABI,
     /// Function table
     #[cfg(feature = "std")]
-    functions:        Vec<ComponentFunction>,
+    functions: Vec<ComponentFunction>,
     #[cfg(not(feature = "std"))]
-    functions:        BoundedVec<ComponentFunction, 128>,
+    functions: BoundedVec<ComponentFunction, 128>,
     /// Instance metadata
-    metadata:         InstanceMetadata,
+    metadata: InstanceMetadata,
     /// Resource manager for this instance
     resource_manager: Option<ComponentResourceManager>,
 }
@@ -314,9 +296,9 @@ pub struct ComponentInstanceImpl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedImport {
     /// Original import definition
-    pub import:          ComponentImport,
+    pub import: ComponentImport,
     /// Provider instance ID
-    pub provider_id:     InstanceId,
+    pub provider_id: InstanceId,
     /// Provider export name
     #[cfg(feature = "std")]
     pub provider_export: String,
@@ -325,13 +307,12 @@ pub struct ResolvedImport {
 }
 
 /// Component function implementation
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentFunction {
     /// Function handle
-    pub handle:         FunctionHandle,
+    pub handle: FunctionHandle,
     /// Function signature
-    pub signature:      FunctionSignature,
+    pub signature: FunctionSignature,
     /// Implementation type
     pub implementation: FunctionImplementation,
 }
@@ -342,7 +323,7 @@ pub enum FunctionImplementation {
     /// Native WebAssembly function
     Native {
         /// Function index in the component
-        func_index:   u32,
+        func_index: u32,
         /// Module containing the function
         module_index: u32,
     },
@@ -368,18 +349,24 @@ pub enum FunctionImplementation {
 
 impl Default for FunctionImplementation {
     fn default() -> Self {
-        FunctionImplementation::Native { func_index: 0, module_index: 0 }
+        FunctionImplementation::Native {
+            func_index: 0,
+            module_index: 0,
+        }
     }
 }
 
 impl Checksummable for FunctionImplementation {
     fn update_checksum(&self, checksum: &mut Checksum) {
         match self {
-            FunctionImplementation::Native { func_index, module_index } => {
+            FunctionImplementation::Native {
+                func_index,
+                module_index,
+            } => {
                 0u8.update_checksum(checksum);
                 func_index.update_checksum(checksum);
                 module_index.update_checksum(checksum);
-            }
+            },
             FunctionImplementation::Host { callback } => {
                 1u8.update_checksum(checksum);
                 #[cfg(feature = "std")]
@@ -393,8 +380,11 @@ impl Checksummable for FunctionImplementation {
                 {
                     callback.update_checksum(checksum);
                 }
-            }
-            FunctionImplementation::Component { target_instance, target_function } => {
+            },
+            FunctionImplementation::Component {
+                target_instance,
+                target_function,
+            } => {
                 2u8.update_checksum(checksum);
                 target_instance.update_checksum(checksum);
                 #[cfg(feature = "std")]
@@ -408,7 +398,7 @@ impl Checksummable for FunctionImplementation {
                 {
                     target_function.update_checksum(checksum);
                 }
-            }
+            },
         }
     }
 }
@@ -420,11 +410,14 @@ impl ToBytes for FunctionImplementation {
         provider: &P,
     ) -> Result<()> {
         match self {
-            FunctionImplementation::Native { func_index, module_index } => {
+            FunctionImplementation::Native {
+                func_index,
+                module_index,
+            } => {
                 0u8.to_bytes_with_provider(writer, provider)?;
                 func_index.to_bytes_with_provider(writer, provider)?;
                 module_index.to_bytes_with_provider(writer, provider)
-            }
+            },
             FunctionImplementation::Host { callback } => {
                 1u8.to_bytes_with_provider(writer, provider)?;
                 #[cfg(feature = "std")]
@@ -439,8 +432,11 @@ impl ToBytes for FunctionImplementation {
                     callback.to_bytes_with_provider(writer, provider)?;
                 }
                 Ok(())
-            }
-            FunctionImplementation::Component { target_instance, target_function } => {
+            },
+            FunctionImplementation::Component {
+                target_instance,
+                target_function,
+            } => {
                 2u8.to_bytes_with_provider(writer, provider)?;
                 target_instance.to_bytes_with_provider(writer, provider)?;
                 #[cfg(feature = "std")]
@@ -455,7 +451,7 @@ impl ToBytes for FunctionImplementation {
                     target_function.to_bytes_with_provider(writer, provider)?;
                 }
                 Ok(())
-            }
+            },
         }
     }
 }
@@ -470,8 +466,11 @@ impl FromBytes for FunctionImplementation {
             0 => {
                 let func_index = u32::from_bytes_with_provider(reader, provider)?;
                 let module_index = u32::from_bytes_with_provider(reader, provider)?;
-                Ok(FunctionImplementation::Native { func_index, module_index })
-            }
+                Ok(FunctionImplementation::Native {
+                    func_index,
+                    module_index,
+                })
+            },
             1 => {
                 #[cfg(feature = "std")]
                 {
@@ -481,16 +480,20 @@ impl FromBytes for FunctionImplementation {
                         bytes[i] = u8::from_bytes_with_provider(reader, provider)?;
                     }
                     Ok(FunctionImplementation::Host {
-                        callback: String::from_utf8(bytes)
-                            .map_err(|_| Error::validation_error("Invalid UTF-8 in callback name"))?,
+                        callback: String::from_utf8(bytes).map_err(|_| {
+                            Error::validation_error("Invalid UTF-8 in callback name")
+                        })?,
                     })
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let callback = wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(reader, provider)?;
+                    let callback =
+                        wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(
+                            reader, provider,
+                        )?;
                     Ok(FunctionImplementation::Host { callback })
                 }
-            }
+            },
             2 => {
                 let target_instance = u32::from_bytes_with_provider(reader, provider)?;
                 #[cfg(feature = "std")]
@@ -502,17 +505,26 @@ impl FromBytes for FunctionImplementation {
                     }
                     Ok(FunctionImplementation::Component {
                         target_instance,
-                        target_function: String::from_utf8(bytes)
-                            .map_err(|_| Error::validation_error("Invalid UTF-8 in function name"))?,
+                        target_function: String::from_utf8(bytes).map_err(|_| {
+                            Error::validation_error("Invalid UTF-8 in function name")
+                        })?,
                     })
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let target_function = wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(reader, provider)?;
-                    Ok(FunctionImplementation::Component { target_instance, target_function })
+                    let target_function =
+                        wrt_foundation::bounded::BoundedString::<64>::from_bytes_with_provider(
+                            reader, provider,
+                        )?;
+                    Ok(FunctionImplementation::Component {
+                        target_instance,
+                        target_function,
+                    })
                 }
-            }
-            _ => Err(Error::validation_error("Invalid FunctionImplementation tag")),
+            },
+            _ => Err(Error::validation_error(
+                "Invalid FunctionImplementation tag",
+            )),
         }
     }
 }
@@ -585,7 +597,11 @@ impl FromBytes for FunctionSignature {
             #[cfg(feature = "std")]
             params.push(param);
             #[cfg(not(feature = "std"))]
-            params.push(param).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature params capacity exceeded"))?;
+            params.push(param).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded(
+                    "FunctionSignature params capacity exceeded",
+                )
+            })?;
         }
 
         // Read returns
@@ -599,7 +615,11 @@ impl FromBytes for FunctionSignature {
             #[cfg(feature = "std")]
             returns.push(ret);
             #[cfg(not(feature = "std"))]
-            returns.push(ret).map_err(|_| Error::foundation_bounded_capacity_exceeded("FunctionSignature returns capacity exceeded"))?;
+            returns.push(ret).map_err(|_| {
+                Error::foundation_bounded_capacity_exceeded(
+                    "FunctionSignature returns capacity exceeded",
+                )
+            })?;
         }
 
         Ok(FunctionSignature {
@@ -650,39 +670,38 @@ impl FromBytes for ComponentFunction {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentMemory {
     /// Memory handle
-    pub handle:       MemoryHandle,
+    pub handle: MemoryHandle,
     /// Memory configuration
-    pub config:       MemoryConfig,
+    pub config: MemoryConfig,
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
     #[cfg(feature = "std")]
-    pub data:         Vec<u8>,
+    pub data: Vec<u8>,
     #[cfg(not(feature = "std"))]
-    pub data:         BoundedVec<u8, 65536>,
+    pub data: BoundedVec<u8, 65536>,
 }
 
 /// Instance metadata for debugging and introspection
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct InstanceMetadata {
     /// Creation timestamp
-    pub created_at:         u64,
+    pub created_at: u64,
     /// Total function calls
-    pub function_calls:     u64,
+    pub function_calls: u64,
     /// Binary std/no_std choice
     pub memory_allocations: u64,
     /// Current memory usage
-    pub memory_usage:       u32,
+    pub memory_usage: u32,
 }
 
 impl Default for InstanceConfig {
     fn default() -> Self {
         Self {
             max_memory_size: 64 * 1024 * 1024, // 64MB
-            max_table_size:  1024,
-            debug_mode:      false,
-            memory_config:   MemoryConfig::default(),
+            max_table_size: 1024,
+            debug_mode: false,
+            memory_config: MemoryConfig::default(),
         }
     }
 }
@@ -690,13 +709,12 @@ impl Default for InstanceConfig {
 impl Default for MemoryConfig {
     fn default() -> Self {
         Self {
-            initial_pages: 1,          // 64KB
-            max_pages:     Some(1024), // 64MB
-            protected:     true,
+            initial_pages: 1,      // 64KB
+            max_pages: Some(1024), // 64MB
+            protected: true,
         }
     }
 }
-
 
 impl ComponentInstance {
     /// Create a new component instance from a runtime component
@@ -705,7 +723,14 @@ impl ComponentInstance {
     pub fn new(id: InstanceId, component: RuntimeComponent) -> Result<Self> {
         // Initialize empty collections based on feature flags
         #[cfg(all(feature = "std", feature = "safety-critical"))]
-        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
+        let (
+            functions,
+            imports,
+            exports,
+            resource_tables,
+            module_instances,
+            nested_component_instances,
+        ) = {
             (
                 WrtVec::new(),
                 WrtVec::new(),
@@ -717,7 +742,14 @@ impl ComponentInstance {
         };
 
         #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
+        let (
+            functions,
+            imports,
+            exports,
+            resource_tables,
+            module_instances,
+            nested_component_instances,
+        ) = {
             (
                 Vec::new(),
                 Vec::new(),
@@ -729,7 +761,14 @@ impl ComponentInstance {
         };
 
         #[cfg(not(feature = "std"))]
-        let (functions, imports, exports, resource_tables, module_instances, nested_component_instances) = {
+        let (
+            functions,
+            imports,
+            exports,
+            resource_tables,
+            module_instances,
+            nested_component_instances,
+        ) = {
             (
                 BoundedVec::new(),
                 BoundedVec::new(),
@@ -875,17 +914,22 @@ impl ComponentInstance {
 
         // Build alias map to track where core exports come from
         // Map: (export_kind, export_idx) -> source_instance_idx
-        #[cfg(feature = "std")]
-        use std::collections::HashMap;
         #[cfg(not(feature = "std"))]
         use alloc::collections::BTreeMap as HashMap;
+        #[cfg(feature = "std")]
+        use std::collections::HashMap;
         use wrt_format::component::{AliasTarget, CoreSort};
 
         #[cfg(feature = "tracing")]
         trace!("from_parsed: About to build alias map");
         let mut core_export_sources: HashMap<(CoreSort, u32), u32> = HashMap::new();
         for alias in &parsed.aliases {
-            if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
+            if let AliasTarget::CoreInstanceExport {
+                instance_idx,
+                name,
+                kind,
+            } = &alias.target
+            {
                 // Aliases create new indices in the index space
                 // For now, track that exports of this kind from the source instance
                 // TODO: Track the actual index mapping once we understand the index space better
@@ -916,17 +960,18 @@ impl ComponentInstance {
 
         // Track instantiated modules by core instance index
         // Map: core_instance_idx -> runtime instance handle
-        #[cfg(feature = "std")]
-        use std::collections::BTreeMap;
         #[cfg(not(feature = "std"))]
         use alloc::collections::BTreeMap;
+        #[cfg(feature = "std")]
+        use std::collections::BTreeMap;
         use wrt_runtime::engine::InstanceHandle;
         let mut core_instances_map: BTreeMap<usize, InstanceHandle> = BTreeMap::new();
         // Track InlineExports export names for later use when linking instance imports
         // Map: core_instance_idx -> Vec of (semantic_name, actual_export_name, sort)
         // The semantic_name is used for import matching, the actual_export_name is used for calling
         #[cfg(feature = "std")]
-        let mut inline_exports_map: BTreeMap<usize, Vec<(String, String, CoreSort)>> = BTreeMap::new();
+        let mut inline_exports_map: BTreeMap<usize, Vec<(String, String, CoreSort)>> =
+            BTreeMap::new();
         // Track which core instance index exports _start (the main executable module)
         // This is the GENERIC way to find the main module - it's the one that exports _start
         let mut start_export_instance_idx: Option<u32> = None;
@@ -938,11 +983,17 @@ impl ComponentInstance {
             #[cfg(feature = "tracing")]
             {
                 trace!("from_parsed: STEP 7 - Core Module Instantiation");
-                trace!(module_count = module_binaries.len(), "Module binaries available");
+                trace!(
+                    module_count = module_binaries.len(),
+                    "Module binaries available"
+                );
             }
             let num_core_instances = parsed.core_instances.len();
             #[cfg(feature = "tracing")]
-            trace!(core_instance_count = num_core_instances, "Core instances to instantiate");
+            trace!(
+                core_instance_count = num_core_instances,
+                "Core instances to instantiate"
+            );
 
             // Build alias map: (CoreSort, index) -> (instance_idx, export_name)
             // This maps each aliased item to its source instance
@@ -955,7 +1006,12 @@ impl ComponentInstance {
             #[cfg(feature = "tracing")]
             trace!(alias_count = parsed.aliases.len(), "Building alias map");
             for alias in &parsed.aliases {
-                if let AliasTarget::CoreInstanceExport { instance_idx, name, kind } = &alias.target {
+                if let AliasTarget::CoreInstanceExport {
+                    instance_idx,
+                    name,
+                    kind,
+                } = &alias.target
+                {
                     if let Some(dest_idx) = alias.dest_idx {
                         alias_map.insert((*kind, dest_idx), (*instance_idx, name.clone()));
                         #[cfg(feature = "tracing")]
@@ -976,10 +1032,15 @@ impl ComponentInstance {
 
             for alias in &parsed.aliases {
                 match &alias.target {
-                    AliasTarget::InstanceExport { instance_idx, name, kind } => {
+                    AliasTarget::InstanceExport {
+                        instance_idx,
+                        name,
+                        kind,
+                    } => {
                         // Component instance export alias
                         if let Some(dest_idx) = alias.dest_idx {
-                            component_alias_map.insert((*kind, dest_idx), (*instance_idx, name.clone()));
+                            component_alias_map
+                                .insert((*kind, dest_idx), (*instance_idx, name.clone()));
                             #[cfg(feature = "tracing")]
                             trace!(kind = ?kind, dest_idx = dest_idx, instance_idx = instance_idx, name = %name, "Component alias");
                         }
@@ -998,7 +1059,10 @@ impl ComponentInstance {
                 }
             }
             #[cfg(feature = "tracing")]
-            trace!(instance_export_count = component_alias_map.len(), "Component alias map built");
+            trace!(
+                instance_export_count = component_alias_map.len(),
+                "Component alias map built"
+            );
 
             // Build canon_lower_map: core_func_idx -> (component_func_idx, interface, function_name)
             // This tracks which core functions were created by canon.lower operations
@@ -1012,7 +1076,10 @@ impl ComponentInstance {
                 let mut component_func_idx = 0u32;
                 for import in &parsed.imports {
                     // Check if this import is a function
-                    if matches!(import.ty, wrt_format::component::ExternType::Function { .. }) {
+                    if matches!(
+                        import.ty,
+                        wrt_format::component::ExternType::Function { .. }
+                    ) {
                         let interface = if !import.name.namespace.is_empty() {
                             import.name.namespace.clone()
                         } else {
@@ -1023,14 +1090,20 @@ impl ComponentInstance {
                         } else {
                             String::new()
                         };
-                        println!("    ├─ Component func[{}] = import {}::{}",
-                                 component_func_idx, interface, function_name);
-                        component_import_func_map.insert(component_func_idx, (interface, function_name));
+                        println!(
+                            "    ├─ Component func[{}] = import {}::{}",
+                            component_func_idx, interface, function_name
+                        );
+                        component_import_func_map
+                            .insert(component_func_idx, (interface, function_name));
                         component_func_idx += 1;
                     }
                 }
                 #[cfg(feature = "tracing")]
-                trace!(import_func_count = component_func_idx, "Component import function map built");
+                trace!(
+                    import_func_count = component_func_idx,
+                    "Component import function map built"
+                );
             }
 
             // Build instance_interface_map: instance_idx -> WASI interface name
@@ -1062,19 +1135,28 @@ impl ComponentInstance {
                         } else {
                             import.name.name.clone()
                         };
-                        println!("    ├─ Instance import[{}] = {}", instance_import_idx, interface);
+                        println!(
+                            "    ├─ Instance import[{}] = {}",
+                            instance_import_idx, interface
+                        );
                         map.insert(instance_import_idx, interface);
                         instance_import_idx += 1;
                     }
                 }
                 let num_instance_imports = instance_import_idx;
-                println!("    ├─ {} instance imports, {} defined instances",
-                         num_instance_imports, parsed.instances.len());
+                println!(
+                    "    ├─ {} instance imports, {} defined instances",
+                    num_instance_imports,
+                    parsed.instances.len()
+                );
                 // Add defined instances (from parsed.instances) with their offset
                 for (i, instance) in parsed.instances.iter().enumerate() {
                     let combined_idx = num_instance_imports + i as u32;
                     match &instance.instance_expr {
-                        wrt_format::component::InstanceExpr::ComponentReference { arg_refs, .. } => {
+                        wrt_format::component::InstanceExpr::ComponentReference {
+                            arg_refs,
+                            ..
+                        } => {
                             // For component references, the args might identify WASI interfaces
                             if let Some(arg) = arg_refs.first() {
                                 if !arg.name.is_empty() {
@@ -1111,8 +1193,11 @@ impl ComponentInstance {
                     .map(|((_, idx), _)| *idx)
                     .collect();
 
-                println!("    ├─ Found {} function aliases with indices: {:?}",
-                         alias_func_indices.len(), alias_func_indices);
+                println!(
+                    "    ├─ Found {} function aliases with indices: {:?}",
+                    alias_func_indices.len(),
+                    alias_func_indices
+                );
 
                 // Count canon.lower and canon.resource operations to know how many core functions they create
                 let mut canon_creates_count = 0u32;
@@ -1120,7 +1205,7 @@ impl ComponentInstance {
                     match &canon.operation {
                         CanonOperation::Lower { .. } => canon_creates_count += 1,
                         CanonOperation::Resource(_) => canon_creates_count += 1,
-                        _ => {}
+                        _ => {},
                     }
                 }
 
@@ -1142,14 +1227,20 @@ impl ComponentInstance {
 
                             // Look up the component function to get WASI name
                             // Try: 1) Direct import map, 2) Component alias map (InstanceExport aliases)
-                            if let Some((interface, function)) = component_import_func_map.get(func_idx) {
-                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = {}::{}",
-                                         canon_core_idx, func_idx, interface, function);
+                            if let Some((interface, function)) =
+                                component_import_func_map.get(func_idx)
+                            {
+                                println!(
+                                    "    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = {}::{}",
+                                    canon_core_idx, func_idx, interface, function
+                                );
                                 canon_lower_map.insert(
                                     canon_core_idx,
-                                    (*func_idx, interface.clone(), function.clone())
+                                    (*func_idx, interface.clone(), function.clone()),
                                 );
-                            } else if let Some((instance_idx, func_name)) = component_alias_map.get(&(Sort::Function, *func_idx)) {
+                            } else if let Some((instance_idx, func_name)) =
+                                component_alias_map.get(&(Sort::Function, *func_idx))
+                            {
                                 // This is an InstanceExport alias - the function comes from a component instance
                                 // The instance_idx is in the combined instance space:
                                 //   0..K-1 = imported instances, K..K+M-1 = defined instances
@@ -1158,20 +1249,24 @@ impl ComponentInstance {
                                     .get(instance_idx)
                                     .cloned()
                                     .unwrap_or_default();
-                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = instance[{}]::{}",
-                                         canon_core_idx, func_idx, instance_idx, func_name);
+                                println!(
+                                    "    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) = instance[{}]::{}",
+                                    canon_core_idx, func_idx, instance_idx, func_name
+                                );
                                 println!("    │  └─ Resolved interface: '{}'", interface_name);
                                 canon_lower_map.insert(
                                     canon_core_idx,
-                                    (*func_idx, interface_name, func_name.clone())
+                                    (*func_idx, interface_name, func_name.clone()),
                                 );
                             } else {
-                                println!("    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) - unresolved",
-                                         canon_core_idx, func_idx);
+                                println!(
+                                    "    ├─ Canon.lower: core_func[{}] = lower(component_func[{}]) - unresolved",
+                                    canon_core_idx, func_idx
+                                );
                                 // Store with component func idx for later resolution
                                 canon_lower_map.insert(
                                     canon_core_idx,
-                                    (*func_idx, String::new(), String::new())
+                                    (*func_idx, String::new(), String::new()),
                                 );
                             }
                             canon_core_idx += 1;
@@ -1183,19 +1278,30 @@ impl ComponentInstance {
                             }
                             canon_core_idx += 1;
                         },
-                        _ => {}
+                        _ => {},
                     }
                 }
 
-                println!("    ├─ Built canon_lower_map with {} entries", canon_lower_map.len());
+                println!(
+                    "    ├─ Built canon_lower_map with {} entries",
+                    canon_lower_map.len()
+                );
                 #[cfg(feature = "tracing")]
-                trace!(canon_lower_count = canon_lower_map.len(), "Canon lower map built");
+                trace!(
+                    canon_lower_count = canon_lower_map.len(),
+                    "Canon lower map built"
+                );
             }
 
             // Find which core instance exports _start - this is the main executable module
             // This is the GENERIC way to find the main module regardless of component structure
             for alias in &parsed.aliases {
-                if let AliasTarget::CoreInstanceExport { instance_idx, name, kind: _ } = &alias.target {
+                if let AliasTarget::CoreInstanceExport {
+                    instance_idx,
+                    name,
+                    kind: _,
+                } = &alias.target
+                {
                     if name == "_start" {
                         start_export_instance_idx = Some(*instance_idx);
                         #[cfg(feature = "tracing")]
@@ -1209,7 +1315,9 @@ impl ComponentInstance {
             }
             if start_export_instance_idx.is_none() {
                 #[cfg(feature = "tracing")]
-                tracing::warn!("No _start export found in aliases - checking for wasi:cli/run interface");
+                tracing::warn!(
+                    "No _start export found in aliases - checking for wasi:cli/run interface"
+                );
 
                 // If no _start alias, check for wasi:cli/run interface export
                 // This is an interface-style component that uses wasi:cli/run instead of _start
@@ -1237,7 +1345,8 @@ impl ComponentInstance {
             // Track which core instances have canon-lowered function exports
             // Maps: core_instance_idx -> Vec<(export_name, core_func_idx, interface, function)>
             // Used after module instantiation to register lowered functions with the engine
-            let mut canon_lowered_for_instance: HashMap<usize, Vec<(String, u32, String, String)>> = HashMap::new();
+            let mut canon_lowered_for_instance: HashMap<usize, Vec<(String, u32, String, String)>> =
+                HashMap::new();
 
             // Instantiate modules according to core_instances order
             // core_instances describes WHAT to instantiate and HOW to link imports
@@ -1245,17 +1354,31 @@ impl ComponentInstance {
             trace!("from_parsed: About to iterate core_instances");
             for (core_instance_idx, core_instance) in parsed.core_instances.iter().enumerate() {
                 #[cfg(feature = "tracing")]
-                trace!(core_instance_idx = core_instance_idx, "Processing CoreInstance");
+                trace!(
+                    core_instance_idx = core_instance_idx,
+                    "Processing CoreInstance"
+                );
 
                 // Extract module reference from instance expression
                 use wrt_format::component::CoreInstanceExpr;
                 match &core_instance.instance_expr {
-                    CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
+                    CoreInstanceExpr::ModuleReference {
+                        module_idx,
+                        arg_refs,
+                    } => {
                         let module_idx = *module_idx as usize;
-                        println!("    ├─ Instantiate module {} with {} import args", module_idx, arg_refs.len());
+                        println!(
+                            "    ├─ Instantiate module {} with {} import args",
+                            module_idx,
+                            arg_refs.len()
+                        );
 
                         if module_idx >= module_binaries.len() {
-                            println!("    └─ ERROR: Module index {} out of range (have {} modules)", module_idx, module_binaries.len());
+                            println!(
+                                "    └─ ERROR: Module index {} out of range (have {} modules)",
+                                module_idx,
+                                module_binaries.len()
+                            );
                             continue;
                         }
 
@@ -1272,8 +1395,13 @@ impl ComponentInstance {
                                     "THIS IS MODULE 0 - THE MAIN MODULE WITH GLOBALS"
                                 );
                             }
-                            println!("    ├─ *** THIS IS MODULE 0 - THE MAIN MODULE WITH GLOBALS ***");
-                            println!("    ├─ *** Being instantiated as CoreInstance[{}] ***", core_instance_idx);
+                            println!(
+                                "    ├─ *** THIS IS MODULE 0 - THE MAIN MODULE WITH GLOBALS ***"
+                            );
+                            println!(
+                                "    ├─ *** Being instantiated as CoreInstance[{}] ***",
+                                core_instance_idx
+                            );
                         }
 
                         // Skip diagnostic parsing to avoid stack overflow
@@ -1288,13 +1416,21 @@ impl ComponentInstance {
                                 println!("    ├─ Module loaded as handle {:?}", module_handle);
 
                                 // Get the import namespaces from the loaded module
-                                let import_namespaces = engine.get_module_import_namespaces(module_handle);
-                                println!("    ├─ Module has {} import namespaces: {:?}", import_namespaces.len(), import_namespaces);
+                                let import_namespaces =
+                                    engine.get_module_import_namespaces(module_handle);
+                                println!(
+                                    "    ├─ Module has {} import namespaces: {:?}",
+                                    import_namespaces.len(),
+                                    import_namespaces
+                                );
 
                                 // Register import links from arg_refs BEFORE instantiation
                                 // NOTE: All imports must be explicitly declared via arg_refs
                                 // NO HARDCODED INSTANCE INDICES - this must work for any component, not just TinyGo
-                                println!("    ├─ Registering {} import links from arg_refs...", arg_refs.len());
+                                println!(
+                                    "    ├─ Registering {} import links from arg_refs...",
+                                    arg_refs.len()
+                                );
 
                                 // Check if this module actually needs imports but has none declared
                                 if arg_refs.is_empty() && !import_namespaces.is_empty() {
@@ -1317,7 +1453,7 @@ impl ComponentInstance {
                                     // TODO: Phase 2.2 - Implement proper alias resolution
                                     // For now, return error instead of using hardcoded indices
                                     return Err(wrt_error::Error::component_linking_error(
-                                        "Module requires imports but no arg_refs provided - alias resolution needed"
+                                        "Module requires imports but no arg_refs provided - alias resolution needed",
                                     ));
                                 }
                                 for arg_ref in arg_refs {
@@ -1331,8 +1467,10 @@ impl ComponentInstance {
                                         0x12 => "Instance",
                                         _ => "Unknown",
                                     };
-                                    println!("    │  ├─ Import '{}': kind={} (0x{:02x}), idx={}",
-                                             arg_ref.name, kind_name, arg_ref.kind, arg_ref.idx);
+                                    println!(
+                                        "    │  ├─ Import '{}': kind={} (0x{:02x}), idx={}",
+                                        arg_ref.name, kind_name, arg_ref.kind, arg_ref.idx
+                                    );
 
                                     // Resolve the provider based on kind
                                     let (provider_handle, export_name) = match arg_ref.kind {
@@ -1340,7 +1478,9 @@ impl ComponentInstance {
                                             // Instance kind: idx is a core instance index
                                             // For instance imports, we need to link ALL exports from the provider
                                             // to the module's imports that match by name
-                                            if let Some(&handle) = core_instances_map.get(&(arg_ref.idx as usize)) {
+                                            if let Some(&handle) =
+                                                core_instances_map.get(&(arg_ref.idx as usize))
+                                            {
                                                 // NOTE: We do NOT skip wasi_snapshot_preview1 here!
                                                 // If a component has an adapter module that implements Preview1
                                                 // by translating to Preview2, we should link to the adapter's
@@ -1348,21 +1488,40 @@ impl ComponentInstance {
                                                 // The adapter's exports will be in inline_exports_map.
 
                                                 // Check if this is an InlineExports with stored export names
-                                                if let Some(export_mappings) = inline_exports_map.get(&(arg_ref.idx as usize)) {
-                                                    println!("    │  │  ├─ Instance {} has {} exports to link", arg_ref.idx, export_mappings.len());
+                                                if let Some(export_mappings) =
+                                                    inline_exports_map.get(&(arg_ref.idx as usize))
+                                                {
+                                                    println!(
+                                                        "    │  │  ├─ Instance {} has {} exports to link",
+                                                        arg_ref.idx,
+                                                        export_mappings.len()
+                                                    );
                                                     // Link each export from the InlineExports
                                                     // Tuple is (semantic_name, actual_export_name, sort)
-                                                    for (semantic_name, actual_export_name, _sort) in export_mappings {
-                                                        println!("    │  │  │  ├─ Linking '{}' -> actual export '{}'", semantic_name, actual_export_name);
+                                                    for (
+                                                        semantic_name,
+                                                        actual_export_name,
+                                                        _sort,
+                                                    ) in export_mappings
+                                                    {
+                                                        println!(
+                                                            "    │  │  │  ├─ Linking '{}' -> actual export '{}'",
+                                                            semantic_name, actual_export_name
+                                                        );
                                                         match engine.link_import(
                                                             module_handle,
-                                                            &arg_ref.name,     // import module name (e.g., "wasi:io/streams@0.2.4")
-                                                            semantic_name,     // import name (semantic, e.g., "[method]output-stream.blocking-write-and-flush")
+                                                            &arg_ref.name, // import module name (e.g., "wasi:io/streams@0.2.4")
+                                                            semantic_name, // import name (semantic, e.g., "[method]output-stream.blocking-write-and-flush")
                                                             handle,
                                                             actual_export_name, // actual export name in target module (e.g., "1")
                                                         ) {
-                                                            Ok(()) => println!("    │  │  │  └─ ✓ Linked"),
-                                                            Err(e) => println!("    │  │  │  └─ Note: {:?}", e),
+                                                            Ok(()) => {
+                                                                println!("    │  │  │  └─ ✓ Linked")
+                                                            },
+                                                            Err(e) => println!(
+                                                                "    │  │  │  └─ Note: {:?}",
+                                                                e
+                                                            ),
                                                         }
                                                     }
                                                     // Skip the normal single-link below since we linked everything
@@ -1371,97 +1530,157 @@ impl ComponentInstance {
                                                     // No stored exports - this is likely a stub/canonical function instance
                                                     // For WASI interfaces, skip linking and let WASI dispatcher handle it
                                                     if arg_ref.name.starts_with("wasi:") {
-                                                        println!("    │  │  ├─ WASI interface '{}' - skipping link, will use WASI dispatcher",
-                                                                 arg_ref.name);
+                                                        println!(
+                                                            "    │  │  ├─ WASI interface '{}' - skipping link, will use WASI dispatcher",
+                                                            arg_ref.name
+                                                        );
                                                         continue;
                                                     }
                                                     // For non-WASI, use the old behavior
                                                     (handle, arg_ref.name.clone())
                                                 }
                                             } else {
-                                                println!("    │  │  └─ ERROR: Instance {} not yet instantiated", arg_ref.idx);
+                                                println!(
+                                                    "    │  │  └─ ERROR: Instance {} not yet instantiated",
+                                                    arg_ref.idx
+                                                );
                                                 continue;
                                             }
                                         },
                                         0x01 => {
                                             // Table kind: look up Table[idx] in alias_map
-                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Table, arg_ref.idx)) {
-                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
-                                                    println!("    │  │  ├─ Resolved Table[{}] -> instance {} export '{}'",
-                                                             arg_ref.idx, inst_idx, exp_name);
+                                            if let Some((inst_idx, exp_name)) =
+                                                alias_map.get(&(CoreSort::Table, arg_ref.idx))
+                                            {
+                                                if let Some(&handle) =
+                                                    core_instances_map.get(&(*inst_idx as usize))
+                                                {
+                                                    println!(
+                                                        "    │  │  ├─ Resolved Table[{}] -> instance {} export '{}'",
+                                                        arg_ref.idx, inst_idx, exp_name
+                                                    );
                                                     (handle, exp_name.clone())
                                                 } else {
-                                                    println!("    │  │  └─ ERROR: Table source instance {} not instantiated", inst_idx);
+                                                    println!(
+                                                        "    │  │  └─ ERROR: Table source instance {} not instantiated",
+                                                        inst_idx
+                                                    );
                                                     continue;
                                                 }
                                             } else {
-                                                println!("    │  │  └─ ERROR: Table[{}] not found in alias_map", arg_ref.idx);
+                                                println!(
+                                                    "    │  │  └─ ERROR: Table[{}] not found in alias_map",
+                                                    arg_ref.idx
+                                                );
                                                 continue;
                                             }
                                         },
                                         0x02 => {
                                             // Memory kind: look up Memory[idx] in alias_map
-                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Memory, arg_ref.idx)) {
-                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
-                                                    println!("    │  │  ├─ Resolved Memory[{}] -> instance {} export '{}'",
-                                                             arg_ref.idx, inst_idx, exp_name);
+                                            if let Some((inst_idx, exp_name)) =
+                                                alias_map.get(&(CoreSort::Memory, arg_ref.idx))
+                                            {
+                                                if let Some(&handle) =
+                                                    core_instances_map.get(&(*inst_idx as usize))
+                                                {
+                                                    println!(
+                                                        "    │  │  ├─ Resolved Memory[{}] -> instance {} export '{}'",
+                                                        arg_ref.idx, inst_idx, exp_name
+                                                    );
                                                     (handle, exp_name.clone())
                                                 } else {
-                                                    println!("    │  │  └─ ERROR: Memory source instance {} not instantiated", inst_idx);
+                                                    println!(
+                                                        "    │  │  └─ ERROR: Memory source instance {} not instantiated",
+                                                        inst_idx
+                                                    );
                                                     continue;
                                                 }
                                             } else {
-                                                println!("    │  │  └─ ERROR: Memory[{}] not found in alias_map", arg_ref.idx);
+                                                println!(
+                                                    "    │  │  └─ ERROR: Memory[{}] not found in alias_map",
+                                                    arg_ref.idx
+                                                );
                                                 continue;
                                             }
                                         },
                                         0x03 => {
                                             // Global kind: look up Global[idx] in alias_map
-                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Global, arg_ref.idx)) {
-                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
-                                                    println!("    │  │  ├─ Resolved Global[{}] -> instance {} export '{}'",
-                                                             arg_ref.idx, inst_idx, exp_name);
+                                            if let Some((inst_idx, exp_name)) =
+                                                alias_map.get(&(CoreSort::Global, arg_ref.idx))
+                                            {
+                                                if let Some(&handle) =
+                                                    core_instances_map.get(&(*inst_idx as usize))
+                                                {
+                                                    println!(
+                                                        "    │  │  ├─ Resolved Global[{}] -> instance {} export '{}'",
+                                                        arg_ref.idx, inst_idx, exp_name
+                                                    );
                                                     (handle, exp_name.clone())
                                                 } else {
-                                                    println!("    │  │  └─ ERROR: Global source instance {} not instantiated", inst_idx);
+                                                    println!(
+                                                        "    │  │  └─ ERROR: Global source instance {} not instantiated",
+                                                        inst_idx
+                                                    );
                                                     continue;
                                                 }
                                             } else {
-                                                println!("    │  │  └─ ERROR: Global[{}] not found in alias_map", arg_ref.idx);
+                                                println!(
+                                                    "    │  │  └─ ERROR: Global[{}] not found in alias_map",
+                                                    arg_ref.idx
+                                                );
                                                 continue;
                                             }
                                         },
                                         0x00 => {
                                             // Function kind: look up Function[idx] in alias_map
-                                            if let Some((inst_idx, exp_name)) = alias_map.get(&(CoreSort::Function, arg_ref.idx)) {
-                                                if let Some(&handle) = core_instances_map.get(&(*inst_idx as usize)) {
-                                                    println!("    │  │  ├─ Resolved Function[{}] -> instance {} export '{}'",
-                                                             arg_ref.idx, inst_idx, exp_name);
+                                            if let Some((inst_idx, exp_name)) =
+                                                alias_map.get(&(CoreSort::Function, arg_ref.idx))
+                                            {
+                                                if let Some(&handle) =
+                                                    core_instances_map.get(&(*inst_idx as usize))
+                                                {
+                                                    println!(
+                                                        "    │  │  ├─ Resolved Function[{}] -> instance {} export '{}'",
+                                                        arg_ref.idx, inst_idx, exp_name
+                                                    );
                                                     (handle, exp_name.clone())
                                                 } else {
-                                                    println!("    │  │  └─ ERROR: Function source instance {} not instantiated", inst_idx);
+                                                    println!(
+                                                        "    │  │  └─ ERROR: Function source instance {} not instantiated",
+                                                        inst_idx
+                                                    );
                                                     continue;
                                                 }
                                             } else {
-                                                println!("    │  │  └─ ERROR: Function[{}] not found in alias_map", arg_ref.idx);
+                                                println!(
+                                                    "    │  │  └─ ERROR: Function[{}] not found in alias_map",
+                                                    arg_ref.idx
+                                                );
                                                 continue;
                                             }
                                         },
                                         _ => {
-                                            println!("    │  │  └─ ERROR: Unknown kind 0x{:02x}", arg_ref.kind);
+                                            println!(
+                                                "    │  │  └─ ERROR: Unknown kind 0x{:02x}",
+                                                arg_ref.kind
+                                            );
                                             continue;
-                                        }
+                                        },
                                     };
 
                                     // Determine the import module name
-                                    let import_module = if arg_ref.name == "memory" && !import_namespaces.is_empty() {
+                                    let import_module = if arg_ref.name == "memory"
+                                        && !import_namespaces.is_empty()
+                                    {
                                         import_namespaces.first().unwrap_or(&String::new()).clone()
                                     } else {
                                         String::new()
                                     };
 
-                                    println!("    │  │  ├─ Linking to instance {:?} export '{}' (import module: '{}')",
-                                             provider_handle, export_name, import_module);
+                                    println!(
+                                        "    │  │  ├─ Linking to instance {:?} export '{}' (import module: '{}')",
+                                        provider_handle, export_name, import_module
+                                    );
 
                                     // Register the import link
                                     match engine.link_import(
@@ -1475,11 +1694,18 @@ impl ComponentInstance {
                                             println!("    │  │  └─ ✓ Linked");
 
                                             // Track aliased functions for cross-instance calls
-                                            if arg_ref.name == "_initialize" || arg_ref.name.starts_with("__wasm_call_") {
-                                                println!("    │  │  └─ ALIASED FUNCTION DETECTED: {}", arg_ref.name);
+                                            if arg_ref.name == "_initialize"
+                                                || arg_ref.name.starts_with("__wasm_call_")
+                                            {
+                                                println!(
+                                                    "    │  │  └─ ALIASED FUNCTION DETECTED: {}",
+                                                    arg_ref.name
+                                                );
                                             }
                                         },
-                                        Err(e) => println!("    │  │  └─ ERROR: Link failed: {:?}", e),
+                                        Err(e) => {
+                                            println!("    │  │  └─ ERROR: Link failed: {:?}", e)
+                                        },
                                     }
                                 }
 
@@ -1487,16 +1713,28 @@ impl ComponentInstance {
                                 println!("    ├─ Instantiating module...");
                                 match engine.instantiate(module_handle) {
                                     Ok(instance_handle) => {
-                                        println!("    ├─ ✓ Instantiated as instance {:?}", instance_handle);
-                                        core_instances_map.insert(core_instance_idx, instance_handle);
+                                        println!(
+                                            "    ├─ ✓ Instantiated as instance {:?}",
+                                            instance_handle
+                                        );
+                                        core_instances_map
+                                            .insert(core_instance_idx, instance_handle);
 
                                         // CRITICAL: Remap import links from module_handle to instance_handle
                                         // link_import was called before instantiation with module_handle,
                                         // but runtime lookup uses instance_handle - these IDs differ!
-                                        if let Err(e) = engine.remap_import_links(module_handle, instance_handle) {
-                                            println!("    ├─ WARNING: Failed to remap import links: {:?}", e);
+                                        if let Err(e) = engine
+                                            .remap_import_links(module_handle, instance_handle)
+                                        {
+                                            println!(
+                                                "    ├─ WARNING: Failed to remap import links: {:?}",
+                                                e
+                                            );
                                         } else {
-                                            println!("    ├─ Import links remapped to instance {:?}", instance_handle);
+                                            println!(
+                                                "    ├─ Import links remapped to instance {:?}",
+                                                instance_handle
+                                            );
                                         }
 
                                         // Register canon-lowered functions for this instance
@@ -1511,22 +1749,45 @@ impl ComponentInstance {
                                             let mut func_import_offset: usize = 0;
                                             for arg_ref in arg_refs {
                                                 match arg_ref.kind {
-                                                    0x12 => { // Instance kind - provides multiple imports
+                                                    0x12 => {
+                                                        // Instance kind - provides multiple imports
                                                         // Count function exports from this instance
                                                         let func_export_count = inline_exports_map
                                                             .get(&(arg_ref.idx as usize))
-                                                            .map(|mappings| mappings.iter()
-                                                                .filter(|(_, _, sort)| *sort == CoreSort::Function)
-                                                                .count())
+                                                            .map(|mappings| {
+                                                                mappings
+                                                                    .iter()
+                                                                    .filter(|(_, _, sort)| {
+                                                                        *sort == CoreSort::Function
+                                                                    })
+                                                                    .count()
+                                                            })
                                                             .unwrap_or(0);
 
-                                                        if let Some(lowered_exports) = canon_lowered_for_instance.get(&(arg_ref.idx as usize)) {
-                                                            println!("    ├─ Registering {} canon-lowered functions for instance {:?} (from InlineExports[{}], offset={})",
-                                                                     lowered_exports.len(), instance_handle, arg_ref.idx, func_import_offset);
-                                                            for (i, (_name, _idx, interface, function)) in lowered_exports.iter().enumerate() {
+                                                        if let Some(lowered_exports) =
+                                                            canon_lowered_for_instance
+                                                                .get(&(arg_ref.idx as usize))
+                                                        {
+                                                            println!(
+                                                                "    ├─ Registering {} canon-lowered functions for instance {:?} (from InlineExports[{}], offset={})",
+                                                                lowered_exports.len(),
+                                                                instance_handle,
+                                                                arg_ref.idx,
+                                                                func_import_offset
+                                                            );
+                                                            for (
+                                                                i,
+                                                                (_name, _idx, interface, function),
+                                                            ) in
+                                                                lowered_exports.iter().enumerate()
+                                                            {
                                                                 // func_idx = offset + position within this InlineExports
-                                                                let func_idx = func_import_offset + i;
-                                                                println!("    │  ├─ Lowered func[{}] = {}::{}", func_idx, interface, function);
+                                                                let func_idx =
+                                                                    func_import_offset + i;
+                                                                println!(
+                                                                    "    │  ├─ Lowered func[{}] = {}::{}",
+                                                                    func_idx, interface, function
+                                                                );
                                                                 engine.register_lowered_function(
                                                                     instance_handle.index(),
                                                                     func_idx,
@@ -1540,17 +1801,20 @@ impl ComponentInstance {
 
                                                         func_import_offset += func_export_count;
                                                     },
-                                                    0x00 => { // Function kind - single function import
+                                                    0x00 => {
+                                                        // Function kind - single function import
                                                         func_import_offset += 1;
                                                     },
-                                                    _ => {} // Table (0x01), Memory (0x02), Global (0x03) don't affect function index
+                                                    _ => {}, // Table (0x01), Memory (0x02), Global (0x03) don't affect function index
                                                 }
                                             }
                                         }
 
                                         // Check if this is the instance that exports _start
                                         // (we found this by scanning aliases earlier)
-                                        if start_export_instance_idx == Some(core_instance_idx as u32) {
+                                        if start_export_instance_idx
+                                            == Some(core_instance_idx as u32)
+                                        {
                                             #[cfg(feature = "tracing")]
                                             tracing::info!(
                                                 ?instance_handle,
@@ -1565,12 +1829,12 @@ impl ComponentInstance {
                                         println!("    └─ ERROR: Instantiation failed: {:?}", e);
                                         println!("    └─ Reason: {:?}", e);
                                         // Continue with other modules
-                                    }
+                                    },
                                 }
                             },
                             Err(e) => {
                                 println!("    └─ ERROR: Failed to load module: {:?}", e);
-                            }
+                            },
                         }
                     },
                     CoreInstanceExpr::InlineExports(exports) => {
@@ -1578,7 +1842,10 @@ impl ComponentInstance {
 
                         // Debug: show what's in the exports
                         for export in exports {
-                            println!("    │  ├─ Export[{}]: name='{}', sort={:?}", export.idx, export.name, export.sort);
+                            println!(
+                                "    │  ├─ Export[{}]: name='{}', sort={:?}",
+                                export.idx, export.name, export.sort
+                            );
                         }
 
                         // InlineExports re-export items from other instances via aliases
@@ -1589,63 +1856,115 @@ impl ComponentInstance {
 
                         // Track canon-lowered function exports separately
                         // These need special handling via canonical executor
-                        let mut canon_lowered_exports: Vec<(String, u32, String, String)> = Vec::new();
+                        let mut canon_lowered_exports: Vec<(String, u32, String, String)> =
+                            Vec::new();
 
                         for export in exports {
                             // Look up this export in the alias map using (sort, index)
-                            if let Some((instance_idx, actual_export_name)) = alias_map.get(&(export.sort, export.idx)) {
+                            if let Some((instance_idx, actual_export_name)) =
+                                alias_map.get(&(export.sort, export.idx))
+                            {
                                 if source_instance_idx.is_none() {
                                     source_instance_idx = Some(*instance_idx);
                                 }
-                                println!("    │  ├─ Export[{}] '{}' (sort={:?}) -> instance {} export '{}'",
-                                         export.idx, export.name, export.sort, instance_idx, actual_export_name);
+                                println!(
+                                    "    │  ├─ Export[{}] '{}' (sort={:?}) -> instance {} export '{}'",
+                                    export.idx,
+                                    export.name,
+                                    export.sort,
+                                    instance_idx,
+                                    actual_export_name
+                                );
                                 // Store BOTH semantic name (for import matching) and actual export name (for calling)
-                                export_mappings.push((export.name.clone(), actual_export_name.clone(), export.sort));
+                                export_mappings.push((
+                                    export.name.clone(),
+                                    actual_export_name.clone(),
+                                    export.sort,
+                                ));
                             } else if export.sort == CoreSort::Function {
                                 // No alias found for function - check if it's a canon-lowered function
-                                if let Some((comp_func_idx, interface, function)) = canon_lower_map.get(&export.idx) {
-                                    println!("    │  ├─ Export[{}] '{}' -> CANON LOWERED: {}::{} (comp_func[{}])",
-                                             export.idx, export.name, interface, function, comp_func_idx);
+                                if let Some((comp_func_idx, interface, function)) =
+                                    canon_lower_map.get(&export.idx)
+                                {
+                                    println!(
+                                        "    │  ├─ Export[{}] '{}' -> CANON LOWERED: {}::{} (comp_func[{}])",
+                                        export.idx, export.name, interface, function, comp_func_idx
+                                    );
                                     // Store for canonical executor handling
                                     canon_lowered_exports.push((
                                         export.name.clone(),
                                         export.idx,
                                         interface.clone(),
-                                        function.clone()
+                                        function.clone(),
                                     ));
                                     // Still add to export_mappings with a marker indicating canonical handling needed
                                     // The actual dispatch will be handled by the canonical executor
-                                    export_mappings.push((export.name.clone(), format!("__canon_lower_{}::{}", interface, function), export.sort));
+                                    export_mappings.push((
+                                        export.name.clone(),
+                                        format!("__canon_lower_{}::{}", interface, function),
+                                        export.sort,
+                                    ));
                                 } else {
-                                    println!("    │  ├─ Export[{}] '{}' -> UNKNOWN (no alias, no canon.lower)",
-                                             export.idx, export.name);
-                                    export_mappings.push((export.name.clone(), export.name.clone(), export.sort));
+                                    println!(
+                                        "    │  ├─ Export[{}] '{}' -> UNKNOWN (no alias, no canon.lower)",
+                                        export.idx, export.name
+                                    );
+                                    export_mappings.push((
+                                        export.name.clone(),
+                                        export.name.clone(),
+                                        export.sort,
+                                    ));
                                 }
                             } else {
                                 // Non-function export without alias
-                                println!("    │  ├─ Export[{}] '{}' (sort={:?}) -> no alias",
-                                         export.idx, export.name, export.sort);
-                                export_mappings.push((export.name.clone(), export.name.clone(), export.sort));
+                                println!(
+                                    "    │  ├─ Export[{}] '{}' (sort={:?}) -> no alias",
+                                    export.idx, export.name, export.sort
+                                );
+                                export_mappings.push((
+                                    export.name.clone(),
+                                    export.name.clone(),
+                                    export.sort,
+                                ));
                             }
                         }
 
                         if let Some(src_idx) = source_instance_idx {
-                            if let Some(&source_handle) = core_instances_map.get(&(src_idx as usize)) {
-                                println!("    ├─ Mapping to source instance {} (handle {:?})", src_idx, source_handle);
+                            if let Some(&source_handle) =
+                                core_instances_map.get(&(src_idx as usize))
+                            {
+                                println!(
+                                    "    ├─ Mapping to source instance {} (handle {:?})",
+                                    src_idx, source_handle
+                                );
                                 core_instances_map.insert(core_instance_idx, source_handle);
                                 // Store the actual export names for later use when linking instance imports
-                                println!("    ├─ Storing {} export names for instance linking", export_mappings.len());
+                                println!(
+                                    "    ├─ Storing {} export names for instance linking",
+                                    export_mappings.len()
+                                );
                                 inline_exports_map.insert(core_instance_idx, export_mappings);
                                 println!("    └─ Mapped");
                             } else {
-                                println!("    └─ ERROR: Source instance {} not yet instantiated", src_idx);
-                                return Err(Error::runtime_error("InlineExports source instance not instantiated"));
+                                println!(
+                                    "    └─ ERROR: Source instance {} not yet instantiated",
+                                    src_idx
+                                );
+                                return Err(Error::runtime_error(
+                                    "InlineExports source instance not instantiated",
+                                ));
                             }
                         } else if !canon_lowered_exports.is_empty() {
                             // All exports are canon-lowered functions - this is a canonical function provider
-                            println!("    ├─ InlineExports contains {} canon-lowered functions:", canon_lowered_exports.len());
+                            println!(
+                                "    ├─ InlineExports contains {} canon-lowered functions:",
+                                canon_lowered_exports.len()
+                            );
                             for (name, idx, interface, function) in &canon_lowered_exports {
-                                println!("    │  ├─ '{}' (idx={}) -> {}::{}", name, idx, interface, function);
+                                println!(
+                                    "    │  ├─ '{}' (idx={}) -> {}::{}",
+                                    name, idx, interface, function
+                                );
 
                                 // Register this lowered function with the engine for canonical execution
                                 // The engine will route calls to these functions through the canonical executor
@@ -1655,7 +1974,10 @@ impl ComponentInstance {
                                     // This will be called when the module imports this function
                                     let full_interface = interface.clone();
                                     let func_name = function.clone();
-                                    println!("    │  │  └─ Registering for canonical dispatch: {}::{}", full_interface, func_name);
+                                    println!(
+                                        "    │  │  └─ Registering for canonical dispatch: {}::{}",
+                                        full_interface, func_name
+                                    );
                                 }
                             }
 
@@ -1667,7 +1989,9 @@ impl ComponentInstance {
                                 inline_exports_map.insert(core_instance_idx, export_mappings);
                                 println!("    └─ Canonical functions registered for dispatch");
                             } else {
-                                return Err(Error::runtime_error("Cannot configure canonicals - no base instance"));
+                                return Err(Error::runtime_error(
+                                    "Cannot configure canonicals - no base instance",
+                                ));
                             }
                         } else {
                             println!("    └─ WARNING: InlineExports with no resolved exports");
@@ -1677,7 +2001,9 @@ impl ComponentInstance {
                                 inline_exports_map.insert(core_instance_idx, export_mappings);
                                 println!("    └─ Stub instance created");
                             } else {
-                                return Err(Error::runtime_error("Cannot create stub - no base instance"));
+                                return Err(Error::runtime_error(
+                                    "Cannot create stub - no base instance",
+                                ));
                             }
                         }
 
@@ -1685,9 +2011,13 @@ impl ComponentInstance {
                         // This is used after module instantiation to register function indices
                         // so call_indirect dispatches them through the canonical executor
                         if !canon_lowered_exports.is_empty() {
-                            println!("    ├─ Storing {} canon-lowered exports for core_instance[{}]",
-                                     canon_lowered_exports.len(), core_instance_idx);
-                            canon_lowered_for_instance.insert(core_instance_idx, canon_lowered_exports);
+                            println!(
+                                "    ├─ Storing {} canon-lowered exports for core_instance[{}]",
+                                canon_lowered_exports.len(),
+                                core_instance_idx
+                            );
+                            canon_lowered_for_instance
+                                .insert(core_instance_idx, canon_lowered_exports);
                         }
                     },
                 }
@@ -1699,7 +2029,7 @@ impl ComponentInstance {
         // Nested components are instantiated and their exports can be aliased
         #[cfg(feature = "std")]
         let nested_instances = {
-            use crate::types::{NestedComponentInstance, NestedExportRef, NestedExportKind};
+            use crate::types::{NestedComponentInstance, NestedExportKind, NestedExportRef};
             use wrt_format::component::{InstanceExpr, Sort};
 
             println!("=== Phase 7b: Nested Component Instances ===");
@@ -1711,25 +2041,37 @@ impl ComponentInstance {
 
             // Track component instance exports for alias resolution
             // Maps: instance_idx -> (export_name -> (sort, idx))
-            let mut component_instance_exports: std::collections::HashMap<usize, std::collections::HashMap<String, (Sort, u32)>> =
-                std::collections::HashMap::new();
+            let mut component_instance_exports: std::collections::HashMap<
+                usize,
+                std::collections::HashMap<String, (Sort, u32)>,
+            > = std::collections::HashMap::new();
 
             for (inst_idx, instance) in parsed.instances.iter().enumerate() {
                 match &instance.instance_expr {
-                    InstanceExpr::ComponentReference { component_idx, arg_refs } => {
-                        println!("  ├─ Instance[{}]: Instantiate nested component {} with {} args",
-                            inst_idx, component_idx, arg_refs.len());
+                    InstanceExpr::ComponentReference {
+                        component_idx,
+                        arg_refs,
+                    } => {
+                        println!(
+                            "  ├─ Instance[{}]: Instantiate nested component {} with {} args",
+                            inst_idx,
+                            component_idx,
+                            arg_refs.len()
+                        );
 
                         let comp_idx = *component_idx as usize;
 
                         // Check if component exists
                         if comp_idx >= parsed.components.len() {
-                            println!("ERROR: Nested component index {} out of range (have {} components)",
-                                component_idx, parsed.components.len());
+                            println!(
+                                "ERROR: Nested component index {} out of range (have {} components)",
+                                component_idx,
+                                parsed.components.len()
+                            );
                             return Err(Error::new(
                                 wrt_error::ErrorCategory::Validation,
                                 wrt_error::codes::VALIDATION_ERROR,
-                                "Nested component index out of range"
+                                "Nested component index out of range",
                             ));
                         }
 
@@ -1737,18 +2079,29 @@ impl ComponentInstance {
                         let nested_component = &parsed.components[comp_idx];
 
                         println!("      ├─ Nested component structure:");
-                        println!("      │  ├─ Core modules: {}", nested_component.modules.len());
+                        println!(
+                            "      │  ├─ Core modules: {}",
+                            nested_component.modules.len()
+                        );
                         println!("      │  ├─ Imports: {}", nested_component.imports.len());
                         println!("      │  ├─ Exports: {}", nested_component.exports.len());
                         println!("      │  ├─ Types: {}", nested_component.types.len());
-                        println!("      │  └─ Sub-components: {}", nested_component.components.len());
+                        println!(
+                            "      │  └─ Sub-components: {}",
+                            nested_component.components.len()
+                        );
 
                         // Resolve arguments from arg_refs
                         // These reference exports from the parent component's index spaces
-                        println!("      ├─ Resolving {} instantiation arguments:", arg_refs.len());
+                        println!(
+                            "      ├─ Resolving {} instantiation arguments:",
+                            arg_refs.len()
+                        );
                         for arg_ref in arg_refs {
-                            println!("        ├─ Arg '{}': sort={:?} idx={}",
-                                arg_ref.name, arg_ref.sort, arg_ref.idx);
+                            println!(
+                                "        ├─ Arg '{}': sort={:?} idx={}",
+                                arg_ref.name, arg_ref.sort, arg_ref.idx
+                            );
                         }
 
                         // Check if this is a "passthrough" component with no core modules
@@ -1763,8 +2116,10 @@ impl ComponentInstance {
 
                             // For passthrough components, create a synthetic instance that maps
                             // the nested component's exports to the parent's provided functions
-                            let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
-                                std::collections::HashMap::new();
+                            let mut instance_export_map: std::collections::HashMap<
+                                String,
+                                (Sort, u32),
+                            > = std::collections::HashMap::new();
 
                             // The exports from this nested component should map to the provided args
                             // For now, map each export to the corresponding arg function
@@ -1774,12 +2129,12 @@ impl ComponentInstance {
                                 if !arg_refs.is_empty() {
                                     let arg = &arg_refs[0];
                                     let export_name_str = export.name.name.clone();
-                                    println!("        ├─ Export '{}' -> provided func idx {}",
-                                        export_name_str, arg.idx);
-                                    instance_export_map.insert(
-                                        export_name_str,
-                                        (arg.sort, arg.idx)
+                                    println!(
+                                        "        ├─ Export '{}' -> provided func idx {}",
+                                        export_name_str, arg.idx
                                     );
+                                    instance_export_map
+                                        .insert(export_name_str, (arg.sort, arg.idx));
                                 }
                             }
 
@@ -1788,7 +2143,10 @@ impl ComponentInstance {
                             println!("      └─ Passthrough instance {} ready", inst_idx);
                         } else {
                             // Full nested component with core modules - requires recursive instantiation
-                            println!("      ├─ Full nested component with {} core modules", nested_component.modules.len());
+                            println!(
+                                "      ├─ Full nested component with {} core modules",
+                                nested_component.modules.len()
+                            );
 
                             // =====================================================================
                             // Circular Dependency and Nesting Depth Validation
@@ -1807,23 +2165,30 @@ impl ComponentInstance {
                             };
 
                             if current_depth >= MAX_COMPONENT_NESTING_DEPTH {
-                                println!("ERROR: Maximum component nesting depth ({}) exceeded at depth {}",
-                                    MAX_COMPONENT_NESTING_DEPTH, current_depth);
+                                println!(
+                                    "ERROR: Maximum component nesting depth ({}) exceeded at depth {}",
+                                    MAX_COMPONENT_NESTING_DEPTH, current_depth
+                                );
                                 return Err(Error::new(
                                     wrt_error::ErrorCategory::Validation,
                                     wrt_error::codes::VALIDATION_ERROR,
-                                    "Maximum component nesting depth exceeded - possible circular dependency"
+                                    "Maximum component nesting depth exceeded - possible circular dependency",
                                 ));
                             }
 
                             // Check for sub-components that could create circular dependencies
                             if !nested_component.components.is_empty() {
-                                println!("      ├─ Nested component has {} sub-components (depth {})",
-                                    nested_component.components.len(), current_depth + 1);
+                                println!(
+                                    "      ├─ Nested component has {} sub-components (depth {})",
+                                    nested_component.components.len(),
+                                    current_depth + 1
+                                );
 
                                 // Warn about potential deep nesting
                                 if current_depth + 1 >= MAX_COMPONENT_NESTING_DEPTH / 2 {
-                                    println!("      ├─ WARNING: Approaching max nesting depth limit");
+                                    println!(
+                                        "      ├─ WARNING: Approaching max nesting depth limit"
+                                    );
                                 }
                             }
 
@@ -1840,33 +2205,46 @@ impl ComponentInstance {
                                 Ok(child_instance) => {
                                     println!("      ├─ Successfully instantiated nested component");
                                     println!("      │  ├─ Child ID: {}", nested_id);
-                                    println!("      │  ├─ Child exports: {}", child_instance.exports.len());
+                                    println!(
+                                        "      │  ├─ Child exports: {}",
+                                        child_instance.exports.len()
+                                    );
 
                                     // Build exports map for this nested instance
-                                    let mut exports_map: std::collections::HashMap<String, NestedExportRef> =
-                                        std::collections::HashMap::new();
-                                    let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
-                                        std::collections::HashMap::new();
+                                    let mut exports_map: std::collections::HashMap<
+                                        String,
+                                        NestedExportRef,
+                                    > = std::collections::HashMap::new();
+                                    let mut instance_export_map: std::collections::HashMap<
+                                        String,
+                                        (Sort, u32),
+                                    > = std::collections::HashMap::new();
 
                                     // The child's exports become accessible to the parent
-                                    for (exp_idx, export) in child_instance.exports.iter().enumerate() {
+                                    for (exp_idx, export) in
+                                        child_instance.exports.iter().enumerate()
+                                    {
                                         let kind = NestedExportKind::Function;
                                         exports_map.insert(
                                             export.name.clone(),
                                             NestedExportRef {
                                                 kind,
                                                 index: exp_idx as u32,
-                                            }
+                                            },
                                         );
                                         instance_export_map.insert(
                                             export.name.clone(),
-                                            (Sort::Function, exp_idx as u32)
+                                            (Sort::Function, exp_idx as u32),
                                         );
-                                        println!("      │  ├─ Export '{}' available for aliasing", export.name);
+                                        println!(
+                                            "      │  ├─ Export '{}' available for aliasing",
+                                            export.name
+                                        );
                                     }
 
                                     // Store the instance export map for alias resolution
-                                    component_instance_exports.insert(inst_idx, instance_export_map);
+                                    component_instance_exports
+                                        .insert(inst_idx, instance_export_map);
 
                                     // Create the nested instance wrapper
                                     let nested = NestedComponentInstance {
@@ -1877,12 +2255,18 @@ impl ComponentInstance {
                                     };
 
                                     nested_instances.push(nested);
-                                    println!("      └─ Nested instance {} created successfully", inst_idx);
-                                }
+                                    println!(
+                                        "      └─ Nested instance {} created successfully",
+                                        inst_idx
+                                    );
+                                },
                                 Err(e) => {
                                     // Provide detailed error context for debugging via println
                                     // (the static error message is complemented by this output)
-                                    println!("ERROR: Failed to instantiate nested component {}: {}", component_idx, e);
+                                    println!(
+                                        "ERROR: Failed to instantiate nested component {}: {}",
+                                        component_idx, e
+                                    );
                                     println!("       ├─ Parent instance ID: {}", id);
                                     println!("       ├─ Nested instance index: {}", inst_idx);
                                     println!("       ├─ Component index: {}", component_idx);
@@ -1901,27 +2285,33 @@ impl ComponentInstance {
                                     return Err(Error::new(
                                         wrt_error::ErrorCategory::ComponentRuntime,
                                         wrt_error::codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
-                                        static_msg
+                                        static_msg,
                                     ));
-                                }
+                                },
                             }
                         }
                     },
                     InstanceExpr::InlineExports(exports) => {
-                        println!("  ├─ Instance[{}]: Inline exports ({} items)", inst_idx, exports.len());
+                        println!(
+                            "  ├─ Instance[{}]: Inline exports ({} items)",
+                            inst_idx,
+                            exports.len()
+                        );
 
                         // Inline exports create a synthetic instance from explicit exports
                         // These exports reference items from the parent's index spaces
-                        let mut instance_export_map: std::collections::HashMap<String, (Sort, u32)> =
-                            std::collections::HashMap::new();
+                        let mut instance_export_map: std::collections::HashMap<
+                            String,
+                            (Sort, u32),
+                        > = std::collections::HashMap::new();
 
                         for export in exports {
-                            println!("      ├─ Export: '{}' sort {:?} idx {}",
-                                export.name, export.sort, export.idx);
-                            instance_export_map.insert(
-                                export.name.clone(),
-                                (export.sort, export.idx)
+                            println!(
+                                "      ├─ Export: '{}' sort {:?} idx {}",
+                                export.name, export.sort, export.idx
                             );
+                            instance_export_map
+                                .insert(export.name.clone(), (export.sort, export.idx));
                         }
 
                         // Store for alias resolution
@@ -1930,8 +2320,14 @@ impl ComponentInstance {
                 }
             }
 
-            println!("Nested component instances created: {}", nested_instances.len());
-            println!("Component instances with exports: {}", component_instance_exports.len());
+            println!(
+                "Nested component instances created: {}",
+                nested_instances.len()
+            );
+            println!(
+                "Component instances with exports: {}",
+                component_instance_exports.len()
+            );
             println!();
 
             nested_instances
@@ -1975,20 +2371,29 @@ impl ComponentInstance {
         #[cfg(feature = "std")]
         {
             instance.imports = resolved_imports;
-            println!("[INSTANTIATION] Stored {} resolved imports in instance", instance.imports.len());
+            println!(
+                "[INSTANTIATION] Stored {} resolved imports in instance",
+                instance.imports.len()
+            );
         }
 
         // Store nested component instances
         {
             instance.nested_component_instances = nested_instances;
-            println!("[INSTANTIATION] Stored {} nested component instances", instance.nested_component_instances.len());
+            println!(
+                "[INSTANTIATION] Stored {} nested component instances",
+                instance.nested_component_instances.len()
+            );
         }
 
         // Execute start functions immediately (Step 12) - DEFERRED
         #[cfg(feature = "std")]
         {
             println!("\n=== Component Initialization Complete ===");
-            println!("Modules: {} binaries stored", instance.component.modules.len());
+            println!(
+                "Modules: {} binaries stored",
+                instance.component.modules.len()
+            );
             println!("Imports: {} resolved", instance.imports.len());
             println!();
             println!("Start functions will execute when component functions are called");
@@ -2010,10 +2415,10 @@ impl ComponentInstance {
                     Ok(ty) => {
                         let type_name = Self::get_type_name(ty);
                         println!("✓ Type lookup successful: Type[{}] = {}", idx, type_name);
-                    }
+                    },
                     Err(e) => {
                         println!("✗ Type lookup failed: Type[{}] - {:?}", idx, e);
-                    }
+                    },
                 }
             }
             println!();
@@ -2027,11 +2432,14 @@ impl ComponentInstance {
                 match instance.resolve_type_safe(idx as u32) {
                     Ok(ty) => {
                         let type_name = Self::get_type_name(ty);
-                        println!("✓ Safe resolution successful: Type[{}] → {}", idx, type_name);
-                    }
+                        println!(
+                            "✓ Safe resolution successful: Type[{}] → {}",
+                            idx, type_name
+                        );
+                    },
                     Err(e) => {
                         println!("✗ Safe resolution failed: Type[{}] - {:?}", idx, e);
-                    }
+                    },
                 }
             }
 
@@ -2040,10 +2448,10 @@ impl ComponentInstance {
             match instance.resolve_type_safe(invalid_idx) {
                 Ok(_) => {
                     println!("✗ Should have failed for invalid index {}", invalid_idx);
-                }
+                },
                 Err(_) => {
                     println!("✓ Correctly rejected invalid index {}", invalid_idx);
-                }
+                },
             }
             println!();
         }
@@ -2059,31 +2467,29 @@ impl ComponentInstance {
             // NO FALLBACKS - per spec, command components MUST export _start
 
             let main_handle = match start_export_instance_idx {
-                Some(start_idx) => {
-                    match core_instances_map.get(&(start_idx as usize)) {
-                        Some(&handle) => {
-                            #[cfg(feature = "tracing")]
-                            tracing::info!(
-                                ?handle,
-                                core_instance_idx = start_idx,
-                                "Found main module instance - exports _start"
-                            );
-                            instance.main_instance_handle = Some(handle);
-                            handle
-                        }
-                        None => {
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(
-                                start_idx = start_idx,
-                                available = ?core_instances_map.keys().collect::<Vec<_>>(),
-                                "Instance exporting _start not found in map"
-                            );
-                            return Err(Error::runtime_execution_error(
-                                "Cannot find main module instance (the one exporting _start)"
-                            ));
-                        }
-                    }
-                }
+                Some(start_idx) => match core_instances_map.get(&(start_idx as usize)) {
+                    Some(&handle) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            ?handle,
+                            core_instance_idx = start_idx,
+                            "Found main module instance - exports _start"
+                        );
+                        instance.main_instance_handle = Some(handle);
+                        handle
+                    },
+                    None => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(
+                            start_idx = start_idx,
+                            available = ?core_instances_map.keys().collect::<Vec<_>>(),
+                            "Instance exporting _start not found in map"
+                        );
+                        return Err(Error::runtime_execution_error(
+                            "Cannot find main module instance (the one exporting _start)",
+                        ));
+                    },
+                },
                 None => {
                     if is_interface_style {
                         // Interface-style component (exports wasi:cli/run at component level)
@@ -2102,22 +2508,42 @@ impl ComponentInstance {
                             "main",
                         ];
 
-                        println!("    ├─ Searching {} core instances for entry point...", core_instances_map.len());
+                        println!(
+                            "    ├─ Searching {} core instances for entry point...",
+                            core_instances_map.len()
+                        );
                         for (&idx, &handle) in &core_instances_map {
                             if let Some(engine_ref) = &instance.runtime_engine {
                                 // Debug: list what exports this instance has
-                                println!("    │  ├─ Instance {} (handle {:?}) exports:", idx, handle);
-                                for entry_point in &["_start", "_initialize", "run", "main", "memory", "cabi_realloc",
-                                                     "wasi:cli/run@0.2.3#run", "wasi:cli/run@0.2.6#run"] {
-                                    let has = engine_ref.has_function(handle, entry_point).unwrap_or(false);
+                                println!(
+                                    "    │  ├─ Instance {} (handle {:?}) exports:",
+                                    idx, handle
+                                );
+                                for entry_point in &[
+                                    "_start",
+                                    "_initialize",
+                                    "run",
+                                    "main",
+                                    "memory",
+                                    "cabi_realloc",
+                                    "wasi:cli/run@0.2.3#run",
+                                    "wasi:cli/run@0.2.6#run",
+                                ] {
+                                    let has = engine_ref
+                                        .has_function(handle, entry_point)
+                                        .unwrap_or(false);
                                     if has {
                                         println!("    │  │  ✓ {}", entry_point);
                                     }
                                 }
 
                                 for entry_point in &core_entry_points {
-                                    if engine_ref.has_function(handle, entry_point).unwrap_or(false) {
-                                        println!("    ├─ Found {} export in core instance {} (handle {:?})", entry_point, idx, handle);
+                                    if engine_ref.has_function(handle, entry_point).unwrap_or(false)
+                                    {
+                                        println!(
+                                            "    ├─ Found {} export in core instance {} (handle {:?})",
+                                            entry_point, idx, handle
+                                        );
                                         found_handle = Some(handle);
                                         break;
                                     }
@@ -2140,24 +2566,32 @@ impl ComponentInstance {
                             handle
                         } else {
                             println!("    ✗ ERROR: No core instance exports _start, run, or main!");
-                            println!("    Available instances: {:?}", core_instances_map.keys().collect::<Vec<_>>());
+                            println!(
+                                "    Available instances: {:?}",
+                                core_instances_map.keys().collect::<Vec<_>>()
+                            );
                             return Err(Error::runtime_execution_error(
-                                "No core instance exports _start - module exports not properly loaded"
+                                "No core instance exports _start - module exports not properly loaded",
                             ));
                         }
                     } else {
                         #[cfg(feature = "tracing")]
-                        tracing::error!("No _start export found - component does not export an entry point");
+                        tracing::error!(
+                            "No _start export found - component does not export an entry point"
+                        );
                         return Err(Error::runtime_execution_error(
-                            "No _start export found - command components must export _start"
+                            "No _start export found - command components must export _start",
                         ));
                     }
-                }
+                },
             };
 
             #[cfg(feature = "tracing")]
             if is_interface_style {
-                tracing::info!(?main_handle, "Main instance selected (interface-style component)");
+                tracing::info!(
+                    ?main_handle,
+                    "Main instance selected (interface-style component)"
+                );
             } else {
                 tracing::info!(?main_handle, "Main instance selected (exports _start)");
             }
@@ -2172,12 +2606,13 @@ impl ComponentInstance {
     /// Returns an error if the index is out of bounds.
     #[cfg(feature = "std")]
     pub fn get_type(&self, idx: u32) -> Result<&wrt_format::component::ComponentType> {
-        self.type_index.get(&idx)
-            .ok_or_else(|| Error::new(
+        self.type_index.get(&idx).ok_or_else(|| {
+            Error::new(
                 wrt_error::ErrorCategory::Validation,
                 wrt_error::codes::OUT_OF_BOUNDS_ERROR,
-                "Type index out of bounds"
-            ))
+                "Type index out of bounds",
+            )
+        })
     }
 
     /// Get a type by index (no_std placeholder)
@@ -2204,11 +2639,11 @@ impl ComponentInstance {
                 // Resolve the type index
                 let resolved = self.get_type(*idx)?;
                 Ok(Some(resolved))
-            }
+            },
             _ => {
                 // Not a type reference - return None
                 Ok(None)
-            }
+            },
         }
     }
 
@@ -2231,7 +2666,7 @@ impl ComponentInstance {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Validation,
                     wrt_error::codes::VALIDATION_ERROR,
-                    "Circular type reference detected"
+                    "Circular type reference detected",
                 ));
             }
 
@@ -2248,7 +2683,7 @@ impl ComponentInstance {
         Err(Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::VALIDATION_ERROR,
-            "Type resolution depth exceeded (possible circular reference)"
+            "Type resolution depth exceeded (possible circular reference)",
         ))
     }
 
@@ -2268,7 +2703,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum modules limit (ASIL-D)"
+                "Component exceeds maximum modules limit (ASIL-D)",
             ));
         }
 
@@ -2276,7 +2711,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum types limit (ASIL-D)"
+                "Component exceeds maximum types limit (ASIL-D)",
             ));
         }
 
@@ -2284,7 +2719,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum canonical operations limit (ASIL-D)"
+                "Component exceeds maximum canonical operations limit (ASIL-D)",
             ));
         }
 
@@ -2292,7 +2727,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum exports limit (ASIL-D)"
+                "Component exceeds maximum exports limit (ASIL-D)",
             ));
         }
 
@@ -2300,7 +2735,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum imports limit (ASIL-D)"
+                "Component exceeds maximum imports limit (ASIL-D)",
             ));
         }
 
@@ -2308,7 +2743,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::CAPACITY_EXCEEDED,
-                "Component exceeds maximum core instances limit (ASIL-D)"
+                "Component exceeds maximum core instances limit (ASIL-D)",
             ));
         }
 
@@ -2322,9 +2757,7 @@ impl ComponentInstance {
     ///
     /// **Memory**: After this call, parsed.modules is empty - memory is transferred.
     /// **Step 4**: Now shows detailed validation output for each module
-    fn extract_core_modules(
-        parsed: &mut wrt_format::component::Component
-    ) -> Result<Vec<Vec<u8>>> {
+    fn extract_core_modules(parsed: &mut wrt_format::component::Component) -> Result<Vec<Vec<u8>>> {
         use wrt_error::{ErrorCategory, codes};
 
         #[cfg(feature = "std")]
@@ -2370,7 +2803,7 @@ impl ComponentInstance {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::PARSE_INVALID_MAGIC_BYTES,
-                        "Invalid WebAssembly module magic number"
+                        "Invalid WebAssembly module magic number",
                     ));
                 }
             } else {
@@ -2380,7 +2813,7 @@ impl ComponentInstance {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::PARSE_INVALID_SECTION_ID,
-                    "Core module missing binary data"
+                    "Core module missing binary data",
                 ));
             }
         }
@@ -2411,9 +2844,7 @@ impl ComponentInstance {
     /// - Lower: Convert component values to core values
     /// - Resource: Resource lifecycle operations (new/drop/rep)
     #[cfg(feature = "std")]
-    fn parse_canonical_operations(
-        canonicals: &[wrt_format::component::Canon]
-    ) -> Result<()> {
+    fn parse_canonical_operations(canonicals: &[wrt_format::component::Canon]) -> Result<()> {
         println!("=== STEP 5: Canonical ABI Operations ===");
         println!("Total operations: {}", canonicals.len());
 
@@ -2428,50 +2859,59 @@ impl ComponentInstance {
             print!("  Canon[{}]: ", idx);
 
             match &canon.operation {
-                CanonOperation::Lift { func_idx, type_idx, .. } => {
+                CanonOperation::Lift {
+                    func_idx, type_idx, ..
+                } => {
                     println!("Lift");
                     println!("    ├─ Core func[{}] → Component", func_idx);
                     println!("    └─ Type: type[{}]", type_idx);
-                }
+                },
                 CanonOperation::Lower { func_idx, .. } => {
                     println!("Lower");
                     println!("    └─ Component func[{}] → Core", func_idx);
-                }
+                },
                 CanonOperation::Resource(res_op) => {
                     use wrt_format::component::FormatResourceOperation;
                     match res_op {
                         FormatResourceOperation::New(res_new) => {
                             println!("Resource.New");
                             println!("    └─ Type: type[{}]", res_new.type_idx);
-                        }
+                        },
                         FormatResourceOperation::Drop(res_drop) => {
                             println!("Resource.Drop");
                             println!("    └─ Type: type[{}]", res_drop.type_idx);
-                        }
+                        },
                         FormatResourceOperation::Rep(res_rep) => {
                             println!("Resource.Rep");
                             println!("    └─ Type: type[{}]", res_rep.type_idx);
-                        }
+                        },
                     }
-                }
-                CanonOperation::Realloc { alloc_func_idx, memory_idx } => {
+                },
+                CanonOperation::Realloc {
+                    alloc_func_idx,
+                    memory_idx,
+                } => {
                     println!("Realloc");
                     println!("    ├─ Alloc func[{}]", alloc_func_idx);
                     println!("    └─ Memory: mem[{}]", memory_idx);
-                }
+                },
                 CanonOperation::PostReturn { func_idx } => {
                     println!("PostReturn");
                     println!("    └─ Cleanup func[{}]", func_idx);
-                }
-                CanonOperation::MemoryCopy { src_memory_idx, dst_memory_idx, .. } => {
+                },
+                CanonOperation::MemoryCopy {
+                    src_memory_idx,
+                    dst_memory_idx,
+                    ..
+                } => {
                     println!("MemoryCopy");
                     println!("    ├─ Source: mem[{}]", src_memory_idx);
                     println!("    └─ Dest: mem[{}]", dst_memory_idx);
-                }
+                },
                 CanonOperation::Async { func_idx, .. } => {
                     println!("Async");
                     println!("    └─ Async func[{}]", func_idx);
-                }
+                },
             }
         }
 
@@ -2481,17 +2921,13 @@ impl ComponentInstance {
 
     /// Parse canonical operations (no_std placeholder)
     #[cfg(not(feature = "std"))]
-    fn parse_canonical_operations(
-        _canonicals: &[wrt_format::component::Canon]
-    ) -> Result<()> {
+    fn parse_canonical_operations(_canonicals: &[wrt_format::component::Canon]) -> Result<()> {
         Ok(())
     }
 
     /// Parse and display component exports (Step 6a)
     #[cfg(feature = "std")]
-    fn parse_exports(
-        exports: &[wrt_format::component::Export]
-    ) -> Result<()> {
+    fn parse_exports(exports: &[wrt_format::component::Export]) -> Result<()> {
         println!("=== STEP 6a: Component Exports ===");
         println!("Total exports: {}", exports.len());
 
@@ -2518,7 +2954,7 @@ impl ComponentInstance {
                         CoreSort::Module => "Core.Module",
                         CoreSort::Instance => "Core.Instance",
                     }
-                }
+                },
                 Sort::Function => "Function",
                 Sort::Value => "Value",
                 Sort::Type => "Type",
@@ -2532,31 +2968,33 @@ impl ComponentInstance {
             if let Some(ref ty) = export.ty {
                 use wrt_format::component::ExternType;
                 match ty {
-                    ExternType::Function { params, results, .. } => {
+                    ExternType::Function {
+                        params, results, ..
+                    } => {
                         println!("    ├─ Type: Function");
                         println!("    │  ├─ Params: {}", params.len());
                         println!("    │  └─ Results: {}", results.len());
-                    }
+                    },
                     ExternType::Module { type_idx } => {
                         println!("    ├─ Type: Module");
                         println!("    │  └─ Type index: {}", type_idx);
-                    }
+                    },
                     ExternType::Component { type_idx } => {
                         println!("    ├─ Type: Component");
                         println!("    │  └─ Type index: {}", type_idx);
-                    }
+                    },
                     ExternType::Instance { exports } => {
                         println!("    ├─ Type: Instance");
                         println!("    │  └─ Exports: {}", exports.len());
-                    }
+                    },
                     ExternType::Value(value_type) => {
                         println!("    ├─ Type: Value");
                         println!("    │  └─ Value type: {:?}", value_type);
-                    }
+                    },
                     ExternType::Type(bounds) => {
                         println!("    ├─ Type: Type");
                         println!("    │  └─ Bounds: {:?}", bounds);
-                    }
+                    },
                 }
             } else {
                 println!("    ├─ Type: (not specified)");
@@ -2570,7 +3008,10 @@ impl ComponentInstance {
                 println!("    ├─ Semver: {}", semver);
             }
             if let Some(ref integrity) = export.name.integrity {
-                println!("    └─ Integrity: {}...", &integrity[..integrity.len().min(16)]);
+                println!(
+                    "    └─ Integrity: {}...",
+                    &integrity[..integrity.len().min(16)]
+                );
             } else {
                 println!("    └─ (end)");
             }
@@ -2588,9 +3029,7 @@ impl ComponentInstance {
 
     /// Parse and display component imports (Step 6b)
     #[cfg(feature = "std")]
-    fn parse_imports(
-        imports: &[wrt_format::component::Import]
-    ) -> Result<()> {
+    fn parse_imports(imports: &[wrt_format::component::Import]) -> Result<()> {
         println!("=== STEP 6b: Component Imports ===");
         println!("Total imports: {}", imports.len());
 
@@ -2606,17 +3045,21 @@ impl ComponentInstance {
             let full_name = if import.name.nested.is_empty() {
                 format!("{}:{}", import.name.namespace, import.name.name)
             } else {
-                format!("{}:{}:{}",
+                format!(
+                    "{}:{}:{}",
                     import.name.namespace,
                     import.name.nested.join(":"),
-                    import.name.name)
+                    import.name.name
+                )
             };
 
             println!("  Import[{}]: \"{}\"", idx, full_name);
 
             // Show type information
             match &import.ty {
-                ExternType::Function { params, results, .. } => {
+                ExternType::Function {
+                    params, results, ..
+                } => {
                     println!("    ├─ Type: Function");
                     println!("    │  ├─ Params: {}", params.len());
                     for (pidx, (pname, _ptype)) in params.iter().enumerate() {
@@ -2628,27 +3071,27 @@ impl ComponentInstance {
                         println!("    │  │  └─ ... ({} more)", params.len() - 3);
                     }
                     println!("    │  └─ Results: {}", results.len());
-                }
+                },
                 ExternType::Module { type_idx } => {
                     println!("    ├─ Type: Module");
                     println!("    │  └─ Type index: {}", type_idx);
-                }
+                },
                 ExternType::Component { type_idx } => {
                     println!("    ├─ Type: Component");
                     println!("    │  └─ Type index: {}", type_idx);
-                }
+                },
                 ExternType::Instance { exports } => {
                     println!("    ├─ Type: Instance");
                     println!("    │  └─ Exports: {}", exports.len());
-                }
+                },
                 ExternType::Value(value_type) => {
                     println!("    ├─ Type: Value");
                     println!("    │  └─ Value type: {:?}", value_type);
-                }
+                },
                 ExternType::Type(bounds) => {
                     println!("    ├─ Type: Type");
                     println!("    │  └─ Bounds: {:?}", bounds);
-                }
+                },
             }
 
             // Show package reference if present
@@ -2673,10 +3116,10 @@ impl ComponentInstance {
     #[cfg(feature = "std")]
     fn resolve_exports(
         instance: &mut Self,
-        parsed_exports: &[wrt_format::component::Export]
+        parsed_exports: &[wrt_format::component::Export],
     ) -> Result<()> {
-        use crate::instantiation::{ResolvedExport, ExportValue, FunctionExport};
         use crate::bounded_component_infra::ComponentProvider;
+        use crate::instantiation::{ExportValue, FunctionExport, ResolvedExport};
         use wrt_format::component::Sort;
         use wrt_foundation::safe_memory::NoStdProvider;
 
@@ -2687,9 +3130,7 @@ impl ComponentInstance {
             let export_name = if export.name.nested.is_empty() {
                 export.name.name.clone()
             } else {
-                format!("{}:{}",
-                    export.name.nested.join(":"),
-                    export.name.name)
+                format!("{}:{}", export.name.nested.join(":"), export.name.name)
             };
 
             println!("  Resolving[{}]: \"{}\"", idx, export_name);
@@ -2715,7 +3156,7 @@ impl ComponentInstance {
                 _ => {
                     // Other sorts - use placeholder value
                     ExportValue::Value(crate::types::Value::Bool(false).into())
-                }
+                },
             };
 
             let resolved = ResolvedExport {
@@ -2730,9 +3171,10 @@ impl ComponentInstance {
             }
             #[cfg(all(feature = "std", feature = "safety-critical"))]
             {
-                instance.exports.push(resolved).map_err(|_| {
-                    Error::validation_error("Too many exports")
-                })?;
+                instance
+                    .exports
+                    .push(resolved)
+                    .map_err(|_| Error::validation_error("Too many exports"))?;
             }
 
             // Create ComponentFunction entries for callable exports
@@ -2770,9 +3212,10 @@ impl ComponentInstance {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        instance.functions.push(func).map_err(|_| {
-                            Error::validation_error("Too many functions")
-                        })?;
+                        instance
+                            .functions
+                            .push(func)
+                            .map_err(|_| Error::validation_error("Too many functions"))?;
                     }
                     println!("    ├─ Added to instance.functions");
                 },
@@ -2811,15 +3254,16 @@ impl ComponentInstance {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        instance.functions.push(func).map_err(|_| {
-                            Error::validation_error("Too many functions")
-                        })?;
+                        instance
+                            .functions
+                            .push(func)
+                            .map_err(|_| Error::validation_error("Too many functions"))?;
                     }
                     println!("    ├─ Added to instance.functions as Native implementation");
                 },
                 _ => {
                     println!("    ├─ Non-callable export type");
-                }
+                },
             }
 
             println!("    ✓ Resolved");
@@ -2832,7 +3276,7 @@ impl ComponentInstance {
     /// Analyze and instantiate core modules (Step 7 & 8)
     #[cfg(feature = "std")]
     fn instantiate_core_modules(
-        module_binaries: &[Vec<u8>]
+        module_binaries: &[Vec<u8>],
     ) -> Result<Vec<wrt_runtime::module::Module>> {
         println!("=== STEP 7: Core Module Instantiation ===");
         println!("Total modules to instantiate: {}", module_binaries.len());
@@ -2845,7 +3289,10 @@ impl ComponentInstance {
         // Step 8: Use sequential instantiation (parallel causes stack overflow with large modules)
         // TODO: Re-enable parallel processing with larger thread stack size
         println!("=== STEP 7: Core Module Instantiation ===");
-        println!("Total modules: {} (sequential processing)\n", module_binaries.len());
+        println!(
+            "Total modules: {} (sequential processing)\n",
+            module_binaries.len()
+        );
 
         let mut instantiated_modules = Vec::with_capacity(module_binaries.len());
 
@@ -2855,12 +3302,13 @@ impl ComponentInstance {
 
             // Parse the module using wrt-decoder
             use wrt_decoder::load_wasm_unified;
-            let wasm_info = load_wasm_unified(binary)
-                .map_err(|_| Error::new(
+            let wasm_info = load_wasm_unified(binary).map_err(|_| {
+                Error::new(
                     wrt_error::ErrorCategory::Parse,
                     wrt_error::codes::PARSE_ERROR,
-                    "Failed to parse core module binary"
-                ))?;
+                    "Failed to parse core module binary",
+                )
+            })?;
 
             // Verify it's a core module
             if !wasm_info.is_core_module() {
@@ -2868,27 +3316,39 @@ impl ComponentInstance {
                 continue;
             }
 
-            let module_info = wasm_info.require_module_info()
-                .map_err(|_| Error::new(
+            let module_info = wasm_info.require_module_info().map_err(|_| {
+                Error::new(
                     wrt_error::ErrorCategory::Parse,
                     wrt_error::codes::PARSE_ERROR,
-                    "Module info not available"
-                ))?;
+                    "Module info not available",
+                )
+            })?;
 
             // Display module details
-            println!("    ├─ Type signatures: {}", module_info.function_types.len());
+            println!(
+                "    ├─ Type signatures: {}",
+                module_info.function_types.len()
+            );
 
             println!("    ├─ Imports: {}", module_info.imports.len());
-            let func_imports = module_info.imports.iter()
+            let func_imports = module_info
+                .imports
+                .iter()
                 .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Function(_)))
                 .count();
-            let memory_imports = module_info.imports.iter()
+            let memory_imports = module_info
+                .imports
+                .iter()
                 .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Memory))
                 .count();
-            let table_imports = module_info.imports.iter()
+            let table_imports = module_info
+                .imports
+                .iter()
                 .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Table))
                 .count();
-            let global_imports = module_info.imports.iter()
+            let global_imports = module_info
+                .imports
+                .iter()
                 .filter(|i| matches!(i.import_type, wrt_decoder::ImportType::Global))
                 .count();
 
@@ -2906,16 +3366,24 @@ impl ComponentInstance {
             }
 
             println!("    ├─ Exports: {}", module_info.exports.len());
-            let func_exports = module_info.exports.iter()
+            let func_exports = module_info
+                .exports
+                .iter()
                 .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Function))
                 .count();
-            let memory_exports = module_info.exports.iter()
+            let memory_exports = module_info
+                .exports
+                .iter()
                 .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Memory))
                 .count();
-            let table_exports = module_info.exports.iter()
+            let table_exports = module_info
+                .exports
+                .iter()
                 .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Table))
                 .count();
-            let global_exports = module_info.exports.iter()
+            let global_exports = module_info
+                .exports
+                .iter()
                 .filter(|e| matches!(e.export_type, wrt_decoder::ExportType::Global))
                 .count();
 
@@ -3007,14 +3475,17 @@ impl ComponentInstance {
             instantiated_modules.push(runtime_module);
         }
 
-        println!("✓ Instantiated {} core modules\n", instantiated_modules.len());
+        println!(
+            "✓ Instantiated {} core modules\n",
+            instantiated_modules.len()
+        );
         Ok(instantiated_modules)
     }
 
     /// Parallel module instantiation using std::thread::scope (Step 8)
     #[cfg(feature = "std")]
     fn instantiate_core_modules_parallel(
-        module_binaries: &[Vec<u8>]
+        module_binaries: &[Vec<u8>],
     ) -> Result<Vec<wrt_runtime::module::Module>> {
         use std::sync::{Arc, Mutex};
         use std::time::Instant;
@@ -3046,17 +3517,21 @@ impl ComponentInstance {
                     match Self::instantiate_single_module(idx, binary) {
                         Ok(module) => {
                             let elapsed = thread_start.elapsed();
-                            println!("  Thread[{}]: ✓ Completed in {:.2}ms", idx, elapsed.as_secs_f64() * 1000.0);
+                            println!(
+                                "  Thread[{}]: ✓ Completed in {:.2}ms",
+                                idx,
+                                elapsed.as_secs_f64() * 1000.0
+                            );
 
                             // Store result
                             let mut results_guard = results.lock().unwrap();
                             results_guard[idx] = Some(module);
-                        }
+                        },
                         Err(e) => {
                             println!("  Thread[{}]: ✗ Failed: {}", idx, e);
                             let mut errors_guard = errors.lock().unwrap();
                             errors_guard.push((idx, format!("{}", e)));
-                        }
+                        },
                     }
                 });
 
@@ -3070,7 +3545,10 @@ impl ComponentInstance {
         });
 
         let total_elapsed = start_time.elapsed();
-        println!("✓ All threads completed in {:.2}ms", total_elapsed.as_secs_f64() * 1000.0);
+        println!(
+            "✓ All threads completed in {:.2}ms",
+            total_elapsed.as_secs_f64() * 1000.0
+        );
 
         // Check for errors
         let errors_guard = errors.lock().unwrap();
@@ -3082,66 +3560,72 @@ impl ComponentInstance {
             return Err(Error::new(
                 wrt_error::ErrorCategory::RuntimeTrap,
                 wrt_error::codes::RUNTIME_ERROR,
-                "One or more modules failed to instantiate"
+                "One or more modules failed to instantiate",
             ));
         }
 
         // Collect successful results
         let results_guard = results.lock().unwrap();
-        let instantiated_modules: Vec<wrt_runtime::module::Module> = results_guard
-            .iter()
-            .filter_map(|opt| opt.as_ref().cloned())
-            .collect();
+        let instantiated_modules: Vec<wrt_runtime::module::Module> =
+            results_guard.iter().filter_map(|opt| opt.as_ref().cloned()).collect();
 
-        println!("✓ Successfully instantiated {} modules in parallel\n", instantiated_modules.len());
+        println!(
+            "✓ Successfully instantiated {} modules in parallel\n",
+            instantiated_modules.len()
+        );
         Ok(instantiated_modules)
     }
 
     /// Instantiate a single module (helper for parallel processing)
     #[cfg(feature = "std")]
-    fn instantiate_single_module(
-        idx: usize,
-        binary: &[u8]
-    ) -> Result<wrt_runtime::module::Module> {
+    fn instantiate_single_module(idx: usize, binary: &[u8]) -> Result<wrt_runtime::module::Module> {
         use wrt_decoder::load_wasm_unified;
 
         // Parse the module
-        let wasm_info = load_wasm_unified(binary)
-            .map_err(|_| Error::new(
+        let wasm_info = load_wasm_unified(binary).map_err(|_| {
+            Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Failed to parse core module binary"
-            ))?;
+                "Failed to parse core module binary",
+            )
+        })?;
 
         // Verify it's a core module
         if !wasm_info.is_core_module() {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Validation,
                 wrt_error::codes::VALIDATION_ERROR,
-                "Not a core module"
+                "Not a core module",
             ));
         }
 
-        let module_info = wasm_info.require_module_info()
-            .map_err(|_| Error::new(
+        let module_info = wasm_info.require_module_info().map_err(|_| {
+            Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Module info not available"
-            ))?;
+                "Module info not available",
+            )
+        })?;
 
         // Log key module stats (concise for parallel output)
-        println!("  Thread[{}]: {} bytes, {} imports, {} exports",
-            idx, binary.len(), module_info.imports.len(), module_info.exports.len());
+        println!(
+            "  Thread[{}]: {} bytes, {} imports, {} exports",
+            idx,
+            binary.len(),
+            module_info.imports.len(),
+            module_info.exports.len()
+        );
 
         // Create runtime module directly from binary
         let runtime_module = {
             let mut module = wrt_runtime::module::Module::new_empty()?;
-            module.load_from_binary(binary)
-                .map_err(|_| Error::new(
+            module.load_from_binary(binary).map_err(|_| {
+                Error::new(
                     wrt_error::ErrorCategory::RuntimeTrap,
                     wrt_error::codes::RUNTIME_ERROR,
-                    "Failed to load module from binary"
-                ))
+                    "Failed to load module from binary",
+                )
+            })
         }?;
 
         Ok(runtime_module)
@@ -3150,16 +3634,14 @@ impl ComponentInstance {
     /// Instantiate core modules (no_std placeholder)
     #[cfg(not(feature = "std"))]
     fn instantiate_core_modules(
-        _module_binaries: &[Vec<u8>]
+        _module_binaries: &[Vec<u8>],
     ) -> Result<Vec<wrt_runtime::module::Module>> {
         Ok(Vec::new())
     }
 
     /// Link core modules by analyzing imports and exports (Step 9)
     #[cfg(feature = "std")]
-    fn link_core_modules(
-        modules: &[wrt_runtime::module::Module]
-    ) -> Result<()> {
+    fn link_core_modules(modules: &[wrt_runtime::module::Module]) -> Result<()> {
         use std::collections::{HashMap, HashSet};
 
         println!("=== STEP 9: Module Linking ===");
@@ -3278,7 +3760,7 @@ impl ComponentInstance {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Validation,
                     wrt_error::codes::VALIDATION_ERROR,
-                    "Circular dependency detected"
+                    "Circular dependency detected",
                 ));
             }
 
@@ -3318,7 +3800,7 @@ impl ComponentInstance {
     /// Returns: Vec<(module_idx, function_name, function_idx, is_start)>
     #[cfg(feature = "std")]
     fn prepare_module_execution(
-        modules: &[wrt_runtime::module::Module]
+        modules: &[wrt_runtime::module::Module],
     ) -> Result<Vec<(usize, String, u32, bool)>> {
         println!("=== STEP 10: Execution Preparation ===");
         println!("Total modules to prepare: {}", modules.len());
@@ -3386,22 +3868,39 @@ impl ComponentInstance {
 
         // Execution plan summary
         println!("Execution plan:");
-        println!("  ├─ Modules with start functions: {}", total_start_functions);
+        println!(
+            "  ├─ Modules with start functions: {}",
+            total_start_functions
+        );
         println!("  ├─ Exported functions: {}", total_exported_functions);
-        println!("  └─ Total executable entry points: {}", execution_plan.len());
+        println!(
+            "  └─ Total executable entry points: {}",
+            execution_plan.len()
+        );
 
         println!();
 
         // Show execution order
         if !execution_plan.is_empty() {
             println!("Execution sequence (if triggered):");
-            for (seq, (module_idx, func_name, func_idx, is_start)) in execution_plan.iter().enumerate().take(5) {
+            for (seq, (module_idx, func_name, func_idx, is_start)) in
+                execution_plan.iter().enumerate().take(5)
+            {
                 let marker = if *is_start { "[START]" } else { "" };
-                println!("  {}. Module[{}].\"{}\" (func[{}]) {}",
-                    seq + 1, module_idx, func_name, func_idx, marker);
+                println!(
+                    "  {}. Module[{}].\"{}\" (func[{}]) {}",
+                    seq + 1,
+                    module_idx,
+                    func_name,
+                    func_idx,
+                    marker
+                );
             }
             if execution_plan.len() > 5 {
-                println!("     ... ({} more functions available)", execution_plan.len() - 5);
+                println!(
+                    "     ... ({} more functions available)",
+                    execution_plan.len() - 5
+                );
             }
         } else {
             println!("⚠ No executable entry points found");
@@ -3437,8 +3936,10 @@ impl ComponentInstance {
         println!();
 
         // Separate start functions from regular exports
-        let start_functions: Vec<_> = execution_plan.iter().filter(|(_, _, _, is_start)| *is_start).collect();
-        let export_functions: Vec<_> = execution_plan.iter().filter(|(_, _, _, is_start)| !*is_start).collect();
+        let start_functions: Vec<_> =
+            execution_plan.iter().filter(|(_, _, _, is_start)| *is_start).collect();
+        let export_functions: Vec<_> =
+            execution_plan.iter().filter(|(_, _, _, is_start)| !*is_start).collect();
 
         // Execute start functions first
         if !start_functions.is_empty() {
@@ -3449,8 +3950,14 @@ impl ComponentInstance {
                 // Note: Full execution requires engine setup
                 // For now, we show what would be executed
                 println!("    ├─ Status: Execution deferred (requires engine)");
-                println!("    ├─ Module function count: {}", modules[*module_idx].functions.len());
-                println!("    └─ Would execute: Module[{}] start function", module_idx);
+                println!(
+                    "    ├─ Module function count: {}",
+                    modules[*module_idx].functions.len()
+                );
+                println!(
+                    "    └─ Would execute: Module[{}] start function",
+                    module_idx
+                );
             }
             println!();
         }
@@ -3458,9 +3965,16 @@ impl ComponentInstance {
         // Show available exported functions
         if !export_functions.is_empty() {
             println!("Available exported functions ({}):", export_functions.len());
-            for (idx, (module_idx, func_name, func_idx, _is_start)) in export_functions.iter().enumerate().take(5) {
-                println!("  {}. Module[{}].\"{}\" (func[{}])",
-                    idx + 1, module_idx, func_name, func_idx);
+            for (idx, (module_idx, func_name, func_idx, _is_start)) in
+                export_functions.iter().enumerate().take(5)
+            {
+                println!(
+                    "  {}. Module[{}].\"{}\" (func[{}])",
+                    idx + 1,
+                    module_idx,
+                    func_name,
+                    func_idx
+                );
                 println!("     └─ Ready to call (requires engine setup)");
             }
             if export_functions.len() > 5 {
@@ -3493,7 +4007,9 @@ impl ComponentInstance {
         execution_plan: &[(usize, String, u32, bool)],
         host_registry: Option<std::sync::Arc<wrt_host::CallbackRegistry>>,
     ) -> Result<Box<dyn wrt_runtime::engine_factory::RuntimeEngine>> {
-        use wrt_runtime::engine_factory::{EngineFactory, EngineType, MemoryProviderType, EngineConfig};
+        use wrt_runtime::engine_factory::{
+            EngineConfig, EngineFactory, EngineType, MemoryProviderType,
+        };
 
         println!("=== STEP 12: Engine Initialization ===");
 
@@ -3507,8 +4023,16 @@ impl ComponentInstance {
 
         println!("Memory requirements:");
         println!("  ├─ Modules: {}", modules.len());
-        println!("  ├─ Base memory: {} bytes ({} KB)", total_memory, total_memory / 1024);
-        println!("  └─ Allocating: {} bytes ({} KB)", total_memory * 2, total_memory * 2 / 1024);
+        println!(
+            "  ├─ Base memory: {} bytes ({} KB)",
+            total_memory,
+            total_memory / 1024
+        );
+        println!(
+            "  └─ Allocating: {} bytes ({} KB)",
+            total_memory * 2,
+            total_memory * 2 / 1024
+        );
         println!();
 
         // Configure engine
@@ -3521,7 +4045,11 @@ impl ComponentInstance {
         println!("Engine configuration:");
         println!("  ├─ Type: {:?}", config.engine_type);
         println!("  ├─ Memory provider: {:?}", config.memory_provider);
-        println!("  ├─ Memory budget: {} bytes ({} KB)", config.memory_budget, config.memory_budget / 1024);
+        println!(
+            "  ├─ Memory budget: {} bytes ({} KB)",
+            config.memory_budget,
+            config.memory_budget / 1024
+        );
         println!("  ├─ Max call depth: {:?}", config.max_call_depth);
         println!("  └─ Debug mode: {}", config.debug_mode);
         println!();
@@ -3577,7 +4105,7 @@ impl ComponentInstance {
     /// **Step 2**: Now stores the index for runtime type lookup
     #[cfg(feature = "std")]
     fn build_type_index(
-        types: &[wrt_format::component::ComponentType]
+        types: &[wrt_format::component::ComponentType],
     ) -> Result<std::collections::HashMap<u32, wrt_format::component::ComponentType>> {
         use std::collections::HashMap;
 
@@ -3591,7 +4119,9 @@ impl ComponentInstance {
             println!("  Type[{}]: {}", idx, type_name);
 
             // Additional detail for function types (most common)
-            if let wrt_format::component::ComponentTypeDefinition::Function { params, results } = &ty.definition {
+            if let wrt_format::component::ComponentTypeDefinition::Function { params, results } =
+                &ty.definition
+            {
                 println!("    ├─ Params: {}", params.len());
                 println!("    └─ Results: {}", results.len());
             }
@@ -3605,16 +4135,14 @@ impl ComponentInstance {
 
     /// Build type index (no_std version - simplified, no printing)
     #[cfg(not(feature = "std"))]
-    fn build_type_index(
-        types: &[wrt_format::component::ComponentType]
-    ) -> Result<()> {
+    fn build_type_index(types: &[wrt_format::component::ComponentType]) -> Result<()> {
         // In no_std, we just validate type count for now
         // Full type resolution will be implemented when needed
         if types.len() > MAX_TYPES {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Validation,
                 wrt_error::codes::CAPACITY_EXCEEDED,
-                "Type count exceeds maximum"
+                "Type count exceeds maximum",
             ));
         }
         Ok(())
@@ -3725,9 +4253,11 @@ impl ComponentInstance {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    Err(Error::runtime_not_implemented("Native function calls require std feature"))
+                    Err(Error::runtime_not_implemented(
+                        "Native function calls require std feature",
+                    ))
                 }
-            }
+            },
             FunctionImplementation::Host { callback } => {
                 #[cfg(feature = "std")]
                 let callback_str = callback.as_str();
@@ -3806,9 +4336,11 @@ impl ComponentInstance {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    Err(Error::runtime_not_implemented("Native function calls require std feature"))
+                    Err(Error::runtime_not_implemented(
+                        "Native function calls require std feature",
+                    ))
                 }
-            }
+            },
             FunctionImplementation::Host { callback } => {
                 #[cfg(feature = "std")]
                 let callback_str = callback.as_str();
@@ -3833,14 +4365,21 @@ impl ComponentInstance {
     pub fn get_export(&self, name: &str) -> Option<&crate::instantiation::ResolvedExport> {
         self.exports.iter().find(|export| {
             #[cfg(feature = "std")]
-            { export.name == name }
+            {
+                export.name == name
+            }
             #[cfg(not(feature = "std"))]
-            { export.name.as_str().map(|s| s == name).unwrap_or(false) }
+            {
+                export.name.as_str().map(|s| s == name).unwrap_or(false)
+            }
         })
     }
 
     /// Add a resolved import
-    pub fn add_resolved_import(&mut self, resolved: crate::instantiation::ResolvedImport) -> Result<()> {
+    pub fn add_resolved_import(
+        &mut self,
+        resolved: crate::instantiation::ResolvedImport,
+    ) -> Result<()> {
         if self.imports.len() >= MAX_IMPORTS_PER_COMPONENT {
             return Err(Error::validation_error("Too many resolved imports"));
         }
@@ -3851,7 +4390,8 @@ impl ComponentInstance {
         }
         #[cfg(not(all(feature = "std", not(feature = "safety-critical"))))]
         {
-            self.imports.push(resolved)
+            self.imports
+                .push(resolved)
                 .map_err(|_| Error::validation_error("Failed to push resolved import"))?;
         }
         Ok(())
@@ -3899,10 +4439,9 @@ impl ComponentInstance {
         data: ResourceData,
     ) -> Result<ResourceHandle> {
         if let Some(resource_manager) = &mut self.resource_manager {
-            resource_manager.create_resource(resource_type, data)
-                .map_err(|_e| {
-                    Error::component_resource_lifecycle_error("Failed to create resource")
-                })
+            resource_manager.create_resource(resource_type, data).map_err(|_e| {
+                Error::component_resource_lifecycle_error("Failed to create resource")
+            })
         } else {
             Err(Error::runtime_not_implemented(
                 "Resource management not available for this instance",
@@ -3914,9 +4453,9 @@ impl ComponentInstance {
     pub fn drop_resource(&mut self, handle: ResourceHandle) -> Result<()> {
         if let Some(resource_manager) = &mut self.resource_manager {
             // Use destroy_resource instead of drop_resource
-            resource_manager.destroy_resource(handle).map_err(|_| {
-                Error::runtime_execution_error("Failed to destroy resource")
-            })
+            resource_manager
+                .destroy_resource(handle)
+                .map_err(|_| Error::runtime_execution_error("Failed to destroy resource"))
         } else {
             Err(Error::runtime_not_implemented(
                 "Resource management not available for this instance",
@@ -3971,7 +4510,10 @@ impl ComponentInstance {
         module_index: u32,
         args: &[ComponentValue],
     ) -> Result<Vec<ComponentValue>> {
-        println!("[CALL_NATIVE] Calling func[{}] in module[{}]", func_index, module_index);
+        println!(
+            "[CALL_NATIVE] Calling func[{}] in module[{}]",
+            func_index, module_index
+        );
 
         // This is a canonical function that needs to be executed through the runtime
         // The func_index refers to a function in the already-instantiated module
@@ -3987,20 +4529,26 @@ impl ComponentInstance {
         // This preserves all the import linkages established during instantiation
         #[cfg(feature = "wrt-execution")]
         {
-            use wrt_runtime::engine::CapabilityEngine;
             use wrt_foundation::values::Value;
+            use wrt_runtime::engine::CapabilityEngine;
 
             if let (Some(engine_box), Some(instance_handle)) =
                 (&mut self.runtime_engine, self.main_instance_handle)
             {
                 let engine = engine_box.as_mut();
-                println!("[CALL_NATIVE] Using stored engine and instance {:?}", instance_handle);
+                println!(
+                    "[CALL_NATIVE] Using stored engine and instance {:?}",
+                    instance_handle
+                );
 
                 // Convert component values to WASM values
-                let wasm_args: Vec<Value> = args.iter().map(|_| {
-                    // For now, we don't pass arguments - wasi:cli/run takes none
-                    Value::I32(0)
-                }).collect();
+                let wasm_args: Vec<Value> = args
+                    .iter()
+                    .map(|_| {
+                        // For now, we don't pass arguments - wasi:cli/run takes none
+                        Value::I32(0)
+                    })
+                    .collect();
 
                 // Try _initialize first (important for TinyGo components)
                 println!("[CALL_NATIVE] Attempting to call _initialize...");
@@ -4031,13 +4579,20 @@ impl ComponentInstance {
                     println!("[CALL_NATIVE] Trying entry point: {}...", entry_point);
                     match engine.execute(instance_handle, entry_point, &wasm_args) {
                         Ok(results) => {
-                            println!("[CALL_NATIVE] ✓ {} completed with {} results", entry_point, results.len());
+                            println!(
+                                "[CALL_NATIVE] ✓ {} completed with {} results",
+                                entry_point,
+                                results.len()
+                            );
                             return Ok(vec![]); // wasi:cli/run returns nothing on success
-                        }
+                        },
                         Err(e) => {
-                            println!("[CALL_NATIVE] ⚠ {} not found or failed: {:?}", entry_point, e);
+                            println!(
+                                "[CALL_NATIVE] ⚠ {} not found or failed: {:?}",
+                                entry_point, e
+                            );
                             last_error = Some(e);
-                        }
+                        },
                     }
                 }
 
@@ -4046,9 +4601,15 @@ impl ComponentInstance {
                     println!("[CALL_NATIVE] ✗ All entry points failed");
                     // Debug: check for common exports (core module exports only)
                     let common_exports = [
-                        "_start", "_initialize", "run", "main",
-                        "memory", "__heap_base", "__data_end",
-                        "cabi_realloc", "__wasm_call_ctors",
+                        "_start",
+                        "_initialize",
+                        "run",
+                        "main",
+                        "memory",
+                        "__heap_base",
+                        "__data_end",
+                        "cabi_realloc",
+                        "__wasm_call_ctors",
                     ];
                     println!("[CALL_NATIVE] Checking for common exports:");
                     for name in common_exports {
@@ -4061,16 +4622,24 @@ impl ComponentInstance {
                     return Err(e);
                 }
             } else {
-                println!("[CALL_NATIVE] No stored engine/instance, falling back to fresh instantiation");
+                println!(
+                    "[CALL_NATIVE] No stored engine/instance, falling back to fresh instantiation"
+                );
             }
         }
 
         // Fallback: Create fresh engine if stored engine not available
         // This path is used when wrt-execution feature is disabled or during testing
-        let module_binary = self.component.modules.get(module_index as usize)
+        let module_binary = self
+            .component
+            .modules
+            .get(module_index as usize)
             .ok_or_else(|| Error::runtime_execution_error("Module index out of bounds"))?;
 
-        println!("[CALL_NATIVE] Module binary size: {} bytes", module_binary.len());
+        println!(
+            "[CALL_NATIVE] Module binary size: {} bytes",
+            module_binary.len()
+        );
 
         let binary_clone = module_binary.clone();
         let result = std::thread::Builder::new()
@@ -4582,12 +5151,7 @@ impl ComponentInstance {
             // This would need proper memory access in a real implementation
             let memory: Option<&mut [u8]> = None;
 
-            return executor.execute_canon_lower(
-                interface,
-                function,
-                args.to_vec(),
-                memory,
-            );
+            return executor.execute_canon_lower(interface, function, args.to_vec(), memory);
         }
 
         // For non-wasip2 functions, use the regular host registry
@@ -4612,7 +5176,9 @@ impl ComponentInstance {
         let mut wasm_args = Vec::new();
         for arg in args {
             let wasm_value = match arg {
-                ComponentValue::Bool(b) => wrt_foundation::values::Value::I32(if *b { 1 } else { 0 }),
+                ComponentValue::Bool(b) => {
+                    wrt_foundation::values::Value::I32(if *b { 1 } else { 0 })
+                },
                 ComponentValue::S8(v) => wrt_foundation::values::Value::I32(*v as i32),
                 ComponentValue::U8(v) => wrt_foundation::values::Value::I32(*v as i32),
                 ComponentValue::S16(v) => wrt_foundation::values::Value::I32(*v as i32),
@@ -4621,9 +5187,17 @@ impl ComponentInstance {
                 ComponentValue::U32(v) => wrt_foundation::values::Value::I32(*v as i32),
                 ComponentValue::S64(v) => wrt_foundation::values::Value::I64(*v),
                 ComponentValue::U64(v) => wrt_foundation::values::Value::I64(*v as i64),
-                ComponentValue::F32(v) => wrt_foundation::values::Value::F32(FloatBits32::from_f32(*v)),
-                ComponentValue::F64(v) => wrt_foundation::values::Value::F64(FloatBits64::from_f64(*v)),
-                _ => return Err(Error::runtime_execution_error("Unsupported argument type for host function")),
+                ComponentValue::F32(v) => {
+                    wrt_foundation::values::Value::F32(FloatBits32::from_f32(*v))
+                },
+                ComponentValue::F64(v) => {
+                    wrt_foundation::values::Value::F64(FloatBits64::from_f64(*v))
+                },
+                _ => {
+                    return Err(Error::runtime_execution_error(
+                        "Unsupported argument type for host function",
+                    ));
+                },
             };
             wasm_args.push(wasm_value);
         }
@@ -4634,8 +5208,11 @@ impl ComponentInstance {
 
         // Look up the function in the registry and call it
         // The callback string is the full function name (e.g., "wasi:cli/run@0.2.0")
-        let results = registry.call_host_function(engine_any, module_name, callback, wasm_args)
-            .map_err(|_| Error::runtime_function_not_found("Host function not found or execution failed"))?;
+        let results = registry
+            .call_host_function(engine_any, module_name, callback, wasm_args)
+            .map_err(|_| {
+                Error::runtime_function_not_found("Host function not found or execution failed")
+            })?;
 
         // Convert results back to ComponentValue
         let mut component_results = Vec::new();
@@ -4645,7 +5222,11 @@ impl ComponentInstance {
                 wrt_foundation::values::Value::I64(v) => ComponentValue::S64(*v),
                 wrt_foundation::values::Value::F32(v) => ComponentValue::F32(v.to_f32()),
                 wrt_foundation::values::Value::F64(v) => ComponentValue::F64(v.to_f64()),
-                _ => return Err(Error::runtime_execution_error("Unsupported return type from host function")),
+                _ => {
+                    return Err(Error::runtime_execution_error(
+                        "Unsupported return type from host function",
+                    ));
+                },
             };
             component_results.push(component_value);
         }
@@ -4658,12 +5239,11 @@ impl ComponentInstance {
         &mut self,
         _callback: &str,
         _args: &[ComponentValue],
-        _host_registry: Option<&()>,  // Dummy type for no wrt-execution
+        _host_registry: Option<&()>, // Dummy type for no wrt-execution
     ) -> Result<Vec<ComponentValue>> {
         // Simplified implementation - would call actual host function
         Ok(vec![ComponentValue::String(String::from("host_result"))]) // Placeholder result
     }
-
 }
 
 impl ComponentMemory {
@@ -4725,7 +5305,9 @@ impl ComponentMemory {
         #[cfg(not(feature = "std"))]
         {
             while self.data.len() < target_len {
-                self.data.push(0).map_err(|_| Error::memory_error("Memory growth capacity exceeded"))?;
+                self.data
+                    .push(0)
+                    .map_err(|_| Error::memory_error("Memory growth capacity exceeded"))?;
             }
         }
 
@@ -4758,7 +5340,10 @@ impl CanonicalMemory for ComponentMemory {
         // Read bytes one by one from BoundedVec
         let mut result = Vec::with_capacity(len as usize);
         for i in start..end {
-            let byte = *self.data.get(i).ok_or_else(|| Error::memory_out_of_bounds("Failed to read byte from memory"))?;
+            let byte = *self
+                .data
+                .get(i)
+                .ok_or_else(|| Error::memory_out_of_bounds("Failed to read byte from memory"))?;
             result.push(byte);
         }
         Ok(result)
@@ -4858,8 +5443,16 @@ pub fn create_function_signature(
 }
 
 /// Create a component export
-pub fn create_component_export(name: String, export_type: ExportType, index: u32) -> ComponentExport {
-    ComponentExport { name, export_type, index }
+pub fn create_component_export(
+    name: String,
+    export_type: ExportType,
+    index: u32,
+) -> ComponentExport {
+    ComponentExport {
+        name,
+        export_type,
+        index,
+    }
 }
 
 /// Create a component import
@@ -4873,5 +5466,4 @@ pub fn create_component_import(
         module,
         import_type,
     }
-
 }

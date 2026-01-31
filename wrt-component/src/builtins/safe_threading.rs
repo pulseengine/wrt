@@ -3,36 +3,15 @@
 //! This module provides WebAssembly threading built-ins that leverage the
 //! platform-specific thread pools and safety mechanisms from wrt-platform.
 
-use std::{
-    boxed::Box,
-    string::ToString,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
 
-use wrt_error::{
-    kinds::ThreadingError,
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result, kinds::ThreadingError};
 #[cfg(feature = "std")]
-use wrt_foundation::{
-    builtin::BuiltinType,
-    component_value::ComponentValue,
-};
-use wrt_platform::{
-    threading::{
-        ThreadPoolConfig,
-        ThreadPriority,
-        ThreadingLimits,
-    },
-};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
+use wrt_platform::threading::{ThreadPoolConfig, ThreadPriority, ThreadingLimits};
 
 #[cfg(feature = "threading")]
-use wrt_platform::wasm_thread_manager::{
-    WasmModuleInfo,
-    WasmThreadManager,
-};
+use wrt_platform::wasm_thread_manager::{WasmModuleInfo, WasmThreadManager};
 
 use super::BuiltinHandler;
 
@@ -42,7 +21,7 @@ pub struct SafeThreadingSpawnHandler {
     /// Platform-aware thread manager
     thread_manager: Arc<WasmThreadManager>,
     /// Module ID for this component
-    module_id:      u64,
+    module_id: u64,
 }
 
 impl SafeThreadingSpawnHandler {
@@ -314,10 +293,10 @@ pub fn create_safe_threading_handlers(
 
     // Create threading limits
     let limits = ThreadingLimits {
-        max_threads_per_module:  module_info.max_threads,
-        max_total_threads:       module_info.max_threads * 4, // Allow some headroom
-        max_thread_lifetime:     module_info.cpu_quota,
-        cpu_quota_per_thread:    module_info.cpu_quota,
+        max_threads_per_module: module_info.max_threads,
+        max_total_threads: module_info.max_threads * 4, // Allow some headroom
+        max_thread_lifetime: module_info.cpu_quota,
+        cpu_quota_per_thread: module_info.cpu_quota,
         memory_limit_per_module: module_info.memory_limit,
     };
 

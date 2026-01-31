@@ -7,17 +7,10 @@
 #[cfg(not(feature = "std"))]
 use core::marker::PhantomData;
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{boxed::Box, collections::HashMap, sync::Arc};
 
 use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    collections::StaticVec,
-    prelude::*,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, collections::StaticVec, prelude::*, safe_managed_alloc,
 };
 
 // Re-export async types when available
@@ -27,10 +20,7 @@ use crate::{
     execution_engine::ComponentExecutionEngine,
     types::Value,
     unified_execution_agent::{
-        AgentConfiguration,
-        ExecutionMode,
-        HybridModeFlags,
-        UnifiedExecutionAgent,
+        AgentConfiguration, ExecutionMode, HybridModeFlags, UnifiedExecutionAgent,
     },
 };
 
@@ -62,8 +52,7 @@ pub struct AgentRegistry {
 }
 
 /// Unique identifier for agents
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct AgentId(pub u32);
 
 /// Registry statistics
@@ -72,11 +61,11 @@ pub struct RegistryStatistics {
     /// Total unified agents created
     pub unified_agents_created: u32,
     /// Total legacy agents created  
-    pub legacy_agents_created:  u32,
+    pub legacy_agents_created: u32,
     /// Total migrations performed
-    pub migrations_performed:   u32,
+    pub migrations_performed: u32,
     /// Active agents count
-    pub active_agents:          u32,
+    pub active_agents: u32,
 }
 
 /// Migration status tracking
@@ -101,9 +90,9 @@ pub struct MigrationStatus {
 /// Migration warning information
 #[derive(Debug, Clone)]
 pub struct MigrationWarning {
-    pub agent_id:     AgentId,
+    pub agent_id: AgentId,
     pub warning_type: WarningType,
-    pub message:      StaticVec<u8, 256>,
+    pub message: StaticVec<u8, 256>,
 }
 
 /// Types of migration warnings
@@ -154,9 +143,9 @@ pub trait LegacyExecutionAgent: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct AgentCreationOptions {
     /// Preferred agent type
-    pub agent_type:            PreferredAgentType,
+    pub agent_type: PreferredAgentType,
     /// Configuration for the agent
-    pub config:                AgentConfiguration,
+    pub config: AgentConfiguration,
     /// Whether to use legacy agent if unified not available
     pub allow_legacy_fallback: bool,
 }
@@ -189,8 +178,8 @@ impl AgentRegistry {
             #[cfg(not(feature = "std"))]
             legacy_agents: StaticVec::new(),
 
-            next_agent_id:    1,
-            stats:            RegistryStatistics::default(),
+            next_agent_id: 1,
+            stats: RegistryStatistics::default(),
             migration_status: MigrationStatus {
                 #[cfg(feature = "std")]
                 pending_migrations: Vec::new(),
@@ -606,8 +595,8 @@ impl AgentRegistry {
 /// Agent information
 #[derive(Debug, Clone)]
 pub struct AgentInfo {
-    pub agent_id:         AgentId,
-    pub agent_type:       AgentType,
+    pub agent_id: AgentId,
+    pub agent_type: AgentType,
     pub migration_status: AgentMigrationStatus,
 }
 
@@ -642,8 +631,8 @@ impl Default for AgentRegistry {
 impl Default for AgentCreationOptions {
     fn default() -> Self {
         Self {
-            agent_type:            PreferredAgentType::Unified,
-            config:                AgentConfiguration::default(),
+            agent_type: PreferredAgentType::Unified,
+            config: AgentConfiguration::default(),
             allow_legacy_fallback: false,
         }
     }

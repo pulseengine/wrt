@@ -3,31 +3,22 @@
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 // Implement required traits for BoundedVec compatibility
 use wrt_foundation::{
     bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ReadStream,
-        ToBytes,
-        WriteStream,
-    },
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
 };
 
-use super::{
-    Instant,
-    ResourceId,
-};
+use super::{Instant, ResourceId};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
@@ -66,17 +57,17 @@ const MAX_RESOURCES: usize = 1024;
 #[derive(Debug, Clone)]
 pub struct Resource {
     /// Resource type index
-    pub type_idx:      u32,
+    pub type_idx: u32,
     /// Resource data pointer (simplified for no_std)
-    pub data_ptr:      usize,
+    pub data_ptr: usize,
     /// Debug name for the resource (optional)
-    pub name:          Option<BoundedString<64>>,
+    pub name: Option<BoundedString<64>>,
     /// Creation timestamp
-    pub created_at:    Instant,
+    pub created_at: Instant,
     /// Last access timestamp
     pub last_accessed: Instant,
     /// Access count
-    pub access_count:  u64,
+    pub access_count: u64,
 }
 
 impl Resource {
@@ -171,14 +162,11 @@ pub trait BufferPoolTrait {
 #[derive(Debug, Clone)]
 pub struct ResourceTable {
     /// Storage for resources
-    resources: BoundedVec<
-        Option<Resource>,
-        MAX_RESOURCES,
-    >,
+    resources: BoundedVec<Option<Resource>, MAX_RESOURCES>,
     /// Next available resource ID
-    next_id:            u32,
+    next_id: u32,
     /// Memory strategy
-    memory_strategy:    MemoryStrategy,
+    memory_strategy: MemoryStrategy,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -187,9 +175,9 @@ impl ResourceTable {
     /// Create a new resource table
     pub fn new() -> wrt_error::Result<Self> {
         Ok(Self {
-            resources:          BoundedVec::new().unwrap(),
-            next_id:            1,
-            memory_strategy:    MemoryStrategy::default(),
+            resources: BoundedVec::new().unwrap(),
+            next_id: 1,
+            memory_strategy: MemoryStrategy::default(),
             verification_level: VerificationLevel::default(),
         })
     }

@@ -41,34 +41,14 @@
 
 // Cross-environment imports
 #[cfg(all(not(feature = "std")))]
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap as HashMap,
-    format,
-    string::String,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::String,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::{BoundedString, BoundedVec},
     safe_memory::NoStdProvider,
 };
 
@@ -79,11 +59,7 @@ use crate::canonical_abi::ComponentValue;
 use crate::prelude::*;
 use crate::{
     canonical_abi::ComponentType,
-    components::component_instantiation::{
-        ComponentInstance,
-        FunctionSignature,
-        InstanceId,
-    },
+    components::component_instantiation::{ComponentInstance, FunctionSignature, InstanceId},
     resource_management::{ResourceHandle, ResourceManager as ComponentResourceManager},
 };
 
@@ -108,64 +84,62 @@ pub struct CallRouter {
     /// Active call contexts by call ID
     active_calls: HashMap<CallId, CallContext>,
     /// Call stack tracking for recursion prevention
-    call_stack:   CallStack,
+    call_stack: CallStack,
     /// Next available call ID
     next_call_id: CallId,
     /// Router configuration
-    config:       CallRouterConfig,
+    config: CallRouterConfig,
     /// Call statistics
-    stats:        CallStatistics,
+    stats: CallStatistics,
 }
 
 /// Call context for managing individual cross-component calls
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CallContext {
     /// Unique call identifier
-    pub call_id:          CallId,
+    pub call_id: CallId,
     /// Source component instance
-    pub source_instance:  InstanceId,
+    pub source_instance: InstanceId,
     /// Target component instance
-    pub target_instance:  InstanceId,
+    pub target_instance: InstanceId,
     /// Target function name
-    pub target_function:  String,
+    pub target_function: String,
     /// Call parameters
-    pub parameters:       Vec<ComponentValue>,
+    pub parameters: Vec<ComponentValue>,
     /// Expected return types
-    pub return_types:     Vec<wrt_foundation::component_value::ValType<NoStdProvider<4096>>>,
+    pub return_types: Vec<wrt_foundation::component_value::ValType<NoStdProvider<4096>>>,
     /// Resource handles passed with this call
     pub resource_handles: Vec<ResourceHandle>,
     /// Call metadata
-    pub metadata:         CallMetadata,
+    pub metadata: CallMetadata,
     /// Call state
-    pub state:            CallState,
+    pub state: CallState,
 }
 
 /// Call stack management for tracking nested calls
 #[derive(Debug, Clone)]
 pub struct CallStack {
     /// Stack frames representing active calls
-    frames:        Vec<CallFrame>,
+    frames: Vec<CallFrame>,
     /// Maximum allowed stack depth
-    max_depth:     usize,
+    max_depth: usize,
     /// Current stack depth
     current_depth: usize,
 }
 
 /// Individual call frame in the call stack
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CallFrame {
     /// Call ID for this frame
-    pub call_id:         CallId,
+    pub call_id: CallId,
     /// Source instance for this call
     pub source_instance: InstanceId,
     /// Target instance for this call
     pub target_instance: InstanceId,
     /// Function being called
-    pub function_name:   String,
+    pub function_name: String,
     /// Frame creation timestamp
-    pub created_at:      u64,
+    pub created_at: u64,
 }
 
 /// Parameter bridge for safe cross-component parameter passing
@@ -176,17 +150,16 @@ pub struct ParameterBridge {
     /// Target instance memory context
     target_memory_context: MemoryContext,
     /// Marshaling configuration
-    config:                MarshalingConfig,
+    config: MarshalingConfig,
 }
 
 /// Memory context for parameter marshaling
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MemoryContext {
     /// Instance ID this context belongs to
-    pub instance_id:      InstanceId,
+    pub instance_id: InstanceId,
     /// Available memory size
-    pub memory_size:      u32,
+    pub memory_size: u32,
     /// Memory protection flags
     pub protection_flags: MemoryProtectionFlags,
 }
@@ -195,26 +168,26 @@ pub struct MemoryContext {
 #[derive(Debug)]
 pub struct ResourceBridge {
     /// Resource manager reference
-    resource_manager:  ComponentResourceManager,
+    resource_manager: ComponentResourceManager,
     /// Transfer policies
     transfer_policies: HashMap<InstanceId, ResourceTransferPolicy>,
     /// Active resource transfers
-    active_transfers:  Vec<ResourceTransfer>,
+    active_transfers: Vec<ResourceTransfer>,
 }
 
 /// Call router configuration
 #[derive(Debug, Clone)]
 pub struct CallRouterConfig {
     /// Enable call tracing for debugging
-    pub enable_call_tracing:               bool,
+    pub enable_call_tracing: bool,
     /// Maximum call stack depth
-    pub max_call_stack_depth:              usize,
+    pub max_call_stack_depth: usize,
     /// Enable security checks
-    pub enable_security_checks:            bool,
+    pub enable_security_checks: bool,
     /// Call timeout in microseconds
-    pub call_timeout_us:                   u64,
+    pub call_timeout_us: u64,
     /// Enable performance optimization
-    pub enable_optimization:               bool,
+    pub enable_optimization: bool,
     /// Maximum concurrent calls per instance
     pub max_concurrent_calls_per_instance: usize,
 }
@@ -223,24 +196,24 @@ pub struct CallRouterConfig {
 #[derive(Debug, Clone)]
 pub struct MarshalingConfig {
     /// Enable parameter validation
-    pub validate_parameters:      bool,
+    pub validate_parameters: bool,
     /// Enable memory bounds checking
-    pub check_memory_bounds:      bool,
+    pub check_memory_bounds: bool,
     /// Enable type compatibility checking
     pub check_type_compatibility: bool,
     /// Copy strategy for large parameters
-    pub copy_strategy:            ParameterCopyStrategy,
+    pub copy_strategy: ParameterCopyStrategy,
 }
 
 /// Memory protection flags
 #[derive(Debug, Clone, PartialEq)]
 pub struct MemoryProtectionFlags {
     /// Memory is readable
-    pub readable:        bool,
+    pub readable: bool,
     /// Memory is writable
-    pub writeable:       bool,
+    pub writeable: bool,
     /// Memory is executable
-    pub executable:      bool,
+    pub executable: bool,
     /// Memory isolation level
     pub isolation_level: MemoryIsolationLevel,
 }
@@ -251,18 +224,18 @@ pub struct ResourceTransferPolicy {
     /// Allow resource ownership transfer
     pub allow_ownership_transfer: bool,
     /// Allow resource borrowing
-    pub allow_borrowing:          bool,
+    pub allow_borrowing: bool,
     /// Allowed resource types for transfer
-    pub allowed_resource_types:   Vec<String>,
+    pub allowed_resource_types: Vec<String>,
     /// Maximum resources that can be transferred
-    pub max_transfer_count:       u32,
+    pub max_transfer_count: u32,
 }
 
 /// Active resource transfer tracking
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceTransfer {
     /// Transfer ID
-    pub transfer_id:     u64,
+    pub transfer_id: u64,
     /// Resource handle being transferred
     pub resource_handle: ResourceHandle,
     /// Source instance
@@ -270,46 +243,45 @@ pub struct ResourceTransfer {
     /// Target instance
     pub target_instance: InstanceId,
     /// Transfer type (ownership vs borrowing)
-    pub transfer_type:   ResourceTransferType,
+    pub transfer_type: ResourceTransferType,
     /// Transfer start timestamp
-    pub started_at:      u64,
+    pub started_at: u64,
 }
 
 /// Call metadata for tracking and debugging
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CallMetadata {
     /// Call start timestamp
-    pub started_at:          u64,
+    pub started_at: u64,
     /// Call completion timestamp
-    pub completed_at:        u64,
+    pub completed_at: u64,
     /// Call duration in microseconds
-    pub duration_us:         u64,
+    pub duration_us: u64,
     /// Number of parameters passed
-    pub parameter_count:     usize,
+    pub parameter_count: usize,
     /// Total parameter data size in bytes
     pub parameter_data_size: u32,
     /// Custom metadata fields
-    pub custom_fields:       HashMap<String, String>,
+    pub custom_fields: HashMap<String, String>,
 }
 
 /// Call statistics for monitoring and optimization
 #[derive(Debug, Clone, Default)]
 pub struct CallStatistics {
     /// Total calls dispatched
-    pub total_calls:                u64,
+    pub total_calls: u64,
     /// Successful calls
-    pub successful_calls:           u64,
+    pub successful_calls: u64,
     /// Failed calls
-    pub failed_calls:               u64,
+    pub failed_calls: u64,
     /// Average call duration in microseconds
-    pub average_duration_us:        u64,
+    pub average_duration_us: u64,
     /// Peak concurrent calls
-    pub peak_concurrent_calls:      u32,
+    pub peak_concurrent_calls: u32,
     /// Total parameters marshaled
     pub total_parameters_marshaled: u64,
     /// Total resource transfers
-    pub total_resource_transfers:   u64,
+    pub total_resource_transfers: u64,
 }
 
 /// Call state enumeration
@@ -404,11 +376,11 @@ pub enum CommunicationError {
 impl Default for CallRouterConfig {
     fn default() -> Self {
         Self {
-            enable_call_tracing:               false,
-            max_call_stack_depth:              MAX_CALL_STACK_DEPTH,
-            enable_security_checks:            true,
-            call_timeout_us:                   5_000_000, // 5 seconds
-            enable_optimization:               true,
+            enable_call_tracing: false,
+            max_call_stack_depth: MAX_CALL_STACK_DEPTH,
+            enable_security_checks: true,
+            call_timeout_us: 5_000_000, // 5 seconds
+            enable_optimization: true,
             max_concurrent_calls_per_instance: MAX_ACTIVE_CALLS_PER_INSTANCE,
         }
     }
@@ -417,10 +389,10 @@ impl Default for CallRouterConfig {
 impl Default for MarshalingConfig {
     fn default() -> Self {
         Self {
-            validate_parameters:      true,
-            check_memory_bounds:      true,
+            validate_parameters: true,
+            check_memory_bounds: true,
             check_type_compatibility: true,
-            copy_strategy:            ParameterCopyStrategy::CopyOnWrite,
+            copy_strategy: ParameterCopyStrategy::CopyOnWrite,
         }
     }
 }
@@ -428,9 +400,9 @@ impl Default for MarshalingConfig {
 impl Default for MemoryProtectionFlags {
     fn default() -> Self {
         Self {
-            readable:        true,
-            writeable:       false,
-            executable:      false,
+            readable: true,
+            writeable: false,
+            executable: false,
             isolation_level: MemoryIsolationLevel::Basic,
         }
     }
@@ -440,9 +412,9 @@ impl Default for ResourceTransferPolicy {
     fn default() -> Self {
         Self {
             allow_ownership_transfer: true,
-            allow_borrowing:          true,
-            allowed_resource_types:   Vec::new(),
-            max_transfer_count:       16,
+            allow_borrowing: true,
+            allowed_resource_types: Vec::new(),
+            max_transfer_count: 16,
         }
     }
 }
@@ -495,11 +467,11 @@ impl CallRouter {
 
         // Push call frame onto stack
         let frame = CallFrame {
-            call_id:         context.call_id,
+            call_id: context.call_id,
             source_instance: context.source_instance,
             target_instance: context.target_instance,
-            function_name:   context.target_function.clone(),
-            created_at:      context.metadata.started_at,
+            function_name: context.target_function.clone(),
+            created_at: context.metadata.started_at,
         };
         self.call_stack.push_frame(frame)?;
 
@@ -525,11 +497,8 @@ impl CallRouter {
         }
 
         // Execute the target function
-        let result = self.execute_target_function(
-            &target_function,
-            &marshaled_parameters,
-            target_instance,
-        );
+        let result =
+            self.execute_target_function(&target_function, &marshaled_parameters, target_instance);
 
         // Update call state and statistics based on result
         {
@@ -583,7 +552,9 @@ impl CallRouter {
         // Convert ComponentType to the required provider type
         // For now, just store an empty vector as placeholder
         // In a full implementation, this would properly convert the ComponentType
-        let converted_return_types: Vec<wrt_foundation::component_value::ValType<NoStdProvider<4096>>> = Vec::new();
+        let converted_return_types: Vec<
+            wrt_foundation::component_value::ValType<NoStdProvider<4096>>,
+        > = Vec::new();
 
         Ok(CallContext {
             call_id: 0, // Will be assigned during dispatch

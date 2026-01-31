@@ -4,11 +4,7 @@
 //! needed for the component model implementation.
 
 // Import from wrt-foundation instead of wrt-runtime
-use wrt_foundation::types::{
-    GlobalType,
-    MemoryType,
-    TableType,
-};
+use wrt_foundation::types::{GlobalType, MemoryType, TableType};
 
 use crate::prelude::*;
 
@@ -43,7 +39,7 @@ impl Default for RuntimeConfig {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncType {
     /// Parameter types
-    pub params:  Vec<ValueType>,
+    pub params: Vec<ValueType>,
     /// Result types
     pub results: Vec<ValueType>,
 }
@@ -63,7 +59,7 @@ pub struct Memory {
     /// Memory type
     pub ty: MemoryType,
     /// Memory data
-    data:   Vec<u8>,
+    data: Vec<u8>,
 }
 
 impl Memory {
@@ -88,7 +84,7 @@ impl Memory {
 #[derive(Debug)]
 pub struct Table {
     /// Table type
-    pub ty:   TableType,
+    pub ty: TableType,
     /// Table elements
     elements: Vec<Option<usize>>,
 }
@@ -117,7 +113,7 @@ pub struct Global {
     /// Global type
     pub ty: GlobalType,
     /// Global value (simplified as u64)
-    value:  u64,
+    value: u64,
 }
 
 impl Global {
@@ -142,5 +138,4 @@ impl Global {
         self.value = value;
         Ok(())
     }
-
 }

@@ -13,15 +13,9 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 pub use alloc::{
     boxed::Box,
-    collections::{
-        BTreeMap as HashMap,
-        BTreeSet as HashSet,
-    },
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
-    string::{
-        String,
-        ToString,
-    },
+    string::{String, ToString},
     sync::Arc,
     vec,
     vec::Vec,
@@ -29,51 +23,24 @@ pub use alloc::{
 pub use core::{
     any::Any,
     array,
-    cmp::{
-        Eq,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    },
-    convert::{
-        From,
-        Into,
-        TryFrom,
-        TryInto,
-    },
+    cmp::{Eq, Ord, PartialEq, PartialOrd},
+    convert::{From, Into, TryFrom, TryInto},
     fmt,
-    fmt::{
-        Debug,
-        Display,
-        Write as FmtWrite,
-    },
+    fmt::{Debug, Display, Write as FmtWrite},
     iter,
     marker::PhantomData,
     mem,
-    ops::{
-        Deref,
-        DerefMut,
-    },
-    result,
-    slice,
-    str,
+    ops::{Deref, DerefMut},
+    result, slice, str,
     time::Duration,
 };
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    fmt as std_fmt,
-    format,
-    io,
-    string::{
-        String,
-        ToString,
-    },
+    collections::{HashMap, HashSet},
+    fmt as std_fmt, format, io,
+    string::{String, ToString},
     sync::Arc,
     vec,
     vec::Vec,
@@ -81,10 +48,7 @@ pub use std::{
 
 // Always use wrt_sync for consistent Mutex/RwLock behavior across std/no_std
 #[cfg(feature = "std")]
-pub use wrt_sync::{
-    Mutex,
-    RwLock,
-};
+pub use wrt_sync::{Mutex, RwLock};
 
 #[cfg(feature = "decoder")]
 pub use wrt_decoder::decode_no_alloc;
@@ -105,13 +69,7 @@ pub type DecodedComponent = u32;
 pub type ResourceHandle = u32;
 // Note: sections moved to decoder_no_alloc or not available
 // Re-export from wrt-error
-pub use wrt_error::{
-    codes,
-    kinds,
-    Error,
-    ErrorCategory,
-    Result,
-};
+pub use wrt_error::{Error, ErrorCategory, Result, codes, kinds};
 
 // Re-export from wrt-format
 pub use wrt_format::component::ValType as FormatValType;
@@ -120,32 +78,20 @@ pub use wrt_format::component::ValType as FormatValType;
 pub use wrt_foundation::builder::ResourceItemBuilder;
 #[cfg(feature = "std")]
 pub use wrt_foundation::component_builder::{
-    ComponentTypeBuilder,
-    ExportBuilder,
-    ImportBuilder,
-    NamespaceBuilder,
+    ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
 };
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::component_value::{
-    ComponentValue,
-    ValType,
-};
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 // Re-export component_value for both std and no_std
 #[cfg(feature = "std")]
-pub use wrt_foundation::component_value::{
-    ComponentValue,
-    ValType,
-};
-#[cfg(feature = "std")]
 pub use wrt_foundation::MemoryProvider;
+#[cfg(feature = "std")]
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 // Binary std/no_std choice - remove conflicting type aliases
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
-    bounded_collections::{
-        BoundedMap,
-        BoundedSet,
-    },
     MemoryProvider,
+    bounded_collections::{BoundedMap, BoundedSet},
 };
 
 // Unified type aliases for std/no_std compatibility
@@ -157,56 +103,31 @@ pub type ComponentVec<T> = Vec<T>;
 
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
-    bounded::{
-        BoundedStack,
-        BoundedString,
-        BoundedVec,
-        MAX_WASM_NAME_LENGTH,
-    },
+    // Common types
+    ExternType,
+    bounded::{BoundedStack, BoundedString, BoundedVec, MAX_WASM_NAME_LENGTH},
     // Budget management
     budget_aware_provider::CrateId,
-    safe_managed_alloc,
     // Builtin types
     builtin::BuiltinType,
     component::ComponentType,
     // Resource types
-    resource::{
-        ResourceOperation,
-        ResourceType,
-    },
+    resource::{ResourceOperation, ResourceType},
+    safe_managed_alloc,
     // Memory providers
     safe_memory::NoStdProvider,
     // SafeMemory types
-    safe_memory::{
-        SafeMemoryHandler,
-        SafeSlice,
-        SafeStack,
-    },
-    types::{
-        BlockType,
-        FuncType,
-        GlobalType,
-        MemoryType,
-        TableType,
-        ValueType,
-    },
+    safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
+    types::{BlockType, FuncType, GlobalType, MemoryType, TableType, ValueType},
     values::Value,
     // Verification types
     verification::VerificationLevel,
-    // Common types
-    ExternType,
 };
 // Re-export from wrt-host
 pub use wrt_host::{
     builder::HostBuilder,
-    callback::{
-        CallbackRegistry,
-        CallbackType,
-    },
-    function::{
-        CloneableFn,
-        HostFunctionHandler,
-    },
+    callback::{CallbackRegistry, CallbackType},
+    function::{CloneableFn, HostFunctionHandler},
     host::BuiltinHost,
 };
 // Re-export from wrt-intercept - commented out until available
@@ -222,10 +143,7 @@ pub use wrt_host::{
 // };
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
-pub use wrt_sync::{
-    Mutex,
-    RwLock,
-};
+pub use wrt_sync::{Mutex, RwLock};
 
 // Include debug logging macro (crate-internal only)
 // pub use crate::debug_println;
@@ -236,24 +154,12 @@ pub use crate::resources::Instant;
 #[cfg(feature = "std")]
 pub use crate::{
     // Builtins
-    builtins::{
-        BuiltinHandler,
-        BuiltinRegistry,
-    },
+    builtins::{BuiltinHandler, BuiltinRegistry},
     // Canonical ABI
     canonical_abi::CanonicalABI,
     components::ComponentRegistry,
     // Component model core types
-    components::{
-        Component,
-        ExternValue,
-        FunctionValue,
-        GlobalValue,
-        MemoryValue,
-        TableValue,
-    },
-    // String encoding
-    string_encoding::StringEncoding,
+    components::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
     // Execution context
     // execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
     // Export/Import
@@ -275,6 +181,8 @@ pub use crate::{
         // ResourceOperation as RuntimeResourceOperation,
         ResourceTable,
     },
+    // String encoding
+    string_encoding::StringEncoding,
     // Memory strategies
     // strategies::memory::{
     //     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy,
@@ -287,10 +195,7 @@ pub use crate::{
     //     IntoRuntimeType,
     // },
     // Types and values
-    types::{
-        ComponentInstance,
-        TaskId,
-    },
+    types::{ComponentInstance, TaskId},
     // values::{
     //     component_to_core_value, core_to_component_value, deserialize_component_value,
     //     serialize_component_value,
@@ -300,24 +205,12 @@ pub use crate::{
 #[cfg(not(feature = "std"))]
 pub use crate::{
     // Builtins
-    builtins::{
-        BuiltinHandler,
-        BuiltinRegistry,
-    },
+    builtins::{BuiltinHandler, BuiltinRegistry},
     // Canonical ABI
     canonical_abi::CanonicalABI,
     components::ComponentRegistry,
     // Component model core types
-    components::{
-        Component,
-        ExternValue,
-        FunctionValue,
-        GlobalValue,
-        MemoryValue,
-        TableValue,
-    },
-    // String encoding
-    string_encoding::StringEncoding,
+    components::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
     // component_value_no_std::{
     //     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
     // },
@@ -343,6 +236,8 @@ pub use crate::{
         // ResourceOperation as RuntimeResourceOperation, ResourceStrategyNoStd,
         // ResourceTable,  // Commented out due to resource_table_no_std being disabled
     },
+    // String encoding
+    string_encoding::StringEncoding,
     // Memory strategies
     // strategies::memory::{
     //     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy,
@@ -355,10 +250,7 @@ pub use crate::{
     //     IntoRuntimeType,
     // },
     // Types and values
-    types::{
-        ComponentInstance,
-        TaskId,
-    },
+    types::{ComponentInstance, TaskId},
 };
 // ComponentValue already imported above
 

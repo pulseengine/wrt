@@ -6,43 +6,24 @@
 // - threading.sync: Create a synchronization primitive
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::{boxed::Box, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
     collections::HashMap,
     sync::{
-        atomic::{
-            AtomicBool,
-            AtomicU64,
-            Ordering,
-        },
-        Arc,
-        Condvar,
-        Mutex,
-        RwLock,
+        Arc, Condvar, Mutex, RwLock,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     thread,
     vec::Vec,
 };
 
-use wrt_error::{
-    Error,
-    Result,
-};
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    safe_memory::NoStdProvider,
-};
+use wrt_error::{Error, Result};
 #[cfg(feature = "std")]
-use wrt_foundation::{
-    builtin::BuiltinType,
-    component_value::ComponentValue,
-};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{collections::StaticVec as BoundedVec, safe_memory::NoStdProvider};
 
 #[cfg(not(feature = "std"))]
 use crate::types::Value as ComponentValue;
@@ -100,11 +81,11 @@ struct ThreadHandle {
     /// Thread join handle
     handle: Option<thread::JoinHandle<Result<Vec<ComponentValue>>>>,
     /// Thread state
-    state:  Arc<RwLock<ThreadState>>,
+    state: Arc<RwLock<ThreadState>>,
     /// Thread result (available when completed)
     result: Arc<RwLock<Option<Vec<ComponentValue>>>>,
     /// Thread error (available when error)
-    error:  Arc<RwLock<Option<String>>>,
+    error: Arc<RwLock<Option<String>>>,
 }
 
 /// Synchronization primitive types
@@ -133,11 +114,11 @@ enum SyncPrimitive {
 #[derive(Default)]
 pub struct ThreadManager {
     /// Next available thread ID
-    next_thread_id:  AtomicU64,
+    next_thread_id: AtomicU64,
     /// Map of thread ID to thread handle
-    threads:         RwLock<HashMap<ThreadId, ThreadHandle>>,
+    threads: RwLock<HashMap<ThreadId, ThreadHandle>>,
     /// Next available sync ID
-    next_sync_id:    AtomicU64,
+    next_sync_id: AtomicU64,
     /// Map of sync ID to synchronization primitive
     sync_primitives: RwLock<HashMap<SyncId, SyncPrimitive>>,
 }
@@ -147,9 +128,9 @@ impl ThreadManager {
     /// Create a new thread manager
     pub fn new() -> Self {
         Self {
-            next_thread_id:  AtomicU64::new(1),
-            threads:         RwLock::new(HashMap::new()),
-            next_sync_id:    AtomicU64::new(1),
+            next_thread_id: AtomicU64::new(1),
+            threads: RwLock::new(HashMap::new()),
+            next_sync_id: AtomicU64::new(1),
             sync_primitives: RwLock::new(HashMap::new()),
         }
     }
@@ -683,7 +664,7 @@ pub struct ThreadingSyncHandler {
     /// Thread manager
     thread_manager: Arc<ThreadManager>,
     /// Flag to track if this is a no-op in no_std mode
-    no_std_mode:    AtomicBool,
+    no_std_mode: AtomicBool,
 }
 
 #[cfg(feature = "std")]
@@ -728,7 +709,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
             _ => {
                 return Err(Error::threading_error(
                     "threading.sync first argument must be a string",
-                ))
+                ));
             },
         };
 

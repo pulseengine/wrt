@@ -6,56 +6,31 @@
 
 #[cfg(not(feature = "std"))]
 use core::{
-    fmt,
-    mem,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        Ordering,
-    },
+    fmt, mem,
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    fmt,
-    mem,
+    fmt, mem,
     sync::{
-        atomic::{
-            AtomicBool,
-            AtomicU32,
-            Ordering,
-        },
-        Arc,
-        Mutex,
-        Weak,
+        Arc, Mutex, Weak,
+        atomic::{AtomicBool, AtomicU32, Ordering},
     },
     vec::Vec,
 };
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::{BoundedString, BoundedVec},
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
 };
 
 use crate::{
-    async_::async_execution_engine::{
-        AsyncExecutionEngine,
-        ExecutionId,
-    },
-    threading::task_manager::{
-        TaskId,
-        TaskState,
-    },
+    async_::async_execution_engine::{AsyncExecutionEngine, ExecutionId},
+    threading::task_manager::{TaskId, TaskState},
     types::Value,
 };
 
@@ -115,7 +90,7 @@ pub enum CancellationHandlerFn {
 
     /// Cleanup function
     Cleanup {
-        name:        BoundedString<64>,
+        name: BoundedString<64>,
         // In real implementation, this would be a function pointer
         placeholder: u32,
     },
@@ -240,7 +215,7 @@ pub enum CompletionHandlerFn {
 
     /// Custom handler
     Custom {
-        name:        BoundedString<64>,
+        name: BoundedString<64>,
         placeholder: u32,
     },
 }
@@ -712,11 +687,11 @@ impl SubtaskStats {
     /// Create new subtask statistics
     pub fn new() -> Self {
         Self {
-            created:        0,
-            completed:      0,
-            failed:         0,
-            cancelled:      0,
-            active:         0,
+            created: 0,
+            completed: 0,
+            failed: 0,
+            cancelled: 0,
+            active: 0,
             max_concurrent: 0,
         }
     }

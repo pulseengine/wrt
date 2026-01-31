@@ -6,53 +6,30 @@
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 
 use wrt_foundation::{
+    CrateId,
     collections::StaticMap as BoundedMap,
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
-    async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            AsyncTaskStatus,
-            FuelAsyncExecutor,
-        },
-        fuel_async_scheduler::{
-            FuelAsyncScheduler,
-            SchedulingPolicy,
-        },
-    },
-    execution::{
-        run_with_time_bounds,
-        TimeBoundedConfig,
-        TimeBoundedContext,
-        TimeBoundedOutcome,
-    },
-    prelude::*,
     ComponentInstanceId,
+    async_::{
+        fuel_async_executor::{AsyncTaskState, AsyncTaskStatus, FuelAsyncExecutor},
+        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
+    },
+    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome, run_with_time_bounds},
+    prelude::*,
 };
 
 // Placeholder TaskId when threading is not available
@@ -70,17 +47,13 @@ const ASYNC_BRIDGE_CLEANUP_FUEL: u64 = 15;
 /// Bridge between async functions and time-bounded execution
 pub struct FuelAsyncBridge {
     /// Async executor for managing tasks
-    executor:           FuelAsyncExecutor,
+    executor: FuelAsyncExecutor,
     /// Scheduler for task ordering
-    scheduler:          FuelAsyncScheduler,
+    scheduler: FuelAsyncScheduler,
     /// Active bridges indexed by task ID
-    active_bridges: BoundedMap<
-        TaskId,
-        AsyncBridgeContext,
-        MAX_ASYNC_BRIDGES,
-    >,
+    active_bridges: BoundedMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
     /// Global bridge configuration
-    default_config:     AsyncBridgeConfig,
+    default_config: AsyncBridgeConfig,
     /// Verification level for bridge operations
     verification_level: VerificationLevel,
 }
@@ -89,28 +62,28 @@ pub struct FuelAsyncBridge {
 #[derive(Debug, Clone)]
 pub struct AsyncBridgeConfig {
     /// Default fuel budget for async tasks
-    pub default_fuel_budget:   u64,
+    pub default_fuel_budget: u64,
     /// Default time limit for async operations
     pub default_time_limit_ms: Option<u64>,
     /// Default priority for async tasks
-    pub default_priority:      Priority,
+    pub default_priority: Priority,
     /// Scheduling policy for async tasks
-    pub scheduling_policy:     SchedulingPolicy,
+    pub scheduling_policy: SchedulingPolicy,
     /// Whether to allow fuel extension
-    pub allow_fuel_extension:  bool,
+    pub allow_fuel_extension: bool,
     /// Fuel check interval
-    pub fuel_check_interval:   u64,
+    pub fuel_check_interval: u64,
 }
 
 impl Default for AsyncBridgeConfig {
     fn default() -> Self {
         Self {
-            default_fuel_budget:   10000,
+            default_fuel_budget: 10000,
             default_time_limit_ms: Some(5000), // 5 seconds
-            default_priority:      128, // Normal priority
-            scheduling_policy:     SchedulingPolicy::Cooperative,
-            allow_fuel_extension:  false,
-            fuel_check_interval:   1000,
+            default_priority: 128,             // Normal priority
+            scheduling_policy: SchedulingPolicy::Cooperative,
+            allow_fuel_extension: false,
+            fuel_check_interval: 1000,
         }
     }
 }
@@ -118,12 +91,12 @@ impl Default for AsyncBridgeConfig {
 /// Context for an individual async bridge
 #[derive(Debug)]
 pub struct AsyncBridgeContext {
-    pub task_id:              TaskId,
-    pub component_id:         ComponentInstanceId,
+    pub task_id: TaskId,
+    pub component_id: ComponentInstanceId,
     pub time_bounded_context: TimeBoundedContext,
-    pub fuel_consumed:        AtomicU64,
-    pub bridge_state:         AsyncBridgeState,
-    pub result_ready:         AtomicBool,
+    pub fuel_consumed: AtomicU64,
+    pub bridge_state: AsyncBridgeState,
+    pub result_ready: AtomicBool,
 }
 
 /// State of an async bridge
@@ -145,10 +118,7 @@ pub enum AsyncBridgeState {
 
 impl FuelAsyncBridge {
     /// Create a new async function bridge
-    pub fn new(
-        config: AsyncBridgeConfig,
-        verification_level: VerificationLevel,
-    ) -> Result<Self> {
+    pub fn new(config: AsyncBridgeConfig, verification_level: VerificationLevel) -> Result<Self> {
         let executor = FuelAsyncExecutor::new()?;
         let scheduler = FuelAsyncScheduler::new(config.scheduling_policy, verification_level)?;
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
@@ -271,11 +241,7 @@ impl FuelAsyncBridge {
                 component_id,
                 bridge_config.default_fuel_budget,
                 bridge_config.default_priority,
-                self.create_bridged_future(
-                    component_id,
-                    future,
-                    &mut time_context,
-                )?,
+                self.create_bridged_future(component_id, future, &mut time_context)?,
             )?;
 
             self.scheduler.add_task(
@@ -502,11 +468,11 @@ impl FuelAsyncBridge {
 /// Statistics for async bridges
 #[derive(Debug, Clone)]
 pub struct AsyncBridgeStatistics {
-    pub total_bridges:        usize,
-    pub active_bridges:       usize,
-    pub completed_bridges:    usize,
-    pub failed_bridges:       usize,
-    pub total_fuel_consumed:  u64,
+    pub total_bridges: usize,
+    pub active_bridges: usize,
+    pub completed_bridges: usize,
+    pub failed_bridges: usize,
+    pub total_fuel_consumed: u64,
     pub executor_fuel_status: super::fuel_async_executor::GlobalAsyncFuelStatus,
     pub scheduler_statistics: super::fuel_async_scheduler::SchedulingStatistics,
 }

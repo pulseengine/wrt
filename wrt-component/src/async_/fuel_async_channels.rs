@@ -6,51 +6,30 @@
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 #[cfg(feature = "std")]
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{Arc, Mutex};
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
-};
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    Arc,
-    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
-    async_::fuel_priority_inheritance::{
-        FuelPriorityInheritanceProtocol,
-        ResourceId,
-    },
-    prelude::*,
     ComponentInstanceId,
+    async_::fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
+    prelude::*,
 };
 
 // Placeholder TaskId when threading is not available
@@ -85,86 +64,80 @@ impl ChannelId {
 /// Bounded async channel with fuel tracking
 pub struct FuelAsyncChannel<T> {
     /// Unique channel identifier
-    id:                 ChannelId,
+    id: ChannelId,
     /// Channel capacity
-    capacity:           usize,
+    capacity: usize,
     /// Message buffer
     buffer: BoundedVec<T, MAX_CHANNEL_CAPACITY>,
     /// Senders waiting to send (when buffer is full)
-    waiting_senders: BoundedVec<
-        ChannelWaiter,
-        MAX_WAITERS_PER_CHANNEL,
-    >,
+    waiting_senders: BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
     /// Receivers waiting to receive (when buffer is empty)
-    waiting_receivers: BoundedVec<
-        ChannelWaiter,
-        MAX_WAITERS_PER_CHANNEL,
-    >,
+    waiting_receivers: BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
     /// Whether the channel is closed
-    closed:             AtomicBool,
+    closed: AtomicBool,
     /// Total messages sent through this channel
-    messages_sent:      AtomicU64,
+    messages_sent: AtomicU64,
     /// Total messages received through this channel
-    messages_received:  AtomicU64,
+    messages_received: AtomicU64,
     /// Total fuel consumed by this channel
-    fuel_consumed:      AtomicU64,
+    fuel_consumed: AtomicU64,
     /// Channel verification level for fuel tracking
     verification_level: VerificationLevel,
     /// Priority inheritance protocol for blocking operations
-    priority_protocol:  Option<FuelPriorityInheritanceProtocol>,
+    priority_protocol: Option<FuelPriorityInheritanceProtocol>,
 }
 
 /// Channel waiter information
 #[derive(Debug, Clone)]
 pub struct ChannelWaiter {
     /// Task waiting on the channel
-    pub task_id:         TaskId,
+    pub task_id: TaskId,
     /// Component owning the task
-    pub component_id:    ComponentInstanceId,
+    pub component_id: ComponentInstanceId,
     /// Priority of the waiting task
-    pub priority:        Priority,
+    pub priority: Priority,
     /// Waker to notify when ready
-    pub waker:           Option<Waker>,
+    pub waker: Option<Waker>,
     /// When the wait started (fuel time)
     pub wait_start_time: u64,
     /// Maximum wait time allowed
-    pub max_wait_time:   Option<Duration>,
+    pub max_wait_time: Option<Duration>,
 }
 
 /// Sender half of an async channel
 pub struct FuelAsyncSender<T> {
     /// Channel ID
-    channel_id:       ChannelId,
+    channel_id: ChannelId,
     /// Shared reference to the channel manager (ASIL-D safe)
-    channel_manager:  Arc<Mutex<FuelAsyncChannelManager<T>>>,
+    channel_manager: Arc<Mutex<FuelAsyncChannelManager<T>>>,
     /// Task ID of the sender
-    sender_task:      TaskId,
+    sender_task: TaskId,
     /// Component ID of the sender
     sender_component: ComponentInstanceId,
     /// Priority of the sender
-    sender_priority:  Priority,
+    sender_priority: Priority,
 }
 
 /// Receiver half of an async channel
 pub struct FuelAsyncReceiver<T> {
     /// Channel ID
-    channel_id:         ChannelId,
+    channel_id: ChannelId,
     /// Shared reference to the channel manager (ASIL-D safe)
-    channel_manager:    Arc<Mutex<FuelAsyncChannelManager<T>>>,
+    channel_manager: Arc<Mutex<FuelAsyncChannelManager<T>>>,
     /// Task ID of the receiver
-    receiver_task:      TaskId,
+    receiver_task: TaskId,
     /// Component ID of the receiver
     receiver_component: ComponentInstanceId,
     /// Priority of the receiver
-    receiver_priority:  Priority,
+    receiver_priority: Priority,
 }
 
 /// Future for sending a message
 pub struct SendFuture<T> {
     /// Message to send
-    message:    Option<T>,
+    message: Option<T>,
     /// Sender information
-    sender:     FuelAsyncSender<T>,
+    sender: FuelAsyncSender<T>,
     /// Whether the send is registered with the channel
     registered: bool,
 }
@@ -172,7 +145,7 @@ pub struct SendFuture<T> {
 /// Future for receiving a message
 pub struct ReceiveFuture<T> {
     /// Receiver information
-    receiver:   FuelAsyncReceiver<T>,
+    receiver: FuelAsyncReceiver<T>,
     /// Whether the receive is registered with the channel
     registered: bool,
 }
@@ -180,15 +153,11 @@ pub struct ReceiveFuture<T> {
 /// Channel manager for organizing multiple async channels
 pub struct FuelAsyncChannelManager<T> {
     /// Active channels indexed by ID
-    channels: BoundedMap<
-        ChannelId,
-        FuelAsyncChannel<T>,
-        MAX_ASYNC_CHANNELS,
-    >,
+    channels: BoundedMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
     /// Global channel statistics
-    global_stats:       ChannelManagerStats,
+    global_stats: ChannelManagerStats,
     /// Next channel ID counter
-    next_channel_id:    AtomicU64,
+    next_channel_id: AtomicU64,
     /// Global verification level
     verification_level: VerificationLevel,
 }
@@ -197,17 +166,17 @@ pub struct FuelAsyncChannelManager<T> {
 #[derive(Debug)]
 pub struct ChannelManagerStats {
     /// Total channels created
-    pub total_channels_created:  AtomicUsize,
+    pub total_channels_created: AtomicUsize,
     /// Currently active channels
-    pub active_channels:         AtomicUsize,
+    pub active_channels: AtomicUsize,
     /// Total messages sent across all channels
-    pub total_messages_sent:     AtomicU64,
+    pub total_messages_sent: AtomicU64,
     /// Total messages received across all channels
     pub total_messages_received: AtomicU64,
     /// Total fuel consumed by all channels
-    pub total_fuel_consumed:     AtomicU64,
+    pub total_fuel_consumed: AtomicU64,
     /// Total blocked senders across all channels
-    pub total_blocked_senders:   AtomicUsize,
+    pub total_blocked_senders: AtomicUsize,
     /// Total blocked receivers across all channels
     pub total_blocked_receivers: AtomicUsize,
 }
@@ -429,15 +398,15 @@ impl<T> FuelAsyncChannel<T> {
     /// Get channel statistics
     pub fn get_stats(&self) -> ChannelStats {
         ChannelStats {
-            id:                self.id,
-            capacity:          self.capacity,
-            current_size:      self.buffer.len(),
-            messages_sent:     self.messages_sent.load(Ordering::Acquire),
+            id: self.id,
+            capacity: self.capacity,
+            current_size: self.buffer.len(),
+            messages_sent: self.messages_sent.load(Ordering::Acquire),
             messages_received: self.messages_received.load(Ordering::Acquire),
-            fuel_consumed:     self.fuel_consumed.load(Ordering::Acquire),
-            waiting_senders:   self.waiting_senders.len(),
+            fuel_consumed: self.fuel_consumed.load(Ordering::Acquire),
+            waiting_senders: self.waiting_senders.len(),
             waiting_receivers: self.waiting_receivers.len(),
-            closed:            self.closed.load(Ordering::Acquire),
+            closed: self.closed.load(Ordering::Acquire),
         }
     }
 
@@ -456,15 +425,15 @@ impl<T> FuelAsyncChannel<T> {
 /// Channel statistics
 #[derive(Debug, Clone)]
 pub struct ChannelStats {
-    pub id:                ChannelId,
-    pub capacity:          usize,
-    pub current_size:      usize,
-    pub messages_sent:     u64,
+    pub id: ChannelId,
+    pub capacity: usize,
+    pub current_size: usize,
+    pub messages_sent: u64,
     pub messages_received: u64,
-    pub fuel_consumed:     u64,
-    pub waiting_senders:   usize,
+    pub fuel_consumed: u64,
+    pub waiting_senders: usize,
     pub waiting_receivers: usize,
-    pub closed:            bool,
+    pub closed: bool,
 }
 
 /// Channel operation errors
@@ -491,12 +460,12 @@ impl<T> FuelAsyncChannelManager<T> {
         Ok(Self {
             channels: BoundedMap::new(),
             global_stats: ChannelManagerStats {
-                total_channels_created:  AtomicUsize::new(0),
-                active_channels:         AtomicUsize::new(0),
-                total_messages_sent:     AtomicU64::new(0),
+                total_channels_created: AtomicUsize::new(0),
+                active_channels: AtomicUsize::new(0),
+                total_messages_sent: AtomicU64::new(0),
                 total_messages_received: AtomicU64::new(0),
-                total_fuel_consumed:     AtomicU64::new(0),
-                total_blocked_senders:   AtomicUsize::new(0),
+                total_fuel_consumed: AtomicU64::new(0),
+                total_blocked_senders: AtomicUsize::new(0),
                 total_blocked_receivers: AtomicUsize::new(0),
             },
             next_channel_id: AtomicU64::new(1),
@@ -532,7 +501,9 @@ impl<T> FuelAsyncChannelManager<T> {
         self.global_stats.total_channels_created.fetch_add(1, Ordering::AcqRel);
         self.global_stats.active_channels.fetch_add(1, Ordering::AcqRel);
 
-        todo!("Fix architecture: self cannot be moved into Arc for FuelAsyncSender and FuelAsyncReceiver")
+        todo!(
+            "Fix architecture: self cannot be moved into Arc for FuelAsyncSender and FuelAsyncReceiver"
+        )
     }
 
     /// Close a channel
@@ -563,8 +534,12 @@ impl<T> FuelAsyncChannelManager<T> {
         }
 
         ChannelManagerStats {
-            total_channels_created: AtomicUsize::new(self.global_stats.total_channels_created.load(Ordering::Acquire)),
-            active_channels: AtomicUsize::new(self.global_stats.active_channels.load(Ordering::Acquire)),
+            total_channels_created: AtomicUsize::new(
+                self.global_stats.total_channels_created.load(Ordering::Acquire),
+            ),
+            active_channels: AtomicUsize::new(
+                self.global_stats.active_channels.load(Ordering::Acquire),
+            ),
             total_messages_sent: AtomicU64::new(total_sent),
             total_messages_received: AtomicU64::new(total_received),
             total_fuel_consumed: AtomicU64::new(total_fuel),
@@ -585,7 +560,8 @@ impl<T> Future for SendFuture<T> {
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
         #[cfg(feature = "std")]
-        let mut manager = this.sender.channel_manager.lock().expect("Channel manager mutex poisoned");
+        let mut manager =
+            this.sender.channel_manager.lock().expect("Channel manager mutex poisoned");
         #[cfg(not(feature = "std"))]
         let mut manager = this.sender.channel_manager.lock();
         let channel = match manager.channels.get_mut(&this.sender.channel_id) {
@@ -643,7 +619,8 @@ impl<T> Future for ReceiveFuture<T> {
 
         // ASIL-D safe: Use mutex lock instead of unsafe pointer dereferencing
         #[cfg(feature = "std")]
-        let mut manager = this.receiver.channel_manager.lock().expect("Channel manager mutex poisoned");
+        let mut manager =
+            this.receiver.channel_manager.lock().expect("Channel manager mutex poisoned");
         #[cfg(not(feature = "std"))]
         let mut manager = this.receiver.channel_manager.lock();
         let channel = match manager.channels.get_mut(&this.receiver.channel_id) {
@@ -681,13 +658,13 @@ impl<T> FuelAsyncSender<T> {
     /// Send a message asynchronously
     pub fn send(&self, message: T) -> SendFuture<T> {
         SendFuture {
-            message:    Some(message),
-            sender:     FuelAsyncSender {
-                channel_id:       self.channel_id,
-                channel_manager:  Arc::clone(&self.channel_manager),
-                sender_task:      self.sender_task,
+            message: Some(message),
+            sender: FuelAsyncSender {
+                channel_id: self.channel_id,
+                channel_manager: Arc::clone(&self.channel_manager),
+                sender_task: self.sender_task,
                 sender_component: self.sender_component,
-                sender_priority:  self.sender_priority,
+                sender_priority: self.sender_priority,
             },
             registered: false,
         }
@@ -717,12 +694,12 @@ impl<T> FuelAsyncReceiver<T> {
     /// Receive a message asynchronously
     pub fn receive(&self) -> ReceiveFuture<T> {
         ReceiveFuture {
-            receiver:   FuelAsyncReceiver {
-                channel_id:         self.channel_id,
-                channel_manager:    Arc::clone(&self.channel_manager),
-                receiver_task:      self.receiver_task,
+            receiver: FuelAsyncReceiver {
+                channel_id: self.channel_id,
+                channel_manager: Arc::clone(&self.channel_manager),
+                receiver_task: self.receiver_task,
                 receiver_component: self.receiver_component,
-                receiver_priority:  self.receiver_priority,
+                receiver_priority: self.receiver_priority,
             },
             registered: false,
         }

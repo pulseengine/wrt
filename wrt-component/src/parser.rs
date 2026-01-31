@@ -146,7 +146,7 @@ fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
         // Skip import kind and type info
         if offset < data.len() {
             offset += 1; // Skip import kind
-                         // Skip additional type-specific data (simplified)
+            // Skip additional type-specific data (simplified)
             if offset < data.len() {
                 offset += 1;
             }
@@ -255,5 +255,4 @@ pub fn map_import_to_builtin(import_name: &str) -> Option<BuiltinType> {
         // Unknown import name (including "random_get_bytes" which is handled separately)
         _ => None,
     }
-
 }

@@ -3,33 +3,20 @@
 //! This module provides error context tracking and propagation across
 //! async boundaries, enabling detailed error reporting with fuel costs.
 
-use core::fmt::{
-    self,
-    Display,
-};
+use core::fmt::{self, Display};
 
 use wrt_foundation::{
+    CrateId,
     bounded::BoundedString,
     collections::StaticVec as BoundedVec,
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
+    traits::{Checksummable, FromBytes, ToBytes},
     verification::VerificationLevel,
-    CrateId,
 };
 
 use crate::{
-    async_::fuel_async_executor::{
-        AsyncTaskState,
-        FuelAsyncTask,
-    },
+    async_::fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
     prelude::*,
 };
 
@@ -48,13 +35,13 @@ const ERROR_CONTEXT_FUEL: u64 = 2;
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     /// Component that generated the error
-    pub component_id:  u64,
+    pub component_id: u64,
     /// Task that was executing when error occurred
-    pub task_id:       Option<u64>,
+    pub task_id: Option<u64>,
     /// Location in the code (file:line)
-    pub location:      BoundedString<128>,
+    pub location: BoundedString<128>,
     /// Additional context information
-    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
+    pub context: BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
     /// Fuel consumed up to this error
     pub fuel_consumed: u64,
 }
@@ -62,11 +49,11 @@ pub struct ErrorContext {
 impl Default for ErrorContext {
     fn default() -> Self {
         Self {
-            component_id:  0,
-            task_id:       None,
-            location:      BoundedString::from_str_truncate("")
+            component_id: 0,
+            task_id: None,
+            location: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default location")),
-            context:       BoundedString::from_str_truncate("")
+            context: BoundedString::from_str_truncate("")
                 .unwrap_or_else(|_| panic!("Failed to create default context")),
             fuel_consumed: 0,
         }
@@ -121,11 +108,13 @@ impl ErrorContext {
         let location_provider = safe_managed_alloc!(512, CrateId::Component)?;
         let context_provider = safe_managed_alloc!(2048, CrateId::Component)?;
 
-        let bounded_location = BoundedString::from_str_truncate(location)
-            .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create location string"))?;
+        let bounded_location = BoundedString::from_str_truncate(location).map_err(|_| {
+            wrt_error::Error::runtime_execution_error("Failed to create location string")
+        })?;
 
-        let bounded_context = BoundedString::from_str_truncate(context)
-            .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to create context string"))?;
+        let bounded_context = BoundedString::from_str_truncate(context).map_err(|_| {
+            wrt_error::Error::runtime_execution_error("Failed to create context string")
+        })?;
 
         Ok(Self {
             component_id,
@@ -141,13 +130,13 @@ impl ErrorContext {
 #[derive(Debug)]
 pub struct ContextualError {
     /// The original error
-    pub error:               Error,
+    pub error: Error,
     /// Chain of error contexts
-    pub context_chain:       BoundedVec<ErrorContext, MAX_ERROR_CONTEXT_DEPTH>,
+    pub context_chain: BoundedVec<ErrorContext, MAX_ERROR_CONTEXT_DEPTH>,
     /// Total fuel consumed across all contexts
     pub total_fuel_consumed: u64,
     /// Verification level for fuel tracking
-    pub verification_level:  VerificationLevel,
+    pub verification_level: VerificationLevel,
 }
 
 impl ContextualError {
@@ -230,8 +219,14 @@ impl ContextualError {
                     "  [{}] Component {}, Task {:?}\n",
                     i, context.component_id, context.task_id
                 ));
-                output.push_str(&format!("      Location: {}\n", context.location.as_str().unwrap_or("<invalid>")));
-                output.push_str(&format!("      Context: {}\n", context.context.as_str().unwrap_or("<invalid>")));
+                output.push_str(&format!(
+                    "      Location: {}\n",
+                    context.location.as_str().unwrap_or("<invalid>")
+                ));
+                output.push_str(&format!(
+                    "      Context: {}\n",
+                    context.context.as_str().unwrap_or("<invalid>")
+                ));
                 output.push_str(&format!("      Fuel consumed: {}\n", context.fuel_consumed));
             }
         }
@@ -272,9 +267,9 @@ impl From<ContextualError> for Error {
 /// Error propagation helper for async operations
 pub struct ErrorPropagator {
     /// Current component ID
-    component_id:       u64,
+    component_id: u64,
     /// Current task ID
-    task_id:            Option<u64>,
+    task_id: Option<u64>,
     /// Verification level
     verification_level: VerificationLevel,
 }

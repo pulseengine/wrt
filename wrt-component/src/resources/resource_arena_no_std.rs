@@ -5,15 +5,10 @@
 
 use wrt_error::kinds::PoisonedLockError;
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, collections::StaticVec as BoundedVec, safe_managed_alloc,
 };
 
-use super::{
-    ResourceId,
-    ResourceTable,
-};
+use super::{ResourceId, ResourceTable};
 use crate::prelude::*;
 
 /// Maximum number of resources that can be managed by a ResourceArena
@@ -30,9 +25,9 @@ pub struct ResourceArena<'a> {
     /// Handles to resources managed by this arena - using BoundedVec for no_std
     resources: BoundedVec<u32, MAX_ARENA_RESOURCES>,
     /// The resource table used for actual resource management
-    table:     &'a Mutex<ResourceTable>,
+    table: &'a Mutex<ResourceTable>,
     /// Name of this arena, for debugging
-    name:      Option<&'a str>,
+    name: Option<&'a str>,
 }
 
 impl<'a> ResourceArena<'a> {
@@ -70,8 +65,7 @@ impl<'a> ResourceArena<'a> {
         type_idx: u32,
         data: Box<dyn Any + Send + Sync>,
     ) -> Result<u32> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         let handle = table.create_resource(type_idx, Arc::from(data))?;
         // Add to arena's resources, checking capacity
@@ -93,8 +87,7 @@ impl<'a> ResourceArena<'a> {
         data: Box<dyn Any + Send + Sync>,
         name: &str,
     ) -> Result<u32> {
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         // Create the resource
         let handle = table.create_resource(type_idx, Arc::from(data))?;
@@ -122,8 +115,7 @@ impl<'a> ResourceArena<'a> {
 
     /// Get access to a resource
     pub fn get_resource(&self, handle: u32) -> Result<ResourceId> {
-        let table =
-            self.table.lock();
+        let table = self.table.lock();
 
         // Verify the resource exists, then return the ResourceId
         let _resource = table.get_resource(handle)?;
@@ -139,8 +131,7 @@ impl<'a> ResourceArena<'a> {
         }
 
         // Then check if it exists in the table
-        let table =
-            self.table.lock();
+        let table = self.table.lock();
 
         match table.get_resource(id.0) {
             Ok(_) => Ok(true),
@@ -169,8 +160,7 @@ impl<'a> ResourceArena<'a> {
         }
 
         // Then drop it from the table
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         table.drop_resource(handle)
     }
@@ -181,8 +171,7 @@ impl<'a> ResourceArena<'a> {
             return Ok(());
         }
 
-        let mut table =
-            self.table.lock();
+        let mut table = self.table.lock();
 
         let mut error = None;
 
@@ -200,11 +189,7 @@ impl<'a> ResourceArena<'a> {
         self.resources.clear();
 
         // Return the first error if any occurred
-        if let Some(e) = error {
-            Err(e)
-        } else {
-            Ok(())
-        }
+        if let Some(e) = error { Err(e) } else { Ok(()) }
     }
 
     /// Get the number of resources in this arena
@@ -238,5 +223,4 @@ impl<'a> Debug for ResourceArena<'a> {
             .field("resources", &self.resources.as_slice())
             .finish()
     }
-
 }

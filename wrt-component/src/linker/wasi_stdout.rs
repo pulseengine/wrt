@@ -44,42 +44,45 @@ pub fn wasi_get_stdout() -> Result<u32> {
 #[cfg(feature = "std")]
 pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
     #[cfg(feature = "tracing")]
-    trace!(byte_count = bytes.len(), "wasi_blocking_write_and_flush called (deprecated)");
+    trace!(
+        byte_count = bytes.len(),
+        "wasi_blocking_write_and_flush called (deprecated)"
+    );
 
     // Legacy: handle 1 = stdout
     if handle == 1 {
-        std::io::stdout().write_all(bytes)
+        std::io::stdout()
+            .write_all(bytes)
             .map_err(|_| wrt_error::Error::runtime_error("Write failed"))?;
 
-        std::io::stdout().flush()
+        std::io::stdout()
+            .flush()
             .map_err(|_| wrt_error::Error::runtime_error("Flush failed"))?;
 
         Ok(bytes.len() as u64)
     } else {
-        Err(wrt_error::Error::runtime_error("Invalid output stream handle"))
+        Err(wrt_error::Error::runtime_error(
+            "Invalid output stream handle",
+        ))
     }
 }
 
 /// DEPRECATED: Write bytes to an output stream and flush (no_std stub)
-#[deprecated(
-    since = "0.2.0",
-    note = "Use WasiDispatcher instead"
-)]
+#[deprecated(since = "0.2.0", note = "Use WasiDispatcher instead")]
 #[cfg(not(feature = "std"))]
 pub fn wasi_blocking_write_and_flush(handle: u32, bytes: &[u8]) -> Result<u64> {
     // In no_std, we can't write to stdout - stub that always succeeds for handle 1
     if handle == 1 {
         Ok(bytes.len() as u64)
     } else {
-        Err(wrt_error::Error::runtime_error("Invalid output stream handle"))
+        Err(wrt_error::Error::runtime_error(
+            "Invalid output stream handle",
+        ))
     }
 }
 
 /// DEPRECATED: Write bytes to stdout (convenience function)
-#[deprecated(
-    since = "0.2.0",
-    note = "Use WasiDispatcher instead"
-)]
+#[deprecated(since = "0.2.0", note = "Use WasiDispatcher instead")]
 #[allow(deprecated)]
 pub fn write_stdout(bytes: &[u8]) -> Result<()> {
     wasi_blocking_write_and_flush(1, bytes)?;

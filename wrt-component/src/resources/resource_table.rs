@@ -3,41 +3,26 @@
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
-use std::{
-    format,
-    sync::Weak,
-};
+use std::{format, sync::Weak};
 
 use crate::resources::ResourceInterceptor;
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    WrtHashMap,
-    WrtVec,
-};
+use wrt_foundation::allocator::{WrtHashMap, WrtVec};
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
     budget_aware_provider::CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     resource::ResourceOperation as FormatResourceOperation,
     safe_managed_alloc,
 };
-use wrt_intercept::{
-    builtins::InterceptContext as InterceptionContext,
-    InterceptionResult,
-};
+use wrt_intercept::{InterceptionResult, builtins::InterceptContext as InterceptionContext};
 
 use super::{
     buffer_pool::BufferPool,
-    resource_operation::{
-        from_format_resource_operation,
-        to_format_resource_operation,
-    },
+    resource_operation::{from_format_resource_operation, to_format_resource_operation},
     size_class_buffer_pool::SizeClassBufferPool,
 };
-use crate::{
-    bounded_component_infra::ComponentProvider,
-    prelude::*,
-};
+use crate::{bounded_component_infra::ComponentProvider, prelude::*};
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;
@@ -45,17 +30,17 @@ const MAX_RESOURCES: usize = 1024;
 /// Resource instance representation
 pub struct Resource {
     /// Resource type index
-    pub type_idx:      u32,
+    pub type_idx: u32,
     /// Resource data (implementation-specific)
-    pub data:          Arc<dyn Any + Send + Sync>,
+    pub data: Arc<dyn Any + Send + Sync>,
     /// Debug name for the resource (optional)
-    pub name:          Option<String>,
+    pub name: Option<String>,
     /// Creation timestamp
-    pub created_at:    Instant,
+    pub created_at: Instant,
     /// Last access timestamp
     pub last_accessed: Instant,
     /// Access count
-    pub access_count:  u64,
+    pub access_count: u64,
 }
 
 impl Resource {
@@ -180,16 +165,16 @@ impl MemoryStrategy {
 #[derive(Clone)]
 struct ResourceEntry {
     /// The resource instance
-    resource:           Arc<Mutex<Resource>>,
+    resource: Arc<Mutex<Resource>>,
     /// Weak references to borrowed resources (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    borrows:            WrtVec<Weak<Mutex<Resource>>, { CrateId::Component as u8 }, 32>,
+    borrows: WrtVec<Weak<Mutex<Resource>>, { CrateId::Component as u8 }, 32>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    borrows:            Vec<Weak<Mutex<Resource>>>,
+    borrows: Vec<Weak<Mutex<Resource>>>,
     #[cfg(not(feature = "std"))]
-    borrows:            BoundedVec<Weak<Mutex<Resource>>, 32>,
+    borrows: BoundedVec<Weak<Mutex<Resource>>, 32>,
     /// Memory strategy for this resource
-    memory_strategy:    MemoryStrategy,
+    memory_strategy: MemoryStrategy,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -299,31 +284,31 @@ impl BufferPoolTrait for SizeClassBufferPool {
 pub struct ResourceTable {
     /// Map of resource handles to resource entries (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    resources:                  WrtHashMap<u32, ResourceEntry, { CrateId::Component as u8 }, 1024>,
+    resources: WrtHashMap<u32, ResourceEntry, { CrateId::Component as u8 }, 1024>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    resources:                  HashMap<u32, ResourceEntry>,
+    resources: HashMap<u32, ResourceEntry>,
     #[cfg(not(feature = "std"))]
-    resources:                  BoundedMap<u32, ResourceEntry, 1024, ComponentProvider>,
+    resources: BoundedMap<u32, ResourceEntry, 1024, ComponentProvider>,
     /// Next available resource handle
-    next_handle:                u32,
+    next_handle: u32,
     /// Maximum allowed resources
-    max_resources:              usize,
+    max_resources: usize,
     /// Default memory strategy
-    default_memory_strategy:    MemoryStrategy,
+    default_memory_strategy: MemoryStrategy,
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
-    buffer_pool:                Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+    buffer_pool: Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
     /// Interceptors for resource operations (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     interceptors: WrtVec<Arc<dyn ResourceInterceptor>, { CrateId::Component as u8 }, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    interceptors:               Vec<Arc<dyn ResourceInterceptor>>,
+    interceptors: Vec<Arc<dyn ResourceInterceptor>>,
     #[cfg(not(feature = "std"))]
-    interceptors:               BoundedVec<Arc<dyn ResourceInterceptor>, 16>,
+    interceptors: BoundedVec<Arc<dyn ResourceInterceptor>, 16>,
     /// Memory budget guard for this resource table
     #[cfg(not(feature = "std"))]
-    _memory_guard:              ComponentProvider,
+    _memory_guard: ComponentProvider,
 }
 
 impl fmt::Debug for ResourceTable {
@@ -773,5 +758,4 @@ impl ResourceTable {
         }
         None
     }
-
 }

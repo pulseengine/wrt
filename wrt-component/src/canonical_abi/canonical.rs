@@ -5,53 +5,29 @@
 
 // Import error kinds from wrt-error
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    format,
-    sync::Arc,
-};
+use alloc::{collections::BTreeMap as HashMap, format, sync::Arc};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
-use std::sync::{
-    Arc,
-    Mutex,
-    RwLock,
-};
+use std::sync::{Arc, Mutex, RwLock};
 
 use wrt_error::{
-    kinds::{
-        InvalidValue,
-        NotImplementedError,
-        OutOfBoundsAccess,
-        ValueOutOfRangeError,
-    },
-    Error,
-    Result,
+    Error, Result,
+    kinds::{InvalidValue, NotImplementedError, OutOfBoundsAccess, ValueOutOfRangeError},
 };
 use wrt_format::component::FormatValType;
 // HashMap imports - migrate to WRT allocator for safety
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    CrateId,
-    WrtHashMap as HashMap,
-    WrtVec,
-};
+use wrt_foundation::allocator::{CrateId, WrtHashMap as HashMap, WrtVec};
 use wrt_foundation::{
     component_value::ValType as FoundationValType,
     resource::ResourceOperation as FormatResourceOperation,
 };
-use wrt_intercept::{
-    LinkInterceptor,
-    LinkInterceptorStrategy,
-};
+use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 #[cfg(not(feature = "std"))]
-use wrt_sync::{
-    Mutex,
-    RwLock,
-};
+use wrt_sync::{Mutex, RwLock};
 
 use crate::resources::bounded_buffer_pool::BoundedBufferPool;
 // Conditional imports for buffer pools
@@ -61,15 +37,9 @@ use crate::{
     memory_layout::MemoryLayout,
     prelude::*,
     resource_management::ResourceTable,
-    resources::{
-        MemoryStrategy,
-        VerificationLevel,
-    },
+    resources::{MemoryStrategy, VerificationLevel},
     string_encoding::{
-        lift_string_with_options,
-        lower_string_with_options,
-        CanonicalStringOptions,
-        StringEncoding,
+        CanonicalStringOptions, StringEncoding, lift_string_with_options, lower_string_with_options,
     },
     types::ValType,
 };
@@ -81,21 +51,21 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
 #[derive(Debug)]
 pub struct CanonicalABI {
     /// Binary std/no_std choice
-    buffer_pool:        BoundedBufferPool,
+    buffer_pool: BoundedBufferPool,
     /// Memory strategy for canonical operations
-    memory_strategy:    MemoryStrategy,
+    memory_strategy: MemoryStrategy,
     /// Verification level for canonical operations
     verification_level: VerificationLevel,
     /// Optional interceptor for canonical operations
-    interceptor:        Option<Arc<LinkInterceptor>>,
+    interceptor: Option<Arc<LinkInterceptor>>,
     /// Metrics for canonical operations
-    metrics:            CanonicalMetrics,
+    metrics: CanonicalMetrics,
     /// String encoding options
-    string_options:     CanonicalStringOptions,
+    string_options: CanonicalStringOptions,
     /// Realloc manager for memory allocation during lowering
     /// When set, lowering operations will use cabi_realloc to allocate memory
     #[cfg(feature = "std")]
-    realloc_manager:    Option<Arc<Mutex<super::canonical_realloc::ReallocManager>>>,
+    realloc_manager: Option<Arc<Mutex<super::canonical_realloc::ReallocManager>>>,
     /// Current component instance ID for realloc operations
     #[cfg(feature = "std")]
     current_instance_id: Option<super::canonical_realloc::ComponentInstanceId>,
@@ -105,15 +75,15 @@ pub struct CanonicalABI {
 #[derive(Debug, Default)]
 pub struct CanonicalMetrics {
     /// Number of lift operations performed
-    pub lift_count:      core::sync::atomic::AtomicU64,
+    pub lift_count: core::sync::atomic::AtomicU64,
     /// Number of lower operations performed
-    pub lower_count:     core::sync::atomic::AtomicU64,
+    pub lower_count: core::sync::atomic::AtomicU64,
     /// Total bytes lifted
-    pub lift_bytes:      core::sync::atomic::AtomicU64,
+    pub lift_bytes: core::sync::atomic::AtomicU64,
     /// Total bytes lowered
-    pub lower_bytes:     core::sync::atomic::AtomicU64,
+    pub lower_bytes: core::sync::atomic::AtomicU64,
     /// Max bytes lifted in a single operation
-    pub max_lift_bytes:  core::sync::atomic::AtomicU64,
+    pub max_lift_bytes: core::sync::atomic::AtomicU64,
     /// Max bytes lowered in a single operation
     pub max_lower_bytes: core::sync::atomic::AtomicU64,
 }
@@ -122,14 +92,14 @@ impl CanonicalABI {
     /// Create a new CanonicalABI instance
     pub fn new(_buffer_pool_size: usize) -> Self {
         Self {
-            buffer_pool:        BoundedBufferPool::new(),
-            memory_strategy:    MemoryStrategy::BoundedCopy,
+            buffer_pool: BoundedBufferPool::new(),
+            memory_strategy: MemoryStrategy::BoundedCopy,
             verification_level: VerificationLevel::Critical,
-            interceptor:        None,
-            metrics:            CanonicalMetrics::default(),
-            string_options:     CanonicalStringOptions::default(),
+            interceptor: None,
+            metrics: CanonicalMetrics::default(),
+            string_options: CanonicalStringOptions::default(),
             #[cfg(feature = "std")]
-            realloc_manager:    None,
+            realloc_manager: None,
             #[cfg(feature = "std")]
             current_instance_id: None,
         }
@@ -138,14 +108,14 @@ impl CanonicalABI {
     /// Create a new CanonicalABI instance with default settings
     pub fn default_instance() -> Self {
         Self {
-            buffer_pool:        BoundedBufferPool::new(),
-            memory_strategy:    MemoryStrategy::BoundedCopy,
+            buffer_pool: BoundedBufferPool::new(),
+            memory_strategy: MemoryStrategy::BoundedCopy,
             verification_level: VerificationLevel::Critical,
-            interceptor:        None,
-            metrics:            CanonicalMetrics::default(),
-            string_options:     CanonicalStringOptions::default(),
+            interceptor: None,
+            metrics: CanonicalMetrics::default(),
+            string_options: CanonicalStringOptions::default(),
             #[cfg(feature = "std")]
-            realloc_manager:    None,
+            realloc_manager: None,
             #[cfg(feature = "std")]
             current_instance_id: None,
         }
@@ -164,7 +134,10 @@ impl CanonicalABI {
     /// When set, lowering operations for strings/lists will use cabi_realloc
     /// to allocate memory in the component's linear memory.
     #[cfg(feature = "std")]
-    pub fn with_realloc_manager(mut self, manager: Arc<Mutex<super::canonical_realloc::ReallocManager>>) -> Self {
+    pub fn with_realloc_manager(
+        mut self,
+        manager: Arc<Mutex<super::canonical_realloc::ReallocManager>>,
+    ) -> Self {
         self.realloc_manager = Some(manager);
         self
     }
@@ -329,11 +302,17 @@ impl CanonicalABI {
             ValType::List(inner_ty) => self.lift_list(inner_ty, addr, resource_table, memory_bytes),
             ValType::Record(record) => {
                 #[cfg(feature = "std")]
-                let fields_vec = record.fields.iter().map(|f| (f.name.to_string(), (*f.ty).clone())).collect::<Vec<_>>();
+                let fields_vec = record
+                    .fields
+                    .iter()
+                    .map(|f| (f.name.to_string(), (*f.ty).clone()))
+                    .collect::<Vec<_>>();
                 #[cfg(not(feature = "std"))]
-                let fields_vec = record.fields.iter().filter_map(|f| {
-                    f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone()))
-                }).collect::<Vec<_>>();
+                let fields_vec = record
+                    .fields
+                    .iter()
+                    .filter_map(|f| f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone())))
+                    .collect::<Vec<_>>();
                 self.lift_record(&fields_vec, addr, resource_table, memory_bytes)
             },
             ValType::Tuple(tuple) => {
@@ -343,18 +322,34 @@ impl CanonicalABI {
             },
             ValType::Variant(variant) => {
                 #[cfg(feature = "std")]
-                let cases_vec = variant.cases.iter().map(|c| (c.name.to_string(), c.ty.as_ref().map(|t| (**t).clone()))).collect::<Vec<_>>();
+                let cases_vec = variant
+                    .cases
+                    .iter()
+                    .map(|c| (c.name.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
+                    .collect::<Vec<_>>();
                 #[cfg(not(feature = "std"))]
-                let cases_vec = variant.cases.iter().filter_map(|c| {
-                    c.name.as_str().ok().map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
-                }).collect::<Vec<_>>();
+                let cases_vec = variant
+                    .cases
+                    .iter()
+                    .filter_map(|c| {
+                        c.name
+                            .as_str()
+                            .ok()
+                            .map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
+                    })
+                    .collect::<Vec<_>>();
                 self.lift_variant(&cases_vec, addr, resource_table, memory_bytes)
             },
             ValType::Enum(enum_) => {
                 #[cfg(feature = "std")]
                 let cases_vec = enum_.cases.iter().map(|s| s.to_string()).collect::<Vec<_>>();
                 #[cfg(not(feature = "std"))]
-                let cases_vec = enum_.cases.iter().filter_map(|s| s.as_str().ok()).map(|s| s.to_string()).collect::<Vec<_>>();
+                let cases_vec = enum_
+                    .cases
+                    .iter()
+                    .filter_map(|s| s.as_str().ok())
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>();
                 self.lift_enum(&cases_vec, addr, memory_bytes)
             },
             ValType::Option(inner_ty) => {
@@ -371,7 +366,12 @@ impl CanonicalABI {
                 #[cfg(feature = "std")]
                 let labels_vec = flags.labels.iter().map(|s| s.to_string()).collect::<Vec<_>>();
                 #[cfg(not(feature = "std"))]
-                let labels_vec = flags.labels.iter().filter_map(|s| s.as_str().ok()).map(|s| s.to_string()).collect::<Vec<_>>();
+                let labels_vec = flags
+                    .labels
+                    .iter()
+                    .filter_map(|s| s.as_str().ok())
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>();
                 self.lift_flags(&labels_vec, addr, memory_bytes)
             },
             ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
@@ -398,7 +398,7 @@ impl CanonicalABI {
     fn lift_stream_handle(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         if addr as usize + 4 > memory_bytes.len() {
             return Err(Error::memory_out_of_bounds(
-                "Stream handle read out of bounds"
+                "Stream handle read out of bounds",
             ));
         }
         let bytes: [u8; 4] = memory_bytes[addr as usize..addr as usize + 4]
@@ -417,7 +417,7 @@ impl CanonicalABI {
     fn lift_future_handle(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         if addr as usize + 4 > memory_bytes.len() {
             return Err(Error::memory_out_of_bounds(
-                "Future handle read out of bounds"
+                "Future handle read out of bounds",
             ));
         }
         let bytes: [u8; 4] = memory_bytes[addr as usize..addr as usize + 4]
@@ -690,7 +690,9 @@ impl CanonicalABI {
         self.metrics.lift_bytes.fetch_add(4, core::sync::atomic::Ordering::Relaxed);
         self.metrics.max_lift_bytes.fetch_max(4, core::sync::atomic::Ordering::Relaxed);
 
-        Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(value)))
+        Ok(wrt_foundation::values::Value::F32(
+            wrt_foundation::float_repr::FloatBits32::from_float(value),
+        ))
     }
 
     fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
@@ -704,7 +706,9 @@ impl CanonicalABI {
         self.metrics.lift_bytes.fetch_add(8, core::sync::atomic::Ordering::Relaxed);
         self.metrics.max_lift_bytes.fetch_max(8, core::sync::atomic::Ordering::Relaxed);
 
-        Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(value)))
+        Ok(wrt_foundation::values::Value::F64(
+            wrt_foundation::float_repr::FloatBits64::from_float(value),
+        ))
     }
 
     fn lift_char(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -789,8 +793,12 @@ impl CanonicalABI {
         }
 
         // Update metrics
-        self.metrics.lift_bytes.fetch_add(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
-        self.metrics.max_lift_bytes.fetch_max(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics
+            .lift_bytes
+            .fetch_add(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics
+            .max_lift_bytes
+            .fetch_max(8 + total_size as u64, core::sync::atomic::Ordering::Relaxed);
 
         #[cfg(feature = "std")]
         return Ok(Value::List(values));
@@ -815,7 +823,8 @@ impl CanonicalABI {
         #[cfg(feature = "std")]
         let mut record_values = Vec::new();
         #[cfg(not(feature = "std"))]
-        let mut record_values = wrt_foundation::collections::StaticVec::<(String, Value), 64>::new();
+        let mut record_values =
+            wrt_foundation::collections::StaticVec::<(String, Value), 64>::new();
 
         for (field_name, field_type) in fields {
             // Lift the field value
@@ -861,10 +870,7 @@ impl CanonicalABI {
         let discriminant: usize = match disc_size {
             1 => memory_bytes[addr as usize] as usize,
             2 => {
-                let bytes = [
-                    memory_bytes[addr as usize],
-                    memory_bytes[addr as usize + 1],
-                ];
+                let bytes = [memory_bytes[addr as usize], memory_bytes[addr as usize + 1]];
                 u16::from_le_bytes(bytes) as usize
             },
             4 => {
@@ -881,7 +887,9 @@ impl CanonicalABI {
 
         // Check if the discriminant is valid
         if discriminant >= cases.len() {
-            return Err(Error::invalid_type_error("Variant discriminant out of range"));
+            return Err(Error::invalid_type_error(
+                "Variant discriminant out of range",
+            ));
         }
 
         let case_info = &cases[discriminant];
@@ -1218,7 +1226,8 @@ impl CanonicalABI {
                      Use CanonicalABI::with_realloc_manager() to set up proper memory allocation.",
                 )
             })?;
-            let mut manager = realloc_manager.lock()
+            let mut manager = realloc_manager
+                .lock()
                 .map_err(|_| Error::runtime_error("Failed to lock realloc manager"))?;
             manager.allocate(instance_id, len as i32, 1)? as u32
         };
@@ -1278,7 +1287,8 @@ impl CanonicalABI {
                      Use CanonicalABI::with_realloc_manager() to set up proper memory allocation.",
                 )
             })?;
-            let mut manager = realloc_manager.lock()
+            let mut manager = realloc_manager
+                .lock()
                 .map_err(|_| Error::runtime_error("Failed to lock realloc manager"))?;
             manager.allocate(instance_id, total_size as i32, align)? as u32
         };
@@ -1331,7 +1341,14 @@ impl CanonicalABI {
                      Use CanonicalABI::set_instance_id() before lowering.",
                 )
             })?;
-            return self.lower_list_with_alloc(values, inner_ty, addr, instance_id, resource_table, memory_bytes);
+            return self.lower_list_with_alloc(
+                values,
+                inner_ty,
+                addr,
+                instance_id,
+                resource_table,
+                memory_bytes,
+            );
         }
 
         #[cfg(not(feature = "std"))]
@@ -1408,13 +1425,11 @@ impl CanonicalABI {
                     Err(Error::runtime_type_mismatch("Expected i32/u32 value"))
                 }
             },
-            ValType::S64 | ValType::U64 => {
-                match value {
-                    Value::S64(v) => self.lower_s64(*v, addr, memory_bytes),
-                    Value::U64(v) => self.lower_u64(*v, addr, memory_bytes),
-                    Value::I64(v) => self.lower_s64(*v, addr, memory_bytes),
-                    _ => Err(Error::runtime_type_mismatch("Expected i64/u64 value"))
-                }
+            ValType::S64 | ValType::U64 => match value {
+                Value::S64(v) => self.lower_s64(*v, addr, memory_bytes),
+                Value::U64(v) => self.lower_u64(*v, addr, memory_bytes),
+                Value::I64(v) => self.lower_s64(*v, addr, memory_bytes),
+                _ => Err(Error::runtime_type_mismatch("Expected i64/u64 value")),
             },
             ValType::F32 => {
                 if let Some(v) = value.as_f32() {
@@ -1465,75 +1480,93 @@ impl CanonicalABI {
                     _ => Err(Error::runtime_type_mismatch("Expected borrow handle value")),
                 }
             },
-            ValType::Record(record) => {
-                match value {
-                    Value::Record(fields) => {
-                        #[cfg(feature = "std")]
-                        let field_types: Vec<(String, ValType)> = record.fields.iter()
-                            .map(|f| (f.name.to_string(), (*f.ty).clone()))
-                            .collect();
-                        #[cfg(not(feature = "std"))]
-                        let field_types: Vec<(String, ValType)> = record.fields.iter()
-                            .filter_map(|f| f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone())))
-                            .collect();
-                        self.lower_record(fields, &field_types, addr, resource_table, memory_bytes)
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected record value")),
-                }
+            ValType::Record(record) => match value {
+                Value::Record(fields) => {
+                    #[cfg(feature = "std")]
+                    let field_types: Vec<(String, ValType)> = record
+                        .fields
+                        .iter()
+                        .map(|f| (f.name.to_string(), (*f.ty).clone()))
+                        .collect();
+                    #[cfg(not(feature = "std"))]
+                    let field_types: Vec<(String, ValType)> = record
+                        .fields
+                        .iter()
+                        .filter_map(|f| {
+                            f.name.as_str().ok().map(|s| (s.to_string(), (*f.ty).clone()))
+                        })
+                        .collect();
+                    self.lower_record(fields, &field_types, addr, resource_table, memory_bytes)
+                },
+                _ => Err(Error::runtime_type_mismatch("Expected record value")),
             },
-            ValType::Tuple(tuple) => {
-                match value {
-                    Value::Tuple(values) => {
-                        let types_slice = tuple.types.as_slice();
-                        self.lower_tuple(types_slice, values, addr, resource_table, memory_bytes)
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected tuple value")),
-                }
+            ValType::Tuple(tuple) => match value {
+                Value::Tuple(values) => {
+                    let types_slice = tuple.types.as_slice();
+                    self.lower_tuple(types_slice, values, addr, resource_table, memory_bytes)
+                },
+                _ => Err(Error::runtime_type_mismatch("Expected tuple value")),
             },
             ValType::Variant(variant) => {
                 match value {
                     Value::Variant(case_name, payload) => {
                         #[cfg(feature = "std")]
-                        let cases: Vec<(String, Option<ValType>)> = variant.cases.iter()
+                        let cases: Vec<(String, Option<ValType>)> = variant
+                            .cases
+                            .iter()
                             .map(|c| (c.name.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
                             .collect();
                         #[cfg(not(feature = "std"))]
-                        let cases: Vec<(String, Option<ValType>)> = variant.cases.iter()
-                            .filter_map(|c| c.name.as_str().ok().map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone()))))
+                        let cases: Vec<(String, Option<ValType>)> = variant
+                            .cases
+                            .iter()
+                            .filter_map(|c| {
+                                c.name
+                                    .as_str()
+                                    .ok()
+                                    .map(|s| (s.to_string(), c.ty.as_ref().map(|t| (**t).clone())))
+                            })
                             .collect();
 
                         // Find case index
-                        let case_idx = cases.iter().position(|(name, _)| name == case_name)
+                        let case_idx = cases
+                            .iter()
+                            .position(|(name, _)| name == case_name)
                             .ok_or_else(|| Error::invalid_type_error("Variant case not found"))?;
 
                         let payload_ref = payload.as_ref().map(|b| b.as_ref());
-                        self.lower_variant(&cases, case_idx as u32, payload_ref, addr, resource_table, memory_bytes)
+                        self.lower_variant(
+                            &cases,
+                            case_idx as u32,
+                            payload_ref,
+                            addr,
+                            resource_table,
+                            memory_bytes,
+                        )
                     },
                     _ => Err(Error::runtime_type_mismatch("Expected variant value")),
                 }
             },
-            ValType::Enum(enum_) => {
-                match value {
-                    Value::Enum(case_name) => {
-                        #[cfg(feature = "std")]
-                        let cases: Vec<String> = enum_.cases.iter().map(|s| s.to_string()).collect();
-                        #[cfg(not(feature = "std"))]
-                        let cases: Vec<String> = enum_.cases.iter()
-                            .filter_map(|s| s.as_str().ok())
-                            .map(|s| s.to_string())
-                            .collect();
-                        self.lower_enum(&cases, case_name, addr, memory_bytes)
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected enum value")),
-                }
+            ValType::Enum(enum_) => match value {
+                Value::Enum(case_name) => {
+                    #[cfg(feature = "std")]
+                    let cases: Vec<String> = enum_.cases.iter().map(|s| s.to_string()).collect();
+                    #[cfg(not(feature = "std"))]
+                    let cases: Vec<String> = enum_
+                        .cases
+                        .iter()
+                        .filter_map(|s| s.as_str().ok())
+                        .map(|s| s.to_string())
+                        .collect();
+                    self.lower_enum(&cases, case_name, addr, memory_bytes)
+                },
+                _ => Err(Error::runtime_type_mismatch("Expected enum value")),
             },
-            ValType::Option(inner_ty) => {
-                match value {
-                    Value::Option(opt) => {
-                        self.lower_option(inner_ty, opt, addr, resource_table, memory_bytes)
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected option value")),
-                }
+            ValType::Option(inner_ty) => match value {
+                Value::Option(opt) => {
+                    self.lower_option(inner_ty, opt, addr, resource_table, memory_bytes)
+                },
+                _ => Err(Error::runtime_type_mismatch("Expected option value")),
             },
             ValType::Result(result_ty) => {
                 match value {
@@ -1568,20 +1601,20 @@ impl CanonicalABI {
                     _ => Err(Error::runtime_type_mismatch("Expected result value")),
                 }
             },
-            ValType::Flags(flags) => {
-                match value {
-                    Value::Flags(set_flags) => {
-                        #[cfg(feature = "std")]
-                        let labels: Vec<String> = flags.labels.iter().map(|s| s.to_string()).collect();
-                        #[cfg(not(feature = "std"))]
-                        let labels: Vec<String> = flags.labels.iter()
-                            .filter_map(|s| s.as_str().ok())
-                            .map(|s| s.to_string())
-                            .collect();
-                        self.lower_flags(&labels, set_flags, addr, memory_bytes)
-                    },
-                    _ => Err(Error::runtime_type_mismatch("Expected flags value")),
-                }
+            ValType::Flags(flags) => match value {
+                Value::Flags(set_flags) => {
+                    #[cfg(feature = "std")]
+                    let labels: Vec<String> = flags.labels.iter().map(|s| s.to_string()).collect();
+                    #[cfg(not(feature = "std"))]
+                    let labels: Vec<String> = flags
+                        .labels
+                        .iter()
+                        .filter_map(|s| s.as_str().ok())
+                        .map(|s| s.to_string())
+                        .collect();
+                    self.lower_flags(&labels, set_flags, addr, memory_bytes)
+                },
+                _ => Err(Error::runtime_type_mismatch("Expected flags value")),
             },
             ValType::Stream(_element_type) => {
                 // Stream values are lowered as their handle (u32)
@@ -1592,9 +1625,12 @@ impl CanonicalABI {
                     _ => return Err(Error::runtime_type_mismatch("Expected stream handle")),
                 };
                 if addr as usize + 4 > memory_bytes.len() {
-                    return Err(Error::memory_out_of_bounds("Stream handle write out of bounds"));
+                    return Err(Error::memory_out_of_bounds(
+                        "Stream handle write out of bounds",
+                    ));
                 }
-                memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_id.to_le_bytes());
+                memory_bytes[addr as usize..addr as usize + 4]
+                    .copy_from_slice(&handle_id.to_le_bytes());
                 Ok(())
             },
             ValType::Future(_value_type) => {
@@ -1606,9 +1642,12 @@ impl CanonicalABI {
                     _ => return Err(Error::runtime_type_mismatch("Expected future handle")),
                 };
                 if addr as usize + 4 > memory_bytes.len() {
-                    return Err(Error::memory_out_of_bounds("Future handle write out of bounds"));
+                    return Err(Error::memory_out_of_bounds(
+                        "Future handle write out of bounds",
+                    ));
                 }
-                memory_bytes[addr as usize..addr as usize + 4].copy_from_slice(&handle_id.to_le_bytes());
+                memory_bytes[addr as usize..addr as usize + 4]
+                    .copy_from_slice(&handle_id.to_le_bytes());
                 Ok(())
             },
         }
@@ -1628,7 +1667,8 @@ impl CanonicalABI {
 
         for (field_name, field_type) in field_types {
             // Find the field value in the record
-            let field_value = record_fields.iter()
+            let field_value = record_fields
+                .iter()
                 .find(|(name, _)| name == field_name)
                 .map(|(_, value)| value);
 
@@ -1696,7 +1736,13 @@ impl CanonicalABI {
                 let payload_offset = Self::align_to(disc_size, payload_layout.alignment);
                 let payload_addr = addr + payload_offset as u32;
 
-                self.lower_value(payload_value, payload_type, payload_addr, resource_table, memory_bytes)?;
+                self.lower_value(
+                    payload_value,
+                    payload_type,
+                    payload_addr,
+                    resource_table,
+                    memory_bytes,
+                )?;
             }
         }
 
@@ -1724,8 +1770,14 @@ impl CanonicalABI {
                 let inner_layout = self.get_layout_for_type(inner_ty);
                 let payload_offset = Self::align_to(1, inner_layout.alignment);
                 let payload_addr = addr + payload_offset as u32;
-                self.lower_value(payload, inner_ty, payload_addr, resource_table, memory_bytes)?;
-            }
+                self.lower_value(
+                    payload,
+                    inner_ty,
+                    payload_addr,
+                    resource_table,
+                    memory_bytes,
+                )?;
+            },
         }
         Ok(())
     }
@@ -1804,7 +1856,9 @@ impl CanonicalABI {
         memory_bytes: &mut [u8],
     ) -> Result<()> {
         // Find the case index
-        let case_idx = cases.iter().position(|c| c == case_name)
+        let case_idx = cases
+            .iter()
+            .position(|c| c == case_name)
             .ok_or_else(|| Error::invalid_type_error("Enum case not found"))?;
 
         // Enum discriminant size depends on number of cases
@@ -1879,12 +1933,30 @@ impl CanonicalABI {
     fn get_layout_for_type(&self, ty: &ValType) -> MemoryLayout {
         use crate::types::ValType::*;
         match ty {
-            Bool | S8 | U8 => MemoryLayout { size: 1, alignment: 1 },
-            S16 | U16 => MemoryLayout { size: 2, alignment: 2 },
-            S32 | U32 | F32 | Char => MemoryLayout { size: 4, alignment: 4 },
-            S64 | U64 | F64 => MemoryLayout { size: 8, alignment: 8 },
-            String | List(_) => MemoryLayout { size: 8, alignment: 4 }, // ptr + length
-            Own(_) | Borrow(_) => MemoryLayout { size: 4, alignment: 4 }, // handle
+            Bool | S8 | U8 => MemoryLayout {
+                size: 1,
+                alignment: 1,
+            },
+            S16 | U16 => MemoryLayout {
+                size: 2,
+                alignment: 2,
+            },
+            S32 | U32 | F32 | Char => MemoryLayout {
+                size: 4,
+                alignment: 4,
+            },
+            S64 | U64 | F64 => MemoryLayout {
+                size: 8,
+                alignment: 8,
+            },
+            String | List(_) => MemoryLayout {
+                size: 8,
+                alignment: 4,
+            }, // ptr + length
+            Own(_) | Borrow(_) => MemoryLayout {
+                size: 4,
+                alignment: 4,
+            }, // handle
             Option(inner) => {
                 // Option: 1-byte discriminant + max(payload size, 0)
                 let inner_layout = self.get_layout_for_type(inner);
@@ -1915,11 +1987,8 @@ impl CanonicalABI {
 
                 let discriminant_size = 1;
                 let payload_offset = Self::align_to(discriminant_size, max_align);
-                let total_size = if max_size > 0 {
-                    payload_offset + max_size
-                } else {
-                    discriminant_size
-                };
+                let total_size =
+                    if max_size > 0 { payload_offset + max_size } else { discriminant_size };
 
                 MemoryLayout {
                     size: total_size,
@@ -1955,13 +2024,19 @@ impl CanonicalABI {
             Enum(enum_ty) => {
                 // Enum: discriminant only (size depends on case count)
                 let size = Self::discriminant_size(enum_ty.cases.len());
-                MemoryLayout { size, alignment: size }
+                MemoryLayout {
+                    size,
+                    alignment: size,
+                }
             },
             Flags(flags) => {
                 // Flags: ceil(count / 32) * 4 bytes
                 let count = flags.labels.len();
                 let num_words = (count + 31) / 32;
-                MemoryLayout { size: num_words.max(1) * 4, alignment: 4 }
+                MemoryLayout {
+                    size: num_words.max(1) * 4,
+                    alignment: 4,
+                }
             },
             Record(record) => {
                 // Record: sum of field sizes with alignment padding
@@ -1974,7 +2049,10 @@ impl CanonicalABI {
                     current_offset += field_layout.size;
                 }
                 let final_size = Self::align_to(current_offset, max_alignment);
-                MemoryLayout { size: final_size, alignment: max_alignment.max(1) }
+                MemoryLayout {
+                    size: final_size,
+                    alignment: max_alignment.max(1),
+                }
             },
             Tuple(tuple) => {
                 // Tuple: same as record but with positional fields
@@ -1987,10 +2065,16 @@ impl CanonicalABI {
                     current_offset += elem_layout.size;
                 }
                 let final_size = Self::align_to(current_offset, max_alignment);
-                MemoryLayout { size: final_size, alignment: max_alignment.max(1) }
+                MemoryLayout {
+                    size: final_size,
+                    alignment: max_alignment.max(1),
+                }
             },
             // Async types (stream/future) are represented as i32 handles
-            Stream(_) | Future(_) => MemoryLayout { size: 4, alignment: 4 },
+            Stream(_) | Future(_) => MemoryLayout {
+                size: 4,
+                alignment: 4,
+            },
         }
     }
 
@@ -2196,8 +2280,14 @@ impl CanonicalABI {
         duration_ns: u64,
     ) {
         self.metrics.lift_count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
-        self.metrics.lift_bytes.fetch_add(bytes_processed as u64, core::sync::atomic::Ordering::Relaxed);
-        self.metrics.max_lift_bytes.fetch_max(bytes_processed as u64, core::sync::atomic::Ordering::Relaxed);
+        self.metrics.lift_bytes.fetch_add(
+            bytes_processed as u64,
+            core::sync::atomic::Ordering::Relaxed,
+        );
+        self.metrics.max_lift_bytes.fetch_max(
+            bytes_processed as u64,
+            core::sync::atomic::Ordering::Relaxed,
+        );
 
         // Could add timing metrics here if needed
     }
@@ -2234,12 +2324,12 @@ impl CanonicalABI {
         // Bounds checking
         if src.saturating_add(length) > memory_bytes.len() {
             return Err(Error::memory_out_of_bounds(
-                "canon memory.copy: source range exceeds memory bounds"
+                "canon memory.copy: source range exceeds memory bounds",
             ));
         }
         if dst.saturating_add(length) > memory_bytes.len() {
             return Err(Error::memory_out_of_bounds(
-                "canon memory.copy: destination range exceeds memory bounds"
+                "canon memory.copy: destination range exceeds memory bounds",
             ));
         }
 
@@ -2286,7 +2376,7 @@ impl CanonicalABI {
         // Bounds checking
         if start.saturating_add(length) > memory_bytes.len() {
             return Err(Error::memory_out_of_bounds(
-                "canon memory.fill: fill range exceeds memory bounds"
+                "canon memory.fill: fill range exceeds memory bounds",
             ));
         }
 
@@ -2431,13 +2521,21 @@ pub fn convert_value_for_canonical_abi(
         },
         FormatValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::float_repr::FloatBits32::from_float(v),
+                ))
             } else if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::float_repr::FloatBits32::from_float(v as f32),
+                ))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::float_repr::FloatBits32::from_float(v as f32),
+                ))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::float_repr::FloatBits32::from_float(v as f32),
+                ))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -2448,13 +2546,21 @@ pub fn convert_value_for_canonical_abi(
         },
         FormatValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::float_repr::FloatBits64::from_float(v),
+                ))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::float_repr::FloatBits64::from_float(v as f64),
+                ))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::float_repr::FloatBits64::from_float(v as f64),
+                ))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::float_repr::FloatBits64::from_float(v as f64),
+                ))
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
@@ -2498,7 +2604,8 @@ pub fn convert_value_for_canonical_abi(
                 #[cfg(not(feature = "safety-critical"))]
                 let mut converted_list = Vec::new();
                 for item in list {
-                    let converted_item = convert_value_for_canonical_abi(item, inner_type.as_ref())?;
+                    let converted_item =
+                        convert_value_for_canonical_abi(item, inner_type.as_ref())?;
                     #[cfg(feature = "safety-critical")]
                     converted_list.push(converted_item).map_err(|_| {
                         Error::capacity_exceeded("List conversion exceeds safety limit of 1024")
@@ -2523,7 +2630,8 @@ pub fn convert_value_for_canonical_abi(
                 let mut converted_record = Vec::new();
                 for (field_name, field_type) in fields {
                     // Find the field in the record Vec
-                    let field_value = record.iter()
+                    let field_value = record
+                        .iter()
                         .find(|(name, _)| name.as_str() == field_name.as_str())
                         .map(|(_, value)| value);
 
@@ -2717,14 +2825,22 @@ pub fn convert_value_for_type(
         },
         ValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::FloatBits32::from_float(v),
+                ))
             } else if let Some(v) = value.as_f64() {
                 // Check if value fits in f32 range
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::FloatBits32::from_float(v as f32),
+                ))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::FloatBits32::from_float(v as f32),
+                ))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F32(wrt_foundation::FloatBits32::from_float(v as f32)))
+                Ok(wrt_foundation::values::Value::F32(
+                    wrt_foundation::FloatBits32::from_float(v as f32),
+                ))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -2735,13 +2851,21 @@ pub fn convert_value_for_type(
         },
         ValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::FloatBits64::from_float(v),
+                ))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::FloatBits64::from_float(v as f64),
+                ))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::FloatBits64::from_float(v as f64),
+                ))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_foundation::values::Value::F64(wrt_foundation::FloatBits64::from_float(v as f64)))
+                Ok(wrt_foundation::values::Value::F64(
+                    wrt_foundation::FloatBits64::from_float(v as f64),
+                ))
             } else {
                 Err(Error::runtime_execution_error("Type conversion failed"))
             }
@@ -2750,5 +2874,4 @@ pub fn convert_value_for_type(
         // This is not a complete implementation but helps pass basic tests
         _ => Ok(value.clone()),
     }
-
 }

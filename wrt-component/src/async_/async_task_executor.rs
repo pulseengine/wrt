@@ -6,36 +6,24 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
 };
 
-use wrt_foundation::{
-    verification::VerificationLevel,
-    Arc,
-    Mutex,
-};
+use wrt_foundation::{Arc, Mutex, verification::VerificationLevel};
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
         fuel_async_executor::{
-            ASILExecutionMode,
-            AsyncTaskState,
-            ComponentAsyncOperation,
-            ExecutionContext,
-            ExecutionStepResult,
-            YieldPoint,
+            ASILExecutionMode, AsyncTaskState, ComponentAsyncOperation, ExecutionContext,
+            ExecutionStepResult, YieldPoint,
         },
         fuel_aware_waker::WakerData,
     },
     prelude::*,
     types::ComponentInstance,
-    ComponentInstanceId,
 };
 
 /// Trait for executing async tasks with ASIL compliance
@@ -68,11 +56,11 @@ pub trait AsyncTaskExecutor: Send + Sync {
 /// ASIL-D Task Executor - Highest safety criticality
 pub struct ASILDTaskExecutor {
     /// Deterministic execution counter
-    execution_counter:   u64,
+    execution_counter: u64,
     /// Maximum stack depth for ASIL-D
-    max_stack_depth:     u32,
+    max_stack_depth: u32,
     /// Bounded execution time in fuel units
-    max_execution_time:  u64,
+    max_execution_time: u64,
     /// Formal verification enabled
     formal_verification: bool,
 }
@@ -86,9 +74,9 @@ impl Default for ASILDTaskExecutor {
 impl ASILDTaskExecutor {
     pub fn new() -> Self {
         Self {
-            execution_counter:   0,
-            max_stack_depth:     16,   // Very limited for determinism
-            max_execution_time:  1000, // 1ms worth of fuel
+            execution_counter: 0,
+            max_stack_depth: 16,      // Very limited for determinism
+            max_execution_time: 1000, // 1ms worth of fuel
             formal_verification: true,
         }
     }
@@ -187,7 +175,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
 /// ASIL-C Task Executor - High safety criticality with isolation
 pub struct ASILCTaskExecutor {
     /// Spatial isolation enforced
-    spatial_isolation:  bool,
+    spatial_isolation: bool,
     /// Temporal isolation enforced
     temporal_isolation: bool,
     /// Resource isolation enforced
@@ -205,7 +193,7 @@ impl Default for ASILCTaskExecutor {
 impl ASILCTaskExecutor {
     pub fn new() -> Self {
         Self {
-            spatial_isolation:  true,
+            spatial_isolation: true,
             temporal_isolation: true,
             resource_isolation: true,
             max_slice_duration: 5000, // 5ms
@@ -311,7 +299,7 @@ pub struct ASILBTaskExecutor {
     /// Maximum execution slice in ms
     max_execution_slice_ms: u64,
     /// Resource quota
-    resource_quota:         u64,
+    resource_quota: u64,
 }
 
 impl Default for ASILBTaskExecutor {
@@ -325,7 +313,7 @@ impl ASILBTaskExecutor {
         Self {
             strict_resource_limits: true,
             max_execution_slice_ms: 10,
-            resource_quota:         10000, // 10ms worth of fuel
+            resource_quota: 10000, // 10ms worth of fuel
         }
     }
 }
@@ -414,7 +402,7 @@ pub struct ASILATaskExecutor {
     /// Maximum consecutive errors
     max_error_count: u32,
     /// Current error count
-    error_count:     u32,
+    error_count: u32,
 }
 
 impl Default for ASILATaskExecutor {
@@ -428,7 +416,7 @@ impl ASILATaskExecutor {
         Self {
             error_detection: true,
             max_error_count: 3,
-            error_count:     0,
+            error_count: 0,
         }
     }
 }
@@ -545,15 +533,14 @@ impl ASILExecutorFactory {
 }
 
 /// Configuration for ASIL executors
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ASILExecutorConfig {
     /// Maximum stack depth (ASIL-D)
-    pub max_stack_depth:    Option<u32>,
+    pub max_stack_depth: Option<u32>,
     /// Maximum slice duration (ASIL-C)
     pub max_slice_duration: Option<u64>,
     /// Resource quota (ASIL-B)
-    pub resource_quota:     Option<u64>,
+    pub resource_quota: Option<u64>,
     /// Maximum error count (ASIL-A)
-    pub max_error_count:    Option<u32>,
+    pub max_error_count: Option<u32>,
 }

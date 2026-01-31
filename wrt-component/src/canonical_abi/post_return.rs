@@ -10,30 +10,16 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::format;
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
-    traits::DefaultMemoryProvider,
-    values::Value,
+    budget_aware_provider::CrateId, collections::StaticVec as BoundedVec, safe_managed_alloc,
+    safe_memory::NoStdProvider, traits::DefaultMemoryProvider, values::Value,
 };
 
 // Import prelude for std/no_std compatibility
@@ -104,14 +90,14 @@ impl PostReturnRegistry {
 #[derive(Debug, Clone)]
 pub struct PostReturnEntry {
     /// Function index to call for cleanup
-    pub func_index:    u32,
+    pub func_index: u32,
     /// Arguments to pass to the cleanup function
     #[cfg(feature = "std")]
-    pub args:          Vec<ComponentValue<DefaultMemoryProvider>>,
+    pub args: Vec<ComponentValue<DefaultMemoryProvider>>,
     #[cfg(not(feature = "std"))]
-    pub args:          BoundedVec<ComponentValue, 16>,
+    pub args: BoundedVec<ComponentValue, 16>,
     /// Priority of this cleanup operation (higher = more critical)
-    pub priority:      CleanupPriority,
+    pub priority: CleanupPriority,
     /// Resource type being cleaned up
     pub resource_type: ResourceType,
 }
@@ -120,11 +106,11 @@ pub struct PostReturnEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CleanupPriority {
     /// Low priority - optional cleanup
-    Low      = 0,
+    Low = 0,
     /// Normal priority - standard cleanup
-    Normal   = 1,
+    Normal = 1,
     /// High priority - important cleanup
-    High     = 2,
+    High = 2,
     /// Critical priority - must not fail
     Critical = 3,
 }
@@ -196,13 +182,13 @@ pub enum ErrorRecoveryMode {
 #[derive(Debug, Default, Clone)]
 pub struct PostReturnStats {
     /// Total number of cleanup operations executed
-    pub operations_executed:   u64,
+    pub operations_executed: u64,
     /// Number of successful operations
     pub operations_successful: u64,
     /// Number of failed operations
-    pub operations_failed:     u64,
+    pub operations_failed: u64,
     /// Total time spent in post-return (microseconds)
-    pub total_time_us:         u64,
+    pub total_time_us: u64,
     /// Maximum single operation time (microseconds)
     pub max_operation_time_us: u64,
 }
@@ -397,7 +383,10 @@ impl PostReturnContext {
 
     /// Convert ComponentValue to raw value for function calls
     #[cfg(feature = "std")]
-    fn component_value_to_raw(&self, value: &ComponentValue<DefaultMemoryProvider>) -> Result<Value> {
+    fn component_value_to_raw(
+        &self,
+        value: &ComponentValue<DefaultMemoryProvider>,
+    ) -> Result<Value> {
         match value {
             ComponentValue::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
             ComponentValue::S8(v) => Ok(Value::I32(*v as i32)),
@@ -408,8 +397,12 @@ impl PostReturnContext {
             ComponentValue::U32(v) => Ok(Value::I32(*v as i32)),
             ComponentValue::S64(v) => Ok(Value::I64(*v)),
             ComponentValue::U64(v) => Ok(Value::I64(*v as i64)),
-            ComponentValue::F32(v) => Ok(Value::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits()))),
-            ComponentValue::F64(v) => Ok(Value::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits()))),
+            ComponentValue::F32(v) => Ok(Value::F32(wrt_foundation::FloatBits32::from_bits(
+                v.to_bits(),
+            ))),
+            ComponentValue::F64(v) => Ok(Value::F64(wrt_foundation::FloatBits64::from_bits(
+                v.to_bits(),
+            ))),
             ComponentValue::String(s) => {
                 // For strings, we typically pass pointer and length
                 // This is a simplified version - real implementation would need
@@ -434,8 +427,12 @@ impl PostReturnContext {
             ComponentValue::U32(v) => Ok(Value::I32(*v as i32)),
             ComponentValue::S64(v) => Ok(Value::I64(*v)),
             ComponentValue::U64(v) => Ok(Value::I64(*v as i64)),
-            ComponentValue::F32(v) => Ok(Value::F32(wrt_foundation::FloatBits32::from_bits(v.to_bits()))),
-            ComponentValue::F64(v) => Ok(Value::F64(wrt_foundation::FloatBits64::from_bits(v.to_bits()))),
+            ComponentValue::F32(v) => Ok(Value::F32(wrt_foundation::FloatBits32::from_bits(
+                v.to_bits(),
+            ))),
+            ComponentValue::F64(v) => Ok(Value::F64(wrt_foundation::FloatBits64::from_bits(
+                v.to_bits(),
+            ))),
             #[cfg(feature = "std")]
             ComponentValue::String(s) => {
                 // For strings, we typically pass pointer and length
@@ -551,21 +548,14 @@ pub mod helpers {
 fn current_time_us() -> u64 {
     #[cfg(feature = "std")]
     {
-        use std::time::{
-            SystemTime,
-            UNIX_EPOCH,
-        };
+        use std::time::{SystemTime, UNIX_EPOCH};
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_micros() as u64
     }
     #[cfg(not(feature = "std"))]
     {
         // ASIL-D safe: Use atomic counter instead of unsafe static mut
-        use core::sync::atomic::{
-            AtomicU64,
-            Ordering,
-        };
+        use core::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
-
 }

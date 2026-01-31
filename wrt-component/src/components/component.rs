@@ -10,35 +10,20 @@ use alloc::format;
 use std::collections::HashMap;
 
 #[cfg(feature = "std")]
-use log::{
-    debug,
-    error,
-    info,
-    trace,
-    warn,
-};
+use log::{debug, error, info, trace, warn};
 // Import wrt_decoder types for decode and parse
 // use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
-use wrt_format::component::{
-    ExternType as FormatExternType,
-    FormatValType,
-};
+use wrt_format::component::{ExternType as FormatExternType, FormatValType};
 use wrt_foundation::{
-    collections::StaticVec,
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    resource::ResourceOperation as FormatResourceOperation,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, collections::StaticVec, collections::StaticVec as BoundedVec,
+    resource::ResourceOperation as FormatResourceOperation, safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 use wrt_intercept::LinkInterceptor;
 
 use crate::{
-    bounded_component_infra::ComponentProvider,
-    export::Export,
-    import::Import,
-    prelude::*,
+    bounded_component_infra::ComponentProvider, export::Export, import::Import, prelude::*,
     resources::ResourceTable,
 };
 use wrt_foundation::builtin::BuiltinType;
@@ -89,11 +74,7 @@ use wrt_runtime::{
 };
 
 // Import types from wrt-foundation instead of wrt-runtime
-use wrt_foundation::types::{
-    GlobalType,
-    MemoryType,
-    TableType,
-};
+use wrt_foundation::types::{GlobalType, MemoryType, TableType};
 
 // Placeholder types for missing imports
 pub type RuntimeFuncType = ();
@@ -107,13 +88,9 @@ pub type RuntimeFuncType = ();
 
 // Import type conversion utilities for clear transformations
 use crate::type_conversion::bidirectional::{
-    complete_format_to_types_extern_type,
-    complete_types_to_format_extern_type,
-    convert_format_to_types_valtype,
-    convert_format_valtype_to_valuetype,
-    convert_types_to_format_valtype,
-    extern_type_to_func_type,
-    format_val_type_to_value_type,
+    complete_format_to_types_extern_type, complete_types_to_format_extern_type,
+    convert_format_to_types_valtype, convert_format_valtype_to_valuetype,
+    convert_types_to_format_valtype, extern_type_to_func_type, format_val_type_to_value_type,
 };
 
 // Define type aliases for missing types
@@ -128,11 +105,11 @@ type TypeDef = wrt_format::component::ComponentType;
 #[derive(Debug, Clone)]
 pub struct WrtComponentType {
     /// Component imports
-    pub imports:            Vec<(String, String, ExternType<ComponentProvider>)>,
+    pub imports: Vec<(String, String, ExternType<ComponentProvider>)>,
     /// Component exports
-    pub exports:            Vec<(String, ExternType<ComponentProvider>)>,
+    pub exports: Vec<(String, ExternType<ComponentProvider>)>,
     /// Component instances
-    pub instances:          Vec<wrt_format::component::ComponentTypeDefinition>,
+    pub instances: Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Verification level for this component type
     pub verification_level: wrt_foundation::verification::VerificationLevel,
 }
@@ -141,9 +118,9 @@ impl WrtComponentType {
     /// Creates a new empty component type
     pub fn new() -> Result<Self> {
         Ok(Self {
-            imports:            Vec::new(),
-            exports:            Vec::new(),
-            instances:          Vec::new(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            instances: Vec::new(),
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         })
     }
@@ -151,9 +128,9 @@ impl WrtComponentType {
     /// Create a new empty component type
     pub fn empty() -> Result<Self> {
         Ok(Self {
-            imports:            Vec::new(),
-            exports:            Vec::new(),
-            instances:          Vec::new(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            instances: Vec::new(),
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         })
     }
@@ -175,9 +152,9 @@ impl WrtComponentType {
 impl Default for WrtComponentType {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| Self {
-            imports:            Vec::new(),
-            exports:            Vec::new(),
-            instances:          Vec::new(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            instances: Vec::new(),
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         })
     }
@@ -190,35 +167,35 @@ pub type ComponentType = WrtComponentType;
 
 pub struct Component {
     /// Component unique identifier (optional)
-    pub(crate) id:                    Option<String>,
+    pub(crate) id: Option<String>,
     /// Component type
-    pub(crate) component_type:        WrtComponentType,
+    pub(crate) component_type: WrtComponentType,
     /// Component types (type definitions)
-    pub(crate) types:                 Vec<wrt_format::component::ComponentTypeDefinition>,
+    pub(crate) types: Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Embedded core modules
-    pub(crate) modules:               Vec<Vec<u8>>,
+    pub(crate) modules: Vec<Vec<u8>>,
     /// Component exports
-    pub(crate) exports:               Vec<Export>,
+    pub(crate) exports: Vec<Export>,
     /// Component imports
-    pub(crate) imports:               Vec<Import>,
+    pub(crate) imports: Vec<Import>,
     /// Component instances
-    pub(crate) instances:             Vec<InstanceValue>,
+    pub(crate) instances: Vec<InstanceValue>,
     /// Linked components with their namespaces
-    pub(crate) linked_components:     HashMap<String, Arc<Component>>,
+    pub(crate) linked_components: HashMap<String, Arc<Component>>,
     /// Host callback registry
-    pub(crate) callback_registry:     Option<Arc<CallbackRegistry>>,
+    pub(crate) callback_registry: Option<Arc<CallbackRegistry>>,
     /// Runtime instance
-    pub(crate) runtime:               Option<Box<RuntimeInstance>>,
+    pub(crate) runtime: Option<Box<RuntimeInstance>>,
     /// Interceptor for function calls
-    pub(crate) interceptor:           Option<Arc<LinkInterceptor>>,
+    pub(crate) interceptor: Option<Arc<LinkInterceptor>>,
     /// Resource table for managing component resources
-    pub resource_table:               ResourceTable,
+    pub resource_table: ResourceTable,
     /// Built-in requirements
     pub(crate) built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    pub(crate) original_binary:       Option<Vec<u8>>,
+    pub(crate) original_binary: Option<Vec<u8>>,
     /// Verification level for all operations
-    pub(crate) verification_level:    wrt_foundation::verification::VerificationLevel,
+    pub(crate) verification_level: wrt_foundation::verification::VerificationLevel,
 }
 
 impl Clone for Component {
@@ -255,12 +232,24 @@ impl Debug for Component {
             .field("imports", &self.imports.len())
             .field("instances", &self.instances.len())
             .field("linked_components", &self.linked_components.keys())
-            .field("callback_registry", &self.callback_registry.as_ref().map(|_| "Some(CallbackRegistry)"))
-            .field("runtime", &self.runtime.as_ref().map(|r| format!("RuntimeInstance(id={})", r.id)))
-            .field("interceptor", &self.interceptor.as_ref().map(|_| "Some(LinkInterceptor)"))
+            .field(
+                "callback_registry",
+                &self.callback_registry.as_ref().map(|_| "Some(CallbackRegistry)"),
+            )
+            .field(
+                "runtime",
+                &self.runtime.as_ref().map(|r| format!("RuntimeInstance(id={})", r.id)),
+            )
+            .field(
+                "interceptor",
+                &self.interceptor.as_ref().map(|_| "Some(LinkInterceptor)"),
+            )
             .field("resource_table", &"ResourceTable")
             .field("built_in_requirements", &self.built_in_requirements)
-            .field("original_binary", &self.original_binary.as_ref().map(|b| format!("{} bytes", b.len())))
+            .field(
+                "original_binary",
+                &self.original_binary.as_ref().map(|b| format!("{} bytes", b.len())),
+            )
             .field("verification_level", &self.verification_level)
             .finish()
     }
@@ -270,7 +259,7 @@ impl Debug for Component {
 #[derive(Debug, Clone)]
 pub struct InstanceValue {
     /// Instance type
-    pub ty:      wrt_format::component::ComponentTypeDefinition,
+    pub ty: wrt_format::component::ComponentTypeDefinition,
     /// Instance exports
     pub exports: Vec<Export>,
 }
@@ -279,55 +268,71 @@ pub struct InstanceValue {
 #[derive(Debug)]
 pub struct RuntimeInstance {
     /// Unique instance ID
-    pub id:               u32,
+    pub id: u32,
     /// Reference to the component definition
-    pub component:        Component,
+    pub component: Component,
     /// Current instance state
-    pub state:            crate::types::ComponentInstanceState,
+    pub state: crate::types::ComponentInstanceState,
     /// Resource manager for this instance
     pub resource_manager: Option<crate::resource_management::ResourceManager>,
     /// Instance memory (if allocated)
-    pub memory:           Option<crate::components::component_instantiation::ComponentMemory>,
+    pub memory: Option<crate::components::component_instantiation::ComponentMemory>,
     /// Resolved imports for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub imports:          wrt_foundation::allocator::WrtVec<crate::instantiation::ResolvedImport, { wrt_foundation::allocator::CrateId::Component as u8 }, 256>,
+    pub imports: wrt_foundation::allocator::WrtVec<
+        crate::instantiation::ResolvedImport,
+        { wrt_foundation::allocator::CrateId::Component as u8 },
+        256,
+    >,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub imports:          Vec<crate::instantiation::ResolvedImport>,
+    pub imports: Vec<crate::instantiation::ResolvedImport>,
     #[cfg(not(feature = "std"))]
-    pub imports:          StaticVec<crate::instantiation::ResolvedImport, 256>,
+    pub imports: StaticVec<crate::instantiation::ResolvedImport, 256>,
     /// Resolved exports from this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub exports:          wrt_foundation::allocator::WrtVec<crate::instantiation::ResolvedExport, { wrt_foundation::allocator::CrateId::Component as u8 }, 256>,
+    pub exports: wrt_foundation::allocator::WrtVec<
+        crate::instantiation::ResolvedExport,
+        { wrt_foundation::allocator::CrateId::Component as u8 },
+        256,
+    >,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub exports:          Vec<crate::instantiation::ResolvedExport>,
+    pub exports: Vec<crate::instantiation::ResolvedExport>,
     #[cfg(not(feature = "std"))]
-    pub exports:          StaticVec<crate::instantiation::ResolvedExport, 256>,
+    pub exports: StaticVec<crate::instantiation::ResolvedExport, 256>,
     /// Resource tables for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub resource_tables:  wrt_foundation::allocator::WrtVec<crate::instantiation::ResourceTable, { wrt_foundation::allocator::CrateId::Component as u8 }, 16>,
+    pub resource_tables: wrt_foundation::allocator::WrtVec<
+        crate::instantiation::ResourceTable,
+        { wrt_foundation::allocator::CrateId::Component as u8 },
+        16,
+    >,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub resource_tables:  Vec<crate::instantiation::ResourceTable>,
+    pub resource_tables: Vec<crate::instantiation::ResourceTable>,
     #[cfg(not(feature = "std"))]
-    pub resource_tables:  StaticVec<crate::instantiation::ResourceTable, 16>,
+    pub resource_tables: StaticVec<crate::instantiation::ResourceTable, 16>,
     /// Module instances embedded in this component
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub module_instances: wrt_foundation::allocator::WrtVec<crate::instantiation::ModuleInstance, { wrt_foundation::allocator::CrateId::Component as u8 }, 64>,
+    pub module_instances: wrt_foundation::allocator::WrtVec<
+        crate::instantiation::ModuleInstance,
+        { wrt_foundation::allocator::CrateId::Component as u8 },
+        64,
+    >,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<crate::instantiation::ModuleInstance>,
     #[cfg(not(feature = "std"))]
     pub module_instances: StaticVec<crate::instantiation::ModuleInstance, 64>,
     /// Functions exported by this runtime
-    functions:            HashMap<String, ExternValue>,
+    functions: HashMap<String, ExternValue>,
     /// Memory exported by this runtime
-    memories:             HashMap<String, MemoryValue>,
+    memories: HashMap<String, MemoryValue>,
     /// Tables exported by this runtime
-    tables:               HashMap<String, TableValue>,
+    tables: HashMap<String, TableValue>,
     /// Globals exported by this runtime
-    globals:              HashMap<String, GlobalValue>,
+    globals: HashMap<String, GlobalValue>,
     /// Runtime module instance (will be implemented as needed)
-    module_instance:      Option<Arc<RwLock<ModuleInstance>>>,
+    module_instance: Option<Arc<RwLock<ModuleInstance>>>,
     /// Verification level for memory operations
-    verification_level:   VerificationLevel,
+    verification_level: VerificationLevel,
 }
 
 impl Default for RuntimeInstance {
@@ -340,40 +345,40 @@ impl RuntimeInstance {
     /// Creates a new runtime instance
     pub fn new() -> Self {
         Self {
-            id:                 0,
-            component:          Component::new(WrtComponentType::default()),
-            state:              crate::types::ComponentInstanceState::Initialized,
-            resource_manager:   None,
-            memory:             None,
+            id: 0,
+            component: Component::new(WrtComponentType::default()),
+            state: crate::types::ComponentInstanceState::Initialized,
+            resource_manager: None,
+            memory: None,
             #[cfg(all(feature = "std", feature = "safety-critical"))]
-            imports:            wrt_foundation::allocator::WrtVec::new(),
+            imports: wrt_foundation::allocator::WrtVec::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            imports:            Vec::new(),
+            imports: Vec::new(),
             #[cfg(not(feature = "std"))]
-            imports:            StaticVec::new(),
+            imports: StaticVec::new(),
             #[cfg(all(feature = "std", feature = "safety-critical"))]
-            exports:            wrt_foundation::allocator::WrtVec::new(),
+            exports: wrt_foundation::allocator::WrtVec::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            exports:            Vec::new(),
+            exports: Vec::new(),
             #[cfg(not(feature = "std"))]
-            exports:            StaticVec::new(),
+            exports: StaticVec::new(),
             #[cfg(all(feature = "std", feature = "safety-critical"))]
-            resource_tables:    wrt_foundation::allocator::WrtVec::new(),
+            resource_tables: wrt_foundation::allocator::WrtVec::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            resource_tables:    Vec::new(),
+            resource_tables: Vec::new(),
             #[cfg(not(feature = "std"))]
-            resource_tables:    StaticVec::new(),
+            resource_tables: StaticVec::new(),
             #[cfg(all(feature = "std", feature = "safety-critical"))]
-            module_instances:   wrt_foundation::allocator::WrtVec::new(),
+            module_instances: wrt_foundation::allocator::WrtVec::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            module_instances:   Vec::new(),
+            module_instances: Vec::new(),
             #[cfg(not(feature = "std"))]
-            module_instances:   StaticVec::new(),
-            functions:          HashMap::new(),
-            memories:           HashMap::new(),
-            tables:             HashMap::new(),
-            globals:            HashMap::new(),
-            module_instance:    None,
+            module_instances: StaticVec::new(),
+            functions: HashMap::new(),
+            memories: HashMap::new(),
+            tables: HashMap::new(),
+            globals: HashMap::new(),
+            module_instance: None,
             verification_level: VerificationLevel::Standard,
         }
     }
@@ -585,7 +590,7 @@ pub enum ExternValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionValue {
     /// Function type
-    pub ty:          wrt_foundation::types::FuncType,
+    pub ty: wrt_foundation::types::FuncType,
     /// Export name that this function refers to
     pub export_name: String,
 }
@@ -594,7 +599,7 @@ pub struct FunctionValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableValue {
     /// Table type
-    pub ty:    TableType,
+    pub ty: TableType,
     /// Table instance
     pub table: Table,
 }
@@ -603,7 +608,7 @@ pub struct TableValue {
 #[derive(Debug, Clone)]
 pub struct MemoryValue {
     /// Memory type
-    pub ty:     MemoryType,
+    pub ty: MemoryType,
     /// Memory instance
     pub memory: Arc<RwLock<Memory>>,
 }
@@ -639,7 +644,7 @@ impl MemoryValue {
         let memory = Memory::new(core_ty)?;
         Ok(Self {
             ty,
-            memory: Arc::new(RwLock::new(*memory)),  // Dereference Box<Memory>
+            memory: Arc::new(RwLock::new(*memory)), // Dereference Box<Memory>
         })
     }
 
@@ -666,7 +671,7 @@ impl MemoryValue {
         let memory = Memory::new_with_name(core_ty, name)?;
         Ok(Self {
             ty,
-            memory: Arc::new(RwLock::new(memory)),  // Memory::new_with_name returns Memory, not Box
+            memory: Arc::new(RwLock::new(memory)), // Memory::new_with_name returns Memory, not Box
         })
     }
 
@@ -825,7 +830,7 @@ impl MemoryValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlobalValue {
     /// Global type
-    pub ty:     GlobalType,
+    pub ty: GlobalType,
     /// Global instance
     pub global: Global,
 }
@@ -957,7 +962,10 @@ impl Component {
     /// # Errors
     ///
     /// Returns an error if the type cannot be added
-    pub fn add_type(&mut self, component_type: wrt_format::component::ComponentTypeDefinition) -> Result<()> {
+    pub fn add_type(
+        &mut self,
+        component_type: wrt_format::component::ComponentTypeDefinition,
+    ) -> Result<()> {
         self.types.push(component_type);
         Ok(())
     }
@@ -980,7 +988,10 @@ impl Component {
         // TODO: Implement proper function export tracking
         // For now, create a placeholder export
         #[cfg(feature = "std")]
-        debug!("Adding function export: {} (index: {})", name, function_index);
+        debug!(
+            "Adding function export: {} (index: {})",
+            name, function_index
+        );
         Ok(())
     }
 
@@ -1001,7 +1012,10 @@ impl Component {
     pub fn add_function_import(&mut self, name: &str, type_index: u32) -> Result<()> {
         // TODO: Implement proper function import tracking
         #[cfg(feature = "std")]
-        debug!("Adding function import: {} (type index: {})", name, type_index);
+        debug!(
+            "Adding function import: {} (type index: {})",
+            name, type_index
+        );
         Ok(())
     }
 
@@ -1022,7 +1036,10 @@ impl Component {
     pub fn add_instance_export(&mut self, name: &str, instance_index: u32) -> Result<()> {
         // TODO: Implement proper instance export tracking
         #[cfg(feature = "std")]
-        debug!("Adding instance export: {} (index: {})", name, instance_index);
+        debug!(
+            "Adding instance export: {} (index: {})",
+            name, instance_index
+        );
         Ok(())
     }
 
@@ -1043,7 +1060,10 @@ impl Component {
     pub fn add_instance_import(&mut self, name: &str, type_index: u32) -> Result<()> {
         // TODO: Implement proper instance import tracking
         #[cfg(feature = "std")]
-        debug!("Adding instance import: {} (type index: {})", name, type_index);
+        debug!(
+            "Adding instance import: {} (type index: {})",
+            name, type_index
+        );
         Ok(())
     }
 
@@ -1212,9 +1232,7 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
                 scan_functions_for_builtins(&(), &mut requirements)?;
                 Ok(requirements)
             },
-            Err(err) => {
-                Err(Error::component_not_found("Component not found"))
-            },
+            Err(err) => Err(Error::component_not_found("Component not found")),
         }
     }
     #[cfg(not(feature = "std"))]
@@ -1264,14 +1282,13 @@ fn scan_functions_for_builtins(
     // Check for resource types which indicate built-in usage
     // Component types method doesn't exist - skip type checking for now
     // TODO: Implement proper type scanning when DecodedComponent API is available
-    if false
-        && false {
-            // Resources typically require the ResourceCreate built-in
-            requirements.add_requirement(BuiltinType::ResourceCreate);
-            requirements.add_requirement(BuiltinType::ResourceDrop);
-            requirements.add_requirement(BuiltinType::ResourceRep);
-            requirements.add_requirement(BuiltinType::ResourceGet);
-        }
+    if false && false {
+        // Resources typically require the ResourceCreate built-in
+        requirements.add_requirement(BuiltinType::ResourceCreate);
+        requirements.add_requirement(BuiltinType::ResourceDrop);
+        requirements.add_requirement(BuiltinType::ResourceRep);
+        requirements.add_requirement(BuiltinType::ResourceGet);
+    }
 
     #[cfg(all(feature = "std", feature = "component-model-async"))]
     // Check for async functions which require the AsyncWait built-in
@@ -1345,7 +1362,9 @@ pub fn component_value_to_value(
 }
 
 /// Convert a runtime value to a component value
-pub fn value_to_component_value(value: &wrt_intercept::Value) -> crate::prelude::WrtComponentValue<ComponentProvider> {
+pub fn value_to_component_value(
+    value: &wrt_intercept::Value,
+) -> crate::prelude::WrtComponentValue<ComponentProvider> {
     // WrtComponentValue is already imported from prelude
 
     use crate::type_conversion::core_value_to_types_componentvalue;
@@ -1356,9 +1375,7 @@ pub fn value_to_component_value(value: &wrt_intercept::Value) -> crate::prelude:
 }
 
 /// Convert parameter to value type
-pub fn convert_param_to_value_type(
-    param: &FormatValType,
-) -> wrt_foundation::types::ValueType {
+pub fn convert_param_to_value_type(param: &FormatValType) -> wrt_foundation::types::ValueType {
     crate::type_conversion::format_val_type_to_value_type(param)
         .unwrap_or(wrt_foundation::types::ValueType::I32)
 }
@@ -1369,9 +1386,7 @@ pub fn convert_verification_level(
 ) -> crate::resources::VerificationLevel {
     match level {
         wrt_foundation::VerificationLevel::Off => crate::resources::VerificationLevel::None,
-        wrt_foundation::VerificationLevel::Basic => {
-            crate::resources::VerificationLevel::None
-        },
+        wrt_foundation::VerificationLevel::Basic => crate::resources::VerificationLevel::None,
         wrt_foundation::VerificationLevel::Sampling => {
             crate::resources::VerificationLevel::Critical
         },
@@ -1379,9 +1394,6 @@ pub fn convert_verification_level(
             crate::resources::VerificationLevel::Critical
         },
         wrt_foundation::VerificationLevel::Full => crate::resources::VerificationLevel::Full,
-        wrt_foundation::VerificationLevel::Redundant => {
-            crate::resources::VerificationLevel::Full
-        },
+        wrt_foundation::VerificationLevel::Redundant => crate::resources::VerificationLevel::Full,
     }
-
 }

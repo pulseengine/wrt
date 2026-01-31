@@ -11,21 +11,14 @@
 
 use wrt_format::component::ComponentTypeDefinition;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-        MAX_WASM_NAME_LENGTH,
-    },
+    bounded::{BoundedString, BoundedVec, MAX_WASM_NAME_LENGTH},
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::{Checksummable, FromBytes, ToBytes},
 };
 
-use crate::{
-    export::Export,
-    prelude::*,
-};
+use crate::{export::Export, prelude::*};
 
 /// Maximum number of exports per instance
 pub const MAX_INSTANCE_EXPORTS: usize = 64;
@@ -34,9 +27,9 @@ pub const MAX_INSTANCE_EXPORTS: usize = 64;
 #[derive(Debug, Clone)]
 pub struct InstanceValue {
     /// The name of the instance
-    pub name:    BoundedString<MAX_WASM_NAME_LENGTH>,
+    pub name: BoundedString<MAX_WASM_NAME_LENGTH>,
     /// Instance type
-    pub ty:      ComponentTypeDefinition,
+    pub ty: ComponentTypeDefinition,
     /// Instance exports
     pub exports: BoundedVec<Export, MAX_INSTANCE_EXPORTS, NoStdProvider<16384>>,
 }
@@ -141,9 +134,9 @@ impl InstanceValue {
 /// Builder for InstanceValue
 pub struct InstanceValueBuilder {
     /// The name of the instance
-    name:    Option<String>,
+    name: Option<String>,
     /// Instance type
-    ty:      Option<ComponentTypeDefinition>,
+    ty: Option<ComponentTypeDefinition>,
     /// Instance exports
     exports: Vec<Export>,
 }
@@ -152,8 +145,8 @@ impl InstanceValueBuilder {
     /// Creates a new instance value builder
     pub fn new() -> Self {
         Self {
-            name:    None,
-            ty:      None,
+            name: None,
+            ty: None,
             exports: Vec::new(),
         }
     }

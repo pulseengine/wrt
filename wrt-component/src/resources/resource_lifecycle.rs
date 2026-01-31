@@ -12,21 +12,15 @@ use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap as HashMap, vec::Vec};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::collections::StaticVec;
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     bounded::BoundedString,
-    collections::{StaticVec as BoundedVec, StaticMap as SimpleHashMap},
+    collections::{StaticMap as SimpleHashMap, StaticVec as BoundedVec},
     safe_memory::NoStdProvider,
 };
 
@@ -48,27 +42,27 @@ pub const INVALID_HANDLE: ResourceHandle = 0;
 #[derive(Debug, Clone)]
 pub struct Resource {
     /// Unique handle for this resource
-    pub handle:        ResourceHandle,
+    pub handle: ResourceHandle,
     /// Type of the resource
     pub resource_type: ResourceType,
     /// Current state of the resource
-    pub state:         ResourceState,
+    pub state: ResourceState,
     /// Reference count for borrows
-    pub borrow_count:  u32,
+    pub borrow_count: u32,
     /// Metadata associated with the resource
-    pub metadata:      ResourceMetadata,
+    pub metadata: ResourceMetadata,
 }
 
 /// Resource type information
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceType {
     /// Type index in the component
-    pub type_idx:   u32,
+    pub type_idx: u32,
     /// Resource type name
     #[cfg(feature = "std")]
-    pub name:       String,
+    pub name: String,
     #[cfg(not(feature = "std"))]
-    pub name:       BoundedString<64>,
+    pub name: BoundedString<64>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
 }
@@ -90,18 +84,18 @@ pub enum ResourceState {
 #[derive(Debug, Clone)]
 pub struct ResourceMetadata {
     /// Creation timestamp (if available)
-    pub created_at:    Option<u64>,
+    pub created_at: Option<u64>,
     /// Last access timestamp
     pub last_accessed: Option<u64>,
     /// Creator component instance
-    pub creator:       u32,
+    pub creator: u32,
     /// Current owner component instance
-    pub owner:         u32,
+    pub owner: u32,
     /// Custom user data
     #[cfg(feature = "std")]
-    pub user_data:     Option<Vec<u8>>,
+    pub user_data: Option<Vec<u8>>,
     #[cfg(not(feature = "std"))]
-    pub user_data:     Option<BoundedVec<u8, 256>>,
+    pub user_data: Option<BoundedVec<u8, 256>>,
 }
 
 /// Resource lifecycle manager
@@ -111,16 +105,12 @@ pub struct ResourceLifecycleManager {
     next_handle: ResourceHandle,
     /// Active resources
     #[cfg(feature = "std")]
-    resources:   HashMap<ResourceHandle, Resource>,
+    resources: HashMap<ResourceHandle, Resource>,
     #[cfg(not(feature = "std"))]
-    resources: SimpleHashMap<
-        ResourceHandle,
-        Resource,
-        MAX_RESOURCES,
-    >,
+    resources: SimpleHashMap<ResourceHandle, Resource, MAX_RESOURCES>,
     /// Borrow tracking
     #[cfg(feature = "std")]
-    borrows:     HashMap<ResourceHandle, Vec<BorrowInfo>>,
+    borrows: HashMap<ResourceHandle, Vec<BorrowInfo>>,
     #[cfg(not(feature = "std"))]
     borrows: SimpleHashMap<
         ResourceHandle,
@@ -129,31 +119,31 @@ pub struct ResourceLifecycleManager {
     >,
     /// Resource type registry
     #[cfg(feature = "std")]
-    types:       HashMap<u32, ResourceType>,
+    types: HashMap<u32, ResourceType>,
     #[cfg(not(feature = "std"))]
-    types:       SimpleHashMap<u32, ResourceType, 256>,
+    types: SimpleHashMap<u32, ResourceType, 256>,
     /// Lifecycle hooks
-    hooks:       LifecycleHooks,
+    hooks: LifecycleHooks,
     /// Metrics
-    metrics:     ResourceMetrics,
+    metrics: ResourceMetrics,
 }
 
 /// Information about a resource borrow
 #[derive(Debug, Clone)]
 pub struct BorrowInfo {
     /// Component instance that holds the borrow
-    pub borrower:    u32,
+    pub borrower: u32,
     /// When the borrow was created
     pub borrowed_at: Option<u64>,
     /// Borrow flags
-    pub flags:       BorrowFlags,
+    pub flags: BorrowFlags,
 }
 
 /// Flags for resource borrows
 #[derive(Debug, Clone, Copy)]
 pub struct BorrowFlags {
     /// Whether this is a mutable borrow
-    pub is_mutable:   bool,
+    pub is_mutable: bool,
     /// Whether the borrow is transient (auto-released)
     pub is_transient: bool,
 }
@@ -162,13 +152,13 @@ pub struct BorrowFlags {
 #[derive(Debug, Default)]
 pub struct LifecycleHooks {
     /// Called when a resource is created
-    pub on_create:   Option<fn(&Resource) -> Result<()>>,
+    pub on_create: Option<fn(&Resource) -> Result<()>>,
     /// Called when a resource is destroyed
-    pub on_destroy:  Option<fn(&Resource) -> Result<()>>,
+    pub on_destroy: Option<fn(&Resource) -> Result<()>>,
     /// Called when a resource is borrowed
-    pub on_borrow:   Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
+    pub on_borrow: Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
     /// Called when a borrow is released
-    pub on_release:  Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
+    pub on_release: Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
     /// Called when ownership is transferred
     pub on_transfer: Option<fn(&Resource, u32, u32) -> Result<()>>,
 }
@@ -177,17 +167,17 @@ pub struct LifecycleHooks {
 #[derive(Debug, Default, Clone)]
 pub struct ResourceMetrics {
     /// Total resources created
-    pub total_created:     u64,
+    pub total_created: u64,
     /// Total resources destroyed
-    pub total_destroyed:   u64,
+    pub total_destroyed: u64,
     /// Current active resources
-    pub active_count:      u32,
+    pub active_count: u32,
     /// Total borrows created
-    pub total_borrows:     u64,
+    pub total_borrows: u64,
     /// Current active borrows
-    pub active_borrows:    u32,
+    pub active_borrows: u32,
     /// Peak resource count
-    pub peak_resources:    u32,
+    pub peak_resources: u32,
     /// Failed operations
     pub failed_operations: u64,
 }
@@ -198,11 +188,11 @@ impl ResourceLifecycleManager {
     pub fn new() -> Self {
         Self {
             next_handle: 1, // 0 is reserved for invalid handle
-            resources:   HashMap::new(),
-            borrows:     HashMap::new(),
-            types:       HashMap::new(),
-            hooks:       LifecycleHooks::default(),
-            metrics:     ResourceMetrics::default(),
+            resources: HashMap::new(),
+            borrows: HashMap::new(),
+            types: HashMap::new(),
+            hooks: LifecycleHooks::default(),
+            metrics: ResourceMetrics::default(),
         }
     }
 
@@ -211,11 +201,11 @@ impl ResourceLifecycleManager {
     pub fn new() -> Self {
         Self {
             next_handle: 1, // 0 is reserved for invalid handle
-            resources:   SimpleHashMap::new(),
-            borrows:     SimpleHashMap::new(),
-            types:       SimpleHashMap::new(),
-            hooks:       LifecycleHooks::default(),
-            metrics:     ResourceMetrics::default(),
+            resources: SimpleHashMap::new(),
+            borrows: SimpleHashMap::new(),
+            types: SimpleHashMap::new(),
+            hooks: LifecycleHooks::default(),
+            metrics: ResourceMetrics::default(),
         }
     }
 
@@ -232,9 +222,10 @@ impl ResourceLifecycleManager {
             name: name.to_string(),
             #[cfg(not(feature = "std"))]
             name: {
-                use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-                let provider = safe_managed_alloc!(512, CrateId::Component)
-                    .map_err(|_| Error::resource_error("Failed to allocate memory for resource name"))?;
+                use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+                let provider = safe_managed_alloc!(512, CrateId::Component).map_err(|_| {
+                    Error::resource_error("Failed to allocate memory for resource name")
+                })?;
                 BoundedString::try_from_str(name)
                     .map_err(|_| Error::resource_error("Resource type name too long"))?
             },
@@ -647,10 +638,10 @@ impl ResourceRep {
 
 /// Helper for resource cleanup in RAII style
 pub struct ResourceGuard<'a> {
-    manager:   &'a mut ResourceLifecycleManager,
-    handle:    ResourceHandle,
+    manager: &'a mut ResourceLifecycleManager,
+    handle: ResourceHandle,
     is_borrow: bool,
-    borrower:  Option<u32>,
+    borrower: Option<u32>,
 }
 
 impl<'a> ResourceGuard<'a> {

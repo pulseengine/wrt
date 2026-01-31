@@ -10,53 +10,37 @@ use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    Arc,
+    CrateId,
+    Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     // BoundedBinaryHeap, // Not available
     component_value::ComponentValue,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     // sync::Mutex, // Import from local instead
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
-    Arc,
-    CrateId,
-    Mutex,
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
         fuel_async_executor::AsyncTaskState,
         fuel_aware_waker::create_fuel_aware_waker,
-        task_manager_async_bridge::{
-            ComponentAsyncTaskType,
-            TaskManagerAsyncBridge,
-        },
+        task_manager_async_bridge::{ComponentAsyncTaskType, TaskManagerAsyncBridge},
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder types for missing imports
@@ -79,28 +63,26 @@ const TIMEOUT_FUEL: u64 = 25;
 /// Timer and timeout manager
 pub struct TimerIntegration {
     /// Bridge for task management
-    bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
+    bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active timers
-    timers:             BoundedMap<TimerId, Timer, MAX_GLOBAL_TIMERS>,
+    timers: BoundedMap<TimerId, Timer, MAX_GLOBAL_TIMERS>,
     /// Timer queue ordered by expiration time
-    timer_queue:        BoundedBinaryHeap<TimerEntry, MAX_GLOBAL_TIMERS>,
+    timer_queue: BoundedBinaryHeap<TimerEntry, MAX_GLOBAL_TIMERS>,
     /// Component timer contexts
     component_contexts: BoundedMap<ComponentInstanceId, ComponentTimerContext, 128>,
     /// Next timer ID
-    next_timer_id:      AtomicU64,
+    next_timer_id: AtomicU64,
     /// Current time (simulated)
-    current_time:       AtomicU64,
+    current_time: AtomicU64,
     /// Timer statistics
-    timer_stats:        TimerStatistics,
+    timer_stats: TimerStatistics,
     /// Timer configuration
-    timer_config:       TimerConfiguration,
+    timer_config: TimerConfiguration,
 }
 
 /// Timer identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TimerId(u64);
-
 
 impl Checksummable for TimerId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -130,16 +112,16 @@ impl FromBytes for TimerId {
 /// Timer implementation
 #[derive(Debug)]
 struct Timer {
-    id:              TimerId,
-    component_id:    ComponentInstanceId,
-    timer_type:      TimerType,
+    id: TimerId,
+    component_id: ComponentInstanceId,
+    timer_type: TimerType,
     expiration_time: u64,
-    interval:        Option<u64>,
-    waker:           Option<Waker>,
-    cancelled:       AtomicBool,
-    fired_count:     AtomicU32,
-    fuel_consumed:   AtomicU64,
-    created_at:      u64,
+    interval: Option<u64>,
+    waker: Option<Waker>,
+    cancelled: AtomicBool,
+    fired_count: AtomicU32,
+    fuel_consumed: AtomicU64,
+    created_at: u64,
 }
 
 /// Type of timer
@@ -153,13 +135,13 @@ pub enum TimerType {
     Deadline(u64),
     /// Timeout for an operation
     Timeout {
-        operation_id:     u64,
+        operation_id: u64,
         timeout_duration: u64,
     },
     /// Rate-limited timer
     RateLimit {
         max_fires_per_period: u32,
-        period_ms:            u64,
+        period_ms: u64,
     },
 }
 
@@ -176,11 +158,11 @@ impl Checksummable for TimerType {
             TimerType::Interval(dur) => {
                 1u8.update_checksum(checksum);
                 dur.update_checksum(checksum);
-            }
+            },
             TimerType::Deadline(time) => {
                 2u8.update_checksum(checksum);
                 time.update_checksum(checksum);
-            }
+            },
             TimerType::Timeout {
                 operation_id,
                 timeout_duration,
@@ -188,7 +170,7 @@ impl Checksummable for TimerType {
                 3u8.update_checksum(checksum);
                 operation_id.update_checksum(checksum);
                 timeout_duration.update_checksum(checksum);
-            }
+            },
             TimerType::RateLimit {
                 max_fires_per_period,
                 period_ms,
@@ -196,7 +178,7 @@ impl Checksummable for TimerType {
                 4u8.update_checksum(checksum);
                 max_fires_per_period.update_checksum(checksum);
                 period_ms.update_checksum(checksum);
-            }
+            },
         }
     }
 }
@@ -212,11 +194,11 @@ impl ToBytes for TimerType {
             TimerType::Interval(dur) => {
                 1u8.to_bytes_with_provider(writer, provider)?;
                 dur.to_bytes_with_provider(writer, provider)
-            }
+            },
             TimerType::Deadline(time) => {
                 2u8.to_bytes_with_provider(writer, provider)?;
                 time.to_bytes_with_provider(writer, provider)
-            }
+            },
             TimerType::Timeout {
                 operation_id,
                 timeout_duration,
@@ -224,7 +206,7 @@ impl ToBytes for TimerType {
                 3u8.to_bytes_with_provider(writer, provider)?;
                 operation_id.to_bytes_with_provider(writer, provider)?;
                 timeout_duration.to_bytes_with_provider(writer, provider)
-            }
+            },
             TimerType::RateLimit {
                 max_fires_per_period,
                 period_ms,
@@ -232,7 +214,7 @@ impl ToBytes for TimerType {
                 4u8.to_bytes_with_provider(writer, provider)?;
                 max_fires_per_period.to_bytes_with_provider(writer, provider)?;
                 period_ms.to_bytes_with_provider(writer, provider)
-            }
+            },
         }
     }
 }
@@ -248,11 +230,11 @@ impl FromBytes for TimerType {
             1 => {
                 let dur = u64::from_bytes_with_provider(reader, provider)?;
                 Ok(TimerType::Interval(dur))
-            }
+            },
             2 => {
                 let time = u64::from_bytes_with_provider(reader, provider)?;
                 Ok(TimerType::Deadline(time))
-            }
+            },
             3 => {
                 let operation_id = u64::from_bytes_with_provider(reader, provider)?;
                 let timeout_duration = u64::from_bytes_with_provider(reader, provider)?;
@@ -260,7 +242,7 @@ impl FromBytes for TimerType {
                     operation_id,
                     timeout_duration,
                 })
-            }
+            },
             4 => {
                 let max_fires_per_period = u32::from_bytes_with_provider(reader, provider)?;
                 let period_ms = u64::from_bytes_with_provider(reader, provider)?;
@@ -268,7 +250,7 @@ impl FromBytes for TimerType {
                     max_fires_per_period,
                     period_ms,
                 })
-            }
+            },
             _ => Err(wrt_error::Error::runtime_error(
                 "Invalid TimerType discriminant",
             )),
@@ -277,12 +259,11 @@ impl FromBytes for TimerType {
 }
 
 /// Timer queue entry
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 struct TimerEntry {
-    timer_id:        TimerId,
+    timer_id: TimerId,
     expiration_time: u64,
-    sequence:        u64, // For stable sorting
+    sequence: u64, // For stable sorting
 }
 
 impl Ord for TimerEntry {
@@ -308,7 +289,6 @@ impl PartialEq for TimerEntry {
 }
 
 impl Eq for TimerEntry {}
-
 
 impl Checksummable for TimerEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -347,13 +327,13 @@ impl FromBytes for TimerEntry {
 /// Component timer context
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ComponentTimerContext {
-    component_id:     ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Timers owned by this component
-    owned_timers:     BoundedVec<TimerId, MAX_TIMERS_PER_COMPONENT>,
+    owned_timers: BoundedVec<TimerId, MAX_TIMERS_PER_COMPONENT>,
     /// Active timeouts
-    active_timeouts:  BoundedMap<u64, TimerId, 64>, // operation_id -> timer_id
+    active_timeouts: BoundedMap<u64, TimerId, 64>, // operation_id -> timer_id
     /// Timer limits
-    timer_limits:     TimerLimits,
+    timer_limits: TimerLimits,
     /// Rate limiting state
     rate_limit_state: RateLimitState,
 }
@@ -392,7 +372,9 @@ impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
     ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
-            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
+            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(
+                reader, provider,
+            )?),
             owned_timers: BoundedVec::from_bytes_with_provider(reader, provider)?,
             active_timeouts: BoundedMap::from_bytes_with_provider(reader, provider)?,
             timer_limits: TimerLimits::from_bytes_with_provider(reader, provider)?,
@@ -404,10 +386,10 @@ impl wrt_foundation::traits::FromBytes for ComponentTimerContext {
 /// Timer limits per component
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TimerLimits {
-    max_timers:               usize,
-    max_timeout_duration_ms:  u64,
+    max_timers: usize,
+    max_timeout_duration_ms: u64,
     max_interval_duration_ms: u64,
-    fuel_budget:              u64,
+    fuel_budget: u64,
 }
 
 impl wrt_foundation::traits::Checksummable for TimerLimits {
@@ -454,13 +436,13 @@ impl wrt_foundation::traits::FromBytes for TimerLimits {
 #[derive(Debug)]
 struct RateLimitState {
     /// Number of timers fired in current period
-    fires_this_period:    AtomicU32,
+    fires_this_period: AtomicU32,
     /// Start of current period
-    period_start:         AtomicU64,
+    period_start: AtomicU64,
     /// Maximum fires allowed per period
     max_fires_per_period: u32,
     /// Period duration in ms
-    period_duration_ms:   u64,
+    period_duration_ms: u64,
 }
 
 impl Clone for RateLimitState {
@@ -476,8 +458,10 @@ impl Clone for RateLimitState {
 
 impl PartialEq for RateLimitState {
     fn eq(&self, other: &Self) -> bool {
-        self.fires_this_period.load(Ordering::Relaxed) == other.fires_this_period.load(Ordering::Relaxed)
-            && self.period_start.load(Ordering::Relaxed) == other.period_start.load(Ordering::Relaxed)
+        self.fires_this_period.load(Ordering::Relaxed)
+            == other.fires_this_period.load(Ordering::Relaxed)
+            && self.period_start.load(Ordering::Relaxed)
+                == other.period_start.load(Ordering::Relaxed)
             && self.max_fires_per_period == other.max_fires_per_period
             && self.period_duration_ms == other.period_duration_ms
     }
@@ -513,8 +497,12 @@ impl wrt_foundation::traits::ToBytes for RateLimitState {
         provider: &P,
     ) -> wrt_error::Result<()> {
         use wrt_runtime::ToBytes;
-        self.fires_this_period.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
-        self.period_start.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.fires_this_period
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
+        self.period_start
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
         self.max_fires_per_period.to_bytes_with_provider(writer, provider)?;
         self.period_duration_ms.to_bytes_with_provider(writer, provider)?;
         Ok(())
@@ -539,23 +527,23 @@ impl wrt_foundation::traits::FromBytes for RateLimitState {
 /// Timer configuration
 #[derive(Debug, Clone)]
 pub struct TimerConfiguration {
-    pub enable_high_precision:   bool,
+    pub enable_high_precision: bool,
     pub min_timer_resolution_ms: u64,
-    pub max_timer_duration_ms:   u64,
-    pub enable_rate_limiting:    bool,
-    pub default_rate_limit:      u32,
-    pub enable_fuel_tracking:    bool,
+    pub max_timer_duration_ms: u64,
+    pub enable_rate_limiting: bool,
+    pub default_rate_limit: u32,
+    pub enable_fuel_tracking: bool,
 }
 
 impl Default for TimerConfiguration {
     fn default() -> Self {
         Self {
-            enable_high_precision:   false,
+            enable_high_precision: false,
             min_timer_resolution_ms: 1,
-            max_timer_duration_ms:   24 * 60 * 60 * 1000, // 24 hours
-            enable_rate_limiting:    true,
-            default_rate_limit:      100, // 100 timers per second
-            enable_fuel_tracking:    true,
+            max_timer_duration_ms: 24 * 60 * 60 * 1000, // 24 hours
+            enable_rate_limiting: true,
+            default_rate_limit: 100, // 100 timers per second
+            enable_fuel_tracking: true,
         }
     }
 }
@@ -563,13 +551,13 @@ impl Default for TimerConfiguration {
 /// Timer statistics
 #[derive(Debug, Default)]
 struct TimerStatistics {
-    total_timers_created:   AtomicU64,
-    total_timers_fired:     AtomicU64,
+    total_timers_created: AtomicU64,
+    total_timers_fired: AtomicU64,
     total_timers_cancelled: AtomicU64,
     total_timeouts_created: AtomicU64,
     total_timeouts_expired: AtomicU64,
-    total_fuel_consumed:    AtomicU64,
-    max_concurrent_timers:  AtomicU32,
+    total_fuel_consumed: AtomicU64,
+    max_concurrent_timers: AtomicU32,
 }
 
 impl TimerIntegration {
@@ -597,10 +585,10 @@ impl TimerIntegration {
         limits: Option<TimerLimits>,
     ) -> Result<()> {
         let limits = limits.unwrap_or(TimerLimits {
-            max_timers:               MAX_TIMERS_PER_COMPONENT,
-            max_timeout_duration_ms:  self.timer_config.max_timer_duration_ms,
+            max_timers: MAX_TIMERS_PER_COMPONENT,
+            max_timeout_duration_ms: self.timer_config.max_timer_duration_ms,
             max_interval_duration_ms: self.timer_config.max_timer_duration_ms,
-            fuel_budget:              50_000,
+            fuel_budget: 50_000,
         });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
@@ -610,10 +598,10 @@ impl TimerIntegration {
             active_timeouts: BoundedMap::new(),
             timer_limits: limits,
             rate_limit_state: RateLimitState {
-                fires_this_period:    AtomicU32::new(0),
-                period_start:         AtomicU64::new(self.get_current_time()),
+                fires_this_period: AtomicU32::new(0),
+                period_start: AtomicU64::new(self.get_current_time()),
                 max_fires_per_period: self.timer_config.default_rate_limit,
-                period_duration_ms:   1000, // 1 second
+                period_duration_ms: 1000, // 1 second
             },
         };
 
@@ -790,21 +778,19 @@ impl TimerIntegration {
             }
 
             // Check rate limiting before getting mutable borrow
-            if self.timer_config.enable_rate_limiting
-                && !self.check_rate_limit(component_id)? {
-                    // Rate limit exceeded, reschedule for later
-                    let new_entry = TimerEntry {
-                        timer_id,
-                        expiration_time: current_time + 100, // Delay 100ms
-                        sequence: timer_entry.sequence,
-                    };
-                    timers_to_reschedule.push(new_entry);
-                    continue;
-                }
+            if self.timer_config.enable_rate_limiting && !self.check_rate_limit(component_id)? {
+                // Rate limit exceeded, reschedule for later
+                let new_entry = TimerEntry {
+                    timer_id,
+                    expiration_time: current_time + 100, // Delay 100ms
+                    sequence: timer_entry.sequence,
+                };
+                timers_to_reschedule.push(new_entry);
+                continue;
+            }
 
             // Now safely get mutable borrow
             if let Some(timer) = self.timers.get_mut(&timer_id) {
-
                 // Fire the timer
                 timer.fired_count.fetch_add(1, Ordering::AcqRel);
                 timer.fuel_consumed.fetch_add(TIMER_FIRE_FUEL, Ordering::Relaxed);
@@ -900,15 +886,15 @@ impl TimerIntegration {
     /// Get timer statistics
     pub fn get_timer_statistics(&self) -> TimerStats {
         TimerStats {
-            total_timers_created:   self.timer_stats.total_timers_created.load(Ordering::Relaxed),
-            total_timers_fired:     self.timer_stats.total_timers_fired.load(Ordering::Relaxed),
+            total_timers_created: self.timer_stats.total_timers_created.load(Ordering::Relaxed),
+            total_timers_fired: self.timer_stats.total_timers_fired.load(Ordering::Relaxed),
             total_timers_cancelled: self.timer_stats.total_timers_cancelled.load(Ordering::Relaxed),
             total_timeouts_created: self.timer_stats.total_timeouts_created.load(Ordering::Relaxed),
             total_timeouts_expired: self.timer_stats.total_timeouts_expired.load(Ordering::Relaxed),
-            active_timers:          self.timers.len() as u64,
-            max_concurrent_timers:  self.timer_stats.max_concurrent_timers.load(Ordering::Relaxed)
+            active_timers: self.timers.len() as u64,
+            max_concurrent_timers: self.timer_stats.max_concurrent_timers.load(Ordering::Relaxed)
                 as u64,
-            total_fuel_consumed:    self.timer_stats.total_fuel_consumed.load(Ordering::Relaxed),
+            total_fuel_consumed: self.timer_stats.total_fuel_consumed.load(Ordering::Relaxed),
         }
     }
 
@@ -962,40 +948,40 @@ impl TimerIntegration {
 /// Timer processing result
 #[derive(Debug, Clone)]
 pub struct TimerProcessResult {
-    pub fired_timers:     Vec<TimerId>,
+    pub fired_timers: Vec<TimerId>,
     pub expired_timeouts: usize,
-    pub processed_count:  usize,
+    pub processed_count: usize,
 }
 
 /// Timer status
 #[derive(Debug, Clone)]
 pub struct TimerStatus {
-    pub timer_id:        TimerId,
-    pub component_id:    ComponentInstanceId,
-    pub timer_type:      TimerType,
+    pub timer_id: TimerId,
+    pub component_id: ComponentInstanceId,
+    pub timer_type: TimerType,
     pub expiration_time: u64,
-    pub time_remaining:  Option<u64>,
-    pub fired_count:     u32,
-    pub cancelled:       bool,
-    pub fuel_consumed:   u64,
+    pub time_remaining: Option<u64>,
+    pub fired_count: u32,
+    pub cancelled: bool,
+    pub fuel_consumed: u64,
 }
 
 /// Timer statistics
 #[derive(Debug, Clone)]
 pub struct TimerStats {
-    pub total_timers_created:   u64,
-    pub total_timers_fired:     u64,
+    pub total_timers_created: u64,
+    pub total_timers_fired: u64,
     pub total_timers_cancelled: u64,
     pub total_timeouts_created: u64,
     pub total_timeouts_expired: u64,
-    pub active_timers:          u64,
-    pub max_concurrent_timers:  u64,
-    pub total_fuel_consumed:    u64,
+    pub active_timers: u64,
+    pub max_concurrent_timers: u64,
+    pub total_fuel_consumed: u64,
 }
 
 /// Timer future for async operations
 pub struct TimerFuture {
-    timer_id:          TimerId,
+    timer_id: TimerId,
     timer_integration: Weak<Mutex<TimerIntegration>>,
 }
 
@@ -1013,13 +999,17 @@ impl CoreFuture for TimerFuture {
             let mut timers = timer_integration.lock();
 
             // Extract data before mutable borrow
-            let (cancelled, expiration_time) = if let Some(timer) = timers.timers.get(&self.timer_id) {
-                (timer.cancelled.load(Ordering::Acquire), timer.expiration_time)
-            } else {
-                return Poll::Ready(Err(Error::validation_invalid_input(
-                    "Timer operation failed",
-                )));
-            };
+            let (cancelled, expiration_time) =
+                if let Some(timer) = timers.timers.get(&self.timer_id) {
+                    (
+                        timer.cancelled.load(Ordering::Acquire),
+                        timer.expiration_time,
+                    )
+                } else {
+                    return Poll::Ready(Err(Error::validation_invalid_input(
+                        "Timer operation failed",
+                    )));
+                };
 
             if cancelled {
                 return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled")));

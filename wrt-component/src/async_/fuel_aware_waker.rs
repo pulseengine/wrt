@@ -5,32 +5,19 @@
 
 use core::{
     mem,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        RawWaker,
-        RawWakerVTable,
-        Waker,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
+    task::{RawWaker, RawWakerVTable, Waker},
 };
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    safe_managed_alloc,
-    Arc,
-    CrateId,
-    Mutex,
+    Arc, CrateId, Mutex, collections::StaticVec as BoundedVec, safe_managed_alloc,
 };
 
 // Import Weak from the appropriate source based on features
-#[cfg(feature = "std")]
-use std::sync::Weak;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Weak;
+#[cfg(feature = "std")]
+use std::sync::Weak;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
@@ -40,11 +27,7 @@ use crate::threading::task_manager::TaskId;
 pub use crate::async_::fuel_async_executor::TaskId;
 
 use crate::{
-    async_::fuel_async_executor::{
-        ASILExecutionMode,
-        AsyncTaskState,
-        FuelAsyncExecutor,
-    },
+    async_::fuel_async_executor::{ASILExecutionMode, AsyncTaskState, FuelAsyncExecutor},
     prelude::*,
 };
 
@@ -59,10 +42,10 @@ pub trait SafeWaker: Send + Sync {
 
 /// ASIL-compliant waker implementation
 pub struct AsilCompliantWaker {
-    task_id:      TaskId,
-    ready_queue:  Arc<Mutex<BoundedVec<TaskId, 128>>>,
+    task_id: TaskId,
+    ready_queue: Arc<Mutex<BoundedVec<TaskId, 128>>>,
     executor_ref: Weak<Mutex<FuelAsyncExecutor>>,
-    asil_mode:    ASILExecutionMode,
+    asil_mode: ASILExecutionMode,
 }
 
 impl SafeWaker for AsilCompliantWaker {
@@ -74,10 +57,10 @@ impl SafeWaker for AsilCompliantWaker {
 
     fn clone_waker(&self) -> Box<dyn SafeWaker> {
         Box::new(AsilCompliantWaker {
-            task_id:      self.task_id,
-            ready_queue:  self.ready_queue.clone(),
+            task_id: self.task_id,
+            ready_queue: self.ready_queue.clone(),
             executor_ref: self.executor_ref.clone(),
-            asil_mode:    self.asil_mode,
+            asil_mode: self.asil_mode,
         })
     }
 }
@@ -92,17 +75,17 @@ const WAKE_OPERATION_FUEL: u64 = 5;
 #[derive(Debug)]
 pub struct WakerData {
     /// Task ID to wake
-    pub task_id:        TaskId,
+    pub task_id: TaskId,
     /// Reference to the executor's ready queue
-    pub ready_queue:    Arc<Mutex<BoundedVec<TaskId, 128>>>,
+    pub ready_queue: Arc<Mutex<BoundedVec<TaskId, 128>>>,
     /// Wake count for debugging and metrics
-    pub wake_count:     Arc<AtomicU32>,
+    pub wake_count: Arc<AtomicU32>,
     /// Flag to prevent duplicate wakes
-    pub is_woken:       Arc<AtomicBool>,
+    pub is_woken: Arc<AtomicBool>,
     /// Weak reference to executor for fuel tracking
-    pub executor_ref:   Weak<Mutex<FuelAsyncExecutor>>,
+    pub executor_ref: Weak<Mutex<FuelAsyncExecutor>>,
     /// ASIL mode for this task (affects wake behavior)
-    pub asil_mode:      ASILExecutionMode,
+    pub asil_mode: ASILExecutionMode,
     /// Wake timestamp for deterministic execution (ASIL-D)
     pub wake_timestamp: Arc<AtomicU64>,
 }
@@ -288,22 +271,21 @@ impl WakerData {
     /// Basic wake (ASIL-A)
     fn wake_basic(&self) {
         let mut queue = self.ready_queue.lock();
-        if !queue.iter().any(|&id| id == self.task_id)
-            && queue.push(self.task_id).is_err() {
-                // Basic error detection - queue full
-                // Remove duplicates using retain (StaticVec doesn't have dedup)
-                let mut seen = [false; 128];
-                queue.retain(|&id| {
-                    let id_usize = id.into_inner() as usize;
-                    if id_usize < 128 && !seen[id_usize] {
-                        seen[id_usize] = true;
-                        true
-                    } else {
-                        false
-                    }
-                });
-                let _ = queue.push(self.task_id);
-            }
+        if !queue.iter().any(|&id| id == self.task_id) && queue.push(self.task_id).is_err() {
+            // Basic error detection - queue full
+            // Remove duplicates using retain (StaticVec doesn't have dedup)
+            let mut seen = [false; 128];
+            queue.retain(|&id| {
+                let id_usize = id.into_inner() as usize;
+                if id_usize < 128 && !seen[id_usize] {
+                    seen[id_usize] = true;
+                    true
+                } else {
+                    false
+                }
+            });
+            let _ = queue.push(self.task_id);
+        }
     }
 
     /// Get deterministic timestamp for ASIL-D
@@ -316,12 +298,12 @@ impl WakerData {
     /// Clone the waker data
     pub fn clone_data(&self) -> Self {
         Self {
-            task_id:        self.task_id,
-            ready_queue:    self.ready_queue.clone(),
-            wake_count:     self.wake_count.clone(),
-            is_woken:       self.is_woken.clone(),
-            executor_ref:   self.executor_ref.clone(),
-            asil_mode:      self.asil_mode,
+            task_id: self.task_id,
+            ready_queue: self.ready_queue.clone(),
+            wake_count: self.wake_count.clone(),
+            is_woken: self.is_woken.clone(),
+            executor_ref: self.executor_ref.clone(),
+            asil_mode: self.asil_mode,
             wake_timestamp: self.wake_timestamp.clone(),
         }
     }
@@ -345,29 +327,37 @@ mod unsafe_waker {
     use super::*;
 
     /// Raw waker clone implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_clone(data: *const ()) -> RawWaker { unsafe {
-        let waker_data = &*(data as *const WakerData);
-        let cloned = Box::new(waker_data.clone_data());
-        RawWaker::new(Box::into_raw(cloned) as *const (), &WAKER_VTABLE)
-    }}
+    pub unsafe fn waker_clone(data: *const ()) -> RawWaker {
+        unsafe {
+            let waker_data = &*(data as *const WakerData);
+            let cloned = Box::new(waker_data.clone_data());
+            RawWaker::new(Box::into_raw(cloned) as *const (), &WAKER_VTABLE)
+        }
+    }
 
     /// Raw waker wake implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_wake(data: *const ()) { unsafe {
-        let waker_data = Box::from_raw(data as *mut WakerData);
-        waker_data.wake();
-    }}
+    pub unsafe fn waker_wake(data: *const ()) {
+        unsafe {
+            let waker_data = Box::from_raw(data as *mut WakerData);
+            waker_data.wake();
+        }
+    }
 
     /// Raw waker wake by ref implementation (unsafe - only for non-ASIL-D
     /// builds)
-    pub unsafe fn waker_wake_by_ref(data: *const ()) { unsafe {
-        let waker_data = &*(data as *const WakerData);
-        waker_data.wake();
-    }}
+    pub unsafe fn waker_wake_by_ref(data: *const ()) {
+        unsafe {
+            let waker_data = &*(data as *const WakerData);
+            waker_data.wake();
+        }
+    }
 
     /// Raw waker drop implementation (unsafe - only for non-ASIL-D builds)
-    pub unsafe fn waker_drop(data: *const ()) { unsafe {
-        drop(Box::from_raw(data as *mut WakerData));
-    }}
+    pub unsafe fn waker_drop(data: *const ()) {
+        unsafe {
+            drop(Box::from_raw(data as *mut WakerData));
+        }
+    }
 }
 
 #[cfg(feature = "asil-d")]
@@ -477,7 +467,7 @@ pub struct WakeCoalescer {
     /// Pending wakes to be processed
     pending_wakes: Mutex<BoundedVec<TaskId, MAX_PENDING_WAKES>>,
     /// Flag indicating if coalescer is processing
-    processing:    AtomicBool,
+    processing: AtomicBool,
 }
 
 impl WakeCoalescer {
@@ -486,7 +476,7 @@ impl WakeCoalescer {
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
         Ok(Self {
             pending_wakes: Mutex::new(BoundedVec::new()),
-            processing:    AtomicBool::new(false),
+            processing: AtomicBool::new(false),
         })
     }
 
@@ -561,5 +551,7 @@ pub fn create_noop_waker() -> Waker {
     let raw_waker = RawWaker::new(core::ptr::null(), &NOOP_WAKER_VTABLE);
     // SAFETY: The vtable is statically allocated and valid
     #[allow(unsafe_code)] // Required for Waker creation API
-    unsafe { Waker::from_raw(raw_waker) }
+    unsafe {
+        Waker::from_raw(raw_waker)
+    }
 }

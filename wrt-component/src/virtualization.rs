@@ -6,38 +6,27 @@ use alloc::string::String;
 // Placeholder types
 pub use crate::types::ComponentInstanceId;
 use crate::{
-    canonical_abi::{
-        canonical_options::CanonicalOptions,
-        post_return::PostReturnRegistry,
-    },
+    canonical_abi::{canonical_options::CanonicalOptions, post_return::PostReturnRegistry},
     components::component_instantiation::ComponentInstance,
 };
 pub type ResourceHandle = u32;
 pub type ValType = u32;
 use core::{
     fmt,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    collections::StaticMap as BoundedMap,
     budget_aware_provider::CrateId,
+    collections::StaticMap as BoundedMap,
+    collections::StaticVec as BoundedVec,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 
-use crate::prelude::WrtComponentValue;
 use crate::bounded_component_infra::ComponentProvider;
+use crate::prelude::WrtComponentValue;
 
 const MAX_VIRTUAL_COMPONENTS: usize = 256;
 const MAX_VIRTUAL_IMPORTS: usize = 1024;
@@ -47,7 +36,7 @@ const MAX_VIRTUAL_MEMORY_REGIONS: usize = 64;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VirtualizationError {
-    pub kind:    VirtualizationErrorKind,
+    pub kind: VirtualizationErrorKind,
     pub message: String,
 }
 
@@ -74,10 +63,7 @@ impl std::error::Error for VirtualizationError {}
 // Conversion to wrt_error::Error for unified error handling
 impl From<VirtualizationError> for wrt_error::Error {
     fn from(err: VirtualizationError) -> Self {
-        use wrt_error::{
-            codes,
-            ErrorCategory,
-        };
+        use wrt_error::{ErrorCategory, codes};
         match err.kind {
             VirtualizationErrorKind::CapabilityDenied => Self::new(
                 ErrorCategory::ComponentRuntime,
@@ -126,7 +112,7 @@ pub enum Capability {
         max_size: usize,
     },
     FileSystem {
-        read_only:   bool,
+        read_only: bool,
         path_prefix: Option<String>,
     },
     Network {
@@ -160,30 +146,30 @@ impl Checksummable for Capability {
             Self::Memory { max_size } => {
                 0u8.update_checksum(checksum);
                 max_size.update_checksum(checksum);
-            }
+            },
             Self::FileSystem { .. } => {
                 1u8.update_checksum(checksum);
-            }
+            },
             Self::Network { .. } => {
                 2u8.update_checksum(checksum);
-            }
+            },
             Self::Time { precision_ms } => {
                 3u8.update_checksum(checksum);
                 precision_ms.update_checksum(checksum);
-            }
+            },
             Self::Random => {
                 4u8.update_checksum(checksum);
-            }
+            },
             Self::Threading { max_threads } => {
                 5u8.update_checksum(checksum);
                 max_threads.update_checksum(checksum);
-            }
+            },
             Self::Logging { .. } => {
                 6u8.update_checksum(checksum);
-            }
+            },
             Self::Custom { .. } => {
                 7u8.update_checksum(checksum);
-            }
+            },
         }
     }
 }
@@ -213,22 +199,20 @@ impl FromBytes for Capability {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
     Error = 0,
-    Warn  = 1,
-    Info  = 2,
+    Warn = 1,
+    Info = 2,
     Debug = 3,
     Trace = 4,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CapabilityGrant {
     pub capability: Capability,
     pub granted_to: ComponentInstanceId,
     pub granted_at: u64,
     pub expires_at: Option<u64>,
-    pub revocable:  bool,
+    pub revocable: bool,
 }
-
 
 impl Checksummable for CapabilityGrant {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -258,10 +242,10 @@ impl ToBytes for CapabilityGrant {
             Some(expires_at) => {
                 1u8.to_bytes_with_provider(writer, provider)?;
                 expires_at.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             None => {
                 0u8.to_bytes_with_provider(writer, provider)?;
-            }
+            },
         }
         self.revocable.to_bytes_with_provider(writer, provider)?;
         Ok(())
@@ -295,42 +279,33 @@ impl FromBytes for CapabilityGrant {
 
 #[derive(Debug, Clone)]
 pub struct VirtualComponent {
-    pub instance_id:     ComponentInstanceId,
-    pub name:            String,
-    pub parent:          Option<ComponentInstanceId>,
+    pub instance_id: ComponentInstanceId,
+    pub name: String,
+    pub parent: Option<ComponentInstanceId>,
     pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS>,
-    pub capabilities:    BoundedVec<Capability, MAX_CAPABILITY_GRANTS>,
-    pub virtual_imports: BoundedMap<
-        String,
-        VirtualImport,
-        MAX_VIRTUAL_IMPORTS,
-    >,
-    pub virtual_exports: BoundedMap<
-        String,
-        VirtualExport,
-        MAX_VIRTUAL_EXPORTS,
-    >,
-    pub memory_regions:
-        BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS>,
+    pub capabilities: BoundedVec<Capability, MAX_CAPABILITY_GRANTS>,
+    pub virtual_imports: BoundedMap<String, VirtualImport, MAX_VIRTUAL_IMPORTS>,
+    pub virtual_exports: BoundedMap<String, VirtualExport, MAX_VIRTUAL_EXPORTS>,
+    pub memory_regions: BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS>,
     pub isolation_level: IsolationLevel,
     pub resource_limits: ResourceLimits,
-    pub is_sandboxed:    bool,
+    pub is_sandboxed: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct VirtualImport {
-    pub name:                String,
-    pub val_type:            ValType,
-    pub required:            bool,
-    pub virtual_source:      Option<VirtualSource>,
+    pub name: String,
+    pub val_type: ValType,
+    pub required: bool,
+    pub virtual_source: Option<VirtualSource>,
     pub capability_required: Option<Capability>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VirtualExport {
-    pub name:                String,
-    pub val_type:            ValType,
-    pub visibility:          ExportVisibility,
+    pub name: String,
+    pub val_type: ValType,
+    pub visibility: ExportVisibility,
     pub capability_required: Option<Capability>,
 }
 
@@ -362,11 +337,11 @@ pub enum ExportVisibility {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct VirtualMemoryRegion {
-    pub start_addr:  usize,
-    pub size:        usize,
+    pub start_addr: usize,
+    pub size: usize,
     pub permissions: MemoryPermissions,
-    pub shared:      bool,
-    pub mapped_to:   Option<ComponentInstanceId>,
+    pub shared: bool,
+    pub mapped_to: Option<ComponentInstanceId>,
 }
 
 impl Checksummable for VirtualMemoryRegion {
@@ -439,8 +414,8 @@ impl FromBytes for VirtualMemoryRegion {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MemoryPermissions {
-    pub read:    bool,
-    pub write:   bool,
+    pub read: bool,
+    pub write: bool,
     pub execute: bool,
 }
 
@@ -536,23 +511,23 @@ impl FromBytes for IsolationLevel {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceLimits {
-    pub max_memory:              usize,
-    pub max_cpu_time_ms:         u64,
-    pub max_file_handles:        u32,
+    pub max_memory: usize,
+    pub max_cpu_time_ms: u64,
+    pub max_file_handles: u32,
     pub max_network_connections: u32,
-    pub max_threads:             u32,
-    pub max_recursive_calls:     u32,
+    pub max_threads: u32,
+    pub max_recursive_calls: u32,
 }
 
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_memory:              1024 * 1024,
-            max_cpu_time_ms:         5000,
-            max_file_handles:        10,
+            max_memory: 1024 * 1024,
+            max_cpu_time_ms: 5000,
+            max_file_handles: 10,
             max_network_connections: 5,
-            max_threads:             1,
-            max_recursive_calls:     100,
+            max_threads: 1,
+            max_recursive_calls: 100,
         }
     }
 }
@@ -602,31 +577,19 @@ impl FromBytes for ResourceLimits {
 
 #[derive(Debug)]
 pub struct VirtualizationManager {
-    virtual_components: BoundedMap<
-        ComponentInstanceId,
-        VirtualComponent,
-        MAX_VIRTUAL_COMPONENTS,
-    >,
+    virtual_components: BoundedMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
     capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS>,
-    host_exports: BoundedMap<
-        String,
-        HostExport,
-        MAX_VIRTUAL_EXPORTS,
-    >,
-    sandbox_registry: BoundedMap<
-        ComponentInstanceId,
-        SandboxState,
-        MAX_VIRTUAL_COMPONENTS,
-    >,
-    next_virtual_id:        AtomicU32,
+    host_exports: BoundedMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
+    sandbox_registry: BoundedMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
+    next_virtual_id: AtomicU32,
     virtualization_enabled: AtomicBool,
 }
 
 #[derive(Debug, Clone)]
 pub struct HostExport {
-    pub name:                String,
-    pub val_type:            ValType,
-    pub handler:             HostExportHandler,
+    pub name: String,
+    pub val_type: ValType,
+    pub handler: HostExportHandler,
     pub required_capability: Option<Capability>,
 }
 
@@ -643,21 +606,21 @@ pub enum HostExportHandler {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SandboxState {
-    pub instance_id:     ComponentInstanceId,
-    pub active:          bool,
-    pub resource_usage:  ResourceUsage,
+    pub instance_id: ComponentInstanceId,
+    pub active: bool,
+    pub resource_usage: ResourceUsage,
     pub violation_count: u32,
-    pub last_violation:  Option<String>,
+    pub last_violation: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResourceUsage {
-    pub memory_used:              usize,
-    pub cpu_time_used_ms:         u64,
-    pub file_handles_used:        u32,
+    pub memory_used: usize,
+    pub cpu_time_used_ms: u64,
+    pub file_handles_used: u32,
     pub network_connections_used: u32,
-    pub threads_used:             u32,
-    pub recursive_calls_depth:    u32,
+    pub threads_used: u32,
+    pub recursive_calls_depth: u32,
 }
 
 impl Checksummable for ResourceUsage {
@@ -738,9 +701,10 @@ impl VirtualizationManager {
     ) -> VirtualizationResult<ComponentInstanceId> {
         if !self.is_virtualization_enabled() {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::VirtualizationNotSupported,
+                kind: VirtualizationErrorKind::VirtualizationNotSupported,
                 message: String::from("Virtualization is disabled"),
-            }.into());
+            }
+            .into());
         }
 
         let instance_id =
@@ -772,7 +736,7 @@ impl VirtualizationManager {
         if let Some(parent_id) = parent {
             if let Some(parent_component) = self.virtual_components.get_mut(&parent_id) {
                 parent_component.children.push(instance_id).map_err(|_| VirtualizationError {
-                    kind:    VirtualizationErrorKind::ResourceExhaustion,
+                    kind: VirtualizationErrorKind::ResourceExhaustion,
                     message: String::from("Parent component has too many children"),
                 })?;
             }
@@ -780,7 +744,7 @@ impl VirtualizationManager {
 
         self.virtual_components.insert(instance_id, virtual_component).map_err(|_| {
             VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Too many virtual components"),
             }
         })?;
@@ -795,7 +759,7 @@ impl VirtualizationManager {
             };
             self.sandbox_registry.insert(instance_id, sandbox_state).map_err(|_| {
                 VirtualizationError {
-                    kind:    VirtualizationErrorKind::ResourceExhaustion,
+                    kind: VirtualizationErrorKind::ResourceExhaustion,
                     message: String::from("Too many sandboxed components"),
                 }
             })?;
@@ -813,9 +777,10 @@ impl VirtualizationManager {
     ) -> VirtualizationResult<()> {
         if !self.virtual_components.contains_key(&instance_id) {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: String::from("Component not found"),
-            }.into());
+            }
+            .into());
         }
 
         let grant = CapabilityGrant {
@@ -827,13 +792,13 @@ impl VirtualizationManager {
         };
 
         self.capability_grants.push(grant).map_err(|_| VirtualizationError {
-            kind:    VirtualizationErrorKind::ResourceExhaustion,
+            kind: VirtualizationErrorKind::ResourceExhaustion,
             message: String::from("Too many capability grants"),
         })?;
 
         if let Some(component) = self.virtual_components.get_mut(&instance_id) {
             component.capabilities.push(capability).map_err(|_| VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Component has too many capabilities"),
             })?;
         }
@@ -865,7 +830,7 @@ impl VirtualizationManager {
             self.virtual_components
                 .get_mut(&instance_id)
                 .ok_or_else(|| VirtualizationError {
-                    kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                    kind: VirtualizationErrorKind::InvalidVirtualComponent,
                     message: String::from("Component not found"),
                 })?;
 
@@ -874,7 +839,7 @@ impl VirtualizationManager {
             .virtual_imports
             .insert(import_name, import)
             .map_err(|_| VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Too many virtual imports"),
             })?;
 
@@ -890,7 +855,7 @@ impl VirtualizationManager {
             self.virtual_components
                 .get_mut(&instance_id)
                 .ok_or_else(|| VirtualizationError {
-                    kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                    kind: VirtualizationErrorKind::InvalidVirtualComponent,
                     message: String::from("Component not found"),
                 })?;
 
@@ -899,7 +864,7 @@ impl VirtualizationManager {
             .virtual_exports
             .insert(export_name, export)
             .map_err(|_| VirtualizationError {
-                kind:    VirtualizationErrorKind::ExportConflict,
+                kind: VirtualizationErrorKind::ExportConflict,
                 message: String::from("Export already exists or too many exports"),
             })?;
 
@@ -915,36 +880,42 @@ impl VirtualizationManager {
         // Extract isolation level and limits before mutable borrow
         let (isolation_level, max_memory, current_usage) = {
             let component =
-                self.virtual_components
-                    .get(&instance_id)
-                    .ok_or_else(|| VirtualizationError {
-                        kind:    VirtualizationErrorKind::InvalidVirtualComponent,
-                        message: String::from("Component not found"),
-                    })?;
+                self.virtual_components.get(&instance_id).ok_or_else(|| VirtualizationError {
+                    kind: VirtualizationErrorKind::InvalidVirtualComponent,
+                    message: String::from("Component not found"),
+                })?;
 
-            let current_usage = component.memory_regions.iter().map(|region| region.size).sum::<usize>();
-            (component.isolation_level, component.resource_limits.max_memory, current_usage)
+            let current_usage =
+                component.memory_regions.iter().map(|region| region.size).sum::<usize>();
+            (
+                component.isolation_level,
+                component.resource_limits.max_memory,
+                current_usage,
+            )
         };
 
         if isolation_level == IsolationLevel::None {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::MemoryViolation,
+                kind: VirtualizationErrorKind::MemoryViolation,
                 message: String::from("Virtual memory not available for non-isolated components"),
-            }.into());
+            }
+            .into());
         }
 
         if !self.check_capability(instance_id, &Capability::Memory { max_size: size }) {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::CapabilityDenied,
+                kind: VirtualizationErrorKind::CapabilityDenied,
                 message: String::from("Insufficient memory capability"),
-            }.into());
+            }
+            .into());
         }
 
         if current_usage + size > max_memory {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Memory limit exceeded"),
-            }.into());
+            }
+            .into());
         }
 
         let start_addr = self.find_virtual_address_space(size)?;
@@ -962,12 +933,12 @@ impl VirtualizationManager {
             self.virtual_components
                 .get_mut(&instance_id)
                 .ok_or_else(|| VirtualizationError {
-                    kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                    kind: VirtualizationErrorKind::InvalidVirtualComponent,
                     message: String::from("Component not found"),
                 })?;
 
         component.memory_regions.push(memory_region).map_err(|_| VirtualizationError {
-            kind:    VirtualizationErrorKind::ResourceExhaustion,
+            kind: VirtualizationErrorKind::ResourceExhaustion,
             message: String::from("Too many memory regions"),
         })?;
 
@@ -981,23 +952,25 @@ impl VirtualizationManager {
     ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         let component =
             self.virtual_components.get(&instance_id).ok_or_else(|| VirtualizationError {
-                kind:    VirtualizationErrorKind::InvalidVirtualComponent,
+                kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: String::from("Component not found"),
             })?;
 
         let import_name_string = String::from(import_name);
-        let import =
-            component.virtual_imports.get(&import_name_string).ok_or_else(|| wrt_error::Error::from(VirtualizationError {
-                kind:    VirtualizationErrorKind::ImportNotFound,
+        let import = component.virtual_imports.get(&import_name_string).ok_or_else(|| {
+            wrt_error::Error::from(VirtualizationError {
+                kind: VirtualizationErrorKind::ImportNotFound,
                 message: String::from("Component not found"),
-            }))?;
+            })
+        })?;
 
         if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
-                    kind:    VirtualizationErrorKind::CapabilityDenied,
+                    kind: VirtualizationErrorKind::CapabilityDenied,
                     message: String::from("Component not found"),
-                }.into());
+                }
+                .into());
             }
         }
 
@@ -1066,10 +1039,7 @@ impl VirtualizationManager {
     fn get_current_time(&self) -> u64 {
         #[cfg(feature = "std")]
         {
-            use std::time::{
-                SystemTime,
-                UNIX_EPOCH,
-            };
+            use std::time::{SystemTime, UNIX_EPOCH};
             SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
         }
         #[cfg(not(feature = "std"))]
@@ -1083,15 +1053,22 @@ impl VirtualizationManager {
         Ok(base_addr)
     }
 
-    fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
+    fn resolve_host_function(
+        &self,
+        name: &str,
+    ) -> VirtualizationResult<Option<WrtComponentValue<ComponentProvider>>> {
         let name_string = String::from(name);
         if let Some(export) = self.host_exports.get(&name_string) {
             match &export.handler {
-                HostExportHandler::Memory { .. } => Ok(Some(WrtComponentValue::<ComponentProvider>::U32(0))),
-                HostExportHandler::Time => {
-                    Ok(Some(WrtComponentValue::<ComponentProvider>::U64(self.get_current_time())))
+                HostExportHandler::Memory { .. } => {
+                    Ok(Some(WrtComponentValue::<ComponentProvider>::U32(0)))
                 },
-                HostExportHandler::Random => Ok(Some(WrtComponentValue::<ComponentProvider>::U32(42))),
+                HostExportHandler::Time => Ok(Some(WrtComponentValue::<ComponentProvider>::U64(
+                    self.get_current_time(),
+                ))),
+                HostExportHandler::Random => {
+                    Ok(Some(WrtComponentValue::<ComponentProvider>::U32(42)))
+                },
                 _ => Ok(None),
             }
         } else {
@@ -1110,9 +1087,10 @@ impl VirtualizationManager {
                 match export.visibility {
                     ExportVisibility::Public | ExportVisibility::Children => Ok(None),
                     _ => Err(VirtualizationError {
-                        kind:    VirtualizationErrorKind::CapabilityDenied,
+                        kind: VirtualizationErrorKind::CapabilityDenied,
                         message: String::from("Export not visible to children"),
-                    }.into()),
+                    }
+                    .into()),
                 }
             } else {
                 Ok(None)
@@ -1133,9 +1111,10 @@ impl VirtualizationManager {
                 match export.visibility {
                     ExportVisibility::Public | ExportVisibility::Siblings => Ok(None),
                     _ => Err(VirtualizationError {
-                        kind:    VirtualizationErrorKind::CapabilityDenied,
+                        kind: VirtualizationErrorKind::CapabilityDenied,
                         message: String::from("Export not visible to siblings"),
-                    }.into()),
+                    }
+                    .into()),
                 }
             } else {
                 Ok(None)
@@ -1161,30 +1140,34 @@ impl VirtualizationManager {
 
         if usage.memory_used > limits.max_memory {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Memory limit exceeded"),
-            }.into());
+            }
+            .into());
         }
 
         if usage.cpu_time_used_ms > limits.max_cpu_time_ms {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("CPU time limit exceeded"),
-            }.into());
+            }
+            .into());
         }
 
         if usage.threads_used > limits.max_threads {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Thread limit exceeded"),
-            }.into());
+            }
+            .into());
         }
 
         if usage.recursive_calls_depth > limits.max_recursive_calls {
             return Err(VirtualizationError {
-                kind:    VirtualizationErrorKind::ResourceExhaustion,
+                kind: VirtualizationErrorKind::ResourceExhaustion,
                 message: String::from("Recursion limit exceeded"),
-            }.into());
+            }
+            .into());
         }
 
         Ok(())
@@ -1208,7 +1191,7 @@ pub fn create_network_capability(allowed_hosts: &[&str]) -> VirtualizationResult
     let mut hosts = BoundedVec::new();
     for host in allowed_hosts {
         hosts.push(String::from(*host)).map_err(|_| VirtualizationError {
-            kind:    VirtualizationErrorKind::ResourceExhaustion,
+            kind: VirtualizationErrorKind::ResourceExhaustion,
             message: String::from("Too many allowed hosts"),
         })?;
     }

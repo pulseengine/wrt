@@ -9,12 +9,12 @@ extern crate alloc;
 use core::fmt;
 
 use crate::{
+    ComponentInstanceId,
     canonical_abi::{CanonicalOptions, ComponentValue},
     execution_engine::{TimeBoundedConfig, TimeBoundedContext},
     prelude::*,
     resource_limits_loader::extract_resource_limits_from_binary,
     types::{ComponentInstance, ComponentInstanceState as InstanceState},
-    ComponentInstanceId,
 };
 #[cfg(feature = "component-model-threading")]
 use crate::{
@@ -104,11 +104,11 @@ use core::{
 use std::sync::Weak;
 
 use wrt_foundation::{
+    Arc, CrateId, Mutex,
     collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
-    operations::{global_fuel_consumed, record_global_operation, Type as OperationType},
+    operations::{Type as OperationType, global_fuel_consumed, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    Arc, CrateId, Mutex,
 };
 use wrt_platform::{
     advanced_sync::{Priority, PriorityInheritanceMutex},
@@ -118,8 +118,8 @@ use wrt_platform::{
 use crate::async_::{
     async_task_executor::{ASILExecutorFactory, AsyncTaskExecutor},
     fuel_aware_waker::{
-        create_fuel_aware_waker, create_fuel_aware_waker_with_asil, create_noop_waker,
-        WakeCoalescer,
+        WakeCoalescer, create_fuel_aware_waker, create_fuel_aware_waker_with_asil,
+        create_noop_waker,
     },
     fuel_debt_credit::{CreditRestriction, DebtPolicy, FuelDebtCreditSystem},
     fuel_dynamic_manager::{FuelAllocationPolicy, FuelDynamicManager},
@@ -312,7 +312,7 @@ pub trait ExecutionState: core::fmt::Debug + Send + Sync {
     fn current_function_index(&self) -> Option<u32>;
     /// Get local variables state
     fn get_locals(&self)
-        -> &[wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>];
+    -> &[wrt_foundation::component_value::ComponentValue<NoStdProvider<4096>>];
     /// Set local variables state
     fn set_locals(
         &mut self,
@@ -743,8 +743,9 @@ impl ExecutionLimitsConfig {
             use wrt_foundation::safe_memory::NoStdProvider;
 
             // Parse the resource limits custom section
-            let resource_limits: ResourceLimitsSection<NoStdProvider<4096>> = ResourceLimitsSection::decode(custom_section_data)
-                .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+            let resource_limits: ResourceLimitsSection<NoStdProvider<4096>> =
+                ResourceLimitsSection::decode(custom_section_data)
+                    .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
 
             // Validate the resource limits
             resource_limits.validate().map_err(|e| {
@@ -3548,8 +3549,7 @@ impl FuelAsyncExecutor {
                 };
 
                 #[cfg(feature = "std")]
-                let locals_vec2: Vec<wrt_foundation::Value> =
-                    yield_info.locals.iter().collect();
+                let locals_vec2: Vec<wrt_foundation::Value> = yield_info.locals.iter().collect();
                 #[cfg(not(feature = "std"))]
                 let locals_vec2: Vec<wrt_foundation::Value> = {
                     let mut v = Vec::new();
@@ -3956,9 +3956,9 @@ impl FuelAsyncExecutor {
                 // Repay debt with interest
                 let interest_rate = match task.execution_context.asil_config.mode {
                     ASILExecutionMode::QM => 0.10,       // 10% interest for QM
-                    ASILExecutionMode::AsilA => 0.10,   // 10% interest for ASIL-A
-                    ASILExecutionMode::AsilB => 0.05,   // 5% interest for ASIL-B
-                    ASILExecutionMode::AsilC => 0.02,   // 2% interest for ASIL-C
+                    ASILExecutionMode::AsilA => 0.10,    // 10% interest for ASIL-A
+                    ASILExecutionMode::AsilB => 0.05,    // 5% interest for ASIL-B
+                    ASILExecutionMode::AsilC => 0.02,    // 2% interest for ASIL-C
                     ASILExecutionMode::AsilD => 0.0, // No interest for ASIL-D (shouldn't have debt)
                     ASILExecutionMode::D { .. } => 0.0, // No interest for ASIL-D (shouldn't have debt)
                     ASILExecutionMode::C { .. } => 0.02, // 2% interest for ASIL-C

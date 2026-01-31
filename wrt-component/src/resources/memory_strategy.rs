@@ -3,16 +3,10 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_error::{
-    Error,
-    Result,
-};
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::MAX_BUFFER_SIZE,
-};
+use wrt_error::{Error, Result};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
+use wrt_foundation::{bounded::MAX_BUFFER_SIZE, collections::StaticVec as BoundedVec};
 
 #[cfg(feature = "std")]
 use super::resource_table::MemoryStrategy;
@@ -79,10 +73,14 @@ impl ResourceStrategy for MemoryStrategy {
         data: &[u8],
         operation: ResourceOperation,
     ) -> core::result::Result<
-        wrt_foundation::bounded::BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<{MAX_BUFFER_SIZE}>>,
+        wrt_foundation::bounded::BoundedVec<
+            u8,
+            MAX_BUFFER_SIZE,
+            NoStdProvider<{ MAX_BUFFER_SIZE }>,
+        >,
         wrt_error::Error,
     > {
-        use wrt_foundation::{safe_managed_alloc, CrateId};
+        use wrt_foundation::{CrateId, safe_managed_alloc};
         let provider = safe_managed_alloc!(MAX_BUFFER_SIZE, CrateId::Component)?;
 
         match self {

@@ -16,44 +16,23 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 // Simplified AtomicRefCell for this implementation
 use core::cell::RefCell as AtomicRefCell;
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, vec::Vec};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
+use wrt_foundation::{BoundedMap, types::ValueType};
 #[cfg(not(any(feature = "std",)))]
 use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    BoundedString, BoundedVec, budget_aware_provider::CrateId, safe_managed_alloc,
     safe_memory::NoStdProvider,
-    BoundedString,
-    BoundedVec,
-};
-use wrt_foundation::{
-    types::ValueType,
-    BoundedMap,
 };
 
-use crate::threading::task_cancellation::{
-    with_cancellation_scope,
-    CancellationToken,
-};
+use crate::threading::task_cancellation::{CancellationToken, with_cancellation_scope};
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std",)))]
@@ -177,18 +156,14 @@ impl TaskReturn {
 /// Task execution context and metadata
 #[derive(Debug, Clone)]
 pub struct Task {
-    pub id:                 TaskId,
-    pub status:             TaskStatus,
-    pub return_value:       Option<TaskReturn>,
+    pub id: TaskId,
+    pub status: TaskStatus,
+    pub return_value: Option<TaskReturn>,
     pub cancellation_token: CancellationToken,
     #[cfg(feature = "std")]
-    pub metadata:           HashMap<String, ComponentValue>,
+    pub metadata: HashMap<String, ComponentValue>,
     #[cfg(not(any(feature = "std",)))]
-    pub metadata: BoundedMap<
-        BoundedString<32>,
-        ComponentValue,
-        8,
-    >,
+    pub metadata: BoundedMap<BoundedString<32>, ComponentValue, 8>,
 }
 
 impl Task {
@@ -304,9 +279,9 @@ impl TaskRegistry {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
-            tasks:                                    HashMap::new(),
+            tasks: HashMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            tasks:                                    BoundedMap::new(),
+            tasks: BoundedMap::new(),
         }
     }
 
@@ -481,11 +456,7 @@ impl TaskBuiltins {
         // For now, we just check if it's already completed
         Self::with_registry(|registry| {
             if let Some(task) = registry.get_task(task_id) {
-                if task.status.is_finished() {
-                    task.return_value.clone()
-                } else {
-                    None
-                }
+                if task.status.is_finished() { task.return_value.clone() } else { None }
             } else {
                 None
             }
@@ -598,15 +569,10 @@ pub mod task_helpers {
     #[cfg(not(any(feature = "std",)))]
     pub fn wait_for_tasks(
         task_ids: &[TaskId],
-    ) -> Result<
-        BoundedVec<
-            Option<TaskReturn, 256>,
-            MAX_TASKS,
-        >,
-    > {
+    ) -> Result<BoundedVec<Option<TaskReturn, 256>, MAX_TASKS>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut results = BoundedVec::new()
-            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        let mut results =
+            BoundedVec::new().map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         for &task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results
@@ -658,5 +624,4 @@ impl From<f64> for TaskReturn {
     fn from(value: f64) -> Self {
         Self::Value(ComponentValue::F64(value))
     }
-
 }

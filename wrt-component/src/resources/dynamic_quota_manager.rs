@@ -6,35 +6,22 @@
 //! conditions while maintaining ASIL compliance.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
+    MemoryProvider,
     budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
     // component::WrtComponentType, // Not available
     component_value::ComponentValue,
     prelude::*,
     // resource::ResourceHandle, // Not available
     safe_managed_alloc,
-    safe_memory::{
-        CapabilityAwareProvider,
-        NoStdProvider,
-    },
-    MemoryProvider,
+    safe_memory::{CapabilityAwareProvider, NoStdProvider},
 };
 
 // Placeholder types for missing imports
@@ -42,20 +29,12 @@ pub type WrtComponentType = u32;
 pub type ResourceHandle = u32;
 
 use crate::{
-    blast_zone::{
-        BlastZoneManager,
-        IsolationLevel,
-    },
+    blast_zone::{BlastZoneManager, IsolationLevel},
     resources::{
+        MemoryStrategy, ResourceManager, VerificationLevel,
         resource_lifecycle::ResourceLifecycleManager,
-        MemoryStrategy,
-        ResourceManager,
-        VerificationLevel,
     },
-    types::{
-        ComponentInstance,
-        Value,
-    },
+    types::{ComponentInstance, Value},
 };
 
 /// Maximum number of quota nodes in no_std environments
@@ -146,67 +125,67 @@ pub enum QuotaStatus {
 #[derive(Debug, Clone)]
 pub struct QuotaNode {
     /// Unique node identifier
-    pub node_id:            u32,
+    pub node_id: u32,
     /// Node type
-    pub node_type:          QuotaNodeType,
+    pub node_type: QuotaNodeType,
     /// Associated entity ID (component ID, blast zone ID, etc.)
-    pub entity_id:          u32,
+    pub entity_id: u32,
     /// Parent node ID (None for root)
-    pub parent_id:          Option<u32>,
+    pub parent_id: Option<u32>,
     /// Resource type this quota applies to
-    pub resource_type:      ResourceType,
+    pub resource_type: ResourceType,
     /// Maximum allowed allocation
-    pub max_quota:          u64,
+    pub max_quota: u64,
     /// Currently allocated amount
-    pub current_usage:      u64,
+    pub current_usage: u64,
     /// Peak usage seen
-    pub peak_usage:         u64,
+    pub peak_usage: u64,
     /// Enforcement policy
-    pub policy:             QuotaPolicy,
+    pub policy: QuotaPolicy,
     /// Adjustment strategy
-    pub strategy:           QuotaStrategy,
+    pub strategy: QuotaStrategy,
     /// Warning threshold (percentage of max_quota)
-    pub warning_threshold:  u8,
+    pub warning_threshold: u8,
     /// Critical threshold (percentage of max_quota)
     pub critical_threshold: u8,
     /// Current status
-    pub status:             QuotaStatus,
+    pub status: QuotaStatus,
     /// Last update timestamp
-    pub last_updated:       u64,
+    pub last_updated: u64,
     /// Number of allocation failures
-    pub failure_count:      u32,
+    pub failure_count: u32,
     /// Total allocations served
-    pub allocation_count:   u64,
+    pub allocation_count: u64,
 }
 
 /// Quota allocation request
 #[derive(Debug, Clone)]
 pub struct QuotaRequest {
     /// Requesting entity ID
-    pub entity_id:     u32,
+    pub entity_id: u32,
     /// Entity type
-    pub entity_type:   QuotaNodeType,
+    pub entity_type: QuotaNodeType,
     /// Resource type requested
     pub resource_type: ResourceType,
     /// Amount requested
-    pub amount:        u64,
+    pub amount: u64,
     /// Whether this is a temporary allocation
-    pub temporary:     bool,
+    pub temporary: bool,
     /// Priority level (0 = highest)
-    pub priority:      u8,
+    pub priority: u8,
 }
 
 /// Quota allocation response
 #[derive(Debug, Clone)]
 pub struct QuotaResponse {
     /// Whether allocation was granted
-    pub granted:        bool,
+    pub granted: bool,
     /// Actual amount granted (may be less than requested)
     pub amount_granted: u64,
     /// Quota reservation ID for deallocation
     pub reservation_id: Option<u32>,
     /// Reason for denial or partial grant
-    pub reason:         Option<String>,
+    pub reason: Option<String>,
     /// Suggested retry time if denied
     pub retry_after_ms: Option<u64>,
 }
@@ -465,7 +444,9 @@ impl DynamicQuotaManager {
     }
 
     /// Create a new quota manager with blast zone integration
-    pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> wrt_error::Result<Self> {
+    pub fn with_blast_zone_manager(
+        blast_zone_manager: BlastZoneManager,
+    ) -> wrt_error::Result<Self> {
         let mut manager = Self::new()?;
         manager.blast_zone_manager = Some(blast_zone_manager);
         Ok(manager)
@@ -523,10 +504,10 @@ impl DynamicQuotaManager {
         // Check hierarchical constraints
         if !self.check_hierarchical_quota(node_id, request.amount)? {
             return Ok(QuotaResponse {
-                granted:        false,
+                granted: false,
                 amount_granted: 0,
                 reservation_id: None,
-                reason:         Some(String::from("Hierarchical quota exceeded")),
+                reason: Some(String::from("Hierarchical quota exceeded")),
                 retry_after_ms: Some(1000),
             });
         }
@@ -555,28 +536,28 @@ impl DynamicQuotaManager {
                     // Rollback allocation
                     self.deallocate_hierarchical(node_id, request.amount, timestamp)?;
                     return Ok(QuotaResponse {
-                        granted:        false,
+                        granted: false,
                         amount_granted: 0,
                         reservation_id: None,
-                        reason:         Some(String::from("Memory provider capacity exceeded")),
+                        reason: Some(String::from("Memory provider capacity exceeded")),
                         retry_after_ms: Some(5000),
                     });
                 }
             }
 
             Ok(QuotaResponse {
-                granted:        true,
+                granted: true,
                 amount_granted: request.amount,
                 reservation_id: Some(reservation_id),
-                reason:         None,
+                reason: None,
                 retry_after_ms: None,
             })
         } else {
             Ok(QuotaResponse {
-                granted:        false,
+                granted: false,
                 amount_granted: 0,
                 reservation_id: None,
-                reason:         Some(String::from("Quota allocation failed")),
+                reason: Some(String::from("Quota allocation failed")),
                 retry_after_ms: Some(2000),
             })
         }
@@ -617,7 +598,11 @@ impl DynamicQuotaManager {
     }
 
     /// Update quota based on system conditions
-    pub fn update_quotas(&mut self, system_load: f64, available_resources: u64) -> wrt_error::Result<()> {
+    pub fn update_quotas(
+        &mut self,
+        system_load: f64,
+        available_resources: u64,
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             for node in self.nodes.values_mut() {
@@ -681,9 +666,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Err(wrt_error::Error::invalid_value(
-            "Quota node not found",
-        ))
+        Err(wrt_error::Error::invalid_value("Quota node not found"))
     }
 
     /// Check hierarchical quota constraints
@@ -691,9 +674,9 @@ impl DynamicQuotaManager {
         let mut current_id = Some(node_id);
 
         while let Some(id) = current_id {
-            let node = self.get_quota_status(id).ok_or_else(|| {
-                wrt_error::Error::invalid_value("Invalid node ID")
-            })?;
+            let node = self
+                .get_quota_status(id)
+                .ok_or_else(|| wrt_error::Error::invalid_value("Invalid node ID"))?;
 
             if !node.can_allocate(amount) {
                 return Ok(false);
@@ -716,9 +699,7 @@ impl DynamicQuotaManager {
         #[cfg(feature = "std")]
         let mut allocated_nodes = Vec::new();
         #[cfg(not(feature = "std"))]
-        let mut allocated_nodes = {
-            BoundedVec::<u32, 64>::new().unwrap()
-        };
+        let mut allocated_nodes = { BoundedVec::<u32, 64>::new().unwrap() };
 
         // First pass: check if all nodes can allocate
         while let Some(id) = current_id {

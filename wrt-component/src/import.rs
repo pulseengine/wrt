@@ -4,10 +4,10 @@
 
 use wrt_format::component::ExternType;
 use wrt_foundation::{
-    component::Namespace,
     // component::WrtComponentType, // Not available
     ExternType as RuntimeExternType,
-    traits::{Checksummable, ToBytes, FromBytes},
+    component::Namespace,
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 
 // Placeholder type for missing import
@@ -41,15 +41,15 @@ pub enum ImportType {
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Import namespace
-    pub namespace:   Namespace<ComponentProvider>,
+    pub namespace: Namespace<ComponentProvider>,
     /// Import name
-    pub name:        String,
+    pub name: String,
     /// Import type
     pub import_type: ImportType,
     /// Legacy extern type for compatibility
-    pub ty:          ExternType,
+    pub ty: ExternType,
     /// Import value (runtime representation)
-    pub value:       ExternValue,
+    pub value: ExternValue,
 }
 
 impl Default for Import {
@@ -66,7 +66,7 @@ impl Default for Import {
 
         #[cfg(feature = "std")]
         let func_value = FunctionValue {
-            ty:          wrt_foundation::types::FuncType::new([], []).unwrap_or_default(),
+            ty: wrt_foundation::types::FuncType::new([], []).unwrap_or_default(),
             export_name: String::new(),
         };
 
@@ -79,12 +79,12 @@ impl Default for Import {
 
             // Create export name using BoundedString
             let export_name_provider = NoStdProvider::<512>::default();
-            let export_name = wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH>
-                ::from_str_truncate("")
-                .unwrap_or_else(|_| panic!("Failed to create default export name"));
+            let export_name =
+                wrt_foundation::BoundedString::<MAX_WASM_NAME_LENGTH>::from_str_truncate("")
+                    .unwrap_or_else(|_| panic!("Failed to create default export name"));
 
             FunctionValue {
-                ty:          func_type,
+                ty: func_type,
                 export_name,
             }
         };
@@ -93,7 +93,10 @@ impl Default for Import {
             namespace: Namespace::default(),
             name: String::new(),
             import_type: ImportType::Function(component_type),
-            ty: ExternType::Function { params: vec![], results: vec![] },
+            ty: ExternType::Function {
+                params: vec![],
+                results: vec![],
+            },
             value: ExternValue::Function(func_value),
         }
     }
@@ -137,12 +140,17 @@ impl FromBytes for Import {
 
 impl Import {
     /// Creates a new import
-    pub fn new(namespace: Namespace<ComponentProvider>, name: String, ty: ExternType, value: ExternValue) -> Self {
+    pub fn new(
+        namespace: Namespace<ComponentProvider>,
+        name: String,
+        ty: ExternType,
+        value: ExternValue,
+    ) -> Self {
         use wrt_foundation::safe_memory::NoStdProvider;
         // Default import type based on ExternType - this is a simplified mapping
         let import_type = ImportType::Function(
             WrtComponentType::unit(NoStdProvider::<4096>::default())
-                .unwrap_or_else(|_| panic!("Failed to create unit component type"))
+                .unwrap_or_else(|_| panic!("Failed to create unit component type")),
         );
         Self {
             namespace,
@@ -175,7 +183,10 @@ impl Import {
         // Namespace elements need to be joined
         #[cfg(feature = "std")]
         {
-            let ns_parts: Vec<String> = self.namespace.elements.iter()
+            let ns_parts: Vec<String> = self
+                .namespace
+                .elements
+                .iter()
                 .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
                 .collect();
             let ns_str = ns_parts.join(":");
@@ -248,5 +259,4 @@ impl ImportCollection {
     pub fn is_empty(&self) -> bool {
         self.imports.is_empty()
     }
-
 }

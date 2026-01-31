@@ -4,28 +4,19 @@
 //! Component Model, including task.wait, task.yield, and task.poll.
 
 use core::{
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    Arc, CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     safe_managed_alloc,
-    Arc,
-    CrateId,
 };
 use wrt_sync::Mutex;
 
 #[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    TaskId,
-    TaskManager,
-};
+use crate::threading::task_manager::{TaskId, TaskManager};
 
 // Fallback types when threading is not available
 #[cfg(not(feature = "component-model-threading"))]
@@ -33,25 +24,16 @@ pub type TaskManager = ();
 #[cfg(not(feature = "component-model-threading"))]
 use crate::async_::fuel_async_executor::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
-        async_types::{
-            FutureHandle,
-            StreamHandle,
-            Waitable,
-            WaitableSet,
-        },
+        async_types::{FutureHandle, StreamHandle, Waitable, WaitableSet},
         fuel_async_executor::{
-            AsyncTaskState,
-            ComponentAsyncOperation,
-            ExecutionContext,
-            ExecutionStepResult,
-            FuelAsyncExecutor,
-            FuelAsyncTask,
+            AsyncTaskState, ComponentAsyncOperation, ExecutionContext, ExecutionStepResult,
+            FuelAsyncExecutor, FuelAsyncTask,
         },
     },
     prelude::*,
     types::ComponentInstance,
-    ComponentInstanceId,
 };
 
 /// Maximum number of waitables per task.wait call
@@ -65,59 +47,42 @@ const TASK_POLL_FUEL: u64 = 30;
 /// Component Model async operations handler
 pub struct ComponentModelAsyncOps {
     /// Reference to the fuel async executor
-    executor:          Arc<Mutex<FuelAsyncExecutor>>,
+    executor: Arc<Mutex<FuelAsyncExecutor>>,
     /// Reference to the task manager
-    task_manager:      Arc<Mutex<TaskManager>>,
+    task_manager: Arc<Mutex<TaskManager>>,
     /// Active wait operations
-    active_waits:
-        BoundedMap<TaskId, WaitOperation, 128>,
+    active_waits: BoundedMap<TaskId, WaitOperation, 128>,
     /// Waitable registry
     waitable_registry: WaitableRegistry,
     /// Operation statistics
-    stats:             AsyncOpStats,
+    stats: AsyncOpStats,
 }
 
 /// Active wait operation
 #[derive(Debug)]
 struct WaitOperation {
     /// Task that is waiting
-    task_id:     TaskId,
+    task_id: TaskId,
     /// Set of waitables
-    waitables:   WaitableSet,
+    waitables: WaitableSet,
     /// Which waitable became ready (if any)
     ready_index: Option<u32>,
     /// Timestamp when wait started
-    start_time:  u64,
+    start_time: u64,
     /// Timeout duration (0 = no timeout)
-    timeout_ms:  u64,
+    timeout_ms: u64,
 }
 
 /// Registry for managing waitables
 struct WaitableRegistry {
     /// Future handles (readable state)
-    futures_readable: BoundedMap<
-        FutureHandle,
-        WaitableState,
-        256,
-    >,
+    futures_readable: BoundedMap<FutureHandle, WaitableState, 256>,
     /// Future handles (writable state)
-    futures_writable: BoundedMap<
-        FutureHandle,
-        WaitableState,
-        256,
-    >,
+    futures_writable: BoundedMap<FutureHandle, WaitableState, 256>,
     /// Stream handles (readable state)
-    streams_readable: BoundedMap<
-        StreamHandle,
-        WaitableState,
-        128,
-    >,
+    streams_readable: BoundedMap<StreamHandle, WaitableState, 128>,
     /// Stream handles (writable state)
-    streams_writable: BoundedMap<
-        StreamHandle,
-        WaitableState,
-        128,
-    >,
+    streams_writable: BoundedMap<StreamHandle, WaitableState, 128>,
 }
 
 /// State of a waitable
@@ -136,10 +101,10 @@ enum WaitableState {
 /// Async operation statistics
 #[derive(Debug, Default)]
 struct AsyncOpStats {
-    total_waits:    AtomicU64,
-    total_yields:   AtomicU64,
-    total_polls:    AtomicU64,
-    wait_timeouts:  AtomicU64,
+    total_waits: AtomicU64,
+    total_yields: AtomicU64,
+    total_polls: AtomicU64,
+    wait_timeouts: AtomicU64,
     wait_successes: AtomicU64,
 }
 
@@ -175,7 +140,9 @@ impl ComponentModelAsyncOps {
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
-            return Err(Error::runtime_execution_error("Too many waitables exceeds limit"));
+            return Err(Error::runtime_execution_error(
+                "Too many waitables exceeds limit",
+            ));
         }
 
         // Consume fuel for the operation
@@ -189,11 +156,11 @@ impl ComponentModelAsyncOps {
 
         // Create wait operation
         let wait_op = WaitOperation {
-            task_id:     current_task,
-            waitables:   waitables.clone(),
+            task_id: current_task,
+            waitables: waitables.clone(),
             ready_index: None,
-            start_time:  self.get_current_time(),
-            timeout_ms:  timeout_ms.unwrap_or(0),
+            start_time: self.get_current_time(),
+            timeout_ms: timeout_ms.unwrap_or(0),
         };
 
         // Register wait operation
@@ -218,7 +185,8 @@ impl ComponentModelAsyncOps {
         let mut executor = self.executor.lock();
 
         // Check task state
-        let task_state = executor.get_task_state(current_task)
+        let task_state = executor
+            .get_task_state(current_task)
             .ok_or_else(|| Error::validation_invalid_input("Task not found"))?;
 
         match task_state {
@@ -280,7 +248,12 @@ impl ComponentModelAsyncOps {
             .active_waits
             .iter()
             .map(|(task_id, wait_op)| {
-                (*task_id, wait_op.waitables.clone(), wait_op.timeout_ms, wait_op.start_time)
+                (
+                    *task_id,
+                    wait_op.waitables.clone(),
+                    wait_op.timeout_ms,
+                    wait_op.start_time,
+                )
             })
             .collect();
 
@@ -496,7 +469,7 @@ pub enum TaskPollResult {
 pub enum ComponentModelAsyncOp {
     /// task.wait operation
     TaskWait {
-        waitables:  WaitableSet,
+        waitables: WaitableSet,
         timeout_ms: Option<u64>,
     },
     /// task.yield operation
@@ -519,5 +492,4 @@ impl ComponentModelAsyncOp {
     pub fn is_blocking(&self) -> bool {
         matches!(self, Self::TaskWait { .. })
     }
-
 }

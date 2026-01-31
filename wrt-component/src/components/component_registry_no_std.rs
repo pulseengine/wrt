@@ -9,16 +9,11 @@
 //! environment.
 
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::MAX_COMPONENT_TYPES,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    bounded::MAX_COMPONENT_TYPES, budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec, safe_managed_alloc,
 };
 
-use crate::{
-    components::component_no_std::Component,
-    prelude::*,
-};
+use crate::{components::component_no_std::Component, prelude::*};
 
 /// Maximum number of components allowed in the registry
 pub const MAX_COMPONENTS: usize = 32;
@@ -30,9 +25,9 @@ pub const MAX_COMPONENTS: usize = 32;
 #[derive(Debug)]
 pub struct ComponentRegistry {
     /// Component names
-    names:           BoundedVec<String, MAX_COMPONENTS>,
+    names: BoundedVec<String, MAX_COMPONENTS>,
     /// Component references - in no_std we use indices instead of references
-    components:      BoundedVec<usize, MAX_COMPONENTS>,
+    components: BoundedVec<usize, MAX_COMPONENTS>,
     /// Actual components
     component_store: BoundedVec<Component, MAX_COMPONENTS>,
 }
@@ -41,8 +36,8 @@ impl ComponentRegistry {
     /// Create a new empty registry
     pub fn new() -> Result<Self> {
         Ok(Self {
-            names:           BoundedVec::new().unwrap(),
-            components:      BoundedVec::new().unwrap(),
+            names: BoundedVec::new().unwrap(),
+            components: BoundedVec::new().unwrap(),
             component_store: BoundedVec::new().unwrap(),
         })
     }
@@ -167,5 +162,4 @@ impl Default for ComponentRegistry {
         // Use new() which properly handles allocation or panic in development
         Self::new().expect("ComponentRegistry allocation should not fail in default construction")
     }
-
 }

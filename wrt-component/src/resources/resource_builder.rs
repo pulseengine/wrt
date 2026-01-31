@@ -6,19 +6,13 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    string::String,
-};
+use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
 use wrt_foundation::prelude::{Arc, Mutex};
 
-use super::{
-    MemoryStrategy,
-    VerificationLevel,
-};
+use super::{MemoryStrategy, VerificationLevel};
 
 /// Builder for creating Resource instances
 #[derive(Clone, Debug)]
@@ -27,13 +21,13 @@ where
     T: Clone + Send + Sync + 'static,
 {
     /// Resource type index
-    type_idx:           u32,
+    type_idx: u32,
     /// Resource data
-    data:               T,
+    data: T,
     /// Optional debug name
-    name:               Option<String>,
+    name: Option<String>,
     /// Memory strategy for this resource
-    memory_strategy:    MemoryStrategy,
+    memory_strategy: MemoryStrategy,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -113,22 +107,22 @@ where
 #[derive(Clone, Debug)]
 pub struct ResourceTableBuilder {
     /// Maximum allowed resources
-    max_resources:              usize,
+    max_resources: usize,
     /// Default memory strategy
-    default_memory_strategy:    MemoryStrategy,
+    default_memory_strategy: MemoryStrategy,
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Whether to use optimized memory
-    use_optimized_memory:       bool,
+    use_optimized_memory: bool,
 }
 
 impl Default for ResourceTableBuilder {
     fn default() -> Self {
         Self {
-            max_resources:              64, // Default to MAX_RESOURCES value
-            default_memory_strategy:    MemoryStrategy::default(),
+            max_resources: 64, // Default to MAX_RESOURCES value
+            default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
-            use_optimized_memory:       false,
+            use_optimized_memory: false,
         }
     }
 }
@@ -193,22 +187,22 @@ impl ResourceTableBuilder {
 #[derive(Clone, Debug)]
 pub struct ResourceManagerBuilder<'a> {
     /// Component instance ID
-    instance_id:                &'a str,
+    instance_id: &'a str,
     /// Default memory strategy
-    default_memory_strategy:    MemoryStrategy,
+    default_memory_strategy: MemoryStrategy,
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Whether to use optimized memory
-    use_optimized_memory:       bool,
+    use_optimized_memory: bool,
 }
 
 impl<'a> Default for ResourceManagerBuilder<'a> {
     fn default() -> Self {
         Self {
-            instance_id:                "default-instance",
-            default_memory_strategy:    MemoryStrategy::default(),
+            instance_id: "default-instance",
+            default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
-            use_optimized_memory:       false,
+            use_optimized_memory: false,
         }
     }
 }
@@ -265,8 +259,10 @@ impl<'a> ResourceManagerBuilder<'a> {
 
     /// Build the ResourceManager (no_std version) with explicit resource table
     #[cfg(not(feature = "std"))]
-    pub fn build_with_table(self, table: Arc<Mutex<super::ResourceTable>>) -> super::ResourceManager
-    {
+    pub fn build_with_table(
+        self,
+        table: Arc<Mutex<super::ResourceTable>>,
+    ) -> super::ResourceManager {
         super::ResourceManager::new_with_config(
             self.instance_id,
             64, // Default max resources
@@ -274,5 +270,4 @@ impl<'a> ResourceManagerBuilder<'a> {
             self.default_verification_level,
         )
     }
-
 }

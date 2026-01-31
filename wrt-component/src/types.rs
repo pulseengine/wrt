@@ -3,39 +3,21 @@
 //! This module provides component model type definitions.
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{
-    CrateId,
-    WrtVec,
-};
+use wrt_foundation::allocator::{CrateId, WrtVec};
 use wrt_foundation::{
     bounded::BoundedString,
     collections::StaticVec,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 
 /// Type alias for backward compatibility - BoundedVec is now StaticVec
 type BoundedVec<T, const N: usize> = StaticVec<T, N>;
 
 #[cfg(feature = "component-model-async")]
-use crate::async_::async_types::{
-    FutureHandle,
-    StreamHandle,
-};
+use crate::async_::async_types::{FutureHandle, StreamHandle};
 use crate::{
-    components::{
-        component::Component,
-        component_instantiation::ComponentMemory,
-    },
-    instantiation::{
-        ModuleInstance,
-        ResolvedExport,
-        ResolvedImport,
-        ResourceTable,
-    },
+    components::{component::Component, component_instantiation::ComponentMemory},
+    instantiation::{ModuleInstance, ResolvedExport, ResolvedImport, ResourceTable},
     prelude::*,
 };
 
@@ -93,8 +75,7 @@ impl TaskId {
 }
 
 /// Metadata for component instance tracking
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ComponentMetadata {
     /// Number of function calls made
     pub function_calls: u64,
@@ -103,7 +84,6 @@ pub struct ComponentMetadata {
     /// Last access timestamp (in microseconds)
     pub last_accessed: u64,
 }
-
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
 ///
@@ -114,68 +94,70 @@ pub struct ComponentMetadata {
 /// SW-REQ-ID: REQ_SAFETY_002 - Type safety enforcement
 pub struct ComponentInstance {
     /// Unique instance ID
-    pub id:               u32,
+    pub id: u32,
     /// Reference to the component definition
-    pub component:        Component,
+    pub component: Component,
     /// Current instance state
-    pub state:            ComponentInstanceState,
+    pub state: ComponentInstanceState,
     /// Resource manager for this instance
     pub resource_manager: Option<crate::resource_management::ResourceManager>,
     /// Instance memory (if allocated)
-    pub memory:           Option<ComponentMemory>,
+    pub memory: Option<ComponentMemory>,
     /// Instance metadata for tracking
-    pub metadata:         ComponentMetadata,
+    pub metadata: ComponentMetadata,
     /// Type index for runtime type resolution (Step 2)
     #[cfg(feature = "std")]
-    pub type_index:       std::collections::HashMap<u32, wrt_format::component::ComponentType>,
+    pub type_index: std::collections::HashMap<u32, wrt_format::component::ComponentType>,
     #[cfg(not(feature = "std"))]
-    pub type_index:       (),  // Placeholder for no_std
+    pub type_index: (), // Placeholder for no_std
     /// Function table for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub functions:        WrtVec<crate::components::component_instantiation::ComponentFunction, { CrateId::Component as u8 }, 128>,
+    pub functions: WrtVec<
+        crate::components::component_instantiation::ComponentFunction,
+        { CrateId::Component as u8 },
+        128,
+    >,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub functions:        Vec<crate::components::component_instantiation::ComponentFunction>,
+    pub functions: Vec<crate::components::component_instantiation::ComponentFunction>,
     #[cfg(not(any(feature = "std",)))]
-    pub functions:        BoundedVec<crate::components::component_instantiation::ComponentFunction, 128>,
+    pub functions: BoundedVec<crate::components::component_instantiation::ComponentFunction, 128>,
     /// Resolved imports for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub imports:          WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>,
+    pub imports: WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub imports:          Vec<ResolvedImport>,
+    pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std",)))]
     pub imports: BoundedVec<ResolvedImport, 256>,
     /// Resolved exports from this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub exports:          WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>,
+    pub exports: WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub exports:          Vec<ResolvedExport>,
+    pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std",)))]
     pub exports: BoundedVec<ResolvedExport, 256>,
     /// Resource tables for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub resource_tables:  WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>,
+    pub resource_tables: WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub resource_tables:  Vec<ResourceTable>,
+    pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std",)))]
-    pub resource_tables:
-        BoundedVec<ResourceTable, 16>,
+    pub resource_tables: BoundedVec<ResourceTable, 16>,
     /// Module instances embedded in this component
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub module_instances: WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std",)))]
-    pub module_instances:
-        BoundedVec<ModuleInstance, 64>,
+    pub module_instances: BoundedVec<ModuleInstance, 64>,
     /// Nested component instances (child components instantiated within this component)
     /// Maps from component instance index to the instantiated ComponentInstance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub nested_component_instances: WrtVec<NestedComponentInstance, { CrateId::Component as u8 }, 16>,
+    pub nested_component_instances:
+        WrtVec<NestedComponentInstance, { CrateId::Component as u8 }, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub nested_component_instances: Vec<NestedComponentInstance>,
     #[cfg(not(any(feature = "std",)))]
-    pub nested_component_instances:
-        BoundedVec<NestedComponentInstance, 16>,
+    pub nested_component_instances: BoundedVec<NestedComponentInstance, 16>,
     /// Runtime engine for executing WASM functions (if available)
     #[cfg(feature = "wrt-execution")]
     pub runtime_engine: Option<Box<wrt_runtime::engine::CapabilityAwareEngine>>,
@@ -198,7 +180,10 @@ impl fmt::Debug for ComponentInstance {
             .field("exports", &self.exports.len())
             .field("resource_tables", &self.resource_tables.len())
             .field("module_instances", &self.module_instances.len())
-            .field("nested_component_instances", &self.nested_component_instances.len())
+            .field(
+                "nested_component_instances",
+                &self.nested_component_instances.len(),
+            )
             .finish()
     }
 }
@@ -227,7 +212,10 @@ impl ComponentInstance {
     /// # Returns
     /// An optional reference to the nested component instance
     #[cfg(feature = "std")]
-    pub fn get_nested_component_instance(&self, instance_index: u32) -> Option<&NestedComponentInstance> {
+    pub fn get_nested_component_instance(
+        &self,
+        instance_index: u32,
+    ) -> Option<&NestedComponentInstance> {
         self.nested_component_instances
             .iter()
             .find(|n| n.instance_index == instance_index)
@@ -235,7 +223,10 @@ impl ComponentInstance {
 
     /// Get a mutable reference to a nested component instance by its instance index
     #[cfg(feature = "std")]
-    pub fn get_nested_component_instance_mut(&mut self, instance_index: u32) -> Option<&mut NestedComponentInstance> {
+    pub fn get_nested_component_instance_mut(
+        &mut self,
+        instance_index: u32,
+    ) -> Option<&mut NestedComponentInstance> {
         self.nested_component_instances
             .iter_mut()
             .find(|n| n.instance_index == instance_index)
@@ -279,7 +270,8 @@ impl ComponentInstance {
     /// Err if cabi_realloc fails
     #[cfg(all(feature = "std", feature = "wrt-execution", feature = "wasi"))]
     pub fn pre_allocate_wasi_args(&mut self) -> wrt_error::Result<()> {
-        if let (Some(engine), Some(handle)) = (&mut self.runtime_engine, self.main_instance_handle) {
+        if let (Some(engine), Some(handle)) = (&mut self.runtime_engine, self.main_instance_handle)
+        {
             engine.pre_allocate_wasi_args(handle)
         } else {
             // No engine or handle - nothing to pre-allocate
@@ -361,8 +353,7 @@ pub enum NestedExportKind {
 }
 
 /// Component model value type
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum ValType {
     /// Boolean type
     #[default]
@@ -433,7 +424,7 @@ pub struct Field {
     pub name: String,
     #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<64>,
-    pub ty:   Box<ValType>, // Boxed to break recursive type cycle
+    pub ty: Box<ValType>, // Boxed to break recursive type cycle
 }
 
 /// Tuple type definition
@@ -458,10 +449,10 @@ pub struct Variant {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Case {
     #[cfg(feature = "std")]
-    pub name:    String,
+    pub name: String,
     #[cfg(not(any(feature = "std",)))]
-    pub name:    BoundedString<64>,
-    pub ty:      Option<Box<ValType>>, // Boxed to break recursive cycle
+    pub name: BoundedString<64>,
+    pub ty: Option<Box<ValType>>, // Boxed to break recursive cycle
     pub refines: Option<u32>,
 }
 
@@ -471,16 +462,13 @@ pub struct Enum {
     #[cfg(feature = "std")]
     pub cases: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
-    pub cases: BoundedVec<
-        BoundedString<64>,
-        64,
-    >,
+    pub cases: BoundedVec<BoundedString<64>, 64>,
 }
 
 /// Result type definition (renamed to avoid conflict with std::result::Result)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Result_ {
-    pub ok:  Option<Box<ValType>>,
+    pub ok: Option<Box<ValType>>,
     pub err: Option<Box<ValType>>,
 }
 
@@ -490,10 +478,7 @@ pub struct Flags {
     #[cfg(feature = "std")]
     pub labels: Vec<String>,
     #[cfg(not(any(feature = "std",)))]
-    pub labels: BoundedVec<
-        BoundedString<64>,
-        64,
-    >,
+    pub labels: BoundedVec<BoundedString<64>, 64>,
 }
 
 /// Component model value
@@ -543,7 +528,7 @@ pub enum Value {
     /// Variant value
     Variant {
         discriminant: u32,
-        value:        Option<Box<Value>>,
+        value: Option<Box<Value>>,
     },
     /// Enum value
     Enum(u32),
@@ -766,8 +751,7 @@ impl wrt_foundation::traits::Checksummable for Value {
 }
 
 /// Component instance identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ComponentInstanceId(pub u32);
 
 impl ComponentInstanceId {
@@ -791,7 +775,6 @@ impl ComponentInstanceId {
         self.0
     }
 }
-
 
 impl From<ComponentInstanceId> for u64 {
     fn from(id: ComponentInstanceId) -> Self {
@@ -825,8 +808,7 @@ impl FromBytes for ComponentInstanceId {
 }
 
 /// Type identifier for generative types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TypeId(pub u32);
 
 impl TypeId {
@@ -845,7 +827,6 @@ impl TypeId {
         self.0
     }
 }
-
 
 impl Checksummable for TypeId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -873,8 +854,7 @@ impl FromBytes for TypeId {
 }
 
 /// Resource identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ResourceId(pub u32);
 
 impl ResourceId {
@@ -893,7 +873,6 @@ impl ResourceId {
         self.0
     }
 }
-
 
 impl Checksummable for ResourceId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -985,10 +964,7 @@ impl std::error::Error for ComponentError {}
 // Conversion to wrt_error::Error for unified error handling
 impl From<ComponentError> for wrt_error::Error {
     fn from(err: ComponentError) -> Self {
-        use wrt_error::{
-            codes,
-            ErrorCategory,
-        };
+        use wrt_error::{ErrorCategory, codes};
         match err {
             ComponentError::TooManyGenerativeTypes => Self::new(
                 ErrorCategory::ComponentRuntime,
@@ -1050,10 +1026,7 @@ impl From<ComponentError> for wrt_error::Error {
 }
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{
-    ReadStream,
-    WriteStream,
-};
+use wrt_foundation::traits::{ReadStream, WriteStream};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
@@ -1092,9 +1065,9 @@ impl Default for Record {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            fields:                                    Vec::new(),
+            fields: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            fields:                                    BoundedVec::new(),
+            fields: BoundedVec::new(),
         }
     }
 }
@@ -1116,9 +1089,9 @@ impl Default for Tuple {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            types:                                    Vec::new(),
+            types: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            types:                                    BoundedVec::new(),
+            types: BoundedVec::new(),
         }
     }
 }
@@ -1127,9 +1100,9 @@ impl Default for Variant {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            cases:                                    Vec::new(),
+            cases: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            cases:                                    BoundedVec::new(),
+            cases: BoundedVec::new(),
         }
     }
 }

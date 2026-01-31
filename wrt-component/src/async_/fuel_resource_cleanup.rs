@@ -5,48 +5,26 @@
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::sync::Weak;
-use core::sync::atomic::{
-    AtomicBool,
-    AtomicU64,
-    Ordering,
-};
+use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    Arc, CrateId, MemoryProvider, Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::{Checksum, VerificationLevel},
-    Arc,
-    CrateId,
-    MemoryProvider,
-    Mutex,
 };
 
 use crate::{
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
-        fuel_error_context::{
-            async_error,
-            AsyncErrorKind,
-            ContextualError,
-        },
-        fuel_handle_table::{
-            GenerationalHandle,
-            HandleTableManager,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
+        fuel_error_context::{AsyncErrorKind, ContextualError, async_error},
+        fuel_handle_table::{GenerationalHandle, HandleTableManager},
         fuel_resource_lifetime::{
-            ComponentResourceTracker,
-            ResourceHandle,
-            ResourceLifetimeManager,
+            ComponentResourceTracker, ResourceHandle, ResourceLifetimeManager,
         },
         fuel_stream_handler::FuelStreamManager,
     },
@@ -81,10 +59,23 @@ pub enum CleanupAction {
 impl Checksummable for CleanupAction {
     fn update_checksum(&self, checksum: &mut Checksum) {
         match self {
-            Self::DropResource(h) => { 0u8.update_checksum(checksum); h.0.update_checksum(checksum); },
-            Self::CloseStream(s) => { 1u8.update_checksum(checksum); s.update_checksum(checksum); },
-            Self::ReleaseHandle(t, h) => { 2u8.update_checksum(checksum); t.update_checksum(checksum); h.index.update_checksum(checksum); },
-            Self::Custom(s) => { 3u8.update_checksum(checksum); s.as_bytes().update_checksum(checksum); },
+            Self::DropResource(h) => {
+                0u8.update_checksum(checksum);
+                h.0.update_checksum(checksum);
+            },
+            Self::CloseStream(s) => {
+                1u8.update_checksum(checksum);
+                s.update_checksum(checksum);
+            },
+            Self::ReleaseHandle(t, h) => {
+                2u8.update_checksum(checksum);
+                t.update_checksum(checksum);
+                h.index.update_checksum(checksum);
+            },
+            Self::Custom(s) => {
+                3u8.update_checksum(checksum);
+                s.as_bytes().update_checksum(checksum);
+            },
         }
     }
 }
@@ -96,8 +87,14 @@ impl ToBytes for CleanupAction {
         provider: &P,
     ) -> wrt_error::Result<()> {
         match self {
-            Self::DropResource(h) => { 0u8.to_bytes_with_provider(writer, provider)?; h.0.to_bytes_with_provider(writer, provider) },
-            Self::CloseStream(s) => { 1u8.to_bytes_with_provider(writer, provider)?; s.to_bytes_with_provider(writer, provider) },
+            Self::DropResource(h) => {
+                0u8.to_bytes_with_provider(writer, provider)?;
+                h.0.to_bytes_with_provider(writer, provider)
+            },
+            Self::CloseStream(s) => {
+                1u8.to_bytes_with_provider(writer, provider)?;
+                s.to_bytes_with_provider(writer, provider)
+            },
             Self::ReleaseHandle(t, h) => {
                 2u8.to_bytes_with_provider(writer, provider)?;
                 t.to_bytes_with_provider(writer, provider)?;
@@ -129,11 +126,11 @@ impl FromBytes for CleanupAction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CleanupCallback {
     /// Action to perform
-    pub action:      CleanupAction,
+    pub action: CleanupAction,
     /// Priority (higher executes first)
-    pub priority:    u32,
+    pub priority: u32,
     /// Fuel cost for this cleanup
-    pub fuel_cost:   u64,
+    pub fuel_cost: u64,
     /// Whether cleanup is critical (must not fail)
     pub is_critical: bool,
 }
@@ -141,9 +138,9 @@ pub struct CleanupCallback {
 impl Default for CleanupCallback {
     fn default() -> Self {
         Self {
-            action:      CleanupAction::CloseStream(0),
-            priority:    0,
-            fuel_cost:   0,
+            action: CleanupAction::CloseStream(0),
+            priority: 0,
+            fuel_cost: 0,
             is_critical: false,
         }
     }
@@ -200,23 +197,23 @@ impl FromBytes for CleanupCallback {
 /// Task cleanup context
 pub struct TaskCleanupContext {
     /// Task ID
-    pub task_id:           u64,
+    pub task_id: u64,
     /// Component ID
-    pub component_id:      u64,
+    pub component_id: u64,
     /// Cleanup callbacks
-    callbacks:             BoundedVec<CleanupCallback, MAX_CLEANUP_CALLBACKS>,
+    callbacks: BoundedVec<CleanupCallback, MAX_CLEANUP_CALLBACKS>,
     /// Resources owned by this task
-    owned_resources:       BoundedVec<ResourceHandle, MAX_CLEANUP_CALLBACKS>,
+    owned_resources: BoundedVec<ResourceHandle, MAX_CLEANUP_CALLBACKS>,
     /// Streams owned by this task
-    owned_streams:         BoundedVec<u64, MAX_CLEANUP_CALLBACKS>,
+    owned_streams: BoundedVec<u64, MAX_CLEANUP_CALLBACKS>,
     /// Handle table entries
-    handle_entries:        BoundedVec<(u64, GenerationalHandle), MAX_CLEANUP_CALLBACKS>,
+    handle_entries: BoundedVec<(u64, GenerationalHandle), MAX_CLEANUP_CALLBACKS>,
     /// Cleanup executed flag
-    cleanup_executed:      AtomicBool,
+    cleanup_executed: AtomicBool,
     /// Total fuel consumed during cleanup
     cleanup_fuel_consumed: AtomicU64,
     /// Verification level
-    verification_level:    VerificationLevel,
+    verification_level: VerificationLevel,
 }
 
 impl TaskCleanupContext {
@@ -339,7 +336,7 @@ impl TaskCleanupContext {
                         Err(_) => {
                             // If we can't even create an error, skip this callback
                             continue;
-                        }
+                        },
                     }
                 }
                 continue;
@@ -372,7 +369,7 @@ impl TaskCleanupContext {
                         Ok(err) => errors.push(err),
                         Err(_) => {
                             // Continue processing other callbacks even if error creation fails
-                        }
+                        },
                     }
                 }
             }
@@ -458,7 +455,9 @@ impl Clone for TaskCleanupContext {
             owned_streams: self.owned_streams.clone(),
             handle_entries: self.handle_entries.clone(),
             cleanup_executed: AtomicBool::new(self.cleanup_executed.load(Ordering::Relaxed)),
-            cleanup_fuel_consumed: AtomicU64::new(self.cleanup_fuel_consumed.load(Ordering::Relaxed)),
+            cleanup_fuel_consumed: AtomicU64::new(
+                self.cleanup_fuel_consumed.load(Ordering::Relaxed),
+            ),
             verification_level: self.verification_level,
         }
     }
@@ -494,8 +493,12 @@ impl ToBytes for TaskCleanupContext {
     ) -> Result<()> {
         self.task_id.to_bytes_with_provider(writer, provider)?;
         self.component_id.to_bytes_with_provider(writer, provider)?;
-        self.cleanup_executed.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
-        self.cleanup_fuel_consumed.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.cleanup_executed
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
+        self.cleanup_fuel_consumed
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
         // Note: Complex fields are not serialized
         Ok(())
     }
@@ -528,17 +531,17 @@ impl FromBytes for TaskCleanupContext {
 /// Global cleanup manager
 pub struct GlobalCleanupManager {
     /// Cleanup contexts by task ID
-    contexts:         BoundedMap<u64, TaskCleanupContext, MAX_TRACKED_TASKS>,
+    contexts: BoundedMap<u64, TaskCleanupContext, MAX_TRACKED_TASKS>,
     /// Component resource tracker
     resource_tracker: Arc<Mutex<ComponentResourceTracker>>,
     /// Stream manager
-    stream_manager:   Arc<Mutex<FuelStreamManager>>,
+    stream_manager: Arc<Mutex<FuelStreamManager>>,
     /// Handle table manager
-    handle_manager:   Arc<Mutex<HandleTableManager>>,
+    handle_manager: Arc<Mutex<HandleTableManager>>,
     /// Total cleanup operations
-    total_cleanups:   AtomicU64,
+    total_cleanups: AtomicU64,
     /// Failed cleanups
-    failed_cleanups:  AtomicU64,
+    failed_cleanups: AtomicU64,
 }
 
 impl GlobalCleanupManager {
@@ -641,9 +644,9 @@ impl GlobalCleanupManager {
     /// Get cleanup statistics
     pub fn stats(&self) -> CleanupStats {
         CleanupStats {
-            total_cleanups:  self.total_cleanups.load(Ordering::Relaxed),
+            total_cleanups: self.total_cleanups.load(Ordering::Relaxed),
             failed_cleanups: self.failed_cleanups.load(Ordering::Relaxed),
-            active_tasks:    self.contexts.len(),
+            active_tasks: self.contexts.len(),
         }
     }
 }
@@ -652,17 +655,17 @@ impl GlobalCleanupManager {
 #[derive(Debug, Clone)]
 pub struct CleanupStats {
     /// Total cleanup operations performed
-    pub total_cleanups:  u64,
+    pub total_cleanups: u64,
     /// Failed cleanup operations
     pub failed_cleanups: u64,
     /// Currently active tasks
-    pub active_tasks:    usize,
+    pub active_tasks: usize,
 }
 
 /// RAII guard for automatic task cleanup
 pub struct TaskCleanupGuard {
-    task_id:   u64,
-    manager:   Arc<Mutex<GlobalCleanupManager>>,
+    task_id: u64,
+    manager: Arc<Mutex<GlobalCleanupManager>>,
     cancelled: AtomicBool,
 }
 

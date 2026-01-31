@@ -6,19 +6,13 @@
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-    },
+    sync::atomic::{AtomicU32, AtomicU64, Ordering},
+    task::{Context, Poll},
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     component_value::ComponentValue,
     // ResourceHandle imported from local crate instead
     // resource::{
@@ -26,30 +20,20 @@ use wrt_foundation::{
     //     ResourceType,
     // },
     safe_managed_alloc,
-    traits::{
-        Checksummable,
-        FromBytes,
-        ToBytes,
-    },
-    CrateId,
+    traits::{Checksummable, FromBytes, ToBytes},
 };
 use wrt_platform::advanced_sync::Priority;
 
 use crate::{
-    async_::{
-        async_canonical_abi_support::{
-            AsyncAbiOperationId,
-            AsyncCanonicalAbiSupport,
-            ResourceHandle,
-        },
-        task_manager_async_bridge::{
-            ComponentAsyncTaskType,
-            TaskManagerAsyncBridge,
-        },
-    },
-    prelude::*,
     // resource_lifecycle::ResourceLifecycleManager, // Module not available
     ComponentInstanceId,
+    async_::{
+        async_canonical_abi_support::{
+            AsyncAbiOperationId, AsyncCanonicalAbiSupport, ResourceHandle,
+        },
+        task_manager_async_bridge::{ComponentAsyncTaskType, TaskManagerAsyncBridge},
+    },
+    prelude::*,
 };
 
 // Placeholder types for missing imports
@@ -68,7 +52,7 @@ const RESOURCE_BORROW_FUEL: u64 = 20;
 /// Async resource operations manager
 pub struct ResourceAsyncOperations {
     /// ABI support for resource operations
-    abi_support:       AsyncCanonicalAbiSupport,
+    abi_support: AsyncCanonicalAbiSupport,
     /// Resource lifecycle manager
     lifecycle_manager: ResourceLifecycleManager,
     /// Active resource operations
@@ -79,14 +63,12 @@ pub struct ResourceAsyncOperations {
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// Resource operation statistics
-    resource_stats:    ResourceOperationStats,
+    resource_stats: ResourceOperationStats,
 }
 
 /// Resource operation identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ResourceOperationId(u64);
-
 
 impl Checksummable for ResourceOperationId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -115,14 +97,14 @@ impl FromBytes for ResourceOperationId {
 
 /// Async resource operation
 struct ResourceAsyncOperation {
-    id:                  ResourceOperationId,
-    component_id:        ComponentInstanceId,
-    operation_type:      ResourceAsyncOperationType,
-    resource_handle:     Option<ResourceHandle>,
-    resource_type:       ResourceType,
-    abi_operation_id:    Option<AsyncAbiOperationId>,
-    created_at:          u64,
-    fuel_consumed:       AtomicU64,
+    id: ResourceOperationId,
+    component_id: ComponentInstanceId,
+    operation_type: ResourceAsyncOperationType,
+    resource_handle: Option<ResourceHandle>,
+    resource_type: ResourceType,
+    abi_operation_id: Option<AsyncAbiOperationId>,
+    created_at: u64,
+    fuel_consumed: AtomicU64,
     completion_callback: Option<ResourceCompletionCallback>,
 }
 
@@ -152,7 +134,7 @@ pub enum ResourceAsyncOperationType {
     /// Call async method on resource
     MethodCall {
         method_name: String,
-        args:        Vec<ComponentValue<ComponentProvider>>,
+        args: Vec<ComponentValue<ComponentProvider>>,
     },
     /// Borrow resource for async operation
     Borrow { borrow_type: ResourceBorrowType },
@@ -163,7 +145,7 @@ pub enum ResourceAsyncOperationType {
     /// Resource state transition
     StateTransition {
         from_state: ResourceState,
-        to_state:   ResourceState,
+        to_state: ResourceState,
     },
 }
 
@@ -305,17 +287,17 @@ impl FromBytes for ResourceState {
 /// Component resource context
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ComponentResourceContext {
-    component_id:       ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Active resource handles owned by component
-    owned_resources:    BoundedMap<ResourceHandle, ResourceInfo, 128>,
+    owned_resources: BoundedMap<ResourceHandle, ResourceInfo, 128>,
     /// Borrowed resource handles
     borrowed_resources: BoundedMap<ResourceHandle, BorrowInfo, 64>,
     /// Active async operations
-    active_operations:  BoundedVec<ResourceOperationId, 64>,
+    active_operations: BoundedVec<ResourceOperationId, 64>,
     /// Resource quotas and limits
-    resource_limits:    ResourceLimits,
+    resource_limits: ResourceLimits,
     /// Async resource configuration
-    async_config:       AsyncResourceConfig,
+    async_config: AsyncResourceConfig,
 }
 
 impl wrt_foundation::traits::Checksummable for ComponentResourceContext {
@@ -367,12 +349,12 @@ impl wrt_foundation::traits::FromBytes for ComponentResourceContext {
 /// Resource information
 #[derive(Debug)]
 struct ResourceInfo {
-    handle:           ResourceHandle,
-    resource_type:    ResourceType,
-    state:            ResourceState,
-    created_at:       u64,
-    last_accessed:    AtomicU64,
-    reference_count:  AtomicU32,
+    handle: ResourceHandle,
+    resource_type: ResourceType,
+    state: ResourceState,
+    created_at: u64,
+    last_accessed: AtomicU64,
+    reference_count: AtomicU32,
     async_operations: AtomicU32,
 }
 
@@ -396,9 +378,12 @@ impl PartialEq for ResourceInfo {
             && self.resource_type == other.resource_type
             && self.state == other.state
             && self.created_at == other.created_at
-            && self.last_accessed.load(Ordering::Relaxed) == other.last_accessed.load(Ordering::Relaxed)
-            && self.reference_count.load(Ordering::Relaxed) == other.reference_count.load(Ordering::Relaxed)
-            && self.async_operations.load(Ordering::Relaxed) == other.async_operations.load(Ordering::Relaxed)
+            && self.last_accessed.load(Ordering::Relaxed)
+                == other.last_accessed.load(Ordering::Relaxed)
+            && self.reference_count.load(Ordering::Relaxed)
+                == other.reference_count.load(Ordering::Relaxed)
+            && self.async_operations.load(Ordering::Relaxed)
+                == other.async_operations.load(Ordering::Relaxed)
     }
 }
 
@@ -442,9 +427,15 @@ impl wrt_foundation::traits::ToBytes for ResourceInfo {
         self.resource_type.to_bytes_with_provider(writer, provider)?;
         self.state.to_bytes_with_provider(writer, provider)?;
         self.created_at.to_bytes_with_provider(writer, provider)?;
-        self.last_accessed.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
-        self.reference_count.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
-        self.async_operations.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.last_accessed
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
+        self.reference_count
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
+        self.async_operations
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
         Ok(())
     }
 }
@@ -470,9 +461,9 @@ impl wrt_foundation::traits::FromBytes for ResourceInfo {
 /// Borrow information
 #[derive(Debug, Clone)]
 struct BorrowInfo {
-    handle:        ResourceHandle,
-    borrow_type:   ResourceBorrowType,
-    borrowed_at:   u64,
+    handle: ResourceHandle,
+    borrow_type: ResourceBorrowType,
+    borrowed_at: u64,
     borrowed_from: ComponentInstanceId,
 }
 
@@ -526,10 +517,10 @@ impl FromBytes for BorrowInfo {
 /// Resource limits per component
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResourceLimits {
-    max_owned_resources:       usize,
-    max_borrowed_resources:    usize,
+    max_owned_resources: usize,
+    max_borrowed_resources: usize,
     max_concurrent_operations: usize,
-    resource_memory_limit:     usize,
+    resource_memory_limit: usize,
 }
 
 impl Checksummable for ResourceLimits {
@@ -573,10 +564,10 @@ impl FromBytes for ResourceLimits {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AsyncResourceConfig {
     enable_async_creation: bool,
-    enable_async_methods:  bool,
-    enable_async_drop:     bool,
-    default_timeout_ms:    u64,
-    max_operation_fuel:    u64,
+    enable_async_methods: bool,
+    enable_async_drop: bool,
+    default_timeout_ms: u64,
+    max_operation_fuel: u64,
 }
 
 impl Checksummable for AsyncResourceConfig {
@@ -634,16 +625,16 @@ impl Default for AsyncResourceConfig {
 /// Resource operation statistics
 #[derive(Debug, Default)]
 struct ResourceOperationStats {
-    total_creates:          AtomicU64,
-    completed_creates:      AtomicU64,
-    total_method_calls:     AtomicU64,
+    total_creates: AtomicU64,
+    completed_creates: AtomicU64,
+    total_method_calls: AtomicU64,
     completed_method_calls: AtomicU64,
-    total_borrows:          AtomicU64,
-    completed_borrows:      AtomicU64,
-    total_drops:            AtomicU64,
-    completed_drops:        AtomicU64,
-    failed_operations:      AtomicU64,
-    total_fuel_consumed:    AtomicU64,
+    total_borrows: AtomicU64,
+    completed_borrows: AtomicU64,
+    total_drops: AtomicU64,
+    completed_drops: AtomicU64,
+    failed_operations: AtomicU64,
+    total_fuel_consumed: AtomicU64,
 }
 
 /// Resource completion callback
@@ -671,18 +662,18 @@ impl ResourceAsyncOperations {
         config: Option<AsyncResourceConfig>,
     ) -> Result<()> {
         let limits = limits.unwrap_or(ResourceLimits {
-            max_owned_resources:       64,
-            max_borrowed_resources:    32,
+            max_owned_resources: 64,
+            max_borrowed_resources: 32,
             max_concurrent_operations: 16,
-            resource_memory_limit:     1024 * 1024, // 1MB
+            resource_memory_limit: 1024 * 1024, // 1MB
         });
 
         let config = config.unwrap_or(AsyncResourceConfig {
             enable_async_creation: true,
-            enable_async_methods:  true,
-            enable_async_drop:     true,
-            default_timeout_ms:    5000,
-            max_operation_fuel:    10_000,
+            enable_async_methods: true,
+            enable_async_drop: true,
+            default_timeout_ms: 5000,
+            max_operation_fuel: 10_000,
         });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
@@ -799,27 +790,30 @@ impl ResourceAsyncOperations {
         }
 
         // Verify resource ownership or borrow and extract resource_type
-        let resource_type = if let Some(resource_info) = context.owned_resources.get(&resource_handle) {
-            if resource_info.state != ResourceState::Active
-                && resource_info.state != ResourceState::Borrowed
-            {
-                return Err(Error::validation_invalid_state(
-                    "Resource not in valid state for method calls",
+        let resource_type =
+            if let Some(resource_info) = context.owned_resources.get(&resource_handle) {
+                if resource_info.state != ResourceState::Active
+                    && resource_info.state != ResourceState::Borrowed
+                {
+                    return Err(Error::validation_invalid_state(
+                        "Resource not in valid state for method calls",
+                    ));
+                }
+                resource_info.resource_type
+            } else if context.borrowed_resources.contains_key(&resource_handle) {
+                0 // Borrowed resource type - placeholder
+            } else {
+                return Err(Error::validation_invalid_input(
+                    "Resource not owned or borrowed by component",
                 ));
-            }
-            resource_info.resource_type
-        } else if context.borrowed_resources.contains_key(&resource_handle) {
-            0 // Borrowed resource type - placeholder
-        } else {
-            return Err(Error::validation_invalid_input("Resource not owned or borrowed by component"));
-        };
+            };
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
             component_id,
             operation_type: ResourceAsyncOperationType::MethodCall {
                 method_name: method_name.clone(),
-                args:        args.clone(),
+                args: args.clone(),
             },
             resource_handle: Some(resource_handle),
             resource_type,
@@ -1027,29 +1021,29 @@ impl ResourceAsyncOperations {
 
         Ok(ResourcePollResult {
             completed_operations: completed_operations.len(),
-            failed_operations:    failed_operations.len(),
-            total_fuel_consumed:  abi_result.total_fuel_consumed,
-            active_operations:    self.active_operations.len(),
+            failed_operations: failed_operations.len(),
+            total_fuel_consumed: abi_result.total_fuel_consumed,
+            active_operations: self.active_operations.len(),
         })
     }
 
     /// Get resource operation statistics
     pub fn get_resource_statistics(&self) -> ResourceStats {
         ResourceStats {
-            total_creates:          self.resource_stats.total_creates.load(Ordering::Relaxed),
-            completed_creates:      self.resource_stats.completed_creates.load(Ordering::Relaxed),
-            total_method_calls:     self.resource_stats.total_method_calls.load(Ordering::Relaxed),
+            total_creates: self.resource_stats.total_creates.load(Ordering::Relaxed),
+            completed_creates: self.resource_stats.completed_creates.load(Ordering::Relaxed),
+            total_method_calls: self.resource_stats.total_method_calls.load(Ordering::Relaxed),
             completed_method_calls: self
                 .resource_stats
                 .completed_method_calls
                 .load(Ordering::Relaxed),
-            total_borrows:          self.resource_stats.total_borrows.load(Ordering::Relaxed),
-            completed_borrows:      self.resource_stats.completed_borrows.load(Ordering::Relaxed),
-            total_drops:            self.resource_stats.total_drops.load(Ordering::Relaxed),
-            completed_drops:        self.resource_stats.completed_drops.load(Ordering::Relaxed),
-            failed_operations:      self.resource_stats.failed_operations.load(Ordering::Relaxed),
-            active_operations:      self.active_operations.len() as u64,
-            active_components:      self.resource_contexts.len() as u64,
+            total_borrows: self.resource_stats.total_borrows.load(Ordering::Relaxed),
+            completed_borrows: self.resource_stats.completed_borrows.load(Ordering::Relaxed),
+            total_drops: self.resource_stats.total_drops.load(Ordering::Relaxed),
+            completed_drops: self.resource_stats.completed_drops.load(Ordering::Relaxed),
+            failed_operations: self.resource_stats.failed_operations.load(Ordering::Relaxed),
+            active_operations: self.active_operations.len() as u64,
+            active_components: self.resource_contexts.len() as u64,
         }
     }
 
@@ -1060,10 +1054,7 @@ impl ResourceAsyncOperations {
         0
     }
 
-    fn cleanup_resource_operation(
-        &mut self,
-        operation_id: ResourceOperationId,
-    ) -> Result<()> {
+    fn cleanup_resource_operation(&mut self, operation_id: ResourceOperationId) -> Result<()> {
         if let Some(operation) = self.active_operations.remove(&operation_id) {
             // Remove from component context
             if let Some(context) = self.resource_contexts.get_mut(&operation.component_id) {
@@ -1102,23 +1093,23 @@ impl ResourceAsyncOperations {
 #[derive(Debug, Clone)]
 pub struct ResourcePollResult {
     pub completed_operations: usize,
-    pub failed_operations:    usize,
-    pub total_fuel_consumed:  u64,
-    pub active_operations:    usize,
+    pub failed_operations: usize,
+    pub total_fuel_consumed: u64,
+    pub active_operations: usize,
 }
 
 /// Resource operation statistics
 #[derive(Debug, Clone)]
 pub struct ResourceStats {
-    pub total_creates:          u64,
-    pub completed_creates:      u64,
-    pub total_method_calls:     u64,
+    pub total_creates: u64,
+    pub completed_creates: u64,
+    pub total_method_calls: u64,
     pub completed_method_calls: u64,
-    pub total_borrows:          u64,
-    pub completed_borrows:      u64,
-    pub total_drops:            u64,
-    pub completed_drops:        u64,
-    pub failed_operations:      u64,
-    pub active_operations:      u64,
-    pub active_components:      u64,
+    pub total_borrows: u64,
+    pub completed_borrows: u64,
+    pub total_drops: u64,
+    pub completed_drops: u64,
+    pub failed_operations: u64,
+    pub active_operations: u64,
+    pub active_components: u64,
 }

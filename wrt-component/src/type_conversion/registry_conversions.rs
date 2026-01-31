@@ -3,24 +3,15 @@
 /// This module implements conversions between format and runtime types using
 /// the TypeConversionRegistry, providing a consistent and extensible approach
 /// to type conversion.
-use wrt_format::component::{
-    ComponentTypeDefinition,
-    ExternType as FormatExternType,
-};
+use wrt_format::component::{ComponentTypeDefinition, ExternType as FormatExternType};
 // Note: wrt_format::component::ValType is actually wrt_foundation::component_value::ValType in std mode
 // So we can't use it as an alias - we need to use the foundation type directly
 type FormatValType<P> = wrt_foundation::component_value::ValType<P>;
 use wrt_foundation::{
-    component::{
-        ComponentType,
-        InstanceType,
-    },
-    component_value::ValType as TypesValType,
-    types::{
-        FuncType,
-        ValueType,
-    },
     ExternType as TypesExternType,
+    component::{ComponentType, InstanceType},
+    component_value::ValType as TypesValType,
+    types::{FuncType, ValueType},
 };
 
 #[cfg(not(feature = "std"))]
@@ -33,16 +24,9 @@ use std::string::String;
 use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use super::{
-    registry::{
-        ConversionError,
-        ConversionErrorKind,
-        TypeConversionRegistry,
-    },
+    registry::{ConversionError, ConversionErrorKind, TypeConversionRegistry},
     wrappers::{
-        FormatComponentType,
-        FormatInstanceType,
-        RuntimeComponentType,
-        RuntimeInstanceType,
+        FormatComponentType, FormatInstanceType, RuntimeComponentType, RuntimeInstanceType,
     },
 };
 // Import only what we need from prelude to avoid ValType name collision
@@ -184,6 +168,4 @@ pub fn register_externtype_conversions(registry: &mut TypeConversionRegistry) {
 
 /// Register ComponentType and InstanceType conversions in the
 /// TypeConversionRegistry
-pub fn register_component_instancetype_conversions(registry: &mut TypeConversionRegistry) {
-
-}
+pub fn register_component_instancetype_conversions(registry: &mut TypeConversionRegistry) {}

@@ -64,7 +64,7 @@ use alloc::{boxed::Box, format, vec};
 
 // Arc is already imported from prelude, no need for type alias
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::ValType;
 use wrt_intercept::{LinkInterceptorStrategy, ResourceCanonicalOperation};
 
@@ -329,9 +329,14 @@ impl ComponentCommunicationStrategy {
             let target = BoundedString::<256>::try_from_str(component_part).unwrap_or_default();
             let func = BoundedString::<256>::try_from_str(function_part).unwrap_or_default();
             Some(CallRoutingInfo {
-                source_component: BoundedString::<256>::try_from_str(source.as_str().unwrap_or("unknown")).unwrap_or_default(),
-                target_component: BoundedString::<256>::try_from_str(target.as_str().unwrap_or("")).unwrap_or_default(),
-                function_name: BoundedString::<256>::try_from_str(func.as_str().unwrap_or("")).unwrap_or_default(),
+                source_component: BoundedString::<256>::try_from_str(
+                    source.as_str().unwrap_or("unknown"),
+                )
+                .unwrap_or_default(),
+                target_component: BoundedString::<256>::try_from_str(target.as_str().unwrap_or(""))
+                    .unwrap_or_default(),
+                function_name: BoundedString::<256>::try_from_str(func.as_str().unwrap_or(""))
+                    .unwrap_or_default(),
                 call_context_id: None,
             })
         } else {
@@ -350,12 +355,18 @@ impl ComponentCommunicationStrategy {
         let func_str = routing_info.function_name.as_str().unwrap_or("");
 
         // Find policy by iterating (since we can't use get with different string types)
-        let policy = self.security_policies.iter()
+        let policy = self
+            .security_policies
+            .iter()
             .find(|(k, _)| {
                 #[cfg(feature = "std")]
-                { k.as_str() == source_str }
+                {
+                    k.as_str() == source_str
+                }
                 #[cfg(not(feature = "std"))]
-                { k.as_str().ok() == Some(source_str) }
+                {
+                    k.as_str().ok() == Some(source_str)
+                }
             })
             .map(|(_, v)| v);
 
@@ -364,9 +375,13 @@ impl ComponentCommunicationStrategy {
             if !policy.allowed_targets.is_empty()
                 && !policy.allowed_targets.iter().any(|t| {
                     #[cfg(feature = "std")]
-                    { t.as_str() == target_str }
+                    {
+                        t.as_str() == target_str
+                    }
                     #[cfg(not(feature = "std"))]
-                    { t.as_str().ok() == Some(target_str) }
+                    {
+                        t.as_str().ok() == Some(target_str)
+                    }
                 })
             {
                 return Err(Error::security_access_denied(
@@ -454,7 +469,10 @@ impl ComponentCommunicationStrategy {
                 #[cfg(feature = "std")]
                 error_message: Some("Parameter data too large".to_string()),
                 #[cfg(not(feature = "std"))]
-                error_message: Some(wrt_foundation::BoundedString::try_from_str("Parameter data too large").unwrap_or_default()),
+                error_message: Some(
+                    wrt_foundation::BoundedString::try_from_str("Parameter data too large")
+                        .unwrap_or_default(),
+                ),
             });
         }
 
@@ -702,7 +720,8 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<Vec<wrt_foundation::values::Value>> {
         // Check if this is a cross-component call
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = BoundedString::<256>::try_from_str(source).unwrap_or_default();
+            routing_info.source_component =
+                BoundedString::<256>::try_from_str(source).unwrap_or_default();
 
             // Validate security policy
             self.validate_security_policy(&routing_info)?;
@@ -712,7 +731,9 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
 
             if !marshaling_result.success {
                 // Use a static error message since Error::runtime_execution_error requires &'static str
-                return Err(Error::runtime_execution_error("Parameter marshaling failed"));
+                return Err(Error::runtime_execution_error(
+                    "Parameter marshaling failed",
+                ));
             }
 
             // Update statistics

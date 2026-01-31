@@ -5,7 +5,11 @@
 //! canonical ABI implementations.
 
 // Advanced sync primitives require Arc/Weak which need std or alloc
-#[cfg(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation"))]
+#[cfg(any(
+    feature = "std",
+    feature = "bounded-allocation",
+    feature = "managed-allocation"
+))]
 pub mod advanced_sync_primitives;
 pub mod async_builtins;
 pub mod async_canonical;
@@ -46,7 +50,11 @@ pub mod timer_integration;
 
 // Allow ambiguous glob re-exports for async module - intentional re-export pattern
 #[allow(ambiguous_glob_reexports)]
-#[cfg(any(feature = "std", feature = "bounded-allocation", feature = "managed-allocation"))]
+#[cfg(any(
+    feature = "std",
+    feature = "bounded-allocation",
+    feature = "managed-allocation"
+))]
 pub use advanced_sync_primitives::*;
 #[allow(ambiguous_glob_reexports)]
 pub use async_builtins::*;

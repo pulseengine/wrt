@@ -9,19 +9,11 @@
 //! Model in a no_std environment.
 
 // use wrt_decoder::component::decode::Component as DecodedComponent;
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::component::ExternType;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        MAX_COMPONENT_TYPES,
-        MAX_WASM_NAME_LENGTH,
-    },
+    MemoryProvider,
+    bounded::{BoundedString, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},
     budget_aware_provider::CrateId,
     builtin::BuiltinType,
     collections::StaticVec as BoundedVec,
@@ -32,13 +24,9 @@ use wrt_foundation::{
     types::ValueType,
     values::Value,
     verification::VerificationLevel,
-    MemoryProvider,
 };
 // Import types from wrt-foundation instead of wrt-runtime
-use wrt_foundation::types::{
-    MemoryType,
-    TableType,
-};
+use wrt_foundation::types::{MemoryType, TableType};
 
 #[cfg(feature = "std")]
 use crate::instance::InstanceValue;
@@ -49,23 +37,14 @@ use crate::{
     export::Export,
     import::Import,
     prelude::*,
-    resources::{
-        ResourceStrategyNoStd,
-        ResourceTable,
-    },
+    resources::{ResourceStrategyNoStd, ResourceTable},
 };
 
 // Type alias for component provider
 // ComponentProvider removed - using capability-based allocation via safe_managed_alloc!
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{
-    Checksummable,
-    FromBytes,
-    ReadStream,
-    ToBytes,
-    WriteStream,
-};
+use wrt_foundation::traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
@@ -134,7 +113,7 @@ pub enum ExternValue {
 #[derive(Debug, Clone)]
 pub struct FunctionValue {
     /// Function type
-    pub ty:          FuncType,
+    pub ty: FuncType,
     /// Export name that this function refers to
     pub export_name: BoundedString<MAX_WASM_NAME_LENGTH>,
 }
@@ -143,7 +122,7 @@ pub struct FunctionValue {
 #[derive(Debug, Clone)]
 pub struct TableValue {
     /// Table type
-    pub ty:    TableType,
+    pub ty: TableType,
     /// Table instance - in no_std this is a bounded buffer
     pub table: BoundedVec<u32, MAX_TABLE_SIZE>,
 }
@@ -152,13 +131,13 @@ pub struct TableValue {
 #[derive(Debug, Clone)]
 pub struct MemoryValue {
     /// Memory type
-    pub ty:           MemoryType,
+    pub ty: MemoryType,
     /// Memory instance
-    pub memory:       BoundedVec<u8, MAX_MEMORY_SIZE>,
+    pub memory: BoundedVec<u8, MAX_MEMORY_SIZE>,
     /// Memory access count
     pub access_count: u64,
     /// Debug name
-    pub debug_name:   Option<BoundedString<MAX_WASM_NAME_LENGTH>>,
+    pub debug_name: Option<BoundedString<MAX_WASM_NAME_LENGTH>>,
 }
 
 impl MemoryValue {
@@ -314,7 +293,7 @@ impl MemoryValue {
     /// Gets the peak memory usage in bytes
     pub fn peak_usage(&self) -> usize {
         self.memory.len() // In this simple implementation, current size is peak
-                          // usage
+        // usage
     }
 
     /// Gets the number of memory accesses performed
@@ -355,7 +334,7 @@ impl MemoryValue {
 #[derive(Debug, Clone)]
 pub struct GlobalValue {
     /// Global type
-    pub ty:    GlobalType,
+    pub ty: GlobalType,
     /// Global value
     pub value: Value,
 }
@@ -385,18 +364,11 @@ pub struct WrtComponentType {
         MAX_COMPONENT_IMPORTS,
     >,
     /// Component exports
-    pub exports: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            ExternType,
-        ),
-        MAX_COMPONENT_EXPORTS,
-    >,
+    pub exports:
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternType), MAX_COMPONENT_EXPORTS>,
     /// Component instances
-    pub instances: BoundedVec<
-        wrt_format::component::ComponentTypeDefinition,
-        MAX_COMPONENT_INSTANCES,
-    >,
+    pub instances:
+        BoundedVec<wrt_format::component::ComponentTypeDefinition, MAX_COMPONENT_INSTANCES>,
     /// Verification level for this component type
     pub verification_level: VerificationLevel,
 }
@@ -405,9 +377,9 @@ impl WrtComponentType {
     /// Creates a new empty component type
     pub fn new() -> Result<Self> {
         Ok(Self {
-            imports:            BoundedVec::new(),
-            exports:            BoundedVec::new(),
-            instances:          BoundedVec::new(),
+            imports: BoundedVec::new(),
+            exports: BoundedVec::new(),
+            instances: BoundedVec::new(),
             verification_level: VerificationLevel::Standard,
         })
     }
@@ -511,11 +483,11 @@ impl Default for WrtComponentType {
 /// Builder for WrtComponentType
 pub struct WrtComponentTypeBuilder {
     /// Component imports
-    imports:            Vec<(String, String, ExternType)>,
+    imports: Vec<(String, String, ExternType)>,
     /// Component exports
-    exports:            Vec<(String, ExternType)>,
+    exports: Vec<(String, ExternType)>,
     /// Component instances
-    instances:          Vec<wrt_format::component::ComponentTypeDefinition>,
+    instances: Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Verification level for this component type
     verification_level: VerificationLevel,
 }
@@ -524,9 +496,9 @@ impl WrtComponentTypeBuilder {
     /// Creates a new component type builder
     pub fn new() -> Self {
         Self {
-            imports:            Vec::new(),
-            exports:            Vec::new(),
-            instances:          Vec::new(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            instances: Vec::new(),
             verification_level: VerificationLevel::Standard,
         }
     }
@@ -613,21 +585,16 @@ impl Default for WrtComponentTypeBuilder {
 #[derive(Debug, Clone)]
 pub struct BuiltinRequirements {
     /// List of required builtins
-    pub required:  BoundedVec<BuiltinType, MAX_COMPONENT_TYPES>,
+    pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES>,
     /// Map of required builtin instances
-    pub instances: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            BuiltinType,
-        ),
-        MAX_COMPONENT_INSTANCES,
-    >,
+    pub instances:
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, BuiltinType), MAX_COMPONENT_INSTANCES>,
 }
 
 impl Default for BuiltinRequirements {
     fn default() -> Self {
         Self {
-            required:  BoundedVec::new(),
+            required: BoundedVec::new(),
             instances: BoundedVec::new(),
         }
     }
@@ -637,37 +604,14 @@ impl Default for BuiltinRequirements {
 #[derive(Debug, Clone)]
 pub struct RuntimeInstance {
     /// Functions exported by this runtime
-    functions: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            ExternValue,
-        ),
-        MAX_COMPONENT_EXPORTS,
-    >,
+    functions:
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternValue), MAX_COMPONENT_EXPORTS>,
     /// Memory exported by this runtime
-    memories: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            MemoryValue,
-        ),
-        MAX_COMPONENT_EXPORTS,
-    >,
+    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, MemoryValue), MAX_COMPONENT_EXPORTS>,
     /// Tables exported by this runtime
-    tables: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            TableValue,
-        ),
-        MAX_COMPONENT_EXPORTS,
-    >,
+    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, TableValue), MAX_COMPONENT_EXPORTS>,
     /// Globals exported by this runtime
-    globals: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            GlobalValue,
-        ),
-        MAX_COMPONENT_EXPORTS,
-    >,
+    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, GlobalValue), MAX_COMPONENT_EXPORTS>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -684,10 +628,10 @@ impl RuntimeInstance {
         let globals_provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
         Ok(Self {
-            functions:          BoundedVec::new(),
-            memories:           BoundedVec::new(),
-            tables:             BoundedVec::new(),
-            globals:            BoundedVec::new(),
+            functions: BoundedVec::new(),
+            memories: BoundedVec::new(),
+            tables: BoundedVec::new(),
+            globals: BoundedVec::new(),
             verification_level: VerificationLevel::Standard,
         })
     }
@@ -746,12 +690,18 @@ impl RuntimeInstance {
 
     /// Get a function by name
     pub fn get_function(&self, name: &str) -> Option<&ExternValue> {
-        self.functions.iter().find(|(n, _)| n.as_str().ok() == Some(name)).map(|(_, f)| f)
+        self.functions
+            .iter()
+            .find(|(n, _)| n.as_str().ok() == Some(name))
+            .map(|(_, f)| f)
     }
 
     /// Get a memory by name
     pub fn get_memory(&self, name: &str) -> Option<&MemoryValue> {
-        self.memories.iter().find(|(n, _)| n.as_str().ok() == Some(name)).map(|(_, m)| m)
+        self.memories
+            .iter()
+            .find(|(n, _)| n.as_str().ok() == Some(name))
+            .map(|(_, m)| m)
     }
 
     /// Set the verification level
@@ -771,32 +721,26 @@ impl Default for RuntimeInstance {
 #[derive(Debug, Clone)]
 pub struct Component {
     /// Component type
-    pub component_type:        WrtComponentType,
+    pub component_type: WrtComponentType,
     /// Component exports
-    pub exports:               BoundedVec<Export, MAX_COMPONENT_EXPORTS>,
+    pub exports: BoundedVec<Export, MAX_COMPONENT_EXPORTS>,
     /// Component imports
-    pub imports:               BoundedVec<Import, MAX_COMPONENT_IMPORTS>,
+    pub imports: BoundedVec<Import, MAX_COMPONENT_IMPORTS>,
     /// Component instances
     pub instances: BoundedVec<InstanceValue, MAX_COMPONENT_INSTANCES>,
     /// Linked components with their namespaces (names and component IDs)
-    pub linked_components: BoundedVec<
-        (
-            BoundedString<MAX_WASM_NAME_LENGTH>,
-            usize,
-        ),
-        MAX_LINKED_COMPONENTS,
-    >,
+    pub linked_components:
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, usize), MAX_LINKED_COMPONENTS>,
     /// Runtime instance
-    pub runtime:               Option<RuntimeInstance>,
+    pub runtime: Option<RuntimeInstance>,
     /// Resource table for managing component resources
-    pub resource_table:        ResourceTable,
+    pub resource_table: ResourceTable,
     /// Built-in requirements
     pub built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    pub original_binary:
-        Option<BoundedVec<u8, MAX_BINARY_SIZE>>,
+    pub original_binary: Option<BoundedVec<u8, MAX_BINARY_SIZE>>,
     /// Verification level for all operations
-    pub verification_level:    VerificationLevel,
+    pub verification_level: VerificationLevel,
 }
 
 impl Component {
@@ -808,16 +752,16 @@ impl Component {
         let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
 
         Ok(Self {
-            component_type:        WrtComponentType::new()?,
-            exports:               BoundedVec::new(),
-            imports:               BoundedVec::new(),
-            instances:             BoundedVec::new(),
-            linked_components:     BoundedVec::new(),
-            runtime:               None,
-            resource_table:        ResourceTable::new()?,
+            component_type: WrtComponentType::new()?,
+            exports: BoundedVec::new(),
+            imports: BoundedVec::new(),
+            instances: BoundedVec::new(),
+            linked_components: BoundedVec::new(),
+            runtime: None,
+            resource_table: ResourceTable::new()?,
             built_in_requirements: None,
-            original_binary:       None,
-            verification_level:    VerificationLevel::Standard,
+            original_binary: None,
+            verification_level: VerificationLevel::Standard,
         })
     }
 
@@ -970,17 +914,18 @@ impl Component {
 
     /// Get an import by namespace and name
     pub fn get_import(&self, namespace: &str, name: &str) -> Option<&Import> {
-        self.imports
-            .iter()
-            .find(|import| {
-                // Compare namespace by converting to string representation
-                // Create owned strings to avoid borrowing issues
-                let namespace_parts: Vec<String> = import.namespace.elements.iter()
-                    .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
-                    .collect();
-                let ns_str = namespace_parts.join(":");
-                ns_str == namespace && import.name == name
-            })
+        self.imports.iter().find(|import| {
+            // Compare namespace by converting to string representation
+            // Create owned strings to avoid borrowing issues
+            let namespace_parts: Vec<String> = import
+                .namespace
+                .elements
+                .iter()
+                .filter_map(|elem| elem.as_str().ok().map(|s| s.to_string()))
+                .collect();
+            let ns_str = namespace_parts.join(":");
+            ns_str == namespace && import.name == name
+        })
     }
 
     /// Get an instance by name
@@ -1012,41 +957,41 @@ impl Default for Component {
 /// Builder for Component in no_std environment
 pub struct ComponentBuilder {
     /// Component type
-    component_type:        Option<WrtComponentType>,
+    component_type: Option<WrtComponentType>,
     /// Component exports
-    exports:               Vec<Export>,
+    exports: Vec<Export>,
     /// Component imports
-    imports:               Vec<Import>,
+    imports: Vec<Import>,
     /// Component instances
-    instances:             Vec<InstanceValue>,
+    instances: Vec<InstanceValue>,
     /// Linked components with their namespaces (identifier by index)
-    linked_components:     Vec<(String, usize)>,
+    linked_components: Vec<(String, usize)>,
     /// Runtime instance
-    runtime:               Option<RuntimeInstance>,
+    runtime: Option<RuntimeInstance>,
     /// Resource table for managing component resources
-    resource_table:        Option<ResourceTable>,
+    resource_table: Option<ResourceTable>,
     /// Built-in requirements
     built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    original_binary:       Option<Vec<u8>>,
+    original_binary: Option<Vec<u8>>,
     /// Verification level for all operations
-    verification_level:    VerificationLevel,
+    verification_level: VerificationLevel,
 }
 
 impl ComponentBuilder {
     /// Creates a new component builder
     pub fn new() -> Self {
         Self {
-            component_type:        None,
-            exports:               Vec::new(),
-            imports:               Vec::new(),
-            instances:             Vec::new(),
-            linked_components:     Vec::new(),
-            runtime:               None,
-            resource_table:        None,
+            component_type: None,
+            exports: Vec::new(),
+            imports: Vec::new(),
+            instances: Vec::new(),
+            linked_components: Vec::new(),
+            runtime: None,
+            resource_table: None,
             built_in_requirements: None,
-            original_binary:       None,
-            verification_level:    VerificationLevel::Standard,
+            original_binary: None,
+            verification_level: VerificationLevel::Standard,
         }
     }
 

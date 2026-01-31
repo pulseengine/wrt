@@ -3,27 +3,19 @@
 //! This module implements a debt/credit system for fuel consumption across
 //! async tasks, enabling fair scheduling and preventing fuel starvation.
 
-use core::sync::atomic::{
-    AtomicU64,
-    Ordering,
-};
+use core::sync::atomic::{AtomicU64, Ordering};
 
-use wrt_foundation::{
-    collections::StaticMap as BoundedMap,
-    safe_managed_alloc,
-    Arc,
-    CrateId,
-};
+use wrt_foundation::{Arc, CrateId, collections::StaticMap as BoundedMap, safe_managed_alloc};
 use wrt_sync::Mutex;
 
-use crate::prelude::*;
 use crate::ComponentInstanceId;
+use crate::prelude::*;
 
 // Import TaskId from the appropriate location
-#[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::TaskId;
 #[cfg(not(feature = "component-model-threading"))]
 use super::fuel_async_executor::TaskId;
+#[cfg(feature = "component-model-threading")]
+use crate::threading::task_manager::TaskId;
 
 /// Maximum debt that a task can accumulate
 const MAX_TASK_DEBT: u64 = 10000;
@@ -37,17 +29,17 @@ const DEFAULT_CREDIT: u64 = 1000;
 /// Fuel debt and credit management system
 pub struct FuelDebtCreditSystem {
     /// Task debt balances
-    task_debts:         Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
+    task_debts: Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
     /// Task credit balances
-    task_credits:       Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
+    task_credits: Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
     /// Component credit balances
-    component_credits:  Arc<Mutex<BoundedMap<ComponentInstanceId, u64, 256>>>,
+    component_credits: Arc<Mutex<BoundedMap<ComponentInstanceId, u64, 256>>>,
     /// Global debt counter
-    global_debt:        AtomicU64,
+    global_debt: AtomicU64,
     /// Global credit counter
-    global_credit:      AtomicU64,
+    global_credit: AtomicU64,
     /// Debt policy configuration
-    debt_policy:        DebtPolicy,
+    debt_policy: DebtPolicy,
     /// Credit restriction policy
     credit_restriction: CreditRestriction,
 }
@@ -68,7 +60,11 @@ pub enum DebtPolicy {
     /// Moderate debt with interest
     ModerateDebt { max_debt: u64, interest_rate: f64 },
     /// Flexible debt with soft and hard limits
-    FlexibleDebt { soft_limit: u64, hard_limit: u64, interest_rate: f64 },
+    FlexibleDebt {
+        soft_limit: u64,
+        hard_limit: u64,
+        interest_rate: f64,
+    },
 }
 
 /// Credit restriction policies
@@ -86,10 +82,7 @@ pub enum CreditRestriction {
 
 impl FuelDebtCreditSystem {
     /// Create new fuel debt/credit system
-    pub fn new(
-        debt_policy: DebtPolicy,
-        credit_restriction: CreditRestriction,
-    ) -> Result<Self> {
+    pub fn new(debt_policy: DebtPolicy, credit_restriction: CreditRestriction) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
@@ -172,7 +165,10 @@ impl FuelDebtCreditSystem {
                         Ok(true)
                     }
                 },
-                DebtPolicy::ModerateDebt { max_debt, interest_rate: _ } => {
+                DebtPolicy::ModerateDebt {
+                    max_debt,
+                    interest_rate: _,
+                } => {
                     if new_debt > max_debt {
                         Ok(false)
                     } else {
@@ -182,7 +178,11 @@ impl FuelDebtCreditSystem {
                         Ok(true)
                     }
                 },
-                DebtPolicy::FlexibleDebt { soft_limit: _, hard_limit, interest_rate: _ } => {
+                DebtPolicy::FlexibleDebt {
+                    soft_limit: _,
+                    hard_limit,
+                    interest_rate: _,
+                } => {
                     if new_debt > hard_limit {
                         Ok(false)
                     } else {
@@ -274,10 +274,15 @@ impl FuelDebtCreditSystem {
             DebtPolicy::Strict => Ok(new_debt <= MAX_TASK_DEBT),
             DebtPolicy::Forgiveness { rate: _ } => Ok(new_debt <= MAX_TASK_DEBT * 2),
             DebtPolicy::LimitedDebt { max_debt } => Ok(new_debt <= max_debt),
-            DebtPolicy::ModerateDebt { max_debt, interest_rate: _ } => Ok(new_debt <= max_debt),
-            DebtPolicy::FlexibleDebt { soft_limit: _, hard_limit, interest_rate: _ } => {
-                Ok(new_debt <= hard_limit)
-            },
+            DebtPolicy::ModerateDebt {
+                max_debt,
+                interest_rate: _,
+            } => Ok(new_debt <= max_debt),
+            DebtPolicy::FlexibleDebt {
+                soft_limit: _,
+                hard_limit,
+                interest_rate: _,
+            } => Ok(new_debt <= hard_limit),
         }
     }
 
@@ -398,10 +403,15 @@ impl FuelDebtCreditSystem {
             DebtPolicy::Strict => new_debt <= MAX_TASK_DEBT,
             DebtPolicy::Forgiveness { rate: _ } => new_debt <= MAX_TASK_DEBT * 2,
             DebtPolicy::LimitedDebt { max_debt } => new_debt <= *max_debt,
-            DebtPolicy::ModerateDebt { max_debt, interest_rate: _ } => new_debt <= *max_debt,
-            DebtPolicy::FlexibleDebt { soft_limit: _, hard_limit, interest_rate: _ } => {
-                new_debt <= *hard_limit
-            },
+            DebtPolicy::ModerateDebt {
+                max_debt,
+                interest_rate: _,
+            } => new_debt <= *max_debt,
+            DebtPolicy::FlexibleDebt {
+                soft_limit: _,
+                hard_limit,
+                interest_rate: _,
+            } => new_debt <= *hard_limit,
         }
     }
 
@@ -417,7 +427,8 @@ impl FuelDebtCreditSystem {
         let new_debt = current_debt + amount;
 
         // Update task debt
-        debts.insert(task_id, new_debt)
+        debts
+            .insert(task_id, new_debt)
             .map_err(|_| Error::resource_limit_exceeded("Failed to update task debt"))?;
 
         // Update global debt counter
@@ -444,7 +455,8 @@ impl FuelDebtCreditSystem {
         let new_debt = total_owed.saturating_sub(actual_payment);
 
         // Update task debt
-        debts.insert(task_id, new_debt)
+        debts
+            .insert(task_id, new_debt)
             .map_err(|_| Error::resource_limit_exceeded("Failed to update task debt"))?;
 
         // Update global debt counter
@@ -460,5 +472,4 @@ impl Default for FuelDebtCreditSystem {
         Self::new(DebtPolicy::Strict, CreditRestriction::Capped)
             .expect("Failed to create default FuelDebtCreditSystem")
     }
-
 }

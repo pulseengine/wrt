@@ -8,9 +8,7 @@
 //! SW-REQ-ID: REQ_COMP_001 - Component isolation
 
 use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    memory_init::MemoryInitializer,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, memory_init::MemoryInitializer, safe_managed_alloc,
 };
 
 use crate::resources::resource_table::ResourceTable;
@@ -41,11 +39,11 @@ pub fn create_budget_aware_resource_table() -> wrt_error::Result<ResourceTable> 
 /// integrated budget tracking for component isolation.
 pub struct BudgetAwareResourceTablePool {
     /// Component ID for budget tracking
-    component_id:  CrateId,
+    component_id: CrateId,
     /// Current number of active tables
     active_tables: u32,
     /// Maximum allowed tables
-    max_tables:    u32,
+    max_tables: u32,
 }
 
 impl BudgetAwareResourceTablePool {
@@ -88,9 +86,9 @@ impl BudgetAwareResourceTablePool {
     /// Get current resource usage statistics
     pub fn get_usage_stats(&self) -> ResourceTableUsageStats {
         ResourceTableUsageStats {
-            component_id:        self.component_id,
-            active_tables:       self.active_tables,
-            max_tables:          self.max_tables,
+            component_id: self.component_id,
+            active_tables: self.active_tables,
+            max_tables: self.max_tables,
             utilization_percent: if self.max_tables > 0 {
                 (self.active_tables * 100) / self.max_tables
             } else {
@@ -103,9 +101,9 @@ impl BudgetAwareResourceTablePool {
 /// Resource table usage statistics for monitoring
 #[derive(Debug, Clone, Copy)]
 pub struct ResourceTableUsageStats {
-    pub component_id:        CrateId,
-    pub active_tables:       u32,
-    pub max_tables:          u32,
+    pub component_id: CrateId,
+    pub active_tables: u32,
+    pub max_tables: u32,
     pub utilization_percent: u32,
 }
 

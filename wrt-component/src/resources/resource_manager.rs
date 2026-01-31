@@ -6,19 +6,13 @@
 use std::sync::Mutex;
 
 use wrt_error::kinds::PoisonedLockError;
-use wrt_sync::WrtMutex;
 use wrt_foundation::{
-    component_value::ComponentValue,
-    ResourceOperation as FormatResourceOperation,
+    ResourceOperation as FormatResourceOperation, component_value::ComponentValue,
 };
+use wrt_sync::WrtMutex;
 
 use super::{
-    MemoryStrategy,
-    Resource,
-    ResourceArena,
-    ResourceInterceptor,
-    ResourceTable,
-    VerificationLevel,
+    MemoryStrategy, Resource, ResourceArena, ResourceInterceptor, ResourceTable, VerificationLevel,
 };
 use crate::prelude::*;
 
@@ -376,5 +370,4 @@ impl fmt::Debug for ResourceManager {
             .field("optimized_memory", &self.use_optimized_memory)
             .finish()
     }
-
 }

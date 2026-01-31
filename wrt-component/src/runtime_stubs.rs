@@ -1,9 +1,9 @@
 // Runtime stubs for component module development
 // These provide the interface to the runtime module's types
 
-use crate::prelude::{Box, Vec};
-use crate::foundation_stubs::{SmallVec, MediumVec, LargeVec, SafetyContext};
+use crate::foundation_stubs::{LargeVec, MediumVec, SafetyContext, SmallVec};
 use crate::platform_stubs::ComprehensivePlatformLimits;
+use crate::prelude::{Box, Vec};
 
 // Basic value type stub
 #[derive(Debug, Clone, PartialEq)]
@@ -24,7 +24,11 @@ pub struct ExecutionContext {
 }
 
 impl ExecutionContext {
-    pub fn new(component_id: ComponentId, instance_id: InstanceId, safety_context: SafetyContext) -> Self {
+    pub fn new(
+        component_id: ComponentId,
+        instance_id: InstanceId,
+        safety_context: SafetyContext,
+    ) -> Self {
         Self {
             component_id,
             instance_id,
@@ -68,11 +72,11 @@ impl UnifiedMemoryAdapter for GenericMemoryAdapter {
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
         Ok(())
     }
-    
+
     fn available_memory(&self) -> usize {
         self.total_memory - self.allocated
     }
-    
+
     fn total_memory(&self) -> usize {
         self.total_memory
     }
@@ -121,8 +125,11 @@ impl CfiEngine {
             validation_enabled: true,
         })
     }
-    
-    pub fn validate_call(&self, _function: &Function) -> core::result::Result<(), wrt_error::Error> {
+
+    pub fn validate_call(
+        &self,
+        _function: &Function,
+    ) -> core::result::Result<(), wrt_error::Error> {
         if self.validation_enabled {
             // Stub validation always passes
             Ok(())
@@ -169,10 +176,12 @@ pub struct CallFrame {
 }
 
 impl ExecutionEngine {
-    pub fn new(platform_limits: &ComprehensivePlatformLimits) -> core::result::Result<Self, wrt_error::Error> {
+    pub fn new(
+        platform_limits: &ComprehensivePlatformLimits,
+    ) -> core::result::Result<Self, wrt_error::Error> {
         let limits = ExecutionLimits::from_platform(platform_limits);
         let cfi_engine = CfiEngine::new(&limits)?;
-        
+
         Ok(Self {
             limits,
             value_stack: LargeVec::new(),
@@ -181,11 +190,17 @@ impl ExecutionEngine {
             cfi_engine,
         })
     }
-    
-    pub fn execute_function(&mut self, function: &Function, args: &[Value]) -> core::result::Result<Vec<Value>, wrt_error::Error> {
+
+    pub fn execute_function(
+        &mut self,
+        function: &Function,
+        args: &[Value],
+    ) -> core::result::Result<Vec<Value>, wrt_error::Error> {
         // Validate execution against limits
         if self.call_stack.len() >= self.limits.max_stack_depth {
-            return Err(wrt_error::Error::runtime_stack_overflow("Call stack depth exceeded"));
+            return Err(wrt_error::Error::runtime_stack_overflow(
+                "Call stack depth exceeded",
+            ));
         }
 
         // CFI validation

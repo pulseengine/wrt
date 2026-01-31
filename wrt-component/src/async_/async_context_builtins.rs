@@ -18,11 +18,7 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap as HashMap,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -31,31 +27,27 @@ use std::{
 };
 
 // use wrt_decoder::prelude::DecoderVecExt; // TODO: Re-enable when wrt_decoder is available
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
+    // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
+    BoundedMap,
+    BoundedString,
+    BoundedVec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::FromBytes,
     types::ValueType,
-    // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
-    BoundedMap,
-    BoundedString,
-    BoundedVec,
 };
 
 // Temporary AtomicRefCell substitute for no_std compilation
 // TODO: Replace with proper atomic implementation
+use crate::bounded_component_infra::ComponentProvider;
 #[cfg(not(feature = "std"))]
 use crate::prelude::Mutex as AtomicRefCell;
+use crate::prelude::WrtComponentValue;
 #[cfg(feature = "std")]
 use std::cell::RefCell as AtomicRefCell;
-use crate::bounded_component_infra::ComponentProvider;
-use crate::prelude::WrtComponentValue;
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std",)))]
@@ -110,7 +102,9 @@ impl wrt_runtime::FromBytes for ContextKey {
         #[cfg(feature = "std")]
         return Ok(Self(String::from_bytes_with_provider(reader, provider)?));
         #[cfg(not(any(feature = "std",)))]
-        return Ok(Self(BoundedString::from_bytes_with_provider(reader, provider)?));
+        return Ok(Self(BoundedString::from_bytes_with_provider(
+            reader, provider,
+        )?));
     }
 }
 
@@ -191,7 +185,7 @@ impl wrt_runtime::ToBytes for ContextValue {
             Self::Simple(v) => {
                 0u8.to_bytes_with_provider(writer, provider)?;
                 v.to_bytes_with_provider(writer, provider)
-            }
+            },
             Self::Binary(b) => {
                 1u8.to_bytes_with_provider(writer, provider)?;
                 // Manual serialization for Vec<u8> (DecoderVecExt not available)
@@ -200,7 +194,7 @@ impl wrt_runtime::ToBytes for ContextValue {
                     byte.to_bytes_with_provider(writer, provider)?;
                 }
                 Ok(())
-            }
+            },
         }
     }
 }
@@ -212,14 +206,22 @@ impl wrt_runtime::FromBytes for ContextValue {
     ) -> wrt_error::Result<Self> {
         let tag = u8::from_bytes_with_provider(reader, provider)?;
         match tag {
-            0 => Ok(Self::Simple(WrtComponentValue::from_bytes_with_provider(reader, provider)?)),
+            0 => Ok(Self::Simple(WrtComponentValue::from_bytes_with_provider(
+                reader, provider,
+            )?)),
             1 => {
                 #[cfg(feature = "std")]
-                return Ok(Self::Binary(<Vec<u8> as FromBytes>::from_bytes_with_provider(reader, provider)?));
+                return Ok(Self::Binary(
+                    <Vec<u8> as FromBytes>::from_bytes_with_provider(reader, provider)?,
+                ));
                 #[cfg(not(any(feature = "std",)))]
-                return Ok(Self::Binary(BoundedVec::from_bytes_with_provider(reader, provider)?));
-            }
-            _ => Err(Error::validation_error("Invalid context value discriminant")),
+                return Ok(Self::Binary(BoundedVec::from_bytes_with_provider(
+                    reader, provider,
+                )?));
+            },
+            _ => Err(Error::validation_error(
+                "Invalid context value discriminant",
+            )),
         }
     }
 }
@@ -274,9 +276,9 @@ impl AsyncContext {
     pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            data:                                    BTreeMap::new(),
+            data: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            data:                                    {
+            data: {
                 let provider = safe_managed_alloc!(4096, CrateId::Component)?;
                 BoundedMap::new(provider)?
             },

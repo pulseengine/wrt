@@ -46,32 +46,18 @@
 extern crate alloc;
 
 #[cfg(all(not(feature = "std")))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    string::String,
-    vec,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap as HashMap, string::String, vec, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    string::String,
-    vec::Vec,
-};
+use std::{collections::HashMap, string::String, vec::Vec};
 
 // Note: Using alloc for no_std instead of wrt_foundation bounded types for now
 // #[cfg(not(any(feature = "std", )))]
 // use wrt_foundation::{BoundedString, BoundedVec, BoundedMap as HashMap};
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 use wrt_foundation::{
-    traits::{ToBytes, FromBytes, Checksummable, WriteStream, ReadStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::Checksum,
 };
 
@@ -91,8 +77,7 @@ const MAX_RECORD_FIELDS: usize = 1024;
 const PAGE_SIZE: usize = 65536;
 
 /// Component model value types as defined in the Canonical ABI
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ComponentType {
     /// Boolean type
     #[default]
@@ -383,7 +368,7 @@ pub struct CanonicalABI {
     /// String encoding (always UTF-8 for now)
     string_encoding: StringEncoding,
     /// Binary std/no_std choice
-    alignment:       u32,
+    alignment: u32,
 }
 
 /// String encoding options
@@ -418,7 +403,7 @@ impl CanonicalABI {
     pub fn new() -> Self {
         Self {
             string_encoding: StringEncoding::Utf8,
-            alignment:       1,
+            alignment: 1,
         }
     }
 
@@ -959,7 +944,9 @@ impl CanonicalABI {
             (ComponentValue::F32(v), ComponentType::F32) => self.lower_f32(memory, *v, offset),
             (ComponentValue::F64(v), ComponentType::F64) => self.lower_f64(memory, *v, offset),
             (ComponentValue::Char(v), ComponentType::Char) => self.lower_char(memory, *v, offset),
-            (ComponentValue::String(v), ComponentType::String) => self.lower_string(memory, v, offset),
+            (ComponentValue::String(v), ComponentType::String) => {
+                self.lower_string(memory, v, offset)
+            },
 
             // List with element type
             (ComponentValue::List(v), ComponentType::List(_elem_type)) => {
@@ -978,7 +965,8 @@ impl CanonicalABI {
 
             // Variant: compute discriminant from case name position in type
             (ComponentValue::Variant(case_name, payload), ComponentType::Variant(cases)) => {
-                let discriminant = cases.iter()
+                let discriminant = cases
+                    .iter()
                     .position(|(name, _)| name == case_name)
                     .ok_or_else(|| Error::validation_error("Unknown variant case"))?;
 
@@ -991,7 +979,9 @@ impl CanonicalABI {
                     // Find payload type from cases
                     if let Some(payload_type) = &cases[discriminant].1 {
                         // Payload offset: discriminant + alignment padding
-                        let payload_offset = offset + disc_size + self.payload_alignment_padding(disc_size, payload_type);
+                        let payload_offset = offset
+                            + disc_size
+                            + self.payload_alignment_padding(disc_size, payload_type);
                         self.lower_typed(memory, payload_value, payload_type, payload_offset)?;
                     }
                 }
@@ -1000,7 +990,8 @@ impl CanonicalABI {
 
             // Enum: compute discriminant from case name position in type
             (ComponentValue::Enum(case_name), ComponentType::Enum(cases)) => {
-                let discriminant = cases.iter()
+                let discriminant = cases
+                    .iter()
                     .position(|name| name == case_name)
                     .ok_or_else(|| Error::validation_error("Unknown enum case"))?;
 
@@ -1016,9 +1007,10 @@ impl CanonicalABI {
                     Some(inner) => {
                         memory.write_u8(offset, 1)?;
                         // Payload at offset + 1 (aligned appropriately)
-                        let payload_offset = offset + 1 + self.payload_alignment_padding(1, inner_type);
+                        let payload_offset =
+                            offset + 1 + self.payload_alignment_padding(1, inner_type);
                         self.lower_typed(memory, inner, inner_type, payload_offset)
-                    }
+                    },
                 }
             },
 
@@ -1032,7 +1024,7 @@ impl CanonicalABI {
                             self.lower_typed(memory, val, ty, payload_offset)?;
                         }
                         Ok(())
-                    }
+                    },
                     Err(payload) => {
                         memory.write_u8(offset, 1)?;
                         if let (Some(val), Some(ty)) = (payload, err_type) {
@@ -1040,7 +1032,7 @@ impl CanonicalABI {
                             self.lower_typed(memory, val, ty, payload_offset)?;
                         }
                         Ok(())
-                    }
+                    },
                 }
             },
 
@@ -1065,7 +1057,9 @@ impl CanonicalABI {
             },
 
             // Type mismatch
-            _ => Err(Error::validation_error("Value type doesn't match expected type")),
+            _ => Err(Error::validation_error(
+                "Value type doesn't match expected type",
+            )),
         }
     }
 
@@ -1101,11 +1095,7 @@ impl CanonicalABI {
         let payload_align = self.type_alignment(payload_type);
         let current_pos = disc_size;
         let remainder = current_pos % payload_align;
-        if remainder == 0 {
-            0
-        } else {
-            payload_align - remainder
-        }
+        if remainder == 0 { 0 } else { payload_align - remainder }
     }
 
     /// Get alignment requirement for a type
@@ -1116,17 +1106,16 @@ impl CanonicalABI {
             ComponentType::S32 | ComponentType::U32 | ComponentType::F32 | ComponentType::Char => 4,
             ComponentType::S64 | ComponentType::U64 | ComponentType::F64 => 8,
             ComponentType::String | ComponentType::List(_) => 4, // ptr + len
-            ComponentType::Record(fields) => fields.iter()
-                .map(|(_, ft)| self.type_alignment(ft))
-                .max()
-                .unwrap_or(1),
-            ComponentType::Tuple(types) => types.iter()
-                .map(|t| self.type_alignment(t))
-                .max()
-                .unwrap_or(1),
+            ComponentType::Record(fields) => {
+                fields.iter().map(|(_, ft)| self.type_alignment(ft)).max().unwrap_or(1)
+            },
+            ComponentType::Tuple(types) => {
+                types.iter().map(|t| self.type_alignment(t)).max().unwrap_or(1)
+            },
             ComponentType::Variant(cases) => {
                 let disc_align = self.discriminant_size(cases.len());
-                let payload_align = cases.iter()
+                let payload_align = cases
+                    .iter()
                     .filter_map(|(_, ty)| ty.as_ref())
                     .map(|t| self.type_alignment(t))
                     .max()
@@ -1142,9 +1131,13 @@ impl CanonicalABI {
             },
             ComponentType::Flags(flags) => {
                 let byte_count = flags.len().div_ceil(8);
-                if byte_count <= 1 { 1 }
-                else if byte_count <= 2 { 2 }
-                else { 4 }
+                if byte_count <= 1 {
+                    1
+                } else if byte_count <= 2 {
+                    2
+                } else {
+                    4
+                }
             },
         }
     }
@@ -1168,7 +1161,8 @@ impl CanonicalABI {
             }
 
             // Find matching value
-            let value = fields.iter()
+            let value = fields
+                .iter()
                 .find(|(name, _)| name == field_name)
                 .map(|(_, v)| v)
                 .ok_or_else(|| Error::validation_error("Missing record field"))?;
@@ -1247,7 +1241,8 @@ impl CanonicalABI {
             },
             ComponentType::Variant(cases) => {
                 let disc_size = self.discriminant_size(cases.len());
-                let max_payload = cases.iter()
+                let max_payload = cases
+                    .iter()
                     .filter_map(|(_, ty)| ty.as_ref())
                     .map(|t| self.type_size(t))
                     .max()
@@ -1577,7 +1572,7 @@ impl CanonicalABI {
             _ => {
                 return Err(Error::validation_error(
                     "Error occurred: Invalid discriminant size calculated",
-                ))
+                ));
             },
         }
 
@@ -1623,11 +1618,9 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8),
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
-            _ => {
-                Err(Error::validation_error(
-                    "Error occurred: Invalid discriminant size calculated",
-                ))
-            },
+            _ => Err(Error::validation_error(
+                "Error occurred: Invalid discriminant size calculated",
+            )),
         }
     }
 
@@ -1838,7 +1831,7 @@ impl CanonicalABI {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct MemoryLayout {
     /// Size in bytes
-    size:      usize,
+    size: usize,
     /// Alignment requirement in bytes
     alignment: usize,
 }
@@ -1963,53 +1956,53 @@ impl CanonicalABI {
             ComponentType::Bool => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::Bool(i != 0), 1))
-            }
+            },
             ComponentType::S8 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::S8(i as i8), 1))
-            }
+            },
             ComponentType::U8 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::U8(i as u8), 1))
-            }
+            },
             ComponentType::S16 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::S16(i as i16), 1))
-            }
+            },
             ComponentType::U16 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::U16(i as u16), 1))
-            }
+            },
             ComponentType::S32 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::S32(i), 1))
-            }
+            },
             ComponentType::U32 => {
                 let i = self.expect_i32(core_values, 0)?;
                 Ok((ComponentValue::U32(i as u32), 1))
-            }
+            },
             ComponentType::S64 => {
                 let i = self.expect_i64(core_values, 0)?;
                 Ok((ComponentValue::S64(i), 1))
-            }
+            },
             ComponentType::U64 => {
                 let i = self.expect_i64(core_values, 0)?;
                 Ok((ComponentValue::U64(i as u64), 1))
-            }
+            },
             ComponentType::F32 => {
                 let f = self.expect_f32(core_values, 0)?;
                 Ok((ComponentValue::F32(f), 1))
-            }
+            },
             ComponentType::F64 => {
                 let f = self.expect_f64(core_values, 0)?;
                 Ok((ComponentValue::F64(f), 1))
-            }
+            },
             ComponentType::Char => {
                 let i = self.expect_i32(core_values, 0)?;
                 let ch = char::from_u32(i as u32)
                     .ok_or_else(|| Error::validation_error("Invalid Unicode code point"))?;
                 Ok((ComponentValue::Char(ch), 1))
-            }
+            },
 
             // String: ptr + len on stack, data in memory
             ComponentType::String => {
@@ -2022,7 +2015,7 @@ impl CanonicalABI {
                     .map_err(|_| Error::validation_error("Invalid UTF-8 string"))?;
 
                 Ok((ComponentValue::String(string), 2))
-            }
+            },
 
             // List: ptr + len on stack, elements in memory
             ComponentType::List(element_ty) => {
@@ -2039,7 +2032,7 @@ impl CanonicalABI {
                 }
 
                 Ok((ComponentValue::List(elements), 2))
-            }
+            },
 
             // Record: flattened fields on stack or in memory
             ComponentType::Record(fields) => {
@@ -2047,21 +2040,21 @@ impl CanonicalABI {
                 let ptr = self.expect_i32(core_values, 0)? as u32;
                 let value = self.lift_record(memory, fields, ptr)?;
                 Ok((value, 1))
-            }
+            },
 
             // Tuple: flattened elements
             ComponentType::Tuple(types) => {
                 let ptr = self.expect_i32(core_values, 0)? as u32;
                 let value = self.lift_tuple(memory, types, ptr)?;
                 Ok((value, 1))
-            }
+            },
 
             // Variant: discriminant + optional payload
             ComponentType::Variant(cases) => {
                 let ptr = self.expect_i32(core_values, 0)? as u32;
                 let value = self.lift_variant(memory, cases, ptr)?;
                 Ok((value, 1))
-            }
+            },
 
             // Enum: just discriminant
             ComponentType::Enum(cases) => {
@@ -2069,8 +2062,11 @@ impl CanonicalABI {
                 if discriminant as usize >= cases.len() {
                     return Err(Error::validation_error("Invalid enum discriminant"));
                 }
-                Ok((ComponentValue::Enum(cases[discriminant as usize].clone()), 1))
-            }
+                Ok((
+                    ComponentValue::Enum(cases[discriminant as usize].clone()),
+                    1,
+                ))
+            },
 
             // Option: discriminant + optional value
             ComponentType::Option(inner_ty) => {
@@ -2079,10 +2075,14 @@ impl CanonicalABI {
                     Ok((ComponentValue::Option(None), 1))
                 } else {
                     // Payload follows discriminant
-                    let (inner_value, consumed) = self.lift_single_value(inner_ty, &core_values[1..], memory)?;
-                    Ok((ComponentValue::Option(Some(Box::new(inner_value))), 1 + consumed))
+                    let (inner_value, consumed) =
+                        self.lift_single_value(inner_ty, &core_values[1..], memory)?;
+                    Ok((
+                        ComponentValue::Option(Some(Box::new(inner_value))),
+                        1 + consumed,
+                    ))
                 }
-            }
+            },
 
             // Result: discriminant + ok/err payload
             ComponentType::Result(ok_ty, err_ty) => {
@@ -2090,21 +2090,29 @@ impl CanonicalABI {
                 if discriminant == 0 {
                     // Ok case
                     if let Some(ty) = ok_ty {
-                        let (value, consumed) = self.lift_single_value(ty, &core_values[1..], memory)?;
-                        Ok((ComponentValue::Result(Ok(Some(Box::new(value)))), 1 + consumed))
+                        let (value, consumed) =
+                            self.lift_single_value(ty, &core_values[1..], memory)?;
+                        Ok((
+                            ComponentValue::Result(Ok(Some(Box::new(value)))),
+                            1 + consumed,
+                        ))
                     } else {
                         Ok((ComponentValue::Result(Ok(None)), 1))
                     }
                 } else {
                     // Err case
                     if let Some(ty) = err_ty {
-                        let (value, consumed) = self.lift_single_value(ty, &core_values[1..], memory)?;
-                        Ok((ComponentValue::Result(Err(Some(Box::new(value)))), 1 + consumed))
+                        let (value, consumed) =
+                            self.lift_single_value(ty, &core_values[1..], memory)?;
+                        Ok((
+                            ComponentValue::Result(Err(Some(Box::new(value)))),
+                            1 + consumed,
+                        ))
                     } else {
                         Ok((ComponentValue::Result(Err(None)), 1))
                     }
                 }
-            }
+            },
 
             // Flags: bit vector
             ComponentType::Flags(flag_names) => {
@@ -2116,7 +2124,7 @@ impl CanonicalABI {
                     }
                 }
                 Ok((ComponentValue::Flags(active), 1))
-            }
+            },
         }
     }
 
@@ -2148,7 +2156,9 @@ impl CanonicalABI {
         _ctx: &CanonicalCallContext,
     ) -> Result<LowerResult> {
         if values.len() != types.len() {
-            return Err(Error::validation_error("Value count doesn't match type count"));
+            return Err(Error::validation_error(
+                "Value count doesn't match type count",
+            ));
         }
 
         let mut core_values = Vec::new();
@@ -2178,40 +2188,28 @@ impl CanonicalABI {
             // Primitives: direct conversion to single core value
             (ComponentValue::Bool(b), ComponentType::Bool) => {
                 Ok((vec![CoreValue::I32(if *b { 1 } else { 0 })], 0))
-            }
-            (ComponentValue::S8(v), ComponentType::S8) => {
-                Ok((vec![CoreValue::I32(*v as i32)], 0))
-            }
-            (ComponentValue::U8(v), ComponentType::U8) => {
-                Ok((vec![CoreValue::I32(*v as i32)], 0))
-            }
+            },
+            (ComponentValue::S8(v), ComponentType::S8) => Ok((vec![CoreValue::I32(*v as i32)], 0)),
+            (ComponentValue::U8(v), ComponentType::U8) => Ok((vec![CoreValue::I32(*v as i32)], 0)),
             (ComponentValue::S16(v), ComponentType::S16) => {
                 Ok((vec![CoreValue::I32(*v as i32)], 0))
-            }
+            },
             (ComponentValue::U16(v), ComponentType::U16) => {
                 Ok((vec![CoreValue::I32(*v as i32)], 0))
-            }
-            (ComponentValue::S32(v), ComponentType::S32) => {
-                Ok((vec![CoreValue::I32(*v)], 0))
-            }
+            },
+            (ComponentValue::S32(v), ComponentType::S32) => Ok((vec![CoreValue::I32(*v)], 0)),
             (ComponentValue::U32(v), ComponentType::U32) => {
                 Ok((vec![CoreValue::I32(*v as i32)], 0))
-            }
-            (ComponentValue::S64(v), ComponentType::S64) => {
-                Ok((vec![CoreValue::I64(*v)], 0))
-            }
+            },
+            (ComponentValue::S64(v), ComponentType::S64) => Ok((vec![CoreValue::I64(*v)], 0)),
             (ComponentValue::U64(v), ComponentType::U64) => {
                 Ok((vec![CoreValue::I64(*v as i64)], 0))
-            }
-            (ComponentValue::F32(v), ComponentType::F32) => {
-                Ok((vec![CoreValue::F32(*v)], 0))
-            }
-            (ComponentValue::F64(v), ComponentType::F64) => {
-                Ok((vec![CoreValue::F64(*v)], 0))
-            }
+            },
+            (ComponentValue::F32(v), ComponentType::F32) => Ok((vec![CoreValue::F32(*v)], 0)),
+            (ComponentValue::F64(v), ComponentType::F64) => Ok((vec![CoreValue::F64(*v)], 0)),
             (ComponentValue::Char(ch), ComponentType::Char) => {
                 Ok((vec![CoreValue::I32(*ch as i32)], 0))
-            }
+            },
 
             // String: write to memory, return ptr + len
             (ComponentValue::String(s), ComponentType::String) => {
@@ -2222,11 +2220,11 @@ impl CanonicalABI {
                 memory.write_bytes(alloc_ptr, bytes)?;
 
                 // Return ptr and len as core values
-                Ok((vec![
-                    CoreValue::I32(alloc_ptr as i32),
-                    CoreValue::I32(len as i32),
-                ], len))
-            }
+                Ok((
+                    vec![CoreValue::I32(alloc_ptr as i32), CoreValue::I32(len as i32)],
+                    len,
+                ))
+            },
 
             // List: write elements to memory, return ptr + len
             (ComponentValue::List(elements), ComponentType::List(element_ty)) => {
@@ -2239,65 +2237,73 @@ impl CanonicalABI {
                     self.lower(memory, elem, offset)?;
                 }
 
-                Ok((vec![
-                    CoreValue::I32(alloc_ptr as i32),
-                    CoreValue::I32(elements.len() as i32),
-                ], total_size))
-            }
+                Ok((
+                    vec![
+                        CoreValue::I32(alloc_ptr as i32),
+                        CoreValue::I32(elements.len() as i32),
+                    ],
+                    total_size,
+                ))
+            },
 
             // Record: write to memory, return ptr
             (ComponentValue::Record(fields), ComponentType::Record(_)) => {
                 self.lower_record(memory, fields, alloc_ptr)?;
                 let size = self.calculate_value_layout(value).size as u32;
                 Ok((vec![CoreValue::I32(alloc_ptr as i32)], size))
-            }
+            },
 
             // Tuple: write to memory, return ptr
             (ComponentValue::Tuple(values), ComponentType::Tuple(_)) => {
                 self.lower_tuple(memory, values, alloc_ptr)?;
                 let size = self.calculate_value_layout(value).size as u32;
                 Ok((vec![CoreValue::I32(alloc_ptr as i32)], size))
-            }
+            },
 
             // Enum: return discriminant
             (ComponentValue::Enum(case_name), ComponentType::Enum(cases)) => {
-                let discriminant = cases.iter().position(|c| c == case_name)
+                let discriminant = cases
+                    .iter()
+                    .position(|c| c == case_name)
                     .ok_or_else(|| Error::validation_error("Unknown enum case"))?;
                 Ok((vec![CoreValue::I32(discriminant as i32)], 0))
-            }
+            },
 
             // Option: discriminant + optional value
             (ComponentValue::Option(None), ComponentType::Option(_)) => {
                 Ok((vec![CoreValue::I32(0)], 0))
-            }
+            },
             (ComponentValue::Option(Some(inner)), ComponentType::Option(inner_ty)) => {
-                let (mut inner_values, bytes) = self.lower_single_value(inner, inner_ty, memory, alloc_ptr)?;
+                let (mut inner_values, bytes) =
+                    self.lower_single_value(inner, inner_ty, memory, alloc_ptr)?;
                 let mut result = vec![CoreValue::I32(1)];
                 result.append(&mut inner_values);
                 Ok((result, bytes))
-            }
+            },
 
             // Result: discriminant + payload
             (ComponentValue::Result(Ok(payload)), ComponentType::Result(ok_ty, _)) => {
                 let mut result = vec![CoreValue::I32(0)];
                 if let (Some(val), Some(ty)) = (payload, ok_ty) {
-                    let (mut inner_values, bytes) = self.lower_single_value(val, ty, memory, alloc_ptr)?;
+                    let (mut inner_values, bytes) =
+                        self.lower_single_value(val, ty, memory, alloc_ptr)?;
                     result.append(&mut inner_values);
                     Ok((result, bytes))
                 } else {
                     Ok((result, 0))
                 }
-            }
+            },
             (ComponentValue::Result(Err(payload)), ComponentType::Result(_, err_ty)) => {
                 let mut result = vec![CoreValue::I32(1)];
                 if let (Some(val), Some(ty)) = (payload, err_ty) {
-                    let (mut inner_values, bytes) = self.lower_single_value(val, ty, memory, alloc_ptr)?;
+                    let (mut inner_values, bytes) =
+                        self.lower_single_value(val, ty, memory, alloc_ptr)?;
                     result.append(&mut inner_values);
                     Ok((result, bytes))
                 } else {
                     Ok((result, 0))
                 }
-            }
+            },
 
             // Flags: pack into i32
             (ComponentValue::Flags(active), ComponentType::Flags(all_flags)) => {
@@ -2308,10 +2314,12 @@ impl CanonicalABI {
                     }
                 }
                 Ok((vec![CoreValue::I32(bits as i32)], 0))
-            }
+            },
 
             // Type mismatch
-            _ => Err(Error::validation_error("Value type doesn't match expected type")),
+            _ => Err(Error::validation_error(
+                "Value type doesn't match expected type",
+            )),
         }
     }
 
@@ -2320,7 +2328,8 @@ impl CanonicalABI {
     // ========================================================================
 
     fn expect_i32(&self, values: &[CoreValue], idx: usize) -> Result<i32> {
-        values.get(idx)
+        values
+            .get(idx)
             .and_then(|v| match v {
                 CoreValue::I32(i) => Some(*i),
                 _ => None,
@@ -2329,7 +2338,8 @@ impl CanonicalABI {
     }
 
     fn expect_i64(&self, values: &[CoreValue], idx: usize) -> Result<i64> {
-        values.get(idx)
+        values
+            .get(idx)
             .and_then(|v| match v {
                 CoreValue::I64(i) => Some(*i),
                 _ => None,
@@ -2338,7 +2348,8 @@ impl CanonicalABI {
     }
 
     fn expect_f32(&self, values: &[CoreValue], idx: usize) -> Result<f32> {
-        values.get(idx)
+        values
+            .get(idx)
             .and_then(|v| match v {
                 CoreValue::F32(f) => Some(*f),
                 _ => None,
@@ -2347,7 +2358,8 @@ impl CanonicalABI {
     }
 
     fn expect_f64(&self, values: &[CoreValue], idx: usize) -> Result<f64> {
-        values.get(idx)
+        values
+            .get(idx)
             .and_then(|v| match v {
                 CoreValue::F64(f) => Some(*f),
                 _ => None,
@@ -2374,8 +2386,8 @@ impl CanonicalABI {
 
     /// Convert CoreValue to wrt_foundation::values::Value
     pub fn to_runtime_value(value: &CoreValue) -> wrt_foundation::values::Value {
-        use wrt_foundation::values::Value;
         use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
+        use wrt_foundation::values::Value;
         match value {
             CoreValue::I32(i) => Value::I32(*i),
             CoreValue::I64(i) => Value::I64(*i),

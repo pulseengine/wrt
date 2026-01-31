@@ -4,13 +4,10 @@
 //! Model, including resource lifetime management, memory optimization, and
 //! interception support.
 
-#[cfg(feature = "std")]
-use std::{
-    sync::Weak,
-    time::Duration,
-};
 #[cfg(not(feature = "std"))]
 use core::time::Duration;
+#[cfg(feature = "std")]
+use std::{sync::Weak, time::Duration};
 
 // Submodules
 pub mod bounded_buffer_pool;
@@ -42,28 +39,16 @@ pub mod resource_table_no_std;
 #[cfg(feature = "std")]
 pub mod size_class_buffer_pool;
 
-
 // Re-export for no_std feature
 #[cfg(not(feature = "std"))]
-pub use bounded_buffer_pool::{
-    BoundedBufferPool,
-    BoundedBufferStats as BufferPoolStats,
-};
+pub use bounded_buffer_pool::{BoundedBufferPool, BoundedBufferStats as BufferPoolStats};
 // Re-export for std feature
 #[cfg(feature = "std")]
 pub use buffer_pool::BufferPool;
 // Export dynamic quota management
 pub use dynamic_quota_manager::{
-    DynamicQuotaManager,
-    QuotaNode,
-    QuotaNodeType,
-    QuotaPolicy,
-    QuotaRequest,
-    QuotaResponse,
-    QuotaStatus,
-    QuotaStrategy,
-    QuotaWatcher,
-    ResourceType as QuotaResourceType,
+    DynamicQuotaManager, QuotaNode, QuotaNodeType, QuotaPolicy, QuotaRequest, QuotaResponse,
+    QuotaStatus, QuotaStrategy, QuotaWatcher, ResourceType as QuotaResourceType,
 };
 #[cfg(feature = "std")]
 pub use memory_access::MemoryAccessMode;
@@ -75,24 +60,14 @@ pub use resource_arena::ResourceArena;
 #[cfg(not(feature = "std"))]
 pub use resource_arena_no_std::ResourceArena;
 // Export Builder types
-pub use resource_builder::{
-    ResourceBuilder,
-    ResourceManagerBuilder,
-    ResourceTableBuilder,
-};
+pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
 // Export ResourceInterceptor
 pub use resource_interceptor::ResourceInterceptor;
 // Export ResourceId and ResourceManager based on feature flags
 #[cfg(feature = "std")]
-pub use resource_manager::{
-    ResourceId,
-    ResourceManager,
-};
+pub use resource_manager::{ResourceId, ResourceManager};
 #[cfg(not(feature = "std"))]
-pub use resource_manager_no_std::{
-    ResourceId,
-    ResourceManager,
-};
+pub use resource_manager_no_std::{ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
 // pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
@@ -105,33 +80,20 @@ pub use wrt_foundation::bounded::MAX_BUFFER_SIZE;
 // Export ResourceTable components based on feature flags
 #[cfg(feature = "std")]
 pub use resource_table::{
-    BufferPoolTrait,
-    MemoryStrategy,
-    Resource,
-    ResourceTable,
-    VerificationLevel,
+    BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
 };
 #[cfg(feature = "std")]
 pub use resource_table_budget_integration::{
-    create_budget_aware_resource_table,
+    BudgetAwareResourceTablePool, ResourceTableUsageStats, create_budget_aware_resource_table,
     verify_budget_integration,
-    BudgetAwareResourceTablePool,
-    ResourceTableUsageStats,
 };
 #[cfg(not(feature = "std"))]
 pub use resource_table_no_std::{
-    BufferPoolTrait,
-    MemoryStrategy,
-    Resource,
-    ResourceTable,
-    VerificationLevel,
+    BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
 };
 // Export size class buffer pool for std environment
 #[cfg(feature = "std")]
-pub use size_class_buffer_pool::{
-    BufferPoolStats,
-    SizeClassBufferPool,
-};
+pub use size_class_buffer_pool::{BufferPoolStats, SizeClassBufferPool};
 
 /// Timestamp implementation for no_std
 #[derive(Debug, Clone, Copy)]

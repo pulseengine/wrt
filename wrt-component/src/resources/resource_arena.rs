@@ -6,10 +6,7 @@
 use wrt_error::kinds::PoisonedLockError;
 use wrt_sync::WrtMutex;
 
-use super::{
-    ResourceId,
-    ResourceTable,
-};
+use super::{ResourceId, ResourceTable};
 use crate::prelude::*;
 
 // Override prelude's wrt_sync::Mutex with std::sync::Mutex for poisoning support
@@ -26,9 +23,9 @@ pub struct ResourceArena {
     /// Handles to resources managed by this arena
     resources: Vec<u32>,
     /// The resource table used for actual resource management
-    table:     Arc<Mutex<ResourceTable>>,
+    table: Arc<Mutex<ResourceTable>>,
     /// Name of this arena, for debugging
-    name:      Option<String>,
+    name: Option<String>,
 }
 
 impl ResourceArena {
@@ -174,11 +171,7 @@ impl ResourceArena {
         }
 
         // Return the first error if any occurred
-        if let Some(e) = error {
-            Err(e)
-        } else {
-            Ok(())
-        }
+        if let Some(e) = error { Err(e) } else { Ok(()) }
     }
 
     /// Get the number of resources in this arena
@@ -217,5 +210,4 @@ impl fmt::Debug for ResourceArena {
             .field("resources", &self.resources)
             .finish()
     }
-
 }

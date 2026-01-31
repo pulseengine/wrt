@@ -5,24 +5,11 @@
 //! detection, and advanced thread coordination primitives.
 
 #[cfg(feature = "std")]
-use std::{
-    sync::Arc,
-    thread,
-    vec::Vec,
-};
+use std::{sync::Arc, thread, vec::Vec};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::types::Value;
-use wrt_runtime::{
-    ThreadConfig,
-    ThreadId,
-    ThreadManager,
-};
+use wrt_runtime::{ThreadConfig, ThreadId, ThreadManager};
 
 use crate::prelude::*;
 
@@ -30,14 +17,14 @@ use crate::prelude::*;
 #[derive(Debug)]
 pub struct ThreadBuiltins {
     /// Thread manager for spawning and managing threads
-    pub thread_manager:   ThreadManager,
+    pub thread_manager: ThreadManager,
     /// System parallelism information
     pub parallelism_info: ParallelismInfo,
     /// Function table for indirect thread spawning
     #[cfg(feature = "std")]
-    pub function_table:   Vec<ComponentFunction>,
+    pub function_table: Vec<ComponentFunction>,
     #[cfg(not(feature = "std"))]
-    pub function_table:   [Option<ComponentFunction>; 256],
+    pub function_table: [Option<ComponentFunction>; 256],
 }
 
 impl ThreadBuiltins {
@@ -131,8 +118,8 @@ impl ThreadBuiltins {
         let results = self.get_thread_results(thread_id)?;
 
         Ok(ThreadJoinResult {
-            success:         true,
-            return_values:   results,
+            success: true,
+            return_values: results,
             execution_stats: stats,
         })
     }
@@ -400,11 +387,11 @@ pub struct ParallelismInfo {
     /// Number of threads that can run in parallel
     pub available_parallelism: u32,
     /// Number of physical CPU cores
-    pub physical_cores:        u32,
+    pub physical_cores: u32,
     /// Number of logical CPU cores (including hyperthreading)
-    pub logical_cores:         u32,
+    pub logical_cores: u32,
     /// Whether NUMA architecture is detected
-    pub is_numa:               bool,
+    pub is_numa: bool,
 }
 
 impl ParallelismInfo {
@@ -426,9 +413,9 @@ impl ParallelismInfo {
         {
             Self {
                 available_parallelism: 1, // Single-threaded in no_std
-                physical_cores:        1,
-                logical_cores:         1,
-                is_numa:               false,
+                physical_cores: 1,
+                logical_cores: 1,
+                is_numa: false,
             }
         }
     }
@@ -438,25 +425,25 @@ impl ParallelismInfo {
 #[derive(Debug, Clone)]
 pub struct ThreadSpawnConfig {
     /// Stack size for the new thread
-    pub stack_size:    Option<usize>,
+    pub stack_size: Option<usize>,
     /// Parent thread ID
     pub parent_thread: Option<ThreadId>,
     /// Whether to automatically start the thread
-    pub auto_start:    bool,
+    pub auto_start: bool,
     /// Thread priority (0-100)
-    pub priority:      u8,
+    pub priority: u8,
     /// CPU affinity mask
-    pub cpu_affinity:  Option<u64>,
+    pub cpu_affinity: Option<u64>,
 }
 
 impl Default for ThreadSpawnConfig {
     fn default() -> Self {
         Self {
-            stack_size:    None,
+            stack_size: None,
             parent_thread: None,
-            auto_start:    true,
-            priority:      50,
-            cpu_affinity:  None,
+            auto_start: true,
+            priority: 50,
+            cpu_affinity: None,
         }
     }
 }
@@ -465,18 +452,18 @@ impl Default for ThreadSpawnConfig {
 #[derive(Debug, Clone)]
 pub struct ComponentFunction {
     /// Base function index in the component
-    pub base_index:     u32,
+    pub base_index: u32,
     /// Number of functions in this table entry
     pub function_count: u32,
     /// Function signature information
-    pub signature:      FunctionSignature,
+    pub signature: FunctionSignature,
 }
 
 /// Function signature for validation
 #[derive(Debug, Clone)]
 pub struct FunctionSignature {
     /// Parameter types
-    pub params:  Vec<ValueType>,
+    pub params: Vec<ValueType>,
     /// Return types
     pub returns: Vec<ValueType>,
 }
@@ -497,9 +484,9 @@ pub enum ValueType {
 #[derive(Debug)]
 pub struct ThreadJoinResult {
     /// Whether the thread completed successfully
-    pub success:         bool,
+    pub success: bool,
     /// Return values from the thread
-    pub return_values:   Vec<Value>,
+    pub return_values: Vec<Value>,
     /// Thread execution statistics
     pub execution_stats: wrt_runtime::ThreadExecutionStats,
 }

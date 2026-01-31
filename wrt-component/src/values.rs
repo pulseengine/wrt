@@ -8,23 +8,13 @@
 use wrt_format::component::FormatValType;
 use wrt_foundation::{
     budget_aware_provider::CrateId,
-    component_value::{
-        ComponentValue,
-        ValType as TypesValType,
-        ValTypeRef,
-    },
+    component_value::{ComponentValue, ValType as TypesValType, ValTypeRef},
     safe_managed_alloc,
-    traits::{
-        ReadStream,
-        WriteStream,
-    },
+    traits::{ReadStream, WriteStream},
     values::Value,
 };
 
-use crate::{
-    bounded_component_infra::ComponentProvider,
-    prelude::*,
-};
+use crate::{bounded_component_infra::ComponentProvider, prelude::*};
 
 // Define type aliases with the component memory provider
 type ComponentMemoryProvider = ComponentProvider; // Use the shared provider
@@ -33,10 +23,7 @@ type ComponentComponentValue = ComponentValue<ComponentMemoryProvider>;
 type WrtFormatValType = FormatValType;
 type WrtTypesValType = TypesValType<ComponentProvider>;
 
-use crate::memory_layout::{
-    calculate_layout,
-    MemoryLayout,
-};
+use crate::memory_layout::{MemoryLayout, calculate_layout};
 
 // Use ComponentValType for the canonical ValType
 type CanonicalValType = ComponentValType;
@@ -95,7 +82,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
                                     // This branch should never execute as empty slice creation is always valid
                                     panic!("Failed to create empty slice")
                                 })
-                            }
+                            },
                         }
                     });
                     String::from_utf8_lossy(bytes.as_ref()).to_string()
@@ -120,7 +107,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
                                     // This branch should never execute as empty slice creation is always valid
                                     panic!("Failed to create empty slice")
                                 })
-                            }
+                            },
                         }
                     });
                     String::from_utf8_lossy(bytes.as_ref()).to_string()
@@ -205,7 +192,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         WrtFormatValType::Result(_result_type) => {
             // Cannot convert without type table for ValTypeRef
             CanonicalValType::Result {
-                ok:  None,
+                ok: None,
                 err: None,
             }
         },
@@ -312,8 +299,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             // Serialize each field
             for (name, value_ref) in fields.iter() {
                 // Serialize the field name
-                let name_bytes = name.inner().as_bytes()
-                    .map_err(|_| Error::runtime_execution_error("Failed to get field name bytes"))?;
+                let name_bytes = name.inner().as_bytes().map_err(|_| {
+                    Error::runtime_execution_error("Failed to get field name bytes")
+                })?;
                 let name_len = name_bytes.len() as u32;
                 buffer.extend_from_slice(&name_len.to_le_bytes());
                 buffer.extend_from_slice(name_bytes.as_ref());
@@ -337,8 +325,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         },
         ComponentComponentValue::Variant(case_name, value_opt) => {
             // Serialize the case name
-            let name_bytes = case_name.inner().as_bytes()
-                .map_err(|_| Error::runtime_execution_error("Failed to get variant case name bytes"))?;
+            let name_bytes = case_name.inner().as_bytes().map_err(|_| {
+                Error::runtime_execution_error("Failed to get variant case name bytes")
+            })?;
             let name_len = name_bytes.len() as u32;
             buffer.extend_from_slice(&name_len.to_le_bytes());
             buffer.extend_from_slice(name_bytes.as_ref());
@@ -355,7 +344,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         },
         ComponentComponentValue::Enum(variant) => {
             // Serialize the enum variant
-            let variant_bytes = variant.inner().as_bytes()
+            let variant_bytes = variant
+                .inner()
+                .as_bytes()
                 .map_err(|_| Error::runtime_execution_error("Failed to get enum variant bytes"))?;
             let variant_len = variant_bytes.len() as u32;
             buffer.extend_from_slice(&variant_len.to_le_bytes());
@@ -416,7 +407,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
 
             // Serialize each flag name
             for (name, _) in flags.iter() {
-                let name_bytes = name.inner().as_bytes()
+                let name_bytes = name
+                    .inner()
+                    .as_bytes()
                     .map_err(|_| Error::runtime_execution_error("Failed to get flag name bytes"))?;
                 let name_len = name_bytes.len() as u32;
                 buffer.extend_from_slice(&name_len.to_le_bytes());
@@ -542,8 +535,9 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
             // Serialize each field
             for (name, value_ref) in fields.iter() {
                 // Serialize the field name
-                let name_bytes = name.inner().as_bytes()
-                    .map_err(|_| Error::runtime_execution_error("Failed to get field name bytes"))?;
+                let name_bytes = name.inner().as_bytes().map_err(|_| {
+                    Error::runtime_execution_error("Failed to get field name bytes")
+                })?;
                 writer.write_u32_le(name_bytes.len() as u32)?;
                 writer.write_all(name_bytes.as_ref())?;
 
@@ -563,8 +557,9 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         },
         ComponentComponentValue::Variant(case_name, value_opt) => {
             // Serialize the case name
-            let name_bytes = case_name.inner().as_bytes()
-                .map_err(|_| Error::runtime_execution_error("Failed to get variant case name bytes"))?;
+            let name_bytes = case_name.inner().as_bytes().map_err(|_| {
+                Error::runtime_execution_error("Failed to get variant case name bytes")
+            })?;
             writer.write_u32_le(name_bytes.len() as u32)?;
             writer.write_all(name_bytes.as_ref())?;
 
@@ -579,7 +574,9 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         },
         ComponentComponentValue::Enum(variant) => {
             // Serialize the enum variant
-            let variant_bytes = variant.inner().as_bytes()
+            let variant_bytes = variant
+                .inner()
+                .as_bytes()
                 .map_err(|_| Error::runtime_execution_error("Failed to get enum variant bytes"))?;
             writer.write_u32_le(variant_bytes.len() as u32)?;
             writer.write_all(variant_bytes.as_ref())?;
@@ -633,7 +630,9 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
 
             // Serialize each flag name
             for (name, _) in flags.iter() {
-                let name_bytes = name.inner().as_bytes()
+                let name_bytes = name
+                    .inner()
+                    .as_bytes()
                     .map_err(|_| Error::runtime_execution_error("Failed to get flag name bytes"))?;
                 writer.write_u32_le(name_bytes.len() as u32)?;
                 writer.write_all(name_bytes.as_ref())?;
@@ -836,37 +835,51 @@ pub fn deserialize_component_value(
             // TODO: ComponentValue::List expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
             // Return Void as placeholder since we can't construct proper List without these
-            Err(Error::parse_error("List deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "List deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Record(_fields) => {
             // TODO: ComponentValue::Record expects BoundedVec<(WasmName, ValueRef)> not Vec<(String, ComponentValue)>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Record deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Record deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Tuple(_types) => {
             // TODO: ComponentValue::Tuple expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Tuple deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Tuple deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Variant(_cases) => {
             // TODO: ComponentValue::Variant expects (WasmName, Option<ValueRef>) not (String, Option<Box<ComponentValue>>)
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Variant deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Variant deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Enum(_variants) => {
             // TODO: ComponentValue::Enum expects WasmName not String
             // This requires a memory provider
-            Err(Error::parse_error("Enum deserialization requires memory provider"))
+            Err(Error::parse_error(
+                "Enum deserialization requires memory provider",
+            ))
         },
         WrtFormatValType::Option(_inner_type) => {
             // TODO: ComponentValue::Option expects Option<ValueRef> not Option<Box<ComponentValue>>
             // This requires a ComponentValueStore
-            Err(Error::parse_error("Option deserialization requires value store"))
+            Err(Error::parse_error(
+                "Option deserialization requires value store",
+            ))
         },
         WrtFormatValType::Result(_result_type) => {
             // TODO: ComponentValue::Result expects Result<ValueRef, ValueRef> not Result<Box<ComponentValue>, Box<ComponentValue>>
             // This requires a ComponentValueStore
-            Err(Error::parse_error("Result deserialization requires value store"))
+            Err(Error::parse_error(
+                "Result deserialization requires value store",
+            ))
         },
         WrtFormatValType::Own(idx) => {
             if offset >= data.len() {
@@ -887,17 +900,23 @@ pub fn deserialize_component_value(
         WrtFormatValType::Flags(_names) => {
             // TODO: ComponentValue::Flags expects BoundedVec<(WasmName, bool)> not Vec<(String, bool)>
             // This requires a memory provider
-            Err(Error::parse_error("Flags deserialization requires memory provider"))
+            Err(Error::parse_error(
+                "Flags deserialization requires memory provider",
+            ))
         },
         WrtFormatValType::FixedList(_elem_type, _size) => {
             // TODO: ComponentValue::FixedList expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("FixedList deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "FixedList deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::ErrorContext => {
             // TODO: ComponentValue::ErrorContext expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("ErrorContext deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "ErrorContext deserialization requires memory provider and value store",
+            ))
         },
         // Handle any other unimplemented cases
         _ => Err(Error::validation_invalid_input(
@@ -951,11 +970,15 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         },
         WrtFormatValType::F32 => {
             let value = reader.read_f32_le()?;
-            Ok(ComponentComponentValue::F32(wrt_foundation::float_repr::FloatBits32::from_f32(value)))
+            Ok(ComponentComponentValue::F32(
+                wrt_foundation::float_repr::FloatBits32::from_f32(value),
+            ))
         },
         WrtFormatValType::F64 => {
             let value = reader.read_f64_le()?;
-            Ok(ComponentComponentValue::F64(wrt_foundation::float_repr::FloatBits64::from_f64(value)))
+            Ok(ComponentComponentValue::F64(
+                wrt_foundation::float_repr::FloatBits64::from_f64(value),
+            ))
         },
         WrtFormatValType::Char => {
             let value_u32 = reader.read_u32_le()?;
@@ -980,37 +1003,51 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         WrtFormatValType::List(_elem_type) => {
             // TODO: ComponentValue::List expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("List deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "List deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Record(_fields) => {
             // TODO: ComponentValue::Record expects BoundedVec<(WasmName, ValueRef)> not Vec<(String, ComponentValue)>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Record deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Record deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Tuple(_types) => {
             // TODO: ComponentValue::Tuple expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Tuple deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Tuple deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Variant(_cases) => {
             // TODO: ComponentValue::Variant expects (WasmName, Option<ValueRef>) not (String, Option<Box<ComponentValue>>)
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("Variant deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "Variant deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Enum(_variants) => {
             // TODO: ComponentValue::Enum expects WasmName not String
             // This requires a memory provider
-            Err(Error::parse_error("Enum deserialization requires memory provider"))
+            Err(Error::parse_error(
+                "Enum deserialization requires memory provider",
+            ))
         },
         WrtFormatValType::Option(_inner_type) => {
             // TODO: ComponentValue::Option expects Option<ValueRef> not Option<Box<ComponentValue>>
             // This requires a ComponentValueStore
-            Err(Error::parse_error("Option deserialization requires value store"))
+            Err(Error::parse_error(
+                "Option deserialization requires value store",
+            ))
         },
         WrtFormatValType::Result(_result_type) => {
             // TODO: ComponentValue::Result expects Result<ValueRef, ValueRef> not Result<Box<ComponentValue>, Box<ComponentValue>>
             // This requires a ComponentValueStore
-            Err(Error::parse_error("Result deserialization requires value store"))
+            Err(Error::parse_error(
+                "Result deserialization requires value store",
+            ))
         },
         WrtFormatValType::Own(idx) => {
             let value = reader.read_u32_le()?;
@@ -1023,17 +1060,23 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         WrtFormatValType::Flags(_names) => {
             // TODO: ComponentValue::Flags expects BoundedVec<(WasmName, bool)> not Vec<(String, bool)>
             // This requires a memory provider
-            Err(Error::parse_error("Flags deserialization requires memory provider"))
+            Err(Error::parse_error(
+                "Flags deserialization requires memory provider",
+            ))
         },
         WrtFormatValType::FixedList(_elem_type, _size) => {
             // TODO: ComponentValue::FixedList expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("FixedList deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "FixedList deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::ErrorContext => {
             // TODO: ComponentValue::ErrorContext expects BoundedVec<ValueRef> not Vec<ComponentValue>
             // This requires a memory provider and ComponentValueStore
-            Err(Error::parse_error("ErrorContext deserialization requires memory provider and value store"))
+            Err(Error::parse_error(
+                "ErrorContext deserialization requires memory provider and value store",
+            ))
         },
         WrtFormatValType::Void => {
             // Just read a marker byte
@@ -1169,8 +1212,7 @@ pub fn core_to_component_value(
     ty: &WrtFormatValType,
 ) -> wrt_error::Result<ComponentComponentValue> {
     use crate::type_conversion::{
-        core_value_to_types_componentvalue,
-        format_valtype_to_types_valtype,
+        core_value_to_types_componentvalue, format_valtype_to_types_valtype,
     };
 
     // First, convert the format value type to a types value type
@@ -1256,5 +1298,4 @@ pub fn size_in_bytes(ty: &WrtFormatValType) -> usize {
         // Default size for any unhandled types
         _ => 4,
     }
-
 }

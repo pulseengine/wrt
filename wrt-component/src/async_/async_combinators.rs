@@ -10,46 +10,30 @@ use core::mem::ManuallyDrop as Weak; // Placeholder for no_std
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
+    task::{Context, Poll},
     time::Duration,
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    Arc, CrateId, Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     safe_managed_alloc,
-    Arc,
-    CrateId,
-    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
-        task_manager_async_bridge::{
-            ComponentAsyncTaskType,
-            TaskManagerAsyncBridge,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
+        task_manager_async_bridge::{ComponentAsyncTaskType, TaskManagerAsyncBridge},
     },
     bounded_component_infra::ComponentProvider,
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder TaskId when threading is not available
@@ -68,20 +52,18 @@ const TIMEOUT_FUEL: u64 = 20;
 /// Async combinator manager
 pub struct AsyncCombinators {
     /// Bridge for task management
-    bridge:             Arc<Mutex<TaskManagerAsyncBridge>>,
+    bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active combinator operations
     active_combinators: BoundedMap<CombinatorId, CombinatorOperation, 512>,
     /// Next combinator ID
     next_combinator_id: AtomicU64,
     /// Combinator statistics
-    combinator_stats:   CombinatorStatistics,
+    combinator_stats: CombinatorStatistics,
 }
 
 /// Combinator operation identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct CombinatorId(u64);
-
 
 impl wrt_foundation::traits::Checksummable for CombinatorId {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
@@ -111,46 +93,46 @@ impl wrt_foundation::traits::FromBytes for CombinatorId {
 /// Combinator operation
 #[derive(Debug)]
 struct CombinatorOperation {
-    id:              CombinatorId,
-    component_id:    ComponentInstanceId,
+    id: CombinatorId,
+    component_id: ComponentInstanceId,
     combinator_type: CombinatorType,
-    task_id:         Option<TaskId>,
-    created_at:      u64,
-    fuel_consumed:   AtomicU64,
-    completed:       AtomicBool,
+    task_id: Option<TaskId>,
+    created_at: u64,
+    fuel_consumed: AtomicU64,
+    completed: AtomicBool,
 }
 
 /// Type of combinator operation
 pub enum CombinatorType {
     /// Select first ready future
     Select {
-        futures:        Vec<BoxedFuture>,
+        futures: Vec<BoxedFuture>,
         selected_index: Option<usize>,
     },
     /// Join all futures
     Join {
-        futures:         Vec<BoxedFuture>,
-        results:         Vec<Option<WrtComponentValue<ComponentProvider>>>,
+        futures: Vec<BoxedFuture>,
+        results: Vec<Option<WrtComponentValue<ComponentProvider>>>,
         completed_count: AtomicU32,
     },
     /// Race futures (first to complete)
     Race {
-        futures:       Vec<BoxedFuture>,
-        winner_index:  Option<usize>,
+        futures: Vec<BoxedFuture>,
+        winner_index: Option<usize>,
         winner_result: Option<WrtComponentValue<ComponentProvider>>,
     },
     /// Timeout wrapper
     Timeout {
-        future:     BoxedFuture,
+        future: BoxedFuture,
         timeout_ms: u64,
         started_at: u64,
-        timed_out:  AtomicBool,
+        timed_out: AtomicBool,
     },
     /// Try join (all or error)
     TryJoin {
         futures: Vec<BoxedFuture>,
         results: Vec<Option<core::result::Result<WrtComponentValue<ComponentProvider>, Error>>>,
-        failed:  AtomicBool,
+        failed: AtomicBool,
     },
     /// Zip futures together
     Zip {
@@ -164,36 +146,58 @@ pub enum CombinatorType {
 impl core::fmt::Debug for CombinatorType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Select { futures, selected_index } => f
+            Self::Select {
+                futures,
+                selected_index,
+            } => f
                 .debug_struct("Select")
                 .field("futures_count", &futures.len())
                 .field("selected_index", selected_index)
                 .finish(),
-            Self::Join { futures, results, completed_count } => f
+            Self::Join {
+                futures,
+                results,
+                completed_count,
+            } => f
                 .debug_struct("Join")
                 .field("futures_count", &futures.len())
                 .field("results", results)
                 .field("completed_count", &completed_count.load(Ordering::Relaxed))
                 .finish(),
-            Self::Race { futures, winner_index, winner_result } => f
+            Self::Race {
+                futures,
+                winner_index,
+                winner_result,
+            } => f
                 .debug_struct("Race")
                 .field("futures_count", &futures.len())
                 .field("winner_index", winner_index)
                 .field("winner_result", winner_result)
                 .finish(),
-            Self::Timeout { timeout_ms, started_at, timed_out, .. } => f
+            Self::Timeout {
+                timeout_ms,
+                started_at,
+                timed_out,
+                ..
+            } => f
                 .debug_struct("Timeout")
                 .field("timeout_ms", timeout_ms)
                 .field("started_at", started_at)
                 .field("timed_out", &timed_out.load(Ordering::Relaxed))
                 .finish(),
-            Self::TryJoin { futures, results, failed } => f
+            Self::TryJoin {
+                futures,
+                results,
+                failed,
+            } => f
                 .debug_struct("TryJoin")
                 .field("futures_count", &futures.len())
                 .field("results", results)
                 .field("failed", &failed.load(Ordering::Relaxed))
                 .finish(),
-            Self::Zip { result_a, result_b, .. } => f
+            Self::Zip {
+                result_a, result_b, ..
+            } => f
                 .debug_struct("Zip")
                 .field("result_a", result_a)
                 .field("result_b", result_b)
@@ -227,21 +231,25 @@ impl CombinatorType {
 }
 
 /// Boxed future type for combinators
-type BoxedFuture =
-    Pin<Box<dyn CoreFuture<Output = core::result::Result<WrtComponentValue<ComponentProvider>, Error>> + Send>>;
+type BoxedFuture = Pin<
+    Box<
+        dyn CoreFuture<Output = core::result::Result<WrtComponentValue<ComponentProvider>, Error>>
+            + Send,
+    >,
+>;
 
 /// Combinator statistics
 #[derive(Debug, Default)]
 struct CombinatorStatistics {
-    total_selects:        AtomicU64,
-    completed_selects:    AtomicU64,
-    total_joins:          AtomicU64,
-    completed_joins:      AtomicU64,
-    total_races:          AtomicU64,
-    completed_races:      AtomicU64,
-    total_timeouts:       AtomicU64,
+    total_selects: AtomicU64,
+    completed_selects: AtomicU64,
+    total_joins: AtomicU64,
+    completed_joins: AtomicU64,
+    total_races: AtomicU64,
+    completed_races: AtomicU64,
+    total_timeouts: AtomicU64,
     timed_out_operations: AtomicU64,
-    total_fuel_consumed:  AtomicU64,
+    total_fuel_consumed: AtomicU64,
 }
 
 impl AsyncCombinators {
@@ -311,7 +319,7 @@ impl AsyncCombinators {
                     // Simulate select operation
                     // In real implementation, would poll all futures and return first ready
                     Ok(vec![WrtComponentValue::<ComponentProvider>::U32(0)]) // Index of selected
-                                                        // future
+                    // future
                 },
                 ComponentAsyncTaskType::AsyncOperation,
                 128, // Normal priority
@@ -441,7 +449,10 @@ impl AsyncCombinators {
                 async move {
                     // Simulate race operation
                     // In real implementation, would poll all futures and return first ready
-                    Ok(vec![WrtComponentValue::<ComponentProvider>::U32(0), WrtComponentValue::<ComponentProvider>::U32(42)])
+                    Ok(vec![
+                        WrtComponentValue::<ComponentProvider>::U32(0),
+                        WrtComponentValue::<ComponentProvider>::U32(42),
+                    ])
                     // Index and result
                 },
                 ComponentAsyncTaskType::AsyncOperation,
@@ -610,7 +621,10 @@ impl AsyncCombinators {
                 async move {
                     // Simulate zip operation
                     // In real implementation, would poll both futures until both complete
-                    Ok(vec![WrtComponentValue::<ComponentProvider>::U32(1), WrtComponentValue::<ComponentProvider>::U32(2)])
+                    Ok(vec![
+                        WrtComponentValue::<ComponentProvider>::U32(1),
+                        WrtComponentValue::<ComponentProvider>::U32(2),
+                    ])
                     // (a, b) tuple
                 },
                 ComponentAsyncTaskType::AsyncOperation,
@@ -629,10 +643,7 @@ impl AsyncCombinators {
     }
 
     /// Check combinator operation status
-    pub fn check_combinator_status(
-        &self,
-        combinator_id: CombinatorId,
-    ) -> Result<CombinatorStatus> {
+    pub fn check_combinator_status(&self, combinator_id: CombinatorId) -> Result<CombinatorStatus> {
         let operation = self
             .active_combinators
             .get(&combinator_id)
@@ -698,18 +709,18 @@ impl AsyncCombinators {
     /// Get combinator statistics
     pub fn get_combinator_statistics(&self) -> CombinatorStats {
         CombinatorStats {
-            total_selects:        self.combinator_stats.total_selects.load(Ordering::Relaxed),
-            completed_selects:    self.combinator_stats.completed_selects.load(Ordering::Relaxed),
-            total_joins:          self.combinator_stats.total_joins.load(Ordering::Relaxed),
-            completed_joins:      self.combinator_stats.completed_joins.load(Ordering::Relaxed),
-            total_races:          self.combinator_stats.total_races.load(Ordering::Relaxed),
-            completed_races:      self.combinator_stats.completed_races.load(Ordering::Relaxed),
-            total_timeouts:       self.combinator_stats.total_timeouts.load(Ordering::Relaxed),
+            total_selects: self.combinator_stats.total_selects.load(Ordering::Relaxed),
+            completed_selects: self.combinator_stats.completed_selects.load(Ordering::Relaxed),
+            total_joins: self.combinator_stats.total_joins.load(Ordering::Relaxed),
+            completed_joins: self.combinator_stats.completed_joins.load(Ordering::Relaxed),
+            total_races: self.combinator_stats.total_races.load(Ordering::Relaxed),
+            completed_races: self.combinator_stats.completed_races.load(Ordering::Relaxed),
+            total_timeouts: self.combinator_stats.total_timeouts.load(Ordering::Relaxed),
             timed_out_operations: self
                 .combinator_stats
                 .timed_out_operations
                 .load(Ordering::Relaxed),
-            active_combinators:   self.active_combinators.len() as u64,
+            active_combinators: self.active_combinators.len() as u64,
         }
     }
 
@@ -754,36 +765,36 @@ impl AsyncCombinators {
 /// Combinator operation status
 #[derive(Debug, Clone)]
 pub struct CombinatorStatus {
-    pub combinator_id:   CombinatorId,
-    pub component_id:    ComponentInstanceId,
+    pub combinator_id: CombinatorId,
+    pub component_id: ComponentInstanceId,
     pub combinator_kind: CombinatorKind,
-    pub is_ready:        bool,
-    pub completed:       bool,
-    pub fuel_consumed:   u64,
-    pub created_at:      u64,
+    pub is_ready: bool,
+    pub completed: bool,
+    pub fuel_consumed: u64,
+    pub created_at: u64,
 }
 
 /// Combinator poll result
 #[derive(Debug, Clone)]
 pub struct CombinatorPollResult {
-    pub ready_combinators:     usize,
+    pub ready_combinators: usize,
     pub completed_combinators: usize,
-    pub total_fuel_consumed:   u64,
-    pub active_combinators:    usize,
+    pub total_fuel_consumed: u64,
+    pub active_combinators: usize,
 }
 
 /// Combinator statistics
 #[derive(Debug, Clone)]
 pub struct CombinatorStats {
-    pub total_selects:        u64,
-    pub completed_selects:    u64,
-    pub total_joins:          u64,
-    pub completed_joins:      u64,
-    pub total_races:          u64,
-    pub completed_races:      u64,
-    pub total_timeouts:       u64,
+    pub total_selects: u64,
+    pub completed_selects: u64,
+    pub total_joins: u64,
+    pub completed_joins: u64,
+    pub total_races: u64,
+    pub completed_races: u64,
+    pub total_timeouts: u64,
     pub timed_out_operations: u64,
-    pub active_combinators:   u64,
+    pub active_combinators: u64,
 }
 
 /// Helper functions for creating common combinator patterns
@@ -801,7 +812,10 @@ pub fn create_timeout_future(duration_ms: u64) -> BoxedFuture {
 }
 
 /// Create a simple delay future
-pub fn create_delay_future(delay_ms: u64, value: WrtComponentValue<ComponentProvider>) -> BoxedFuture {
+pub fn create_delay_future(
+    delay_ms: u64,
+    value: WrtComponentValue<ComponentProvider>,
+) -> BoxedFuture {
     Box::pin(async move {
         // Simulate delay
         Ok(value)

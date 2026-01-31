@@ -18,47 +18,33 @@ use std::string::String;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type String = wrt_foundation::bounded::BoundedString<256>;
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-    },
+    MemoryProvider,
+    bounded::BoundedString,
     budget_aware_provider::CrateId,
     collections::StaticVec as BoundedVec,
     safe_managed_alloc,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
-    verification::Checksum,
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     values::Value,
-    MemoryProvider,
+    verification::Checksum,
 };
 
 #[cfg(not(feature = "std"))]
 use crate::types::Value as ComponentValue;
 use crate::{
     async_::async_types::{
-        ErrorContext,
-        FutureHandle,
-        FutureState,
-        StreamHandle,
-        StreamState,
-        Waitable,
-        WaitableSet,
+        ErrorContext, FutureHandle, FutureState, StreamHandle, StreamState, Waitable, WaitableSet,
     },
     prelude::*,
     types::ValType,
 };
 
 /// Task handle for task cancellation operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct TaskHandle(pub u32);
-
 
 impl Checksummable for TaskHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -86,10 +72,8 @@ impl FromBytes for TaskHandle {
 }
 
 /// Subtask handle for subtask cancellation operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct SubtaskHandle(pub u32);
-
 
 impl Checksummable for SubtaskHandle {
     fn update_checksum(&self, checksum: &mut Checksum) {
@@ -168,30 +152,27 @@ pub struct TaskRegistry {
     #[cfg(not(feature = "std"))]
     subtasks: BoundedVec<(SubtaskHandle, SubtaskInfo), 1024>,
 
-    next_task_id:    u32,
+    next_task_id: u32,
     next_subtask_id: u32,
 }
 
 /// Information about a tracked task
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaskInfo {
-    pub handle:        TaskHandle,
-    pub state:         TaskState,
+    pub handle: TaskHandle,
+    pub state: TaskState,
     pub future_handle: Option<FutureHandle>,
     pub stream_handle: Option<StreamHandle>,
-    pub parent_task:   Option<TaskHandle>,
+    pub parent_task: Option<TaskHandle>,
     #[cfg(feature = "std")]
-    pub subtasks:      std::vec::Vec<SubtaskHandle>,
+    pub subtasks: std::vec::Vec<SubtaskHandle>,
     #[cfg(not(feature = "std"))]
-    pub subtasks:      BoundedVec<SubtaskHandle, 64>,
+    pub subtasks: BoundedVec<SubtaskHandle, 64>,
     /// Task-local context storage
     #[cfg(feature = "std")]
-    pub context:       std::collections::HashMap<String, ComponentValue<ComponentProvider>>,
+    pub context: std::collections::HashMap<String, ComponentValue<ComponentProvider>>,
     #[cfg(not(feature = "std"))]
-    pub context: BoundedVec<
-        (BoundedString<64>, ComponentValue),
-        64,
-    >,
+    pub context: BoundedVec<(BoundedString<64>, ComponentValue), 64>,
 }
 
 impl Eq for TaskInfo {}
@@ -251,9 +232,9 @@ impl FromBytes for TaskInfo {
 /// Information about a tracked subtask
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubtaskInfo {
-    pub handle:        SubtaskHandle,
-    pub state:         TaskState,
-    pub parent_task:   TaskHandle,
+    pub handle: SubtaskHandle,
+    pub state: TaskState,
+    pub parent_task: TaskHandle,
     pub future_handle: Option<FutureHandle>,
     pub stream_handle: Option<StreamHandle>,
 }
@@ -326,20 +307,16 @@ impl TaskRegistry {
     pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            tasks:                              std::collections::HashMap::new(),
+            tasks: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            tasks: {
-                BoundedVec::new()
-            },
+            tasks: { BoundedVec::new() },
 
             #[cfg(feature = "std")]
-            subtasks:                              std::collections::HashMap::new(),
+            subtasks: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            subtasks: {
-                BoundedVec::new()
-            },
+            subtasks: { BoundedVec::new() },
 
-            next_task_id:    1,
+            next_task_id: 1,
             next_subtask_id: 1,
         })
     }
@@ -362,15 +339,11 @@ impl TaskRegistry {
             #[cfg(feature = "std")]
             subtasks: std::vec::Vec::new(),
             #[cfg(not(feature = "std"))]
-            subtasks: {
-                BoundedVec::new()
-            },
+            subtasks: { BoundedVec::new() },
             #[cfg(feature = "std")]
             context: std::collections::HashMap::new(),
             #[cfg(not(feature = "std"))]
-            context: {
-                BoundedVec::new()
-            },
+            context: { BoundedVec::new() },
         };
 
         #[cfg(feature = "std")]
@@ -620,7 +593,11 @@ impl TaskRegistry {
 
     /// Get a context value for a task
     #[cfg(feature = "std")]
-    pub fn get_task_context(&self, handle: TaskHandle, key: &str) -> Option<ComponentValue<ComponentProvider>> {
+    pub fn get_task_context(
+        &self,
+        handle: TaskHandle,
+        key: &str,
+    ) -> Option<ComponentValue<ComponentProvider>> {
         if let Some(task_info) = self.tasks.get(&handle) {
             task_info.context.get(key).cloned()
         } else {
@@ -669,10 +646,7 @@ impl TaskRegistry {
 
 /// ASIL-D safe global task registry
 #[cfg(feature = "std")]
-use std::sync::{
-    Mutex,
-    OnceLock,
-};
+use std::sync::{Mutex, OnceLock};
 #[cfg(feature = "std")]
 static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new();
 
@@ -701,9 +675,9 @@ pub mod builtins {
         let handle = TaskHandle(task_handle);
 
         let registry_mutex = get_task_registry()?;
-        let mut registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let mut registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
         let result = registry.cancel_task(handle);
 
         match result {
@@ -780,9 +754,9 @@ pub mod builtins {
         let stream_h = stream_handle.map(StreamHandle);
 
         let registry_mutex = get_task_registry()?;
-        let mut registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let mut registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         match registry.register_task(future_h, stream_h) {
             Ok(handle) => Ok(ComponentValue::U32(handle.0)),
@@ -827,9 +801,9 @@ pub mod builtins {
         let stream_h = stream_handle.map(StreamHandle);
 
         let registry_mutex = get_task_registry()?;
-        let mut registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let mut registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         match registry.register_subtask(parent_h, future_h, stream_h) {
             Ok(handle) => Ok(ComponentValue::U32(handle.0)),
@@ -870,9 +844,9 @@ pub mod builtins {
         let handle = TaskHandle(task_handle);
 
         let registry_mutex = get_task_registry()?;
-        let registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(task_info) = registry.tasks.get(&handle) {
             let status = match task_info.state {
@@ -914,9 +888,9 @@ pub mod builtins {
         let handle = SubtaskHandle(subtask_handle);
 
         let registry_mutex = get_task_registry()?;
-        let registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(subtask_info) = registry.subtasks.get(&handle) {
             let status = match subtask_info.state {
@@ -956,9 +930,9 @@ pub mod builtins {
     #[cfg(feature = "std")]
     pub fn context_get(key: &str) -> Result<ComponentValue<ComponentProvider>> {
         let registry_mutex = get_task_registry()?;
-        let registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(current_task) = registry.get_current_task() {
             if let Some(value) = registry.get_task_context(current_task, key) {
@@ -989,11 +963,14 @@ pub mod builtins {
     /// `context.set` canonical built-in
     /// Sets a value in the current task's context storage
     #[cfg(feature = "std")]
-    pub fn context_set(key: &str, value: ComponentValue<ComponentProvider>) -> Result<ComponentValue<ComponentProvider>> {
+    pub fn context_set(
+        key: &str,
+        value: ComponentValue<ComponentProvider>,
+    ) -> Result<ComponentValue<ComponentProvider>> {
         let registry_mutex = get_task_registry()?;
-        let mut registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let mut registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(current_task) = registry.get_current_task() {
             registry.set_task_context(current_task, key, value)?;
@@ -1028,9 +1005,9 @@ pub mod builtins {
     #[cfg(feature = "std")]
     pub fn context_has(key: &str) -> Result<ComponentValue<ComponentProvider>> {
         let registry_mutex = get_task_registry()?;
-        let registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(current_task) = registry.get_current_task() {
             let has_key = registry.get_task_context(current_task, key).is_some();
@@ -1057,9 +1034,9 @@ pub mod builtins {
     #[cfg(feature = "std")]
     pub fn context_clear() -> Result<ComponentValue<ComponentProvider>> {
         let registry_mutex = get_task_registry()?;
-        let mut registry = registry_mutex.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire task registry lock")
-        })?;
+        let mut registry = registry_mutex
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire task registry lock"))?;
 
         if let Some(current_task) = registry.get_current_task() {
             if let Some(task_info) = registry.tasks.get_mut(&current_task) {

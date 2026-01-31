@@ -9,77 +9,41 @@ use core::{
     future::Future,
     mem,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    sync::Arc,
-    vec::Vec,
-};
+use std::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     fmt,
     future::Future,
     mem,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 // Enable vec! macro for no_std
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    vec,
-};
+use alloc::{boxed::Box, vec};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::BoundedString,
-};
+use wrt_error::{Error, ErrorCategory, Result};
+use wrt_foundation::{bounded::BoundedString, collections::StaticVec as BoundedVec};
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-};
+use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
 
 #[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    Task,
-    TaskContext,
-    TaskId,
-    TaskState,
-};
+use crate::threading::task_manager::{Task, TaskContext, TaskId, TaskState};
 #[cfg(not(feature = "component-model-threading"))]
 use crate::types::TaskId;
 use crate::{
     async_::async_types::{
-        AsyncReadResult,
-        Future as ComponentFuture,
-        FutureHandle,
-        FutureState,
-        Stream,
-        StreamHandle,
-        StreamState,
+        AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream,
+        StreamHandle, StreamState,
     },
     prelude::*,
-    types::{
-        ValType,
-        Value,
-    },
+    types::{ValType, Value},
 };
 
 /// Maximum number of concurrent executions in no_std
@@ -95,17 +59,13 @@ pub struct AsyncExecutionEngine {
     #[cfg(feature = "std")]
     executions: Vec<AsyncExecution>,
     #[cfg(not(any(feature = "std",)))]
-    executions: BoundedVec<
-        AsyncExecution,
-        MAX_CONCURRENT_EXECUTIONS,
-    >,
+    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS>,
 
     /// Execution context pool for reuse
     #[cfg(feature = "std")]
     context_pool: Vec<ExecutionContext>,
     #[cfg(not(any(feature = "std",)))]
-    context_pool:
-        BoundedVec<ExecutionContext, 16>,
+    context_pool: BoundedVec<ExecutionContext, 16>,
 
     /// Next execution ID
     next_execution_id: u64,
@@ -158,10 +118,7 @@ pub struct ExecutionContext {
     #[cfg(feature = "std")]
     pub call_stack: Vec<CallFrame>,
     #[cfg(not(any(feature = "std",)))]
-    pub call_stack: BoundedVec<
-        CallFrame,
-        MAX_ASYNC_CALL_DEPTH,
-    >,
+    pub call_stack: BoundedVec<CallFrame, MAX_ASYNC_CALL_DEPTH>,
 
     /// Local variables
     #[cfg(feature = "std")]
@@ -303,7 +260,7 @@ pub enum AsyncExecutionOperation {
     /// Writing to a stream
     StreamWrite {
         handle: StreamHandle,
-        data:   ComponentVec<u8>,
+        data: ComponentVec<u8>,
     },
 
     /// Getting a future value
@@ -318,7 +275,7 @@ pub enum AsyncExecutionOperation {
     /// Creating a subtask
     SpawnSubtask {
         function: BoundedString<128>,
-        args:     ComponentVec<Value>,
+        args: ComponentVec<Value>,
     },
 }
 
@@ -381,21 +338,17 @@ impl AsyncExecutionEngine {
     pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
-            executions:                                    Vec::new(),
+            executions: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            executions:                                    {
-                BoundedVec::new()
-            },
+            executions: { BoundedVec::new() },
 
             #[cfg(feature = "std")]
-            context_pool:                                    Vec::new(),
+            context_pool: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            context_pool:                                    {
-                BoundedVec::new()
-            },
+            context_pool: { BoundedVec::new() },
 
             next_execution_id: 1,
-            stats:             ExecutionStats::new(),
+            stats: ExecutionStats::new(),
         })
     }
 
@@ -423,9 +376,7 @@ impl AsyncExecutionEngine {
             #[cfg(feature = "std")]
             children: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            children: {
-                BoundedVec::new()
-            },
+            children: { BoundedVec::new() },
         };
 
         #[cfg(feature = "std")]
@@ -636,9 +587,7 @@ impl AsyncExecutionEngine {
         let parent_index = self.find_execution_index(parent_id)?;
         #[cfg(feature = "std")]
         {
-            self.executions[parent_index]
-                .children
-                .push(child_id);
+            self.executions[parent_index].children.push(child_id);
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -663,12 +612,12 @@ impl AsyncExecutionEngine {
         // Push call frame
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::try_from_str(name).map_err(|_| {
+            function: BoundedString::try_from_str(name).map_err(|_| {
                 Error::runtime_execution_error("Failed to create function name BoundedString")
             })?,
-            return_ip:     0,
+            return_ip: 0,
             stack_pointer: 0,
-            async_state:   FrameAsyncState::Sync,
+            async_state: FrameAsyncState::Sync,
         };
 
         #[cfg(feature = "std")]
@@ -688,7 +637,7 @@ impl AsyncExecutionEngine {
 
         // Simulate execution completing
         let result = ExecutionResult {
-            values:                {
+            values: {
                 #[cfg(feature = "std")]
                 {
                     vec![Value::U32(42)]
@@ -702,8 +651,8 @@ impl AsyncExecutionEngine {
                     values
                 }
             }, // Placeholder result
-            execution_time_us:     100,
-            memory_allocated:      0,
+            execution_time_us: 100,
+            memory_allocated: 0,
             instructions_executed: 1000,
         };
 
@@ -722,20 +671,17 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::try_from_str("stream.read").map_err(|_| {
+            function: BoundedString::try_from_str("stream.read").map_err(|_| {
                 Error::runtime_execution_error("Failed to create stream.read BoundedString")
             })?,
-            return_ip:     0,
+            return_ip: 0,
             stack_pointer: 0,
-            async_state:   FrameAsyncState::AwaitingStream(handle),
+            async_state: FrameAsyncState::AwaitingStream(handle),
         };
 
         #[cfg(feature = "std")]
         {
-            self.executions[execution_index]
-                .context
-                .call_stack
-                .push(frame);
+            self.executions[execution_index].context.call_stack.push(frame);
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -758,7 +704,7 @@ impl AsyncExecutionEngine {
         // Write data to stream
         // For now, we simulate immediate completion
         let result = ExecutionResult {
-            values:                {
+            values: {
                 #[cfg(feature = "std")]
                 {
                     vec![Value::U32(data.len() as u32)]
@@ -772,8 +718,8 @@ impl AsyncExecutionEngine {
                     values
                 }
             },
-            execution_time_us:     50,
-            memory_allocated:      0,
+            execution_time_us: 50,
+            memory_allocated: 0,
             instructions_executed: 100,
         };
 
@@ -791,20 +737,17 @@ impl AsyncExecutionEngine {
         // For now, we simulate waiting
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::try_from_str("future.get").map_err(|_| {
+            function: BoundedString::try_from_str("future.get").map_err(|_| {
                 Error::runtime_execution_error("Failed to create future.get BoundedString")
             })?,
-            return_ip:     0,
+            return_ip: 0,
             stack_pointer: 0,
-            async_state:   FrameAsyncState::AwaitingFuture(handle),
+            async_state: FrameAsyncState::AwaitingFuture(handle),
         };
 
         #[cfg(feature = "std")]
         {
-            self.executions[execution_index]
-                .context
-                .call_stack
-                .push(frame);
+            self.executions[execution_index].context.call_stack.push(frame);
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -827,7 +770,7 @@ impl AsyncExecutionEngine {
         // Set future value
         // For now, we simulate immediate completion
         let result = ExecutionResult {
-            values:                {
+            values: {
                 #[cfg(feature = "std")]
                 {
                     vec![]
@@ -837,8 +780,8 @@ impl AsyncExecutionEngine {
                     ComponentVec::new()
                 }
             },
-            execution_time_us:     10,
-            memory_allocated:      0,
+            execution_time_us: 10,
+            memory_allocated: 0,
             instructions_executed: 50,
         };
 
@@ -855,20 +798,17 @@ impl AsyncExecutionEngine {
         // Wait for multiple operations
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let frame = CallFrame {
-            function:      BoundedString::try_from_str("wait.multiple").map_err(|_| {
+            function: BoundedString::try_from_str("wait.multiple").map_err(|_| {
                 Error::runtime_execution_error("Failed to create wait.multiple BoundedString")
             })?,
-            return_ip:     0,
+            return_ip: 0,
             stack_pointer: 0,
-            async_state:   FrameAsyncState::AwaitingMultiple(wait_set.clone()),
+            async_state: FrameAsyncState::AwaitingMultiple(wait_set.clone()),
         };
 
         #[cfg(feature = "std")]
         {
-            self.executions[execution_index]
-                .context
-                .call_stack
-                .push(frame);
+            self.executions[execution_index].context.call_stack.push(frame);
         }
         #[cfg(not(any(feature = "std",)))]
         {
@@ -895,7 +835,9 @@ impl AsyncExecutionEngine {
         let provider = safe_managed_alloc!(512, CrateId::Component)?;
         let subtask_op = AsyncExecutionOperation::FunctionCall {
             name: BoundedString::try_from_str(function).map_err(|_| {
-                Error::runtime_execution_error("Failed to create subtask function name BoundedString")
+                Error::runtime_execution_error(
+                    "Failed to create subtask function name BoundedString",
+                )
             })?,
             args: {
                 #[cfg(feature = "std")]
@@ -920,7 +862,7 @@ impl AsyncExecutionEngine {
 
         // Return subtask handle as result
         let result = ExecutionResult {
-            values:                {
+            values: {
                 #[cfg(feature = "std")]
                 {
                     vec![Value::U64(subtask_id.0)]
@@ -934,8 +876,8 @@ impl AsyncExecutionEngine {
                     values
                 }
             },
-            execution_time_us:     20,
-            memory_allocated:      0,
+            execution_time_us: 20,
+            memory_allocated: 0,
             instructions_executed: 100,
         };
 
@@ -977,15 +919,11 @@ impl ExecutionContext {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            call_stack: {
-                BoundedVec::new()
-            },
+            call_stack: { BoundedVec::new() },
             #[cfg(feature = "std")]
             locals: Vec::new(),
             #[cfg(not(any(feature = "std",)))]
-            locals: {
-                BoundedVec::new()
-            },
+            locals: { BoundedVec::new() },
             memory_views: MemoryViews::new(),
         })
     }
@@ -1005,23 +943,23 @@ impl MemoryViews {
     /// Create new memory views
     pub fn new() -> Self {
         Self {
-            memory_base:  0,
-            memory_size:  0,
+            memory_base: 0,
+            memory_size: 0,
             stack_region: MemoryRegion {
-                start:       0,
-                size:        0,
+                start: 0,
+                size: 0,
                 permissions: MemoryPermissions {
-                    read:    true,
-                    write:   true,
+                    read: true,
+                    write: true,
                     execute: false,
                 },
             },
-            heap_region:  MemoryRegion {
-                start:       0,
-                size:        0,
+            heap_region: MemoryRegion {
+                start: 0,
+                size: 0,
                 permissions: MemoryPermissions {
-                    read:    true,
-                    write:   true,
+                    read: true,
+                    write: true,
                     execute: false,
                 },
             },
@@ -1033,12 +971,12 @@ impl ExecutionStats {
     /// Create new execution statistics
     pub fn new() -> Self {
         Self {
-            executions_started:    0,
-            executions_completed:  0,
-            executions_failed:     0,
-            executions_cancelled:  0,
-            subtasks_spawned:      0,
-            async_operations:      0,
+            executions_started: 0,
+            executions_completed: 0,
+            executions_failed: 0,
+            executions_cancelled: 0,
+            subtasks_spawned: 0,
+            async_operations: 0,
             avg_execution_time_us: 0,
         }
     }
@@ -1077,5 +1015,4 @@ impl Future for AsyncExecutionFuture {
         // For now, we return pending
         Poll::Pending
     }
-
 }

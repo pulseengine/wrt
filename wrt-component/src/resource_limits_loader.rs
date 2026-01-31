@@ -11,10 +11,7 @@ extern crate alloc;
 use alloc::format;
 
 #[cfg(feature = "decoder")]
-use wrt_decoder::resource_limits_section::{
-    ResourceLimitsSection,
-    RESOURCE_LIMITS_SECTION_NAME,
-};
+use wrt_decoder::resource_limits_section::{RESOURCE_LIMITS_SECTION_NAME, ResourceLimitsSection};
 
 // Placeholder types when decoder is not available
 #[cfg(not(feature = "decoder"))]
@@ -41,19 +38,11 @@ impl ResourceLimitsSection {
 }
 #[cfg(not(feature = "decoder"))]
 pub const RESOURCE_LIMITS_SECTION_NAME: &str = "resource_limits";
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
+use wrt_error::{Error, ErrorCategory, codes};
 use wrt_foundation::NoStdProvider;
 
 use crate::{
-    async_::fuel_async_executor::{
-        ASILExecutionConfig,
-        ASILExecutionMode,
-        ExecutionLimitsConfig,
-    },
+    async_::fuel_async_executor::{ASILExecutionConfig, ASILExecutionMode, ExecutionLimitsConfig},
     prelude::*,
 };
 
@@ -204,20 +193,22 @@ fn convert_to_asil_config(
     // Create execution limits config
     let defaults = ExecutionLimitsConfig::default_for_asil(asil_mode);
     let execution_limits = ExecutionLimitsConfig {
-        max_fuel_per_step:         limits.max_fuel_per_step.or(defaults.max_fuel_per_step),
-        max_memory_usage:          limits.max_memory_usage.or(defaults.max_memory_usage),
-        max_call_depth:            limits.max_call_depth.or(defaults.max_call_depth),
-        max_stack_depth:           limits.max_call_depth.or(defaults.max_stack_depth),
-        max_instructions_per_step: limits.max_instructions_per_step.or(defaults.max_instructions_per_step),
-        max_execution_slice_ms:    limits.max_execution_slice_ms.or(defaults.max_execution_slice_ms),
-        max_async_operations:      defaults.max_async_operations,
-        max_waitables_per_task:    defaults.max_waitables_per_task,
-        max_concurrent_tasks:      defaults.max_concurrent_tasks,
-        max_yields_per_step:       defaults.max_yields_per_step,
-        limit_source:              if binary_hash.is_some() {
+        max_fuel_per_step: limits.max_fuel_per_step.or(defaults.max_fuel_per_step),
+        max_memory_usage: limits.max_memory_usage.or(defaults.max_memory_usage),
+        max_call_depth: limits.max_call_depth.or(defaults.max_call_depth),
+        max_stack_depth: limits.max_call_depth.or(defaults.max_stack_depth),
+        max_instructions_per_step: limits
+            .max_instructions_per_step
+            .or(defaults.max_instructions_per_step),
+        max_execution_slice_ms: limits.max_execution_slice_ms.or(defaults.max_execution_slice_ms),
+        max_async_operations: defaults.max_async_operations,
+        max_waitables_per_task: defaults.max_waitables_per_task,
+        max_concurrent_tasks: defaults.max_concurrent_tasks,
+        max_yields_per_step: defaults.max_yields_per_step,
+        limit_source: if binary_hash.is_some() {
             use crate::async_::fuel_async_executor::LimitSource;
             LimitSource::BinaryMetadata {
-                section_name:  String::from("wrt.resource_limits"),
+                section_name: String::from("wrt.resource_limits"),
                 verified_hash: binary_hash.unwrap(),
             }
         } else {
@@ -227,8 +218,8 @@ fn convert_to_asil_config(
 
     // Create ASIL execution config
     let config = ASILExecutionConfig {
-        mode:                 asil_mode,
-        limits:               execution_limits,
+        mode: asil_mode,
+        limits: execution_limits,
         qualified_for_binary: binary_hash.map(|h| format!("{:?}", h)),
     };
 

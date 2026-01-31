@@ -204,19 +204,19 @@ impl StringTranscoder {
 #[derive(Debug, Clone)]
 pub struct CanonicalStringOptions {
     /// String encoding to use
-    pub encoding:   StringEncoding,
+    pub encoding: StringEncoding,
     /// Maximum allowed string length in bytes
     pub max_length: Option<usize>,
     /// Whether to validate string content
-    pub validate:   bool,
+    pub validate: bool,
 }
 
 impl Default for CanonicalStringOptions {
     fn default() -> Self {
         Self {
-            encoding:   StringEncoding::Utf8,
+            encoding: StringEncoding::Utf8,
             max_length: Some(1024 * 1024), // 1MB default limit
-            validate:   true,
+            validate: true,
         }
     }
 }

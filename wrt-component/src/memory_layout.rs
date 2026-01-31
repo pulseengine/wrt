@@ -14,10 +14,7 @@ use wrt_foundation::{
     verification::Checksum,
 };
 
-use crate::{
-    bounded_component_infra::ComponentProvider,
-    prelude::*,
-};
+use crate::{bounded_component_infra::ComponentProvider, prelude::*};
 
 /// Maximum alignment requirement for any type
 const MAX_ALIGNMENT: usize = 8;
@@ -26,7 +23,7 @@ const MAX_ALIGNMENT: usize = 8;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemoryLayout {
     /// Size of the type in bytes
-    pub size:      usize,
+    pub size: usize,
     /// Alignment requirement in bytes
     pub alignment: usize,
 }
@@ -83,9 +80,7 @@ pub fn calculate_layout(ty: &FormatValType) -> MemoryLayout {
         FormatValType::Option(inner) => calculate_option_layout(inner),
 
         // Results are variants with two cases (ok/err)
-        FormatValType::Result(result_ty) => {
-            calculate_result_layout(Some(result_ty.as_ref()), None)
-        },
+        FormatValType::Result(result_ty) => calculate_result_layout(Some(result_ty.as_ref()), None),
 
         // Flags need bit storage
         FormatValType::Flags(names) => calculate_flags_layout(names.len()),
@@ -143,9 +138,7 @@ fn calculate_tuple_layout(types: &[FormatValType]) -> MemoryLayout {
 }
 
 /// Calculate layout for a variant type
-fn calculate_variant_layout(
-    cases: &[(String, Option<FormatValType>)],
-) -> MemoryLayout {
+fn calculate_variant_layout(cases: &[(String, Option<FormatValType>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
     let discriminant_size = discriminant_size(cases.len());
     let discriminant_alignment = discriminant_size;
@@ -315,23 +308,23 @@ impl LayoutOptimizer {
 pub struct CanonicalMemoryPool {
     /// Binary std/no_std choice
     #[cfg(not(any(feature = "std",)))]
-    pools:        [BoundedVec<MemoryBuffer, 16>; 4],
+    pools: [BoundedVec<MemoryBuffer, 16>; 4],
     #[cfg(feature = "std")]
-    pools:        [Vec<MemoryBuffer>; 4],
+    pools: [Vec<MemoryBuffer>; 4],
     /// Size classes: 64B, 256B, 1KB, 4KB
     size_classes: [usize; 4],
 }
 
 #[derive(Debug)]
 struct MemoryBuffer {
-    data:   Box<[u8]>,
+    data: Box<[u8]>,
     in_use: bool,
 }
 
 impl Clone for MemoryBuffer {
     fn clone(&self) -> Self {
         Self {
-            data:   self.data.to_vec().into_boxed_slice(),
+            data: self.data.to_vec().into_boxed_slice(),
             in_use: self.in_use,
         }
     }
@@ -340,7 +333,7 @@ impl Clone for MemoryBuffer {
 impl Default for MemoryBuffer {
     fn default() -> Self {
         Self {
-            data:   Box::new([]),
+            data: Box::new([]),
             in_use: false,
         }
     }
@@ -397,9 +390,7 @@ impl FromBytes for MemoryBuffer {
             vec![0u8; len]
         };
         reader.read_exact(&mut data).map_err(|_| {
-            wrt_error::Error::foundation_memory_provider_failed(
-                "Failed to read MemoryBuffer data",
-            )
+            wrt_error::Error::foundation_memory_provider_failed("Failed to read MemoryBuffer data")
         })?;
         // Read the in_use flag
         let in_use = bool::from_bytes_with_provider(reader, provider)?;
@@ -495,5 +486,4 @@ impl Default for CanonicalMemoryPool {
     fn default() -> Self {
         Self::new().expect("Failed to create CanonicalMemoryPool")
     }
-
 }

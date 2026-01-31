@@ -5,43 +5,27 @@
 // error contexts, and threading.
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     vec::Vec,
 };
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 #[cfg(feature = "std")]
 use wrt_foundation::builtin::BuiltinType;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
+    bounded::BoundedString, budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    safe_managed_alloc, safe_memory::NoStdProvider,
 };
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
 
-use crate::prelude::{
-    WrtComponentValue,
-    *,
-};
 use crate::bounded_component_infra::ComponentProvider;
+use crate::prelude::{WrtComponentValue, *};
 #[cfg(not(feature = "std"))]
 use crate::types::Value;
 
@@ -134,8 +118,8 @@ pub enum BuiltinType {
 #[derive(Debug)]
 pub struct InterceptContext {
     component_name: BoundedString<128>,
-    builtin_type:   BuiltinType,
-    host_id:        BoundedString<128>,
+    builtin_type: BuiltinType,
+    host_id: BoundedString<128>,
 }
 
 #[cfg(not(feature = "std"))]
@@ -170,11 +154,7 @@ pub trait BuiltinInterceptor {
 
 // Import the real types for std
 #[cfg(feature = "std")]
-use wrt_intercept::{
-    BeforeBuiltinResult,
-    BuiltinInterceptor,
-    InterceptContext,
-};
+use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
 
 use crate::resources::ResourceManager;
 
@@ -215,7 +195,10 @@ pub trait BuiltinHandler: Send + Sync {
     /// # Returns
     ///
     /// A `Result` containing the function results or an error
-    fn execute(&self, args: &[WrtComponentValue<ComponentProvider>]) -> Result<Vec<WrtComponentValue<ComponentProvider>>>;
+    fn execute(
+        &self,
+        args: &[WrtComponentValue<ComponentProvider>],
+    ) -> Result<Vec<WrtComponentValue<ComponentProvider>>>;
 
     /// Clone this handler
     ///
@@ -242,8 +225,14 @@ pub trait BuiltinHandler {
 
 /// Function executor type for threading built-ins
 #[cfg(feature = "component-model-threading")]
-pub type FunctionExecutor =
-    Arc<dyn Fn(u32, Vec<WrtComponentValue<ComponentProvider>>) -> Result<Vec<WrtComponentValue<ComponentProvider>>> + Send + Sync>;
+pub type FunctionExecutor = Arc<
+    dyn Fn(
+            u32,
+            Vec<WrtComponentValue<ComponentProvider>>,
+        ) -> Result<Vec<WrtComponentValue<ComponentProvider>>>
+        + Send
+        + Sync,
+>;
 
 /// Registry of built-in handlers
 ///
@@ -251,19 +240,19 @@ pub type FunctionExecutor =
 /// to the appropriate implementation.
 pub struct BuiltinRegistry {
     /// Registered handlers for built-in functions
-    handlers:          Vec<Box<dyn BuiltinHandler>>,
+    handlers: Vec<Box<dyn BuiltinHandler>>,
     /// Optional interceptor for built-in calls
     // interceptor: Option<Arc<dyn BuiltinInterceptor>>,
     /// Component name for context
-    component_name:    String,
+    component_name: String,
     /// Host ID for context
-    host_id:           String,
+    host_id: String,
     /// Store for async values
     #[cfg(feature = "component-model-async")]
-    async_store:       Arc<Mutex<async_ops::AsyncValueStore>>,
+    async_store: Arc<Mutex<async_ops::AsyncValueStore>>,
     /// Store for error contexts
     #[cfg(feature = "component-model-error-context")]
-    error_store:       Arc<Mutex<error::ErrorContextStore>>,
+    error_store: Arc<Mutex<error::ErrorContextStore>>,
     /// Function executor for threading handlers
     #[cfg(feature = "component-model-threading")]
     function_executor: FunctionExecutor,

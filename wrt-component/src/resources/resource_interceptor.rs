@@ -28,7 +28,7 @@ pub trait ResourceInterceptor: Send + Sync {
 
     /// Called when an operation is performed on a resource
     fn on_resource_operation(&self, handle: u32, operation: &FormatResourceOperation)
-        -> Result<()>;
+    -> Result<()>;
 
     /// Get memory strategy for a resource
     fn get_memory_strategy(&self, handle: u32) -> Option<u8> {

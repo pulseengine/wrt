@@ -83,13 +83,13 @@ pub mod parser;
 pub mod parser_integration;
 pub mod platform_component;
 // Note: Stub modules contain syntax errors but are needed by other modules
-pub mod platform_stubs;
 pub mod foundation_stubs;
-pub mod runtime_stubs;
+pub mod platform_stubs;
 pub mod post_return;
 pub mod resource_management;
 pub mod resources;
 pub mod runtime;
+pub mod runtime_stubs;
 pub mod strategies;
 pub mod string_encoding;
 pub mod type_bounds;
@@ -115,16 +115,9 @@ pub mod verify;
 
 // Essential re-exports only
 pub use blast_zone::{
-    BlastZoneConfig,
-    BlastZoneManager,
-    ContainmentPolicy,
-    IsolationLevel,
-    ZoneHealth,
+    BlastZoneConfig, BlastZoneManager, ContainmentPolicy, IsolationLevel, ZoneHealth,
 };
-pub use builtins::{
-    BuiltinHandler,
-    BuiltinRegistry,
-};
+pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical_abi::canonical::CanonicalABI;
 pub use components::component::ComponentType;
 // Re-export MemoryProvider from foundation for type parameters
@@ -136,25 +129,12 @@ pub type TypeId = u32;
 // Component types based on feature flags
 #[cfg(feature = "std")]
 pub use components::component::{
-    Component,
-    ExternValue,
-    FunctionValue,
-    GlobalValue,
-    MemoryValue,
-    TableValue,
+    Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue,
 };
 #[cfg(not(feature = "std"))]
 pub use components::component_no_std::{
-    Component,
-    ComponentBuilder,
-    ExternValue,
-    FunctionValue,
-    GlobalValue,
-    MemoryValue,
-    RuntimeInstance,
-    TableValue,
-    WrtComponentType,
-    WrtComponentTypeBuilder,
+    Component, ComponentBuilder, ExternValue, FunctionValue, GlobalValue, MemoryValue,
+    RuntimeInstance, TableValue, WrtComponentType, WrtComponentTypeBuilder,
 };
 // Component registry based on feature flags
 #[cfg(feature = "std")]
@@ -162,21 +142,11 @@ pub use components::component_registry::ComponentRegistry;
 #[cfg(not(feature = "std"))]
 pub use components::component_registry_no_std::ComponentRegistry;
 pub use resources::{
-    DynamicQuotaManager,
-    QuotaNode,
-    QuotaNodeType,
-    QuotaPolicy,
-    QuotaRequest,
-    QuotaResourceType,
-    QuotaResponse,
-    QuotaStatus,
+    DynamicQuotaManager, QuotaNode, QuotaNodeType, QuotaPolicy, QuotaRequest, QuotaResourceType,
+    QuotaResponse, QuotaStatus,
 };
 // Canonical type definitions for ASIL-D compliance
-pub use types::{
-    ComponentInstance,
-    ComponentInstanceId,
-    ComponentInstanceState,
-};
+pub use types::{ComponentInstance, ComponentInstanceId, ComponentInstanceState};
 
 // Make the debug_println macro available to submodules
 // (Defined above using tracing::trace! when tracing feature is enabled)

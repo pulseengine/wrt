@@ -7,36 +7,21 @@
 // - async.wait: Wait for an async value to complete
 
 #[cfg(all(feature = "component-model-async", not(feature = "std")))]
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::{boxed::Box, vec::Vec};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
 use std::{
     boxed::Box,
     collections::HashMap,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     vec::Vec,
 };
 
 #[cfg(feature = "component-model-async")]
-use wrt_error::{
-    Error,
-    Result,
-};
-#[cfg(all(feature = "component-model-async", not(feature = "std")))]
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    safe_memory::NoStdProvider,
-};
+use wrt_error::{Error, Result};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
-use wrt_foundation::{
-    builtin::BuiltinType,
-    component_value::ComponentValue,
-};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
+#[cfg(all(feature = "component-model-async", not(feature = "std")))]
+use wrt_foundation::{collections::StaticVec as BoundedVec, safe_memory::NoStdProvider};
 
 #[cfg(all(feature = "component-model-async", not(feature = "std")))]
 use crate::types::Value as ComponentValue;
@@ -69,7 +54,7 @@ pub enum AsyncStatus {
 /// Storage for async value information
 pub struct AsyncValueStore {
     /// Map of async IDs to their values
-    values:  HashMap<u32, AsyncValue>,
+    values: HashMap<u32, AsyncValue>,
     /// Next available async ID
     next_id: u32,
 }
@@ -82,7 +67,7 @@ pub struct AsyncValue {
     /// Result value (if available)
     result: Option<Vec<ComponentValue>>,
     /// Error message (if failed)
-    error:  Option<String>,
+    error: Option<String>,
 }
 
 #[cfg(feature = "component-model-async")]
@@ -90,7 +75,7 @@ impl AsyncValueStore {
     /// Create a new async value store
     pub fn new() -> Self {
         Self {
-            values:  HashMap::new(),
+            values: HashMap::new(),
             next_id: 1, // Start at 1, 0 is reserved
         }
     }

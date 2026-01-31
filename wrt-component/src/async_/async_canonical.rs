@@ -5,72 +5,33 @@
 //! with streams, futures, and error contexts.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
 // Enable vec! macro for no_std
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    vec,
-};
+use alloc::{boxed::Box, vec};
 
-use wrt_error::{
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result};
+use wrt_foundation::collections::StaticVec as BoundedVec;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-};
-use wrt_runtime::{Checksummable, ToBytes, FromBytes};
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    BoundedMap as BTreeMap,
-};
+use wrt_foundation::{BoundedMap as BTreeMap, budget_aware_provider::CrateId, safe_managed_alloc};
+use wrt_runtime::{Checksummable, FromBytes, ToBytes};
 
 use crate::{
     async_::async_types::{
-        AsyncReadResult,
-        ErrorContext,
-        ErrorContextHandle,
-        Future,
-        FutureHandle,
-        FutureState,
-        Stream,
-        StreamHandle,
-        StreamState,
-        Waitable,
-        WaitableSet,
-        WaitableSetHandle,
+        AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, FutureState,
+        Stream, StreamHandle, StreamState, Waitable, WaitableSet, WaitableSetHandle,
     },
-    prelude::{
-        ResourceHandle,
-        *,
-    },
-    types::{
-        ValType,
-        Value,
-    },
+    prelude::{ResourceHandle, *},
+    types::{ValType, Value},
 };
 
 // Temporary stubs for missing types
@@ -153,7 +114,9 @@ impl TaskManager {
 
     pub fn task_backpressure(&mut self) -> Result<()> {
         // Placeholder implementation - apply backpressure to current task
-        Err(Error::runtime_execution_error("No active task for backpressure"))
+        Err(Error::runtime_execution_error(
+            "No active task for backpressure",
+        ))
     }
 }
 
@@ -240,16 +203,16 @@ const MAX_ASYNC_CONTEXT_SIZE: usize = 64;
 #[derive(Debug, Clone)]
 pub struct AsyncOperation {
     /// Operation ID
-    pub id:          u32,
+    pub id: u32,
     /// Operation type
-    pub op_type:     AsyncOperationType,
+    pub op_type: AsyncOperationType,
     /// Current state
-    pub state:       AsyncOperationState,
+    pub state: AsyncOperationState,
     /// Associated context
     #[cfg(feature = "std")]
-    pub context:     ComponentVec<u8>,
+    pub context: ComponentVec<u8>,
     #[cfg(not(any(feature = "std",)))]
-    pub context:     BoundedVec<u8, 4096>,
+    pub context: BoundedVec<u8, 4096>,
     /// Task handle for cancellation
     pub task_handle: Option<u32>,
 }
@@ -330,37 +293,25 @@ pub struct AsyncCanonicalAbi {
     #[cfg(feature = "std")]
     streams: BTreeMap<StreamHandle, Box<dyn StreamValue>>,
     #[cfg(not(any(feature = "std",)))]
-    streams: BoundedVec<
-        (StreamHandle, StreamValueEnum),
-        64,
-    >,
+    streams: BoundedVec<(StreamHandle, StreamValueEnum), 64>,
 
     /// Future registry
     #[cfg(feature = "std")]
     futures: BTreeMap<FutureHandle, Box<dyn FutureValue>>,
     #[cfg(not(any(feature = "std",)))]
-    futures: BoundedVec<
-        (FutureHandle, FutureValueEnum),
-        64,
-    >,
+    futures: BoundedVec<(FutureHandle, FutureValueEnum), 64>,
 
     /// Error context registry
     #[cfg(feature = "std")]
     error_contexts: BTreeMap<ErrorContextHandle, ErrorContext>,
     #[cfg(not(any(feature = "std",)))]
-    error_contexts: BoundedVec<
-        (ErrorContextHandle, ErrorContext),
-        32,
-    >,
+    error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext), 32>,
 
     /// Waitable set registry
     #[cfg(feature = "std")]
     waitable_sets: BTreeMap<WaitableSetHandle, WaitableSet>,
     #[cfg(not(any(feature = "std",)))]
-    waitable_sets: BoundedVec<
-        (WaitableSetHandle, WaitableSet),
-        32,
-    >,
+    waitable_sets: BoundedVec<(WaitableSetHandle, WaitableSet), 32>,
 
     /// Thread/task context storage (per-component implicit parameters)
     /// Keys are context slot indices, values are the stored context values
@@ -377,10 +328,10 @@ pub struct AsyncCanonicalAbi {
     backpressure_count: u32,
 
     /// Next handle IDs
-    next_stream_handle:        u32,
-    next_future_handle:        u32,
+    next_stream_handle: u32,
+    next_future_handle: u32,
     next_error_context_handle: u32,
-    next_waitable_set_handle:  u32,
+    next_waitable_set_handle: u32,
 }
 
 /// Stream value trait for type erasure
@@ -454,33 +405,23 @@ impl AsyncCanonicalAbi {
             #[cfg(feature = "std")]
             streams: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            streams: {
-                BoundedVec::new()
-            },
+            streams: { BoundedVec::new() },
             #[cfg(feature = "std")]
             futures: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            futures: {
-                BoundedVec::new()
-            },
+            futures: { BoundedVec::new() },
             #[cfg(feature = "std")]
             error_contexts: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            error_contexts: {
-                BoundedVec::new()
-            },
+            error_contexts: { BoundedVec::new() },
             #[cfg(feature = "std")]
             waitable_sets: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            waitable_sets: {
-                BoundedVec::new()
-            },
+            waitable_sets: { BoundedVec::new() },
             #[cfg(feature = "std")]
             context_slots: BTreeMap::new(),
             #[cfg(not(any(feature = "std",)))]
-            context_slots: {
-                BoundedVec::new()
-            },
+            context_slots: { BoundedVec::new() },
             backpressure_enabled: false,
             backpressure_count: 0,
             next_stream_handle: 0,
@@ -789,7 +730,9 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.cancel_read()
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid future handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -800,11 +743,13 @@ impl AsyncCanonicalAbi {
                         FutureValueEnum::Value(f) => {
                             f.cancel();
                             Ok(())
-                        }
+                        },
                     };
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid future handle",
+            ))
         }
     }
 
@@ -818,7 +763,9 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.cancel_write()
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid future handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -829,11 +776,13 @@ impl AsyncCanonicalAbi {
                         FutureValueEnum::Value(f) => {
                             f.cancel();
                             Ok(())
-                        }
+                        },
                     };
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid future handle",
+            ))
         }
     }
 
@@ -847,7 +796,9 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.close_readable()
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid future handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -858,11 +809,13 @@ impl AsyncCanonicalAbi {
                         FutureValueEnum::Value(f) => {
                             f.readable_closed = true;
                             Ok(())
-                        }
+                        },
                     };
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid future handle",
+            ))
         }
     }
 
@@ -876,7 +829,9 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.close_writable()
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid future handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -887,11 +842,13 @@ impl AsyncCanonicalAbi {
                         FutureValueEnum::Value(f) => {
                             f.writable_closed = true;
                             Ok(())
-                        }
+                        },
                     };
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid future handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid future handle",
+            ))
         }
     }
 
@@ -905,7 +862,10 @@ impl AsyncCanonicalAbi {
         #[cfg(not(any(feature = "std",)))]
         let error_context = {
             let provider = safe_managed_alloc!(2048, CrateId::Component)?;
-            ErrorContext::new(handle, BoundedString::try_from_str(message).unwrap_or_default())?
+            ErrorContext::new(
+                handle,
+                BoundedString::try_from_str(message).unwrap_or_default(),
+            )?
         };
 
         #[cfg(feature = "std")]
@@ -924,10 +884,7 @@ impl AsyncCanonicalAbi {
 
     /// Get debug string from error context
     #[cfg(feature = "std")]
-    pub fn error_context_debug_string(
-        &self,
-        handle: ErrorContextHandle,
-    ) -> Result<String> {
+    pub fn error_context_debug_string(&self, handle: ErrorContextHandle) -> Result<String> {
         if let Some(error_context) = self.error_contexts.get(&handle) {
             Ok(error_context.debug_string())
         } else {
@@ -1014,7 +971,9 @@ impl AsyncCanonicalAbi {
                 }
                 Ok(index)
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -1031,7 +990,9 @@ impl AsyncCanonicalAbi {
                     return Ok(index);
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid waitable set handle",
+            ))
         }
     }
 
@@ -1059,7 +1020,9 @@ impl AsyncCanonicalAbi {
                     ))
                 }
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -1075,7 +1038,9 @@ impl AsyncCanonicalAbi {
                     }
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid waitable set handle",
+            ))
         }
     }
 
@@ -1092,7 +1057,9 @@ impl AsyncCanonicalAbi {
             if let Some(set) = self.waitable_sets.get(&set_handle) {
                 Ok(set.first_ready())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -1102,7 +1069,9 @@ impl AsyncCanonicalAbi {
                     return Ok(set.first_ready());
                 }
             }
-            Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+            Err(wrt_error::Error::runtime_execution_error(
+                "Invalid waitable set handle",
+            ))
         }
     }
 
@@ -1116,7 +1085,9 @@ impl AsyncCanonicalAbi {
             if self.waitable_sets.remove(&set_handle).is_some() {
                 Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ))
             }
         }
         #[cfg(not(any(feature = "std",)))]
@@ -1126,7 +1097,9 @@ impl AsyncCanonicalAbi {
             if self.waitable_sets.len() < initial_len {
                 Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"))
+                Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ))
             }
         }
     }
@@ -1145,28 +1118,28 @@ impl AsyncCanonicalAbi {
                 } else {
                     Ok(false)
                 }
-            }
+            },
             Waitable::StreamWritable(handle) => {
                 if let Some(stream) = self.streams.get(handle) {
                     Ok(stream.is_writable())
                 } else {
                     Ok(false)
                 }
-            }
+            },
             Waitable::FutureReadable(handle) => {
                 if let Some(future) = self.futures.get(handle) {
                     Ok(future.is_readable())
                 } else {
                     Ok(false)
                 }
-            }
+            },
             Waitable::FutureWritable(handle) => {
                 if let Some(future) = self.futures.get(handle) {
                     Ok(future.is_writable())
                 } else {
                     Ok(false)
                 }
-            }
+            },
         }
     }
 
@@ -1183,7 +1156,7 @@ impl AsyncCanonicalAbi {
                     }
                 }
                 false
-            }
+            },
             Waitable::StreamWritable(handle) => {
                 for (h, stream) in &self.streams {
                     if h == handle {
@@ -1193,7 +1166,7 @@ impl AsyncCanonicalAbi {
                     }
                 }
                 false
-            }
+            },
             Waitable::FutureReadable(handle) => {
                 for (h, future) in &self.futures {
                     if h == handle {
@@ -1203,17 +1176,19 @@ impl AsyncCanonicalAbi {
                     }
                 }
                 false
-            }
+            },
             Waitable::FutureWritable(handle) => {
                 for (h, future) in &self.futures {
                     if h == handle {
                         return match future {
-                            FutureValueEnum::Value(f) => f.state == FutureState::Pending && !f.writable_closed,
+                            FutureValueEnum::Value(f) => {
+                                f.state == FutureState::Pending && !f.writable_closed
+                            },
                         };
                     }
                 }
                 false
-            }
+            },
         }
     }
 
@@ -1225,7 +1200,9 @@ impl AsyncCanonicalAbi {
             let waitables: Vec<Waitable> = if let Some(set) = self.waitable_sets.get(&set_handle) {
                 set.waitables.clone()
             } else {
-                return Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"));
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ));
             };
 
             // Check each waitable and update ready mask
@@ -1260,7 +1237,9 @@ impl AsyncCanonicalAbi {
             }
 
             if !found {
-                return Err(wrt_error::Error::runtime_execution_error("Invalid waitable set handle"));
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid waitable set handle",
+                ));
             }
 
             // Check each waitable
@@ -1335,10 +1314,10 @@ impl AsyncCanonicalAbi {
             match value {
                 Some(v) => {
                     self.context_slots.insert(slot, v);
-                }
+                },
                 None => {
                     self.context_slots.remove(&slot);
-                }
+                },
             }
             Ok(())
         }
@@ -1354,15 +1333,15 @@ impl AsyncCanonicalAbi {
                         }
                     }
                     // Not found, add new
-                    self.context_slots
-                        .push((slot, v))
-                        .map_err(|_| wrt_error::Error::resource_exhausted("Too many context slots"))?;
+                    self.context_slots.push((slot, v)).map_err(|_| {
+                        wrt_error::Error::resource_exhausted("Too many context slots")
+                    })?;
                     Ok(())
-                }
+                },
                 None => {
                     self.context_slots.retain(|(s, _)| *s != slot);
                     Ok(())
-                }
+                },
             }
         }
     }
@@ -1528,10 +1507,14 @@ impl AsyncCanonicalAbi {
         if values.len() == 1 {
             match &values[0] {
                 Value::Stream(handle) => {
-                    return Ok(AsyncLowerResult::Stream(crate::async_::async_types::StreamHandle::new(handle.0)));
+                    return Ok(AsyncLowerResult::Stream(
+                        crate::async_::async_types::StreamHandle::new(handle.0),
+                    ));
                 },
                 Value::Future(handle) => {
-                    return Ok(AsyncLowerResult::Future(crate::async_::async_types::FutureHandle::new(handle.0)));
+                    return Ok(AsyncLowerResult::Future(
+                        crate::async_::async_types::FutureHandle::new(handle.0),
+                    ));
                 },
                 _ => {},
             }
@@ -1545,9 +1528,7 @@ impl AsyncCanonicalAbi {
             #[cfg(feature = "std")]
             context: Vec::new(), // Values will be serialized separately
             #[cfg(not(any(feature = "std",)))]
-            context: {
-                BoundedVec::new()
-            },
+            context: { BoundedVec::new() },
             task_handle: None,
         };
 
@@ -1600,7 +1581,8 @@ impl AsyncCanonicalAbi {
 
 // Trait implementations for std environment
 #[cfg(feature = "std")]
-impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug> StreamValue for ConcreteStream<T>
+impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug>
+    StreamValue for ConcreteStream<T>
 where
     Value: From<T>,
     T: TryFrom<Value>,
@@ -1670,7 +1652,8 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug> FutureValue for ConcreteFuture<T>
+impl<T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + fmt::Debug>
+    FutureValue for ConcreteFuture<T>
 where
     Value: From<T>,
     T: TryFrom<Value>,
@@ -1684,7 +1667,9 @@ where
                     Ok(AsyncReadResult::Closed)
                 }
             },
-            FutureState::Cancelled | FutureState::Error | FutureState::Failed => Ok(AsyncReadResult::Closed),
+            FutureState::Cancelled | FutureState::Error | FutureState::Failed => {
+                Ok(AsyncReadResult::Closed)
+            },
             FutureState::Pending => Ok(AsyncReadResult::Blocked),
         }
     }

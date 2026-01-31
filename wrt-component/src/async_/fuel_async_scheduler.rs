@@ -5,39 +5,25 @@
 
 use core::{
     cmp::Ordering as CmpOrdering,
-    sync::atomic::{
-        AtomicU64,
-        AtomicUsize,
-        Ordering,
-    },
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
+    operations::{Type as OperationType, record_global_operation},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
-use crate::threading::task_manager::{
-    TaskId,
-    TaskState,
-};
+use crate::threading::task_manager::{TaskId, TaskState};
 use crate::{
-    async_::fuel_async_executor::{
-        AsyncTaskState,
-        AsyncTaskStatus,
-        FuelAsyncExecutor,
-    },
-    prelude::*,
     ComponentInstanceId,
+    async_::fuel_async_executor::{AsyncTaskState, AsyncTaskStatus, FuelAsyncExecutor},
+    prelude::*,
 };
 
 // Placeholder types when threading is not available
@@ -70,43 +56,40 @@ pub enum SchedulingPolicy {
 /// Task scheduling entry with fuel tracking
 #[derive(Debug)]
 pub struct ScheduledTask {
-    pub task_id:        TaskId,
-    pub component_id:   ComponentInstanceId,
-    pub priority:       Priority,
-    pub fuel_quota:     u64,
-    pub fuel_consumed:  u64,
-    pub deadline:       Option<Duration>,
+    pub task_id: TaskId,
+    pub component_id: ComponentInstanceId,
+    pub priority: Priority,
+    pub fuel_quota: u64,
+    pub fuel_consumed: u64,
+    pub deadline: Option<Duration>,
     pub last_scheduled: AtomicU64,
     pub schedule_count: AtomicUsize,
-    pub state:          AsyncTaskState,
+    pub state: AsyncTaskState,
 }
 
 /// Fuel-based async scheduler
 pub struct FuelAsyncScheduler {
     /// Current scheduling policy
-    policy:               SchedulingPolicy,
+    policy: SchedulingPolicy,
     /// Scheduled tasks indexed by task ID
-    scheduled_tasks:      BoundedMap<TaskId, ScheduledTask, 128>,
+    scheduled_tasks: BoundedMap<TaskId, ScheduledTask, 128>,
     /// Priority queue for priority-based scheduling
-    priority_queue:       BoundedVec<TaskId, 128>,
+    priority_queue: BoundedVec<TaskId, 128>,
     /// Round-robin queue
-    round_robin_queue:    BoundedVec<TaskId, 128>,
+    round_robin_queue: BoundedVec<TaskId, 128>,
     /// Current round-robin position
     round_robin_position: AtomicUsize,
     /// Global scheduling time (in fuel units)
     global_schedule_time: AtomicU64,
     /// Verification level for scheduling operations
-    verification_level:   VerificationLevel,
+    verification_level: VerificationLevel,
     /// Fuel quantum for round-robin scheduling
-    fuel_quantum:         u64,
+    fuel_quantum: u64,
 }
 
 impl FuelAsyncScheduler {
     /// Create a new fuel-based async scheduler
-    pub fn new(
-        policy: SchedulingPolicy,
-        verification_level: VerificationLevel,
-    ) -> Result<Self> {
+    pub fn new(policy: SchedulingPolicy, verification_level: VerificationLevel) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
 
         Ok(Self {
@@ -371,11 +354,7 @@ impl FuelAsyncScheduler {
     }
 
     fn insert_priority_queue(&mut self, task_id: TaskId) -> Result<()> {
-        let task_priority = self
-            .scheduled_tasks
-            .get(&task_id)
-            .map(|t| t.priority)
-            .unwrap_or(128); // Normal priority
+        let task_priority = self.scheduled_tasks.get(&task_id).map(|t| t.priority).unwrap_or(128); // Normal priority
 
         // Insert in priority order (higher priority first)
         let mut insert_pos = self.priority_queue.len();
@@ -399,9 +378,13 @@ impl FuelAsyncScheduler {
             let mut temp_vec = BoundedVec::new().unwrap();
             for (i, &id) in self.priority_queue.iter().enumerate() {
                 if i == insert_pos {
-                    temp_vec.push(task_id).map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
+                    temp_vec
+                        .push(task_id)
+                        .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
                 }
-                temp_vec.push(id).map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
+                temp_vec
+                    .push(id)
+                    .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))?;
             }
             self.priority_queue = temp_vec;
             Ok(())
@@ -477,14 +460,14 @@ impl FuelAsyncScheduler {
 /// Scheduling statistics
 #[derive(Debug, Clone)]
 pub struct SchedulingStatistics {
-    pub policy:               SchedulingPolicy,
-    pub total_tasks:          usize,
-    pub ready_tasks:          usize,
-    pub waiting_tasks:        usize,
-    pub total_fuel_consumed:  u64,
+    pub policy: SchedulingPolicy,
+    pub total_tasks: usize,
+    pub ready_tasks: usize,
+    pub waiting_tasks: usize,
+    pub total_fuel_consumed: u64,
     pub total_schedule_count: usize,
     pub global_schedule_time: u64,
-    pub fuel_quantum:         u64,
+    pub fuel_quantum: u64,
 }
 
 impl SchedulingStatistics {

@@ -1,65 +1,32 @@
 use core::{
     fmt,
-    sync::atomic::{
-        AtomicBool,
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
     time::Duration,
 };
 #[cfg(feature = "std")]
 use std::thread;
 
 use wrt_foundation::{
-    BoundedVec,
-    bounded_collections::BoundedMap,
-    component_value::ComponentValue,
+    BoundedVec, bounded_collections::BoundedMap, component_value::ComponentValue,
 };
 use wrt_platform::{
-    advanced_sync::{
-        Priority,
-        PriorityInheritanceMutex,
-    },
-    sync::{
-        FutexLike,
-        SpinFutex,
-    },
+    advanced_sync::{Priority, PriorityInheritanceMutex},
+    sync::{FutexLike, SpinFutex},
 };
 
 use crate::{
+    ComponentInstanceId, ResourceHandle,
     canonical_abi::canonical_options::CanonicalOptions,
-    execution_engine::{
-        TimeBoundedConfig,
-        TimeBoundedContext,
-        TimeBoundedOutcome,
-    },
-    post_return::{
-        CleanupTask,
-        CleanupTaskType,
-        PostReturnRegistry,
-    },
+    execution_engine::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
     threading::{
-        task_manager::{
-            TaskId,
-            TaskManager,
-            TaskState,
-        },
+        task_manager::{TaskId, TaskManager, TaskState},
         thread_spawn::{
-            ComponentThreadManager,
-            ThreadConfiguration,
-            ThreadHandle,
-            ThreadId,
-            ThreadResult,
-            ThreadSpawnError,
-            ThreadSpawnErrorKind,
-            ThreadSpawnRequest,
-            ThreadSpawnResult,
+            ComponentThreadManager, ThreadConfiguration, ThreadHandle, ThreadId, ThreadResult,
+            ThreadSpawnError, ThreadSpawnErrorKind, ThreadSpawnRequest, ThreadSpawnResult,
         },
     },
     types::ValType,
-    ComponentInstanceId,
-    ResourceHandle,
 };
 
 const MAX_FUEL_PER_THREAD: u64 = 1_000_000;
@@ -69,14 +36,14 @@ const FUEL_PER_MS: u64 = 100;
 /// Thread execution context with fuel tracking
 #[derive(Debug)]
 pub struct FuelTrackedThreadContext {
-    pub thread_id:      ThreadId,
-    pub component_id:   ComponentInstanceId,
-    pub initial_fuel:   u64,
+    pub thread_id: ThreadId,
+    pub component_id: ComponentInstanceId,
+    pub initial_fuel: u64,
     pub remaining_fuel: AtomicU64,
-    pub consumed_fuel:  AtomicU64,
+    pub consumed_fuel: AtomicU64,
     pub fuel_exhausted: AtomicBool,
     pub check_interval: u64,
-    pub last_check:     AtomicU64,
+    pub last_check: AtomicU64,
 }
 
 impl FuelTrackedThreadContext {
@@ -99,7 +66,7 @@ impl FuelTrackedThreadContext {
         if current_fuel < amount {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Thread fuel exhausted",
             });
         }
@@ -185,7 +152,7 @@ impl FuelTrackedThreadContext {
         let fuel_cost =
             wrt_foundation::operations::Type::fuel_cost_for_operation(op_type, verification_level)
                 .map_err(|_| ThreadSpawnError {
-                    kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                    kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                     message: "Fuel calculation error",
                 })?;
 
@@ -199,7 +166,7 @@ impl FuelTrackedThreadContext {
     pub fn check_fuel_status(&self) -> core::result::Result<(), ThreadSpawnError> {
         if self.fuel_exhausted.load(Ordering::Acquire) {
             return Err(ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Component not found",
             });
         }
@@ -208,7 +175,7 @@ impl FuelTrackedThreadContext {
         if remaining == 0 {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Component not found",
             });
         }
@@ -232,33 +199,33 @@ impl FuelTrackedThreadContext {
 /// Extended thread configuration with fuel settings
 #[derive(Debug, Clone)]
 pub struct FuelThreadConfiguration {
-    pub base_config:          ThreadConfiguration,
-    pub initial_fuel:         Option<u64>,
-    pub fuel_per_ms:          u64,
+    pub base_config: ThreadConfiguration,
+    pub initial_fuel: Option<u64>,
+    pub fuel_per_ms: u64,
     pub allow_fuel_extension: bool,
-    pub fuel_check_interval:  u64,
+    pub fuel_check_interval: u64,
 }
 
 impl Default for FuelThreadConfiguration {
     fn default() -> Self {
         Self {
-            base_config:          ThreadConfiguration::default(),
-            initial_fuel:         Some(MAX_FUEL_PER_THREAD),
-            fuel_per_ms:          FUEL_PER_MS,
+            base_config: ThreadConfiguration::default(),
+            initial_fuel: Some(MAX_FUEL_PER_THREAD),
+            fuel_per_ms: FUEL_PER_MS,
             allow_fuel_extension: false,
-            fuel_check_interval:  FUEL_CHECK_INTERVAL,
+            fuel_check_interval: FUEL_CHECK_INTERVAL,
         }
     }
 }
 
 /// Thread manager with integrated fuel tracking
 pub struct FuelTrackedThreadManager {
-    base_manager:         ComponentThreadManager,
-    thread_contexts:      BoundedMap<ThreadId, FuelTrackedThreadContext, 512>,
-    time_bounds:          BoundedMap<ThreadId, TimeBoundedContext, 512>,
-    global_fuel_limit:    AtomicU64,
+    base_manager: ComponentThreadManager,
+    thread_contexts: BoundedMap<ThreadId, FuelTrackedThreadContext, 512>,
+    time_bounds: BoundedMap<ThreadId, TimeBoundedContext, 512>,
+    global_fuel_limit: AtomicU64,
     global_fuel_consumed: AtomicU64,
-    fuel_enforcement:     AtomicBool,
+    fuel_enforcement: AtomicBool,
 }
 
 impl FuelTrackedThreadManager {
@@ -268,12 +235,12 @@ impl FuelTrackedThreadManager {
                 .map_err(|_| wrt_error::Error::resource_exhausted("Memory allocation failed"))?;
 
         Ok(Self {
-            base_manager:         ComponentThreadManager::new()?,
-            thread_contexts:      BoundedMap::new(),
-            time_bounds:          BoundedMap::new(),
-            global_fuel_limit:    AtomicU64::new(u64::MAX),
+            base_manager: ComponentThreadManager::new()?,
+            thread_contexts: BoundedMap::new(),
+            time_bounds: BoundedMap::new(),
+            global_fuel_limit: AtomicU64::new(u64::MAX),
             global_fuel_consumed: AtomicU64::new(0),
-            fuel_enforcement:     AtomicBool::new(true),
+            fuel_enforcement: AtomicBool::new(true),
         })
     }
 
@@ -298,7 +265,7 @@ impl FuelTrackedThreadManager {
 
             if global_consumed + initial_fuel > global_limit {
                 return Err(ThreadSpawnError {
-                    kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                    kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                     message: "Global fuel limit would be exceeded".to_owned(),
                 });
             }
@@ -306,12 +273,9 @@ impl FuelTrackedThreadManager {
 
         // Create time-bounded config
         let time_config = TimeBoundedConfig {
-            time_limit_ms:   fuel_config
-                .base_config
-                .stack_size
-                .checked_div(fuel_config.fuel_per_ms),
+            time_limit_ms: fuel_config.base_config.stack_size.checked_div(fuel_config.fuel_per_ms),
             allow_extension: fuel_config.allow_fuel_extension,
-            fuel_limit:      fuel_config.initial_fuel,
+            fuel_limit: fuel_config.initial_fuel,
         };
 
         // Spawn the thread
@@ -330,7 +294,7 @@ impl FuelTrackedThreadManager {
         // Store contexts
         self.thread_contexts.insert(handle.thread_id, fuel_context).map_err(|_| {
             ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Too many thread contexts".to_owned(),
             }
         })?;
@@ -338,7 +302,7 @@ impl FuelTrackedThreadManager {
         self.time_bounds
             .insert(handle.thread_id, time_context)
             .map_err(|_| ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Too many time bound contexts".to_owned(),
             })?;
 
@@ -357,7 +321,7 @@ impl FuelTrackedThreadManager {
         }
 
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
-            kind:    ThreadSpawnErrorKind::ThreadNotFound,
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
             message: "Component not found",
         })?;
 
@@ -366,7 +330,7 @@ impl FuelTrackedThreadManager {
         // Also check time bounds
         if let Some(time_context) = self.time_bounds.get(&thread_id) {
             time_context.check_time_bounds().map_err(|e| ThreadSpawnError {
-                kind:    ThreadSpawnErrorKind::ResourceLimitExceeded,
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
                 message: "Component not found",
             })?;
         }
@@ -376,7 +340,7 @@ impl FuelTrackedThreadManager {
 
     pub fn add_thread_fuel(&mut self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<u64> {
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
-            kind:    ThreadSpawnErrorKind::ThreadNotFound,
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
             message: "Component not found",
         })?;
 
@@ -389,7 +353,7 @@ impl FuelTrackedThreadManager {
         thread_id: ThreadId,
     ) -> ThreadSpawnResult<ThreadFuelStatus> {
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
-            kind:    ThreadSpawnErrorKind::ThreadNotFound,
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
             message: "Component not found",
         })?;
 
@@ -429,8 +393,8 @@ impl FuelTrackedThreadManager {
 
     pub fn get_global_fuel_status(&self) -> GlobalFuelStatus {
         GlobalFuelStatus {
-            limit:               self.global_fuel_limit.load(Ordering::Acquire),
-            consumed:            self.global_fuel_consumed.load(Ordering::Acquire),
+            limit: self.global_fuel_limit.load(Ordering::Acquire),
+            consumed: self.global_fuel_consumed.load(Ordering::Acquire),
             enforcement_enabled: self.fuel_enforcement.load(Ordering::Acquire),
         }
     }
@@ -463,23 +427,23 @@ impl Default for FuelTrackedThreadManager {
 
 #[derive(Debug, Clone)]
 pub struct ThreadFuelStatus {
-    pub thread_id:      ThreadId,
-    pub initial_fuel:   u64,
+    pub thread_id: ThreadId,
+    pub initial_fuel: u64,
     pub remaining_fuel: u64,
-    pub consumed_fuel:  u64,
+    pub consumed_fuel: u64,
     pub fuel_exhausted: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct FuelTrackedThreadResult {
-    pub result:      ThreadResult,
+    pub result: ThreadResult,
     pub fuel_status: Option<ThreadFuelStatus>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GlobalFuelStatus {
-    pub limit:               u64,
-    pub consumed:            u64,
+    pub limit: u64,
+    pub consumed: u64,
     pub enforcement_enabled: bool,
 }
 
@@ -500,21 +464,21 @@ impl GlobalFuelStatus {
 /// Helper functions for creating fuel-aware thread configurations
 pub fn create_fuel_thread_config(initial_fuel: u64) -> FuelThreadConfiguration {
     FuelThreadConfiguration {
-        base_config:          ThreadConfiguration::default(),
-        initial_fuel:         Some(initial_fuel),
-        fuel_per_ms:          FUEL_PER_MS,
+        base_config: ThreadConfiguration::default(),
+        initial_fuel: Some(initial_fuel),
+        fuel_per_ms: FUEL_PER_MS,
         allow_fuel_extension: false,
-        fuel_check_interval:  FUEL_CHECK_INTERVAL,
+        fuel_check_interval: FUEL_CHECK_INTERVAL,
     }
 }
 
 pub fn create_unlimited_fuel_thread_config() -> FuelThreadConfiguration {
     FuelThreadConfiguration {
-        base_config:          ThreadConfiguration::default(),
-        initial_fuel:         None,
-        fuel_per_ms:          0,
+        base_config: ThreadConfiguration::default(),
+        initial_fuel: None,
+        fuel_per_ms: 0,
         allow_fuel_extension: true,
-        fuel_check_interval:  u64::MAX,
+        fuel_check_interval: u64::MAX,
     }
 }
 

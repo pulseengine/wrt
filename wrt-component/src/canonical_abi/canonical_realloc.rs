@@ -15,18 +15,12 @@
 //! 2. The callback receives (old_ptr, old_size, align, new_size) and returns new_ptr
 //! 3. The callback should invoke the component's exported `cabi_realloc` function
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
-use wrt_foundation::{
-    bounded::MAX_COMPONENT_TYPES,
-    budget_aware_provider::CrateId,
-    collections::StaticVec as BoundedVec,
-    safe_managed_alloc,
-};
 use wrt_error::Result;
+use wrt_error::{Error, ErrorCategory, codes};
+use wrt_foundation::{
+    bounded::MAX_COMPONENT_TYPES, budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec, safe_managed_alloc,
+};
 
 // Type aliases for no_std compatibility
 pub use crate::types::ComponentInstanceId;
@@ -50,15 +44,15 @@ pub type ReallocCallback = Box<dyn FnMut(i32, i32, i32, i32) -> Result<i32> + Se
 #[derive(Debug, Clone)]
 pub struct CanonicalOptionsWithRealloc {
     /// Memory for canonical operations
-    pub memory:          u32,
+    pub memory: u32,
     /// Binary std/no_std choice
-    pub realloc:         Option<u32>,
+    pub realloc: Option<u32>,
     /// Post-return function index
-    pub post_return:     Option<u32>,
+    pub post_return: Option<u32>,
     /// String encoding
     pub string_encoding: StringEncoding,
     /// Component instance ID
-    pub instance_id:     ComponentInstanceId,
+    pub instance_id: ComponentInstanceId,
 }
 
 /// String encoding options
@@ -76,16 +70,16 @@ pub enum StringEncoding {
 /// allocation to a registered callback that invokes `cabi_realloc`.
 pub struct ReallocManager {
     /// Allocations tracked per component instance
-    allocations:              BoundedVec<(ComponentInstanceId, InstanceAllocations), 32>,
+    allocations: BoundedVec<(ComponentInstanceId, InstanceAllocations), 32>,
     /// Allocation statistics
-    metrics:                  AllocationMetrics,
+    metrics: AllocationMetrics,
     /// Maximum single allocation size (bytes)
-    max_allocation_size:      usize,
+    max_allocation_size: usize,
     /// Maximum allocations per instance
     max_instance_allocations: usize,
     /// Callback to invoke actual wasm cabi_realloc function
     #[cfg(feature = "std")]
-    realloc_callback:         Option<ReallocCallback>,
+    realloc_callback: Option<ReallocCallback>,
 }
 
 impl core::fmt::Debug for ReallocManager {
@@ -96,7 +90,10 @@ impl core::fmt::Debug for ReallocManager {
             .field("max_allocation_size", &self.max_allocation_size)
             .field("max_instance_allocations", &self.max_instance_allocations);
         #[cfg(feature = "std")]
-        s.field("realloc_callback", &self.realloc_callback.as_ref().map(|_| "<callback>"));
+        s.field(
+            "realloc_callback",
+            &self.realloc_callback.as_ref().map(|_| "<callback>"),
+        );
         s.finish()
     }
 }
@@ -108,26 +105,25 @@ struct InstanceAllocations {
     /// Binary std/no_std choice
     total_bytes: usize,
     /// Binary std/no_std choice
-    realloc_fn:  Option<ReallocFunction>,
+    realloc_fn: Option<ReallocFunction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Allocation {
     /// Binary std/no_std choice
-    ptr:    i32,
+    ptr: i32,
     /// Binary std/no_std choice
-    size:   i32,
+    size: i32,
     /// Alignment requirement
-    align:  i32,
+    align: i32,
     /// Binary std/no_std choice
     active: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ReallocFunction {
     /// Function index in the component
-    func_index:     u32,
+    func_index: u32,
     /// Cached function reference for performance (simplified for no_std)
     func_available: bool,
 }
@@ -135,17 +131,17 @@ struct ReallocFunction {
 #[derive(Debug, Default, Clone)]
 pub struct AllocationMetrics {
     /// Binary std/no_std choice
-    total_allocations:       u64,
+    total_allocations: u64,
     /// Binary std/no_std choice
-    total_deallocations:     u64,
+    total_deallocations: u64,
     /// Binary std/no_std choice
-    total_bytes_allocated:   u64,
+    total_bytes_allocated: u64,
     /// Binary std/no_std choice
     total_bytes_deallocated: u64,
     /// Peak memory usage
-    peak_memory_usage:       u64,
+    peak_memory_usage: u64,
     /// Binary std/no_std choice
-    failed_allocations:      u64,
+    failed_allocations: u64,
 }
 
 impl ReallocManager {
@@ -216,7 +212,7 @@ impl ReallocManager {
             let instance_allocs = InstanceAllocations {
                 allocations: BoundedVec::new(),
                 total_bytes: 0,
-                realloc_fn:  Some(ReallocFunction {
+                realloc_fn: Some(ReallocFunction {
                     func_index,
                     func_available: true,
                 }),
@@ -253,11 +249,15 @@ impl ReallocManager {
                 .iter()
                 .find(|(id, _)| *id == instance_id)
                 .map(|(_, allocs)| allocs)
-                .ok_or(Error::resource_not_found("Instance not registered for allocation"))?;
+                .ok_or(Error::resource_not_found(
+                    "Instance not registered for allocation",
+                ))?;
 
             if instance_allocs_check.allocations.len() >= self.max_instance_allocations {
                 self.metrics.failed_allocations += 1;
-                return Err(Error::capacity_exceeded("Maximum allocations per instance exceeded"));
+                return Err(Error::capacity_exceeded(
+                    "Maximum allocations per instance exceeded",
+                ));
             }
         }
 
@@ -362,10 +362,9 @@ impl ReallocManager {
                 .map(|(_, allocs)| allocs)
                 .ok_or(Error::resource_not_found("Instance not registered"))?;
 
-            let _realloc_fn = instance_allocs
-                .realloc_fn
-                .as_ref()
-                .ok_or(Error::resource_not_found("No realloc function registered for instance"))?;
+            let _realloc_fn = instance_allocs.realloc_fn.as_ref().ok_or(
+                Error::resource_not_found("No realloc function registered for instance"),
+            )?;
         }
         // Borrow is released here
 
@@ -403,7 +402,9 @@ impl ReallocManager {
             .iter_mut()
             .find(|(id, _)| *id == instance_id)
             .map(|(_, allocs)| allocs)
-            .ok_or(Error::resource_not_found("Instance not found after realloc"))?;
+            .ok_or(Error::resource_not_found(
+                "Instance not found after realloc",
+            ))?;
 
         // Binary std/no_std choice
         if new_size == 0 {
@@ -523,7 +524,7 @@ impl ReallocManager {
 /// Memory layout for allocation calculations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemoryLayout {
-    pub size:  usize,
+    pub size: usize,
     pub align: usize,
 }
 
@@ -629,12 +630,15 @@ pub mod engine_integration {
         instance_id: usize,
         _realloc_func_idx: usize,
     ) -> ReallocCallback {
-        Box::new(move |old_ptr: i32, old_size: i32, align: i32, new_size: i32| -> Result<i32> {
-            let mut engine_guard = engine.lock()
-                .map_err(|_| Error::runtime_error("Failed to lock engine for cabi_realloc"))?;
+        Box::new(
+            move |old_ptr: i32, old_size: i32, align: i32, new_size: i32| -> Result<i32> {
+                let mut engine_guard = engine
+                    .lock()
+                    .map_err(|_| Error::runtime_error("Failed to lock engine for cabi_realloc"))?;
 
-            engine_guard.call_cabi_realloc(instance_id, old_ptr, old_size, align, new_size)
-        })
+                engine_guard.call_cabi_realloc(instance_id, old_ptr, old_size, align, new_size)
+            },
+        )
     }
 
     /// Set up a ReallocManager with proper callback for a component instance
@@ -659,7 +663,8 @@ pub mod engine_integration {
     ) -> Result<ReallocManager> {
         // Find cabi_realloc in the instance
         let realloc_idx = {
-            let engine_guard = engine.lock()
+            let engine_guard = engine
+                .lock()
                 .map_err(|_| Error::runtime_error("Failed to lock engine to find cabi_realloc"))?;
             engine_guard.find_cabi_realloc(instance_id)?
         };
@@ -671,7 +676,10 @@ pub mod engine_integration {
         )?;
 
         // Register the instance
-        manager.register_realloc(ComponentInstanceId::new(instance_id as u32), realloc_idx as u32)?;
+        manager.register_realloc(
+            ComponentInstanceId::new(instance_id as u32),
+            realloc_idx as u32,
+        )?;
 
         // Create and set the callback
         let callback = create_realloc_callback(engine, instance_id, realloc_idx);

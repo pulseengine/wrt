@@ -4,22 +4,12 @@
 //! during component instantiation and linking.
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-        MAX_GENERATIVE_TYPES,
-    },
+    bounded::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     budget_aware_provider::CrateId,
     prelude::*,
     safe_managed_alloc,
@@ -30,25 +20,17 @@ use crate::{
     bounded_component_infra::ComponentProvider,
     generative_types::GenerativeTypeRegistry,
     prelude::WrtComponentValue,
-    type_bounds::{
-        RelationKind,
-        TypeBoundsChecker,
-    },
-    types::{
-        ComponentError,
-        ComponentInstanceId,
-        TypeId,
-        ValType,
-    },
+    type_bounds::{RelationKind, TypeBoundsChecker},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
 };
 
 /// Import resolution result
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedImport {
     /// Import name
-    pub name:     BoundedString<64>,
+    pub name: BoundedString<64>,
     /// Resolved value
-    pub value:    ImportValue,
+    pub value: ImportValue,
     /// Type information
     pub val_type: Option<ValType>,
 }
@@ -57,9 +39,9 @@ pub struct ResolvedImport {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResolvedExport {
     /// Export name
-    pub name:     BoundedString<64>,
+    pub name: BoundedString<64>,
     /// Resolved value
-    pub value:    ExportValue,
+    pub value: ExportValue,
     /// Type information
     pub val_type: Option<ValType>,
 }
@@ -86,13 +68,16 @@ pub enum ImportValue {
     /// Value import
     Value {
         val_type: ValType,
-        value:    WrtComponentValue<ComponentProvider>,
+        value: WrtComponentValue<ComponentProvider>,
     },
 }
 
 impl Default for ImportValue {
     fn default() -> Self {
-        ImportValue::Memory { min_pages: 0, max_pages: None }
+        ImportValue::Memory {
+            min_pages: 0,
+            max_pages: None,
+        }
     }
 }
 
@@ -112,7 +97,7 @@ pub enum ExportValue {
     /// Value export
     Value {
         val_type: ValType,
-        value:    WrtComponentValue<ComponentProvider>,
+        value: WrtComponentValue<ComponentProvider>,
     },
 }
 
@@ -129,24 +114,22 @@ impl Default for ExportValue {
 #[derive(Debug)]
 pub struct ComponentResolver {
     /// Type registry
-    type_registry:  GenerativeTypeRegistry,
+    type_registry: GenerativeTypeRegistry,
     /// Type bounds checker
     bounds_checker: TypeBoundsChecker,
     /// Import resolution cache
-    import_cache:
-        BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedImport>,
+    import_cache: BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedImport>,
     /// Export resolution cache
-    export_cache:
-        BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedExport>,
+    export_cache: BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedExport>,
 }
 
 impl ComponentResolver {
     pub fn new() -> core::result::Result<Self, ComponentError> {
         Ok(Self {
-            type_registry:  GenerativeTypeRegistry::new(),
+            type_registry: GenerativeTypeRegistry::new(),
             bounds_checker: TypeBoundsChecker::new()?,
-            import_cache:   BTreeMap::new(),
-            export_cache:   BTreeMap::new(),
+            import_cache: BTreeMap::new(),
+            export_cache: BTreeMap::new(),
         })
     }
 
@@ -377,9 +360,9 @@ impl Default for ComponentResolver {
 #[derive(Debug, Clone)]
 pub struct ImportResolution {
     /// Import name
-    pub name:           BoundedString<64>,
+    pub name: BoundedString<64>,
     /// Instance ID
-    pub instance_id:    ComponentInstanceId,
+    pub instance_id: ComponentInstanceId,
     /// Resolved value
     pub resolved_value: WrtComponentValue<ComponentProvider>,
 }
@@ -388,9 +371,9 @@ pub struct ImportResolution {
 #[derive(Debug, Clone)]
 pub struct ExportResolution {
     /// Export name
-    pub name:           BoundedString<64>,
+    pub name: BoundedString<64>,
     /// Instance ID
-    pub instance_id:    ComponentInstanceId,
+    pub instance_id: ComponentInstanceId,
     /// Exported value
     pub exported_value: WrtComponentValue<ComponentProvider>,
 }

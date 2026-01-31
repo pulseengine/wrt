@@ -4,31 +4,24 @@
 //! system load, and priority requirements.
 
 use core::{
-    sync::atomic::{
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
+    sync::atomic::{AtomicU32, AtomicU64, Ordering},
     time::Duration,
 };
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    CrateId,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::TaskId;
 use crate::{
-    async_::fuel_async_executor::{
-        AsyncTaskState,
-        AsyncTaskStatus,
-    },
-    prelude::*,
     ComponentInstanceId,
+    async_::fuel_async_executor::{AsyncTaskState, AsyncTaskStatus},
+    prelude::*,
 };
 
 // Placeholder TaskId when threading is not available
@@ -47,15 +40,15 @@ const MAX_FUEL_ALLOCATION: u64 = 100_000;
 /// Dynamic fuel manager for adaptive allocation
 pub struct FuelDynamicManager {
     /// Task execution history for behavior analysis
-    task_history:          BoundedMap<TaskId, TaskExecutionHistory, MAX_HISTORY_ENTRIES>,
+    task_history: BoundedMap<TaskId, TaskExecutionHistory, MAX_HISTORY_ENTRIES>,
     /// Component fuel quotas
-    component_quotas:      BoundedMap<ComponentInstanceId, ComponentFuelQuota, 256>,
+    component_quotas: BoundedMap<ComponentInstanceId, ComponentFuelQuota, 256>,
     /// System load metrics
-    system_load:           SystemLoadMetrics,
+    system_load: SystemLoadMetrics,
     /// Fuel allocation policy
-    allocation_policy:     FuelAllocationPolicy,
+    allocation_policy: FuelAllocationPolicy,
     /// Global fuel reserve for emergency allocations
-    fuel_reserve:          AtomicU64,
+    fuel_reserve: AtomicU64,
     /// Minimum reserve threshold
     min_reserve_threshold: u64,
 }
@@ -63,42 +56,42 @@ pub struct FuelDynamicManager {
 /// Task execution history for adaptive allocation
 #[derive(Debug, Clone)]
 struct TaskExecutionHistory {
-    task_id:           TaskId,
+    task_id: TaskId,
     /// Recent fuel consumption samples
-    fuel_samples:      BoundedVec<FuelSample, 32>,
+    fuel_samples: BoundedVec<FuelSample, 32>,
     /// Average fuel consumption per poll
     avg_fuel_per_poll: f64,
     /// Task completion rate
-    completion_rate:   f64,
+    completion_rate: f64,
     /// Number of times task exhausted fuel
-    exhaustion_count:  u32,
+    exhaustion_count: u32,
     /// Priority boost factor
-    priority_boost:    f64,
+    priority_boost: f64,
 }
 
 /// Fuel consumption sample
 #[derive(Debug, Clone, Copy)]
 struct FuelSample {
     fuel_consumed: u64,
-    poll_count:    u32,
-    completed:     bool,
-    timestamp:     u64,
+    poll_count: u32,
+    completed: bool,
+    timestamp: u64,
 }
 
 /// Component fuel quota management
 #[derive(Debug)]
 struct ComponentFuelQuota {
-    component_id:  ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Base fuel allocation
-    base_quota:    u64,
+    base_quota: u64,
     /// Current dynamic quota
     current_quota: AtomicU64,
     /// Quota utilization (0.0 - 1.0)
-    utilization:   AtomicU32, // Stored as percentage * 100
+    utilization: AtomicU32, // Stored as percentage * 100
     /// Number of active tasks
-    active_tasks:  AtomicU32,
+    active_tasks: AtomicU32,
     /// Priority level
-    priority:      Priority,
+    priority: Priority,
 }
 
 /// System-wide load metrics
@@ -107,11 +100,11 @@ struct SystemLoadMetrics {
     /// Total active tasks
     total_active_tasks: AtomicU32,
     /// Average fuel consumption rate
-    avg_fuel_rate:      AtomicU64,
+    avg_fuel_rate: AtomicU64,
     /// System fuel pressure (0-100)
-    fuel_pressure:      AtomicU32,
+    fuel_pressure: AtomicU32,
     /// Peak fuel usage in recent window
-    peak_fuel_usage:    AtomicU64,
+    peak_fuel_usage: AtomicU64,
 }
 
 /// Fuel allocation policy
@@ -138,9 +131,9 @@ impl FuelDynamicManager {
             component_quotas: BoundedMap::new(),
             system_load: SystemLoadMetrics {
                 total_active_tasks: AtomicU32::new(0),
-                avg_fuel_rate:      AtomicU64::new(0),
-                fuel_pressure:      AtomicU32::new(0),
-                peak_fuel_usage:    AtomicU64::new(0),
+                avg_fuel_rate: AtomicU64::new(0),
+                fuel_pressure: AtomicU32::new(0),
+                peak_fuel_usage: AtomicU64::new(0),
             },
             allocation_policy,
             fuel_reserve: AtomicU64::new(fuel_reserve),
@@ -233,7 +226,8 @@ impl FuelDynamicManager {
             }
 
             if !history.fuel_samples.is_empty() {
-                history.completion_rate = completed_count as f64 / history.fuel_samples.len() as f64;
+                history.completion_rate =
+                    completed_count as f64 / history.fuel_samples.len() as f64;
             }
         } else {
             // Create new history entry
@@ -313,10 +307,10 @@ impl FuelDynamicManager {
     pub fn get_allocation_stats(&self) -> FuelAllocationStats {
         FuelAllocationStats {
             total_active_tasks: self.system_load.total_active_tasks.load(Ordering::Acquire),
-            avg_fuel_rate:      self.system_load.avg_fuel_rate.load(Ordering::Acquire),
-            fuel_pressure:      self.system_load.fuel_pressure.load(Ordering::Acquire),
-            reserve_fuel:       self.fuel_reserve.load(Ordering::Acquire),
-            policy:             self.allocation_policy,
+            avg_fuel_rate: self.system_load.avg_fuel_rate.load(Ordering::Acquire),
+            fuel_pressure: self.system_load.fuel_pressure.load(Ordering::Acquire),
+            reserve_fuel: self.fuel_reserve.load(Ordering::Acquire),
+            policy: self.allocation_policy,
         }
     }
 
@@ -440,11 +434,7 @@ impl FuelDynamicManager {
         self.system_load.fuel_pressure.store(pressure.min(100), Ordering::Release);
     }
 
-    fn rebalance_fair_share(
-        &mut self,
-        total_available: u64,
-        total_tasks: u32,
-    ) -> Result<()> {
+    fn rebalance_fair_share(&mut self, total_available: u64, total_tasks: u32) -> Result<()> {
         if total_tasks == 0 {
             return Ok(());
         }
@@ -503,10 +493,10 @@ impl FuelDynamicManager {
 #[derive(Debug, Clone)]
 pub struct FuelAllocationStats {
     pub total_active_tasks: u32,
-    pub avg_fuel_rate:      u64,
-    pub fuel_pressure:      u32,
-    pub reserve_fuel:       u64,
-    pub policy:             FuelAllocationPolicy,
+    pub avg_fuel_rate: u64,
+    pub fuel_pressure: u32,
+    pub reserve_fuel: u64,
+    pub policy: FuelAllocationPolicy,
 }
 
 impl Default for FuelDynamicManager {
@@ -514,5 +504,4 @@ impl Default for FuelDynamicManager {
         Self::new(FuelAllocationPolicy::Adaptive, 1_000_000)
             .expect("Failed to create default manager")
     }
-
 }

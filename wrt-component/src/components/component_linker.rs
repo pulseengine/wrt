@@ -7,27 +7,13 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::String,
-    vec::Vec,
-};
+use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    bounded::BoundedString,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
+    bounded::BoundedString, budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    safe_managed_alloc, safe_memory::NoStdProvider,
 };
 
 use crate::prelude::*;
@@ -48,15 +34,8 @@ use crate::{
     components::{
         component::Component,
         component_instantiation::{
-            create_component_export,
-            create_component_import,
-            ComponentExport,
-            ComponentImport,
-            ExportType,
-            FunctionSignature,
-            ImportType,
-            InstanceConfig,
-            InstanceId,
+            ComponentExport, ComponentImport, ExportType, FunctionSignature, ImportType,
+            InstanceConfig, InstanceId, create_component_export, create_component_import,
         },
     },
     types::ComponentInstance,
@@ -77,33 +56,33 @@ pub type ComponentId = String;
 #[derive(Debug)]
 pub struct ComponentLinker {
     /// Registered components
-    components:       HashMap<ComponentId, ComponentDefinition>,
+    components: HashMap<ComponentId, ComponentDefinition>,
     /// Active component instances
-    instances:        HashMap<InstanceId, ComponentInstance>,
+    instances: HashMap<InstanceId, ComponentInstance>,
     /// Dependency graph
-    link_graph:       LinkGraph,
+    link_graph: LinkGraph,
     /// Next available instance ID
     next_instance_id: InstanceId,
     /// Linker configuration
-    config:           LinkerConfig,
+    config: LinkerConfig,
     /// Resolution statistics
-    stats:            LinkingStats,
+    stats: LinkingStats,
     /// WASI instance provider for host imports
     #[cfg(feature = "std")]
-    wasi_provider:    Option<crate::linker::WasiInstanceProvider>,
+    wasi_provider: Option<crate::linker::WasiInstanceProvider>,
 }
 
 /// Component definition in the linker
 #[derive(Debug, Clone)]
 pub struct ComponentDefinition {
     /// Component ID
-    pub id:       ComponentId,
+    pub id: ComponentId,
     /// Component binary (simplified as bytes)
-    pub binary:   Vec<u8>, // Use Vec for std, BoundedVec handled in no_std type alias
+    pub binary: Vec<u8>, // Use Vec for std, BoundedVec handled in no_std type alias
     /// Parsed exports
-    pub exports:  Vec<ComponentExport>,
+    pub exports: Vec<ComponentExport>,
     /// Parsed imports
-    pub imports:  Vec<ComponentImport>,
+    pub imports: Vec<ComponentImport>,
     /// Component metadata
     pub metadata: ComponentMetadata,
 }
@@ -112,13 +91,13 @@ pub struct ComponentDefinition {
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     /// Component name
-    pub name:        String,
+    pub name: String,
     /// Component version
-    pub version:     String,
+    pub version: String,
     /// Component description
     pub description: String,
     /// Component author
-    pub author:      String,
+    pub author: String,
     /// Compilation timestamp
     pub compiled_at: u64,
 }
@@ -138,20 +117,20 @@ pub struct GraphNode {
     /// Component ID
     pub component_id: ComponentId,
     /// Node index in graph
-    pub index:        usize,
+    pub index: usize,
     /// Dependencies (outgoing edges)
     pub dependencies: Vec<usize>,
     /// Dependents (incoming edges)
-    pub dependents:   Vec<usize>,
+    pub dependents: Vec<usize>,
 }
 
 /// Graph edge representing a dependency relationship
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphEdge {
     /// Source node index
-    pub from:   usize,
+    pub from: usize,
     /// Target node index
-    pub to:     usize,
+    pub to: usize,
     /// Import that creates this dependency
     pub import: ComponentImport,
     /// Export that satisfies this dependency
@@ -164,13 +143,13 @@ pub struct GraphEdge {
 #[derive(Debug, Clone)]
 pub struct LinkerConfig {
     /// Enable strict type checking
-    pub strict_typing:            bool,
+    pub strict_typing: bool,
     /// Allow hot swapping of components
-    pub allow_hot_swap:           bool,
+    pub allow_hot_swap: bool,
     /// Maximum memory per instance
-    pub max_instance_memory:      u32,
+    pub max_instance_memory: u32,
     /// Enable dependency validation
-    pub validate_dependencies:    bool,
+    pub validate_dependencies: bool,
     /// Circular dependency handling
     pub circular_dependency_mode: CircularDependencyMode,
 }
@@ -192,22 +171,22 @@ pub struct LinkingStats {
     /// Total components registered
     pub components_registered: u32,
     /// Total instances created
-    pub instances_created:     u32,
+    pub instances_created: u32,
     /// Total links resolved
-    pub links_resolved:        u32,
+    pub links_resolved: u32,
     /// Resolution failures
-    pub resolution_failures:   u32,
+    pub resolution_failures: u32,
     /// Last resolution time (microseconds)
-    pub last_resolution_time:  u64,
+    pub last_resolution_time: u64,
 }
 
 impl Default for LinkerConfig {
     fn default() -> Self {
         Self {
-            strict_typing:            true,
-            allow_hot_swap:           false,
-            max_instance_memory:      64 * 1024 * 1024, // 64MB
-            validate_dependencies:    true,
+            strict_typing: true,
+            allow_hot_swap: false,
+            max_instance_memory: 64 * 1024 * 1024, // 64MB
+            validate_dependencies: true,
             circular_dependency_mode: CircularDependencyMode::Reject,
         }
     }
@@ -218,10 +197,10 @@ impl Default for ComponentMetadata {
         #[cfg(feature = "std")]
         {
             Self {
-                name:        String::new(),
-                version:     "1.0.0".to_owned(),
+                name: String::new(),
+                version: "1.0.0".to_owned(),
                 description: String::new(),
-                author:      String::new(),
+                author: String::new(),
                 compiled_at: 0,
             }
         }
@@ -231,21 +210,27 @@ impl Default for ComponentMetadata {
 
             let name_provider = safe_managed_alloc!(1024, CrateId::Component)
                 .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata name"));
-            let version_provider = safe_managed_alloc!(1024, CrateId::Component)
-                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata version"));
+            let version_provider =
+                safe_managed_alloc!(1024, CrateId::Component).unwrap_or_else(|_| {
+                    panic!("Failed to allocate memory for ComponentMetadata version")
+                });
             let description_provider = safe_managed_alloc!(1024, CrateId::Component)
-                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata description"));
-            let author_provider = safe_managed_alloc!(1024, CrateId::Component)
-                .unwrap_or_else(|_| panic!("Failed to allocate memory for ComponentMetadata author"));
+                .unwrap_or_else(|_| {
+                    panic!("Failed to allocate memory for ComponentMetadata description")
+                });
+            let author_provider =
+                safe_managed_alloc!(1024, CrateId::Component).unwrap_or_else(|_| {
+                    panic!("Failed to allocate memory for ComponentMetadata author")
+                });
 
             Self {
-                name:        BoundedString::try_from_str("")
+                name: BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata name")),
-                version:     BoundedString::try_from_str("1.0.0")
+                version: BoundedString::try_from_str("1.0.0")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata version")),
                 description: BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata description")),
-                author:      BoundedString::try_from_str("")
+                author: BoundedString::try_from_str("")
                     .unwrap_or_else(|_| panic!("Failed to create ComponentMetadata author")),
                 compiled_at: 0,
             }
@@ -280,7 +265,10 @@ impl ComponentLinker {
     /// 2. Try to resolve from host providers (WASI)
     /// 3. Fail with clear error if no resolution found
     #[cfg(feature = "std")]
-    pub fn link_imports(&mut self, imports: &[wrt_format::component::Import]) -> Result<Vec<crate::instantiation::ResolvedImport>> {
+    pub fn link_imports(
+        &mut self,
+        imports: &[wrt_format::component::Import],
+    ) -> Result<Vec<crate::instantiation::ResolvedImport>> {
         let mut resolved = Vec::with_capacity(imports.len());
 
         for import in imports {
@@ -301,7 +289,9 @@ impl ComponentLinker {
             if name.starts_with("wasi:") || name.contains("wasi:") {
                 if let Some(ref mut wasi_provider) = self.wasi_provider {
                     let instance_import = wasi_provider.create_instance(&name)?;
-                    resolved.push(crate::instantiation::ResolvedImport::Instance(instance_import));
+                    resolved.push(crate::instantiation::ResolvedImport::Instance(
+                        instance_import,
+                    ));
                     continue;
                 }
             }
@@ -319,7 +309,11 @@ impl ComponentLinker {
         // Verify all imports were resolved
         if resolved.len() != imports.len() {
             #[cfg(feature = "tracing")]
-            tracing_warn!(resolved = resolved.len(), total = imports.len(), "Not all imports resolved");
+            tracing_warn!(
+                resolved = resolved.len(),
+                total = imports.len(),
+                "Not all imports resolved"
+            );
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::COMPONENT_LINKING_ERROR,
@@ -328,7 +322,10 @@ impl ComponentLinker {
         }
 
         #[cfg(feature = "tracing")]
-        trace!(import_count = resolved.len(), "Successfully resolved imports");
+        trace!(
+            import_count = resolved.len(),
+            "Successfully resolved imports"
+        );
         self.stats.links_resolved += resolved.len() as u32;
         Ok(resolved)
     }
@@ -369,14 +366,13 @@ impl ComponentLinker {
                     let mut instance_import = crate::instantiation::InstanceImport {
                         exports: std::collections::BTreeMap::new(),
                     };
-                    instance_import.exports.insert(
-                        name.to_string(),
-                        Box::new(export_value),
-                    );
+                    instance_import.exports.insert(name.to_string(), Box::new(export_value));
 
                     #[cfg(feature = "tracing")]
                     trace!(import_name = %name, component_id = %component_id, "Successfully resolved import from internal component");
-                    return Ok(Some(crate::instantiation::ResolvedImport::Instance(instance_import)));
+                    return Ok(Some(crate::instantiation::ResolvedImport::Instance(
+                        instance_import,
+                    )));
                 }
             }
         }
@@ -416,7 +412,7 @@ impl ComponentLinker {
                 );
                 // Allow to continue searching for better matches
                 false
-            }
+            },
         }
     }
 
@@ -442,25 +438,25 @@ impl ComponentLinker {
             ExportType::Memory(_mem_config) => {
                 // Memory exports are handled differently - create a Value placeholder
                 Ok(crate::instantiation::ExportValue::Value(
-                    WrtComponentValue::Unit
+                    WrtComponentValue::Unit,
                 ))
             },
             ExportType::Table { .. } => {
                 // Table exports - placeholder for now
                 Ok(crate::instantiation::ExportValue::Value(
-                    WrtComponentValue::Unit
+                    WrtComponentValue::Unit,
                 ))
             },
             ExportType::Global { .. } => {
                 // Global exports - placeholder for now
                 Ok(crate::instantiation::ExportValue::Value(
-                    WrtComponentValue::Unit
+                    WrtComponentValue::Unit,
                 ))
             },
             ExportType::Type(_) => {
                 // Type exports
                 Ok(crate::instantiation::ExportValue::Type(
-                    WrtComponentType::unit(ComponentProvider::default())?
+                    WrtComponentType::unit(ComponentProvider::default())?,
                 ))
             },
         }
@@ -676,9 +672,7 @@ impl ComponentLinker {
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             nested_component_instances: Vec::new(),
             #[cfg(not(feature = "std"))]
-            nested_component_instances: {
-                BoundedVec::new()
-            },
+            nested_component_instances: { BoundedVec::new() },
         };
 
         // Add resolved imports from instantiation module
@@ -747,11 +741,14 @@ impl ComponentLinker {
     fn parse_component_binary(
         &self,
         binary: &[u8],
-    ) -> core::result::Result<(
-        Vec<ComponentExport>,
-        Vec<ComponentImport>,
-        ComponentMetadata,
-    ), Error> {
+    ) -> core::result::Result<
+        (
+            Vec<ComponentExport>,
+            Vec<ComponentImport>,
+            ComponentMetadata,
+        ),
+        Error,
+    > {
         if binary.is_empty() {
             return Err(Error::runtime_execution_error("Empty component binary"));
         }
@@ -782,12 +779,15 @@ impl ComponentLinker {
     fn parse_component_with_decoder(
         &self,
         binary: &[u8],
-    ) -> core::result::Result<(
-        Vec<ComponentExport>,
-        Vec<ComponentImport>,
-        ComponentMetadata,
-    ), Error> {
-        use wrt_format::component::{Sort, CoreSort};
+    ) -> core::result::Result<
+        (
+            Vec<ComponentExport>,
+            Vec<ComponentImport>,
+            ComponentMetadata,
+        ),
+        Error,
+    > {
+        use wrt_format::component::{CoreSort, Sort};
 
         // Decode the component binary
         let decoded = wrt_decoder::component::decode_component(binary)?;
@@ -845,7 +845,7 @@ impl ComponentLinker {
         sort: &wrt_format::component::Sort,
         ty: &Option<wrt_format::component::ExternType>,
     ) -> ExportType {
-        use wrt_format::component::{Sort, CoreSort, ExternType as FormatExternType};
+        use wrt_format::component::{CoreSort, ExternType as FormatExternType, Sort};
 
         match sort {
             Sort::Function => {
@@ -873,23 +873,22 @@ impl ComponentLinker {
                     protected: false,
                 })
             },
-            Sort::Core(CoreSort::Table) => {
-                ExportType::Table {
-                    element_type: crate::canonical_abi::ComponentType::U32,
-                    size: 0,
-                }
+            Sort::Core(CoreSort::Table) => ExportType::Table {
+                element_type: crate::canonical_abi::ComponentType::U32,
+                size: 0,
             },
-            Sort::Core(CoreSort::Global) => {
-                ExportType::Global {
-                    value_type: crate::canonical_abi::ComponentType::S32,
-                    mutable: false,
-                }
+            Sort::Core(CoreSort::Global) => ExportType::Global {
+                value_type: crate::canonical_abi::ComponentType::S32,
+                mutable: false,
             },
             Sort::Type | Sort::Core(CoreSort::Type) => {
                 ExportType::Type(crate::canonical_abi::ComponentType::Bool)
             },
-            Sort::Component | Sort::Instance | Sort::Value |
-            Sort::Core(CoreSort::Module) | Sort::Core(CoreSort::Instance) => {
+            Sort::Component
+            | Sort::Instance
+            | Sort::Value
+            | Sort::Core(CoreSort::Module)
+            | Sort::Core(CoreSort::Instance) => {
                 // For now, treat these as functions (placeholder)
                 ExportType::Function(FunctionSignature::default())
             },
@@ -898,10 +897,7 @@ impl ComponentLinker {
 
     /// Convert ExternType to ImportType
     #[cfg(all(feature = "std", feature = "decoder"))]
-    fn extern_type_to_import_type(
-        &self,
-        ty: &wrt_format::component::ExternType,
-    ) -> ImportType {
+    fn extern_type_to_import_type(&self, ty: &wrt_format::component::ExternType) -> ImportType {
         use wrt_format::component::ExternType as FormatExternType;
 
         match ty {
@@ -918,9 +914,9 @@ impl ComponentLinker {
             FormatExternType::Type(_) => {
                 ImportType::Type(crate::canonical_abi::ComponentType::Bool)
             },
-            FormatExternType::Instance { .. } |
-            FormatExternType::Component { .. } |
-            FormatExternType::Module { .. } => {
+            FormatExternType::Instance { .. }
+            | FormatExternType::Component { .. }
+            | FormatExternType::Module { .. } => {
                 // Treat as function import for now
                 ImportType::Function(FunctionSignature::default())
             },
@@ -939,10 +935,8 @@ impl ComponentLinker {
             .map(|(_, vt)| self.format_val_type_to_component_type(vt))
             .collect();
 
-        let result_types: Vec<crate::canonical_abi::ComponentType> = results
-            .iter()
-            .map(|vt| self.format_val_type_to_component_type(vt))
-            .collect();
+        let result_types: Vec<crate::canonical_abi::ComponentType> =
+            results.iter().map(|vt| self.format_val_type_to_component_type(vt)).collect();
 
         // Use first param name as function name, or empty
         let name = params.first().map(|(n, _)| n.clone()).unwrap_or_default();
@@ -975,9 +969,9 @@ impl ComponentLinker {
             // Complex types - map to their canonical equivalents (using placeholder types)
             FormatValType::List(_) => crate::canonical_abi::ComponentType::String, // Placeholder
             FormatValType::Record(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
-            FormatValType::Tuple(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
+            FormatValType::Tuple(_) => crate::canonical_abi::ComponentType::Bool,  // Placeholder
             FormatValType::Variant(_) => crate::canonical_abi::ComponentType::U32, // Discriminant
-            FormatValType::Enum(_) => crate::canonical_abi::ComponentType::U32, // Enums are u32
+            FormatValType::Enum(_) => crate::canonical_abi::ComponentType::U32,    // Enums are u32
             FormatValType::Option(_) => crate::canonical_abi::ComponentType::Bool, // Placeholder
             FormatValType::Result { .. } => crate::canonical_abi::ComponentType::Bool, // Placeholder
             FormatValType::Flags(_) => crate::canonical_abi::ComponentType::U32, // Flags are u32
@@ -1000,11 +994,14 @@ impl ComponentLinker {
     fn parse_component_fallback(
         &self,
         _binary: &[u8],
-    ) -> core::result::Result<(
-        Vec<ComponentExport>,
-        Vec<ComponentImport>,
-        ComponentMetadata,
-    ), Error> {
+    ) -> core::result::Result<
+        (
+            Vec<ComponentExport>,
+            Vec<ComponentImport>,
+            ComponentMetadata,
+        ),
+        Error,
+    > {
         // Without the decoder, return empty exports/imports
         // Components won't actually link without real parsing
         #[cfg(feature = "tracing")]

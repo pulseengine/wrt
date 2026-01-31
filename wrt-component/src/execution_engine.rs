@@ -4,46 +4,24 @@
 //! handling function calls, resource management, and interface interactions.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    format,
-    string::String,
-    vec,
-    vec::Vec,
-};
+use std::{boxed::Box, format, string::String, vec, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    format,
-    string::String,
-    vec,
-    vec::Vec,
-};
+use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 
-#[cfg(feature = "std")]
-use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    component_value::ComponentValue,
-    prelude::*,
-};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    component_value::ComponentValue,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, collections::StaticVec as BoundedVec,
+    component_value::ComponentValue, safe_managed_alloc,
+};
+#[cfg(feature = "std")]
+use wrt_foundation::{
+    collections::StaticVec as BoundedVec, component_value::ComponentValue, prelude::*,
 };
 
 use crate::bounded_component_infra::ComponentProvider;
@@ -77,27 +55,14 @@ where
 }
 
 use crate::{
-    components::component::{
-        Component,
-        ComponentInstance,
-        ComponentType,
-        ExportType,
-        ImportType,
-    },
+    components::component::{Component, ComponentInstance, ComponentType, ExportType, ImportType},
     memory_layout::MemoryLayout,
     prelude::WrtComponentType,
     string_encoding::StringEncoding,
-    types::{
-        ValType,
-        Value,
-    },
+    types::{ValType, Value},
     unified_execution_agent_stubs::{
-        CanonicalAbi,
-        CanonicalOptions,
-        ComponentRuntimeBridge,
-        ResourceHandle,
-        ResourceLifecycleManager,
-        RuntimeBridgeConfig,
+        CanonicalAbi, CanonicalOptions, ComponentRuntimeBridge, ResourceHandle,
+        ResourceLifecycleManager, RuntimeBridgeConfig,
     },
 };
 
@@ -121,14 +86,14 @@ const MAX_IMPORTS: usize = 512;
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// The component instance being executed
-    pub instance_id:    u32,
+    pub instance_id: u32,
     /// The function being called
     pub function_index: u32,
     /// Local variables for this frame
     #[cfg(feature = "std")]
-    pub locals:         Vec<Value>,
+    pub locals: Vec<Value>,
     #[cfg(not(any(feature = "std",)))]
-    pub locals:         BoundedVec<Value, 64>,
+    pub locals: BoundedVec<Value, 64>,
     /// Return address information
     pub return_address: Option<u32>,
 }
@@ -303,7 +268,10 @@ impl ComponentExecutionEngine {
 
     /// Register a host function
     #[cfg(feature = "std")]
-    pub fn register_host_function(&mut self, func: Box<dyn HostFunction>) -> wrt_error::Result<u32> {
+    pub fn register_host_function(
+        &mut self,
+        func: Box<dyn HostFunction>,
+    ) -> wrt_error::Result<u32> {
         let index = self.host_functions.len() as u32;
         self.host_functions.push(func);
         Ok(index)
@@ -460,12 +428,19 @@ impl ComponentExecutionEngine {
     }
 
     /// Borrow a resource
-    pub fn borrow_resource(&mut self, handle: ResourceHandle) -> wrt_error::Result<&ComponentValue<ComponentProvider>> {
+    pub fn borrow_resource(
+        &mut self,
+        handle: ResourceHandle,
+    ) -> wrt_error::Result<&ComponentValue<ComponentProvider>> {
         self.resource_manager.borrow_resource(handle)
     }
 
     /// Transfer resource ownership
-    pub fn transfer_resource(&mut self, handle: ResourceHandle, new_owner: u32) -> wrt_error::Result<()> {
+    pub fn transfer_resource(
+        &mut self,
+        handle: ResourceHandle,
+        new_owner: u32,
+    ) -> wrt_error::Result<()> {
         self.resource_manager.transfer_ownership(handle, new_owner)
     }
 
@@ -558,19 +533,31 @@ impl ComponentExecutionEngine {
             Value::S16(v) => Ok(ComponentValue::S16(*v)),
             Value::S32(v) => Ok(ComponentValue::S32(*v)),
             Value::S64(v) => Ok(ComponentValue::S64(*v)),
-            Value::F32(v) => Ok(ComponentValue::F32(wrt_foundation::float_repr::FloatBits32::from_f32(*v))),
-            Value::F64(v) => Ok(ComponentValue::F64(wrt_foundation::float_repr::FloatBits64::from_f64(*v))),
+            Value::F32(v) => Ok(ComponentValue::F32(
+                wrt_foundation::float_repr::FloatBits32::from_f32(*v),
+            )),
+            Value::F64(v) => Ok(ComponentValue::F64(
+                wrt_foundation::float_repr::FloatBits64::from_f64(*v),
+            )),
             Value::Char(c) => Ok(ComponentValue::Char(*c)),
             #[cfg(feature = "std")]
             Value::String(s) => {
                 // Convert BoundedString to std String for ComponentValue
-                let str_slice = s.as_str().map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str"))?;
+                let str_slice = s.as_str().map_err(|_| {
+                    wrt_error::Error::validation_invalid_input(
+                        "Failed to convert BoundedString to str",
+                    )
+                })?;
                 Ok(ComponentValue::String(str_slice.to_string()))
             },
             #[cfg(not(any(feature = "std",)))]
             Value::String(s) => {
                 // Convert BoundedString to String for ComponentValue
-                let str_slice = s.as_str().map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str"))?;
+                let str_slice = s.as_str().map_err(|_| {
+                    wrt_error::Error::validation_invalid_input(
+                        "Failed to convert BoundedString to str",
+                    )
+                })?;
                 Ok(ComponentValue::String(String::from(str_slice)))
             },
             _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")),
@@ -598,19 +585,33 @@ impl ComponentExecutionEngine {
             #[cfg(feature = "std")]
             ComponentValue::String(s) => {
                 // Convert std String to BoundedString for Value
-                let _provider = safe_managed_alloc!(2048, CrateId::Component)
-                    .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate memory provider for string conversion"))?;
+                let _provider = safe_managed_alloc!(2048, CrateId::Component).map_err(|_| {
+                    wrt_error::Error::validation_invalid_input(
+                        "Failed to allocate memory provider for string conversion",
+                    )
+                })?;
                 let bounded_str = wrt_foundation::bounded::BoundedString::try_from_str(s.as_str())
-                    .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert String to BoundedString"))?;
+                    .map_err(|_| {
+                        wrt_error::Error::validation_invalid_input(
+                            "Failed to convert String to BoundedString",
+                        )
+                    })?;
                 Ok(Value::String(bounded_str))
             },
             #[cfg(not(any(feature = "std",)))]
             ComponentValue::String(s) => {
                 // Convert String to BoundedString for Value
-                let _provider = safe_managed_alloc!(2048, CrateId::Component)
-                    .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to allocate memory provider for string conversion"))?;
+                let _provider = safe_managed_alloc!(2048, CrateId::Component).map_err(|_| {
+                    wrt_error::Error::validation_invalid_input(
+                        "Failed to allocate memory provider for string conversion",
+                    )
+                })?;
                 let bounded_str = wrt_foundation::bounded::BoundedString::try_from_str(s.as_str())
-                    .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert String to BoundedString"))?;
+                    .map_err(|_| {
+                        wrt_error::Error::validation_invalid_input(
+                            "Failed to convert String to BoundedString",
+                        )
+                    })?;
                 Ok(Value::String(bounded_str))
             },
             _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")),
@@ -637,8 +638,12 @@ impl ComponentExecutionEngine {
                     .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
                 let bounded: wrt_foundation::bounded::BoundedString<256> =
                     wrt_foundation::bounded::BoundedString::try_from_str(module_name)
-                    .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
-                let str_slice = bounded.as_str().map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str"))?;
+                        .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
+                let str_slice = bounded.as_str().map_err(|_| {
+                    wrt_error::Error::validation_invalid_input(
+                        "Failed to convert BoundedString to str",
+                    )
+                })?;
                 String::from(str_slice)
             }
         };
@@ -654,7 +659,11 @@ impl ComponentExecutionEngine {
 
     /// Register a host function with the runtime bridge
     #[cfg(feature = "std")]
-    pub fn register_runtime_host_function<F>(&mut self, name: &str, func: F) -> wrt_error::Result<usize>
+    pub fn register_runtime_host_function<F>(
+        &mut self,
+        name: &str,
+        func: F,
+    ) -> wrt_error::Result<usize>
     where
         F: Fn(
                 &[ComponentValue<ComponentProvider>],
@@ -665,7 +674,7 @@ impl ComponentExecutionEngine {
             + 'static,
     {
         use crate::canonical_abi::ComponentType;
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
 
         let name_string = String::from(name);
 
@@ -673,22 +682,32 @@ impl ComponentExecutionEngine {
         use crate::component_instantiation::FunctionSignature;
         #[cfg(feature = "std")]
         let signature = FunctionSignature {
-            name:    name_string.clone(),
+            name: name_string.clone(),
             params: vec![ComponentType::S32],
             returns: vec![ComponentType::S32],
         };
         #[cfg(not(feature = "std"))]
         let signature = {
-            let provider_params = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
-            let mut params = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_params).expect("BoundedVec creation failed");
+            let provider_params =
+                safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+            let mut params =
+                wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(
+                    provider_params,
+                )
+                .expect("BoundedVec creation failed");
             params.push(ComponentType::S32).expect("Push failed");
 
-            let provider_returns = safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
-            let mut returns = wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(provider_returns).expect("BoundedVec creation failed");
+            let provider_returns =
+                safe_managed_alloc!(4096, CrateId::Component).expect("Memory allocation failed");
+            let mut returns =
+                wrt_foundation::BoundedVec::<ComponentType, 16, ComponentProvider>::new(
+                    provider_returns,
+                )
+                .expect("BoundedVec creation failed");
             returns.push(ComponentType::S32).expect("Push failed");
 
             FunctionSignature {
-                name:    name_string.clone(),
+                name: name_string.clone(),
                 params,
                 returns,
             }
@@ -715,15 +734,17 @@ impl ComponentExecutionEngine {
             .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
         let name_bounded: wrt_foundation::bounded::BoundedString<64> =
             wrt_foundation::bounded::BoundedString::try_from_str(name)
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
+                .map_err(|_| wrt_error::Error::validation_invalid_input("Invalid input"))?;
 
         // Convert BoundedString to String for FunctionSignature.name
-        let name_str = name_bounded.as_str().map_err(|_| wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str"))?;
+        let name_str = name_bounded.as_str().map_err(|_| {
+            wrt_error::Error::validation_invalid_input("Failed to convert BoundedString to str")
+        })?;
         let name_string = String::from(name_str);
 
         let signature = crate::component_instantiation::FunctionSignature {
-            name:    name_string,
-            params:  wrt_foundation::collections::StaticVec::from_slice(&[ComponentType::S32])
+            name: name_string,
+            params: wrt_foundation::collections::StaticVec::from_slice(&[ComponentType::S32])
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many parameters"))?,
             returns: wrt_foundation::collections::StaticVec::from_slice(&[ComponentType::S32])
                 .map_err(|_| wrt_error::Error::resource_exhausted("Too many return values"))?,
@@ -745,26 +766,26 @@ impl Default for ComponentExecutionEngine {
 #[derive(Debug, Clone)]
 pub struct ExecutionContext {
     /// Memory layout information
-    pub memory_layout:     MemoryLayout,
+    pub memory_layout: MemoryLayout,
     /// String encoding options
-    pub string_encoding:   StringEncoding,
+    pub string_encoding: StringEncoding,
     /// Canonical options
     pub canonical_options: CanonicalOptions,
     /// Maximum call depth
-    pub max_call_depth:    u32,
+    pub max_call_depth: u32,
     /// Maximum memory usage
-    pub max_memory:        u32,
+    pub max_memory: u32,
 }
 
 impl ExecutionContext {
     /// Create a new execution context
     pub fn new() -> Self {
         Self {
-            memory_layout:     MemoryLayout::new(1, 1),
-            string_encoding:   StringEncoding::Utf8,
+            memory_layout: MemoryLayout::new(1, 1),
+            string_encoding: StringEncoding::Utf8,
             canonical_options: CanonicalOptions,
-            max_call_depth:    1024,
-            max_memory:        1024 * 1024, // 1MB default
+            max_call_depth: 1024,
+            max_memory: 1024 * 1024, // 1MB default
         }
     }
 
@@ -803,5 +824,4 @@ impl Default for ExecutionContext {
     fn default() -> Self {
         Self::new()
     }
-
 }

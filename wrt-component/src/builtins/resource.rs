@@ -9,18 +9,13 @@
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     vec::Vec,
 };
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, collections::StaticVec as BoundedVec, safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 
@@ -28,30 +23,16 @@ use wrt_foundation::{
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
+use alloc::{boxed::Box, sync::Arc, vec, vec::Vec};
 
-use wrt_error::{
-    Error,
-    Result,
-};
+use wrt_error::{Error, Result};
 #[cfg(feature = "std")]
-use wrt_foundation::{
-    builtin::BuiltinType,
-    component_value::ComponentValue,
-};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    builtin::BuiltinType,
-    component_value::ComponentValue,
-};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 #[cfg(not(feature = "std"))]
 type ComponentProvider = NoStdProvider<4096>;
@@ -61,10 +42,7 @@ use crate::builtins::ComponentProvider;
 
 use crate::{
     builtins::BuiltinHandler,
-    resources::{
-        ResourceId,
-        ResourceManager,
-    },
+    resources::{ResourceId, ResourceManager},
 };
 
 /// Handler for the resource.create built-in function
@@ -85,7 +63,10 @@ impl BuiltinHandler for ResourceCreateHandler {
     }
 
     #[cfg(feature = "std")]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -115,7 +96,10 @@ impl BuiltinHandler for ResourceCreateHandler {
     }
 
     #[cfg(not(feature = "std"))]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -178,7 +162,10 @@ impl BuiltinHandler for ResourceDropHandler {
     }
 
     #[cfg(feature = "std")]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(
@@ -215,7 +202,10 @@ impl BuiltinHandler for ResourceDropHandler {
     }
 
     #[cfg(not(feature = "std"))]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(
@@ -276,7 +266,10 @@ impl BuiltinHandler for ResourceRepHandler {
     }
 
     #[cfg(feature = "std")]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -311,7 +304,10 @@ impl BuiltinHandler for ResourceRepHandler {
     }
 
     #[cfg(not(feature = "std"))]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::runtime_execution_error(
@@ -374,7 +370,10 @@ impl BuiltinHandler for ResourceGetHandler {
     }
 
     #[cfg(feature = "std")]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<Vec<ComponentValue<ComponentProvider>>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<Vec<ComponentValue<ComponentProvider>>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(
@@ -405,7 +404,10 @@ impl BuiltinHandler for ResourceGetHandler {
     }
 
     #[cfg(not(feature = "std"))]
-    fn execute(&self, args: &[ComponentValue<ComponentProvider>]) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
+    fn execute(
+        &self,
+        args: &[ComponentValue<ComponentProvider>],
+    ) -> Result<BoundedVec<ComponentValue<ComponentProvider>, 16>> {
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(

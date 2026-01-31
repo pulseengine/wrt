@@ -6,26 +6,17 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 use wrt_foundation::{
-    operations::{
-        record_global_operation,
-        Type as OperationType,
-    },
+    operations::{Type as OperationType, record_global_operation},
     verification::VerificationLevel,
 };
 
 use crate::{
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncTask,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncTask},
         fuel_aware_waker::create_fuel_aware_waker,
     },
     prelude::*,
@@ -41,10 +32,10 @@ const FUTURE_TIMEOUT_FUEL: u64 = 15;
 
 /// A future that selects the first of two futures to complete
 pub struct FuelSelect<F1, F2> {
-    future1:            Option<F1>,
-    future2:            Option<F2>,
-    fuel_consumed:      u64,
-    fuel_budget:        u64,
+    future1: Option<F1>,
+    future2: Option<F2>,
+    fuel_consumed: u64,
+    fuel_budget: u64,
     verification_level: VerificationLevel,
 }
 
@@ -134,9 +125,9 @@ impl<F1, F2> FuelSelect<F1, F2> {
 
 /// A future that chains two futures sequentially
 pub struct FuelChain<F1, F2, T> {
-    state:              ChainState<F1, F2, T>,
-    fuel_consumed:      u64,
-    fuel_budget:        u64,
+    state: ChainState<F1, F2, T>,
+    fuel_consumed: u64,
+    fuel_budget: u64,
     verification_level: VerificationLevel,
 }
 
@@ -233,12 +224,12 @@ where
     F1: Future,
     F2: Future,
 {
-    future1:            Option<F1>,
-    future2:            Option<F2>,
-    result1:            Option<F1::Output>,
-    result2:            Option<F2::Output>,
-    fuel_consumed:      u64,
-    fuel_budget:        u64,
+    future1: Option<F1>,
+    future2: Option<F2>,
+    result1: Option<F1::Output>,
+    result2: Option<F2::Output>,
+    fuel_consumed: u64,
+    fuel_budget: u64,
     verification_level: VerificationLevel,
 }
 
@@ -392,12 +383,12 @@ impl<T: Future> FuelFutureExt for T {}
 /// Component Model future wrapper for async operations
 pub struct ComponentFuture<T> {
     /// Inner future
-    inner:              Pin<Box<dyn Future<Output = T> + Send + 'static>>,
+    inner: Pin<Box<dyn Future<Output = T> + Send + 'static>>,
     /// Component instance ID
-    component_id:       u64,
+    component_id: u64,
     /// Fuel tracking
-    fuel_consumed:      u64,
-    fuel_budget:        u64,
+    fuel_consumed: u64,
+    fuel_budget: u64,
     /// Verification level
     verification_level: VerificationLevel,
 }

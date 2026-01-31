@@ -8,40 +8,22 @@ use alloc::sync::Weak;
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-    },
+    sync::atomic::{AtomicU64, Ordering},
+    task::{Context, Poll},
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::StaticMap as BoundedMap,
-    safe_managed_alloc,
+    Arc, CrateId, Mutex, collections::StaticMap as BoundedMap, safe_managed_alloc,
     verification::VerificationLevel,
-    Arc,
-    CrateId,
-    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::{
-    task_manager::{
-        TaskId as ComponentTaskId,
-        TaskManager,
-        TaskState,
-        TaskType,
-    },
-    thread_spawn_fuel::{
-        FuelTrackedThreadManager,
-        ThreadFuelStatus,
-    },
+    task_manager::{TaskId as ComponentTaskId, TaskManager, TaskState, TaskType},
+    thread_spawn_fuel::{FuelTrackedThreadManager, ThreadFuelStatus},
 };
 
 // Placeholder types when threading is not available
@@ -60,15 +42,12 @@ pub enum TaskState {
     Completed,
 }
 use crate::{
+    ComponentInstanceId,
     async_::{
-        fuel_async_executor::{
-            AsyncTaskState,
-            FuelAsyncExecutor,
-        },
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
         fuel_async_scheduler::SchedulingPolicy,
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 /// Maximum concurrent async operations per component
@@ -77,34 +56,29 @@ const MAX_ASYNC_OPS_PER_COMPONENT: usize = 64;
 /// Bridge between Component Model async and fuel executor
 pub struct ComponentAsyncBridge {
     /// Fuel-based async executor
-    executor:                 Arc<Mutex<FuelAsyncExecutor>>,
+    executor: Arc<Mutex<FuelAsyncExecutor>>,
     /// Component task manager for async integration
-    task_manager:             Arc<Mutex<TaskManager>>,
+    task_manager: Arc<Mutex<TaskManager>>,
     /// Thread manager for fuel tracking
-    thread_manager:           Arc<Mutex<FuelTrackedThreadManager>>,
+    thread_manager: Arc<Mutex<FuelTrackedThreadManager>>,
     /// Mapping from component tasks to executor tasks
-    task_mapping:
-        BoundedMap<ComponentTaskId, u32, 1024>, /* Simple TaskId fallback */
+    task_mapping: BoundedMap<ComponentTaskId, u32, 1024>, /* Simple TaskId fallback */
     /// Per-component async operation limits
-    component_limits: BoundedMap<
-        ComponentInstanceId,
-        AsyncComponentLimits,
-        256,
-    >,
+    component_limits: BoundedMap<ComponentInstanceId, AsyncComponentLimits, 256>,
     /// Global async fuel budget
     global_async_fuel_budget: AtomicU64,
     /// Verification level for async operations
-    verification_level:       VerificationLevel,
+    verification_level: VerificationLevel,
 }
 
 /// Per-component async operation limits
 #[derive(Debug)]
 struct AsyncComponentLimits {
     max_concurrent_tasks: usize,
-    active_tasks:         AtomicU64,
-    fuel_budget:          u64,
-    fuel_consumed:        AtomicU64,
-    priority:             Priority,
+    active_tasks: AtomicU64,
+    fuel_budget: u64,
+    fuel_consumed: AtomicU64,
+    priority: Priority,
 }
 
 impl ComponentAsyncBridge {
@@ -151,7 +125,8 @@ impl ComponentAsyncBridge {
             priority,
         };
 
-        let _ = self.component_limits
+        let _ = self
+            .component_limits
             .insert(component_id, limits)
             .map_err(|_| Error::resource_limit_exceeded("Too many registered components"))?;
 
@@ -338,7 +313,8 @@ impl ComponentAsyncBridge {
                 // Return unused fuel
                 let exec = self.executor.lock();
                 // Convert u32 back to executor TaskId
-                let exec_task_id_full = crate::async_::fuel_async_executor::TaskId::new(exec_task_id);
+                let exec_task_id_full =
+                    crate::async_::fuel_async_executor::TaskId::new(exec_task_id);
                 if let Some(status) = exec.get_task_status(exec_task_id_full) {
                     let unused_fuel = status.fuel_budget - status.fuel_consumed;
                     if unused_fuel > 0 {
@@ -380,22 +356,22 @@ impl ComponentAsyncBridge {
 /// Result of polling async tasks
 #[derive(Debug, Default)]
 pub struct PollResult {
-    pub tasks_polled:        usize,
-    pub tasks_completed:     usize,
-    pub tasks_failed:        usize,
-    pub tasks_waiting:       usize,
+    pub tasks_polled: usize,
+    pub tasks_completed: usize,
+    pub tasks_failed: usize,
+    pub tasks_waiting: usize,
     pub total_fuel_consumed: u64,
-    pub fuel_remaining:      u64,
+    pub fuel_remaining: u64,
 }
 
 /// Component async statistics
 #[derive(Debug, Clone)]
 pub struct ComponentAsyncStats {
-    pub component_id:  ComponentInstanceId,
-    pub active_tasks:  u64,
-    pub max_tasks:     u64,
+    pub component_id: ComponentInstanceId,
+    pub active_tasks: u64,
+    pub max_tasks: u64,
     pub fuel_consumed: u64,
-    pub fuel_budget:   u64,
+    pub fuel_budget: u64,
 }
 
 impl ComponentAsyncStats {

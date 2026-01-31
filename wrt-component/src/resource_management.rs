@@ -8,8 +8,8 @@
 use std::collections::HashMap;
 
 use wrt_foundation::{
-    collections::{StaticMap, StaticVec as BoundedVec},
     budget_aware_provider::CrateId,
+    collections::{StaticMap, StaticVec as BoundedVec},
     safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
@@ -39,8 +39,7 @@ impl ResourceHandle {
 }
 
 /// Resource type identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ResourceTypeId(pub u32);
 
 impl ResourceTypeId {
@@ -61,9 +60,9 @@ pub struct ResourceTypeMetadata {
     /// Resource type ID
     pub type_id: ResourceTypeId,
     /// Resource type name
-    pub name:    BoundedVec<u8, 256>,
+    pub name: BoundedVec<u8, 256>,
     /// Size of the resource data
-    pub size:    usize,
+    pub size: usize,
 }
 
 /// Resource state enumeration
@@ -175,17 +174,17 @@ pub enum ResourceType {
 #[derive(Debug, Clone)]
 pub struct Resource {
     /// Resource handle
-    pub handle:     ResourceHandle,
+    pub handle: ResourceHandle,
     /// Resource type ID
-    pub type_id:    ResourceTypeId,
+    pub type_id: ResourceTypeId,
     /// Resource state
-    pub state:      ResourceState,
+    pub state: ResourceState,
     /// Resource ownership
-    pub ownership:  ResourceOwnership,
+    pub ownership: ResourceOwnership,
     /// Resource data
-    pub data:       ResourceData,
+    pub data: ResourceData,
     /// Reference count for lifecycle management
-    pub ref_count:  u32,
+    pub ref_count: u32,
     /// WebAssembly destructor function index (if any)
     /// When this resource is dropped, call this function in the component
     pub destructor: Option<u32>,
@@ -292,19 +291,19 @@ impl Resource {
 #[derive(Debug, Clone)]
 pub struct ResourceManagerConfig {
     /// Maximum number of resources
-    pub max_resources:    usize,
+    pub max_resources: usize,
     /// Validation level
     pub validation_level: ResourceValidationLevel,
     /// Enable resource tracking
-    pub enable_tracking:  bool,
+    pub enable_tracking: bool,
 }
 
 impl Default for ResourceManagerConfig {
     fn default() -> Self {
         Self {
-            max_resources:    1024,
+            max_resources: 1024,
             validation_level: ResourceValidationLevel::Basic,
-            enable_tracking:  true,
+            enable_tracking: true,
         }
     }
 }
@@ -313,13 +312,13 @@ impl Default for ResourceManagerConfig {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ResourceManagerStats {
     /// Total resources created
-    pub resources_created:   u64,
+    pub resources_created: u64,
     /// Total resources destroyed
     pub resources_destroyed: u64,
     /// Currently active resources
-    pub active_resources:    u32,
+    pub active_resources: u32,
     /// Peak resource count
-    pub peak_resources:      u32,
+    pub peak_resources: u32,
 }
 
 /// Callback for invoking WebAssembly resource destructors
@@ -339,11 +338,11 @@ pub type DestructorCallback = Box<dyn FnMut(u32, u32, u32) -> wrt_error::Result<
 /// when resources are dropped (if a callback is registered).
 pub struct ResourceManager {
     /// Manager configuration
-    config:              ResourceManagerConfig,
+    config: ResourceManagerConfig,
     /// Manager statistics
-    stats:               ResourceManagerStats,
+    stats: ResourceManagerStats,
     /// Next resource handle ID
-    next_handle_id:      u32,
+    next_handle_id: u32,
     /// Callback to invoke WebAssembly destructors (wrapped in Mutex for thread safety)
     #[cfg(feature = "std")]
     destructor_callback: Option<std::sync::Arc<std::sync::Mutex<DestructorCallback>>>,
@@ -356,7 +355,10 @@ impl core::fmt::Debug for ResourceManager {
             .field("stats", &self.stats)
             .field("next_handle_id", &self.next_handle_id);
         #[cfg(feature = "std")]
-        s.field("destructor_callback", &self.destructor_callback.as_ref().map(|_| "<callback>"));
+        s.field(
+            "destructor_callback",
+            &self.destructor_callback.as_ref().map(|_| "<callback>"),
+        );
         s.finish()
     }
 }
@@ -467,14 +469,17 @@ impl ResourceManager {
         resource: &Resource,
     ) -> wrt_error::Result<()> {
         if !resource.handle.is_valid() {
-            return Err(wrt_error::Error::resource_not_found("Invalid resource handle"));
+            return Err(wrt_error::Error::resource_not_found(
+                "Invalid resource handle",
+            ));
         }
 
         // If the resource has a destructor and we have a callback, call it
         if let Some((dtor_func, instance_id)) = resource.destructor_info() {
             if let Some(ref callback_arc) = self.destructor_callback {
-                let mut callback = callback_arc.lock()
-                    .map_err(|_| wrt_error::Error::runtime_error("Failed to lock destructor callback"))?;
+                let mut callback = callback_arc.lock().map_err(|_| {
+                    wrt_error::Error::runtime_error("Failed to lock destructor callback")
+                })?;
                 callback(instance_id, dtor_func, resource.handle.0)?;
             }
             // Note: If no callback is registered, we silently skip the destructor
@@ -515,11 +520,11 @@ impl ResourceManager {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ResourceTableStats {
     /// Total entries in table
-    pub total_entries:      u32,
+    pub total_entries: u32,
     /// Active entries in table
-    pub active_entries:     u32,
+    pub active_entries: u32,
     /// Total lookups performed
-    pub total_lookups:      u64,
+    pub total_lookups: u64,
     /// Successful lookups
     pub successful_lookups: u64,
 }
@@ -544,17 +549,17 @@ const RESOURCE_TABLE_CAPACITY: usize = 1024;
 #[derive(Debug)]
 pub struct ResourceTable {
     /// Table statistics
-    stats:       ResourceTableStats,
+    stats: ResourceTableStats,
     /// Maximum table size
-    max_size:    usize,
+    max_size: usize,
     /// Next available handle ID
     next_handle: u32,
     /// Actual storage for resources, keyed by handle ID (heap-allocated with std)
     #[cfg(feature = "std")]
-    resources:   HashMap<u32, Resource>,
+    resources: HashMap<u32, Resource>,
     /// Actual storage for resources, keyed by handle ID (stack-allocated without std)
     #[cfg(not(feature = "std"))]
-    resources:   StaticMap<u32, Resource, RESOURCE_TABLE_CAPACITY>,
+    resources: StaticMap<u32, Resource, RESOURCE_TABLE_CAPACITY>,
 }
 
 impl ResourceTable {
@@ -584,7 +589,10 @@ impl ResourceTable {
     }
 
     /// Get a resource by handle ID (immutable reference)
-    pub fn get(&mut self, handle_id: u32) -> core::result::Result<Option<&Resource>, ResourceError> {
+    pub fn get(
+        &mut self,
+        handle_id: u32,
+    ) -> core::result::Result<Option<&Resource>, ResourceError> {
         self.stats.total_lookups += 1;
 
         let handle = ResourceHandle::new(handle_id);
@@ -608,7 +616,10 @@ impl ResourceTable {
     }
 
     /// Get a mutable reference to a resource by handle ID
-    pub fn get_mut(&mut self, handle_id: u32) -> core::result::Result<Option<&mut Resource>, ResourceError> {
+    pub fn get_mut(
+        &mut self,
+        handle_id: u32,
+    ) -> core::result::Result<Option<&mut Resource>, ResourceError> {
         self.stats.total_lookups += 1;
 
         let handle = ResourceHandle::new(handle_id);
@@ -635,7 +646,10 @@ impl ResourceTable {
     ///
     /// The resource's handle will be used as the key. If the handle is not set
     /// (i.e., has INVALID_HANDLE), a new unique handle will be assigned.
-    pub fn insert(&mut self, mut resource: Resource) -> core::result::Result<ResourceHandle, ResourceError> {
+    pub fn insert(
+        &mut self,
+        mut resource: Resource,
+    ) -> core::result::Result<ResourceHandle, ResourceError> {
         if self.resources.len() >= self.max_size {
             return Err(ResourceError::LimitExceeded);
         }
@@ -740,7 +754,7 @@ impl ResourceTable {
             Some(resource) => {
                 resource.state = new_state;
                 Ok(())
-            }
+            },
             None => Err(ResourceError::NotFound),
         }
     }
@@ -755,7 +769,7 @@ impl ResourceTable {
             Some(resource) => {
                 let new_count = resource.add_ref();
                 Ok(new_count)
-            }
+            },
             None => Err(ResourceError::NotFound),
         }
     }
@@ -773,7 +787,7 @@ impl ResourceTable {
             Some(resource) => {
                 let new_count = resource.release();
                 Ok(new_count)
-            }
+            },
             None => Err(ResourceError::NotFound),
         }
     }
@@ -831,7 +845,7 @@ impl ResourceTable {
                     self.stats.active_entries -= 1;
                 }
                 Ok(())
-            }
+            },
             None => Err(ResourceError::NotFound),
         }
     }
@@ -880,19 +894,13 @@ pub fn create_resource_type(
 
     Ok(ResourceTypeMetadata {
         type_id: ResourceTypeId::new(1), // Stub implementation
-        name:    name_vec,
-        size:    0,
+        name: name_vec,
+        size: 0,
     })
 }
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{
-    Checksummable,
-    FromBytes,
-    ReadStream,
-    ToBytes,
-    WriteStream,
-};
+use wrt_foundation::traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream};
 
 // Macro to implement basic traits for tuple structs
 macro_rules! impl_basic_traits_tuple {
@@ -960,7 +968,6 @@ impl Default for ResourceHandle {
         Self(INVALID_HANDLE)
     }
 }
-
 
 impl Default for ResourceData {
     fn default() -> Self {
@@ -1171,13 +1178,17 @@ mod tests {
         let resource_handle = ResourceHandle::new(handle);
 
         // Update state to Active
-        table.update_state(resource_handle, ResourceState::Active).expect("Update failed");
+        table
+            .update_state(resource_handle, ResourceState::Active)
+            .expect("Update failed");
 
         let resource = table.get(handle).expect("Get failed").unwrap();
         assert_eq!(resource.state, ResourceState::Active);
 
         // Update to Destroyed
-        table.update_state(resource_handle, ResourceState::Destroyed).expect("Update failed");
+        table
+            .update_state(resource_handle, ResourceState::Destroyed)
+            .expect("Update failed");
 
         let resource = table.get(handle).expect("Get failed").unwrap();
         assert_eq!(resource.state, ResourceState::Destroyed);

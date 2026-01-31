@@ -5,7 +5,7 @@
 //!
 //! Migrated to StaticVec - no Provider abstraction needed.
 
-use wrt_foundation::collections::{StaticVec, StaticMap};
+use wrt_foundation::collections::{StaticMap, StaticVec};
 use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::prelude::*;

@@ -11,12 +11,11 @@ use wrt_foundation::tracing::{trace, warn as tracing_warn};
 
 use crate::bounded_component_infra::ComponentProvider;
 use crate::canonical_abi::ComponentValue;
-use wrt_error::{Error, Result};
-use wrt_runtime::wasip2_host::Wasip2Host;
-use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
-use alloc::vec::Vec;
 use alloc::string::String;
-
+use alloc::vec::Vec;
+use wrt_error::{Error, Result};
+use wrt_foundation::float_repr::{FloatBits32, FloatBits64};
+use wrt_runtime::wasip2_host::Wasip2Host;
 
 /// Canonical function types
 #[derive(Debug, Clone)]
@@ -120,11 +119,16 @@ impl CanonicalExecutor {
         // This requires integration with the core WASM engine
         // For now, return a placeholder
 
-        Err(Error::runtime_not_implemented("Canon.lift execution not yet implemented"))
+        Err(Error::runtime_not_implemented(
+            "Canon.lift execution not yet implemented",
+        ))
     }
 
     /// Convert ComponentValue to wasip2 Value
-    fn convert_to_wasip2_values(&self, values: Vec<ComponentValue>) -> Result<Vec<wrt_foundation::values::Value>> {
+    fn convert_to_wasip2_values(
+        &self,
+        values: Vec<ComponentValue>,
+    ) -> Result<Vec<wrt_foundation::values::Value>> {
         use wrt_foundation::values::Value;
 
         let mut result = Vec::new();
@@ -145,7 +149,7 @@ impl CanonicalExecutor {
                     #[cfg(feature = "tracing")]
                     tracing_warn!("Unsupported ComponentValue type for conversion");
                     return Err(Error::runtime_error("Unsupported value type"));
-                }
+                },
             };
             result.push(wasip2_val);
         }
@@ -153,7 +157,10 @@ impl CanonicalExecutor {
     }
 
     /// Convert wasip2 Value to ComponentValue
-    fn convert_from_wasip2_values(&self, values: Vec<wrt_foundation::values::Value>) -> Result<Vec<ComponentValue>> {
+    fn convert_from_wasip2_values(
+        &self,
+        values: Vec<wrt_foundation::values::Value>,
+    ) -> Result<Vec<ComponentValue>> {
         use wrt_foundation::values::Value;
 
         let mut result = Vec::new();
@@ -167,7 +174,7 @@ impl CanonicalExecutor {
                     #[cfg(feature = "tracing")]
                     tracing_warn!("Unsupported Value type for conversion");
                     return Err(Error::runtime_error("Unsupported value type"));
-                }
+                },
             };
             result.push(comp_val);
         }
@@ -190,7 +197,8 @@ pub fn is_wasip2_canonical(name: &str) -> bool {
 
     // Short names for canonical lowered functions from WASI interfaces
     // These appear in InlineExports when canonical functions are lowered
-    matches!(name,
+    matches!(
+        name,
         // wasi:cli/exit
         "exit" |
         // wasi:cli/stdout/stderr/stdin

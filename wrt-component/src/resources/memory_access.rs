@@ -8,4 +8,4 @@ pub enum MemoryAccessMode {
     Write,
     /// Execute access to memory
     Execute,
-    }
+}

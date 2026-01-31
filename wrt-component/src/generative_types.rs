@@ -1,23 +1,11 @@
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap,
-    vec::Vec,
-};
-use core::sync::atomic::{
-    AtomicU32,
-    Ordering,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::sync::atomic::{AtomicU32, Ordering};
 #[cfg(feature = "std")]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    bounded::{
-        BoundedVec,
-        MAX_GENERATIVE_TYPES,
-    },
+    bounded::{BoundedVec, MAX_GENERATIVE_TYPES},
     budget_aware_provider::CrateId,
     component_value::ComponentValue,
     resource::ResourceType,
@@ -28,24 +16,16 @@ use wrt_foundation::{
 use crate::{
     bounded_component_infra::ComponentProvider,
     resource_management::ResourceHandle,
-    type_bounds::{
-        RelationResult,
-        TypeBoundsChecker,
-    },
-    types::{
-        ComponentError,
-        ComponentInstanceId,
-        ResourceId,
-        TypeId,
-    },
+    type_bounds::{RelationResult, TypeBoundsChecker},
+    types::{ComponentError, ComponentInstanceId, ResourceId, TypeId},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct GenerativeResourceType {
-    pub base_type:      ResourceType<ComponentProvider>,
-    pub instance_id:    ComponentInstanceId,
+    pub base_type: ResourceType<ComponentProvider>,
+    pub instance_id: ComponentInstanceId,
     pub unique_type_id: TypeId,
-    pub generation:     u32,
+    pub generation: u32,
 }
 
 impl wrt_foundation::traits::Checksummable for GenerativeResourceType {
@@ -86,8 +66,8 @@ impl wrt_foundation::traits::FromBytes for GenerativeResourceType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TypeBound {
-    pub type_id:     TypeId,
-    pub bound_kind:  BoundKind,
+    pub type_id: TypeId,
+    pub bound_kind: BoundKind,
     pub target_type: TypeId,
 }
 
@@ -130,37 +110,42 @@ impl wrt_foundation::traits::FromBytes for TypeBound {
             _ => BoundKind::Eq, // Default fallback
         };
         let target_type = TypeId(u32::from_bytes_with_provider(reader, provider)?);
-        Ok(Self { type_id, bound_kind, target_type })
+        Ok(Self {
+            type_id,
+            bound_kind,
+            target_type,
+        })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum BoundKind {
     #[default]
     Eq,
     Sub,
 }
 
-
 #[derive(Debug)]
 pub struct GenerativeTypeRegistry {
-    next_type_id:      AtomicU32,
-    instance_types:
-        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
-    type_bounds:       BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
+    next_type_id: AtomicU32,
+    instance_types: BTreeMap<
+        ComponentInstanceId,
+        BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+    >,
+    type_bounds:
+        BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>>,
     resource_mappings: BTreeMap<ResourceHandle, GenerativeResourceType>,
-    bounds_checker:    TypeBoundsChecker,
+    bounds_checker: TypeBoundsChecker,
 }
 
 impl GenerativeTypeRegistry {
     pub fn new() -> Self {
         Self {
-            next_type_id:      AtomicU32::new(1),
-            instance_types:    BTreeMap::new(),
-            type_bounds:       BTreeMap::new(),
+            next_type_id: AtomicU32::new(1),
+            instance_types: BTreeMap::new(),
+            type_bounds: BTreeMap::new(),
             resource_mappings: BTreeMap::new(),
-            bounds_checker:    TypeBoundsChecker::new().expect("Failed to create TypeBoundsChecker"),
+            bounds_checker: TypeBoundsChecker::new().expect("Failed to create TypeBoundsChecker"),
         }
     }
 
@@ -319,7 +304,8 @@ impl GenerativeTypeRegistry {
         }
         #[cfg(not(feature = "std"))]
         {
-            self.bounds_checker.get_all_supertypes(type_id)
+            self.bounds_checker
+                .get_all_supertypes(type_id)
                 .map(|vec| vec.iter().copied().collect())
                 .unwrap_or_else(|_| Vec::new())
         }
@@ -332,7 +318,8 @@ impl GenerativeTypeRegistry {
         }
         #[cfg(not(feature = "std"))]
         {
-            self.bounds_checker.get_all_subtypes(type_id)
+            self.bounds_checker
+                .get_all_subtypes(type_id)
                 .map(|vec| vec.iter().copied().collect())
                 .unwrap_or_else(|_| Vec::new())
         }
@@ -403,5 +390,4 @@ impl Default for GenerativeTypeRegistry {
     fn default() -> Self {
         Self::new()
     }
-
 }

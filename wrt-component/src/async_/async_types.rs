@@ -4,42 +4,31 @@
 //! required by the Component Model MVP specification for concurrent operations.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    mem,
-};
+use core::{fmt, mem};
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    string::String,
-    vec::Vec,
-};
+use std::{boxed::Box, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    mem,
-};
+use std::{fmt, mem};
 
+#[cfg(feature = "std")]
+use crate::bounded_component_infra::ComponentProvider;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{
+    MemoryProvider, NoStdProvider,
+    bounded::BoundedString,
+    budget_aware_provider::CrateId,
+    collections::StaticVec as BoundedVec,
+    safe_managed_alloc,
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
+    verification::Checksum,
+};
 #[cfg(feature = "std")]
 use wrt_foundation::{
     collections::StaticVec as BoundedVec,
     component_value::ComponentValue,
     prelude::*,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::Checksum,
-};
-#[cfg(feature = "std")]
-use crate::bounded_component_infra::ComponentProvider;
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    bounded::BoundedString,
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
-    verification::Checksum,
-    NoStdProvider,
-    MemoryProvider,
 };
 
 // Import prelude for no_std to get Vec, Box, etc.
@@ -48,10 +37,7 @@ use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::types::{
-    ValType,
-    Value,
-};
+use crate::types::{ValType, Value};
 
 /// Maximum number of pending values in a stream for no_std environments
 const MAX_STREAM_BUFFER: usize = 1024;
@@ -60,8 +46,7 @@ const MAX_STREAM_BUFFER: usize = 1024;
 const MAX_WAITABLES: usize = 64;
 
 /// Handle to a stream
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct StreamHandle(pub u32);
 
 impl StreamHandle {
@@ -101,10 +86,8 @@ impl FromBytes for StreamHandle {
     }
 }
 
-
 /// Handle to a future
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct FutureHandle(pub u32);
 
 impl FutureHandle {
@@ -143,7 +126,6 @@ impl FromBytes for FutureHandle {
         Ok(Self(u32::from_bytes_with_provider(reader, provider)?))
     }
 }
-
 
 /// Handle to an error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -197,16 +179,16 @@ where
     T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Stream handle
-    pub handle:          StreamHandle,
+    pub handle: StreamHandle,
     /// Element type
-    pub element_type:    ValType,
+    pub element_type: ValType,
     /// Stream state
-    pub state:           StreamState,
+    pub state: StreamState,
     /// Buffered values
     #[cfg(feature = "std")]
-    pub buffer:          Vec<T>,
+    pub buffer: Vec<T>,
     #[cfg(not(any(feature = "std",)))]
-    pub buffer:          BoundedVec<T, MAX_STREAM_BUFFER>,
+    pub buffer: BoundedVec<T, MAX_STREAM_BUFFER>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed  
@@ -220,13 +202,13 @@ where
     T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     /// Future handle
-    pub handle:          FutureHandle,
+    pub handle: FutureHandle,
     /// Value type
-    pub value_type:      ValType,
+    pub value_type: ValType,
     /// Future state
-    pub state:           FutureState,
+    pub state: FutureState,
     /// Stored value (once available)
-    pub value:           Option<T>,
+    pub value: Option<T>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed
@@ -237,19 +219,19 @@ where
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     /// Error context handle
-    pub handle:      ErrorContextHandle,
+    pub handle: ErrorContextHandle,
     /// Error message
     #[cfg(feature = "std")]
-    pub message:     String,
+    pub message: String,
     #[cfg(not(any(feature = "std",)))]
-    pub message:     BoundedString<1024>,
+    pub message: BoundedString<1024>,
     /// Stack trace if available
     #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
     #[cfg(not(any(feature = "std",)))]
     pub stack_trace: Option<BoundedVec<StackFrame, 32>>,
     /// Additional debug information
-    pub debug_info:  DebugInfo,
+    pub debug_info: DebugInfo,
 }
 
 /// Stream state
@@ -285,13 +267,13 @@ pub enum FutureState {
 pub struct StackFrame {
     /// Function name
     #[cfg(feature = "std")]
-    pub function:           String,
+    pub function: String,
     #[cfg(not(any(feature = "std",)))]
-    pub function:           BoundedString<128>,
+    pub function: BoundedString<128>,
     /// Component instance
     pub component_instance: Option<u32>,
     /// Instruction offset
-    pub offset:             Option<u32>,
+    pub offset: Option<u32>,
 }
 
 impl Default for StackFrame {
@@ -367,15 +349,12 @@ pub struct DebugInfo {
     /// Component that created the error
     pub source_component: Option<u32>,
     /// Error code if available
-    pub error_code:       Option<u32>,
+    pub error_code: Option<u32>,
     /// Additional properties
     #[cfg(feature = "std")]
-    pub properties:       Vec<(String, ComponentValue<ComponentProvider>)>,
+    pub properties: Vec<(String, ComponentValue<ComponentProvider>)>,
     #[cfg(not(any(feature = "std",)))]
-    pub properties: BoundedVec<
-        (BoundedString<64>, ComponentValue),
-        16
-    >,
+    pub properties: BoundedVec<(BoundedString<64>, ComponentValue), 16>,
 }
 
 /// Async read result
@@ -416,19 +395,19 @@ impl Checksummable for Waitable {
             Self::StreamReadable(h) => {
                 0u8.update_checksum(checksum);
                 h.0.update_checksum(checksum);
-            }
+            },
             Self::StreamWritable(h) => {
                 1u8.update_checksum(checksum);
                 h.0.update_checksum(checksum);
-            }
+            },
             Self::FutureReadable(h) => {
                 2u8.update_checksum(checksum);
                 h.0.update_checksum(checksum);
-            }
+            },
             Self::FutureWritable(h) => {
                 3u8.update_checksum(checksum);
                 h.0.update_checksum(checksum);
-            }
+            },
         }
     }
 }
@@ -443,19 +422,19 @@ impl ToBytes for Waitable {
             Self::StreamReadable(h) => {
                 0u8.to_bytes_with_provider(writer, provider)?;
                 h.0.to_bytes_with_provider(writer, provider)
-            }
+            },
             Self::StreamWritable(h) => {
                 1u8.to_bytes_with_provider(writer, provider)?;
                 h.0.to_bytes_with_provider(writer, provider)
-            }
+            },
             Self::FutureReadable(h) => {
                 2u8.to_bytes_with_provider(writer, provider)?;
                 h.0.to_bytes_with_provider(writer, provider)
-            }
+            },
             Self::FutureWritable(h) => {
                 3u8.to_bytes_with_provider(writer, provider)?;
                 h.0.to_bytes_with_provider(writer, provider)
-            }
+            },
         }
     }
 }
@@ -472,7 +451,9 @@ impl FromBytes for Waitable {
             1 => Ok(Self::StreamWritable(StreamHandle(value))),
             2 => Ok(Self::FutureReadable(FutureHandle(value))),
             3 => Ok(Self::FutureWritable(FutureHandle(value))),
-            _ => Err(wrt_error::Error::validation_invalid_type("Invalid Waitable tag")),
+            _ => Err(wrt_error::Error::validation_invalid_type(
+                "Invalid Waitable tag",
+            )),
         }
     }
 }
@@ -482,9 +463,9 @@ impl FromBytes for Waitable {
 pub struct WaitableSet {
     /// Waitables in the set
     #[cfg(feature = "std")]
-    pub waitables:  Vec<Waitable>,
+    pub waitables: Vec<Waitable>,
     #[cfg(not(any(feature = "std",)))]
-    pub waitables:  BoundedVec<Waitable, MAX_WAITABLES>,
+    pub waitables: BoundedVec<Waitable, MAX_WAITABLES>,
     /// Ready mask (bit per waitable)
     pub ready_mask: u64,
 }
@@ -755,11 +736,7 @@ impl WaitableSet {
 
     /// Get the first ready waitable index
     pub fn first_ready(&self) -> Option<u32> {
-        if self.ready_mask == 0 {
-            None
-        } else {
-            Some(self.ready_mask.trailing_zeros())
-        }
+        if self.ready_mask == 0 { None } else { Some(self.ready_mask.trailing_zeros()) }
     }
 
     /// Clear ready state for a waitable

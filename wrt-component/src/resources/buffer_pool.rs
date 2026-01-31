@@ -1,25 +1,19 @@
 // Use BTreeMap for all cases to ensure deterministic ordering and no_std
 // compatibility
 #[cfg(feature = "std")]
-use std::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use std::{collections::BTreeMap, vec::Vec};
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
 
 /// Binary std/no_std choice
 #[cfg(feature = "std")]
 pub struct BufferPool {
     /// Map of buffer sizes to pools of buffers
-    pools:                BTreeMap<usize, Vec<Vec<u8>>>,
+    pools: BTreeMap<usize, Vec<Vec<u8>>>,
     /// Maximum buffer size to keep in the pool
-    max_buffer_size:      usize,
+    max_buffer_size: usize,
     /// Maximum number of buffers per size
     max_buffers_per_size: usize,
 }
@@ -28,7 +22,7 @@ pub struct BufferPool {
 #[cfg(not(feature = "std"))]
 pub struct BufferPool {
     /// Simplified buffer management for no_std
-    max_buffer_size:      usize,
+    max_buffer_size: usize,
     max_buffers_per_size: usize,
 }
 
@@ -37,8 +31,8 @@ impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {
         Self {
-            pools:                BTreeMap::new(),
-            max_buffer_size:      1024 * 1024, // 1MB default max size
+            pools: BTreeMap::new(),
+            max_buffer_size: 1024 * 1024, // 1MB default max size
             max_buffers_per_size: 10,
         }
     }
@@ -110,8 +104,8 @@ impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {
         Self {
-            max_buffer_size:      1024, // 1KB default max size for no_std
-            max_buffers_per_size: 2,    // Reduced for no_std
+            max_buffer_size: 1024,   // 1KB default max size for no_std
+            max_buffers_per_size: 2, // Reduced for no_std
         }
     }
 
@@ -137,9 +131,9 @@ impl BufferPool {
     /// Get statistics about the buffer pool (simplified for no_std)
     pub fn stats(&self) -> BufferPoolStats {
         BufferPoolStats {
-            total_buffers:  0,
+            total_buffers: 0,
             total_capacity: 0,
-            size_count:     0,
+            size_count: 0,
         }
     }
 }
@@ -147,9 +141,9 @@ impl BufferPool {
 /// Statistics about a buffer pool
 pub struct BufferPoolStats {
     /// Total number of buffers in the pool
-    pub total_buffers:  usize,
+    pub total_buffers: usize,
     /// Total capacity of all buffers in bytes
     pub total_capacity: usize,
     /// Number of different buffer sizes
-    pub size_count:     usize,
+    pub size_count: usize,
 }

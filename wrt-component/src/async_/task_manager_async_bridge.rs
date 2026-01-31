@@ -9,38 +9,23 @@ use alloc::sync::Weak;
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{
-        AtomicU32,
-        AtomicU64,
-        Ordering,
-    },
-    task::{
-        Context,
-        Poll,
-    },
+    sync::atomic::{AtomicU32, AtomicU64, Ordering},
+    task::{Context, Poll},
 };
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
 use wrt_foundation::{
-    collections::{StaticVec as BoundedVec, StaticMap as BoundedMap},
+    Arc, CrateId, Mutex,
+    collections::{StaticMap as BoundedMap, StaticVec as BoundedVec},
     component_value::ComponentValue,
     safe_managed_alloc,
-    Arc,
-    CrateId,
-    Mutex,
 };
 use wrt_platform::advanced_sync::Priority;
 
 #[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::{
-    CallFrame,
-    Task,
-    TaskContext,
-    TaskId,
-    TaskManager,
-    TaskState,
-    TaskType,
+    CallFrame, Task, TaskContext, TaskId, TaskManager, TaskState, TaskType,
 };
 #[cfg(feature = "component-model-threading")]
 use crate::threading::thread_spawn_fuel::FuelTrackedThreadManager;
@@ -60,29 +45,15 @@ pub enum TaskState {
     Completed,
 }
 use crate::{
+    ComponentInstanceId,
     async_::{
-        async_types::{
-            Future,
-            FutureHandle,
-            Stream,
-            StreamHandle,
-            Waitable,
-            WaitableSet,
-        },
-        component_async_bridge::{
-            ComponentAsyncBridge,
-            PollResult,
-        },
-        fuel_async_executor::{
-            AsyncTaskState,
-            AsyncTaskStatus,
-            FuelAsyncExecutor,
-        },
+        async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet},
+        component_async_bridge::{ComponentAsyncBridge, PollResult},
+        fuel_async_executor::{AsyncTaskState, AsyncTaskStatus, FuelAsyncExecutor},
         fuel_dynamic_manager::FuelAllocationPolicy,
         fuel_preemption_support::PreemptionPolicy,
     },
     prelude::*,
-    ComponentInstanceId,
 };
 
 // Placeholder types when threading is not available
@@ -99,25 +70,25 @@ pub struct ComponentAsyncTask {
     pub component_task_id: TaskId,
     /// Executor task ID
     #[cfg(feature = "component-model-threading")]
-    pub executor_task_id:  crate::threading::task_manager::TaskId,
+    pub executor_task_id: crate::threading::task_manager::TaskId,
     #[cfg(not(feature = "component-model-threading"))]
-    pub executor_task_id:  u32,
+    pub executor_task_id: u32,
     /// Component instance
-    pub component_id:      ComponentInstanceId,
+    pub component_id: ComponentInstanceId,
     /// Task type
-    pub task_type:         ComponentAsyncTaskType,
+    pub task_type: ComponentAsyncTaskType,
     /// Future handle (if applicable)
-    pub future_handle:     Option<FutureHandle>,
+    pub future_handle: Option<FutureHandle>,
     /// Stream handle (if applicable)
-    pub stream_handle:     Option<StreamHandle>,
+    pub stream_handle: Option<StreamHandle>,
     /// Waitables being monitored
-    pub waitables:         Option<WaitableSet>,
+    pub waitables: Option<WaitableSet>,
     /// Task priority
-    pub priority:          Priority,
+    pub priority: Priority,
     /// Creation timestamp
-    pub created_at:        u64,
+    pub created_at: u64,
     /// Last activity timestamp
-    pub last_activity:     AtomicU64,
+    pub last_activity: AtomicU64,
 }
 
 impl Clone for ComponentAsyncTask {
@@ -147,7 +118,8 @@ impl PartialEq for ComponentAsyncTask {
             && self.stream_handle == other.stream_handle
             && self.priority == other.priority
             && self.created_at == other.created_at
-            && self.last_activity.load(Ordering::Relaxed) == other.last_activity.load(Ordering::Relaxed)
+            && self.last_activity.load(Ordering::Relaxed)
+                == other.last_activity.load(Ordering::Relaxed)
     }
 }
 
@@ -200,7 +172,9 @@ impl wrt_runtime::ToBytes for ComponentAsyncTask {
         self.stream_handle.to_bytes_with_provider(writer, provider)?;
         self.priority.to_bytes_with_provider(writer, provider)?;
         self.created_at.to_bytes_with_provider(writer, provider)?;
-        self.last_activity.load(Ordering::Relaxed).to_bytes_with_provider(writer, provider)?;
+        self.last_activity
+            .load(Ordering::Relaxed)
+            .to_bytes_with_provider(writer, provider)?;
         Ok(())
     }
 }
@@ -214,7 +188,9 @@ impl wrt_runtime::FromBytes for ComponentAsyncTask {
         Ok(Self {
             component_task_id: u32::from_bytes_with_provider(reader, provider)?,
             executor_task_id: u32::from_bytes_with_provider(reader, provider)?,
-            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
+            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(
+                reader, provider,
+            )?),
             task_type: ComponentAsyncTaskType::from_bytes_with_provider(reader, provider)?,
             future_handle: Option::<FutureHandle>::from_bytes_with_provider(reader, provider)?,
             stream_handle: Option::<StreamHandle>::from_bytes_with_provider(reader, provider)?,
@@ -292,7 +268,9 @@ impl wrt_runtime::FromBytes for ComponentAsyncTaskType {
             3 => Ok(ComponentAsyncTaskType::ResourceAsync),
             4 => Ok(ComponentAsyncTaskType::LifecycleAsync),
             5 => Ok(ComponentAsyncTaskType::AsyncOperation),
-            _ => Err(wrt_error::Error::runtime_error("Invalid ComponentAsyncTaskType discriminant")),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid ComponentAsyncTaskType discriminant",
+            )),
         }
     }
 }
@@ -300,36 +278,36 @@ impl wrt_runtime::FromBytes for ComponentAsyncTaskType {
 /// Task Manager Async Bridge
 pub struct TaskManagerAsyncBridge {
     /// Component Model task manager
-    task_manager:   Arc<Mutex<TaskManager>>,
+    task_manager: Arc<Mutex<TaskManager>>,
     /// Async executor bridge
-    async_bridge:   ComponentAsyncBridge,
+    async_bridge: ComponentAsyncBridge,
     /// Active async tasks
-    async_tasks:    BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
+    async_tasks: BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
     /// Task mapping (component task -> executor task)
     #[cfg(feature = "component-model-threading")]
-    task_mapping:   BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
+    task_mapping: BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
     #[cfg(not(feature = "component-model-threading"))]
-    task_mapping:   BoundedMap<TaskId, u32, MAX_ASYNC_CONTEXTS>,
+    task_mapping: BoundedMap<TaskId, u32, MAX_ASYNC_CONTEXTS>,
     /// Component async contexts
     async_contexts: BoundedMap<ComponentInstanceId, ComponentAsyncContext, 128>,
     /// Bridge statistics
-    bridge_stats:   BridgeStatistics,
+    bridge_stats: BridgeStatistics,
     /// Bridge configuration
-    config:         BridgeConfiguration,
+    config: BridgeConfiguration,
 }
 
 /// Per-component async context
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ComponentAsyncContext {
-    component_id:    ComponentInstanceId,
+    component_id: ComponentInstanceId,
     /// Active async tasks for this component
-    active_tasks:    BoundedVec<TaskId, 64>,
+    active_tasks: BoundedVec<TaskId, 64>,
     /// Future handles owned by component
-    futures:         BoundedMap<FutureHandle, TaskId, 64>,
+    futures: BoundedMap<FutureHandle, TaskId, 64>,
     /// Stream handles owned by component
-    streams:         BoundedMap<StreamHandle, TaskId, 64>,
+    streams: BoundedMap<StreamHandle, TaskId, 64>,
     /// Component async state
-    async_state:     ComponentAsyncState,
+    async_state: ComponentAsyncState,
     /// Resource limits
     resource_limits: ComponentResourceLimits,
 }
@@ -370,7 +348,9 @@ impl wrt_runtime::FromBytes for ComponentAsyncContext {
     ) -> wrt_error::Result<Self> {
         use wrt_runtime::FromBytes;
         Ok(Self {
-            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(reader, provider)?),
+            component_id: ComponentInstanceId::new(u32::from_bytes_with_provider(
+                reader, provider,
+            )?),
             active_tasks: BoundedVec::from_bytes_with_provider(reader, provider)?,
             futures: BoundedMap::from_bytes_with_provider(reader, provider)?,
             streams: BoundedMap::from_bytes_with_provider(reader, provider)?,
@@ -441,7 +421,9 @@ impl wrt_runtime::FromBytes for ComponentAsyncState {
             2 => Ok(ComponentAsyncState::Suspended),
             3 => Ok(ComponentAsyncState::Terminating),
             4 => Ok(ComponentAsyncState::Terminated),
-            _ => Err(wrt_error::Error::runtime_error("Invalid ComponentAsyncState discriminant")),
+            _ => Err(wrt_error::Error::runtime_error(
+                "Invalid ComponentAsyncState discriminant",
+            )),
         }
     }
 }
@@ -450,10 +432,10 @@ impl wrt_runtime::FromBytes for ComponentAsyncState {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentResourceLimits {
     max_concurrent_tasks: usize,
-    max_futures:          usize,
-    max_streams:          usize,
-    fuel_budget:          u64,
-    memory_limit:         usize,
+    max_futures: usize,
+    max_streams: usize,
+    fuel_budget: u64,
+    memory_limit: usize,
 }
 
 impl wrt_runtime::Checksummable for ComponentResourceLimits {
@@ -503,43 +485,43 @@ impl wrt_runtime::FromBytes for ComponentResourceLimits {
 #[derive(Debug, Default)]
 struct BridgeStatistics {
     total_async_tasks: AtomicU64,
-    completed_tasks:   AtomicU64,
-    failed_tasks:      AtomicU64,
-    cancelled_tasks:   AtomicU64,
-    futures_created:   AtomicU64,
-    streams_created:   AtomicU64,
-    preemptions:       AtomicU64,
-    fuel_exhaustions:  AtomicU64,
+    completed_tasks: AtomicU64,
+    failed_tasks: AtomicU64,
+    cancelled_tasks: AtomicU64,
+    futures_created: AtomicU64,
+    streams_created: AtomicU64,
+    preemptions: AtomicU64,
+    fuel_exhaustions: AtomicU64,
 }
 
 /// Bridge configuration
 #[derive(Debug, Clone)]
 pub struct BridgeConfiguration {
     /// Enable async task preemption
-    pub enable_preemption:   bool,
+    pub enable_preemption: bool,
     /// Enable dynamic fuel management  
     pub enable_dynamic_fuel: bool,
     /// Default fuel allocation policy
-    pub fuel_policy:         FuelAllocationPolicy,
+    pub fuel_policy: FuelAllocationPolicy,
     /// Default preemption policy
-    pub preemption_policy:   PreemptionPolicy,
+    pub preemption_policy: PreemptionPolicy,
     /// Default component resource limits
-    pub default_limits:      ComponentResourceLimits,
+    pub default_limits: ComponentResourceLimits,
 }
 
 impl Default for BridgeConfiguration {
     fn default() -> Self {
         Self {
-            enable_preemption:   true,
+            enable_preemption: true,
             enable_dynamic_fuel: true,
-            fuel_policy:         FuelAllocationPolicy::Adaptive,
-            preemption_policy:   PreemptionPolicy::PriorityBased,
-            default_limits:      ComponentResourceLimits {
+            fuel_policy: FuelAllocationPolicy::Adaptive,
+            preemption_policy: PreemptionPolicy::PriorityBased,
+            default_limits: ComponentResourceLimits {
                 max_concurrent_tasks: 32,
-                max_futures:          64,
-                max_streams:          16,
-                fuel_budget:          50_000,
-                memory_limit:         1024 * 1024, // 1MB
+                max_futures: 64,
+                max_streams: 16,
+                fuel_budget: 50_000,
+                memory_limit: 1024 * 1024, // 1MB
             },
         }
     }
@@ -706,8 +688,15 @@ impl TaskManagerAsyncBridge {
         future: crate::async_::async_types::Future<T>,
     ) -> Result<FutureHandle>
     where
-        T: wrt_runtime::Checksummable + wrt_runtime::ToBytes + wrt_runtime::FromBytes
-           + Default + Clone + PartialEq + Eq + Send + 'static,
+        T: wrt_runtime::Checksummable
+            + wrt_runtime::ToBytes
+            + wrt_runtime::FromBytes
+            + Default
+            + Clone
+            + PartialEq
+            + Eq
+            + Send
+            + 'static,
     {
         // Check limits before spawning
         {
@@ -739,7 +728,10 @@ impl TaskManagerAsyncBridge {
         )?;
 
         // Store handle mapping
-        let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
+        let context = self
+            .async_contexts
+            .get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
         context
             .futures
             .insert(handle, task_id)
@@ -757,8 +749,15 @@ impl TaskManagerAsyncBridge {
         stream: crate::async_::async_types::Stream<T>,
     ) -> Result<StreamHandle>
     where
-        T: wrt_runtime::Checksummable + wrt_runtime::ToBytes + wrt_runtime::FromBytes
-           + Default + Clone + PartialEq + Eq + Send + 'static,
+        T: wrt_runtime::Checksummable
+            + wrt_runtime::ToBytes
+            + wrt_runtime::FromBytes
+            + Default
+            + Clone
+            + PartialEq
+            + Eq
+            + Send
+            + 'static,
     {
         // Generate handle and check limits before spawning
         let handle = StreamHandle::new(self.generate_handle_id());
@@ -789,7 +788,10 @@ impl TaskManagerAsyncBridge {
         )?;
 
         // Store handle mapping
-        let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
+        let context = self
+            .async_contexts
+            .get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
         context
             .streams
             .insert(handle, task_id)
@@ -828,8 +830,9 @@ impl TaskManagerAsyncBridge {
         #[cfg(not(feature = "component-model-threading"))]
         {
             // When threading is disabled, check if any waitables are ready
-            waitables.first_ready().ok_or_else(||
-                Error::validation_invalid_state("No waitables ready"))
+            waitables
+                .first_ready()
+                .ok_or_else(|| Error::validation_invalid_state("No waitables ready"))
         }
     }
 
@@ -907,10 +910,7 @@ impl TaskManagerAsyncBridge {
     }
 
     /// Suspend component async operations
-    pub fn suspend_component_async(
-        &mut self,
-        component_id: ComponentInstanceId,
-    ) -> Result<()> {
+    pub fn suspend_component_async(&mut self, component_id: ComponentInstanceId) -> Result<()> {
         let context = self
             .async_contexts
             .get_mut(&component_id)
@@ -953,11 +953,11 @@ impl TaskManagerAsyncBridge {
     pub fn get_bridge_statistics(&self) -> BridgeStats {
         BridgeStats {
             total_async_tasks: self.bridge_stats.total_async_tasks.load(Ordering::Relaxed),
-            completed_tasks:   self.bridge_stats.completed_tasks.load(Ordering::Relaxed),
-            failed_tasks:      self.bridge_stats.failed_tasks.load(Ordering::Relaxed),
-            cancelled_tasks:   self.bridge_stats.cancelled_tasks.load(Ordering::Relaxed),
-            futures_created:   self.bridge_stats.futures_created.load(Ordering::Relaxed),
-            streams_created:   self.bridge_stats.streams_created.load(Ordering::Relaxed),
+            completed_tasks: self.bridge_stats.completed_tasks.load(Ordering::Relaxed),
+            failed_tasks: self.bridge_stats.failed_tasks.load(Ordering::Relaxed),
+            cancelled_tasks: self.bridge_stats.cancelled_tasks.load(Ordering::Relaxed),
+            futures_created: self.bridge_stats.futures_created.load(Ordering::Relaxed),
+            streams_created: self.bridge_stats.streams_created.load(Ordering::Relaxed),
             active_components: self.async_contexts.len() as u64,
         }
     }
@@ -993,10 +993,10 @@ impl TaskManagerAsyncBridge {
 #[derive(Debug, Clone)]
 pub struct BridgeStats {
     pub total_async_tasks: u64,
-    pub completed_tasks:   u64,
-    pub failed_tasks:      u64,
-    pub cancelled_tasks:   u64,
-    pub futures_created:   u64,
-    pub streams_created:   u64,
+    pub completed_tasks: u64,
+    pub failed_tasks: u64,
+    pub cancelled_tasks: u64,
+    pub futures_created: u64,
+    pub streams_created: u64,
     pub active_components: u64,
 }

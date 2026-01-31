@@ -6,21 +6,14 @@
 use wrt_foundation::collections::StaticVec as BoundedVec;
 
 use wrt_foundation::{
-    bounded::BoundedString,
-    budget_aware_provider::CrateId,
-    prelude::*,
-    safe_managed_alloc,
+    bounded::BoundedString, budget_aware_provider::CrateId, prelude::*, safe_managed_alloc,
 };
 
 // Import BoundedVec only for std - no_std uses StaticVec alias above
 #[cfg(feature = "std")]
 use wrt_foundation::bounded::BoundedVec;
 
-use crate::{
-    bounded_component_infra::ComponentProvider,
-    prelude::WrtComponentValue,
-    types::Value,
-};
+use crate::{bounded_component_infra::ComponentProvider, prelude::WrtComponentValue, types::Value};
 
 /// Canonical ABI processor stub
 #[derive(Debug, Default, Clone)]
@@ -71,7 +64,10 @@ impl ResourceLifecycleManager {
         Ok(())
     }
 
-    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> wrt_error::Result<&WrtComponentValue<ComponentProvider>> {
+    pub fn borrow_resource(
+        &mut self,
+        _handle: ResourceHandle,
+    ) -> wrt_error::Result<&WrtComponentValue<ComponentProvider>> {
         // Return a dummy value - in real implementation this would be tracked
         static DUMMY: WrtComponentValue<ComponentProvider> = WrtComponentValue::Bool(false);
         Ok(&DUMMY)
@@ -137,7 +133,10 @@ impl ComponentRuntimeBridge {
         _func: F,
     ) -> core::result::Result<usize, wrt_error::Error>
     where
-        F: Fn(&[WrtComponentValue<ComponentProvider>]) -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>
+        F: Fn(
+                &[WrtComponentValue<ComponentProvider>],
+            )
+                -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>
             + Send
             + Sync
             + 'static,
@@ -152,7 +151,8 @@ impl ComponentRuntimeBridge {
         _signature: crate::component_instantiation::FunctionSignature,
         _func: fn(
             &[WrtComponentValue<ComponentProvider>],
-        ) -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>,
+        )
+            -> core::result::Result<WrtComponentValue<ComponentProvider>, wrt_error::Error>,
     ) -> core::result::Result<usize, wrt_error::Error> {
         Ok(0)
     }
@@ -212,9 +212,8 @@ impl From<Value> for WrtComponentValue<ComponentProvider> {
             Value::Char(c) => WrtComponentValue::Char(c),
             #[cfg(feature = "std")]
             Value::String(s) => {
-                let string = s.as_str()
-                    .unwrap_or_else(|_| panic!("Failed to get string slice"))
-                    .to_string();
+                let string =
+                    s.as_str().unwrap_or_else(|_| panic!("Failed to get string slice")).to_string();
                 WrtComponentValue::String(string)
             },
             #[cfg(not(any(feature = "std",)))]
@@ -335,33 +334,33 @@ pub mod cfi_stubs {
     /// CFI execution context stub
     #[derive(Debug, Clone)]
     pub struct CfiExecutionContext {
-        pub current_function:         u32,
-        pub current_instruction:      u32,
-        pub shadow_stack:             BoundedVec<u32, 1024>,
-        pub violation_count:          u32,
+        pub current_function: u32,
+        pub current_instruction: u32,
+        pub shadow_stack: BoundedVec<u32, 1024>,
+        pub violation_count: u32,
         pub landing_pad_expectations: BoundedVec<LandingPadExpectation, 16>,
-        pub metrics:                  CfiMetrics,
+        pub metrics: CfiMetrics,
     }
 
     /// Landing pad expectation stub
     #[derive(Debug, Clone)]
     pub struct LandingPadExpectation {
-        pub function_index:     u32,
+        pub function_index: u32,
         pub instruction_offset: u32,
-        pub deadline:           Option<u64>,
+        pub deadline: Option<u64>,
     }
 
     /// CFI metrics stub
     #[derive(Debug, Default, Clone)]
     pub struct CfiMetrics {
-        pub landing_pads_validated:  u64,
+        pub landing_pads_validated: u64,
         pub shadow_stack_operations: u64,
     }
 
     /// CFI protected branch target stub
     #[derive(Debug, Clone)]
     pub struct CfiProtectedBranchTarget {
-        pub target:     u32,
+        pub target: u32,
         pub protection: CfiProtection,
     }
 
@@ -386,7 +385,7 @@ pub mod cfi_stubs {
             _context: &mut CfiExecutionContext,
         ) -> core::result::Result<CfiProtectedBranchTarget, wrt_error::Error> {
             Ok(CfiProtectedBranchTarget {
-                target:     0,
+                target: 0,
                 protection: CfiProtection::default(),
             })
         }
@@ -407,7 +406,7 @@ pub mod cfi_stubs {
             _context: &mut CfiExecutionContext,
         ) -> core::result::Result<CfiProtectedBranchTarget, wrt_error::Error> {
             Ok(CfiProtectedBranchTarget {
-                target:     _label_idx,
+                target: _label_idx,
                 protection: CfiProtection::default(),
             })
         }
@@ -416,18 +415,18 @@ pub mod cfi_stubs {
     impl CfiExecutionContext {
         pub fn new() -> wrt_error::Result<Self> {
             Ok(Self {
-                current_function:         0,
-                current_instruction:      0,
-                shadow_stack:             {
+                current_function: 0,
+                current_instruction: 0,
+                shadow_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new().unwrap()
                 },
-                violation_count:          0,
+                violation_count: 0,
                 landing_pad_expectations: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new().unwrap()
                 },
-                metrics:                  CfiMetrics::default(),
+                metrics: CfiMetrics::default(),
             })
         }
     }

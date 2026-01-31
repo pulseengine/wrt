@@ -3,17 +3,10 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{
-    collections::StaticVec as BoundedVec,
-    budget_aware_provider::CrateId,
-    capabilities::CapabilityAwareProvider,
-    safe_managed_alloc,
+    budget_aware_provider::CrateId, capabilities::CapabilityAwareProvider,
+    collections::StaticVec as BoundedVec, safe_managed_alloc,
 };
 
 use crate::bounded_component_infra::BufferProvider;
@@ -41,18 +34,18 @@ pub const MAX_BUFFERS_PER_CLASS: usize = 8;
 #[derive(Debug, Clone, Copy)]
 pub struct BoundedBufferStats {
     /// Total number of buffers in the pool
-    pub total_buffers:  usize,
+    pub total_buffers: usize,
     /// Total capacity of all buffers in bytes
     pub total_capacity: usize,
     /// Number of different buffer sizes
-    pub size_count:     usize,
+    pub size_count: usize,
 }
 
 /// A buffer size class entry containing buffers of similar size
 #[derive(Debug, Clone)]
 pub struct BufferSizeClass {
     /// Size of buffers in this class
-    pub size:    usize,
+    pub size: usize,
     /// Count of buffers in this class (we can't store actual BoundedVecs in a BoundedVec)
     pub count: usize,
 }
@@ -60,16 +53,11 @@ pub struct BufferSizeClass {
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Result<Self> {
-        Ok(Self {
-            size,
-            count: 0,
-        })
+        Ok(Self { size, count: 0 })
     }
 
     /// Get a buffer from this size class if one is available
-    pub fn get_buffer(
-        &mut self,
-    ) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
         if self.count == 0 {
             None
         } else {
@@ -84,10 +72,7 @@ impl BufferSizeClass {
     }
 
     /// Return a buffer to this size class
-    pub fn return_buffer(
-        &mut self,
-        _buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>,
-    ) -> Result<()> {
+    pub fn return_buffer(&mut self, _buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
         if self.count >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
             return Ok(());
@@ -116,7 +101,7 @@ impl BufferSizeClass {
 #[derive(Debug, Clone)]
 pub struct BoundedBufferPool {
     /// Size classes for different buffer sizes
-    size_classes:   [Option<BufferSizeClass>; MAX_BUFFER_SIZE_CLASSES],
+    size_classes: [Option<BufferSizeClass>; MAX_BUFFER_SIZE_CLASSES],
     /// Number of active size classes
     active_classes: usize,
 }
@@ -125,17 +110,13 @@ impl BoundedBufferPool {
     /// Create a new bounded buffer pool
     pub fn new() -> Self {
         Self {
-            size_classes:   Default::default(),
+            size_classes: Default::default(),
             active_classes: 0,
         }
     }
 
     /// Allocate a buffer of at least the specified size
-    pub fn allocate(
-        &mut self,
-        size: usize,
-    ) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>
-    {
+    pub fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
         // Find a size class that can fit this buffer
         let matching_class = self.find_size_class(size);
 
@@ -149,8 +130,8 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let mut buffer = BoundedVec::new()
-            .map_err(|| Error::memory_error("Failed to create bounded vector"))?;
+        let mut buffer =
+            BoundedVec::new().map_err(|| Error::memory_error("Failed to create bounded vector"))?;
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
                 Error::resource_error("Buffer allocation failed: capacity exceeded")
@@ -161,10 +142,7 @@ impl BoundedBufferPool {
     }
 
     /// Return a buffer to the pool
-    pub fn return_buffer(
-        &mut self,
-        buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>,
-    ) -> Result<()> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
         let size = buffer.capacity();
 
         // Find the appropriate size class
@@ -243,5 +221,4 @@ impl Default for BoundedBufferPool {
     fn default() -> Self {
         Self::new()
     }
-
 }
