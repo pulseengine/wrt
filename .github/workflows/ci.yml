@@ -292,6 +292,8 @@ jobs:
           components: llvm-tools-preview
       - name: Setup Rust targets
         run: rustup target add wasm32-unknown-unknown wasm32-wasip1 wasm32-wasip2 || true
+      - name: Install cargo-wrt
+        run: cargo install --path cargo-wrt
       - name: Run coverage tests
         run: cargo-wrt coverage --html
       - name: Upload coverage reports to Codecov
