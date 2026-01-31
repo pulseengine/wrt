@@ -338,6 +338,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    extern crate alloc;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_directmap_basic_operations() {
