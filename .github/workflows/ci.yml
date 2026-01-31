@@ -54,7 +54,7 @@ jobs:
       - name: Install and setup cargo-wrt with all tools
         run: |
           cargo build --package cargo-wrt # Ensures cargo-wrt and its direct deps are built/cached
-          cargo install --path cargo-wrt # Install cargo-wrt for use in subsequent steps
+          cargo install --path cargo-wrt --force --force # Install cargo-wrt for use in subsequent steps
           cargo-wrt setup --all # Setup all development tools automatically
       - name: Run CI Integrity Checks (lint, fmt, deny, spell, headers, etc.)
         run: cargo-wrt verify --detailed
@@ -92,7 +92,7 @@ jobs:
       - name: Install and setup cargo-wrt
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --check # Verify tools are available
       - name: Check for test files in src/
         run: cargo-wrt validate --check-test-files
@@ -145,7 +145,7 @@ jobs:
       - name: Install and setup cargo-wrt with tools
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --all # Setup all required tools for testing and analysis
       - name: Run Tests
         run: cargo-wrt test
@@ -200,7 +200,7 @@ jobs:
       - name: Install and setup cargo-wrt for safety verification
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --check # Verify required tools for safety verification
       - name: Check Requirements File
         run: cargo-wrt verify --asil c
@@ -264,7 +264,7 @@ jobs:
       - name: Install and setup cargo-wrt for extended analysis
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --all # Setup all tools including Kani and Miri
       # Run advanced static analysis
       - name: Run Miri Checks
@@ -293,7 +293,7 @@ jobs:
       - name: Setup Rust targets
         run: rustup target add wasm32-unknown-unknown wasm32-wasip1 wasm32-wasip2 || true
       - name: Install cargo-wrt
-        run: cargo install --path cargo-wrt
+        run: cargo install --path cargo-wrt --force
       - name: Run coverage tests
         run: cargo-wrt coverage --html
       - name: Upload coverage reports to Codecov
