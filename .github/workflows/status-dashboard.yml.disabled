@@ -6,7 +6,7 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch:
   workflow_run:
-    workflows: ["KANI Formal Verification", "Rust CI", "Deploy Verification Artifacts"]
+    workflows: ["Rust CI", "Security Audit and Analysis"]
     types: [completed]
 
 permissions:
@@ -35,23 +35,17 @@ jobs:
         # Fetch recent workflow runs
         echo "Fetching workflow run data..."
         
-        # Get KANI verification runs
-        curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-             -H "Accept: application/vnd.github.v3+json" \
-             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/kani-regression.yml/runs?per_page=10" \
-             > kani-runs.json
-        
         # Get CI runs
         curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
              -H "Accept: application/vnd.github.v3+json" \
              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/ci.yml/runs?per_page=10" \
              > ci-runs.json
-        
-        # Get deployment runs
+
+        # Get security audit runs
         curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
              -H "Accept: application/vnd.github.v3+json" \
-             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy-verification.yml/runs?per_page=10" \
-             > deploy-runs.json
+             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/security-audit.yml/runs?per_page=10" \
+             > security-runs.json
 
     - name: Generate dashboard HTML
       run: |
