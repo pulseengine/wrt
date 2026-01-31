@@ -54,7 +54,7 @@ jobs:
       - name: Install and setup cargo-wrt with all tools
         run: |
           cargo build --package cargo-wrt # Ensures cargo-wrt and its direct deps are built/cached
-          cargo install --path cargo-wrt --force --force # Install cargo-wrt for use in subsequent steps
+          cargo install --path cargo-wrt --force # Install cargo-wrt for use in subsequent steps
           cargo-wrt setup --all # Setup all development tools automatically
       - name: Run CI Integrity Checks (lint, fmt, deny, spell, headers, etc.)
         run: cargo-wrt verify --detailed
