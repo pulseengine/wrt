@@ -674,5 +674,5 @@ impl fmt::Display for TaskType {
             TaskType::Background => write!(f, "background"),
             TaskType::Cleanup => write!(f, "cleanup"),
         }
-
+    }
 }
