@@ -9629,6 +9629,317 @@ impl StacklessEngine {
                         }
                     }
 
+                    // ========================================
+                    // GC (Garbage Collection) Instructions
+                    // WebAssembly GC Proposal
+                    // ========================================
+
+                    Instruction::StructNew(type_idx) => {
+                        // struct.new: [field_values...] -> [structref]
+                        // Pop field values, create struct, push reference
+                        #[cfg(feature = "tracing")]
+                        trace!("StructNew: type_idx={}", type_idx);
+                        // For now, create an empty struct reference
+                        // Full implementation requires type info to pop correct number of fields
+                        let struct_ref = wrt_foundation::values::StructRef::new(
+                            type_idx,
+                            wrt_foundation::traits::DefaultMemoryProvider::default()
+                        ).map_err(|_| wrt_error::Error::runtime_error("Failed to create struct"))?;
+                        operand_stack.push(Value::StructRef(Some(struct_ref)));
+                    }
+
+                    Instruction::StructNewDefault(type_idx) => {
+                        // struct.new_default: [] -> [structref]
+                        // Create struct with default field values
+                        #[cfg(feature = "tracing")]
+                        trace!("StructNewDefault: type_idx={}", type_idx);
+                        let struct_ref = wrt_foundation::values::StructRef::new(
+                            type_idx,
+                            wrt_foundation::traits::DefaultMemoryProvider::default()
+                        ).map_err(|_| wrt_error::Error::runtime_error("Failed to create struct"))?;
+                        operand_stack.push(Value::StructRef(Some(struct_ref)));
+                    }
+
+                    Instruction::StructGet(type_idx, field_idx) => {
+                        // struct.get: [structref] -> [value]
+                        #[cfg(feature = "tracing")]
+                        trace!("StructGet: type_idx={}, field_idx={}", type_idx, field_idx);
+                        if let Some(Value::StructRef(Some(s))) = operand_stack.pop() {
+                            if let Ok(field) = s.get_field(field_idx as usize) {
+                                operand_stack.push(field.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("struct.get: field index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("struct.get: null reference"));
+                        }
+                    }
+
+                    Instruction::StructGetS(type_idx, field_idx) => {
+                        // struct.get_s: [structref] -> [i32] (sign-extend packed field)
+                        #[cfg(feature = "tracing")]
+                        trace!("StructGetS: type_idx={}, field_idx={}", type_idx, field_idx);
+                        if let Some(Value::StructRef(Some(s))) = operand_stack.pop() {
+                            if let Ok(field) = s.get_field(field_idx as usize) {
+                                operand_stack.push(field.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("struct.get_s: field index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("struct.get_s: null reference"));
+                        }
+                    }
+
+                    Instruction::StructGetU(type_idx, field_idx) => {
+                        // struct.get_u: [structref] -> [i32] (zero-extend packed field)
+                        #[cfg(feature = "tracing")]
+                        trace!("StructGetU: type_idx={}, field_idx={}", type_idx, field_idx);
+                        if let Some(Value::StructRef(Some(s))) = operand_stack.pop() {
+                            if let Ok(field) = s.get_field(field_idx as usize) {
+                                operand_stack.push(field.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("struct.get_u: field index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("struct.get_u: null reference"));
+                        }
+                    }
+
+                    Instruction::StructSet(type_idx, field_idx) => {
+                        // struct.set: [structref value] -> []
+                        #[cfg(feature = "tracing")]
+                        trace!("StructSet: type_idx={}, field_idx={}", type_idx, field_idx);
+                        let value = operand_stack.pop().ok_or_else(||
+                            wrt_error::Error::runtime_trap("struct.set: expected value"))?;
+                        if let Some(Value::StructRef(Some(mut s))) = operand_stack.pop() {
+                            s.set_field(field_idx as usize, value).map_err(|_|
+                                wrt_error::Error::runtime_trap("struct.set: field index out of bounds"))?;
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("struct.set: null reference"));
+                        }
+                    }
+
+                    Instruction::ArrayNew(type_idx) => {
+                        // array.new: [value i32] -> [arrayref]
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayNew: type_idx={}", type_idx);
+                        let length = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as u32,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.new: expected i32 length")),
+                        };
+                        let init_value = operand_stack.pop().ok_or_else(||
+                            wrt_error::Error::runtime_trap("array.new: expected init value"))?;
+                        let mut array_ref = wrt_foundation::values::ArrayRef::new(
+                            type_idx,
+                            wrt_foundation::traits::DefaultMemoryProvider::default()
+                        ).map_err(|_| wrt_error::Error::runtime_error("Failed to create array"))?;
+                        for _ in 0..length {
+                            array_ref.push(init_value.clone()).map_err(|_|
+                                wrt_error::Error::runtime_error("Failed to push to array"))?;
+                        }
+                        operand_stack.push(Value::ArrayRef(Some(array_ref)));
+                    }
+
+                    Instruction::ArrayNewDefault(type_idx) => {
+                        // array.new_default: [i32] -> [arrayref]
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayNewDefault: type_idx={}", type_idx);
+                        let length = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as u32,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.new_default: expected i32 length")),
+                        };
+                        let mut array_ref = wrt_foundation::values::ArrayRef::new(
+                            type_idx,
+                            wrt_foundation::traits::DefaultMemoryProvider::default()
+                        ).map_err(|_| wrt_error::Error::runtime_error("Failed to create array"))?;
+                        for _ in 0..length {
+                            array_ref.push(Value::I32(0)).map_err(|_|
+                                wrt_error::Error::runtime_error("Failed to push to array"))?;
+                        }
+                        operand_stack.push(Value::ArrayRef(Some(array_ref)));
+                    }
+
+                    Instruction::ArrayNewFixed(type_idx, count) => {
+                        // array.new_fixed: [values...] -> [arrayref]
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayNewFixed: type_idx={}, count={}", type_idx, count);
+                        let mut values = Vec::new();
+                        for _ in 0..count {
+                            if let Some(v) = operand_stack.pop() {
+                                values.push(v);
+                            }
+                        }
+                        values.reverse();
+                        let mut array_ref = wrt_foundation::values::ArrayRef::new(
+                            type_idx,
+                            wrt_foundation::traits::DefaultMemoryProvider::default()
+                        ).map_err(|_| wrt_error::Error::runtime_error("Failed to create array"))?;
+                        for v in values {
+                            array_ref.push(v).map_err(|_|
+                                wrt_error::Error::runtime_error("Failed to push to array"))?;
+                        }
+                        operand_stack.push(Value::ArrayRef(Some(array_ref)));
+                    }
+
+                    Instruction::ArrayGet(type_idx) => {
+                        // array.get: [arrayref i32] -> [value]
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayGet: type_idx={}", type_idx);
+                        let index = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as usize,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.get: expected i32 index")),
+                        };
+                        if let Some(Value::ArrayRef(Some(a))) = operand_stack.pop() {
+                            if let Ok(elem) = a.get(index) {
+                                operand_stack.push(elem.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("array.get: index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("array.get: null reference"));
+                        }
+                    }
+
+                    Instruction::ArrayGetS(type_idx) => {
+                        // array.get_s: [arrayref i32] -> [i32] (sign-extend)
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayGetS: type_idx={}", type_idx);
+                        let index = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as usize,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.get_s: expected i32 index")),
+                        };
+                        if let Some(Value::ArrayRef(Some(a))) = operand_stack.pop() {
+                            if let Ok(elem) = a.get(index) {
+                                operand_stack.push(elem.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("array.get_s: index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("array.get_s: null reference"));
+                        }
+                    }
+
+                    Instruction::ArrayGetU(type_idx) => {
+                        // array.get_u: [arrayref i32] -> [i32] (zero-extend)
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayGetU: type_idx={}", type_idx);
+                        let index = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as usize,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.get_u: expected i32 index")),
+                        };
+                        if let Some(Value::ArrayRef(Some(a))) = operand_stack.pop() {
+                            if let Ok(elem) = a.get(index) {
+                                operand_stack.push(elem.clone());
+                            } else {
+                                return Err(wrt_error::Error::runtime_trap("array.get_u: index out of bounds"));
+                            }
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("array.get_u: null reference"));
+                        }
+                    }
+
+                    Instruction::ArraySet(type_idx) => {
+                        // array.set: [arrayref i32 value] -> []
+                        #[cfg(feature = "tracing")]
+                        trace!("ArraySet: type_idx={}", type_idx);
+                        let value = operand_stack.pop().ok_or_else(||
+                            wrt_error::Error::runtime_trap("array.set: expected value"))?;
+                        let index = match operand_stack.pop() {
+                            Some(Value::I32(n)) => n as usize,
+                            _ => return Err(wrt_error::Error::runtime_trap("array.set: expected i32 index")),
+                        };
+                        if let Some(Value::ArrayRef(Some(mut a))) = operand_stack.pop() {
+                            a.set(index, value).map_err(|_|
+                                wrt_error::Error::runtime_trap("array.set: index out of bounds"))?;
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("array.set: null reference"));
+                        }
+                    }
+
+                    Instruction::ArrayLen => {
+                        // array.len: [arrayref] -> [i32]
+                        #[cfg(feature = "tracing")]
+                        trace!("ArrayLen");
+                        if let Some(Value::ArrayRef(Some(a))) = operand_stack.pop() {
+                            operand_stack.push(Value::I32(a.len() as i32));
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("array.len: null reference"));
+                        }
+                    }
+
+                    Instruction::RefI31 => {
+                        // ref.i31: [i32] -> [i31ref]
+                        #[cfg(feature = "tracing")]
+                        trace!("RefI31");
+                        if let Some(Value::I32(n)) = operand_stack.pop() {
+                            // Truncate to 31 bits (sign-extend from 31 bits)
+                            let i31_val = (n << 1) >> 1;
+                            operand_stack.push(Value::I31Ref(Some(i31_val)));
+                        } else {
+                            return Err(wrt_error::Error::runtime_trap("ref.i31: expected i32"));
+                        }
+                    }
+
+                    Instruction::I31GetS => {
+                        // i31.get_s: [i31ref] -> [i32] (sign-extended)
+                        #[cfg(feature = "tracing")]
+                        trace!("I31GetS");
+                        match operand_stack.pop() {
+                            Some(Value::I31Ref(Some(n))) => {
+                                operand_stack.push(Value::I32(n));
+                            }
+                            Some(Value::I31Ref(None)) => {
+                                return Err(wrt_error::Error::runtime_trap("i31.get_s: null reference"));
+                            }
+                            _ => {
+                                return Err(wrt_error::Error::runtime_trap("i31.get_s: expected i31ref"));
+                            }
+                        }
+                    }
+
+                    Instruction::I31GetU => {
+                        // i31.get_u: [i31ref] -> [i32] (zero-extended)
+                        #[cfg(feature = "tracing")]
+                        trace!("I31GetU");
+                        match operand_stack.pop() {
+                            Some(Value::I31Ref(Some(n))) => {
+                                // Zero-extend: mask to 31 bits
+                                operand_stack.push(Value::I32(n & 0x7FFFFFFF));
+                            }
+                            Some(Value::I31Ref(None)) => {
+                                return Err(wrt_error::Error::runtime_trap("i31.get_u: null reference"));
+                            }
+                            _ => {
+                                return Err(wrt_error::Error::runtime_trap("i31.get_u: expected i31ref"));
+                            }
+                        }
+                    }
+
+                    // GC instructions that need more context (type info, etc.)
+                    // These return stubs for now - full implementation requires type section data
+                    Instruction::ArrayNewData(_, _) |
+                    Instruction::ArrayNewElem(_, _) |
+                    Instruction::ArrayFill(_) |
+                    Instruction::ArrayCopy(_, _) |
+                    Instruction::ArrayInitData(_, _) |
+                    Instruction::ArrayInitElem(_, _) |
+                    Instruction::RefTest(_) |
+                    Instruction::RefTestNull(_) |
+                    Instruction::RefCast(_) |
+                    Instruction::RefCastNull(_) |
+                    Instruction::BrOnCast { .. } |
+                    Instruction::BrOnCastFail { .. } |
+                    Instruction::AnyConvertExtern |
+                    Instruction::ExternConvertAny => {
+                        #[cfg(feature = "tracing")]
+                        trace!("GC instruction (stub): {:?}", instruction);
+                        // These instructions require more complex type system integration
+                        // For now, return an error indicating incomplete implementation
+                        return Err(wrt_error::Error::runtime_error(
+                            "GC instruction not yet fully implemented",
+                        ));
+                    }
+
                     _ => {
                         // CLAUDE.md: FAIL LOUD AND EARLY - return error instead of silently skipping
                         #[cfg(feature = "tracing")]

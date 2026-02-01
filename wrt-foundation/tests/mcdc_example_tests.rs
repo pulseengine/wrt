@@ -1,3 +1,5 @@
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::fn_params_excessive_bools)]
 //! Example MC/DC tests for safety-critical validation functions
 //!
 //! This demonstrates how to write tests that achieve MC/DC coverage

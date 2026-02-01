@@ -1,3 +1,4 @@
+#![allow(clippy::doc_markdown)]
 //! No-std compatibility test reference for wrt-sync
 //!
 //! This file references the consolidated no_std tests in

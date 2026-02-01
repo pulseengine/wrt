@@ -4,6 +4,8 @@
 //! representations and runtime types. It establishes the boundary between
 //! the format layer (wrt-format) and the runtime layer (wrt-runtime).
 
+#![allow(clippy::needless_borrow)] // Many false positives in iterator patterns
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 

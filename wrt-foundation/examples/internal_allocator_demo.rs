@@ -76,7 +76,7 @@ fn demo_foundation_integration() -> Result<(), Box<dyn std::error::Error>> {
     small_vec.push(3)?;
 
     match small_vec.push(4) {
-        Ok(_) => println!("Unexpected success"),
+        Ok(()) => println!("Unexpected success"),
         Err(CapacityError::Exceeded) => {
             println!("✓ Capacity enforcement working - safely rejected overflow");
         },
