@@ -4,6 +4,7 @@
 //! - Managed heap for struct and array allocations
 //! - Object representation with type information
 //! - Reference tracking for garbage collection
+//! - Mark-and-sweep garbage collector
 //!
 //! # Design
 //!
@@ -19,10 +20,20 @@
 //! | mark | size    |                |                |
 //! +----------------+----------------+----------------+
 //! ```
+//!
+//! # Garbage Collection
+//!
+//! The collector uses a mark-and-sweep algorithm:
+//! 1. Mark phase: Traverse from roots, marking reachable objects
+//! 2. Sweep phase: Reclaim unmarked objects
+//!
+//! For no_std compatibility, the mark stack is fixed-size.
 
+mod collector;
 mod heap;
 mod object;
 
+pub use collector::{GcCollector, GcStats, RootSet};
 pub use heap::GcHeap;
 pub use object::{GcObject, GcObjectRef, ObjectHeader};
 

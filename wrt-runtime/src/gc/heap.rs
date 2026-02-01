@@ -419,6 +419,19 @@ impl<const SIZE: usize> GcHeap<SIZE> {
         }
         false
     }
+
+    /// Read a u32 value at a specific offset (for GC scanning)
+    pub fn read_u32_at(&self, offset: usize) -> Result<u32> {
+        if offset + 4 > SIZE {
+            return Err(Error::memory_error("Read offset out of bounds"));
+        }
+        Ok(u32::from_le_bytes([
+            self.memory[offset],
+            self.memory[offset + 1],
+            self.memory[offset + 2],
+            self.memory[offset + 3],
+        ]))
+    }
 }
 
 /// Align a value up to the given alignment
