@@ -1420,7 +1420,18 @@ impl<'a> StreamingDecoder<'a> {
             }
 
             // Extract init expression bytes (including the 0x0b end marker)
+            #[cfg(feature = "std")]
             let init_bytes = data[init_start..offset].to_vec();
+            #[cfg(not(feature = "std"))]
+            let init_bytes = {
+                use wrt_foundation::safe_memory::NoStdProvider;
+                let mut bounded = wrt_foundation::BoundedVec::<u8, 1024, NoStdProvider<8192>>::new(NoStdProvider::default())
+                    .map_err(|_| Error::parse_error("Failed to allocate init expression"))?;
+                for &byte in &data[init_start..offset] {
+                    bounded.push(byte).map_err(|_| Error::parse_error("Init expression too large"))?;
+                }
+                bounded
+            };
 
             let global_type = FormatGlobalType {
                 value_type,
