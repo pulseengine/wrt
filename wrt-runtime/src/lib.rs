@@ -54,6 +54,7 @@ mod execution_tests;
 /// Format bridge interface
 pub mod format_bridge;
 pub mod func;
+pub mod gc;
 pub mod global;
 pub mod memory;
 

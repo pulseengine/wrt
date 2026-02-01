@@ -4141,6 +4141,7 @@ pub const MAX_REC_GROUP_SIZE: usize = 64; // Maximum types in a recursive group
 /// appear in the type section: function types, struct types, and array types.
 /// All share a single type index space.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)] // FuncType is large but boxing is not ideal for no_std
 pub enum CompositeType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq = NoStdProvider<1024>> {
     /// Function type: params -> results
     Func(FuncType),
