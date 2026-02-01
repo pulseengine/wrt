@@ -844,21 +844,39 @@ fn parse_instruction_with_provider(
         // Reference types (WebAssembly 2.0)
         0xD0 => {
             // ref.null ht - create a null reference of the specified heap type
-            if offset + 1 >= bytecode.len() {
-                return Err(Error::parse_error("Unexpected end of bytecode in ref.null"));
-            }
-            let heap_type = bytecode[offset + 1];
-            consumed += 1;
-            // Map heap type to RefType
-            let ref_type = match heap_type {
-                0x70 => wrt_foundation::types::RefType::Funcref,
-                0x6F => wrt_foundation::types::RefType::Externref,
-                _ => {
-                    // For other heap types, default to Externref for now
-                    wrt_foundation::types::RefType::Externref
+            // Heap type is encoded as s33 LEB128 (signed 33-bit)
+            // Abstract heap types: negative values (0x70=func, 0x6F=extern, 0x6E=any, etc.)
+            // Concrete type indices: non-negative values (0, 1, 2, ...)
+            let (heap_type_s33, bytes) = read_leb128_i64(bytecode, offset + 1)?;
+            consumed += bytes;
+
+            use wrt_foundation::types::ValueType;
+            let value_type = if heap_type_s33 >= 0 {
+                // Concrete type index - null reference to a specific function type
+                ValueType::FuncRef
+            } else {
+                // Abstract heap type - convert negative s33 to heap type byte
+                let heap_type_byte = ((heap_type_s33 + 128) & 0x7F) as u8;
+                match heap_type_byte {
+                    // Standard reference types
+                    0x70 => ValueType::FuncRef,      // func
+                    0x6F => ValueType::ExternRef,    // extern
+                    // GC abstract heap types
+                    0x6E => ValueType::AnyRef,       // any (anyref)
+                    0x6D => ValueType::EqRef,        // eq (eqref)
+                    0x6C => ValueType::I31Ref,       // i31 (i31ref)
+                    0x6B => ValueType::StructRef(0), // struct (structref)
+                    0x6A => ValueType::ArrayRef(0),  // array (arrayref)
+                    0x69 => ValueType::ExnRef,       // exn (exnref)
+                    // Bottom types
+                    0x73 => ValueType::FuncRef,      // nofunc (bottom for func)
+                    0x72 => ValueType::ExternRef,    // noextern (bottom for extern)
+                    0x71 => ValueType::AnyRef,       // none (bottom for any)
+                    0x74 => ValueType::ExnRef,       // noexn (bottom for exn)
+                    _ => ValueType::ExternRef,       // Default for unknown
                 }
             };
-            Instruction::RefNull(ref_type)
+            Instruction::RefNull(value_type)
         },
         0xD1 => Instruction::RefIsNull,
         0xD2 => {

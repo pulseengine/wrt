@@ -84,18 +84,37 @@ pub fn convert_wast_ret_core_to_value(ret: &WastRetCore) -> Result<Value> {
         },
         WastRetCore::V128(x) => Ok(Value::V128(V128::new(convert_v128_pattern_to_bytes(x)?))),
         WastRetCore::RefNull(heap_type) => {
-            // ref.null funcref -> FuncRef(None), ref.null externref -> ExternRef(None)
+            // Convert ref.null with various heap types to appropriate Value
             use wast::core::AbstractHeapType;
             match heap_type {
-                Some(wast::core::HeapType::Abstract {
-                    ty: AbstractHeapType::Func,
-                    ..
-                }) => Ok(Value::FuncRef(None)),
-                Some(wast::core::HeapType::Abstract {
-                    ty: AbstractHeapType::Extern,
-                    ..
-                }) => Ok(Value::ExternRef(None)),
-                _ => Ok(Value::FuncRef(None)), // Default to FuncRef for other/unknown heap types
+                Some(wast::core::HeapType::Abstract { ty, .. }) => {
+                    match ty {
+                        // Standard reference types
+                        AbstractHeapType::Func => Ok(Value::FuncRef(None)),
+                        AbstractHeapType::Extern => Ok(Value::ExternRef(None)),
+                        // GC abstract heap types
+                        AbstractHeapType::Any => Ok(Value::ExternRef(None)), // anyref uses externref repr
+                        AbstractHeapType::Eq => Ok(Value::I31Ref(None)),     // eqref uses i31ref repr
+                        AbstractHeapType::I31 => Ok(Value::I31Ref(None)),
+                        AbstractHeapType::Struct => Ok(Value::StructRef(None)),
+                        AbstractHeapType::Array => Ok(Value::ArrayRef(None)),
+                        AbstractHeapType::Exn => Ok(Value::ExnRef(None)),
+                        // Bottom types
+                        AbstractHeapType::NoFunc => Ok(Value::FuncRef(None)),
+                        AbstractHeapType::NoExtern => Ok(Value::ExternRef(None)),
+                        AbstractHeapType::None => Ok(Value::ExternRef(None)), // none uses externref repr
+                        AbstractHeapType::NoExn => Ok(Value::ExnRef(None)),
+                        // Continuation types (not yet supported)
+                        AbstractHeapType::Cont | AbstractHeapType::NoCont => {
+                            Ok(Value::FuncRef(None)) // Default for unsupported
+                        },
+                    }
+                },
+                Some(wast::core::HeapType::Concrete(_)) => {
+                    // Concrete type reference - use FuncRef for function types
+                    Ok(Value::FuncRef(None))
+                },
+                None => Ok(Value::FuncRef(None)), // Default for unspecified heap type
             }
         },
         WastRetCore::RefExtern(x) => match x {
@@ -271,6 +290,34 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         (Value::Ref(idx), Value::ExternRef(Some(ext_ref))) => *idx == ext_ref.index,
         (Value::ExternRef(None), Value::Ref(0)) => true,
         (Value::Ref(0), Value::ExternRef(None)) => true,
+        // GC reference type comparisons
+        (Value::ExnRef(a), Value::ExnRef(b)) => a == b,
+        (Value::I31Ref(a), Value::I31Ref(b)) => a == b,
+        (Value::StructRef(a), Value::StructRef(b)) => a == b,
+        (Value::ArrayRef(a), Value::ArrayRef(b)) => a == b,
+        // Cross-type null reference comparisons for WAST testing
+        // In GC spec, (ref.null) without type is polymorphic and matches any null reference
+        // Also handle subtyping: none ⊂ any, nofunc ⊂ func, noextern ⊂ extern, noexn ⊂ exn
+        (Value::FuncRef(None), Value::ExternRef(None)) => true,
+        (Value::ExternRef(None), Value::FuncRef(None)) => true,
+        (Value::FuncRef(None), Value::ExnRef(None)) => true,
+        (Value::ExnRef(None), Value::FuncRef(None)) => true,
+        (Value::ExternRef(None), Value::ExnRef(None)) => true,
+        (Value::ExnRef(None), Value::ExternRef(None)) => true,
+        (Value::FuncRef(None), Value::I31Ref(None)) => true,
+        (Value::I31Ref(None), Value::FuncRef(None)) => true,
+        (Value::ExternRef(None), Value::I31Ref(None)) => true,
+        (Value::I31Ref(None), Value::ExternRef(None)) => true,
+        (Value::ExnRef(None), Value::I31Ref(None)) => true,
+        (Value::I31Ref(None), Value::ExnRef(None)) => true,
+        (Value::FuncRef(None), Value::StructRef(None)) => true,
+        (Value::StructRef(None), Value::FuncRef(None)) => true,
+        (Value::FuncRef(None), Value::ArrayRef(None)) => true,
+        (Value::ArrayRef(None), Value::FuncRef(None)) => true,
+        (Value::ExternRef(None), Value::StructRef(None)) => true,
+        (Value::StructRef(None), Value::ExternRef(None)) => true,
+        (Value::ExternRef(None), Value::ArrayRef(None)) => true,
+        (Value::ArrayRef(None), Value::ExternRef(None)) => true,
         _ => false,
     }
 }

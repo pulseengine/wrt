@@ -904,15 +904,41 @@ impl Module {
                 }
                 // ref.null
                 0xD0 => {
-                    if pos >= init_bytes.len() {
-                        return Err(Error::parse_error("Truncated ref.null"));
-                    }
-                    let heap_type = init_bytes[pos];
-                    pos += 1;
-                    match heap_type {
-                        0x70 => stack.push(Value::FuncRef(None)),
-                        0x6F => stack.push(Value::ExternRef(None)),
-                        _ => return Err(Error::parse_error("Unknown heap type in ref.null")),
+                    // Parse heap type as s33 LEB128 - this handles both:
+                    // - Abstract heap types (negative values: 0x70=func, 0x6F=extern, etc.)
+                    // - Concrete type indices (non-negative values: 0, 1, 2, ...)
+                    let (heap_type_s33, consumed) = crate::instruction_parser::read_leb128_i64(init_bytes, pos)?;
+                    pos += consumed;
+
+                    if heap_type_s33 >= 0 {
+                        // Concrete type index - null reference to a specific type
+                        // For function types, use FuncRef; for struct/array types, use appropriate ref
+                        // For now, use FuncRef as the default for concrete type references
+                        stack.push(Value::FuncRef(None));
+                    } else {
+                        // Abstract heap type - convert negative s33 to heap type byte
+                        // In signed LEB128, single-byte values 0x6E-0x7F encode negative values:
+                        // 0x6E (110) = -18, 0x6F (111) = -17, 0x70 (112) = -16, etc.
+                        // To get back the byte: byte = s33 + 128 (for 7-bit signed)
+                        let heap_type_byte = ((heap_type_s33 + 128) & 0x7F) as u8;
+                        match heap_type_byte {
+                            // Standard reference types
+                            0x70 => stack.push(Value::FuncRef(None)),      // func
+                            0x6F => stack.push(Value::ExternRef(None)),    // extern
+                            // GC abstract heap types (using their Value representations)
+                            0x6E => stack.push(Value::ExternRef(None)),    // any (anyref) - uses externref repr
+                            0x6D => stack.push(Value::I31Ref(None)),       // eq (eqref) - uses i31ref repr
+                            0x6C => stack.push(Value::I31Ref(None)),       // i31 (i31ref)
+                            0x6B => stack.push(Value::StructRef(None)),    // struct (structref)
+                            0x6A => stack.push(Value::ArrayRef(None)),     // array (arrayref)
+                            0x69 => stack.push(Value::ExnRef(None)),       // exn (exnref)
+                            // Bottom types (uninhabited, but valid null references)
+                            0x73 => stack.push(Value::FuncRef(None)),      // nofunc (bottom for func)
+                            0x72 => stack.push(Value::ExternRef(None)),    // noextern (bottom for extern)
+                            0x71 => stack.push(Value::ExternRef(None)),    // none (bottom for any) - uses externref repr
+                            0x74 => stack.push(Value::ExnRef(None)),       // noexn (bottom for exn)
+                            _ => return Err(Error::parse_error("Unknown heap type in ref.null")),
+                        }
                     }
                 }
                 // ref.func
@@ -4481,6 +4507,11 @@ fn value_type_to_u8(vt: WrtValueType) -> u8 {
         WrtValueType::V128 => 6,
         WrtValueType::I16x8 => 7,
         WrtValueType::StructRef(_) => 8,
+        WrtValueType::ArrayRef(_) => 9,
+        WrtValueType::ExnRef => 10,
+        WrtValueType::I31Ref => 11,
+        WrtValueType::AnyRef => 12,
+        WrtValueType::EqRef => 13,
         _ => 255, // fallback for other types
     }
 }
@@ -4563,6 +4594,42 @@ impl ToBytes for GlobalWrapper {
                 writer.write_all(&value.to_le_bytes())?;
                 writer.write_all(&0u32.to_le_bytes())?;
             },
+            WrtValue::ExnRef(ref_opt) => {
+                // ExnRef: store 0xFFFFFFFF for None, or the index for Some
+                let value = match ref_opt {
+                    Some(exn_ref) => *exn_ref as u32,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::I31Ref(ref_opt) => {
+                // I31Ref: store 0xFFFFFFFF for None, or the value for Some
+                let value = match ref_opt {
+                    Some(i31_ref) => *i31_ref as u32,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::StructRef(ref_opt) => {
+                // StructRef: store 0xFFFFFFFF for None, or the type_index for Some
+                let value = match ref_opt {
+                    Some(struct_ref) => struct_ref.type_index,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
+            WrtValue::ArrayRef(ref_opt) => {
+                // ArrayRef: store 0xFFFFFFFF for None, or the type_index for Some
+                let value = match ref_opt {
+                    Some(array_ref) => array_ref.type_index,
+                    None => 0xFFFFFFFF,
+                };
+                writer.write_all(&value.to_le_bytes())?;
+                writer.write_all(&0u32.to_le_bytes())?;
+            },
             _ => {
                 // For other types, write zeros
                 writer.write_all(&0u64.to_le_bytes())?;
@@ -4593,6 +4660,12 @@ impl FromBytes for GlobalWrapper {
             4 => ValueType::FuncRef,
             5 => ValueType::ExternRef,
             6 => ValueType::V128,
+            8 => ValueType::StructRef(0), // placeholder type index
+            9 => ValueType::ArrayRef(0),  // placeholder type index
+            10 => ValueType::ExnRef,
+            11 => ValueType::I31Ref,
+            12 => ValueType::AnyRef,
+            13 => ValueType::EqRef,
             _ => ValueType::I32, // Default fallback
         };
 
@@ -4628,6 +4701,42 @@ impl FromBytes for GlobalWrapper {
             },
             ValueType::ExternRef => {
                 // 0xFFFFFFFF means None, otherwise it's an index
+                if value_low == 0xFFFFFFFF {
+                    Value::ExternRef(None)
+                } else {
+                    Value::ExternRef(Some(wrt_foundation::values::ExternRef { index: value_low }))
+                }
+            },
+            ValueType::ExnRef => {
+                // 0xFFFFFFFF means None, otherwise it's an index
+                // ExnRef in Value is Option<u32>
+                if value_low == 0xFFFFFFFF {
+                    Value::ExnRef(None)
+                } else {
+                    Value::ExnRef(Some(value_low))
+                }
+            },
+            ValueType::I31Ref => {
+                // 0xFFFFFFFF means None, otherwise it's a value
+                // I31Ref in Value is Option<i32>
+                if value_low == 0xFFFFFFFF {
+                    Value::I31Ref(None)
+                } else {
+                    Value::I31Ref(Some(value_low as i32))
+                }
+            },
+            ValueType::StructRef(_) | ValueType::ArrayRef(_) => {
+                // StructRef/ArrayRef are complex types - for null values, just use None
+                // For non-null, we'd need full struct data which isn't available in serialization
+                if value_low == 0xFFFFFFFF {
+                    Value::StructRef(None) // Both use None for null
+                } else {
+                    // Can't reconstruct full struct/array from just an index
+                    Value::StructRef(None)
+                }
+            },
+            ValueType::AnyRef | ValueType::EqRef => {
+                // AnyRef/EqRef: use ExternRef representation for null
                 if value_low == 0xFFFFFFFF {
                     Value::ExternRef(None)
                 } else {

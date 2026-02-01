@@ -6172,15 +6172,26 @@ impl StacklessEngine {
                     // ========================================
                     // Reference Type Operations
                     // ========================================
-                    Instruction::RefNull(ref_type) => {
+                    Instruction::RefNull(value_type) => {
                         // Push a null reference of the specified type
-                        use wrt_foundation::types::RefType;
+                        use wrt_foundation::types::ValueType;
                         #[cfg(feature = "tracing")]
-                        trace!("RefNull: type={:?}", ref_type);
-                        match ref_type {
-                            RefType::Funcref => operand_stack.push(Value::FuncRef(None)),
-                            RefType::Externref => operand_stack.push(Value::ExternRef(None)),
-                        }
+                        trace!("RefNull: type={:?}", value_type);
+                        let null_value = match value_type {
+                            // Standard reference types
+                            ValueType::FuncRef => Value::FuncRef(None),
+                            ValueType::ExternRef => Value::ExternRef(None),
+                            // GC abstract heap types (using their Value representations)
+                            ValueType::AnyRef => Value::ExternRef(None),   // anyref uses externref repr
+                            ValueType::EqRef => Value::I31Ref(None),       // eqref uses i31ref repr
+                            ValueType::I31Ref => Value::I31Ref(None),
+                            ValueType::StructRef(_) => Value::StructRef(None),
+                            ValueType::ArrayRef(_) => Value::ArrayRef(None),
+                            ValueType::ExnRef => Value::ExnRef(None),
+                            // Non-reference types shouldn't reach here, default to externref
+                            _ => Value::ExternRef(None),
+                        };
+                        operand_stack.push(null_value);
                     }
                     Instruction::RefFunc(func_idx_arg) => {
                         // Push a reference to the function at func_idx
