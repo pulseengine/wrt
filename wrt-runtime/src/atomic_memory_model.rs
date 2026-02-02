@@ -67,11 +67,12 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
+use alloc::{
     sync::Arc,
-    time::Instant,
     vec::Vec,
 };
+#[cfg(feature = "std")]
+use std::time::Instant;
 /// WebAssembly atomic memory model implementation
 #[derive(Debug)]
 pub struct AtomicMemoryModel {

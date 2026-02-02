@@ -35,17 +35,16 @@ impl ParametricContext for SimpleContext {
 
     fn pop_value(&mut self) -> Result<Value> {
         self.stack.pop().ok_or_else(|| {
-            wrt_error::Error::runtime_execution_error(
-                ",
-            )
+            wrt_error::Error::runtime_execution_error("Stack underflow")
         })
     }
-    
+
     fn peek_value(&self) -> Result<&Value> {
         self.stack.last().ok_or_else(|| {
-            wrt_error::Error::new(wrt_error::ErrorCategory::Runtime,
+            wrt_error::Error::new(
+                wrt_error::ErrorCategory::Runtime,
                 wrt_error::codes::STACK_UNDERFLOW,
-                ",
+                "Stack underflow",
             )
         })
     }

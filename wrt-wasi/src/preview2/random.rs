@@ -183,7 +183,7 @@ fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
     // Xorshift64* algorithm for fast pseudo-random generation
     let mut state = seed;
     if state == 0 {
-        state = 0xBAD_C0FFEE_DEAD_BEEFu128 as u64; // Non-zero seed
+        state = 0x0BAD_C0FF_EEDE_ADBF_u128 as u64; // Non-zero seed
     }
 
     for chunk in buffer.chunks_mut(8) {
@@ -191,7 +191,7 @@ fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
         state ^= state >> 12;
         state ^= state << 25;
         state ^= state >> 27;
-        let value = state.wrapping_mul(0x2545F4914F6CDD1D);
+        let value = state.wrapping_mul(0x2545_F491_4F6C_DD1D);
 
         // Convert to bytes
         let bytes = value.to_le_bytes();

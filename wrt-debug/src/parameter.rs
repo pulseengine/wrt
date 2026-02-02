@@ -231,6 +231,7 @@ impl<'a> ParameterList<'a> {
     }
 
     /// Add a parameter to the list
+    #[allow(clippy::result_unit_err)]
     pub fn add_parameter(&mut self, param: Parameter<'a>) -> Result<(), ()> {
         self.parameters.push(param).map_err(|_| ())
     }
@@ -406,6 +407,12 @@ pub struct InlinedFunctions<'a> {
     >,
 }
 
+impl<'a> Default for InlinedFunctions<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(dead_code)]
 impl<'a> InlinedFunctions<'a> {
     /// Create new inlined functions collection
@@ -421,6 +428,7 @@ impl<'a> InlinedFunctions<'a> {
     }
 
     /// Add an inlined function
+    #[allow(clippy::result_unit_err)]
     pub fn add(&mut self, func: InlinedFunction<'a>) -> Result<(), ()> {
         self.entries.push(func).map_err(|_| ())
     }

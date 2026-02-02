@@ -6,8 +6,6 @@
 //! - Reinterpret operations
 //! - Saturating truncations
 
-#[cfg(feature = "std")]
-use std::vec::Vec;
 use std::vec::Vec;
 
 use wrt_error::Result;
@@ -105,7 +103,7 @@ fn main() -> Result<()> {
     println!("   Input: i32 = -100");
     ConversionOp::F32ConvertI32S.execute(&mut context)?;
     if let Some(Value::F32(result)) = context.peek() {
-        println!("   Result: f32 = {}", result.value);
+        println!("   Result: f32 = {}", result.value());
     }
     context.stack.clear();
 
@@ -115,7 +113,7 @@ fn main() -> Result<()> {
     println!("   Input: f32 = 3.14159");
     ConversionOp::F64PromoteF32.execute(&mut context)?;
     if let Some(Value::F64(result)) = context.peek() {
-        println!("   Result: f64 = {} (promoted)", result.value);
+        println!("   Result: f64 = {} (promoted)", result.value());
     }
     context.stack.clear();
 
@@ -127,7 +125,7 @@ fn main() -> Result<()> {
     if let Some(Value::F32(result)) = context.peek() {
         println!(
             "   Result: f32 = {} (demoted, precision lost)",
-            result.value
+            result.value()
         );
     }
     context.stack.clear();

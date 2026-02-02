@@ -6,14 +6,19 @@
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(all(not(feature = "std")))]
-use std::vec::Vec;
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{
-    NoStdProvider,
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
+
+use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
 
 use crate::{
     abbrev::{AbbreviationTable, AttributeForm, attributes, tags},
@@ -83,19 +88,21 @@ pub struct DebugInfoParser<'a> {
 
 impl<'a> DebugInfoParser<'a> {
     /// Create a new debug info parser
-    pub fn new(debug_info: &'a [u8], debug_abbrev: &'a [u8], debug_str: Option<&'a [u8]>) -> Self {
+    pub fn new(debug_info: &'a [u8], debug_abbrev: &'a [u8], debug_str: Option<&'a [u8]>) -> Result<Self> {
         let string_table = debug_str.map(|data| StringTable::new(data));
+        let provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
 
-        Self {
+        Ok(Self {
             debug_info,
             debug_abbrev,
             debug_str,
-            abbrev_table: AbbreviationTable::new(),
+            abbrev_table: AbbreviationTable::new()?,
             string_table,
-            functions: BoundedVec::new(NoStdProvider),
+            functions: BoundedVec::new(provider)
+                .map_err(|_| Error::memory_error("Failed to create functions vector"))?,
             inlined_functions: InlinedFunctions::new(),
             current_cu: 0,
-        }
+        })
     }
 
     /// Parse the debug information

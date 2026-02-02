@@ -22,8 +22,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // Note: unsafe_code is allowed selectively in specific modules that need it
-#![warn(missing_docs)]
-#![warn(clippy::missing_panics_doc)]
+// Lints configured in Cargo.toml
 
 // Import std when available
 #[cfg(feature = "std")]

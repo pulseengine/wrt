@@ -12,6 +12,13 @@ use alloc::vec::Vec;
 #[cfg(feature = "tracing")]
 use wrt_foundation::tracing::trace;
 
+// Platform-specific limits for bounded allocation
+use wrt_foundation::limits;
+
+// Allocation tracing for understanding memory patterns
+#[cfg(feature = "allocation-tracing")]
+use wrt_foundation::{trace_alloc, AllocationPhase};
+
 use wrt_format::module::{Function, Module as WrtModule};
 use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider, types::TagType};
 
@@ -401,10 +408,25 @@ impl<'a> StreamingDecoder<'a> {
                 let (param_count, bytes_read) = read_leb128_u32(data, offset)?;
                 offset += bytes_read;
 
+                // Validate param count against platform limits before allocation
+                if param_count as usize > limits::MAX_FUNCTION_PARAMS {
+                    return Err(Error::parse_error(
+                        "Function type exceeds maximum parameter count for platform",
+                    ));
+                }
+
+                #[cfg(feature = "allocation-tracing")]
+                trace_alloc!(
+                    AllocationPhase::Decode,
+                    "streaming_decoder:func_type_params",
+                    "params",
+                    param_count as usize
+                );
+
                 #[cfg(feature = "std")]
-                let mut params = Vec::new();
+                let mut params = Vec::with_capacity(param_count as usize);
                 #[cfg(not(feature = "std"))]
-                let mut params = alloc::vec::Vec::new();
+                let mut params = alloc::vec::Vec::with_capacity(param_count as usize);
 
                 for _ in 0..param_count {
                     let (vt, new_offset) = self.parse_value_type(data, offset)?;
@@ -415,10 +437,25 @@ impl<'a> StreamingDecoder<'a> {
                 let (result_count, bytes_read) = read_leb128_u32(data, offset)?;
                 offset += bytes_read;
 
+                // Validate result count against platform limits before allocation
+                if result_count as usize > limits::MAX_FUNCTION_RESULTS {
+                    return Err(Error::parse_error(
+                        "Function type exceeds maximum result count for platform",
+                    ));
+                }
+
+                #[cfg(feature = "allocation-tracing")]
+                trace_alloc!(
+                    AllocationPhase::Decode,
+                    "streaming_decoder:func_type_results",
+                    "results",
+                    result_count as usize
+                );
+
                 #[cfg(feature = "std")]
-                let mut results = Vec::new();
+                let mut results = Vec::with_capacity(result_count as usize);
                 #[cfg(not(feature = "std"))]
-                let mut results = alloc::vec::Vec::new();
+                let mut results = alloc::vec::Vec::with_capacity(result_count as usize);
 
                 for _ in 0..result_count {
                     let (vt, new_offset) = self.parse_value_type(data, offset)?;
@@ -577,6 +614,7 @@ impl<'a> StreamingDecoder<'a> {
             0x73 => Ok((ValueType::FuncRef, offset + 1)), // nofunc (bottom for func)
             0x72 => Ok((ValueType::ExternRef, offset + 1)), // noextern (bottom for extern)
             0x71 => Ok((ValueType::AnyRef, offset + 1)), // none (bottom for any)
+            0x74 => Ok((ValueType::ExnRef, offset + 1)), // noexn (bottom for exn)
             // GC typed references: (ref null? ht)
             REF_TYPE_NULLABLE | REF_TYPE_NON_NULLABLE => {
                 offset += 1;
@@ -611,6 +649,7 @@ impl<'a> StreamingDecoder<'a> {
                         -13 => Ok((ValueType::FuncRef, new_offset)), // nofunc (0x73) - bottom for func
                         -14 => Ok((ValueType::ExternRef, new_offset)), // noextern (0x72)
                         -15 => Ok((ValueType::AnyRef, new_offset)),  // none (0x71) - bottom for any
+                        -12 => Ok((ValueType::ExnRef, new_offset)),  // noexn (0x74) - bottom for exn
                         _ => Ok((ValueType::AnyRef, new_offset)),    // fallback for unknown
                     }
                 } else {
@@ -1327,19 +1366,9 @@ impl<'a> StreamingDecoder<'a> {
                 return Err(Error::parse_error("Unexpected end of global type"));
             }
 
-            // Parse value type
-            let value_type = match data[offset] {
-                0x7F => ValueType::I32,
-                0x7E => ValueType::I64,
-                0x7D => ValueType::F32,
-                0x7C => ValueType::F64,
-                0x7B => ValueType::V128,
-                0x70 => ValueType::FuncRef,
-                0x6F => ValueType::ExternRef,
-                0x69 => ValueType::ExnRef,
-                _ => return Err(Error::parse_error("Invalid global value type")),
-            };
-            offset += 1;
+            // Parse value type using full GC-aware parser
+            let (value_type, new_offset) = self.parse_value_type(data, offset)?;
+            offset = new_offset;
 
             // Parse mutability (0x00 = const, 0x01 = var)
             if offset >= data.len() {
@@ -1763,6 +1792,13 @@ impl<'a> StreamingDecoder<'a> {
             let (item_count, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
+            // Validate element count against platform limits before allocation
+            if item_count as usize > limits::MAX_ELEMENT_ITEMS {
+                return Err(Error::parse_error(
+                    "Element segment exceeds maximum item count for platform",
+                ));
+            }
+
             #[cfg(feature = "tracing")]
             trace!(
                 elem_idx = elem_idx,
@@ -1772,6 +1808,14 @@ impl<'a> StreamingDecoder<'a> {
 
             let init_data = if flags == 0 || flags == 1 || flags == 2 || flags == 3 {
                 // Function indices format (flags 0, 1, 2, 3 use elemkind + funcidx)
+                #[cfg(feature = "allocation-tracing")]
+                trace_alloc!(
+                    AllocationPhase::Decode,
+                    "streaming_decoder:elem_func_indices",
+                    "func_indices",
+                    item_count as usize
+                );
+
                 let mut func_indices = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     let (func_idx, bytes_read) = read_leb128_u32(data, offset)?;
@@ -1789,6 +1833,14 @@ impl<'a> StreamingDecoder<'a> {
                 PureElementInit::FunctionIndices(func_indices)
             } else {
                 // Expression format (flags 4, 5, 6, 7 use reftype + expressions)
+                #[cfg(feature = "allocation-tracing")]
+                trace_alloc!(
+                    AllocationPhase::Decode,
+                    "streaming_decoder:elem_expressions",
+                    "expr_bytes",
+                    item_count as usize
+                );
+
                 let mut expr_bytes = Vec::with_capacity(item_count as usize);
                 for i in 0..item_count {
                     // Parse item expression properly (can't just scan for 0x0B as it may appear as a value)

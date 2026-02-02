@@ -8,7 +8,11 @@
 //! It verifies that components conform to the Component Model specification.
 
 #[cfg(feature = "std")]
-use std::{collections::HashMap, vec::Vec};
+extern crate alloc;
+#[cfg(feature = "std")]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 #[cfg(feature = "std")]
 use wrt_format::component::{

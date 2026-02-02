@@ -8,8 +8,7 @@ pub mod component_communication;
 pub mod component_instantiation;
 pub mod component_linker;
 pub mod component_no_std;
-pub mod component_registry;
-pub mod component_registry_no_std;
+pub mod component_registry; // Consolidated: contains both std and no_std implementations
 pub mod component_resolver;
 
 // Re-export based on feature flags to avoid ambiguous imports
@@ -37,10 +36,8 @@ pub use component_linker::{
     GraphEdge, GraphNode, LinkGraph, LinkerConfig, LinkingStats,
 };
 
-#[cfg(feature = "std")]
+// ComponentRegistry handles std/no_std internally
 pub use component_registry::*;
-#[cfg(not(feature = "std"))]
-pub use component_registry_no_std::*;
 
 pub use component_resolver::{
     ComponentResolver, ExportResolution, ExportValue, ImportResolution, ImportValue,

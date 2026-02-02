@@ -168,8 +168,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_size_classes() {
         // Verify size classes follow expected pattern
+        // These are compile-time constant checks that verify the sizing hierarchy
         assert!(size_classes::TINY < size_classes::SMALL);
         assert!(size_classes::SMALL < size_classes::MEDIUM);
         assert!(size_classes::MEDIUM < size_classes::LARGE);

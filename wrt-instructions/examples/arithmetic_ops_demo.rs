@@ -7,8 +7,9 @@
 //! - Math operations (sqrt, ceil, floor, trunc, nearest)
 //! - Bit counting operations (clz, ctz, popcnt)
 
-#[cfg(feature = "std")]
-use std::vec::Vec;
+// Allow 8-bit grouping for binary literals in bit manipulation demos
+#![allow(clippy::unreadable_literal)]
+
 use std::vec::Vec;
 
 use wrt_error::Result;

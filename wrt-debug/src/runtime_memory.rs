@@ -1,5 +1,6 @@
 #![cfg(feature = "runtime-memory")]
 
+use wrt_error::Error;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     budget_aware_provider::CrateId,
@@ -69,16 +70,16 @@ pub struct MemoryInspector<'a> {
 
 impl<'a> MemoryInspector<'a> {
     /// Create a new memory inspector
-    pub fn new() -> Result<Self, wrt_foundation::Error> {
+    pub fn new() -> Result<Self, Error> {
         let regions_provider = safe_managed_alloc!(65536, CrateId::Runtime)?;
         let allocations_provider = safe_managed_alloc!(65536, CrateId::Runtime)?;
 
         Ok(Self {
             regions: BoundedVec::new(regions_provider).map_err(|_| {
-                wrt_foundation::Error::allocation_failed("Failed to create regions vector")
+                Error::allocation_failed("Failed to create regions vector")
             })?,
             allocations: BoundedVec::new(allocations_provider).map_err(|_| {
-                wrt_foundation::Error::allocation_failed("Failed to create allocations vector")
+                Error::allocation_failed("Failed to create allocations vector")
             })?,
             memory: None,
         })
@@ -383,7 +384,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_memory_regions() -> Result<(), wrt_foundation::Error> {
+    fn test_memory_regions() -> Result<(), Error> {
         let mut inspector = MemoryInspector::new()?;
 
         // Add memory regions
@@ -416,7 +417,7 @@ mod tests {
     }
 
     #[test]
-    fn test_heap_stats() -> Result<(), wrt_foundation::Error> {
+    fn test_heap_stats() -> Result<(), Error> {
         let mut inspector = MemoryInspector::new()?;
 
         // Binary std/no_std choice

@@ -43,6 +43,16 @@ std = ["wrt-format/std", "wrt-foundation/std", "wrt-foundation/wrt-allocator", "
 # This is a no-op since the crate is no_std by default
 no_std = []
 
+# Platform profile features (propagate to wrt-foundation)
+embedded-small = ["wrt-foundation/embedded-small"]
+embedded-medium = ["wrt-foundation/embedded-medium"]
+
+# Allocation tracing for debugging
+allocation-tracing = ["wrt-foundation/allocation-tracing"]
+
+# Tracing support
+tracing = ["wrt-foundation/tracing"]
+
 # Allocation support for no_std environments
 alloc = ["wrt-foundation/alloc", "wrt-format/alloc"]
 optimize = []

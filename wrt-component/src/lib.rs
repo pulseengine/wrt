@@ -17,7 +17,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "kani", feature(kani))]
-#![warn(clippy::missing_panics_doc)]
+// Lints configured in Cargo.toml
+#![allow(deprecated)]
 
 // extern crate declarations
 #[cfg(not(feature = "std"))]
@@ -71,9 +72,7 @@ pub mod export;
 pub mod generative_types;
 pub mod handle_representation;
 pub mod import;
-pub mod instance;
-#[cfg(not(feature = "std"))]
-pub mod instance_no_std;
+pub mod instance; // Consolidated: contains both std and no_std implementations
 pub mod instantiation;
 pub mod linker;
 pub mod memory_layout;

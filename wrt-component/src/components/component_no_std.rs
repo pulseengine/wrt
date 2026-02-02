@@ -28,10 +28,8 @@ use wrt_foundation::{
 // Import types from wrt-foundation instead of wrt-runtime
 use wrt_foundation::types::{MemoryType, TableType};
 
-#[cfg(feature = "std")]
+// InstanceValue handles std/no_std internally now
 use crate::instance::InstanceValue;
-#[cfg(not(feature = "std"))]
-use crate::instance_no_std::InstanceValue;
 use crate::{
     bounded_component_infra::ComponentProvider,
     export::Export,

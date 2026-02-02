@@ -277,6 +277,15 @@ budget-enforcement = ["bounded-budget-enforcement"]
 wrt-allocator = ["std-allocation"]
 default-provider = ["std-allocation"]
 
+# Platform profile features (for limits module)
+# These control compile-time WebAssembly limits for different target platforms
+embedded-small = []   # MCU targets with ~64KB RAM
+embedded-medium = []  # Embedded Linux with ~1MB RAM
+# Default (no feature): Desktop/Server with ample memory
+
+# Allocation tracing for understanding memory patterns (development only)
+allocation-tracing = []
+
 # General features (still supported)
 optimize = []
 kani = ["dep:kani-verifier"]
@@ -362,7 +371,3 @@ never_loop = "deny"
 unreachable = "deny"
 pedantic = "deny"
 debug_assert_with_mut_call = "warn"
-
-[[bench]]
-name = "safe_memory_benchmarks"
-harness = false

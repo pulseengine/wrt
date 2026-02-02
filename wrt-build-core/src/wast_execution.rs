@@ -811,4 +811,224 @@ mod tests {
         // Note: We don't assert success yet since the engine may not be fully
         // implemented
     }
+
+    #[test]
+    fn test_ref_null_anyref_decode() {
+        use wast::{
+            parser::{self, ParseBuffer},
+            Wat,
+        };
+
+        // Minimal module with anyref
+        let wat = r#"
+            (module
+              (func (export "anyref") (result anyref) (ref.null any))
+            )
+        "#;
+
+        let buf = ParseBuffer::new(wat).expect("Failed to create buffer");
+        let mut wat_parsed: Wat = parser::parse(&buf).expect("Failed to parse WAT");
+        let binary = wat_parsed.encode().expect("Failed to encode");
+
+        println!("Binary ({} bytes): {:02x?}", binary.len(), &binary);
+
+        // Try to decode
+        match wrt_decoder::decoder::decode_module(&binary) {
+            Ok(module) => {
+                println!("SUCCESS: {} types, {} functions", module.types.len(), module.functions.len());
+                if let Some(t) = module.types.first() {
+                    println!("  First type: {} params, {} results", t.params.len(), t.results.len());
+                    for r in &t.results {
+                        println!("    Result: {:?}", r);
+                    }
+                }
+            }
+            Err(e) => {
+                panic!("DECODE FAILED: {:?}", e);
+            }
+        }
+    }
+
+    #[test]
+    fn test_ref_null_full_module_decode() {
+        use wast::{
+            parser::{self, ParseBuffer},
+            Wat,
+        };
+
+        // Full first module from ref_null.wast
+        let wat = r#"
+            (module
+              (type $t (func))
+              (func (export "anyref") (result anyref) (ref.null any))
+              (func (export "funcref") (result funcref) (ref.null func))
+              (func (export "exnref") (result exnref) (ref.null exn))
+              (func (export "externref") (result externref) (ref.null extern))
+              (func (export "ref") (result (ref null $t)) (ref.null $t))
+              (global anyref (ref.null any))
+              (global funcref (ref.null func))
+              (global exnref (ref.null exn))
+              (global externref (ref.null extern))
+              (global (ref null $t) (ref.null $t))
+            )
+        "#;
+
+        let buf = ParseBuffer::new(wat).expect("Failed to create buffer");
+        let mut wat_parsed: Wat = parser::parse(&buf).expect("Failed to parse WAT");
+        let binary = wat_parsed.encode().expect("Failed to encode");
+
+        println!("Full module binary ({} bytes):", binary.len());
+        println!("  {:02x?}", &binary[..std::cmp::min(100, binary.len())]);
+        if binary.len() > 100 {
+            println!("  ... ({} more bytes)", binary.len() - 100);
+        }
+
+        // Try to decode
+        match wrt_decoder::decoder::decode_module(&binary) {
+            Ok(module) => {
+                println!("SUCCESS:");
+                println!("  {} types", module.types.len());
+                println!("  {} functions", module.functions.len());
+                println!("  {} globals", module.globals.len());
+                println!("  {} exports", module.exports.len());
+            }
+            Err(e) => {
+                println!("DECODE FAILED: {:?}", e);
+                // Print more of the binary for debugging
+                println!("Full binary: {:02x?}", &binary);
+                panic!("Decode failed");
+            }
+        }
+    }
+
+    #[test]
+    fn test_ref_null_second_module_decode() {
+        use wast::{
+            parser::{self, ParseBuffer},
+            Wat,
+        };
+
+        // Second module from ref_null.wast with nullref, nullfuncref, etc.
+        let wat = r#"
+            (module
+              (type $t (func))
+              (global $null nullref (ref.null none))
+              (global $nullfunc nullfuncref (ref.null nofunc))
+              (global $nullexn nullexnref (ref.null noexn))
+              (global $nullextern nullexternref (ref.null noextern))
+              (func (export "anyref") (result anyref) (global.get $null))
+              (func (export "nullref") (result nullref) (global.get $null))
+            )
+        "#;
+
+        let buf = ParseBuffer::new(wat).expect("Failed to create buffer");
+        let mut wat_parsed: Wat = parser::parse(&buf).expect("Failed to parse WAT");
+        let binary = wat_parsed.encode().expect("Failed to encode");
+
+        println!("Second module binary ({} bytes):", binary.len());
+        println!("  {:02x?}", &binary[..std::cmp::min(100, binary.len())]);
+        if binary.len() > 100 {
+            println!("  ... ({} more bytes)", binary.len() - 100);
+        }
+
+        // Try to decode
+        match wrt_decoder::decoder::decode_module(&binary) {
+            Ok(module) => {
+                println!("SUCCESS:");
+                println!("  {} types", module.types.len());
+                println!("  {} functions", module.functions.len());
+                println!("  {} globals", module.globals.len());
+                println!("  {} exports", module.exports.len());
+            }
+            Err(e) => {
+                println!("DECODE FAILED: {:?}", e);
+                println!("Full binary: {:02x?}", &binary);
+                panic!("Decode failed");
+            }
+        }
+    }
+
+    #[test]
+    fn test_ref_null_wast_file_decode() {
+        use wast::{
+            parser::{self, ParseBuffer},
+            Wast, WastDirective,
+        };
+
+        // Read the actual ref_null.wast file
+        let wast_path = "/Users/r/git/wrt2/external/testsuite/ref_null.wast";
+        let wast_content = std::fs::read_to_string(wast_path).expect("Failed to read ref_null.wast");
+
+        let buf = ParseBuffer::new(&wast_content).expect("Failed to create buffer");
+        let wast: Wast = parser::parse(&buf).expect("Failed to parse WAST");
+
+        // Process each directive and try to decode modules
+        let mut module_count = 0;
+        let mut errors = Vec::new();
+
+        for directive in wast.directives {
+            if let WastDirective::Module(mut quote_wat) = directive {
+                module_count += 1;
+                println!("\n=== Module {} ===", module_count);
+
+                // Encode the module to binary
+                match quote_wat.encode() {
+                    Ok(binary) => {
+                        println!("Binary: {} bytes", binary.len());
+                        println!("  First 50 bytes: {:02x?}", &binary[..std::cmp::min(50, binary.len())]);
+
+                        // Try to decode
+                        match wrt_decoder::decoder::decode_module(&binary) {
+                            Ok(module) => {
+                                println!("  DECODE OK: {} types, {} functions, {} globals",
+                                    module.types.len(), module.functions.len(), module.globals.len());
+
+                                // Try to validate
+                                match crate::wast_validator::WastModuleValidator::validate(&module) {
+                                    Ok(()) => {
+                                        println!("  VALIDATE OK");
+
+                                        // Try to convert to runtime module
+                                        match wrt_runtime::module::Module::from_wrt_module(&module) {
+                                            Ok(_runtime_module) => {
+                                                println!("  RUNTIME CONVERT OK");
+                                            }
+                                            Err(e) => {
+                                                println!("  RUNTIME CONVERT FAILED: {:?}", e);
+                                                errors.push((module_count, format!("runtime: {:?}", e)));
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("  VALIDATE FAILED: {:?}", e);
+                                        errors.push((module_count, format!("validate: {:?}", e)));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("  DECODE FAILED: {:?}", e);
+                                errors.push((module_count, format!("{:?}", e)));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("  ENCODE FAILED: {:?}", e);
+                        errors.push((module_count, format!("encode: {:?}", e)));
+                    }
+                }
+            }
+        }
+
+        println!("\n=== Summary ===");
+        println!("Processed {} modules", module_count);
+        if errors.is_empty() {
+            println!("All modules decoded successfully!");
+        } else {
+            println!("Errors:");
+            for (idx, err) in &errors {
+                println!("  Module {}: {}", idx, err);
+            }
+            panic!("{} modules failed to decode", errors.len());
+        }
+    }
 }

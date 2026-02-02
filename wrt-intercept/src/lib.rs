@@ -1079,7 +1079,7 @@ mod tests {
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
 
-        let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
+        let result = interceptor.intercept_call("target", "func", &[Value::I32(10)], |args| {
             assert_eq!(args, vec![Value::I32(10)]);
             Ok(vec![Value::I32(20)])
         });
@@ -1099,7 +1099,7 @@ mod tests {
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
 
-        let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
+        let result = interceptor.intercept_call("target", "func", &[Value::I32(10)], |args| {
             assert_eq!(args, vec![Value::I32(42)]);
             Ok(vec![Value::I32(20)])
         });
@@ -1119,7 +1119,7 @@ mod tests {
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
 
-        let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
+        let result = interceptor.intercept_call("target", "func", &[Value::I32(10)], |args| {
             assert_eq!(args, vec![Value::I32(10)]);
             Ok(vec![Value::I32(20)])
         });
@@ -1139,7 +1139,7 @@ mod tests {
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
 
-        let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |_| {
+        let result = interceptor.intercept_call("target", "func", &[Value::I32(10)], |_| {
             panic!("This should not be called");
         });
 
@@ -1165,7 +1165,7 @@ mod tests {
         interceptor.add_strategy(strategy1);
         interceptor.add_strategy(strategy2);
 
-        let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
+        let result = interceptor.intercept_call("target", "func", &[Value::I32(10)], |args| {
             assert_eq!(args, vec![Value::I32(42)]);
             Ok(vec![Value::I32(20)])
         });

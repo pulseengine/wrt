@@ -127,7 +127,7 @@ impl wrt_foundation::traits::ToBytes for Value {
             Value::Bool(_) | Value::U8(_) | Value::S8(_) => 1,
             Value::U16(_) | Value::S16(_) => 2,
             Value::U32(_) | Value::S32(_) | Value::F32(_) => 4,
-            Value::U64(_) | Value::S64(_) | Value::F64(_) | _ => 8, // 8-byte types and complex types
+            _ => 8, // 8-byte types (U64, S64, F64) and complex types
         }
     }
 

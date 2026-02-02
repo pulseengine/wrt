@@ -1,3 +1,9 @@
+// Allow common WASI-related casts which are expected in syscall interfaces
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::needless_borrow)]
+
 //! # WRT WASI Implementation
 //!
 //! WASI (WebAssembly System Interface) Preview2 implementation for the WRT

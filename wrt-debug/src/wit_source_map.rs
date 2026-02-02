@@ -56,10 +56,10 @@ pub struct WitSourceMap {
 #[derive(Debug, Clone)]
 pub struct WitSourceFile {
     /// File path or identifier
-    pub path: BoundedString<256, crate::bounded_debug_infra::DebugProvider>,
+    pub path: BoundedString<256>,
 
     /// Source content lines for context display
-    pub lines: Vec<BoundedString<1024, crate::bounded_debug_infra::DebugProvider>>,
+    pub lines: Vec<BoundedString<1024>>,
 
     /// File size in bytes
     pub size: u32,
@@ -73,7 +73,7 @@ pub struct WitTypeInfo {
     pub id: TypeId,
 
     /// Type name
-    pub name: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub name: BoundedString<64>,
 
     /// Type kind (record, variant, etc.)
     pub kind: WitTypeKind,
@@ -90,7 +90,7 @@ pub struct WitTypeInfo {
 #[derive(Debug, Clone, PartialEq)]
 pub enum WitTypeKind {
     /// Primitive type (u32, string, etc.)
-    Primitive(BoundedString<16, crate::bounded_debug_infra::DebugProvider>),
+    Primitive(BoundedString<16>),
 
     /// Record type with field count
     Record(u32),
@@ -125,7 +125,7 @@ pub struct ComponentBoundary {
     pub id: ComponentId,
 
     /// Component name if available
-    pub name: Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>,
+    pub name: Option<BoundedString<64>>,
 
     /// Start offset in binary
     pub start_offset: u32,
@@ -180,10 +180,10 @@ pub struct WitDiagnostic {
     pub severity: DiagnosticSeverity,
 
     /// Error/warning message
-    pub message: BoundedString<512, crate::bounded_debug_infra::DebugProvider>,
+    pub message: BoundedString<512>,
 
     /// Optional suggested fix
-    pub suggestion: Option<BoundedString<256, crate::bounded_debug_infra::DebugProvider>>,
+    pub suggestion: Option<BoundedString<256>>,
 
     /// Related locations (for multi-span diagnostics)
     pub related: Vec<SourceSpan>,
@@ -353,7 +353,7 @@ impl WitSourceMap {
 #[derive(Debug, Clone)]
 pub struct SourceContext {
     /// File path
-    pub file_path: BoundedString<256, crate::bounded_debug_infra::DebugProvider>,
+    pub file_path: BoundedString<256>,
 
     /// Context lines
     pub lines: Vec<ContextLine>,
@@ -370,7 +370,7 @@ pub struct ContextLine {
     pub line_number: u32,
 
     /// Line content
-    pub content: BoundedString<1024, crate::bounded_debug_infra::DebugProvider>,
+    pub content: BoundedString<1024>,
 
     /// Whether this line is highlighted (contains the error)
     pub is_highlighted: bool,
@@ -410,7 +410,7 @@ impl WitSourceFile {
     pub fn line(
         &self,
         line_number: u32,
-    ) -> Option<&BoundedString<1024, crate::bounded_debug_infra::DebugProvider>> {
+    ) -> Option<&BoundedString<1024>> {
         if line_number == 0 {
             return None;
         }

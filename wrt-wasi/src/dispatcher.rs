@@ -543,12 +543,10 @@ impl WasiDispatcher {
 
             ("wasi:cli/exit", "exit") => {
                 // Extract exit status from args
-                let success = match args.first() {
-                    Some(Value::S32(0)) => true,
-                    Some(Value::U32(0)) => true,
-                    Some(Value::Bool(true)) => true,
-                    _ => false,
-                };
+                let success = matches!(
+                    args.first(),
+                    Some(Value::S32(0)) | Some(Value::U32(0)) | Some(Value::Bool(true))
+                );
 
                 #[cfg(feature = "std")]
                 {

@@ -17,9 +17,7 @@ pub mod dynamic_quota_manager;
 #[cfg(feature = "std")]
 pub mod memory_access;
 pub mod memory_strategy;
-#[cfg(feature = "std")]
-pub mod resource_arena;
-pub mod resource_arena_no_std;
+pub mod resource_arena; // Consolidated: contains both std and no_std implementations
 pub mod resource_builder;
 pub mod resource_interceptor;
 pub mod resource_lifecycle;
@@ -54,11 +52,8 @@ pub use dynamic_quota_manager::{
 pub use memory_access::MemoryAccessMode;
 // Common re-exports for both std and no_std
 // pub use memory_strategy::MemoryStrategy as MemoryStrategyTrait;
-// Export ResourceArena based on feature flags
-#[cfg(feature = "std")]
+// ResourceArena handles std/no_std internally
 pub use resource_arena::ResourceArena;
-#[cfg(not(feature = "std"))]
-pub use resource_arena_no_std::ResourceArena;
 // Export Builder types
 pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
 // Export ResourceInterceptor

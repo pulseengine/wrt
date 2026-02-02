@@ -19,8 +19,9 @@ use std::sync::{Mutex, OnceLock};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::no_std_hashmap::BoundedHashMap;
+use wrt_error::Result;
 use wrt_foundation::{
-    CrateId, Result,
+    CrateId, NoStdProvider,
     bounded::{BoundedString, BoundedVec},
     verification::Checksum,
     wrt_provider,
@@ -60,7 +61,7 @@ pub struct AllocationRecord {
     /// Whether this allocation is still active
     pub active: bool,
     /// Tag for custom categorization
-    pub tag: BoundedString<32, crate::bounded_debug_infra::DebugProvider>,
+    pub tag: BoundedString<32>,
 }
 
 /// Type of memory allocation
@@ -112,12 +113,11 @@ impl wrt_foundation::traits::ToBytes for AllocationType {
 
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::FromBytes for AllocationType {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, wrt_foundation::Error> {
-        if bytes.is_empty() {
-            return Err(wrt_foundation::Error::from(
-                wrt_foundation::ErrorCategory::Parse("Empty bytes for AllocationType".into()),
-            ));
-        }
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_error::Result<Self> {
+        let bytes = reader.read_bytes(1)?;
         match bytes[0] {
             0 => Ok(Self::Heap),
             1 => Ok(Self::Stack),
@@ -125,9 +125,7 @@ impl wrt_foundation::traits::FromBytes for AllocationType {
             3 => Ok(Self::Shared),
             4 => Ok(Self::Bounded),
             5 => Ok(Self::Provider),
-            _ => Err(wrt_foundation::Error::from(
-                wrt_foundation::ErrorCategory::Parse("Invalid AllocationType value".into()),
-            )),
+            _ => Err(wrt_error::Error::parse_error("Invalid AllocationType value")),
         }
     }
 }
@@ -162,7 +160,7 @@ pub enum AccessType {
 #[derive(Debug, Clone)]
 pub struct PerformanceSample {
     /// Operation being profiled
-    pub operation: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub operation: BoundedString<64>,
     /// Start timestamp (microseconds)
     pub start_time: u64,
     /// Duration (microseconds)
@@ -183,7 +181,7 @@ pub struct LeakInfo {
     /// Confidence score (0-100)
     pub confidence: u8,
     /// Reason for suspicion
-    pub reason: BoundedString<128, crate::bounded_debug_infra::DebugProvider>,
+    pub reason: BoundedString<128>,
 }
 
 /// Memory profiler for runtime debugging
@@ -616,7 +614,7 @@ impl<'a> MemoryProfiler<'a> {
         #[cfg(not(feature = "std"))]
         let mut operation_times =
             BoundedHashMap::<
-                BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+                BoundedString<64>,
                 (u64, u32),
                 32,
                 NoStdProvider<{ 32 * 96 }>,
@@ -636,7 +634,7 @@ impl<'a> MemoryProfiler<'a> {
         let mut slowest_ops =
             BoundedVec::<
                 (
-                    BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+                    BoundedString<64>,
                     u64,
                 ),
                 5,
@@ -719,7 +717,7 @@ impl<'a> MemoryProfiler<'a> {
 
 /// Handle for profiling operations
 pub struct ProfilingHandle {
-    operation: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    operation: BoundedString<64>,
     start_time: u64,
     initial_allocations: usize,
     initial_deallocations: usize,
@@ -795,7 +793,7 @@ pub struct PerformanceAnalysis {
     /// Slowest operations by average time
     pub slowest_operations: BoundedVec<
         (
-            BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+            BoundedString<64>,
             u64,
         ),
         5,
@@ -840,22 +838,16 @@ where
         match MEMORY_PROFILER.get() {
             Some(profiler_mutex) => match profiler_mutex.lock() {
                 Ok(mut profiler) => f(&mut *profiler),
-                Err(_) => Err(wrt_foundation::Error::from(
-                    wrt_foundation::ErrorCategory::Memory,
-                )),
+                Err(_) => Err(wrt_error::Error::memory_error("Failed to lock profiler")),
             },
-            None => Err(wrt_foundation::Error::from(
-                wrt_foundation::ErrorCategory::Memory,
-            )),
+            None => Err(wrt_error::Error::memory_error("Profiler not initialized")),
         }
     }
     #[cfg(not(feature = "std"))]
     {
         let ptr = MEMORY_PROFILER.load(Ordering::SeqCst);
         if ptr.is_null() {
-            Err(wrt_foundation::Error::from(
-                wrt_foundation::ErrorCategory::Memory,
-            ))
+            Err(wrt_error::Error::memory_error("Profiler not initialized"))
         } else {
             // SAFETY: We only store valid pointers from Box::leak
             // and the profiler has 'static lifetime

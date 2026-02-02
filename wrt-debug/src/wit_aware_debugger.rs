@@ -30,7 +30,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct ComponentError {
     /// Error message
-    pub message: BoundedString<512, crate::bounded_debug_infra::DebugProvider>,
+    pub message: BoundedString<512>,
     /// Binary offset where error occurred
     pub binary_offset: Option<u32>,
     /// Component that generated the error
@@ -58,13 +58,13 @@ pub trait WitAwareDebugger: RuntimeDebugger {
     fn wit_function_name(
         &self,
         function_id: FunctionId,
-    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>;
+    ) -> Option<BoundedString<64>>;
 
     /// Get WIT type name for a type ID
     fn wit_type_name(
         &self,
         type_id: TypeId,
-    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>;
+    ) -> Option<BoundedString<64>>;
 }
 
 /// Implementation of WIT-aware debugger
@@ -98,7 +98,7 @@ pub struct WitDebugger {
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     /// Component name
-    pub name: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub name: BoundedString<64>,
 
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -121,7 +121,7 @@ pub struct ComponentMetadata {
 #[derive(Debug, Clone)]
 pub struct FunctionMetadata {
     /// Function name
-    pub name: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub name: BoundedString<64>,
 
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -144,7 +144,7 @@ pub struct FunctionMetadata {
 #[derive(Debug, Clone)]
 pub struct TypeMetadata {
     /// Type name
-    pub name: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub name: BoundedString<64>,
 
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -471,14 +471,14 @@ impl WitAwareDebugger for WitDebugger {
     fn wit_function_name(
         &self,
         function_id: FunctionId,
-    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>> {
+    ) -> Option<BoundedString<64>> {
         self.functions.get(&function_id).map(|metadata| metadata.name.clone())
     }
 
     fn wit_type_name(
         &self,
         type_id: TypeId,
-    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>> {
+    ) -> Option<BoundedString<64>> {
         self.types.get(&type_id).map(|metadata| metadata.name.clone())
     }
 }

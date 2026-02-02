@@ -1,11 +1,13 @@
 #![cfg(feature = "runtime-variables")]
 
+use wrt_error::Error;
 use wrt_foundation::{
-    NoStdProvider,
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
-use crate::bounded_debug_infra;
+use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
 /// Runtime variable inspection implementation
 /// Provides the ability to read variable values from runtime state
 use crate::{
@@ -54,10 +56,12 @@ pub struct VariableInspector<'a> {
 
 impl<'a> VariableInspector<'a> {
     /// Create a new variable inspector
-    pub fn new() -> Self {
-        Self {
-            variables: BoundedVec::new(NoStdProvider),
-        }
+    pub fn new() -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+        Ok(Self {
+            variables: BoundedVec::new(provider)
+                .map_err(|_| Error::memory_error("Failed to create variables vector"))?,
+        })
     }
 
     /// Add a variable definition from DWARF

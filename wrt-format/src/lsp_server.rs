@@ -17,7 +17,7 @@ use std::{
 };
 
 use wrt_error::{Error, Result};
-use wrt_foundation::{BoundedString, NoStdProvider, prelude::*};
+use wrt_foundation::{BoundedString, prelude::*};
 
 use crate::{
     ast::*,
@@ -59,9 +59,9 @@ pub struct Diagnostic {
     /// Severity of the diagnostic
     pub severity: DiagnosticSeverity,
     /// Diagnostic message
-    pub message: BoundedString<512, NoStdProvider<1024>>,
+    pub message: BoundedString<512>,
     /// Optional source of the diagnostic
-    pub source: Option<BoundedString<64, NoStdProvider<1024>>>,
+    pub source: Option<BoundedString<64>>,
     /// Optional diagnostic code
     pub code: Option<u32>,
 }
@@ -70,13 +70,13 @@ pub struct Diagnostic {
 #[derive(Debug, Clone)]
 pub struct TextDocumentItem {
     /// Document URI
-    pub uri: BoundedString<256, NoStdProvider<1024>>,
+    pub uri: BoundedString<256>,
     /// Language ID (should be "wit")
-    pub language_id: BoundedString<16, NoStdProvider<1024>>,
+    pub language_id: BoundedString<16>,
     /// Version number
     pub version: i32,
     /// Document text
-    pub text: Vec<BoundedString<1024, NoStdProvider<1024>>>,
+    pub text: Vec<BoundedString<1024>>,
 }
 
 /// Text document content change event
@@ -85,14 +85,14 @@ pub struct TextDocumentContentChangeEvent {
     /// Range of the change
     pub range: Option<Range>,
     /// Text that is being replaced
-    pub text: BoundedString<1024, NoStdProvider<1024>>,
+    pub text: BoundedString<1024>,
 }
 
 /// Hover information
 #[derive(Debug, Clone)]
 pub struct Hover {
     /// Hover content
-    pub contents: BoundedString<1024, NoStdProvider<1024>>,
+    pub contents: BoundedString<1024>,
     /// Optional range
     pub range: Option<Range>,
 }
@@ -112,22 +112,22 @@ pub enum CompletionItemKind {
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
     /// Label shown in completion list
-    pub label: BoundedString<64, NoStdProvider<1024>>,
+    pub label: BoundedString<64>,
     /// Kind of completion
     pub kind: CompletionItemKind,
     /// Detail information
-    pub detail: Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub detail: Option<BoundedString<256>>,
     /// Documentation
-    pub documentation: Option<BoundedString<512, NoStdProvider<1024>>>,
+    pub documentation: Option<BoundedString<512>>,
     /// Text to insert
-    pub insert_text: Option<BoundedString<256, NoStdProvider<1024>>>,
+    pub insert_text: Option<BoundedString<256>>,
 }
 
 /// Location in a document
 #[derive(Debug, Clone)]
 pub struct Location {
     /// Document URI
-    pub uri: BoundedString<256, NoStdProvider<1024>>,
+    pub uri: BoundedString<256>,
     /// Range in the document
     pub range: Range,
 }
@@ -147,7 +147,7 @@ pub enum SymbolKind {
 #[derive(Debug, Clone)]
 pub struct DocumentSymbol {
     /// Symbol name
-    pub name: BoundedString<64, NoStdProvider<1024>>,
+    pub name: BoundedString<64>,
     /// Symbol kind
     pub kind: SymbolKind,
     /// Range of the symbol
@@ -271,12 +271,6 @@ impl WitLanguageServer {
             let parser = cache.get_parser(file_id);
 
             for change in changes {
-                let provider = wrt_foundation::safe_managed_alloc!(
-                    1024,
-                    wrt_foundation::budget_aware_provider::CrateId::Format
-                )
-                .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
-
                 if let Some(range) = change.range {
                     // Incremental change
                     let offset = self.position_to_offset(uri, range.start)?;
@@ -326,20 +320,15 @@ impl WitLanguageServer {
         if let Some(ast) = ast {
             // Find node at position
             if let Some(node_info) = self.find_node_at_offset(&ast, offset) {
-                let provider = wrt_foundation::safe_managed_alloc!(
-                    1024,
-                    wrt_foundation::budget_aware_provider::CrateId::Format
-                )
-                .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
                 let hover_text = match node_info {
                     NodeInfo::Function(name) => {
-                        BoundedString::try_from_str(&format!("Function: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Function: {}", name)).ok()
                     },
                     NodeInfo::Type(name) => {
-                        BoundedString::try_from_str(&format!("Type: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Type: {}", name)).ok()
                     },
                     NodeInfo::Interface(name) => {
-                        BoundedString::try_from_str(&format!("Interface: {}", name), provider).ok()
+                        BoundedString::try_from_str(&format!("Interface: {}", name)).ok()
                     },
                     _ => None,
                 };
@@ -359,11 +348,6 @@ impl WitLanguageServer {
     /// Get completion items
     pub fn completion(&self, _uri: &str, _position: Position) -> Result<Vec<CompletionItem>> {
         let mut items = Vec::new();
-        let provider = wrt_foundation::safe_managed_alloc!(
-            1024,
-            wrt_foundation::budget_aware_provider::CrateId::Format
-        )
-        .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
 
         // Add keyword completions
         let keywords = [
@@ -383,7 +367,7 @@ impl WitLanguageServer {
         ];
 
         for (keyword, kind) in keywords {
-            if let Ok(label) = BoundedString::try_from_str(keyword, provider.clone()) {
+            if let Ok(label) = BoundedString::try_from_str(keyword) {
                 items.push(CompletionItem {
                     label,
                     kind,
@@ -401,13 +385,11 @@ impl WitLanguageServer {
         ];
 
         for type_name in primitive_types {
-            if let Ok(label) = BoundedString::try_from_str(type_name, provider.clone()) {
+            if let Ok(label) = BoundedString::try_from_str(type_name) {
                 items.push(CompletionItem {
                     label,
                     kind: CompletionItemKind::Type,
-                    detail: Some(
-                        BoundedString::try_from_str("Primitive type", provider.clone()).unwrap(),
-                    ),
+                    detail: BoundedString::try_from_str("Primitive type").ok(),
                     documentation: None,
                     insert_text: None,
                 });
@@ -438,7 +420,7 @@ impl WitLanguageServer {
 
     /// Update diagnostics for a document
     fn update_diagnostics(&mut self, uri: &str) -> Result<()> {
-        let _file_id = self.uri_to_file_id(uri)?;
+        let _file_id = self.uri_to_file_id(uri);
         let diagnostics = Vec::new();
 
         // Get parser errors (if any)
@@ -484,15 +466,9 @@ impl WitLanguageServer {
 
     /// Extract symbols from AST
     fn extract_symbols(&self, ast: &WitDocument, symbols: &mut Vec<DocumentSymbol>) -> Result<()> {
-        let provider = wrt_foundation::safe_managed_alloc!(
-            1024,
-            wrt_foundation::budget_aware_provider::CrateId::Format
-        )
-        .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
-
         // Extract package symbol
         if let Some(ref package) = ast.package {
-            if let Ok(name) = BoundedString::try_from_str("package", provider.clone()) {
+            if let Ok(name) = BoundedString::try_from_str("package") {
                 symbols.push(DocumentSymbol {
                     name,
                     kind: SymbolKind::Package,

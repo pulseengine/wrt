@@ -59,6 +59,11 @@ impl SimpleBoundedString {
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+
+    /// Alias for from_str for API compatibility
+    pub fn try_from_str(s: &str) -> Option<Self> {
+        Self::from_str(s)
+    }
 }
 
 /// Bounded WIT name for no_std environments - using simple array-based approach

@@ -93,6 +93,13 @@ pub use wit_source_map::{
 };
 use wrt_error::{Error, Result};
 use wrt_foundation::prelude::*;
+#[cfg(feature = "abbrev")]
+use wrt_foundation::{
+    NoStdProvider,
+    bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 #[cfg(feature = "abbrev")]
 mod abbrev;

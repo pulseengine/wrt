@@ -23,20 +23,27 @@ pub use core::{
     ops::{Deref, DerefMut},
     slice, str,
 };
-// Re-export from std when the std feature is enabled
+// Re-export from alloc when the std feature is enabled
 #[cfg(feature = "std")]
-pub use std::{
+pub use alloc::{
     borrow::Cow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    format, io,
-    io::{Read, Write},
+    collections::{BTreeMap, BTreeSet},
+    format,
     rc::Rc,
-    result::Result as StdResult,
     string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
     vec,
     vec::Vec,
+};
+#[cfg(feature = "std")]
+pub use core::result::Result as StdResult;
+#[cfg(feature = "std")]
+pub use std::{
+    collections::{HashMap, HashSet},
+    io,
+    io::{Read, Write},
+    sync::{Mutex, RwLock},
 };
 
 // Import synchronization primitives for no_std

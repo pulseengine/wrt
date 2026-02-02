@@ -515,6 +515,7 @@ pub fn wasi_filesystem_sync_data(_target: &mut dyn Any, args: &[Value]) -> Resul
 /// - The file table is not initialized
 /// - The file descriptor is invalid
 /// - Metadata or timestamp operations fail
+#[allow(clippy::similar_names)]
 pub fn wasi_filesystem_set_times(_target: &mut dyn Any, args: &[Value]) -> Result<Vec<Value>> {
     #[cfg(feature = "std")]
     {

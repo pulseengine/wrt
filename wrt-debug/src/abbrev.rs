@@ -6,9 +6,12 @@
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{
-    NoStdProvider,
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
+
+use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
 
 use crate::{bounded_debug_infra, cursor::DwarfCursor};
 /// DWARF attribute form constants
@@ -107,10 +110,12 @@ pub struct AbbreviationTable {
 
 impl AbbreviationTable {
     /// Create a new abbreviation table
-    pub fn new() -> Self {
-        Self {
-            entries: BoundedVec::new(NoStdProvider),
-        }
+    pub fn new() -> Result<Self> {
+        let provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+        Ok(Self {
+            entries: BoundedVec::new(provider)
+                .map_err(|_| Error::memory_error("Failed to create abbreviation entries"))?,
+        })
     }
 
     /// Parse abbreviations from data
@@ -134,7 +139,9 @@ impl AbbreviationTable {
             let has_children = cursor.read_u8()? != 0;
 
             // Read attributes
-            let mut attributes = BoundedVec::new(NoStdProvider);
+            let attr_provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+            let mut attributes = BoundedVec::new(attr_provider)
+                .map_err(|_| Error::memory_error("Failed to create attributes vector"))?;
 
             loop {
                 let name = cursor.read_uleb128()? as u16;
@@ -193,6 +200,7 @@ pub mod tags {
     pub const DW_TAG_VARIABLE: u16 = 0x34;
     pub const DW_TAG_FORMAL_PARAMETER: u16 = 0x05;
     pub const DW_TAG_LEXICAL_BLOCK: u16 = 0x0b;
+    pub const DW_TAG_INLINED_SUBROUTINE: u16 = 0x1d;
     pub const DW_TAG_BASE_TYPE: u16 = 0x24;
     pub const DW_TAG_TYPEDEF: u16 = 0x16;
     pub const DW_TAG_STRUCTURE_TYPE: u16 = 0x13;

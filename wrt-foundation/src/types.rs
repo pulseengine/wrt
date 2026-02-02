@@ -1629,7 +1629,9 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     I64Extend32S,
 
     // Reference operations
-    RefNull(RefType),
+    /// ref.null creates a null reference of the specified type.
+    /// Uses ValueType to support all GC reference types (anyref, exnref, etc.)
+    RefNull(ValueType),
     RefFunc(FuncIdx),
 
     // Other operations

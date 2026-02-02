@@ -1,5 +1,5 @@
-/// Basic stack trace support for debugging
-/// Provides the missing 3% for stack trace generation
+//! Basic stack trace support for debugging
+//! Provides the missing 3% for stack trace generation
 
 /// Maximum number of stack frames to capture
 pub const MAX_STACK_FRAMES: usize = 256;
@@ -45,6 +45,7 @@ impl<'a> StackTrace<'a> {
     }
 
     /// Add a frame to the stack trace
+    #[allow(clippy::result_unit_err)]
     pub fn push_frame(&mut self, frame: StackFrame<'a>) -> Result<(), ()> {
         if self.frame_count >= MAX_STACK_FRAMES {
             return Err(());
@@ -166,6 +167,7 @@ impl<'a> StackTraceBuilder<'a> {
 
     /// Build a partial trace with just PC values
     /// (when debug info is not available)
+    #[allow(clippy::result_unit_err)]
     pub fn build_minimal(&self, pcs: &[u32]) -> Result<StackTrace<'a>, ()> {
         let mut trace = StackTrace::new();
 

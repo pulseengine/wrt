@@ -27,12 +27,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
-#![warn(
-    missing_docs,
-    clippy::missing_docs_in_private_items,
-    clippy::unwrap_used,
-    clippy::expect_used
-)]
+// Lints configured in Cargo.toml
 
 // Re-export core types for convenience
 #[cfg(feature = "std")]

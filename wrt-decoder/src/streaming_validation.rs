@@ -16,11 +16,14 @@ use alloc::{
 };
 // Format macro is available through the prelude
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
+extern crate alloc;
+#[cfg(feature = "std")]
+use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 

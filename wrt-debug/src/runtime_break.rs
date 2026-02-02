@@ -1,11 +1,13 @@
 #![cfg(feature = "runtime-breakpoints")]
 
+use wrt_error::Error;
 use wrt_foundation::{
-    NoStdProvider,
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
-use crate::bounded_debug_infra;
+use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
 /// Runtime breakpoint management implementation
 /// Provides breakpoint setting, hit detection, and condition evaluation
 use crate::{
@@ -29,12 +31,14 @@ pub struct BreakpointManager {
 
 impl BreakpointManager {
     /// Create a new breakpoint manager
-    pub fn new() -> Self {
-        Self {
-            breakpoints: BoundedVec::new(NoStdProvider),
+    pub fn new() -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
+        Ok(Self {
+            breakpoints: BoundedVec::new(provider)
+                .map_err(|_| Error::memory_error("Failed to create breakpoints vector"))?,
             next_id: 1,
             enabled: true,
-        }
+        })
     }
 
     /// Enable or disable all breakpoints

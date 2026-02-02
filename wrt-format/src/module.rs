@@ -1453,9 +1453,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
                 // Memory
                 // FAIL LOUD: Memory imports must have explicit types parsed from binary
                 // Per CLAUDE.md NO FALLBACK LOGIC rule, we must not use defaults
-                return Err(wrt_error::Error::parse_error(
+                Err(wrt_error::Error::parse_error(
                     "Memory import parsing not yet implemented - must parse limits from binary"
-                ));
+                ))
             },
             0x03 => {
                 // Global

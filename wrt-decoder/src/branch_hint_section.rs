@@ -23,7 +23,11 @@
 // Core/std library imports
 
 #[cfg(feature = "std")]
-use std::{collections::HashMap, vec::Vec};
+extern crate alloc;
+#[cfg(feature = "std")]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 // External crates
 use wrt_error::{Error, ErrorCategory, Result, codes};

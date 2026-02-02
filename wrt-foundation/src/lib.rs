@@ -130,6 +130,13 @@ pub mod execution;
 // Runtime memory budget limits for safety-critical operations
 pub mod runtime_limits;
 
+// Platform-specific WebAssembly limits for bounded allocation
+pub mod limits;
+
+// Allocation tracing for understanding memory patterns (development only)
+pub mod allocation_tracing;
+pub use allocation_tracing::Phase as AllocationPhase;
+
 // Tracing support for debugging complex execution flows
 #[cfg(feature = "tracing")]
 pub mod tracing;
