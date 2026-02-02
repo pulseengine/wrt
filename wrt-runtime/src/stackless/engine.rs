@@ -2011,6 +2011,43 @@ impl StacklessEngine {
                             return Err(wrt_error::Error::runtime_trap("Select: stack underflow (missing values)"));
                         }
                     }
+                    Instruction::SelectWithType(ref _types) => {
+                        // Typed select - semantically identical to untyped select at runtime
+                        // The type annotation is for validation purposes only
+                        // Stack: [val1, val2, condition] -> [selected]
+                        #[cfg(feature = "tracing")]
+                        trace!(stack_len = operand_stack.len(), "[SelectWithType] Processing typed select instruction");
+
+                        let cond_val = operand_stack.pop();
+                        let val2 = operand_stack.pop();
+                        let val1 = operand_stack.pop();
+
+                        #[cfg(feature = "tracing")]
+                        trace!(cond = ?cond_val, val2 = ?val2, val1 = ?val1, "[SelectWithType] Popped values");
+
+                        // Extract condition as i32
+                        let condition = match cond_val {
+                            Some(Value::I32(c)) => c,
+                            Some(other) => {
+                                #[cfg(feature = "tracing")]
+                                error!(condition = ?other, "[SelectWithType] ERROR: condition is not i32");
+                                return Err(wrt_error::Error::runtime_trap("SelectWithType: condition must be i32"));
+                            }
+                            None => return Err(wrt_error::Error::runtime_trap("SelectWithType: stack underflow (no condition)")),
+                        };
+
+                        if let (Some(v2), Some(v1)) = (val2, val1) {
+                            // WebAssembly spec: if cond != 0, select val1 (pushed first)
+                            let selected = if condition != 0 { v1 } else { v2 };
+                            #[cfg(feature = "tracing")]
+                            trace!("SelectWithType: condition={}, selected={:?}", condition, selected);
+                            operand_stack.push(selected);
+                        } else {
+                            #[cfg(feature = "tracing")]
+                            trace!("SelectWithType: insufficient operands on stack");
+                            return Err(wrt_error::Error::runtime_trap("SelectWithType: stack underflow (missing values)"));
+                        }
+                    }
                     Instruction::Call(func_idx) => {
                         // Count total number of imports across all modules
                         let num_imports = self.count_total_imports(&module);

@@ -16,9 +16,10 @@ use crate::{Error, ErrorCategory, Result};
 extern crate alloc;
 
 /// Error recovery strategy
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RecoveryStrategy {
     /// Abort execution immediately
+    #[default]
     Abort,
     /// Skip the problematic operation and continue
     Skip,
@@ -31,12 +32,6 @@ pub enum RecoveryStrategy {
     },
     /// Log error and continue
     LogAndContinue,
-}
-
-impl Default for RecoveryStrategy {
-    fn default() -> Self {
-        Self::Abort
-    }
 }
 
 /// Error context for debugging

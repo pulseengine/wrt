@@ -364,6 +364,27 @@ fn parse_instruction_with_provider(
         // Parametric instructions
         0x1A => Instruction::Drop,
         0x1B => Instruction::Select,
+        0x1C => {
+            // select t* - typed select instruction
+            // Format: 0x1C followed by count of types (LEB128) and each type byte
+            let (type_count, bytes) = read_leb128_u32(bytecode, offset + 1)?;
+            consumed += bytes;
+
+            // Create a BoundedVec to hold the types (typically 1 for select)
+            let mut types = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
+
+            for _ in 0..type_count {
+                if offset + consumed >= bytecode.len() {
+                    return Err(Error::parse_error("Unexpected end of bytecode in select t*"));
+                }
+                let type_byte = bytecode[offset + consumed];
+                consumed += 1;
+                let vt = decode_value_type(type_byte)?;
+                types.push(vt)?;
+            }
+
+            Instruction::SelectWithType(types)
+        },
 
         // Variable instructions
         0x20 => {
@@ -1008,6 +1029,38 @@ fn parse_instruction_with_provider(
     };
 
     Ok((instruction, consumed))
+}
+
+/// Decode a value type from its binary encoding
+///
+/// Value types in WebAssembly are encoded as:
+/// - 0x7F: i32
+/// - 0x7E: i64
+/// - 0x7D: f32
+/// - 0x7C: f64
+/// - 0x7B: v128
+/// - 0x70: funcref
+/// - 0x6F: externref
+/// - 0x69: exnref
+fn decode_value_type(b: u8) -> Result<wrt_foundation::types::ValueType> {
+    use wrt_foundation::types::ValueType;
+    match b {
+        0x7F => Ok(ValueType::I32),
+        0x7E => Ok(ValueType::I64),
+        0x7D => Ok(ValueType::F32),
+        0x7C => Ok(ValueType::F64),
+        0x7B => Ok(ValueType::V128),
+        0x70 => Ok(ValueType::FuncRef),
+        0x6F => Ok(ValueType::ExternRef),
+        0x69 => Ok(ValueType::ExnRef),
+        // GC types
+        0x6E => Ok(ValueType::AnyRef),
+        0x6D => Ok(ValueType::EqRef),
+        0x6C => Ok(ValueType::I31Ref),
+        0x6B => Ok(ValueType::StructRef(0)),
+        0x6A => Ok(ValueType::ArrayRef(0)),
+        _ => Err(Error::parse_error("Unknown value type encoding")),
+    }
 }
 
 /// Parse a block type
