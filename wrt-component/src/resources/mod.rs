@@ -21,14 +21,11 @@ pub mod resource_arena; // Consolidated: contains both std and no_std implementa
 pub mod resource_builder;
 pub mod resource_interceptor;
 pub mod resource_lifecycle;
-#[cfg(feature = "std")]
-pub mod resource_manager;
-pub mod resource_manager_no_std;
+pub mod resource_manager; // Consolidated: contains both std and no_std implementations
 #[cfg(feature = "std")]
 pub mod resource_operation;
 // resource_operation_no_std.rs removed - was an empty stub
-pub mod resource_strategy;
-pub mod resource_strategy_no_std;
+pub mod resource_strategy; // Consolidated: contains both trait and implementation
 #[cfg(feature = "std")]
 pub mod resource_table;
 #[cfg(feature = "std")]
@@ -58,17 +55,18 @@ pub use resource_arena::ResourceArena;
 pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
 // Export ResourceInterceptor
 pub use resource_interceptor::ResourceInterceptor;
-// Export ResourceId and ResourceManager based on feature flags
-#[cfg(feature = "std")]
-pub use resource_manager::{ResourceId, ResourceManager};
-#[cfg(not(feature = "std"))]
-pub use resource_manager_no_std::{ResourceId, ResourceManager};
+// Export ResourceId and ResourceManager (consolidated implementation)
+pub use resource_manager::{HostResource, ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
-// Note: resource_operation conversion functions available via resource_operation module when needed
-// Export ResourceStrategy
-pub use resource_strategy::ResourceStrategy;
-pub use resource_strategy_no_std::ResourceStrategyNoStd;
+pub use resource_operation::{
+    from_format_resource_operation, to_format_resource_operation,
+};
+
+// Export ResourceStrategy trait and implementation (works for both std and no_std)
+pub use resource_strategy::{
+    GenericResourceStrategy, ResourceStrategy, ResourceStrategyNoStd, MAX_RESOURCE_BUFFER_SIZE,
+};
 // Re-export MAX_BUFFER_SIZE directly from wrt_foundation for public access
 pub use wrt_foundation::bounded::MAX_BUFFER_SIZE;
 // Export ResourceTable components based on feature flags

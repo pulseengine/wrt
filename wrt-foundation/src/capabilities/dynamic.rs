@@ -237,7 +237,7 @@ impl MemoryCapability for DynamicMemoryCapability {
         Ok(guard)
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn delegate(
         &self,
         subset: CapabilityMask,

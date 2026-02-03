@@ -85,6 +85,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::I31Ref => Ok(FormatValType::S32),     // i31 fits in s32
         ValueType::AnyRef => Ok(FormatValType::Own(0)),  // Map any reference to handle
         ValueType::EqRef => Ok(FormatValType::Own(0)),   // Map eq reference to handle
+        ValueType::TypedFuncRef(_, _) => Ok(FormatValType::Own(0)), // Map typed funcref to handle
     }
 }
 
@@ -118,6 +119,7 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> wrt_error::Result<FormatValT
         ValueType::I31Ref => Ok(FormatValType::S32),     // i31 fits in s32
         ValueType::AnyRef => Ok(FormatValType::Own(0)),  // Map any reference to handle
         ValueType::EqRef => Ok(FormatValType::Own(0)),   // Map eq reference to handle
+        ValueType::TypedFuncRef(_, _) => Ok(FormatValType::Own(0)), // Map typed funcref to handle
     }
 }
 

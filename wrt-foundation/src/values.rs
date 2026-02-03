@@ -364,6 +364,7 @@ impl Value {
             ValueType::I31Ref => Value::I31Ref(None),
             ValueType::AnyRef => Value::ExternRef(None), // AnyRef uses externref representation
             ValueType::EqRef => Value::I31Ref(None),     // EqRef defaults to i31ref
+            ValueType::TypedFuncRef(_, _) => Value::FuncRef(None), // Typed funcref defaults to null
         }
     }
 
@@ -884,6 +885,10 @@ impl Value {
             ValueType::EqRef => {
                 // EqRef defaults to null i31ref
                 Ok(Value::I31Ref(None))
+            },
+            ValueType::TypedFuncRef(_, _) => {
+                // Typed function references not yet supported for byte deserialization
+                Ok(Value::FuncRef(None))
             },
         }
     }

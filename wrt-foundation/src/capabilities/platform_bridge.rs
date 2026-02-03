@@ -19,6 +19,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
     sync::Arc,
+    vec,
     vec::Vec,
 };
 

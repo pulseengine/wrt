@@ -617,6 +617,7 @@ impl<'a> StreamingDecoder<'a> {
             0x74 => Ok((ValueType::ExnRef, offset + 1)), // noexn (bottom for exn)
             // GC typed references: (ref null? ht)
             REF_TYPE_NULLABLE | REF_TYPE_NON_NULLABLE => {
+                let nullable = byte == REF_TYPE_NULLABLE;
                 offset += 1;
                 // Parse heap type as s33 (signed 33-bit LEB128)
                 let (heap_type_idx, new_offset) = self.parse_heap_type(data, offset)?;
@@ -654,8 +655,10 @@ impl<'a> StreamingDecoder<'a> {
                     }
                 } else {
                     // Concrete type index - reference to a defined type
-                    // Use FuncRef for function type refs, StructRef for struct types
-                    Ok((ValueType::StructRef(heap_type_idx as u32), new_offset))
+                    // Use TypedFuncRef to preserve nullability and type index
+                    // Subtype checking during validation will determine if this is
+                    // compatible with funcref, structref, etc.
+                    Ok((ValueType::TypedFuncRef(heap_type_idx as u32, nullable), new_offset))
                 }
             },
             _ => {

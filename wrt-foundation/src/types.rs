@@ -215,6 +215,9 @@ pub enum ValueType {
     AnyRef,
     /// Eq reference (WebAssembly 3.0 GC) - types supporting ref.eq
     EqRef,
+    /// Typed function reference (WebAssembly 3.0 GC) - (ref null? $t) where $t is a func type
+    /// First field is the type index, second is whether it's nullable
+    TypedFuncRef(u32, bool),
 }
 
 impl core::fmt::Debug for ValueType {
@@ -235,6 +238,13 @@ impl core::fmt::Debug for ValueType {
             Self::I31Ref => write!(f, "I31Ref"),
             Self::AnyRef => write!(f, "AnyRef"),
             Self::EqRef => write!(f, "EqRef"),
+            Self::TypedFuncRef(idx, nullable) => {
+                if *nullable {
+                    write!(f, "(ref null ${idx})")
+                } else {
+                    write!(f, "(ref ${idx})")
+                }
+            }
         }
     }
 }
@@ -314,6 +324,7 @@ impl ValueType {
             ValueType::StructRef(_) => 0x6B, // GC: struct heap type
             ValueType::ArrayRef(_) => 0x6A,  // GC: array heap type
             ValueType::ExnRef => 0x69,
+            ValueType::TypedFuncRef(_, _) => 0x63, // Function references: typed funcref
         }
     }
 
@@ -340,7 +351,8 @@ impl ValueType {
             | Self::ArrayRef(_)
             | Self::I31Ref
             | Self::AnyRef
-            | Self::EqRef => {
+            | Self::EqRef
+            | Self::TypedFuncRef(_, _) => {
                 // Size of a reference can vary. Using usize for simplicity.
                 // In a real scenario, this might depend on target architecture (32/64 bit).
                 core::mem::size_of::<usize>()

@@ -386,7 +386,14 @@ pub type ArgVec<T> =
 
 // Static allocation environments - minimal capability context
 // Bounded allocation environments - bounded capability system
-#[cfg(all(feature = "bounded-allocation", not(feature = "static-allocation")))]
+#[cfg(all(
+    feature = "bounded-allocation",
+    not(feature = "static-allocation"),
+    not(all(
+        any(feature = "std", feature = "alloc"),
+        any(feature = "managed-dynamic-alloc", feature = "std-allocation")
+    ))
+))]
 pub use crate::capabilities::CapabilityAwareProvider;
 #[cfg(all(
     feature = "static-allocation",

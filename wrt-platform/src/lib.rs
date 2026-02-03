@@ -23,44 +23,7 @@
     all(not(feature = "std"), not(feature = "enable-panic-handler"), not(test)),
     no_main
 )]
-#![deny(missing_docs)] // Rule 9: Require documentation.
-#![deny(clippy::panic)] // Rule 3: No panic!.
-#![deny(clippy::unwrap_used)] // Rule 3: No unwrap.
-#![deny(clippy::expect_used)] // Rule 3: No expect.
-#![deny(clippy::unreachable)] // Rule 4: No unreachable!.
-#![warn(clippy::pedantic)] // Rule 8: Enable pedantic lints.
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::return_self_not_must_use)]
-#![allow(clippy::must_use_candidate)]
-#![allow(clippy::doc_markdown)]
-#![allow(clippy::match_same_arms)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::unnecessary_wraps)]
-#![allow(clippy::extra_unused_type_parameters)]
-#![allow(clippy::inline_always)]
-#![allow(clippy::no_effect_underscore_binding)]
-#![allow(clippy::used_underscore_binding)]
-#![allow(clippy::wildcard_imports)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::struct_excessive_bools)]
-#![allow(clippy::unused_self)]
-#![allow(clippy::derivable_impls)]
-#![allow(clippy::new_without_default)]
-#![allow(clippy::ptr_as_ptr)]
-#![allow(clippy::ref_as_ptr)]
-#![allow(clippy::ptr_eq)]
-#![allow(clippy::cast_ptr_alignment)]
-#![allow(clippy::single_match)]
-#![allow(clippy::single_match_else)]
-#![allow(clippy::elidable_lifetime_names)]
-#![allow(clippy::cast_lossless)]
-#![allow(clippy::borrow_as_ptr)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::missing_safety_doc)]
-#![allow(clippy::needless_range_loop)]
-#![allow(clippy::manual_div_ceil)]
-#![allow(clippy::ptr_cast_constness)]
+// Lints configured in Cargo.toml via workspace lints
 
 #[cfg(feature = "std")]
 extern crate std;

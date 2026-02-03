@@ -195,6 +195,9 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::EqRef => Err(Error::runtime_execution_error(
             "EqRef not supported in component model",
         )),
+        ValueType::TypedFuncRef(_, _) => Err(Error::runtime_execution_error(
+            "TypedFuncRef not supported in component model",
+        )),
     }
 }
 
@@ -294,6 +297,7 @@ pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(
         ValueType::I31Ref => WrtTypesValType::S32,     // i31 fits in s32
         ValueType::AnyRef => WrtTypesValType::Ref(0),  // Map to Ref with default index
         ValueType::EqRef => WrtTypesValType::Ref(0),   // Map to Ref with default index
+        ValueType::TypedFuncRef(_, _) => WrtTypesValType::Own(0), // Map to resource type
     }
 }
 

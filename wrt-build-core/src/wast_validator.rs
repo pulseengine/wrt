@@ -49,7 +49,8 @@ impl StackType {
             | ValueType::ArrayRef(_)
             | ValueType::I31Ref
             | ValueType::AnyRef
-            | ValueType::EqRef => StackType::Unknown,
+            | ValueType::EqRef
+            | ValueType::TypedFuncRef(_, _) => StackType::Unknown,
         }
     }
 

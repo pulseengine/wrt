@@ -140,6 +140,7 @@ fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
         WrtValueType::I31Ref => 11,
         WrtValueType::AnyRef => 12,
         WrtValueType::EqRef => 13,
+        WrtValueType::TypedFuncRef(_, _) => 14,
     }
 }
 
