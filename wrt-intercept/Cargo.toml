@@ -51,34 +51,7 @@ kani = ["dep:kani-verifier"]
 
 
 [lints]
-rust.unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
-rust.unsafe_code = "forbid" # Rule 2: #![forbid(unsafe_code)]
-rust.missing_docs = "deny" # Rule 9, ADDED/ENSURED
-
-clippy.pedantic = "warn"
-clippy.unwrap_used = "deny" # Rule 3
-clippy.expect_used = "deny" # Rule 3
-clippy.panic = "deny" # Rule 3 & 4
-clippy.todo = "deny" # Rule 3
-clippy.unimplemented = "deny" # Rule 3
-clippy.match_wildcard_for_single_variants = "warn" # Rule 4
-clippy.never_loop = "warn" # Rule 4
-clippy.unreachable = "deny" # Rule 4
-clippy.float_arithmetic = "warn" # Rule 1
-clippy.inline_asm_x86_att_syntax = "deny" # Rule 1
-clippy.transmute_ptr_to_ref = "deny" # Rule 1
-# clippy.type_id removed - not a valid clippy lint
-clippy.dyn_trait = "warn" # Rule 1
-clippy.ptr_offset_with_cast = "warn" # Rule 2
-clippy.result_unit_err = "warn" # Rule 3
-# Note: let_underscore_drop was promoted from clippy to rustc in Rust 1.60
-# Using the rust prefix for rustc lints
-rust.let_underscore_drop = { level = "warn", priority = -1 } # Rule 3
-clippy.must_use_candidate = "warn" # Rule 3
-# clippy.static_mut_reference renamed to static_mut_refs in newer Rust versions
-clippy.arc_mutate = "deny" # Rule 5
-clippy.missing_docs_in_private_items = "allow" # To be reviewed if too noisy
-clippy.debug_assert_with_mut_call = "warn" # Rule 9, ADDED
+workspace = true
 
 # Configuration for Kani verification
 # This will only be used when running `cargo kani`

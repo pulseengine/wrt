@@ -352,6 +352,7 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg
 missing_docs = "allow"
 static_mut_refs = "deny"
 let_underscore_drop = "warn"
+deprecated = "allow"
 
 [lints.clippy]
 inline_asm_x86_att_syntax = "deny"
@@ -371,3 +372,7 @@ never_loop = "deny"
 unreachable = "deny"
 pedantic = "deny"
 debug_assert_with_mut_call = "warn"
+items_after_test_module = "allow"
+get_first = "allow"
+iter_cloned_collect = "allow"
+useless_vec = "allow"

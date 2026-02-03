@@ -247,10 +247,7 @@ mod std_impl {
 
 #[cfg(not(feature = "std"))]
 mod no_std_impl {
-    use wrt_error::{codes, Error, ErrorCategory};
-    use wrt_foundation::{
-        budget_aware_provider::CrateId, collections::StaticVec as BoundedVec, safe_managed_alloc,
-    };
+    use wrt_foundation::collections::StaticVec as BoundedVec;
 
     use super::*;
 
@@ -273,39 +270,21 @@ mod no_std_impl {
 
     impl<'a> ResourceArena<'a> {
         /// Create a new resource arena with the given resource table
-        pub fn new(table: &'a Mutex<ResourceTable>) -> Result<Self> {
-            Ok(Self {
-                resources: {
-                    let _provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::CAPACITY_EXCEEDED,
-                            "Failed to create resources vector",
-                        )
-                    })?
-                },
+        pub fn new(table: &'a Mutex<ResourceTable>) -> Self {
+            Self {
+                resources: BoundedVec::new(),
                 table,
                 name: None,
-            })
+            }
         }
 
         /// Create a new resource arena with the given name
-        pub fn new_with_name(table: &'a Mutex<ResourceTable>, name: &'a str) -> Result<Self> {
-            Ok(Self {
-                resources: {
-                    let _provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new().map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::CAPACITY_EXCEEDED,
-                            "Failed to create resources vector",
-                        )
-                    })?
-                },
+        pub fn new_with_name(table: &'a Mutex<ResourceTable>, name: &'a str) -> Self {
+            Self {
+                resources: BoundedVec::new(),
                 table,
                 name: Some(name),
-            })
+            }
         }
 
         /// Create a resource in this arena

@@ -82,6 +82,9 @@ mod std_impl {
 
 #[cfg(not(feature = "std"))]
 mod no_std_impl {
+    extern crate alloc;
+    use alloc::string::{String, ToString};
+
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_foundation::collections::StaticVec as BoundedVec;
 
@@ -106,30 +109,12 @@ mod no_std_impl {
 
     impl ComponentRegistry {
         /// Create a new empty registry
-        pub fn new() -> Result<Self> {
-            Ok(Self {
-                names: BoundedVec::new().map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::CAPACITY_EXCEEDED,
-                        "Failed to create names vector",
-                    )
-                })?,
-                components: BoundedVec::new().map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::CAPACITY_EXCEEDED,
-                        "Failed to create components vector",
-                    )
-                })?,
-                component_store: BoundedVec::new().map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::CAPACITY_EXCEEDED,
-                        "Failed to create component store",
-                    )
-                })?,
-            })
+        pub fn new() -> Self {
+            Self {
+                names: BoundedVec::new(),
+                components: BoundedVec::new(),
+                component_store: BoundedVec::new(),
+            }
         }
 
         /// Register a component by name
@@ -219,13 +204,7 @@ mod no_std_impl {
 
         /// Get all component names
         pub fn names(&self) -> Result<BoundedVec<String, MAX_COMPONENTS>> {
-            let mut result = BoundedVec::new().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Failed to create result vector",
-                )
-            })?;
+            let mut result = BoundedVec::new();
             for name in self.names.iter() {
                 result.push(name.clone()).map_err(|_| {
                     Error::runtime_execution_error("Failed to add component name to result")
@@ -253,7 +232,6 @@ mod no_std_impl {
     impl Default for ComponentRegistry {
         fn default() -> Self {
             Self::new()
-                .expect("ComponentRegistry allocation should not fail in default construction")
         }
     }
 }

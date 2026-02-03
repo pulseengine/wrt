@@ -14,6 +14,7 @@
 #![allow(clippy::if_not_else)] // SIMD comparisons use != for mask generation
 #![allow(clippy::float_cmp)] // SIMD operations require exact floating point comparisons
 #![allow(clippy::cast_abs_to_unsigned)] // SIMD absolute value operations
+#![allow(clippy::too_many_lines)] // Test functions need comprehensive test cases
 
 use super::{
     SimdLevel,

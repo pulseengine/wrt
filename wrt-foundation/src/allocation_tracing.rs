@@ -210,11 +210,21 @@ pub mod log {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_phase_display() {
         assert_eq!(format!("{}", Phase::Decode), "Decode");
         assert_eq!(format!("{}", Phase::Link), "Link");
         assert_eq!(format!("{}", Phase::Execute), "Execute");
+    }
+
+    #[test]
+    fn test_phase_equality() {
+        // Test Phase comparison without needing format!
+        assert_eq!(Phase::Decode, Phase::Decode);
+        assert_eq!(Phase::Link, Phase::Link);
+        assert_eq!(Phase::Execute, Phase::Execute);
+        assert_ne!(Phase::Decode, Phase::Link);
     }
 
     #[test]

@@ -52,30 +52,5 @@ log = { version = "0.4", optional = true }
 [dev-dependencies]
 proptest = "1.4.0"
 
-[lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
-unsafe_code = "forbid"
-let_underscore_drop = "warn"
-missing_docs = "allow" # Temporarily allowing missing docs - will be added systematically
-# pointer_cast is not a valid Rust lint
-
-[lints.clippy]
-inline_asm_x86_att_syntax = "warn"
-transmute_ptr_to_ref = "deny"
-# type_id lint removed - not a valid clippy lint
-dyn_trait = "warn"
-float_arithmetic = "warn"
-ptr_offset_with_cast = "warn"
-unwrap_used = "warn"
-panic = "warn"
-result_unit_err = "warn"
-# Note: let_underscore_drop moved to [lints.rust] - it was promoted from clippy to rustc
-must_use_candidate = "warn"
-must_use_unit = "warn"
-match_wildcard_for_single_variants = "warn"
-never_loop = "warn"
-unreachable = "warn"
-static_mut_refs = "deny"
-arc_mutate = "deny"
-pedantic = "warn" # TODO: Enable pedantic again when dependencies are clean
-debug_assert_with_mut_call = "warn" 
+[lints]
+workspace = true 

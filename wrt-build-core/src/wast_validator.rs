@@ -52,6 +52,18 @@ impl StackType {
             | ValueType::EqRef => StackType::Unknown,
         }
     }
+
+    /// Check if this type is a numeric type (valid for untyped select)
+    /// Per WebAssembly spec, untyped select only works with i32, i64, f32, f64, v128
+    /// Reference types (funcref, externref, etc.) require typed select (0x1C)
+    fn is_numeric(&self) -> bool {
+        matches!(self, StackType::I32 | StackType::I64 | StackType::F32 | StackType::F64 | StackType::V128)
+    }
+
+    /// Check if this type is a reference type (requires typed select)
+    fn is_reference(&self) -> bool {
+        matches!(self, StackType::FuncRef | StackType::ExternRef | StackType::ExnRef)
+    }
 }
 
 /// Control flow frame tracking
@@ -1721,6 +1733,8 @@ impl WastModuleValidator {
                 },
                 0x1B => {
                     // select (untyped)
+                    // Per WebAssembly spec: untyped select only works with numeric types
+                    // Reference types (funcref, externref) require typed select (0x1C)
                     let frame_height = Self::current_frame_height(&frames);
                     let unreachable = Self::is_unreachable(&frames);
                     if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
@@ -1732,6 +1746,16 @@ impl WastModuleValidator {
                     if stack.len() > frame_height + 1 {
                         let type2 = stack.pop().unwrap();
                         let type1 = stack.pop().unwrap();
+                        // Check that operands are numeric types (not reference types)
+                        // Untyped select cannot be used with funcref, externref, etc.
+                        // However, in unreachable code, Unknown types are allowed (polymorphic)
+                        if !unreachable {
+                            // In reachable code: reject reference types and unknown types
+                            // Unknown could be a typed ref like (ref $t)
+                            if !type1.is_numeric() || !type2.is_numeric() {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
                         if type1 != type2 && !unreachable {
                             return Err(anyhow!("type mismatch"));
                         }

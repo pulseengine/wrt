@@ -135,11 +135,8 @@ pub use components::component_no_std::{
     Component, ComponentBuilder, ExternValue, FunctionValue, GlobalValue, MemoryValue,
     RuntimeInstance, TableValue, WrtComponentType, WrtComponentTypeBuilder,
 };
-// Component registry based on feature flags
-#[cfg(feature = "std")]
+// Component registry (consolidated implementation for both std and no_std)
 pub use components::component_registry::ComponentRegistry;
-#[cfg(not(feature = "std"))]
-pub use components::component_registry_no_std::ComponentRegistry;
 pub use resources::{
     DynamicQuotaManager, QuotaNode, QuotaNodeType, QuotaPolicy, QuotaRequest, QuotaResourceType,
     QuotaResponse, QuotaStatus,

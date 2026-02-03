@@ -66,6 +66,9 @@ safety-asil-d = ["asil-d"]
 kani = []
 
 
+[lints]
+workspace = true
+
 [lib]
 name = "wrt_debug"
 path = "src/lib.rs"

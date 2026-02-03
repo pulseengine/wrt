@@ -117,7 +117,3 @@ kani = ["formal-verification-required"]
 
 [lib]
 crate-type = ["rlib"] # staticlib removed - was causing test linking issues. Re-add via separate target if C ABI needed
-
-[[bench]]
-name = "cfi_performance_benchmarks"
-harness = false 

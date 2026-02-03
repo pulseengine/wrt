@@ -26,7 +26,7 @@ pub mod resource_manager;
 pub mod resource_manager_no_std;
 #[cfg(feature = "std")]
 pub mod resource_operation;
-pub mod resource_operation_no_std;
+// resource_operation_no_std.rs removed - was an empty stub
 pub mod resource_strategy;
 pub mod resource_strategy_no_std;
 #[cfg(feature = "std")]
@@ -65,9 +65,8 @@ pub use resource_manager::{ResourceId, ResourceManager};
 pub use resource_manager_no_std::{ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
-// pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
-// pub use resource_operation_no_std::{from_format_resource_operation,
-// to_format_resource_operation}; Export ResourceStrategy
+// Note: resource_operation conversion functions available via resource_operation module when needed
+// Export ResourceStrategy
 pub use resource_strategy::ResourceStrategy;
 pub use resource_strategy_no_std::ResourceStrategyNoStd;
 // Re-export MAX_BUFFER_SIZE directly from wrt_foundation for public access
