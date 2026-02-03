@@ -28,6 +28,9 @@ pub enum StackType {
     FuncRef,
     ExternRef,
     ExnRef,
+    /// Typed function reference (ref null? $t) where t is a type index
+    /// First field is type index, second is whether it's nullable
+    TypedFuncRef(u32, bool),
     Unknown,
 }
 
@@ -43,14 +46,15 @@ impl StackType {
             ValueType::FuncRef => StackType::FuncRef,
             ValueType::ExternRef => StackType::ExternRef,
             ValueType::ExnRef => StackType::ExnRef,
+            // Typed function reference - preserves type index and nullability
+            ValueType::TypedFuncRef(idx, nullable) => StackType::TypedFuncRef(idx, nullable),
             // WebAssembly 3.0 GC types - not yet fully supported, treat as unknown
             ValueType::I16x8
             | ValueType::StructRef(_)
             | ValueType::ArrayRef(_)
             | ValueType::I31Ref
             | ValueType::AnyRef
-            | ValueType::EqRef
-            | ValueType::TypedFuncRef(_, _) => StackType::Unknown,
+            | ValueType::EqRef => StackType::Unknown,
         }
     }
 
@@ -63,7 +67,32 @@ impl StackType {
 
     /// Check if this type is a reference type (requires typed select)
     fn is_reference(&self) -> bool {
-        matches!(self, StackType::FuncRef | StackType::ExternRef | StackType::ExnRef)
+        matches!(self, StackType::FuncRef | StackType::ExternRef | StackType::ExnRef | StackType::TypedFuncRef(_, _))
+    }
+
+    /// Check if this type is a subtype of another type
+    /// GC subtyping rules:
+    /// - TypedFuncRef(t, _) <: FuncRef (specific is subtype of general)
+    /// - FuncRef </: TypedFuncRef(t, _) (general is NOT subtype of specific)
+    fn is_subtype_of(&self, other: &StackType) -> bool {
+        if self == other {
+            return true;
+        }
+
+        // Unknown is polymorphic - compatible with anything
+        if *self == StackType::Unknown || *other == StackType::Unknown {
+            return true;
+        }
+
+        match (self, other) {
+            // TypedFuncRef is a subtype of FuncRef
+            (StackType::TypedFuncRef(_, _), StackType::FuncRef) => true,
+            // Two TypedFuncRefs: must match type index
+            (StackType::TypedFuncRef(t1, _), StackType::TypedFuncRef(t2, _)) => t1 == t2,
+            // FuncRef is NOT a subtype of TypedFuncRef
+            (StackType::FuncRef, StackType::TypedFuncRef(_, _)) => false,
+            _ => false,
+        }
     }
 }
 
@@ -852,6 +881,33 @@ impl WastModuleValidator {
                         &frames,
                         Self::is_unreachable(&frames),
                     )?;
+
+                    // After br_if, the stack types must be updated to the label's result types
+                    // This is because from the perspective of subsequent code, the values
+                    // could have been branched with (and cast to the label's type).
+                    // GC spec: br_if with typed values narrows to label's result type.
+                    if (label_idx as usize) < frames.len() && !Self::is_unreachable(&frames) {
+                        let target_frame = &frames[frames.len() - 1 - label_idx as usize];
+                        let label_types = if target_frame.frame_type == FrameType::Loop {
+                            target_frame.input_types.clone()
+                        } else {
+                            target_frame.output_types.clone()
+                        };
+
+                        // Pop the branch values and push back the label's types
+                        // This changes the stack types to match the label's expected types
+                        let num_values = label_types.len();
+                        if num_values > 0 && stack.len() >= frame_height + num_values {
+                            // Pop the original values
+                            for _ in 0..num_values {
+                                stack.pop();
+                            }
+                            // Push the label's result types (more general types)
+                            for ty in &label_types {
+                                stack.push(*ty);
+                            }
+                        }
+                    }
                 },
                 0x0E => {
                     // br_table - unconditional, makes following code unreachable
@@ -3328,8 +3384,8 @@ impl WastModuleValidator {
         }
 
         if let Some(actual) = stack.pop() {
-            // Allow Unknown to match anything, or exact match
-            actual == expected || actual == StackType::Unknown || expected == StackType::Unknown
+            // Use subtype checking: actual must be a subtype of expected
+            actual.is_subtype_of(&expected)
         } else {
             false
         }
@@ -3590,13 +3646,12 @@ impl WastModuleValidator {
         }
 
         // Verify the top values match expected types (in reverse order)
+        // Use subtype checking: actual must be a subtype of expected
         for (i, expected) in expected_types.iter().rev().enumerate() {
             let stack_idx = stack.len() - 1 - i;
             let actual = &stack[stack_idx];
-            if actual != expected
-                && *actual != StackType::Unknown
-                && *expected != StackType::Unknown
-            {
+            // Use subtype checking instead of equality
+            if !actual.is_subtype_of(expected) {
                 return Err(anyhow!("type mismatch"));
             }
         }
