@@ -26,6 +26,9 @@ pub enum StackType {
     F64,
     V128,
     FuncRef,
+    /// Null function reference - the bottom type for funcref hierarchy
+    /// This is ref null nofunc - assignable to any nullable funcref type
+    NullFuncRef,
     ExternRef,
     ExnRef,
     /// Typed function reference (ref null? $t) where t is a type index
@@ -44,6 +47,7 @@ impl StackType {
             ValueType::F64 => StackType::F64,
             ValueType::V128 => StackType::V128,
             ValueType::FuncRef => StackType::FuncRef,
+            ValueType::NullFuncRef => StackType::NullFuncRef,
             ValueType::ExternRef => StackType::ExternRef,
             ValueType::ExnRef => StackType::ExnRef,
             // Typed function reference - preserves type index and nullability
@@ -67,11 +71,13 @@ impl StackType {
 
     /// Check if this type is a reference type (requires typed select)
     fn is_reference(&self) -> bool {
-        matches!(self, StackType::FuncRef | StackType::ExternRef | StackType::ExnRef | StackType::TypedFuncRef(_, _))
+        matches!(self, StackType::FuncRef | StackType::NullFuncRef | StackType::ExternRef | StackType::ExnRef | StackType::TypedFuncRef(_, _))
     }
 
     /// Check if this type is a subtype of another type
     /// GC subtyping rules:
+    /// - NullFuncRef <: FuncRef <: any (bottom <: top)
+    /// - NullFuncRef <: TypedFuncRef(t, true) (bottom is subtype of any nullable funcref)
     /// - TypedFuncRef(t, _) <: FuncRef (specific is subtype of general)
     /// - FuncRef </: TypedFuncRef(t, _) (general is NOT subtype of specific)
     fn is_subtype_of(&self, other: &StackType) -> bool {
@@ -85,11 +91,14 @@ impl StackType {
         }
 
         match (self, other) {
+            // NullFuncRef (bottom) is subtype of all funcref-related types
+            (StackType::NullFuncRef, StackType::FuncRef) => true,
+            (StackType::NullFuncRef, StackType::TypedFuncRef(_, nullable)) => *nullable,
             // TypedFuncRef is a subtype of FuncRef
             (StackType::TypedFuncRef(_, _), StackType::FuncRef) => true,
             // Two TypedFuncRefs: must match type index
             (StackType::TypedFuncRef(t1, _), StackType::TypedFuncRef(t2, _)) => t1 == t2,
-            // FuncRef is NOT a subtype of TypedFuncRef
+            // FuncRef is NOT a subtype of TypedFuncRef (general is not subtype of specific)
             (StackType::FuncRef, StackType::TypedFuncRef(_, _)) => false,
             _ => false,
         }

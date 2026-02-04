@@ -78,6 +78,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
             "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
+        ValueType::NullFuncRef => Ok(FormatValType::Own(0)), // Map bottom funcref to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
@@ -112,6 +113,7 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> wrt_error::Result<FormatValT
             "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
+        ValueType::NullFuncRef => Ok(FormatValType::Own(0)), // Map bottom funcref to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
@@ -143,6 +145,7 @@ pub fn map_wasm_type_to_component<
             "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
+        ValueType::NullFuncRef => Ok(FormatValType::Own(0)), // Map bottom funcref to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
         ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle

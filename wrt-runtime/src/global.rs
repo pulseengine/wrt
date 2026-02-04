@@ -132,6 +132,7 @@ fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
         WrtValueType::F64 => 3,
         WrtValueType::V128 => 4,
         WrtValueType::FuncRef => 5,
+        WrtValueType::NullFuncRef => 15,
         WrtValueType::ExternRef => 6,
         WrtValueType::I16x8 => 7,
         WrtValueType::StructRef(_) => 8,

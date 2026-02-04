@@ -201,6 +201,9 @@ pub enum ValueType {
     I16x8,
     /// Function reference
     FuncRef,
+    /// Null function reference (bottom type for funcref hierarchy)
+    /// This is ref null nofunc - assignable to any nullable funcref type
+    NullFuncRef,
     /// External reference
     ExternRef,
     /// Struct reference (WebAssembly 3.0 GC)
@@ -231,6 +234,7 @@ impl core::fmt::Debug for ValueType {
             Self::V128 => write!(f, "V128"),
             Self::I16x8 => write!(f, "I16x8"),
             Self::FuncRef => write!(f, "FuncRef"),
+            Self::NullFuncRef => write!(f, "NullFuncRef"),
             Self::ExternRef => write!(f, "ExternRef"),
             Self::StructRef(idx) => f.debug_tuple("StructRef").field(idx).finish(),
             Self::ArrayRef(idx) => f.debug_tuple("ArrayRef").field(idx).finish(),
@@ -317,6 +321,7 @@ impl ValueType {
             ValueType::V128 => 0x7B,
             ValueType::I16x8 => 0x79,
             ValueType::FuncRef => 0x70,
+            ValueType::NullFuncRef => 0x73, // nofunc - bottom type for funcref
             ValueType::ExternRef => 0x6F,
             ValueType::AnyRef => 0x6E,  // GC: any heap type
             ValueType::EqRef => 0x6D,   // GC: eq heap type
@@ -345,6 +350,7 @@ impl ValueType {
             Self::I64 | Self::F64 => 8,
             Self::V128 | Self::I16x8 => 16, // COMBINED ARMS
             Self::FuncRef
+            | Self::NullFuncRef
             | Self::ExternRef
             | Self::ExnRef
             | Self::StructRef(_)

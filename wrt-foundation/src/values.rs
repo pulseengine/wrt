@@ -357,6 +357,7 @@ impl Value {
             ValueType::V128 => Value::V128(V128::zero()),
             ValueType::I16x8 => Value::I16x8(V128::zero()),
             ValueType::FuncRef => Value::FuncRef(None),
+            ValueType::NullFuncRef => Value::FuncRef(None), // Bottom type defaults to null
             ValueType::ExternRef => Value::ExternRef(None),
             ValueType::StructRef(_) => Value::StructRef(None),
             ValueType::ArrayRef(_) => Value::ArrayRef(None),
@@ -840,6 +841,10 @@ impl Value {
                 // Assuming 0 or a specific pattern might mean None, for now, always Some.
                 // The interpretation of the index (e.g. if 0 means null) is context-dependent.
                 Ok(Value::FuncRef(Some(FuncRef::from_index(idx))))
+            },
+            ValueType::NullFuncRef => {
+                // Bottom type - always null
+                Ok(Value::FuncRef(None))
             },
             ValueType::ExternRef => {
                 if bytes.len() < 4 {

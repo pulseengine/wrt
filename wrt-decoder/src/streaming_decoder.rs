@@ -618,7 +618,7 @@ impl<'a> StreamingDecoder<'a> {
             0x6C => Ok((ValueType::I31Ref, offset + 1)), // i31ref
             0x6B => Ok((ValueType::StructRef(0), offset + 1)), // structref (abstract)
             0x6A => Ok((ValueType::ArrayRef(0), offset + 1)), // arrayref (abstract)
-            0x73 => Ok((ValueType::FuncRef, offset + 1)), // nofunc (bottom for func)
+            0x73 => Ok((ValueType::NullFuncRef, offset + 1)), // nofunc (bottom for func)
             0x72 => Ok((ValueType::ExternRef, offset + 1)), // noextern (bottom for extern)
             0x71 => Ok((ValueType::AnyRef, offset + 1)), // none (bottom for any)
             0x74 => Ok((ValueType::ExnRef, offset + 1)), // noexn (bottom for exn)
@@ -654,7 +654,7 @@ impl<'a> StreamingDecoder<'a> {
                         -21 => Ok((ValueType::StructRef(0), new_offset)), // struct (0x6B)
                         -22 => Ok((ValueType::ArrayRef(0), new_offset)), // array (0x6A)
                         -23 => Ok((ValueType::ExnRef, new_offset)),  // exn (0x69)
-                        -13 => Ok((ValueType::FuncRef, new_offset)), // nofunc (0x73) - bottom for func
+                        -13 => Ok((ValueType::NullFuncRef, new_offset)), // nofunc (0x73) - bottom for func
                         -14 => Ok((ValueType::ExternRef, new_offset)), // noextern (0x72)
                         -15 => Ok((ValueType::AnyRef, new_offset)),  // none (0x71) - bottom for any
                         -12 => Ok((ValueType::ExnRef, new_offset)),  // noexn (0x74) - bottom for exn
