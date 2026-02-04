@@ -284,6 +284,13 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
+        // Validate type count against platform limits
+        if count as usize > limits::MAX_TYPES {
+            return Err(Error::parse_error(
+                "Module exceeds maximum type count for platform",
+            ));
+        }
+
         #[cfg(feature = "tracing")]
         trace!(count = count, data_len = data.len(), "process_type_section");
 
@@ -689,6 +696,13 @@ impl<'a> StreamingDecoder<'a> {
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
+        // Validate import count against platform limits
+        if count as usize > limits::MAX_IMPORTS {
+            return Err(Error::parse_error(
+                "Module exceeds maximum import count for platform",
+            ));
+        }
+
         #[cfg(feature = "tracing")]
         trace!(
             count = count,
@@ -1025,6 +1039,15 @@ impl<'a> StreamingDecoder<'a> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
+
+        // Validate function count against platform limits
+        // Note: This is module-defined functions only, not including imports
+        let total_funcs = self.num_function_imports + count as usize;
+        if total_funcs > limits::MAX_FUNCTIONS {
+            return Err(Error::parse_error(
+                "Module exceeds maximum function count for platform",
+            ));
+        }
 
         #[cfg(feature = "tracing")]
         trace!(
@@ -1492,6 +1515,13 @@ impl<'a> StreamingDecoder<'a> {
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 
+        // Validate export count against platform limits
+        if count as usize > limits::MAX_EXPORTS {
+            return Err(Error::parse_error(
+                "Module exceeds maximum export count for platform",
+            ));
+        }
+
         #[cfg(feature = "tracing")]
         trace!(
             count = count,
@@ -1910,6 +1940,13 @@ impl<'a> StreamingDecoder<'a> {
             let (body_size, bytes_read) = read_leb128_u32(data, offset)?;
             offset += bytes_read;
 
+            // Validate function body size against platform limits
+            if body_size as usize > limits::MAX_FUNCTION_CODE_SIZE {
+                return Err(Error::parse_error(
+                    "Function body exceeds maximum code size for platform",
+                ));
+            }
+
             let body_start = offset;
             let body_end = offset + body_size as usize;
             if body_end > data.len() {
@@ -1957,6 +1994,22 @@ impl<'a> StreamingDecoder<'a> {
                         _ => return Err(Error::parse_error("Invalid local type")),
                     };
 
+                    // Validate total locals against platform limits before allocation
+                    let new_total = func.locals.len() + count as usize;
+                    if new_total > limits::MAX_FUNCTION_LOCALS {
+                        return Err(Error::parse_error(
+                            "Function exceeds maximum local count for platform",
+                        ));
+                    }
+
+                    #[cfg(feature = "allocation-tracing")]
+                    trace_alloc!(
+                        AllocationPhase::Decode,
+                        "streaming_decoder:func_locals",
+                        "locals",
+                        count as usize
+                    );
+
                     // Add 'count' locals of this type
                     for _ in 0..count {
                         func.locals.push(vt);
@@ -1966,6 +2019,15 @@ impl<'a> StreamingDecoder<'a> {
                 // Now copy only the instruction bytes (after locals, before the implicit 'end')
                 let instructions_start = body_start + body_offset;
                 let instructions_data = &data[instructions_start..body_end];
+
+                #[cfg(feature = "allocation-tracing")]
+                trace_alloc!(
+                    AllocationPhase::Decode,
+                    "streaming_decoder:func_code",
+                    "code_bytes",
+                    instructions_data.len()
+                );
+
                 func.code.extend_from_slice(instructions_data);
 
                 #[cfg(feature = "tracing")]
@@ -1990,6 +2052,13 @@ impl<'a> StreamingDecoder<'a> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
+
+        // Validate data segment count against platform limits
+        if count as usize > limits::MAX_DATA_SEGMENTS {
+            return Err(Error::parse_error(
+                "Module exceeds maximum data segment count for platform",
+            ));
+        }
 
         #[cfg(feature = "tracing")]
         trace!(count = count, data_len = data.len(), "process_data_section");
