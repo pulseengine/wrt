@@ -20,7 +20,7 @@ use wast::{
     core::{NanPattern, V128Const, V128Pattern, WastArgCore, WastRetCore},
     parser::{self, ParseBuffer},
 };
-use wrt_foundation::monitoring::convenience::{current_usage_kb, global_stats, peak_usage_kb};
+use wrt_foundation::capabilities::memory_factory::MemoryFactory;
 use wrt_foundation::values::Value;
 
 use crate::{
@@ -227,8 +227,9 @@ impl WastTestRunner {
         let start_time = std::time::Instant::now();
         let mut results = Vec::new();
 
-        // Capture initial memory stats
-        self.stats.initial_memory_kb = current_usage_kb();
+        // Capture initial memory stats from SafetyMonitor
+        let initial_report = MemoryFactory::get_safety_report();
+        self.stats.initial_memory_kb = initial_report.current_memory_bytes as f64 / 1024.0;
 
         // Collect WAST files
         let wast_files = match self.collect_wast_files() {
@@ -291,12 +292,18 @@ impl WastTestRunner {
 
         self.stats.total_execution_time_ms = start_time.elapsed().as_millis();
 
-        // Capture final memory stats
-        let mem_stats = global_stats();
-        self.stats.final_memory_kb = current_usage_kb();
-        self.stats.peak_memory_kb = peak_usage_kb();
-        self.stats.total_allocations = mem_stats.total_allocations;
-        self.stats.allocation_success_rate = mem_stats.success_rate() * 100.0;
+        // Capture final memory stats from SafetyMonitor
+        let final_report = MemoryFactory::get_safety_report();
+        self.stats.final_memory_kb = final_report.current_memory_bytes as f64 / 1024.0;
+        self.stats.peak_memory_kb = final_report.peak_memory_bytes as f64 / 1024.0;
+        self.stats.total_allocations = final_report.total_allocations;
+        // Calculate success rate from allocations vs failures
+        let total_attempts = final_report.total_allocations + final_report.failed_allocations;
+        self.stats.allocation_success_rate = if total_attempts > 0 {
+            (final_report.total_allocations as f64 / total_attempts as f64) * 100.0
+        } else {
+            100.0
+        };
 
         Ok(results)
     }
