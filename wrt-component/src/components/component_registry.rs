@@ -85,7 +85,7 @@ mod no_std_impl {
     extern crate alloc;
     use alloc::string::{String, ToString};
 
-    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_error::{Error, ErrorCategory, Result, codes};
     use wrt_foundation::collections::StaticVec as BoundedVec;
 
     use crate::components::component_no_std::Component;

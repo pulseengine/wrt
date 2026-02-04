@@ -68,13 +68,13 @@ mod no_std_impl {
     use wrt_error::Error;
     use wrt_format::component::ComponentTypeDefinition;
     use wrt_foundation::{
+        MemoryProvider,
         bounded::{BoundedString, BoundedVec, MAX_WASM_NAME_LENGTH},
         budget_aware_provider::CrateId,
         safe_managed_alloc,
         safe_memory::NoStdProvider,
         traits::{Checksummable, FromBytes, ToBytes},
         verification::Checksum,
-        MemoryProvider,
     };
 
     use crate::export::Export;
@@ -282,9 +282,7 @@ mod no_std_impl {
 
         /// Gets an instance by name
         pub fn get_instance(&self, name: &str) -> Option<InstanceValue> {
-            self.instances
-                .iter()
-                .find(|instance| instance.name.as_str().ok() == Some(name))
+            self.instances.iter().find(|instance| instance.name.as_str().ok() == Some(name))
         }
 
         /// Gets a mutable instance by name

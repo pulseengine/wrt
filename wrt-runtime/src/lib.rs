@@ -163,11 +163,6 @@ pub use core_types::{
     ExecutionContext,
 };
 pub use execution::ExecutionStats;
-// Note: ExecutionContext is defined in core_types, not execution
-// pub use thread_manager::{
-//     ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
-//     ThreadExecutionStats, ThreadManagerStats, ThreadId,
-// };
 pub use func::Function as RuntimeFunction;
 pub use global::Global;
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -180,19 +175,8 @@ pub use memory_adapter::{
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use memory_helpers::ArcMemoryExt;
 pub use prelude::FuncType;
-// pub use module::{
-//     Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
-// };
-// pub use module_instance::ModuleInstance;
-// pub use stackless::{
-//     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
-// }; // Temporarily disabled due to compilation issues
 pub use table::Table;
 pub use wrt_foundation::platform_abstraction;
-
-// Re-export platform-aware runtime types - temporarily disabled
-// pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter,
-// RuntimeMetrics};
 
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;

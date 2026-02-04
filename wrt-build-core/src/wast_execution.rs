@@ -815,8 +815,8 @@ mod tests {
     #[test]
     fn test_ref_null_anyref_decode() {
         use wast::{
-            parser::{self, ParseBuffer},
             Wat,
+            parser::{self, ParseBuffer},
         };
 
         // Minimal module with anyref
@@ -835,25 +835,33 @@ mod tests {
         // Try to decode
         match wrt_decoder::decoder::decode_module(&binary) {
             Ok(module) => {
-                println!("SUCCESS: {} types, {} functions", module.types.len(), module.functions.len());
+                println!(
+                    "SUCCESS: {} types, {} functions",
+                    module.types.len(),
+                    module.functions.len()
+                );
                 if let Some(t) = module.types.first() {
-                    println!("  First type: {} params, {} results", t.params.len(), t.results.len());
+                    println!(
+                        "  First type: {} params, {} results",
+                        t.params.len(),
+                        t.results.len()
+                    );
                     for r in &t.results {
                         println!("    Result: {:?}", r);
                     }
                 }
-            }
+            },
             Err(e) => {
                 panic!("DECODE FAILED: {:?}", e);
-            }
+            },
         }
     }
 
     #[test]
     fn test_ref_null_full_module_decode() {
         use wast::{
-            parser::{self, ParseBuffer},
             Wat,
+            parser::{self, ParseBuffer},
         };
 
         // Full first module from ref_null.wast
@@ -891,21 +899,21 @@ mod tests {
                 println!("  {} functions", module.functions.len());
                 println!("  {} globals", module.globals.len());
                 println!("  {} exports", module.exports.len());
-            }
+            },
             Err(e) => {
                 println!("DECODE FAILED: {:?}", e);
                 // Print more of the binary for debugging
                 println!("Full binary: {:02x?}", &binary);
                 panic!("Decode failed");
-            }
+            },
         }
     }
 
     #[test]
     fn test_ref_null_second_module_decode() {
         use wast::{
-            parser::{self, ParseBuffer},
             Wat,
+            parser::{self, ParseBuffer},
         };
 
         // Second module from ref_null.wast with nullref, nullfuncref, etc.
@@ -939,25 +947,26 @@ mod tests {
                 println!("  {} functions", module.functions.len());
                 println!("  {} globals", module.globals.len());
                 println!("  {} exports", module.exports.len());
-            }
+            },
             Err(e) => {
                 println!("DECODE FAILED: {:?}", e);
                 println!("Full binary: {:02x?}", &binary);
                 panic!("Decode failed");
-            }
+            },
         }
     }
 
     #[test]
     fn test_ref_null_wast_file_decode() {
         use wast::{
-            parser::{self, ParseBuffer},
             Wast, WastDirective,
+            parser::{self, ParseBuffer},
         };
 
         // Read the actual ref_null.wast file
         let wast_path = "/Users/r/git/wrt2/external/testsuite/ref_null.wast";
-        let wast_content = std::fs::read_to_string(wast_path).expect("Failed to read ref_null.wast");
+        let wast_content =
+            std::fs::read_to_string(wast_path).expect("Failed to read ref_null.wast");
 
         let buf = ParseBuffer::new(&wast_content).expect("Failed to create buffer");
         let wast: Wast = parser::parse(&buf).expect("Failed to parse WAST");
@@ -975,46 +984,58 @@ mod tests {
                 match quote_wat.encode() {
                     Ok(binary) => {
                         println!("Binary: {} bytes", binary.len());
-                        println!("  First 50 bytes: {:02x?}", &binary[..std::cmp::min(50, binary.len())]);
+                        println!(
+                            "  First 50 bytes: {:02x?}",
+                            &binary[..std::cmp::min(50, binary.len())]
+                        );
 
                         // Try to decode
                         match wrt_decoder::decoder::decode_module(&binary) {
                             Ok(module) => {
-                                println!("  DECODE OK: {} types, {} functions, {} globals",
-                                    module.types.len(), module.functions.len(), module.globals.len());
+                                println!(
+                                    "  DECODE OK: {} types, {} functions, {} globals",
+                                    module.types.len(),
+                                    module.functions.len(),
+                                    module.globals.len()
+                                );
 
                                 // Try to validate
-                                match crate::wast_validator::WastModuleValidator::validate(&module) {
+                                match crate::wast_validator::WastModuleValidator::validate(&module)
+                                {
                                     Ok(()) => {
                                         println!("  VALIDATE OK");
 
                                         // Try to convert to runtime module
-                                        match wrt_runtime::module::Module::from_wrt_module(&module) {
+                                        match wrt_runtime::module::Module::from_wrt_module(&module)
+                                        {
                                             Ok(_runtime_module) => {
                                                 println!("  RUNTIME CONVERT OK");
-                                            }
+                                            },
                                             Err(e) => {
                                                 println!("  RUNTIME CONVERT FAILED: {:?}", e);
-                                                errors.push((module_count, format!("runtime: {:?}", e)));
-                                            }
+                                                errors.push((
+                                                    module_count,
+                                                    format!("runtime: {:?}", e),
+                                                ));
+                                            },
                                         }
-                                    }
+                                    },
                                     Err(e) => {
                                         println!("  VALIDATE FAILED: {:?}", e);
                                         errors.push((module_count, format!("validate: {:?}", e)));
-                                    }
+                                    },
                                 }
-                            }
+                            },
                             Err(e) => {
                                 println!("  DECODE FAILED: {:?}", e);
                                 errors.push((module_count, format!("{:?}", e)));
-                            }
+                            },
                         }
-                    }
+                    },
                     Err(e) => {
                         println!("  ENCODE FAILED: {:?}", e);
                         errors.push((module_count, format!("encode: {:?}", e)));
-                    }
+                    },
                 }
             }
         }
@@ -1029,6 +1050,206 @@ mod tests {
                 println!("  Module {}: {}", idx, err);
             }
             panic!("{} modules failed to decode", errors.len());
+        }
+    }
+
+    #[test]
+    fn test_nullfuncref_global_execution() {
+        use wast::{
+            Wat,
+            parser::{self, ParseBuffer},
+        };
+
+        // Test module with nullfuncref globals
+        let wat = r#"
+            (module
+              (type $t (func))
+              (global $nullfunc nullfuncref (ref.null nofunc))
+              (func (export "funcref") (result funcref) (global.get $nullfunc))
+              (func (export "nullfuncref") (result nullfuncref) (global.get $nullfunc))
+            )
+        "#;
+
+        let buf = ParseBuffer::new(wat).expect("Failed to create buffer");
+        let mut wat_parsed: Wat = parser::parse(&buf).expect("Failed to parse WAT");
+        let binary = wat_parsed.encode().expect("Failed to encode");
+
+        println!("Testing nullfuncref global execution...");
+        println!("Binary: {} bytes", binary.len());
+
+        // Decode and convert to runtime module
+        let decoded = wrt_decoder::decoder::decode_module(&binary).expect("Failed to decode");
+        println!(
+            "Decoded: {} types, {} functions, {} globals",
+            decoded.types.len(),
+            decoded.functions.len(),
+            decoded.globals.len()
+        );
+
+        // Create WastEngine and load module
+        let mut engine = WastEngine::new().expect("Failed to create engine");
+        engine.load_module(None, &binary).expect("Failed to load module");
+
+        // Call funcref function
+        let args: Vec<wrt_foundation::values::Value> = vec![];
+        let results = engine
+            .invoke_function(None, "funcref", &args)
+            .expect("Failed to invoke funcref");
+
+        println!("funcref result: {:?}", results);
+
+        // Check the result - should be FuncRef(None), not I32(-1)
+        assert!(!results.is_empty(), "Expected one result");
+        match &results[0] {
+            wrt_foundation::values::Value::FuncRef(None) => {
+                println!("PASS: Got FuncRef(None) as expected");
+            },
+            wrt_foundation::values::Value::I32(v) => {
+                panic!("FAIL: Got I32({}) instead of FuncRef(None)", v);
+            },
+            other => {
+                panic!("FAIL: Got unexpected value {:?}", other);
+            },
+        }
+
+        // Also test nullfuncref result
+        let results2 = engine
+            .invoke_function(None, "nullfuncref", &args)
+            .expect("Failed to invoke nullfuncref");
+        println!("nullfuncref result: {:?}", results2);
+        assert!(!results2.is_empty(), "Expected one result");
+        match &results2[0] {
+            wrt_foundation::values::Value::FuncRef(None) => {
+                println!("PASS: Got FuncRef(None) as expected for nullfuncref");
+            },
+            wrt_foundation::values::Value::I32(v) => {
+                panic!(
+                    "FAIL: Got I32({}) instead of FuncRef(None) for nullfuncref",
+                    v
+                );
+            },
+            other => {
+                panic!("FAIL: Got unexpected value {:?} for nullfuncref", other);
+            },
+        }
+    }
+
+    #[test]
+    fn test_try_table_gc_module_decode() {
+        use wast::{
+            Wat,
+            parser::{self, ParseBuffer},
+        };
+
+        // The problematic module from try_table.wast that uses GC typed references
+        let wat = r#"
+            (module
+              (type $t (func))
+              (func $dummy)
+              (elem declare func $dummy)
+
+              (tag $e (param (ref $t)))
+              (func $throw (throw $e (ref.func $dummy)))
+
+              (func (export "catch") (result (ref null $t))
+                (block $l (result (ref null $t))
+                  (try_table (catch $e $l) (call $throw))
+                  (unreachable)
+                )
+              )
+              (func (export "catch_ref1") (result (ref null $t))
+                (block $l (result (ref null $t) (ref exn))
+                  (try_table (catch_ref $e $l) (call $throw))
+                  (unreachable)
+                )
+                (drop)
+              )
+              (func (export "catch_ref2") (result (ref null $t))
+                (block $l (result (ref null $t) (ref null exn))
+                  (try_table (catch_ref $e $l) (call $throw))
+                  (unreachable)
+                )
+                (drop)
+              )
+              (func (export "catch_all_ref1")
+                (block $l (result (ref exn))
+                  (try_table (catch_all_ref $l) (call $throw))
+                  (unreachable)
+                )
+                (drop)
+              )
+              (func (export "catch_all_ref2")
+                (block $l (result (ref null exn))
+                  (try_table (catch_all_ref $l) (call $throw))
+                  (unreachable)
+                )
+                (drop)
+              )
+            )
+        "#;
+
+        let buf = ParseBuffer::new(wat).expect("Failed to create buffer");
+        let mut wat_parsed: Wat = parser::parse(&buf).expect("Failed to parse WAT");
+        let binary = wat_parsed.encode().expect("Failed to encode");
+
+        println!("try_table GC module binary ({} bytes):", binary.len());
+        println!(
+            "  First 100 bytes: {:02x?}",
+            &binary[..std::cmp::min(100, binary.len())]
+        );
+
+        // Try to decode
+        match wrt_decoder::decoder::decode_module(&binary) {
+            Ok(module) => {
+                println!("DECODE OK:");
+                println!("  {} types", module.types.len());
+                println!("  {} functions", module.functions.len());
+                println!("  {} tags", module.tags.len());
+                println!("  {} exports", module.exports.len());
+
+                // Print type section for debugging
+                println!("Types:");
+                for (i, t) in module.types.iter().enumerate() {
+                    println!(
+                        "  Type {}: params={:?}, results={:?}",
+                        i, t.params, t.results
+                    );
+                }
+                println!("Tags:");
+                for (i, t) in module.tags.iter().enumerate() {
+                    println!("  Tag {}: type_idx={}", i, t.type_idx);
+                }
+                println!("Functions:");
+                for (i, f) in module.functions.iter().enumerate() {
+                    println!(
+                        "  Function {}: type_idx={}, locals={}, code_len={}",
+                        i,
+                        f.type_idx,
+                        f.locals.len(),
+                        f.code.len()
+                    );
+                    println!(
+                        "    Code: {:02x?}",
+                        &f.code[..std::cmp::min(50, f.code.len())]
+                    );
+                }
+
+                // Try to validate
+                match crate::wast_validator::WastModuleValidator::validate(&module) {
+                    Ok(()) => {
+                        println!("VALIDATE OK");
+                    },
+                    Err(e) => {
+                        println!("VALIDATE FAILED: {:?}", e);
+                        panic!("Validation failed");
+                    },
+                }
+            },
+            Err(e) => {
+                println!("DECODE FAILED: {:?}", e);
+                println!("Full binary: {:02x?}", &binary);
+                panic!("Decode failed: {:?}", e);
+            },
         }
     }
 }

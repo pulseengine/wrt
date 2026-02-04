@@ -59,13 +59,11 @@ pub use resource_interceptor::ResourceInterceptor;
 pub use resource_manager::{HostResource, ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
-pub use resource_operation::{
-    from_format_resource_operation, to_format_resource_operation,
-};
+pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
 
 // Export ResourceStrategy trait and implementation (works for both std and no_std)
 pub use resource_strategy::{
-    GenericResourceStrategy, ResourceStrategy, ResourceStrategyNoStd, MAX_RESOURCE_BUFFER_SIZE,
+    GenericResourceStrategy, MAX_RESOURCE_BUFFER_SIZE, ResourceStrategy, ResourceStrategyNoStd,
 };
 // Re-export MAX_BUFFER_SIZE directly from wrt_foundation for public access
 pub use wrt_foundation::bounded::MAX_BUFFER_SIZE;

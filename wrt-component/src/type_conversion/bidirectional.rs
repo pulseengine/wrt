@@ -170,6 +170,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::F32 => Ok(FormatValType::F32),
         ValueType::F64 => Ok(FormatValType::F64),
         ValueType::FuncRef => Err(Error::runtime_execution_error("FuncRef not supported")),
+        ValueType::NullFuncRef => Err(Error::runtime_execution_error("NullFuncRef not supported")),
         ValueType::ExternRef => Err(Error::runtime_execution_error("ExternRef not supported")),
         ValueType::V128 => Err(Error::runtime_execution_error(
             "V128 not supported in component model",
@@ -288,6 +289,7 @@ pub fn value_type_to_types_valtype<P: wrt_foundation::MemoryProvider>(
         ValueType::F32 => WrtTypesValType::F32,
         ValueType::F64 => WrtTypesValType::F64,
         ValueType::FuncRef => WrtTypesValType::Own(0), // Default to resource type 0
+        ValueType::NullFuncRef => WrtTypesValType::Own(0), // Bottom funcref type
         ValueType::ExternRef => WrtTypesValType::Ref(0), // Default to type index 0
         ValueType::V128 => WrtTypesValType::Void,      // V128 not supported in component model
         ValueType::I16x8 => WrtTypesValType::Void,     // I16x8 not supported in component model

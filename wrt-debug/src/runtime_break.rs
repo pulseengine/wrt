@@ -7,7 +7,7 @@ use wrt_foundation::{
     safe_managed_alloc,
 };
 
-use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
+use crate::bounded_debug_infra::{DEBUG_PROVIDER_SIZE, DebugProvider};
 /// Runtime breakpoint management implementation
 /// Provides breakpoint setting, hit detection, and condition evaluation
 use crate::{

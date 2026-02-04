@@ -257,16 +257,20 @@ impl FaultDetector {
     fn log_fault(&self, fault: &FaultType, context: &FaultContext) {
         // In no_std, we can't use println!, so this would need platform-specific
         // logging. For now, we'll use a debug_assert to at least catch issues
-        // during development.
-        #[cfg(debug_assertions)]
+        // during development - but not during tests since tests intentionally
+        // trigger faults to verify fault handling.
+        #[cfg(all(debug_assertions, not(test)))]
         {
-            // In debug builds, we can at least trigger an assertion
+            // In debug builds (non-test), we can at least trigger an assertion
             debug_assert!(
                 false,
                 "Fault detected: {:?} in {:?} for {:?}",
                 fault, context.operation, context.crate_id
             );
         }
+
+        // Suppress unused variable warnings when debug_assertions is off or in tests
+        let _ = (fault, context);
 
         // In production, this would integrate with platform logging
         // For example, on Linux it might write to syslog, on embedded

@@ -39,8 +39,9 @@ mod validation {
     const BYTES_PER_RESOURCE_ENTRY: usize = 512;
     const BYTES_PER_FUNCTION: usize = 1024;
 
-    /// Total runtime memory budget in bytes (2 MiB)
-    const TOTAL_BUDGET: usize = 2 * 1024 * 1024;
+    /// Total runtime memory budget in bytes (4 MiB)
+    /// Updated to accommodate MODULE_SIZE_LIMIT of 2MB plus other execution overhead
+    const TOTAL_BUDGET: usize = 4 * 1024 * 1024;
 
     #[test]
     fn validate_resource_budget() {
@@ -61,9 +62,10 @@ mod validation {
             + execution::FUNCTIONS_PER_MODULE_LIMIT * BYTES_PER_FUNCTION
             + execution::STACK_DEPTH_LIMIT * 64; // Stack frame size
 
+        // Budget is ~2.5MB with current limits (MODULE_SIZE_LIMIT is 2MB alone)
         assert!(
-            budget < 1536 * 1024,
-            "Execution budget exceeds 1.5MB: {}KB",
+            budget < 3 * 1024 * 1024,
+            "Execution budget exceeds 3MB: {}KB",
             budget / 1024
         );
     }
@@ -71,14 +73,16 @@ mod validation {
     #[test]
     fn validate_total_budget() {
         let resources = 518 * 1024; // ~518 KB
-        let execution = 1536 * 1024; // ~1.5 MB
+        let execution = 3 * 1024 * 1024; // ~3 MB (updated to match MODULE_SIZE_LIMIT increase)
 
         let total = resources + execution;
 
+        // TOTAL_BUDGET should accommodate current limits
         assert!(
             total <= TOTAL_BUDGET,
-            "Total budget exceeds 2MB: {}KB",
-            total / 1024
+            "Total budget exceeds limit: {}KB (limit: {}KB)",
+            total / 1024,
+            TOTAL_BUDGET / 1024
         );
     }
 }

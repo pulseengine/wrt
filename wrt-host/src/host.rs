@@ -146,8 +146,16 @@ fn convert_to_component_values(
             Value::I64(i) => ComponentValue::S64(*i),
             Value::F32(f) => ComponentValue::F32(wrt_foundation::FloatBits32(f.to_bits())),
             Value::F64(f) => ComponentValue::F64(wrt_foundation::FloatBits64(f.to_bits())),
-            // Add other conversions as needed
-            _ => ComponentValue::S32(0), // Default fallback
+            Value::V128(v) => {
+                // Convert V128 to i64 pair for component model (use lower 64 bits)
+                let low = i64::from_le_bytes(v.bytes[..8].try_into().unwrap());
+                ComponentValue::S64(low)
+            },
+            other => panic!(
+                "Unsupported Value type for component conversion: {:?}. \
+                 Add explicit handling for this type.",
+                core::mem::discriminant(other)
+            )
         })
         .collect()
 }
@@ -176,8 +184,12 @@ fn convert_from_component_values(
             ComponentValue::U64(i) => Value::I64(*i as i64),
             ComponentValue::F32(f) => Value::F32(*f),
             ComponentValue::F64(f) => Value::F64(*f),
-            // Add other conversions as needed
-            _ => Value::I32(0), // Default fallback
+            ComponentValue::Bool(b) => Value::I32(if *b { 1 } else { 0 }),
+            other => panic!(
+                "Unsupported ComponentValue type for Value conversion: {:?}. \
+                 Add explicit handling for this type.",
+                core::mem::discriminant(other)
+            )
         })
         .collect()
 }

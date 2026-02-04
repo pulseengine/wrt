@@ -72,7 +72,6 @@ pub use wrt_foundation::{
     resource::Resource,
     MemoryProvider,
 };
-// pub use wrt_component::ComponentLinker;
 
 // Re-export safety-aware allocation macros
 pub use wrt_foundation::{

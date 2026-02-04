@@ -55,16 +55,10 @@ pub trait WitAwareDebugger: RuntimeDebugger {
     fn map_to_wit_diagnostic(&self, error: &ComponentError) -> Option<WitDiagnostic>;
 
     /// Get WIT function name for a function ID
-    fn wit_function_name(
-        &self,
-        function_id: FunctionId,
-    ) -> Option<BoundedString<64>>;
+    fn wit_function_name(&self, function_id: FunctionId) -> Option<BoundedString<64>>;
 
     /// Get WIT type name for a type ID
-    fn wit_type_name(
-        &self,
-        type_id: TypeId,
-    ) -> Option<BoundedString<64>>;
+    fn wit_type_name(&self, type_id: TypeId) -> Option<BoundedString<64>>;
 }
 
 /// Implementation of WIT-aware debugger
@@ -468,17 +462,11 @@ impl WitAwareDebugger for WitDebugger {
         }
     }
 
-    fn wit_function_name(
-        &self,
-        function_id: FunctionId,
-    ) -> Option<BoundedString<64>> {
+    fn wit_function_name(&self, function_id: FunctionId) -> Option<BoundedString<64>> {
         self.functions.get(&function_id).map(|metadata| metadata.name.clone())
     }
 
-    fn wit_type_name(
-        &self,
-        type_id: TypeId,
-    ) -> Option<BoundedString<64>> {
+    fn wit_type_name(&self, type_id: TypeId) -> Option<BoundedString<64>> {
         self.types.get(&type_id).map(|metadata| metadata.name.clone())
     }
 }

@@ -151,8 +151,6 @@ pub use crate::control_ops::{
     FunctionOperations,
     Return,
 };
-// Re-export main execution trait and specific Op enums
-// pub use crate::execution::PureExecutionContext; // Temporarily disabled
 pub use crate::memory_ops::{
     MemoryContext,
     MemoryGrow,

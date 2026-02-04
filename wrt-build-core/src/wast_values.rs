@@ -94,7 +94,7 @@ pub fn convert_wast_ret_core_to_value(ret: &WastRetCore) -> Result<Value> {
                         AbstractHeapType::Extern => Ok(Value::ExternRef(None)),
                         // GC abstract heap types
                         AbstractHeapType::Any => Ok(Value::ExternRef(None)), // anyref uses externref repr
-                        AbstractHeapType::Eq => Ok(Value::I31Ref(None)),     // eqref uses i31ref repr
+                        AbstractHeapType::Eq => Ok(Value::I31Ref(None)), // eqref uses i31ref repr
                         AbstractHeapType::I31 => Ok(Value::I31Ref(None)),
                         AbstractHeapType::Struct => Ok(Value::StructRef(None)),
                         AbstractHeapType::Array => Ok(Value::ArrayRef(None)),

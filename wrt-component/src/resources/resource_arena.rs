@@ -68,10 +68,8 @@ mod std_impl {
             type_idx: u32,
             data: Arc<dyn Any + Send + Sync>,
         ) -> Result<u32> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let mut table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             let handle = table.create_resource(type_idx, data)?;
             self.resources.push(handle);
@@ -85,10 +83,8 @@ mod std_impl {
             data: Arc<dyn Any + Send + Sync>,
             name: &str,
         ) -> Result<u32> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let mut table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             // Create the resource
             let handle = table.create_resource(type_idx, data)?;
@@ -108,27 +104,26 @@ mod std_impl {
         /// Create a resource in this arena using a ResourceId
         ///
         /// Convenience method for APIs that use ResourceId
-        pub fn add_resource<T: 'static + Send + Sync>(&mut self, resource: T) -> Result<ResourceId> {
+        pub fn add_resource<T: 'static + Send + Sync>(
+            &mut self,
+            resource: T,
+        ) -> Result<ResourceId> {
             let handle = self.create_resource(0, Arc::new(resource))?;
             Ok(ResourceId(handle))
         }
 
         /// Get access to a resource
         pub fn get_resource(&self, handle: u32) -> Result<Arc<WrtMutex<super::super::Resource>>> {
-            let table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             table.get_resource(handle)
         }
 
         /// Check if a resource exists
         pub fn has_resource(&self, id: ResourceId) -> Result<bool> {
-            let table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             // First check if it's in our arena
             if !self.resources.contains(&id.0) {
@@ -163,10 +158,8 @@ mod std_impl {
             }
 
             // Then drop it from the table
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let mut table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             table.drop_resource(handle)
         }
@@ -177,10 +170,8 @@ mod std_impl {
                 return Ok(());
             }
 
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
+            let mut table =
+                self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Error occurred"))?;
 
             let mut error = None;
 
@@ -195,11 +186,7 @@ mod std_impl {
             }
 
             // Return the first error if any occurred
-            if let Some(e) = error {
-                Err(e)
-            } else {
-                Ok(())
-            }
+            if let Some(e) = error { Err(e) } else { Ok(()) }
         }
 
         /// Get the number of resources in this arena
@@ -425,11 +412,7 @@ mod no_std_impl {
             self.resources.clear();
 
             // Return the first error if any occurred
-            if let Some(e) = error {
-                Err(e)
-            } else {
-                Ok(())
-            }
+            if let Some(e) = error { Err(e) } else { Ok(()) }
         }
 
         /// Get the number of resources in this arena

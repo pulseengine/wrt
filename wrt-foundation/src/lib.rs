@@ -431,9 +431,6 @@ pub use operations::{
     Tracking as OperationTracking,
     Type as OperationType,
 };
-// Platform-specific re-exports removed - clean architecture
-// #[cfg(feature = "platform-memory")]
-// pub use runtime_memory::LinearMemory;
 #[cfg(feature = "std")]
 pub use safe_memory::StdMemoryProvider;
 pub use safe_memory::{
@@ -501,12 +498,6 @@ pub use compile_time_bounds::{
 // Capability-based memory system replaces legacy global coordinator
 // Use memory_init::get_global_capability_context() for modern memory management
 
-// Macros are automatically available at crate root due to #[macro_export]
-// Validated collections disabled - use standard bounded collections instead
-// #[cfg(feature = "std")]
-// pub use validated_collections::{
-//     ValidatedBoundedVec, ValidatedBoundedMap, ValidatedBoundedString,
-// };
 #[allow(deprecated)]
 pub use enforcement::{
     AllocationToken,
@@ -637,12 +628,6 @@ pub use unified_types_simple::{
     SafetyCriticalTypes,
     UnifiedTypes,
 };
-// Data and element segment types are defined in the types module
-// DataSegment and ElementSegment types are provided by wrt-format module when needed
-// Temporarily disabled validation exports due to circular dependency
-// pub use validation::{
-//     BoundedCapacity, Checksummed, Validatable, ValidationError, ValidationResult,
-// };
 pub use values::Value;
 pub use verification::{
     Checksum,

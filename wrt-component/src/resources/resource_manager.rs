@@ -157,10 +157,9 @@ mod std_impl {
 
         /// Add a resource interceptor
         pub fn add_interceptor(&self, interceptor: Arc<dyn ResourceInterceptor>) -> Result<()> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.add_interceptor(interceptor)?;
             Ok(())
         }
@@ -171,15 +170,17 @@ mod std_impl {
             type_idx: u32,
             data: Arc<dyn Any + Send + Sync>,
         ) -> Result<u32> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.create_resource(type_idx, data)
         }
 
         /// Add a host resource to the manager (legacy API)
-        pub fn add_host_resource<T: 'static + Send + Sync>(&self, resource: T) -> Result<ResourceId> {
+        pub fn add_host_resource<T: 'static + Send + Sync>(
+            &self,
+            resource: T,
+        ) -> Result<ResourceId> {
             let id = self.create_resource(0, Arc::new(resource))?;
             Ok(ResourceId(id))
         }
@@ -191,10 +192,9 @@ mod std_impl {
             data: Arc<dyn Any + Send + Sync>,
             name: &str,
         ) -> Result<u32> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
 
             let handle = table.create_resource(type_idx, data)?;
 
@@ -208,10 +208,9 @@ mod std_impl {
 
         /// Borrow a resource
         pub fn borrow_resource(&self, handle: u32) -> Result<u32> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.borrow_resource(handle)
         }
 
@@ -233,10 +232,9 @@ mod std_impl {
 
         /// Drop a resource
         pub fn drop_resource(&self, handle: u32) -> Result<()> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.drop_resource(handle)
         }
 
@@ -247,10 +245,9 @@ mod std_impl {
 
         /// Get a resource by handle
         pub fn get_resource(&self, handle: u32) -> Result<Arc<WrtMutex<Resource>>> {
-            let table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.get_resource(handle)
         }
 
@@ -268,28 +265,25 @@ mod std_impl {
             handle: u32,
             operation: FormatResourceOperation,
         ) -> Result<ComponentValue<ComponentProvider>> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.apply_operation(handle, operation)
         }
 
         /// Set memory strategy for a resource
         pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.set_memory_strategy(handle, strategy)
         }
 
         /// Set verification level for a resource
         pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             table.set_verification_level(handle, level)
         }
 
@@ -315,28 +309,25 @@ mod std_impl {
 
         /// Get the number of resources
         pub fn resource_count(&self) -> Result<usize> {
-            let table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             Ok(table.resource_count())
         }
 
         /// Clean up unused resources
         pub fn cleanup_unused_resources(&self) -> Result<usize> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             Ok(table.cleanup_unused_resources())
         }
 
         /// Clear all resources (legacy API)
         pub fn clear(&self) -> Result<()> {
-            let mut table = self
-                .table
-                .lock()
-                .map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
+            let mut table = self.table.lock().map_err(|_| {
+                Error::runtime_poisoned_lock("Failed to acquire resource table lock")
+            })?;
             let _ = table.cleanup_unused_resources();
             Ok(())
         }
@@ -375,7 +366,10 @@ mod std_impl {
                 .field("instance_id", &self.instance_id)
                 .field("resource_count", &count)
                 .field("default_memory_strategy", &self.default_memory_strategy)
-                .field("default_verification_level", &self.default_verification_level)
+                .field(
+                    "default_verification_level",
+                    &self.default_verification_level,
+                )
                 .field("max_resources", &self.max_resources)
                 .field("optimized_memory", &self.use_optimized_memory)
                 .finish()
@@ -592,7 +586,10 @@ mod no_std_impl {
                 .field("instance_id", &self.instance_id)
                 .field("resource_count", &count)
                 .field("default_memory_strategy", &self.default_memory_strategy)
-                .field("default_verification_level", &self.default_verification_level)
+                .field(
+                    "default_verification_level",
+                    &self.default_verification_level,
+                )
                 .field("max_resources", &self.max_resources)
                 .finish()
         }

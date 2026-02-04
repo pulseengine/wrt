@@ -17,9 +17,9 @@ use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 #[cfg(feature = "std")]
 use std::sync::{Mutex, OnceLock};
 
+use wrt_error::Result;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::no_std_hashmap::BoundedHashMap;
-use wrt_error::Result;
 use wrt_foundation::{
     CrateId, NoStdProvider,
     bounded::{BoundedString, BoundedVec},
@@ -125,7 +125,9 @@ impl wrt_foundation::traits::FromBytes for AllocationType {
             3 => Ok(Self::Shared),
             4 => Ok(Self::Bounded),
             5 => Ok(Self::Provider),
-            _ => Err(wrt_error::Error::parse_error("Invalid AllocationType value")),
+            _ => Err(wrt_error::Error::parse_error(
+                "Invalid AllocationType value",
+            )),
         }
     }
 }
@@ -613,12 +615,9 @@ impl<'a> MemoryProfiler<'a> {
         let mut operation_times = BTreeMap::new();
         #[cfg(not(feature = "std"))]
         let mut operation_times =
-            BoundedHashMap::<
-                BoundedString<64>,
-                (u64, u32),
-                32,
-                NoStdProvider<{ 32 * 96 }>,
-            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default());
+            BoundedHashMap::<BoundedString<64>, (u64, u32), 32, NoStdProvider<{ 32 * 96 }>>::new(
+                wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default(),
+            );
 
         for sample in self.perf_samples.iter() {
             total_duration += sample.duration;
@@ -632,14 +631,9 @@ impl<'a> MemoryProfiler<'a> {
 
         // Find slowest operations
         let mut slowest_ops =
-            BoundedVec::<
-                (
-                    BoundedString<64>,
-                    u64,
-                ),
-                5,
-                NoStdProvider<{ 5 * 72 }>,
-            >::new(wrt_provider!({ 5 * 72 }, CrateId::Debug).unwrap_or_default())?;
+            BoundedVec::<(BoundedString<64>, u64), 5, NoStdProvider<{ 5 * 72 }>>::new(
+                wrt_provider!({ 5 * 72 }, CrateId::Debug).unwrap_or_default(),
+            )?;
         for (op, (total_time, count)) in operation_times {
             let avg_time = total_time / count as u64;
             let _ = slowest_ops.push((op, avg_time));
@@ -791,14 +785,7 @@ pub struct PerformanceAnalysis {
     /// Memory allocation/deallocation rate per microsecond
     pub memory_churn_rate: u64,
     /// Slowest operations by average time
-    pub slowest_operations: BoundedVec<
-        (
-            BoundedString<64>,
-            u64,
-        ),
-        5,
-        NoStdProvider<{ 5 * 72 }>,
-    >,
+    pub slowest_operations: BoundedVec<(BoundedString<64>, u64), 5, NoStdProvider<{ 5 * 72 }>>,
 }
 
 /// Memory profiler instance

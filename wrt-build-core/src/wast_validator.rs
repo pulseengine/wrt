@@ -66,12 +66,22 @@ impl StackType {
     /// Per WebAssembly spec, untyped select only works with i32, i64, f32, f64, v128
     /// Reference types (funcref, externref, etc.) require typed select (0x1C)
     fn is_numeric(&self) -> bool {
-        matches!(self, StackType::I32 | StackType::I64 | StackType::F32 | StackType::F64 | StackType::V128)
+        matches!(
+            self,
+            StackType::I32 | StackType::I64 | StackType::F32 | StackType::F64 | StackType::V128
+        )
     }
 
     /// Check if this type is a reference type (requires typed select)
     fn is_reference(&self) -> bool {
-        matches!(self, StackType::FuncRef | StackType::NullFuncRef | StackType::ExternRef | StackType::ExnRef | StackType::TypedFuncRef(_, _))
+        matches!(
+            self,
+            StackType::FuncRef
+                | StackType::NullFuncRef
+                | StackType::ExternRef
+                | StackType::ExnRef
+                | StackType::TypedFuncRef(_, _)
+        )
     }
 
     /// Check if this type is a subtype of another type
@@ -80,6 +90,10 @@ impl StackType {
     /// - NullFuncRef <: TypedFuncRef(t, true) (bottom is subtype of any nullable funcref)
     /// - TypedFuncRef(t, _) <: FuncRef (specific is subtype of general)
     /// - FuncRef </: TypedFuncRef(t, _) (general is NOT subtype of specific)
+    /// - TypedFuncRef(t, false) <: TypedFuncRef(t, true) (non-null is subtype of nullable)
+    /// - TypedFuncRef(t, true) </: TypedFuncRef(t, false) (nullable is NOT subtype of non-null)
+    /// - ExnRef <: ExnRef (trivial)
+    /// - (ref exn) <: ExnRef (non-null is subtype of nullable exnref)
     fn is_subtype_of(&self, other: &StackType) -> bool {
         if self == other {
             return true;
@@ -96,8 +110,12 @@ impl StackType {
             (StackType::NullFuncRef, StackType::TypedFuncRef(_, nullable)) => *nullable,
             // TypedFuncRef is a subtype of FuncRef
             (StackType::TypedFuncRef(_, _), StackType::FuncRef) => true,
-            // Two TypedFuncRefs: must match type index
-            (StackType::TypedFuncRef(t1, _), StackType::TypedFuncRef(t2, _)) => t1 == t2,
+            // Two TypedFuncRefs: type indices must match, and nullability must be compatible
+            // (ref $t) is a subtype of (ref null $t)
+            // (ref null $t) is NOT a subtype of (ref $t)
+            (StackType::TypedFuncRef(t1, n1), StackType::TypedFuncRef(t2, n2)) => {
+                t1 == t2 && (*n1 == *n2 || (!*n1 && *n2))
+            },
             // FuncRef is NOT a subtype of TypedFuncRef (general is not subtype of specific)
             (StackType::FuncRef, StackType::TypedFuncRef(_, _)) => false,
             _ => false,
@@ -300,6 +318,32 @@ impl WastModuleValidator {
                 .get(func.type_idx as usize)
                 .ok_or_else(|| anyhow!("unknown type"))?;
             Ok(func_type)
+        }
+    }
+
+    /// Get the type index of a function (for ref.func which produces typed refs)
+    fn get_function_type_idx(module: &Module, func_idx: u32) -> Result<u32> {
+        let num_func_imports = Self::count_function_imports(module);
+
+        if (func_idx as usize) < num_func_imports {
+            // This is an imported function - find its type index
+            let mut import_idx = 0;
+            for import in &module.imports {
+                if let ImportDesc::Function(type_idx) = &import.desc {
+                    if import_idx == func_idx as usize {
+                        return Ok(*type_idx);
+                    }
+                    import_idx += 1;
+                }
+            }
+            Err(anyhow!("unknown function"))
+        } else {
+            // This is a defined function
+            let func = module
+                .functions
+                .get(func_idx as usize)
+                .ok_or_else(|| anyhow!("unknown function"))?;
+            Ok(func.type_idx)
         }
     }
 
@@ -2356,7 +2400,10 @@ impl WastModuleValidator {
                         return Err(anyhow!("undeclared function reference"));
                     }
 
-                    stack.push(StackType::FuncRef);
+                    // ref.func produces a typed reference: (ref $t) where $t is the
+                    // function's type. This is a non-nullable typed function reference.
+                    let func_type_idx = Self::get_function_type_idx(module, func_idx)?;
+                    stack.push(StackType::TypedFuncRef(func_type_idx, false));
                 },
 
                 // Multi-byte prefix (0xFC) - saturating truncations, bulk memory, etc.
@@ -3216,13 +3263,14 @@ impl WastModuleValidator {
             &target_frame.output_types
         };
 
-        // Handler's pushed types must match target's expected types
+        // Handler's pushed types must be subtypes of target's expected types
         if handler_types.len() != target_types.len() {
             return Err(anyhow!("type mismatch"));
         }
 
         for (handler_type, target_type) in handler_types.iter().zip(target_types.iter()) {
-            if handler_type != target_type {
+            // Use subtyping: handler_type must be a subtype of target_type
+            if !handler_type.is_subtype_of(target_type) {
                 return Err(anyhow!("type mismatch"));
             }
         }

@@ -17,7 +17,7 @@ use wrt_foundation::limits;
 
 // Allocation tracing for understanding memory patterns
 #[cfg(feature = "allocation-tracing")]
-use wrt_foundation::{trace_alloc, AllocationPhase};
+use wrt_foundation::{AllocationPhase, trace_alloc};
 
 use wrt_format::module::{Function, Module as WrtModule};
 use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider, types::TagType};
@@ -655,17 +655,20 @@ impl<'a> StreamingDecoder<'a> {
                         -22 => Ok((ValueType::ArrayRef(0), new_offset)), // array (0x6A)
                         -23 => Ok((ValueType::ExnRef, new_offset)),  // exn (0x69)
                         -13 => Ok((ValueType::NullFuncRef, new_offset)), // nofunc (0x73) - bottom for func
-                        -14 => Ok((ValueType::ExternRef, new_offset)), // noextern (0x72)
-                        -15 => Ok((ValueType::AnyRef, new_offset)),  // none (0x71) - bottom for any
-                        -12 => Ok((ValueType::ExnRef, new_offset)),  // noexn (0x74) - bottom for exn
-                        _ => Ok((ValueType::AnyRef, new_offset)),    // fallback for unknown
+                        -14 => Ok((ValueType::ExternRef, new_offset)),   // noextern (0x72)
+                        -15 => Ok((ValueType::AnyRef, new_offset)), // none (0x71) - bottom for any
+                        -12 => Ok((ValueType::ExnRef, new_offset)), // noexn (0x74) - bottom for exn
+                        _ => Ok((ValueType::AnyRef, new_offset)),   // fallback for unknown
                     }
                 } else {
                     // Concrete type index - reference to a defined type
                     // Use TypedFuncRef to preserve nullability and type index
                     // Subtype checking during validation will determine if this is
                     // compatible with funcref, structref, etc.
-                    Ok((ValueType::TypedFuncRef(heap_type_idx as u32, nullable), new_offset))
+                    Ok((
+                        ValueType::TypedFuncRef(heap_type_idx as u32, nullable),
+                        new_offset,
+                    ))
                 }
             },
             _ => {
@@ -1480,10 +1483,14 @@ impl<'a> StreamingDecoder<'a> {
             #[cfg(not(feature = "std"))]
             let init_bytes = {
                 use wrt_foundation::safe_memory::NoStdProvider;
-                let mut bounded = wrt_foundation::BoundedVec::<u8, 1024, NoStdProvider<8192>>::new(NoStdProvider::default())
-                    .map_err(|_| Error::parse_error("Failed to allocate init expression"))?;
+                let mut bounded = wrt_foundation::BoundedVec::<u8, 1024, NoStdProvider<8192>>::new(
+                    NoStdProvider::default(),
+                )
+                .map_err(|_| Error::parse_error("Failed to allocate init expression"))?;
                 for &byte in &data[init_start..offset] {
-                    bounded.push(byte).map_err(|_| Error::parse_error("Init expression too large"))?;
+                    bounded
+                        .push(byte)
+                        .map_err(|_| Error::parse_error("Init expression too large"))?;
                 }
                 bounded
             };

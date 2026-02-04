@@ -75,12 +75,10 @@ impl<'a> MemoryInspector<'a> {
         let allocations_provider = safe_managed_alloc!(65536, CrateId::Runtime)?;
 
         Ok(Self {
-            regions: BoundedVec::new(regions_provider).map_err(|_| {
-                Error::allocation_failed("Failed to create regions vector")
-            })?,
-            allocations: BoundedVec::new(allocations_provider).map_err(|_| {
-                Error::allocation_failed("Failed to create allocations vector")
-            })?,
+            regions: BoundedVec::new(regions_provider)
+                .map_err(|_| Error::allocation_failed("Failed to create regions vector"))?,
+            allocations: BoundedVec::new(allocations_provider)
+                .map_err(|_| Error::allocation_failed("Failed to create allocations vector"))?,
             memory: None,
         })
     }

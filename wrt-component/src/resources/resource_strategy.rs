@@ -102,7 +102,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                     ));
                 }
                 Ok(data.to_vec())
-            }
+            },
             // Full isolation - creates independent copies
             MemoryStrategy::FullIsolation => Ok(data.to_vec()),
             // Handle other memory strategies
@@ -137,7 +137,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                             .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                     }
                     Ok(result)
-                }
+                },
                 ResourceOperation::Write => {
                     let mut result = wrt_foundation::bounded::BoundedVec::new(provider)?;
                     for &byte in data {
@@ -146,7 +146,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                             .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                     }
                     Ok(result)
-                }
+                },
                 _ => Err(Error::not_supported("Operation not supported")),
             },
 
@@ -159,7 +159,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // Isolated strategy - always copies and validates
             MemoryStrategy::Isolated => {
@@ -170,7 +170,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // Copy strategy - always copies the data
             MemoryStrategy::Copy => {
@@ -181,7 +181,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // Reference strategy - returns a view without copying
             MemoryStrategy::Reference => {
@@ -192,7 +192,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // Full isolation strategy - copies and performs full validation
             MemoryStrategy::FullIsolation => {
@@ -203,7 +203,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // FixedBuffer strategy - uses fixed size buffer
             MemoryStrategy::FixedBuffer => {
@@ -214,7 +214,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
 
             // BoundedCollections strategy - uses bounded collections
             MemoryStrategy::BoundedCollections => {
@@ -225,7 +225,7 @@ impl ResourceStrategy for GenericResourceStrategy {
                         .map_err(|_| Error::memory_error("Buffer capacity exceeded"))?;
                 }
                 Ok(result)
-            }
+            },
         }
     }
 }

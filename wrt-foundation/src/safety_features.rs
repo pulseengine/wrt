@@ -226,6 +226,10 @@ pub mod standards {
                 feature = "bounded-collections",
                 feature = "runtime-bounds-checking"
             )) || cfg!(feature = "dynamic-allocation")
+                // Default case: dynamic-allocation is implicit when no higher safety level is enabled
+                || (!cfg!(feature = "verified-static-allocation")
+                    && !cfg!(feature = "static-allocation")
+                    && !cfg!(feature = "bounded-collections"))
         }
     }
 
@@ -260,7 +264,13 @@ pub mod runtime {
     #[allow(clippy::match_like_matches_macro)] // Each arm returns different cfg!() result
     pub fn has_capability(capability: &str) -> bool {
         match capability {
-            "dynamic-allocation" => cfg!(feature = "dynamic-allocation"),
+            // dynamic-allocation is the implicit default when no higher safety level is enabled
+            "dynamic-allocation" => {
+                cfg!(feature = "dynamic-allocation")
+                    || (!cfg!(feature = "verified-static-allocation")
+                        && !cfg!(feature = "static-allocation")
+                        && !cfg!(feature = "bounded-collections"))
+            }
             "static-allocation" => cfg!(feature = "static-allocation"),
             "verified-static-allocation" => cfg!(feature = "verified-static-allocation"),
             "bounded-collections" => cfg!(feature = "bounded-collections"),

@@ -18,7 +18,7 @@ use wrt_foundation::{
     safe_managed_alloc,
 };
 
-use crate::bounded_debug_infra::{DebugProvider, DEBUG_PROVIDER_SIZE};
+use crate::bounded_debug_infra::{DEBUG_PROVIDER_SIZE, DebugProvider};
 
 use crate::{
     abbrev::{AbbreviationTable, AttributeForm, attributes, tags},
@@ -88,7 +88,11 @@ pub struct DebugInfoParser<'a> {
 
 impl<'a> DebugInfoParser<'a> {
     /// Create a new debug info parser
-    pub fn new(debug_info: &'a [u8], debug_abbrev: &'a [u8], debug_str: Option<&'a [u8]>) -> Result<Self> {
+    pub fn new(
+        debug_info: &'a [u8],
+        debug_abbrev: &'a [u8],
+        debug_str: Option<&'a [u8]>,
+    ) -> Result<Self> {
         let string_table = debug_str.map(|data| StringTable::new(data));
         let provider = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
 

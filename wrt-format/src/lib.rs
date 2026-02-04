@@ -296,13 +296,7 @@ pub use binary::with_alloc::{parse_data, parse_element_segment_pure};
 pub use binary::with_alloc::{
     read_name,
     read_string,
-    // is_valid_wasm_header, parse_block_type,
-    // read_vector, validate_utf8, BinaryFormat,
 };
-// Always available functions
-// pub use binary::{
-//     read_f32, read_f64, read_name,
-// };
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -375,14 +369,6 @@ pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, STATE_VERSION, VersionInfo,
 };
-// Binary std/no_std choice
-// Temporarily disabled - causes circular dependency issues
-// #[cfg(feature = "std")]
-// pub use wit_parser::{
-//     WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
-//     WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant,
-// WitWorld, };
-// Re-export bounded WIT parser (for no_std environments)
 #[cfg(feature = "wit-parsing")]
 pub use wit_parser_bounded::{
     BoundedWitExport, BoundedWitFunction, BoundedWitImport, BoundedWitInterface, BoundedWitParser,

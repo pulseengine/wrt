@@ -407,10 +407,7 @@ impl WitSourceFile {
 
     /// Get line by line number (1-based)
     #[cfg(feature = "wit-integration")]
-    pub fn line(
-        &self,
-        line_number: u32,
-    ) -> Option<&BoundedString<1024>> {
+    pub fn line(&self, line_number: u32) -> Option<&BoundedString<1024>> {
         if line_number == 0 {
             return None;
         }

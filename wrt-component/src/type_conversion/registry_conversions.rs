@@ -76,9 +76,9 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                     )),
                     source:      None,
                 }),
-                ValueType::FuncRef | ValueType::ExternRef => Err(ConversionError {
+                ValueType::FuncRef | ValueType::ExternRef | ValueType::NullFuncRef => Err(ConversionError {
                     kind:        ConversionErrorKind::InvalidVariant,
-                    source_type: "ValueType::FuncRef/ExternRef",
+                    source_type: "ValueType::FuncRef/ExternRef/NullFuncRef",
                     target_type: "FormatValType",
                     context:     Some(String::from(
                         "Reference types cannot be directly converted to component format types"
@@ -146,6 +146,7 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                     source:      None,
                 }),
                 ValueType::FuncRef => Ok(TypesValType::<ComponentProvider>::Own(0)), // Default to resource type 0
+                ValueType::NullFuncRef => Ok(TypesValType::<ComponentProvider>::Own(0)), // Bottom funcref type
                 ValueType::ExternRef => Ok(TypesValType::<ComponentProvider>::Ref(0)), // Default to type index 0
                 ValueType::StructRef(_) | ValueType::ArrayRef(_) | ValueType::ExnRef
                 | ValueType::I31Ref | ValueType::AnyRef | ValueType::EqRef

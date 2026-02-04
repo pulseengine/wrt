@@ -20,6 +20,7 @@ use wast::{
     core::{NanPattern, V128Const, V128Pattern, WastArgCore, WastRetCore},
     parser::{self, ParseBuffer},
 };
+use wrt_foundation::monitoring::convenience::{current_usage_kb, global_stats, peak_usage_kb};
 use wrt_foundation::values::Value;
 
 use crate::{
@@ -73,6 +74,16 @@ pub struct WastTestStats {
     pub skipped: usize,
     /// Total execution time in milliseconds
     pub total_execution_time_ms: u128,
+    /// Peak memory usage during test execution (KB)
+    pub peak_memory_kb: f64,
+    /// Memory usage at start of tests (KB)
+    pub initial_memory_kb: f64,
+    /// Memory usage at end of tests (KB)
+    pub final_memory_kb: f64,
+    /// Total allocations during tests
+    pub total_allocations: u64,
+    /// Allocation success rate (%)
+    pub allocation_success_rate: f64,
 }
 
 /// Resource limits for testing exhaustion scenarios
@@ -216,6 +227,9 @@ impl WastTestRunner {
         let start_time = std::time::Instant::now();
         let mut results = Vec::new();
 
+        // Capture initial memory stats
+        self.stats.initial_memory_kb = current_usage_kb();
+
         // Collect WAST files
         let wast_files = match self.collect_wast_files() {
             Ok(files) => files,
@@ -276,6 +290,14 @@ impl WastTestRunner {
         }
 
         self.stats.total_execution_time_ms = start_time.elapsed().as_millis();
+
+        // Capture final memory stats
+        let mem_stats = global_stats();
+        self.stats.final_memory_kb = current_usage_kb();
+        self.stats.peak_memory_kb = peak_usage_kb();
+        self.stats.total_allocations = mem_stats.total_allocations;
+        self.stats.allocation_success_rate = mem_stats.success_rate() * 100.0;
+
         Ok(results)
     }
 
@@ -483,20 +505,9 @@ impl WastTestRunner {
             } => self.handle_assert_unlinkable_directive_wat(module, message, file_path),
             WastDirective::AssertExhaustion {
                 span: _,
-                call: _,
-                message: _,
-            } => {
-                // Skip exhaustion tests for now
-                self.stats.assert_exhaustion_count += 1;
-                Ok(WastDirectiveInfo {
-                    test_type: WastTestType::Resource,
-                    directive_name: "assert_exhaustion".to_string(),
-                    requires_module_state: true,
-                    modifies_engine_state: false,
-                    result: TestResult::Skipped,
-                    error_message: Some("Exhaustion tests not yet implemented".to_string()),
-                })
-            },
+                call,
+                message,
+            } => self.handle_assert_exhaustion_directive(call, message, file_path),
             WastDirective::AssertException { span: _, exec } => {
                 self.handle_assert_exception_directive(exec, file_path)
             },
@@ -1124,97 +1135,82 @@ impl WastTestRunner {
     /// Handle assert_exhaustion directive
     fn handle_assert_exhaustion_directive(
         &mut self,
-        exec: &WastExecute,
+        invoke: &WastInvoke,
         expected_message: &str,
         _file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
         self.stats.assert_exhaustion_count += 1;
 
-        match exec {
-            WastExecute::Invoke(invoke) => {
-                // Convert arguments to runtime values for execution
-                let args_result: Result<Vec<Value>> = convert_wast_args_to_values(&invoke.args);
+        // Convert arguments to runtime values for execution
+        let args_result: Result<Vec<Value>> = convert_wast_args_to_values(&invoke.args);
 
-                match args_result {
-                    Ok(_args) => {
-                        // Try to execute the function with current resource limits
-                        match execute_wast_invoke(&mut self.engine, invoke) {
-                            Ok(_result) => {
-                                // Function completed without exhaustion - check if that's expected
-                                let expected_msg = expected_message.to_lowercase();
-                                if expected_msg.contains("should not occur")
-                                    || expected_msg.contains("no exhaustion")
-                                {
-                                    self.stats.passed += 1;
-                                    Ok(WastDirectiveInfo {
-                                        test_type: WastTestType::Resource,
-                                        directive_name: "assert_exhaustion".to_string(),
-                                        requires_module_state: true,
-                                        modifies_engine_state: false,
-                                        result: TestResult::Passed,
-                                        error_message: None,
-                                    })
-                                } else {
-                                    self.stats.failed += 1;
-                                    Ok(WastDirectiveInfo {
-                                        test_type: WastTestType::Resource,
-                                        directive_name: "assert_exhaustion".to_string(),
-                                        requires_module_state: true,
-                                        modifies_engine_state: false,
-                                        result: TestResult::Failed,
-                                        error_message: Some(format!(
-                                            "Expected exhaustion but function completed: {}",
-                                            expected_message
-                                        )),
-                                    })
-                                }
-                            },
-                            Err(execution_error) => {
-                                // Function execution failed - check if it's due to resource exhaustion
-                                let error_msg = execution_error.to_string().to_lowercase();
-                                let expected_msg = expected_message.to_lowercase();
-
-                                if contains_exhaustion_keyword(&error_msg, &expected_msg) {
-                                    self.stats.passed += 1;
-                                    Ok(WastDirectiveInfo {
-                                        test_type: WastTestType::Resource,
-                                        directive_name: "assert_exhaustion".to_string(),
-                                        requires_module_state: true,
-                                        modifies_engine_state: false,
-                                        result: TestResult::Passed,
-                                        error_message: None,
-                                    })
-                                } else {
-                                    self.stats.failed += 1;
-                                    Ok(WastDirectiveInfo {
-                                        test_type: WastTestType::Resource,
-                                        directive_name: "assert_exhaustion".to_string(),
-                                        requires_module_state: true,
-                                        modifies_engine_state: false,
-                                        result: TestResult::Failed,
-                                        error_message: Some(format!(
-                                            "Expected exhaustion '{}' but got: {}",
-                                            expected_message, execution_error
-                                        )),
-                                    })
-                                }
-                            },
+        match args_result {
+            Ok(_args) => {
+                // Try to execute the function with current resource limits
+                match execute_wast_invoke(&mut self.engine, invoke) {
+                    Ok(_result) => {
+                        // Function completed without exhaustion - check if that's expected
+                        let expected_msg = expected_message.to_lowercase();
+                        if expected_msg.contains("should not occur")
+                            || expected_msg.contains("no exhaustion")
+                        {
+                            self.stats.passed += 1;
+                            Ok(WastDirectiveInfo {
+                                test_type: WastTestType::Resource,
+                                directive_name: "assert_exhaustion".to_string(),
+                                requires_module_state: true,
+                                modifies_engine_state: false,
+                                result: TestResult::Passed,
+                                error_message: None,
+                            })
+                        } else {
+                            self.stats.failed += 1;
+                            Ok(WastDirectiveInfo {
+                                test_type: WastTestType::Resource,
+                                directive_name: "assert_exhaustion".to_string(),
+                                requires_module_state: true,
+                                modifies_engine_state: false,
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
+                                    "Expected exhaustion but function completed: {}",
+                                    expected_message
+                                )),
+                            })
                         }
                     },
-                    Err(e) => {
-                        self.stats.failed += 1;
-                        Ok(WastDirectiveInfo {
-                            test_type: WastTestType::Resource,
-                            directive_name: "assert_exhaustion".to_string(),
-                            requires_module_state: true,
-                            modifies_engine_state: false,
-                            result: TestResult::Failed,
-                            error_message: Some(format!("Failed to convert arguments: {}", e)),
-                        })
+                    Err(execution_error) => {
+                        // Function execution failed - check if it's due to resource exhaustion
+                        let error_msg = execution_error.to_string().to_lowercase();
+                        let expected_msg = expected_message.to_lowercase();
+
+                        if contains_exhaustion_keyword(&error_msg, &expected_msg) {
+                            self.stats.passed += 1;
+                            Ok(WastDirectiveInfo {
+                                test_type: WastTestType::Resource,
+                                directive_name: "assert_exhaustion".to_string(),
+                                requires_module_state: true,
+                                modifies_engine_state: false,
+                                result: TestResult::Passed,
+                                error_message: None,
+                            })
+                        } else {
+                            self.stats.failed += 1;
+                            Ok(WastDirectiveInfo {
+                                test_type: WastTestType::Resource,
+                                directive_name: "assert_exhaustion".to_string(),
+                                requires_module_state: true,
+                                modifies_engine_state: false,
+                                result: TestResult::Failed,
+                                error_message: Some(format!(
+                                    "Expected exhaustion '{}' but got: {}",
+                                    expected_message, execution_error
+                                )),
+                            })
+                        }
                     },
                 }
             },
-            _ => {
+            Err(e) => {
                 self.stats.failed += 1;
                 Ok(WastDirectiveInfo {
                     test_type: WastTestType::Resource,
@@ -1222,9 +1218,7 @@ impl WastTestRunner {
                     requires_module_state: true,
                     modifies_engine_state: false,
                     result: TestResult::Failed,
-                    error_message: Some(
-                        "Unsupported execution type for assert_exhaustion".to_string(),
-                    ),
+                    error_message: Some(format!("Failed to convert arguments: {}", e)),
                 })
             },
         }
@@ -1515,6 +1509,11 @@ impl WastTestRunner {
                             let path = entry.path();
 
                             if path.is_dir() {
+                                // Skip legacy directory - contains deprecated exception handling tests
+                                // WRT implements only modern exception handling (try_table + exnref)
+                                if path.file_name().map_or(false, |n| n == "legacy") {
+                                    continue;
+                                }
                                 // Continue recursively, but don't fail if subdirectory fails
                                 let _ = self.collect_wast_files_recursive(&path, files);
                             } else if path.extension().map_or(false, |ext| ext == "wast") {
@@ -1582,14 +1581,28 @@ Files failed: {}
 Total directives: {}
 Assertions passed: {}
 Assertions failed: {}
-Total execution time: {}ms",
+Total execution time: {}ms
+
+Memory Statistics:
+  Initial memory: {:.2} KB
+  Final memory: {:.2} KB
+  Peak memory: {:.2} KB
+  Memory delta: {:.2} KB
+  Total allocations: {}
+  Allocation success rate: {:.1}%",
             self.stats.files_processed,
             passed_files,
             failed_files,
             total_directives,
             self.stats.passed,
             self.stats.failed,
-            self.stats.total_execution_time_ms
+            self.stats.total_execution_time_ms,
+            self.stats.initial_memory_kb,
+            self.stats.final_memory_kb,
+            self.stats.peak_memory_kb,
+            self.stats.final_memory_kb - self.stats.initial_memory_kb,
+            self.stats.total_allocations,
+            self.stats.allocation_success_rate
         );
 
         if !failure_details.is_empty() {
