@@ -56,7 +56,9 @@ impl WastEngine {
     /// Load and instantiate a WebAssembly module from binary data
     pub fn load_module(&mut self, name: Option<&str>, wasm_binary: &[u8]) -> Result<()> {
         // Decode the WASM binary into a WrtModule
-        let wrt_module = decode_module(wasm_binary).context("Failed to decode WASM binary")?;
+        let wrt_module = decode_module(wasm_binary).map_err(|e| {
+            anyhow::anyhow!("Failed to decode WASM binary ({} bytes): {:?}", wasm_binary.len(), e)
+        })?;
 
         // Validate the module before proceeding (Phase 1 of WAST conformance)
         crate::wast_validator::WastModuleValidator::validate(&wrt_module)

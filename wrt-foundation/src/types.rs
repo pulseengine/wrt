@@ -104,7 +104,8 @@ pub const MAX_PARAMS_IN_FUNC_TYPE: usize = 128;
 pub const MAX_RESULTS_IN_FUNC_TYPE: usize = 128;
 // Add other MAX constants as they become necessary, e.g. for Instructions,
 // Module fields etc. For BrTable in Instruction:
-pub const MAX_BR_TABLE_TARGETS: usize = 1024;
+// Note: WebAssembly spec conformance tests include br_table with 16,000+ targets
+pub const MAX_BR_TABLE_TARGETS: usize = 20000;
 // For SelectTyped in Instruction: (WASM MVP select is 1 type, or untyped)
 pub const MAX_SELECT_TYPES: usize = 1;
 

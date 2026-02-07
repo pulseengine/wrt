@@ -84,6 +84,12 @@ pub struct WastTestStats {
     pub total_allocations: u64,
     /// Allocation success rate (%)
     pub allocation_success_rate: f64,
+    /// Total module bytes loaded (tracked directly)
+    pub modules_loaded_bytes: u64,
+    /// Number of modules loaded
+    pub modules_loaded_count: u64,
+    /// Peak module bytes (largest single module)
+    pub peak_module_bytes: u64,
 }
 
 /// Resource limits for testing exhaustion scenarios
@@ -436,6 +442,8 @@ impl WastTestRunner {
                 // The encode() method parses quoted text if needed and returns binary
                 match wast_module.encode() {
                     Ok(binary) => {
+                        let module_size = binary.len() as u64;
+
                         // Store in registry with the module name (if provided) and also as "current"
                         self.module_registry.insert("current".to_string(), binary.clone());
                         if let Some(name) = module_name {
@@ -445,6 +453,12 @@ impl WastTestRunner {
                         // Load into execution engine
                         match self.engine.load_module(module_name, &binary) {
                             Ok(()) => {
+                                // Only track module memory for successfully loaded modules
+                                self.stats.modules_loaded_bytes += module_size;
+                                self.stats.modules_loaded_count += 1;
+                                if module_size > self.stats.peak_module_bytes {
+                                    self.stats.peak_module_bytes = module_size;
+                                }
                                 self.stats.passed += 1;
                                 Ok(WastDirectiveInfo {
                                     test_type: WastTestType::Integration,
@@ -550,6 +564,8 @@ impl WastTestRunner {
         // Get the binary from the WAST module
         match wast_module.encode() {
             Ok(binary) => {
+                let module_size = binary.len() as u64;
+
                 // Store the module binary for potential registration
                 self.module_registry.insert("current".to_string(), binary.clone());
 
@@ -557,6 +573,12 @@ impl WastTestRunner {
                 let module_name = wast_module.id.as_ref().map(|id| id.name());
                 match self.engine.load_module(module_name, &binary) {
                     Ok(()) => {
+                        // Only track module memory for successfully loaded modules
+                        self.stats.modules_loaded_bytes += module_size;
+                        self.stats.modules_loaded_count += 1;
+                        if module_size > self.stats.peak_module_bytes {
+                            self.stats.peak_module_bytes = module_size;
+                        }
                         self.stats.passed += 1;
                         Ok(WastDirectiveInfo {
                             test_type: WastTestType::Integration,
@@ -1591,12 +1613,11 @@ Assertions failed: {}
 Total execution time: {}ms
 
 Memory Statistics:
-  Initial memory: {:.2} KB
-  Final memory: {:.2} KB
-  Peak memory: {:.2} KB
-  Memory delta: {:.2} KB
-  Total allocations: {}
-  Allocation success rate: {:.1}%",
+  Modules loaded: {} ({:.2} KB total)
+  Peak module size: {:.2} KB
+  Avg module size: {:.2} KB
+  SafetyMonitor allocations: {}
+  SafetyMonitor peak: {:.2} KB",
             self.stats.files_processed,
             passed_files,
             failed_files,
@@ -1604,12 +1625,16 @@ Memory Statistics:
             self.stats.passed,
             self.stats.failed,
             self.stats.total_execution_time_ms,
-            self.stats.initial_memory_kb,
-            self.stats.final_memory_kb,
-            self.stats.peak_memory_kb,
-            self.stats.final_memory_kb - self.stats.initial_memory_kb,
+            self.stats.modules_loaded_count,
+            self.stats.modules_loaded_bytes as f64 / 1024.0,
+            self.stats.peak_module_bytes as f64 / 1024.0,
+            if self.stats.modules_loaded_count > 0 {
+                (self.stats.modules_loaded_bytes as f64 / self.stats.modules_loaded_count as f64) / 1024.0
+            } else {
+                0.0
+            },
             self.stats.total_allocations,
-            self.stats.allocation_success_rate
+            self.stats.peak_memory_kb
         );
 
         if !failure_details.is_empty() {

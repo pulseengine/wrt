@@ -5297,10 +5297,23 @@ impl StacklessEngine {
                             let (block_type, start_pc, block_type_idx, entry_stack_height) = block_stack[stack_idx];
 
                             // Determine how many values to preserve based on block type
-                            // For loops: branch to beginning preserves nothing (arity 0)
-                            // For blocks: branch to end preserves the block's return values
+                            // For loops: branch to beginning preserves values matching PARAMETER count
+                            // For blocks: branch to end preserves the block's RESULT values
                             let values_to_preserve = if block_type == "loop" {
-                                0  // Loop branches to start, no values preserved
+                                // Loop branches preserve parameter count (input arity)
+                                match block_type_idx {
+                                    0x40 => 0, // empty type - no params
+                                    0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 0, // inline value types: 0 params
+                                    0x70 | 0x6F => 0, // funcref, externref: 0 params
+                                    _ => {
+                                        // Type index - look up actual param count from module types
+                                        if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                            func_type.params.len()
+                                        } else {
+                                            0
+                                        }
+                                    }
+                                }
                             } else {
                                 match block_type_idx {
                                     0x40 => 0, // empty type - no return
@@ -5492,8 +5505,22 @@ impl StacklessEngine {
                                     let (block_type, start_pc, block_type_idx, entry_stack_height) = block_stack[stack_idx];
 
                                     // Determine how many values to preserve based on block type
+                                    // For loops: preserve PARAMETER count; for blocks: preserve RESULT count
                                     let values_to_preserve = if block_type == "loop" {
-                                        0  // Loop branches to start, no values preserved
+                                        // Loop branches preserve parameter count (input arity)
+                                        match block_type_idx {
+                                            0x40 => 0, // empty type - no params
+                                            0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 0, // inline value types: 0 params
+                                            0x70 | 0x6F => 0, // funcref, externref: 0 params
+                                            _ => {
+                                                // Type index - look up actual param count from module types
+                                                if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                                    func_type.params.len()
+                                                } else {
+                                                    0
+                                                }
+                                            }
+                                        }
                                     } else {
                                         match block_type_idx {
                                             0x40 => 0, // empty type - no return
@@ -6016,8 +6043,22 @@ impl StacklessEngine {
                                 trace!("BrTable: accessing block_stack[{}], target block is {} at pc={}", stack_idx, block_type, start_pc);
 
                                 // Determine how many values to preserve based on block type
+                                // For loops: preserve PARAMETER count; for blocks: preserve RESULT count
                                 let values_to_preserve = if block_type == "loop" {
-                                    0  // Loop branches to start, no values preserved
+                                    // Loop branches preserve parameter count (input arity)
+                                    match block_type_idx {
+                                        0x40 => 0, // empty type - no params
+                                        0x7F | 0x7E | 0x7D | 0x7C | 0x7B => 0, // inline value types: 0 params
+                                        0x70 | 0x6F => 0, // funcref, externref: 0 params
+                                        _ => {
+                                            // Type index - look up actual param count from module types
+                                            if let Some(func_type) = module.types.get(block_type_idx as usize) {
+                                                func_type.params.len()
+                                            } else {
+                                                0
+                                            }
+                                        }
+                                    }
                                 } else {
                                     match block_type_idx {
                                         0x40 => 0, // empty type - no return

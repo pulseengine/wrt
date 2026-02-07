@@ -37,7 +37,7 @@ type InstructionVec = Vec<Instruction<InstructionProvider>>;
 #[cfg(not(feature = "std"))]
 type InstructionVec = BoundedVec<Instruction<InstructionProvider>, 1024, InstructionProvider>;
 
-type TargetVec = BoundedVec<u32, 256, InstructionProvider>;
+type TargetVec = BoundedVec<u32, 20000, InstructionProvider>;
 
 /// Parse WebAssembly bytecode into runtime instructions with a provided memory provider
 pub fn parse_instructions_with_provider(
@@ -232,7 +232,8 @@ fn parse_instruction_with_provider(
             wrt_foundation::tracing::trace!(count = count, "BrTable target count");
 
             // Sanity check - if count is suspiciously large, there's likely an issue
-            if count > 10000 {
+            // Note: WebAssembly spec conformance tests include br_table with 16,000+ targets
+            if count > 20000 {
                 return Err(Error::parse_error("BrTable has suspiciously large target count"));
             }
 
