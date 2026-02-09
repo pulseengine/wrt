@@ -26,7 +26,7 @@ pub fn parse_utf8_string_inplace(
 
     // Validate UTF-8 without creating intermediate Vec
     let string_str = str::from_utf8(name_bytes)
-        .map_err(|_| Error::runtime_execution_error("Invalid UTF8 in string"))?;
+        .map_err(|_| Error::parse_error("malformed UTF-8 encoding"))?;
 
     Ok((alloc::string::String::from(string_str), new_offset))
 }
@@ -40,11 +40,7 @@ pub fn parse_utf8_string_inplace(
 
     // Validate UTF-8 without creating intermediate Vec
     let string_str = str::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF8 encoding",
-        )
+        Error::parse_error("malformed UTF-8 encoding")
     })?;
 
     use wrt_foundation::{CrateId, safe_managed_alloc};
@@ -59,11 +55,7 @@ pub fn validate_utf8_name(bytes: &[u8], offset: usize) -> Result<(&str, usize)> 
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
     let string_str = str::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF8 encoding",
-        )
+        Error::parse_error("malformed UTF-8 encoding")
     })?;
 
     Ok((string_str, new_offset))
@@ -80,7 +72,7 @@ pub fn copy_utf8_to_bounded(
 
     // Validate UTF-8 first
     str::from_utf8(name_bytes)
-        .map_err(|_| Error::runtime_execution_error("Invalid UTF8 encoding"))?;
+        .map_err(|_| Error::parse_error("malformed UTF-8 encoding"))?;
 
     // Check if it fits in the buffer
     if name_bytes.len() > buffer.len() {

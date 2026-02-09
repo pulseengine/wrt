@@ -637,16 +637,16 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
 
         // For the 5th byte (shift == 28), check for overflow:
         // - Only the low 4 bits are valid (bits 28-31 of the result)
-        // - The byte value must be <= 0x0F for valid u32
-        // - The continuation bit must not be set
+        // - The continuation bit must not be set (would indicate > 5 bytes)
         if shift == 28 {
-            // Check if high bits would cause overflow
-            if (byte & 0x70) != 0 {
-                return Err(parse_error("LEB128 integer too large"));
-            }
-            // Check for continuation bit on 5th byte
+            // Check for continuation bit on 5th byte - too many bytes
             if (byte & 0x80) != 0 {
-                return Err(parse_error("LEB128 integer too large"));
+                return Err(parse_error("integer representation too long"));
+            }
+            // Check if unused high bits are set (only low 4 bits valid for u32)
+            // For unsigned LEB128, bits 4-6 (0x70) must be zero
+            if (byte & 0xF0) != 0 {
+                return Err(parse_error("integer too large"));
             }
         }
 
@@ -661,7 +661,7 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
 
         // Prevent overflow (should not reach here if 5th byte check works)
         if shift >= 35 {
-            return Err(parse_error("LEB128 overflow"));
+            return Err(parse_error("integer representation too long"));
         }
     }
 
@@ -683,6 +683,30 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> wrt_error::Result<(i32, usiz
         byte = bytes[pos + offset];
         offset += 1;
 
+        // For the 5th byte (shift == 28), check for overflow
+        if shift == 28 {
+            // Check for continuation bit on 5th byte - too many bytes
+            if (byte & 0x80) != 0 {
+                return Err(parse_error("integer representation too long"));
+            }
+            // For signed LEB128, validate the unused bits match the sign bit
+            // The sign bit is bit 3 (0x08) of the 5th byte (bit 31 of result)
+            // Bits 4-6 (0x70) must match the sign bit for proper sign extension
+            let sign_bit = (byte & 0x08) != 0;
+            let upper_bits = byte & 0x70;
+            if sign_bit {
+                // Negative: upper bits should all be 1 (0x70)
+                if upper_bits != 0x70 {
+                    return Err(parse_error("integer too large"));
+                }
+            } else {
+                // Positive: upper bits should all be 0
+                if upper_bits != 0x00 {
+                    return Err(parse_error("integer too large"));
+                }
+            }
+        }
+
         // Apply 7 bits from this byte
         result |= ((byte & 0x7F) as i32) << shift;
         shift += 7;
@@ -692,9 +716,9 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> wrt_error::Result<(i32, usiz
             break;
         }
 
-        // Guard against malformed/malicious LEB128
-        if shift >= 32 {
-            return Err(parse_error("LEB128 integer too large"));
+        // Guard against malformed/malicious LEB128 (should not reach here after 5th byte check)
+        if shift >= 35 {
+            return Err(parse_error("integer representation too long"));
         }
     }
 
@@ -721,6 +745,30 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> wrt_error::Result<(i64, usiz
         byte = bytes[pos + offset];
         offset += 1;
 
+        // For the 10th byte (shift == 63), check for overflow
+        if shift == 63 {
+            // Check for continuation bit on 10th byte - too many bytes
+            if (byte & 0x80) != 0 {
+                return Err(parse_error("integer representation too long"));
+            }
+            // For signed i64, the 10th byte contributes only 1 bit (bit 63)
+            // The sign bit is bit 0 (0x01) of the 10th byte
+            // Bits 1-6 (0x7E) must match the sign bit for proper sign extension
+            let sign_bit = (byte & 0x01) != 0;
+            let upper_bits = byte & 0x7E;
+            if sign_bit {
+                // Negative: upper bits should all be 1 (0x7E)
+                if upper_bits != 0x7E {
+                    return Err(parse_error("integer too large"));
+                }
+            } else {
+                // Positive: upper bits should all be 0
+                if upper_bits != 0x00 {
+                    return Err(parse_error("integer too large"));
+                }
+            }
+        }
+
         // Apply 7 bits from this byte
         result |= ((byte & 0x7F) as i64) << shift;
         shift += 7;
@@ -730,9 +778,9 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> wrt_error::Result<(i64, usiz
             break;
         }
 
-        // Guard against malformed/malicious LEB128
-        if shift >= 64 {
-            return Err(parse_error("LEB128 integer too large"));
+        // Guard against malformed/malicious LEB128 (should not reach here after 10th byte check)
+        if shift >= 70 {
+            return Err(parse_error("integer representation too long"));
         }
     }
 
@@ -758,6 +806,19 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> wrt_error::Result<(u64, usiz
         let byte = bytes[pos + offset];
         offset += 1;
 
+        // For the 10th byte (shift == 63), check for overflow
+        if shift == 63 {
+            // Check for continuation bit on 10th byte - too many bytes
+            if (byte & 0x80) != 0 {
+                return Err(parse_error("integer representation too long"));
+            }
+            // For unsigned u64, the 10th byte contributes only 1 bit (bit 63)
+            // Only bit 0 (0x01) is valid, bits 1-6 (0x7E) must be zero
+            if (byte & 0x7E) != 0 {
+                return Err(parse_error("integer too large"));
+            }
+        }
+
         // Apply 7 bits from this byte
         result |= ((byte & 0x7F) as u64) << shift;
         shift += 7;
@@ -767,9 +828,9 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> wrt_error::Result<(u64, usiz
             break;
         }
 
-        // Guard against malformed/malicious LEB128
-        if shift >= 64 {
-            return Err(parse_error("LEB128 integer too large"));
+        // Guard against malformed/malicious LEB128 (should not reach here after 10th byte check)
+        if shift >= 70 {
+            return Err(parse_error("integer representation too long"));
         }
     }
 
@@ -884,16 +945,16 @@ pub mod with_alloc {
 
             // For the 5th byte (shift == 28), check for overflow:
             // - Only the low 4 bits are valid (bits 28-31 of the result)
-            // - The byte value must be <= 0x0F for valid u32
-            // - The continuation bit must not be set
+            // - The continuation bit must not be set (would indicate > 5 bytes)
             if shift == 28 {
-                // Check if high bits would cause overflow
-                if (byte & 0x70) != 0 {
-                    return Err(parse_error("LEB128 integer too large"));
-                }
-                // Check for continuation bit on 5th byte
+                // Check for continuation bit on 5th byte - too many bytes
                 if (byte & 0x80) != 0 {
-                    return Err(parse_error("LEB128 integer too large"));
+                    return Err(parse_error("integer representation too long"));
+                }
+                // Check if unused high bits are set (only low 4 bits valid for u32)
+                // For unsigned LEB128, bits 4-6 (0x70) must be zero
+                if (byte & 0xF0) != 0 {
+                    return Err(parse_error("integer too large"));
                 }
             }
 
@@ -908,7 +969,7 @@ pub mod with_alloc {
 
             // Guard against malformed/malicious LEB128 (should not reach here due to 5th byte check)
             if shift >= 35 {
-                return Err(parse_error("LEB128 integer too large"));
+                return Err(parse_error("integer representation too long"));
             }
         }
 
@@ -932,6 +993,30 @@ pub mod with_alloc {
             byte = bytes[pos + offset];
             offset += 1;
 
+            // For the 5th byte (shift == 28), check for overflow
+            if shift == 28 {
+                // Check for continuation bit on 5th byte - too many bytes
+                if (byte & 0x80) != 0 {
+                    return Err(parse_error("integer representation too long"));
+                }
+                // For signed LEB128, validate the unused bits match the sign bit
+                // The sign bit is bit 3 (0x08) of the 5th byte (bit 31 of result)
+                // Bits 4-6 (0x70) must match the sign bit for proper sign extension
+                let sign_bit = (byte & 0x08) != 0;
+                let upper_bits = byte & 0x70;
+                if sign_bit {
+                    // Negative: upper bits should all be 1 (0x70)
+                    if upper_bits != 0x70 {
+                        return Err(parse_error("integer too large"));
+                    }
+                } else {
+                    // Positive: upper bits should all be 0
+                    if upper_bits != 0x00 {
+                        return Err(parse_error("integer too large"));
+                    }
+                }
+            }
+
             // Apply 7 bits from this byte
             result |= ((byte & 0x7F) as i32) << shift;
             shift += 7;
@@ -941,9 +1026,9 @@ pub mod with_alloc {
                 break;
             }
 
-            // Guard against malformed/malicious LEB128
-            if shift >= 32 {
-                return Err(parse_error("LEB128 integer too large"));
+            // Guard against malformed/malicious LEB128 (should not reach here after 5th byte check)
+            if shift >= 35 {
+                return Err(parse_error("integer representation too long"));
             }
         }
 
@@ -973,6 +1058,30 @@ pub mod with_alloc {
             byte = bytes[pos + offset];
             offset += 1;
 
+            // For the 10th byte (shift == 63), check for overflow
+            if shift == 63 {
+                // Check for continuation bit on 10th byte - too many bytes
+                if (byte & 0x80) != 0 {
+                    return Err(parse_error("integer representation too long"));
+                }
+                // For signed i64, the 10th byte contributes only 1 bit (bit 63)
+                // The sign bit is bit 0 (0x01) of the 10th byte
+                // Bits 1-6 (0x7E) must match the sign bit for proper sign extension
+                let sign_bit = (byte & 0x01) != 0;
+                let upper_bits = byte & 0x7E;
+                if sign_bit {
+                    // Negative: upper bits should all be 1 (0x7E)
+                    if upper_bits != 0x7E {
+                        return Err(parse_error("integer too large"));
+                    }
+                } else {
+                    // Positive: upper bits should all be 0
+                    if upper_bits != 0x00 {
+                        return Err(parse_error("integer too large"));
+                    }
+                }
+            }
+
             // Apply 7 bits from this byte
             result |= ((byte & 0x7F) as i64) << shift;
             shift += 7;
@@ -982,9 +1091,9 @@ pub mod with_alloc {
                 break;
             }
 
-            // Guard against malformed/malicious LEB128
-            if shift >= 64 {
-                return Err(parse_error("LEB128 integer too large"));
+            // Guard against malformed/malicious LEB128 (should not reach here after 10th byte check)
+            if shift >= 70 {
+                return Err(parse_error("integer representation too long"));
             }
         }
 
@@ -1130,6 +1239,19 @@ pub mod with_alloc {
             byte = bytes[offset];
             offset += 1;
 
+            // For the 10th byte (shift == 63), check for overflow
+            if shift == 63 {
+                // Check for continuation bit on 10th byte - too many bytes
+                if (byte & 0x80) != 0 {
+                    return Err(parse_error("integer representation too long"));
+                }
+                // For unsigned u64, the 10th byte contributes only 1 bit (bit 63)
+                // Only bit 0 (0x01) is valid, bits 1-6 (0x7E) must be zero
+                if (byte & 0x7E) != 0 {
+                    return Err(parse_error("integer too large"));
+                }
+            }
+
             // Apply the 7 bits from the current byte
             result |= ((byte & 0x7F) as u64) << shift;
 
@@ -1141,12 +1263,9 @@ pub mod with_alloc {
             // Otherwise, shift for the next 7 bits
             shift += 7;
 
-            // Ensure we don't exceed 64 bits (10 bytes)
-            if shift >= 64 {
-                if byte & 0x7F != 0 {
-                    return Err(parse_error("LEB128 sequence exceeds maximum u64 value"));
-                }
-                break;
+            // Guard against malformed/malicious LEB128 (should not reach here after 10th byte check)
+            if shift >= 70 {
+                return Err(parse_error("integer representation too long"));
             }
         }
 
@@ -3185,6 +3304,110 @@ mod tests {
         // Invalid UTF-8
         let invalid_utf8 = [0xFF, 0xFE, 0xFD];
         assert!(validate_utf8_test(&invalid_utf8).is_err());
+    }
+
+    #[test]
+    fn test_leb128_u32_overflow_too_many_bytes() {
+        // 6 bytes for u32 - "integer representation too long"
+        // This is 6 bytes with continuation bits: value 2 with one byte too many
+        let bytes = [0x82, 0x80, 0x80, 0x80, 0x80, 0x00];
+        let result = read_leb128_u32(&bytes, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message().contains("integer representation too long"),
+            "Expected 'integer representation too long', got: {}",
+            err.message()
+        );
+    }
+
+    #[test]
+    fn test_leb128_u32_overflow_unused_bits_set() {
+        // 5 bytes with unused bits set - "integer too large"
+        // This is value 2 with unused bits (0x10) set in the 5th byte
+        let bytes = [0x82, 0x80, 0x80, 0x80, 0x10];
+        let result = read_leb128_u32(&bytes, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message().contains("integer too large"),
+            "Expected 'integer too large', got: {}",
+            err.message()
+        );
+    }
+
+    #[test]
+    fn test_leb128_u32_valid_max_bytes() {
+        // Valid 5-byte encoding of 0xFFFFFFFF
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF, 0x0F];
+        let result = read_leb128_u32(&bytes, 0);
+        assert!(result.is_ok());
+        let (value, _) = result.unwrap();
+        assert_eq!(value, 0xFFFFFFFF);
+    }
+
+    #[test]
+    fn test_leb128_i32_overflow_too_many_bytes() {
+        // 6 bytes for i32 - "integer representation too long"
+        let bytes = [0x80, 0x80, 0x80, 0x80, 0x80, 0x00];
+        let result = read_leb128_i32(&bytes, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message().contains("integer representation too long"),
+            "Expected 'integer representation too long', got: {}",
+            err.message()
+        );
+    }
+
+    #[test]
+    fn test_leb128_i32_overflow_unused_bits_positive() {
+        // 5 bytes with incorrect unused bits for positive value - "integer too large"
+        // Value 0 with unused bits set (0x70 should be 0x00 for positive)
+        let bytes = [0x80, 0x80, 0x80, 0x80, 0x70];
+        let result = read_leb128_i32(&bytes, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message().contains("integer too large"),
+            "Expected 'integer too large', got: {}",
+            err.message()
+        );
+    }
+
+    #[test]
+    fn test_leb128_i32_overflow_unused_bits_negative() {
+        // 5 bytes with incorrect unused bits for negative value - "integer too large"
+        // Value -1 with unused bits unset (0x0F instead of 0x7F)
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF, 0x0F];
+        let result = read_leb128_i32(&bytes, 0);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message().contains("integer too large"),
+            "Expected 'integer too large', got: {}",
+            err.message()
+        );
+    }
+
+    #[test]
+    fn test_leb128_i32_valid_negative() {
+        // Valid 5-byte encoding of -1
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF, 0x7F];
+        let result = read_leb128_i32(&bytes, 0);
+        assert!(result.is_ok());
+        let (value, _) = result.unwrap();
+        assert_eq!(value, -1);
+    }
+
+    #[test]
+    fn test_leb128_i32_valid_positive() {
+        // Valid 5-byte encoding of max positive i32 (0x7FFFFFFF)
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF, 0x07];
+        let result = read_leb128_i32(&bytes, 0);
+        assert!(result.is_ok());
+        let (value, _) = result.unwrap();
+        assert_eq!(value, i32::MAX);
     }
 
     #[test]

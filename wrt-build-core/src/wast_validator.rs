@@ -121,6 +121,14 @@ impl StackType {
             _ => false,
         }
     }
+
+    /// Convert from RefType to StackType
+    fn from_ref_type(rt: wrt_foundation::RefType) -> Self {
+        match rt {
+            wrt_foundation::RefType::Funcref => StackType::FuncRef,
+            wrt_foundation::RefType::Externref => StackType::ExternRef,
+        }
+    }
 }
 
 /// Control flow frame tracking
@@ -191,6 +199,21 @@ impl WastModuleValidator {
         // Validate start function
         Self::validate_start_function(module)?;
 
+        // Validate export names are unique
+        Self::validate_export_names(module)?;
+
+        Ok(())
+    }
+
+    /// Validate that all export names are unique
+    /// WebAssembly spec requires export names to be unique within a module
+    fn validate_export_names(module: &Module) -> Result<()> {
+        let mut seen_names: HashSet<&str> = HashSet::new();
+        for export in &module.exports {
+            if !seen_names.insert(export.name.as_str()) {
+                return Err(anyhow!("duplicate export name"));
+            }
+        }
         Ok(())
     }
 
@@ -818,10 +841,8 @@ impl WastModuleValidator {
                         let unreachable = !frame.reachable;
 
                         if unreachable {
-                            // In unreachable code, the stack is polymorphic. We only need to
-                            // verify that output types can be satisfied (polymorphically).
-                            // Extra values on the stack are allowed - unreachable code can
-                            // push arbitrary values that will never be consumed.
+                            // In unreachable code, the stack is polymorphic for underflow.
+                            // Values pushed after unreachable are concrete and must type-check.
                             let unreachable_height =
                                 frame.unreachable_height.unwrap_or(frame_height);
                             for &expected in frame.output_types.iter().rev() {
@@ -829,8 +850,9 @@ impl WastModuleValidator {
                                     return Err(anyhow!("type mismatch"));
                                 }
                             }
-                            // NOTE: Do NOT check for extra values - in unreachable code,
-                            // the stack can have any number of extra values.
+                            // After popping outputs, truncate stack to frame height
+                            // (polymorphic stack can have any number of values)
+                            stack.truncate(frame_height);
                         } else {
                             // In reachable code, check exact stack height and types
                             let expected_height = frame_height + frame.output_types.len();
@@ -863,18 +885,17 @@ impl WastModuleValidator {
                     let unreachable = !frame.reachable;
 
                     if unreachable {
-                        // In unreachable code, the stack is polymorphic. We only need to
-                        // verify that output types can be satisfied (polymorphically).
-                        // Extra values on the stack are allowed - unreachable code can
-                        // push arbitrary values that will never be consumed.
+                        // In unreachable code, the stack is polymorphic for underflow.
+                        // Values pushed after unreachable are concrete and must type-check.
                         let unreachable_height = frame.unreachable_height.unwrap_or(frame_height);
                         for &expected in frame.output_types.iter().rev() {
                             if !Self::pop_type(&mut stack, expected, unreachable_height, true) {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
-                        // NOTE: Do NOT check for extra values - in unreachable code,
-                        // the stack can have any number of extra values.
+                        // After popping outputs, truncate stack to frame height
+                        // (polymorphic stack can have any number of values)
+                        stack.truncate(frame_height);
                     } else {
                         // In reachable code, check exact stack height and types
                         let expected_height = frame_height + frame.output_types.len();
@@ -1100,6 +1121,13 @@ impl WastModuleValidator {
                     // Validate table exists
                     if table_idx as usize >= Self::total_tables(module) {
                         return Err(anyhow!("unknown table"));
+                    }
+
+                    // Validate table element type is funcref (not externref)
+                    if let Some(elem_type) = Self::get_table_element_type(module, table_idx) {
+                        if elem_type != wrt_foundation::RefType::Funcref {
+                            return Err(anyhow!("type mismatch"));
+                        }
                     }
 
                     // Validate type index
@@ -1798,6 +1826,74 @@ impl WastModuleValidator {
                         return Err(anyhow!("type mismatch"));
                     }
                 },
+                0x25 => {
+                    // table.get: [i32] -> [t] where t is the table element type
+                    let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate table exists
+                    if table_idx as usize >= Self::total_tables(module) {
+                        return Err(anyhow!("unknown table"));
+                    }
+
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+
+                    // Pop index (must be i32)
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+
+                    // Push the table's element type
+                    if let Some(elem_type) = Self::get_table_element_type(module, table_idx) {
+                        stack.push(StackType::from_ref_type(elem_type));
+                    } else {
+                        // Unknown table type, push unknown
+                        stack.push(StackType::Unknown);
+                    }
+                },
+                0x26 => {
+                    // table.set: [i32, t] -> [] where t is the table element type
+                    let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                    offset = new_offset;
+
+                    // Validate table exists
+                    if table_idx as usize >= Self::total_tables(module) {
+                        return Err(anyhow!("unknown table"));
+                    }
+
+                    let frame_height = Self::current_frame_height(&frames);
+                    let unreachable = Self::is_unreachable(&frames);
+
+                    // Get the expected table element type
+                    let expected_type = if let Some(elem_type) =
+                        Self::get_table_element_type(module, table_idx)
+                    {
+                        StackType::from_ref_type(elem_type)
+                    } else {
+                        StackType::Unknown
+                    };
+
+                    // Pop value (must match table element type)
+                    if !unreachable && stack.len() > frame_height {
+                        if let Some(actual_type) = stack.last() {
+                            // Check subtyping: actual must be subtype of expected
+                            if !actual_type.is_subtype_of(&expected_type)
+                                && *actual_type != StackType::Unknown
+                            {
+                                return Err(anyhow!("type mismatch"));
+                            }
+                        }
+                        stack.pop();
+                    } else if !unreachable {
+                        return Err(anyhow!("type mismatch"));
+                    }
+
+                    // Pop index (must be i32)
+                    if !Self::pop_type(&mut stack, StackType::I32, frame_height, unreachable) {
+                        return Err(anyhow!("type mismatch"));
+                    }
+                },
 
                 // Constants
                 0x41 => {
@@ -1858,7 +1954,8 @@ impl WastModuleValidator {
                         let type1 = stack.pop().unwrap();
                         // Check that operands are numeric types (not reference types)
                         // Untyped select cannot be used with funcref, externref, etc.
-                        // However, in unreachable code, Unknown types are allowed (polymorphic)
+                        // In unreachable code, Unknown types are allowed (polymorphic)
+                        // but concrete mismatched types are still an error
                         if !unreachable {
                             // In reachable code: reject reference types and unknown types
                             // Unknown could be a typed ref like (ref $t)
@@ -1866,7 +1963,9 @@ impl WastModuleValidator {
                                 return Err(anyhow!("type mismatch"));
                             }
                         }
-                        if type1 != type2 && !unreachable {
+                        // Check type match - even in unreachable code, concrete mismatched
+                        // types are an error. Only polymorphic (Unknown) types can mismatch.
+                        if type1 != type2 && type1 != StackType::Unknown && type2 != StackType::Unknown {
                             return Err(anyhow!("type mismatch"));
                         }
                         stack.push(type1);
@@ -2686,9 +2785,24 @@ impl WastModuleValidator {
                         },
                         // table.grow (0x0F): [ref, i32] -> [i32]
                         0x0F => {
-                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
-                            // Pop n (delta), then ref (init value)
+
+                            // Validate table exists
+                            if table_idx as usize >= Self::total_tables(module) {
+                                return Err(anyhow!("unknown table"));
+                            }
+
+                            // Get the expected table element type
+                            let expected_type = if let Some(elem_type) =
+                                Self::get_table_element_type(module, table_idx)
+                            {
+                                StackType::from_ref_type(elem_type)
+                            } else {
+                                StackType::Unknown
+                            };
+
+                            // Pop n (delta)
                             if !Self::pop_type(
                                 &mut stack,
                                 StackType::I32,
@@ -2697,9 +2811,18 @@ impl WastModuleValidator {
                             ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            // Pop reference type (could be funcref or externref)
+                            // Pop reference type (must match table element type)
                             if !unreachable && stack.len() > frame_height {
+                                if let Some(actual_type) = stack.last() {
+                                    if !actual_type.is_subtype_of(&expected_type)
+                                        && *actual_type != StackType::Unknown
+                                    {
+                                        return Err(anyhow!("type mismatch"));
+                                    }
+                                }
                                 stack.pop();
+                            } else if !unreachable {
+                                return Err(anyhow!("type mismatch"));
                             }
                             stack.push(StackType::I32);
                         },
@@ -2711,9 +2834,24 @@ impl WastModuleValidator {
                         },
                         // table.fill (0x11): [i32, ref, i32] -> []
                         0x11 => {
-                            let (_table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
+                            let (table_idx, new_offset) = Self::parse_varuint32(code, offset)?;
                             offset = new_offset;
-                            // Pop n (length), then ref (val), then i (dest) in reverse
+
+                            // Validate table exists
+                            if table_idx as usize >= Self::total_tables(module) {
+                                return Err(anyhow!("unknown table"));
+                            }
+
+                            // Get the expected table element type
+                            let expected_type = if let Some(elem_type) =
+                                Self::get_table_element_type(module, table_idx)
+                            {
+                                StackType::from_ref_type(elem_type)
+                            } else {
+                                StackType::Unknown
+                            };
+
+                            // Pop n (length)
                             if !Self::pop_type(
                                 &mut stack,
                                 StackType::I32,
@@ -2722,10 +2860,20 @@ impl WastModuleValidator {
                             ) {
                                 return Err(anyhow!("type mismatch"));
                             }
-                            // Pop reference type
+                            // Pop reference type (must match table element type)
                             if !unreachable && stack.len() > frame_height {
+                                if let Some(actual_type) = stack.last() {
+                                    if !actual_type.is_subtype_of(&expected_type)
+                                        && *actual_type != StackType::Unknown
+                                    {
+                                        return Err(anyhow!("type mismatch"));
+                                    }
+                                }
                                 stack.pop();
+                            } else if !unreachable {
+                                return Err(anyhow!("type mismatch"));
                             }
+                            // Pop i (dest)
                             if !Self::pop_type(
                                 &mut stack,
                                 StackType::I32,
@@ -3418,6 +3566,11 @@ impl WastModuleValidator {
     /// The `min_height` parameter is the stack height at the current frame's entry -
     /// we cannot pop below this level (those values belong to the parent frame)
     /// The `unreachable` parameter indicates if we're in unreachable code (polymorphic stack)
+    ///
+    /// In unreachable code:
+    /// - If the stack is at or below min_height, we have polymorphic underflow - any type is OK
+    /// - If there are concrete values on the stack (pushed after unreachable), they MUST still
+    ///   be type-checked according to the WebAssembly spec
     fn pop_type(
         stack: &mut Vec<StackType>,
         expected: StackType,
@@ -3430,8 +3583,16 @@ impl WastModuleValidator {
             if stack.len() <= min_height {
                 return true;
             }
-            // Values on stack in unreachable code are "garbage" - any type matches
-            stack.pop();
+            // There are actual values on the stack - they MUST be type-checked
+            // The polymorphism only applies to underflow, not to concrete values
+            if let Some(actual) = stack.pop() {
+                // Unknown type is polymorphic and matches anything
+                if actual == StackType::Unknown {
+                    return true;
+                }
+                // Concrete values must match the expected type
+                return actual.is_subtype_of(&expected);
+            }
             return true;
         }
 

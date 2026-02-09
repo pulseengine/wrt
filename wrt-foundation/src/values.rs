@@ -280,9 +280,12 @@ impl Eq for Value {}
 
 impl Default for Value {
     fn default() -> Self {
-        // A common default, often I32(0) is used, or based on what's most frequent /
-        // safest.
-        Value::I32(0)
+        // Return FuncRef(None) as default because:
+        // 1. Tables store Option<Value> and commonly use FuncRef values
+        // 2. Option<T>::serialized_size() uses T::default().serialized_size()
+        // 3. FuncRef has size 6 (1 disc + 1 flag + 4 padding), larger than I32's size 5
+        // 4. This ensures BoundedVec slots are large enough for all reference types
+        Value::FuncRef(None)
     }
 }
 
@@ -1208,14 +1211,15 @@ impl ToBytes for Value {
             Value::F32(_) => 4,
             Value::F64(_) => 8,
             Value::V128(_) | Value::I16x8(_) => 16,
-            // FuncRef: 1 byte for Some/None flag, + 4 bytes for index if Some
-            Value::FuncRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
-            Value::ExternRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
-            Value::ExnRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
-            Value::I31Ref(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            // Reference types with Option: always use max size for BoundedVec compatibility
+            // 1 byte for Some/None flag + 4 bytes for index (always reserved)
+            Value::FuncRef(_) => 1 + 4,
+            Value::ExternRef(_) => 1 + 4,
+            Value::ExnRef(_) => 1 + 4,
+            Value::I31Ref(_) => 1 + 4,
             Value::Ref(_) => 4,
-            Value::StructRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
-            Value::ArrayRef(opt) => 1 + if opt.is_some() { 4 } else { 0 },
+            Value::StructRef(_) => 1 + 4,
+            Value::ArrayRef(_) => 1 + 4,
             Value::Bool(_) => 1,
             Value::S8(_) | Value::U8(_) => 1,
             Value::S16(_) | Value::U16(_) => 2,
@@ -1290,32 +1294,36 @@ impl ToBytes for Value {
             Value::F64(v) => v.to_bytes_with_provider(writer, provider)?,
             Value::V128(v) | Value::I16x8(v) => v.to_bytes_with_provider(writer, provider)?,
             Value::FuncRef(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    v.to_bytes_with_provider(writer, provider)?
+                match opt_v {
+                    Some(v) => v.to_bytes_with_provider(writer, provider)?,
+                    None => writer.write_u32_le(0)?, // Padding for fixed size
                 }
             },
             Value::ExternRef(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    v.to_bytes_with_provider(writer, provider)?
+                match opt_v {
+                    Some(v) => v.to_bytes_with_provider(writer, provider)?,
+                    None => writer.write_u32_le(0)?, // Padding for fixed size
                 }
             },
             Value::Ref(v) => v.to_bytes_with_provider(writer, provider)?,
             Value::StructRef(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    v.to_bytes_with_provider(writer, provider)?
+                match opt_v {
+                    Some(v) => v.to_bytes_with_provider(writer, provider)?,
+                    None => writer.write_u32_le(0)?, // Padding for fixed size
                 }
             },
             Value::ArrayRef(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    v.to_bytes_with_provider(writer, provider)?
+                match opt_v {
+                    Some(v) => v.to_bytes_with_provider(writer, provider)?,
+                    None => writer.write_u32_le(0)?, // Padding for fixed size
                 }
             },
             // Component Model types - simplified serialization
@@ -1340,17 +1348,19 @@ impl ToBytes for Value {
             },
             Value::Void => {},
             Value::ExnRef(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    writer.write_u32_le(*v)?;
+                match opt_v {
+                    Some(v) => writer.write_u32_le(*v)?,
+                    None => writer.write_u32_le(0)?, // Padding for fixed size
                 }
             },
             Value::I31Ref(opt_v) => {
-                // Write Some/None flag
+                // Write Some/None flag + always write 4 bytes for fixed size
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
-                if let Some(v) = opt_v {
-                    writer.write_i32_le(*v)?;
+                match opt_v {
+                    Some(v) => writer.write_i32_le(*v)?,
+                    None => writer.write_i32_le(0)?, // Padding for fixed size
                 }
             },
         }
@@ -1389,22 +1399,24 @@ impl FromBytes for Value {
                 Ok(Value::V128(v))
             },
             5 => {
-                // FuncRef
+                // FuncRef - always read 5 bytes (1 flag + 4 data) for fixed size
                 let is_some = reader.read_u8()? == 1;
                 if is_some {
                     let v = FuncRef::from_bytes_with_provider(reader, provider)?;
                     Ok(Value::FuncRef(Some(v)))
                 } else {
+                    let _ = reader.read_u32_le()?; // Skip padding
                     Ok(Value::FuncRef(None))
                 }
             },
             6 => {
-                // ExternRef
+                // ExternRef - always read 5 bytes (1 flag + 4 data) for fixed size
                 let is_some = reader.read_u8()? == 1;
                 if is_some {
                     let v = ExternRef::from_bytes_with_provider(reader, provider)?;
                     Ok(Value::ExternRef(Some(v)))
                 } else {
+                    let _ = reader.read_u32_le()?; // Skip padding
                     Ok(Value::ExternRef(None))
                 }
             },
@@ -1419,22 +1431,24 @@ impl FromBytes for Value {
                 Ok(Value::I16x8(v))
             },
             9 => {
-                // StructRef
+                // StructRef - always read 5 bytes (1 flag + 4 data) for fixed size
                 let is_some = reader.read_u8()? == 1;
                 if is_some {
                     let v = StructRef::from_bytes_with_provider(reader, provider)?;
                     Ok(Value::StructRef(Some(v)))
                 } else {
+                    let _ = reader.read_u32_le()?; // Skip padding
                     Ok(Value::StructRef(None))
                 }
             },
             10 => {
-                // ArrayRef
+                // ArrayRef - always read 5 bytes (1 flag + 4 data) for fixed size
                 let is_some = reader.read_u8()? == 1;
                 if is_some {
                     let v = ArrayRef::from_bytes_with_provider(reader, provider)?;
                     Ok(Value::ArrayRef(Some(v)))
                 } else {
+                    let _ = reader.read_u32_le()?; // Skip padding
                     Ok(Value::ArrayRef(None))
                 }
             },
@@ -1464,13 +1478,25 @@ impl FromBytes for Value {
                 Ok(Value::Future(h))
             },
             35 => {
-                // ExnRef
+                // ExnRef - always read 5 bytes (1 flag + 4 data) for fixed size
                 let flag = reader.read_u8()?;
                 if flag != 0 {
                     let idx = reader.read_u32_le()?;
                     Ok(Value::ExnRef(Some(idx)))
                 } else {
+                    let _ = reader.read_u32_le()?; // Skip padding
                     Ok(Value::ExnRef(None))
+                }
+            },
+            36 => {
+                // I31Ref - always read 5 bytes (1 flag + 4 data) for fixed size
+                let flag = reader.read_u8()?;
+                if flag != 0 {
+                    let v = reader.read_i32_le()?;
+                    Ok(Value::I31Ref(Some(v)))
+                } else {
+                    let _ = reader.read_i32_le()?; // Skip padding
+                    Ok(Value::I31Ref(None))
                 }
             },
             _ => Err(Error::runtime_execution_error(

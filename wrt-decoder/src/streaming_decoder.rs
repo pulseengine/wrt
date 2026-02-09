@@ -151,6 +151,14 @@ pub struct StreamingDecoder<'a> {
     num_function_imports: usize,
     /// Number of memory imports (for multiple memory validation)
     num_memory_imports: usize,
+    /// Count from function section (module-defined functions, not imports)
+    function_count: Option<u32>,
+    /// Count from code section
+    code_count: Option<u32>,
+    /// Value from data count section
+    data_count_value: Option<u32>,
+    /// Count from data section
+    data_section_count: Option<u32>,
     /// The module being built (std version)
     #[cfg(feature = "std")]
     module: WrtModule,
@@ -171,6 +179,10 @@ impl<'a> StreamingDecoder<'a> {
             platform_limits: ComprehensivePlatformLimits::default(),
             num_function_imports: 0,
             num_memory_imports: 0,
+            function_count: None,
+            code_count: None,
+            data_count_value: None,
+            data_section_count: None,
             module,
         })
     }
@@ -190,6 +202,10 @@ impl<'a> StreamingDecoder<'a> {
             platform_limits: ComprehensivePlatformLimits::default(),
             num_function_imports: 0,
             num_memory_imports: 0,
+            function_count: None,
+            code_count: None,
+            data_count_value: None,
+            data_section_count: None,
             module,
         })
     }
@@ -245,23 +261,31 @@ impl<'a> StreamingDecoder<'a> {
     }
 
     /// Process a specific section
-    fn process_section(&mut self, section_id: u8, data: &[u8]) -> Result<()> {
-        match section_id {
-            1 => self.process_type_section(data),
-            2 => self.process_import_section(data),
-            3 => self.process_function_section(data),
-            4 => self.process_table_section(data),
-            5 => self.process_memory_section(data),
-            6 => self.process_global_section(data),
-            7 => self.process_export_section(data),
-            8 => self.process_start_section(data),
-            9 => self.process_element_section(data),
-            10 => self.process_code_section(data),
-            11 => self.process_data_section(data),
-            12 => self.process_data_count_section(data),
-            13 => self.process_tag_section(data),
-            _ => self.process_custom_section(data),
+    /// Returns the number of bytes consumed from the section data.
+    fn process_section(&mut self, section_id: u8, data: &[u8]) -> Result<usize> {
+        let bytes_consumed = match section_id {
+            1 => self.process_type_section(data)?,
+            2 => self.process_import_section(data)?,
+            3 => self.process_function_section(data)?,
+            4 => self.process_table_section(data)?,
+            5 => self.process_memory_section(data)?,
+            6 => self.process_global_section(data)?,
+            7 => self.process_export_section(data)?,
+            8 => self.process_start_section(data)?,
+            9 => self.process_element_section(data)?,
+            10 => self.process_code_section(data)?,
+            11 => self.process_data_section(data)?,
+            12 => self.process_data_count_section(data)?,
+            13 => self.process_tag_section(data)?,
+            _ => self.process_custom_section(data)?,
+        };
+
+        // Validate that the section content exactly matches the declared size
+        if bytes_consumed != data.len() {
+            return Err(Error::parse_error("section size mismatch"));
         }
+
+        Ok(bytes_consumed)
     }
 
     /// Process type section
@@ -273,7 +297,7 @@ impl<'a> StreamingDecoder<'a> {
     /// - 0x4E = rec (recursive type group)
     /// - 0x50 = sub (subtype declaration)
     /// - 0x4F = sub final (final subtype declaration)
-    fn process_type_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_type_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::binary::{
             COMPOSITE_TYPE_ARRAY, COMPOSITE_TYPE_FUNC, COMPOSITE_TYPE_REC, COMPOSITE_TYPE_STRUCT,
             COMPOSITE_TYPE_SUB, COMPOSITE_TYPE_SUB_FINAL, read_leb128_u32,
@@ -351,7 +375,7 @@ impl<'a> StreamingDecoder<'a> {
             "process_type_section: complete"
         );
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Parse a subtype entry (sub, sub final, or bare composite type)
@@ -692,7 +716,7 @@ impl<'a> StreamingDecoder<'a> {
     }
 
     /// Process import section
-    fn process_import_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_import_section(&mut self, data: &[u8]) -> Result<usize> {
         use crate::optimized_string::validate_utf8_name;
 
         let mut offset = 0;
@@ -1034,14 +1058,17 @@ impl<'a> StreamingDecoder<'a> {
             "process_import_section: complete"
         );
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process function section
-    fn process_function_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_function_section(&mut self, data: &[u8]) -> Result<usize> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
+
+        // Store function count for cross-section validation
+        self.function_count = Some(count);
 
         // Validate function count against platform limits
         // Note: This is module-defined functions only, not including imports
@@ -1081,11 +1108,11 @@ impl<'a> StreamingDecoder<'a> {
             self.module.functions.push(func);
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process table section
-    fn process_table_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_table_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::binary::read_leb128_u32;
         use wrt_foundation::types::{Limits, RefType, TableType};
 
@@ -1247,11 +1274,11 @@ impl<'a> StreamingDecoder<'a> {
             );
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process memory section
-    fn process_memory_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_memory_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::{read_leb128_u32, read_leb128_u64};
 
         let mut offset = 0;
@@ -1366,11 +1393,11 @@ impl<'a> StreamingDecoder<'a> {
             );
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process global section
-    fn process_global_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_global_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::binary::read_leb128_u32;
         use wrt_format::module::Global;
         use wrt_format::types::FormatGlobalType;
@@ -1511,11 +1538,11 @@ impl<'a> StreamingDecoder<'a> {
             trace!(global_index = i, value_type = ?value_type, mutable = mutable, init_len = offset - init_start, "global parsed");
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process export section
-    fn process_export_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_export_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::binary::read_leb128_u32;
 
         use crate::optimized_string::validate_utf8_name;
@@ -1612,18 +1639,18 @@ impl<'a> StreamingDecoder<'a> {
             }
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process start section
-    fn process_start_section(&mut self, data: &[u8]) -> Result<()> {
-        let (start_idx, _) = read_leb128_u32(data, 0)?;
+    fn process_start_section(&mut self, data: &[u8]) -> Result<usize> {
+        let (start_idx, bytes_read) = read_leb128_u32(data, 0)?;
         self.module.start = Some(start_idx);
-        Ok(())
+        Ok(bytes_read)
     }
 
     /// Process element section
-    fn process_element_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_element_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::pure_format_types::{PureElementInit, PureElementMode, PureElementSegment};
 
         let mut offset = 0;
@@ -1919,14 +1946,26 @@ impl<'a> StreamingDecoder<'a> {
         #[cfg(feature = "tracing")]
         trace!(count = count, "process_element_section: complete");
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process code section
-    fn process_code_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_code_section(&mut self, data: &[u8]) -> Result<usize> {
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
+
+        // Store code count for cross-section validation
+        self.code_count = Some(count);
+
+        // Validate function and code section counts match
+        if let Some(func_count) = self.function_count {
+            if func_count != count {
+                return Err(Error::parse_error(
+                    "function and code section have inconsistent lengths",
+                ));
+            }
+        }
 
         #[cfg(feature = "tracing")]
         trace!(count = count, "process_code_section");
@@ -2049,16 +2088,28 @@ impl<'a> StreamingDecoder<'a> {
             offset = body_end;
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process data section
-    fn process_data_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_data_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::pure_format_types::{PureDataMode, PureDataSegment};
 
         let mut offset = 0;
         let (count, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
+
+        // Store data section count for cross-section validation
+        self.data_section_count = Some(count);
+
+        // Validate data count section matches data section if present
+        if let Some(data_count) = self.data_count_value {
+            if data_count != count {
+                return Err(Error::parse_error(
+                    "data count and data section have inconsistent lengths",
+                ));
+            }
+        }
 
         // Validate data segment count against platform limits
         if count as usize > limits::MAX_DATA_SEGMENTS {
@@ -2250,12 +2301,12 @@ impl<'a> StreamingDecoder<'a> {
             "process_data_section: complete"
         );
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process tag section (exception handling proposal)
     /// Tag section ID is 13 (0x0D)
-    fn process_tag_section(&mut self, data: &[u8]) -> Result<()> {
+    fn process_tag_section(&mut self, data: &[u8]) -> Result<usize> {
         use wrt_format::binary::read_leb128_u32;
 
         let mut offset = 0;
@@ -2304,18 +2355,70 @@ impl<'a> StreamingDecoder<'a> {
             trace!(tag_idx = _i, type_idx = type_idx, "tag");
         }
 
-        Ok(())
+        Ok(offset)
     }
 
     /// Process data count section
-    fn process_data_count_section(&mut self, _data: &[u8]) -> Result<()> {
-        // Used for validation only
-        Ok(())
+    fn process_data_count_section(&mut self, data: &[u8]) -> Result<usize> {
+        // Parse and store the data count value for cross-section validation
+        let (count, bytes_read) = read_leb128_u32(data, 0)?;
+        self.data_count_value = Some(count);
+        Ok(bytes_read)
     }
 
     /// Process custom section
-    fn process_custom_section(&mut self, _data: &[u8]) -> Result<()> {
-        // Skip custom sections or process specific ones
+    /// Returns the number of bytes consumed (entire section for custom sections).
+    fn process_custom_section(&mut self, data: &[u8]) -> Result<usize> {
+        // Custom sections are skipped - consume all bytes
+        Ok(data.len())
+    }
+
+    /// Perform cross-section validation at end of decoding
+    fn validate_cross_section_counts(&self) -> Result<()> {
+        // Validate function and code section counts match
+        // Both must be present and equal, or both must be absent
+        match (self.function_count, self.code_count) {
+            (Some(func), Some(code)) if func != code => {
+                return Err(Error::parse_error(
+                    "function and code section have inconsistent lengths",
+                ));
+            }
+            (Some(_), None) => {
+                // Function section exists but no code section - this is invalid
+                return Err(Error::parse_error(
+                    "function and code section have inconsistent lengths",
+                ));
+            }
+            (None, Some(_)) => {
+                // Code section exists but no function section - this is invalid
+                return Err(Error::parse_error(
+                    "function and code section have inconsistent lengths",
+                ));
+            }
+            _ => {}
+        }
+
+        // Validate data count section matches data section if present
+        if let Some(data_count) = self.data_count_value {
+            match self.data_section_count {
+                Some(data_section) if data_count != data_section => {
+                    return Err(Error::parse_error(
+                        "data count and data section have inconsistent lengths",
+                    ));
+                }
+                None => {
+                    // Data count section present but no data section
+                    // This is valid if data_count is 0
+                    if data_count != 0 {
+                        return Err(Error::parse_error(
+                            "data count and data section have inconsistent lengths",
+                        ));
+                    }
+                }
+                _ => {}
+            }
+        }
+
         Ok(())
     }
 
@@ -2323,6 +2426,9 @@ impl<'a> StreamingDecoder<'a> {
     /// Finish decoding and return the module (std version)
     #[cfg(feature = "std")]
     pub fn finish(self) -> Result<WrtModule> {
+        // Perform cross-section validation
+        self.validate_cross_section_counts()?;
+
         #[cfg(feature = "tracing")]
         trace!(
             imports_count = self.module.imports.len(),
@@ -2334,6 +2440,9 @@ impl<'a> StreamingDecoder<'a> {
     /// Finish decoding and return the module (no_std version)
     #[cfg(not(feature = "std"))]
     pub fn finish(self) -> Result<WrtModule<NoStdProvider<8192>>> {
+        // Perform cross-section validation
+        self.validate_cross_section_counts()?;
+
         Ok(self.module)
     }
 }

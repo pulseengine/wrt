@@ -202,6 +202,98 @@ pub trait StaticSerializedSize {
     }
 }
 
+// Macro to implement StaticSerializedSize for primitive types
+macro_rules! impl_static_serialized_size_for_primitive {
+    ($($T:ty),*) => {
+        $(
+            impl StaticSerializedSize for $T {
+                const SERIALIZED_SIZE: usize = core::mem::size_of::<$T>();
+            }
+        )*
+    };
+}
+
+impl_static_serialized_size_for_primitive! {
+    u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, f32, f64, usize, isize
+}
+
+impl StaticSerializedSize for bool {
+    const SERIALIZED_SIZE: usize = 1;
+}
+
+impl StaticSerializedSize for char {
+    const SERIALIZED_SIZE: usize = 4; // char is serialized as u32
+}
+
+// Option<T> has a static size when T has a static size
+// Size is 1 byte tag + size of T (even when None, we reserve space for Some)
+impl<T: StaticSerializedSize> StaticSerializedSize for Option<T> {
+    const SERIALIZED_SIZE: usize = 1 + T::SERIALIZED_SIZE;
+}
+
+// Tuple (A, B) has static size when both components have static sizes
+impl<A: StaticSerializedSize, B: StaticSerializedSize> StaticSerializedSize for (A, B) {
+    const SERIALIZED_SIZE: usize = A::SERIALIZED_SIZE + B::SERIALIZED_SIZE;
+}
+
+/// Trait for types where the maximum serialized size is known.
+/// This is used by BoundedVec to allocate sufficient space for each item.
+/// For most types, the max size equals the serialized size.
+/// For variable-size types like Option<T>, max size is the size when Some.
+pub trait MaxSerializedSize {
+    /// Returns the maximum serialized size in bytes for this type.
+    /// This is the size that BoundedVec should reserve for each item.
+    fn max_serialized_size() -> usize;
+}
+
+// Macro to implement MaxSerializedSize for primitive types using size_of
+macro_rules! impl_max_serialized_size_for_primitive {
+    ($($T:ty),*) => {
+        $(
+            impl MaxSerializedSize for $T {
+                #[inline]
+                fn max_serialized_size() -> usize {
+                    core::mem::size_of::<$T>()
+                }
+            }
+        )*
+    };
+}
+
+impl_max_serialized_size_for_primitive! {
+    u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, f32, f64, usize, isize
+}
+
+impl MaxSerializedSize for bool {
+    #[inline]
+    fn max_serialized_size() -> usize {
+        1
+    }
+}
+
+impl MaxSerializedSize for char {
+    #[inline]
+    fn max_serialized_size() -> usize {
+        4 // char is serialized as u32
+    }
+}
+
+// Option<T> has max size of 1 (tag) + T's max size
+impl<T: MaxSerializedSize> MaxSerializedSize for Option<T> {
+    #[inline]
+    fn max_serialized_size() -> usize {
+        1 + T::max_serialized_size()
+    }
+}
+
+// Tuple (A, B) has max size of A's max + B's max
+impl<A: MaxSerializedSize, B: MaxSerializedSize> MaxSerializedSize for (A, B) {
+    #[inline]
+    fn max_serialized_size() -> usize {
+        A::max_serialized_size() + B::max_serialized_size()
+    }
+}
+
 /// Trait for types that can be serialized to bytes.
 pub trait ToBytes: Sized {
     /// Returns the size in bytes required to serialize this type.
@@ -637,12 +729,16 @@ where
 // Consider adding for more tuple arities if needed.
 
 // Implementations for Option<T>
-impl<T: ToBytes> ToBytes for Option<T> {
+// NOTE: We require T: Default so that serialized_size() can return the MAXIMUM size
+// needed for serialization. This is crucial for BoundedVec which needs to allocate
+// space for the largest possible value (Some(T)) even when storing None.
+impl<T: ToBytes + Default> ToBytes for Option<T> {
     fn serialized_size(&self) -> usize {
-        match self {
-            Some(value) => 1 + value.serialized_size(), // 1 byte for tag + value size
-            None => 1,                                  // 1 byte for tag
-        }
+        // Always return the maximum size needed (size of Some(T::default()))
+        // This ensures BoundedVec allocates enough space for both None and Some values.
+        // The actual serialization may use less space (1 byte for None), but this is fine
+        // because BoundedVec stores checksums and reads back the exact bytes needed.
+        1 + T::default().serialized_size()
     }
 
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
