@@ -284,13 +284,32 @@ impl Table {
     /// Creates a new table with the specified type.
     /// Elements are initialized to a type-appropriate null value.
     pub fn new(ty: WrtTableType) -> Result<Self> {
+        // Validate that min <= max per the WebAssembly specification
+        if let Some(max) = ty.limits.max {
+            if ty.limits.min > max {
+                return Err(Error::validation_error(
+                    "size minimum must not be greater than maximum",
+                ));
+            }
+        }
+
+        // Check that the requested initial size fits within our BoundedVec capacity.
+        // TableElements has a capacity of 1024 elements. If the requested min exceeds
+        // this, we must return a graceful error rather than failing mid-push.
+        let initial_size = wasm_index_to_usize(ty.limits.min)?;
+        if initial_size > 1024 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                INDEX_TOO_LARGE,
+                "Table initial size exceeds maximum supported capacity (1024 elements)",
+            ));
+        }
+
         // Determine the type-appropriate null value for initialization
         let init_val = match ty.element_type {
             WrtRefType::Funcref => Some(WrtValue::FuncRef(None)),
             WrtRefType::Externref => Some(WrtValue::ExternRef(None)),
         };
-
-        let initial_size = wasm_index_to_usize(ty.limits.min)?;
 
         #[cfg(feature = "tracing")]
         wrt_foundation::tracing::trace!(capacity = 1024, elements = initial_size, "Creating Table BoundedVec");

@@ -829,6 +829,16 @@ impl<'a> StreamingDecoder<'a> {
                     } else {
                         None
                     };
+
+                    // Validate that min <= max per the WebAssembly specification
+                    if let Some(max_val) = max {
+                        if min > max_val {
+                            return Err(Error::validation_error(
+                                "size minimum must not be greater than maximum",
+                            ));
+                        }
+                    }
+
                     #[cfg(feature = "tracing")]
                     trace!(import_index = i, min = min, max = ?max, "import: table");
 
@@ -1180,6 +1190,15 @@ impl<'a> StreamingDecoder<'a> {
             } else {
                 None
             };
+
+            // Validate that min <= max per the WebAssembly specification
+            if let Some(max_val) = max {
+                if min > max_val {
+                    return Err(Error::validation_error(
+                        "size minimum must not be greater than maximum",
+                    ));
+                }
+            }
 
             // Parse and validate init expression if present (ends with 0x0B)
             if has_init_expr {
