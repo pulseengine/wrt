@@ -449,13 +449,13 @@ impl<'a> RuntimeState for ExecutionState<'a> {
 /// Per WebAssembly spec, if base + offset overflows or exceeds u32::MAX, it traps.
 /// Returns Ok(effective_address) or Err if overflow occurs.
 #[inline]
-fn calculate_effective_address(base: i32, offset: u32, size: u32) -> wrt_error::Result<u64> {
+fn calculate_effective_address(base: i32, offset: u64, size: u32) -> wrt_error::Result<u64> {
     // Convert base to u32 first (WebAssembly treats addresses as unsigned)
     let base_u32 = base as u32;
 
     // Check for overflow in base + offset
     let effective_addr = (base_u32 as u64)
-        .checked_add(offset as u64)
+        .checked_add(offset)
         .ok_or_else(|| wrt_error::Error::runtime_trap("out of bounds memory access"))?;
 
     // Check for overflow when adding access size
@@ -6896,7 +6896,7 @@ impl StacklessEngine {
                         // memory.atomic.notify: [i32, i32] -> [i32]
                         // Wake up to count threads waiting on the given address
                         if let (Some(Value::I32(count)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check alignment - notify requires 4-byte alignment
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -6919,7 +6919,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(timeout)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check alignment - wait32 requires 4-byte alignment
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -6962,7 +6962,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(timeout)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check alignment - wait64 requires 8-byte alignment
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -7010,7 +7010,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicLoad { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check 4-byte alignment for i32
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -7044,7 +7044,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicLoad { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check 8-byte alignment for i64
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -7078,7 +7078,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicLoad8U { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // 8-bit loads have natural alignment (1 byte)
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
@@ -7109,7 +7109,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicLoad16U { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             // Check 2-byte alignment for i16
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
@@ -7143,7 +7143,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicLoad8U { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7173,7 +7173,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicLoad16U { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7206,7 +7206,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicLoad32U { memarg } => {
                         if let Some(Value::I32(addr)) = operand_stack.pop() {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7243,7 +7243,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicStore { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7274,7 +7274,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicStore { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7305,7 +7305,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicStore8 { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7333,7 +7333,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicStore16 { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7364,7 +7364,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicStore8 { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7392,7 +7392,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicStore16 { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7423,7 +7423,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicStore32 { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7458,7 +7458,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwAdd { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7502,7 +7502,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwAdd { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7544,7 +7544,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8AddU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7576,7 +7576,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16AddU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7611,7 +7611,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8AddU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7643,7 +7643,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16AddU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7678,7 +7678,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32AddU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7717,7 +7717,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwSub { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7752,7 +7752,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwSub { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7787,7 +7787,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8SubU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7819,7 +7819,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16SubU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7854,7 +7854,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8SubU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -7886,7 +7886,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16SubU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7921,7 +7921,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32SubU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7960,7 +7960,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwAnd { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -7995,7 +7995,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwAnd { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8030,7 +8030,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8AndU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8062,7 +8062,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16AndU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8097,7 +8097,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8AndU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8129,7 +8129,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16AndU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8164,7 +8164,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32AndU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8203,7 +8203,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwOr { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8238,7 +8238,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwOr { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8273,7 +8273,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8OrU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8305,7 +8305,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16OrU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8340,7 +8340,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8OrU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8372,7 +8372,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16OrU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8407,7 +8407,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32OrU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8446,7 +8446,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwXor { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8481,7 +8481,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwXor { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8516,7 +8516,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8XorU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8548,7 +8548,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16XorU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8583,7 +8583,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8XorU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8615,7 +8615,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16XorU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8650,7 +8650,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32XorU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8689,7 +8689,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmwXchg { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8723,7 +8723,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmwXchg { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8757,7 +8757,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw8XchgU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8788,7 +8788,7 @@ impl StacklessEngine {
 
                     Instruction::I32AtomicRmw16XchgU { memarg } => {
                         if let (Some(Value::I32(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8822,7 +8822,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw8XchgU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -8853,7 +8853,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw16XchgU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8887,7 +8887,7 @@ impl StacklessEngine {
 
                     Instruction::I64AtomicRmw32XchgU { memarg } => {
                         if let (Some(Value::I64(value)), Some(Value::I32(addr))) = (operand_stack.pop(), operand_stack.pop()) {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8928,7 +8928,7 @@ impl StacklessEngine {
                         if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -8975,7 +8975,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 8 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -9012,7 +9012,7 @@ impl StacklessEngine {
                         if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -9046,7 +9046,7 @@ impl StacklessEngine {
                         if let (Some(Value::I32(replacement)), Some(Value::I32(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -9083,7 +9083,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             match instance.memory(memarg.memory_index as u32) {
                                 Ok(memory_wrapper) => {
                                     let memory = &memory_wrapper.0;
@@ -9117,7 +9117,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 2 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }
@@ -9154,7 +9154,7 @@ impl StacklessEngine {
                         if let (Some(Value::I64(replacement)), Some(Value::I64(expected)), Some(Value::I32(addr))) =
                             (operand_stack.pop(), operand_stack.pop(), operand_stack.pop())
                         {
-                            let effective_addr = (addr as u32).wrapping_add(memarg.offset);
+                            let effective_addr = (addr as u32).wrapping_add(memarg.offset as u32);
                             if effective_addr % 4 != 0 {
                                 return Err(wrt_error::Error::runtime_trap("unaligned atomic access"));
                             }

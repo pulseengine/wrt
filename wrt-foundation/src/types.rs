@@ -1227,12 +1227,15 @@ impl FromBytes for FuncType {
 // Display and Debug impls follow...
 
 /// Memory argument for load/store instructions
+///
+/// The offset field is u64 to support the memory64 proposal where
+/// memory offsets can be 64-bit values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MemArg {
     /// The alignment exponent (2^align_exponent bytes)
     pub align_exponent: u32,
-    /// The offset to add to the address
-    pub offset:         u32,
+    /// The offset to add to the address (u64 for memory64 support)
+    pub offset:         u64,
     /// The memory index (0 for single memory)
     pub memory_index:   u32,
 }
@@ -1254,7 +1257,7 @@ impl ToBytes for MemArg {
         _provider: &PStream,
     ) -> wrt_error::Result<()> {
         writer.write_u32_le(self.align_exponent)?;
-        writer.write_u32_le(self.offset)?;
+        writer.write_u64_le(self.offset)?;
         writer.write_u32_le(self.memory_index)
     }
 
@@ -1271,7 +1274,7 @@ impl FromBytes for MemArg {
         _provider: &PStream,
     ) -> wrt_error::Result<Self> {
         let align_exponent = reader.read_u32_le()?;
-        let offset = reader.read_u32_le()?;
+        let offset = reader.read_u64_le()?;
         let memory_index = reader.read_u32_le()?;
         Ok(Self {
             align_exponent,
@@ -1405,6 +1408,12 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     // Tail call instructions (0x12 and 0x13 opcodes)
     ReturnCall(FuncIdx),
     ReturnCallIndirect(TypeIdx, TableIdx),
+
+    // Typed function references (0x14 and 0x15 opcodes)
+    /// call_ref: call function from typed reference on stack (opcode 0x14)
+    CallRef(TypeIdx),
+    /// return_call_ref: tail call function from typed reference on stack (opcode 0x15)
+    ReturnCallRef(TypeIdx),
 
     // Exception handling instructions (exception handling proposal)
     /// Throw exception with specified tag (opcode 0x08)
@@ -1965,6 +1974,49 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     /// i31.get_u: extract i32 with zero extension (0xFB 0x1E)
     I31GetU,
 
+    // =========================================================================
+    // SIMD Instructions (0xFD prefix) - WebAssembly SIMD Proposal
+    // =========================================================================
+
+    /// v128.const: 128-bit constant (0xFD 0x0C)
+    V128Const {
+        /// 16 bytes of constant data
+        bytes: [u8; 16],
+    },
+    /// SIMD operation with no immediates (arithmetic, comparison, bitwise, etc.)
+    SimdOp {
+        /// The sub-opcode after the 0xFD prefix
+        opcode: u32,
+    },
+    /// SIMD memory operation with memarg (load/store variants)
+    SimdMemOp {
+        /// The sub-opcode after the 0xFD prefix
+        opcode: u32,
+        /// Memory argument (alignment and offset)
+        memarg: MemArg,
+    },
+    /// i8x16.shuffle with 16 lane indices (0xFD 0x0D)
+    SimdShuffle {
+        /// 16 lane index bytes
+        lanes: [u8; 16],
+    },
+    /// SIMD lane operation with lane index (extract/replace lane)
+    SimdLaneOp {
+        /// The sub-opcode after the 0xFD prefix
+        opcode: u32,
+        /// Lane index byte
+        lane:   u8,
+    },
+    /// SIMD memory lane operation with memarg and lane index (load_lane/store_lane)
+    SimdMemLaneOp {
+        /// The sub-opcode after the 0xFD prefix
+        opcode: u32,
+        /// Memory argument (alignment and offset)
+        memarg: MemArg,
+        /// Lane index byte
+        lane:   u8,
+    },
+
     #[doc(hidden)]
     _Phantom(core::marker::PhantomData<P>),
 }
@@ -2037,6 +2089,14 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 type_idx.update_checksum(checksum);
                 table_idx.update_checksum(checksum);
             },
+            Instruction::CallRef(type_idx) => {
+                checksum.update_slice(&[0x14]); // call_ref opcode
+                type_idx.update_checksum(checksum);
+            },
+            Instruction::ReturnCallRef(type_idx) => {
+                checksum.update_slice(&[0x15]); // return_call_ref opcode
+                type_idx.update_checksum(checksum);
+            },
             Instruction::BrOnNull(label_idx) => {
                 checksum.update_slice(&[0xD5]); // br_on_null opcode
                 label_idx.update_checksum(checksum);
@@ -2049,10 +2109,10 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 checksum.update_slice(&[0xD1]); // ref.is_null opcode
             },
             Instruction::RefAsNonNull => {
-                checksum.update_slice(&[0xD3]); // ref.as_non_null opcode
+                checksum.update_slice(&[0xD4]); // ref.as_non_null opcode
             },
             Instruction::RefEq => {
-                checksum.update_slice(&[0xD2]); // ref.eq opcode
+                checksum.update_slice(&[0xD3]); // ref.eq opcode
             },
             Instruction::LocalGet(idx)
             | Instruction::LocalSet(idx)
@@ -2435,6 +2495,36 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 checksum.update_slice(&[0xFE, 0x03]);
             },
 
+            // SIMD instructions (0xFD prefix)
+            Instruction::V128Const { bytes } => {
+                checksum.update_slice(&[0xFD, 0x0C]);
+                checksum.update_slice(bytes);
+            },
+            Instruction::SimdOp { opcode } => {
+                checksum.update_slice(&[0xFD]);
+                opcode.update_checksum(checksum);
+            },
+            Instruction::SimdMemOp { opcode, memarg } => {
+                checksum.update_slice(&[0xFD]);
+                opcode.update_checksum(checksum);
+                memarg.update_checksum(checksum);
+            },
+            Instruction::SimdShuffle { lanes } => {
+                checksum.update_slice(&[0xFD, 0x0D]);
+                checksum.update_slice(lanes);
+            },
+            Instruction::SimdLaneOp { opcode, lane } => {
+                checksum.update_slice(&[0xFD]);
+                opcode.update_checksum(checksum);
+                lane.update_checksum(checksum);
+            },
+            Instruction::SimdMemLaneOp { opcode, memarg, lane } => {
+                checksum.update_slice(&[0xFD]);
+                opcode.update_checksum(checksum);
+                memarg.update_checksum(checksum);
+                lane.update_checksum(checksum);
+            },
+
             // All other instructions - use a placeholder checksum for now
             _ => {
                 // For now, just use a simple placeholder
@@ -2508,6 +2598,14 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
                 writer.write_u32_le(*type_idx)?;
                 writer.write_u32_le(*table_idx)?;
             },
+            Instruction::CallRef(type_idx) => {
+                writer.write_u8(0x14)?; // call_ref opcode
+                writer.write_u32_le(*type_idx)?;
+            },
+            Instruction::ReturnCallRef(type_idx) => {
+                writer.write_u8(0x15)?; // return_call_ref opcode
+                writer.write_u32_le(*type_idx)?;
+            },
             Instruction::BrOnNull(label_idx) => {
                 writer.write_u8(0xD5)?; // br_on_null opcode
                 writer.write_u32_le(*label_idx)?;
@@ -2517,8 +2615,8 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
                 writer.write_u32_le(*label_idx)?;
             },
             Instruction::RefIsNull => writer.write_u8(0xD1)?, // ref.is_null opcode
-            Instruction::RefAsNonNull => writer.write_u8(0xD3)?, // ref.as_non_null opcode
-            Instruction::RefEq => writer.write_u8(0xD2)?,     // ref.eq opcode
+            Instruction::RefAsNonNull => writer.write_u8(0xD4)?, // ref.as_non_null opcode
+            Instruction::RefEq => writer.write_u8(0xD3)?,     // ref.eq opcode
             Instruction::LocalGet(idx) => {
                 writer.write_u8(0x20)?;
                 writer.write_u32_le(*idx)?;
@@ -2896,6 +2994,42 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
             Instruction::AtomicFence => {
                 writer.write_u8(0xFE)?;
                 writer.write_u8(0x03)?;
+            },
+
+            // SIMD instructions (0xFD prefix)
+            Instruction::V128Const { bytes } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u8(0x0C)?;
+                for &b in bytes {
+                    writer.write_u8(b)?;
+                }
+            },
+            Instruction::SimdOp { opcode } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u32_le(*opcode)?;
+            },
+            Instruction::SimdMemOp { opcode, memarg } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u32_le(*opcode)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            },
+            Instruction::SimdShuffle { lanes } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u8(0x0D)?;
+                for &b in lanes {
+                    writer.write_u8(b)?;
+                }
+            },
+            Instruction::SimdLaneOp { opcode, lane } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u32_le(*opcode)?;
+                writer.write_u8(*lane)?;
+            },
+            Instruction::SimdMemLaneOp { opcode, memarg, lane } => {
+                writer.write_u8(0xFD)?;
+                writer.write_u32_le(*opcode)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+                writer.write_u8(*lane)?;
             },
 
             // ... many more instructions
@@ -3821,11 +3955,18 @@ impl FromBytes for TableType {
 pub struct MemoryType {
     pub limits: Limits,
     pub shared: bool,
+    /// Memory64 extension - uses i64 addresses instead of i32
+    pub memory64: bool,
 }
 
 impl MemoryType {
     pub const fn new(limits: Limits, shared: bool) -> Self {
-        Self { limits, shared }
+        Self { limits, shared, memory64: false }
+    }
+
+    /// Create a memory type with all options
+    pub const fn new_with_memory64(limits: Limits, shared: bool, memory64: bool) -> Self {
+        Self { limits, shared, memory64 }
     }
 }
 
@@ -3833,6 +3974,7 @@ impl Checksummable for MemoryType {
     fn update_checksum(&self, checksum: &mut Checksum) {
         self.limits.update_checksum(checksum);
         checksum.update(self.shared as u8);
+        checksum.update(self.memory64 as u8);
     }
 }
 
@@ -3844,6 +3986,7 @@ impl ToBytes for MemoryType {
     ) -> wrt_error::Result<()> {
         self.limits.to_bytes_with_provider(writer, provider)?;
         writer.write_u8(self.shared as u8)?;
+        writer.write_u8(self.memory64 as u8)?;
         Ok(())
     }
     // Default to_bytes method will be used if #cfg(feature = "default-provider") is
@@ -3866,7 +4009,17 @@ impl FromBytes for MemoryType {
                 ));
             },
         };
-        Ok(MemoryType { limits, shared })
+        let memory64_byte = reader.read_u8()?;
+        let memory64 = match memory64_byte {
+            0 => false,
+            1 => true,
+            _ => {
+                return Err(Error::runtime_execution_error(
+                    "Invalid memory64 flag value",
+                ));
+            },
+        };
+        Ok(MemoryType { limits, shared, memory64 })
     }
     // Default from_bytes method will be used if #cfg(feature = ")
     // is active

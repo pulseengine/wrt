@@ -829,6 +829,16 @@ impl<'a> StreamingDecoder<'a> {
                     } else {
                         None
                     };
+
+                    // Validate that min <= max per the WebAssembly specification
+                    if let Some(max_val) = max {
+                        if min > max_val {
+                            return Err(Error::validation_error(
+                                "size minimum must not be greater than maximum",
+                            ));
+                        }
+                    }
+
                     #[cfg(feature = "tracing")]
                     trace!(import_index = i, min = min, max = ?max, "import: table");
 
@@ -946,6 +956,7 @@ impl<'a> StreamingDecoder<'a> {
                         let memory_type = MemoryType {
                             limits,
                             shared: flags & 0x02 != 0, // bit 1 = shared
+                            memory64: flags & 0x04 != 0, // bit 2 = memory64
                         };
 
                         let import = Import {
@@ -1180,6 +1191,15 @@ impl<'a> StreamingDecoder<'a> {
                 None
             };
 
+            // Validate that min <= max per the WebAssembly specification
+            if let Some(max_val) = max {
+                if min > max_val {
+                    return Err(Error::validation_error(
+                        "size minimum must not be greater than maximum",
+                    ));
+                }
+            }
+
             // Parse and validate init expression if present (ends with 0x0B)
             if has_init_expr {
                 // Count global imports - at table section time, only imported globals exist
@@ -1380,6 +1400,7 @@ impl<'a> StreamingDecoder<'a> {
             let memory_type = wrt_foundation::types::MemoryType {
                 limits: wrt_foundation::types::Limits { min, max },
                 shared,
+                memory64: is_memory64,
             };
 
             // Add to module
