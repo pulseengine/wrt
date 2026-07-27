@@ -35,7 +35,7 @@ wat = "1.244"
 kiln-decoder = { workspace = true, features = ["std"] }
 # Engine-driving tests contend on the global capability memory budget
 # (see CLAUDE.md — such tests use serial_test).
-serial_test = "3.4"
+serial_test = "4.0"
 
 [features]
 # Enable kiln-component's OWN std + execution features by default so the crate

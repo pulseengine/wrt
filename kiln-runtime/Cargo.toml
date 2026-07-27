@@ -237,7 +237,7 @@ kani = []
 kani-verifier = []
 
 [dev-dependencies]
-serial_test = "3.4"
+serial_test = "4.0"
 wat = "1.244"
 criterion = { version = "0.8", features = ["html_reports"] }
 
