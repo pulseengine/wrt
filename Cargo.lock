@@ -1320,7 +1320,7 @@ dependencies = [
  "tempfile",
  "toml",
  "walkdir",
- "wast",
+ "wast 256.0.0",
  "wat",
 ]
 
@@ -2953,7 +2953,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.3",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -3575,7 +3575,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09480d646178e5fdd12bb06e812d0af9a3a191dbc9cd697fdc86687beade7393"
 dependencies = [
  "leb128fmt",
- "wasmparser",
+ "wasmparser 0.254.0",
+]
+
+[[package]]
+name = "wasm-encoder"
+version = "0.256.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec1492381bfd5ea51c2a99a919b676662559925cb8d7490547ec2e14c1ad3eb1"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.256.0",
 ]
 
 [[package]]
@@ -3583,6 +3593,17 @@ name = "wasmparser"
 version = "0.254.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5769a29f799fbab136aaf65b4fe5384cd7d93fe6fc9ba0dcb6c8382a1f16e27"
+dependencies = [
+ "bitflags",
+ "indexmap",
+ "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.256.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60bd825ffedc6cba8a642924ba7ae424afbc47811cffbcb7b92031ec24e59b4c"
 dependencies = [
  "bitflags",
  "indexmap",
@@ -3599,7 +3620,20 @@ dependencies = [
  "leb128fmt",
  "memchr",
  "unicode-width",
- "wasm-encoder",
+ "wasm-encoder 0.254.0",
+]
+
+[[package]]
+name = "wast"
+version = "256.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3ad42723fc9222da007f05812a3249c9a4ee7af79d497fc2a2079579ad7efe6"
+dependencies = [
+ "bumpalo",
+ "leb128fmt",
+ "memchr",
+ "unicode-width",
+ "wasm-encoder 0.256.0",
 ]
 
 [[package]]
@@ -3608,7 +3642,7 @@ version = "1.254.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7127f7f9b8f127c879991cecd35f494e4628bae1b0874c681414d8d8831e952c"
 dependencies = [
- "wast",
+ "wast 254.0.0",
 ]
 
 [[package]]
