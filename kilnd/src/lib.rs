@@ -1255,6 +1255,14 @@ impl SimpleArgs {
         let mut i = 1; // Skip program name
         while i < args.len() {
             match args[i].as_str() {
+                // Machine-quotable version (kiln#486, org CLI baseline
+                // pulseengine.eu#167/#183): evidence must cite a tool version
+                // without scraping the banner. One line, stdout, exit 0 — and
+                // the name is the BINARY's, `kilnd`, not the repo's.
+                "--version" | "-V" | "version" => {
+                    println!("kilnd {}", env!("CARGO_PKG_VERSION"));
+                    process::exit(0);
+                }
                 "--help" | "-h" => {
                     println!("WebAssembly Runtime Daemon (kilnd)");
                     println!("Usage: kilnd [OPTIONS] <module.wasm>");
@@ -1285,6 +1293,7 @@ impl SimpleArgs {
                         println!("  --interface <name>   Register component interface");
                     }
                     println!("  --help               Show this help message");
+                    println!("  --version            Print the version and exit");
                     process::exit(0);
                 },
                 "--function" => {
@@ -1398,7 +1407,18 @@ impl SimpleArgs {
                         result.wasi_args.push(arg.to_string());
                     }
                 },
-                _ => {}, // Ignore unknown flags
+                // A typo'd flag used to be silently ignored, so
+                // `kilnd --fuell 1000 mod.wasm` ran with DEFAULT fuel and said
+                // nothing — the run looked successful while doing something
+                // other than what was asked. Anything that starts with `-` and
+                // is not recognised is now an error (kiln#486). Bare words are
+                // still positional: the module path.
+                other if other.starts_with('-') => {
+                    eprintln!("kilnd: unrecognized option '{other}'");
+                    eprintln!("usage: kilnd [OPTIONS] <module.wasm>   (see --help)");
+                    process::exit(2);
+                }
+                _ => {} // positional (module path) — handled after the loop
             }
             i += 1;
         }
