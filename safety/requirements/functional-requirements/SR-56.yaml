@@ -3,7 +3,7 @@ artifacts:
   - id: SR-56
     type: requirement
     title: Dependency tree carries no known RUSTSEC advisories (cargo audit clean)
-    status: implemented
+    status: verified
     description: "IMPLEMENTED: cargo audit reported 6 vulnerabilities on clean main, failing the Rust CI 'Security Audit' job on ubuntu+macos (only the windows leg is continue-on-error), which BLOCKED every PR. Main appeared green only because its last Rust CI run was the v0.4.4 tag in July — the advisories were disclosed after, so nothing had re-run the gate. Cleared all six: crossbeam-epoch 0.9.18->0.9.21 (RUSTSEC-2026-0204 invalid pointer deref in fmt::Pointer for Atomic); h2 0.4.15->0.4.19 (RUSTSEC-2026-0258 unbounded empty DATA frames); quinn-proto ->0.11.17 (RUSTSEC-2026-0185 remote memory exhaustion from unbounded out-of-order data); os_info 3.12.0->3.15.0, which moved plist off the vulnerable quick-xml 0.37.5 (RUSTSEC-2026-0195 unbounded namespace-declaration allocation + RUSTSEC-2026-0194 quadratic duplicate-attribute scan); and tract-onnx 0.21->0.23 in kiln-wasi, which released the tract-linalg 'time >=0.3.23,<0.3.42' pin that had frozen time at 0.3.41 (RUSTSEC-2026-0009 DoS via stack exhaustion) — that pin is the SR-36 constraint from the v0.3.6 era, now dissolved rather than worked around. Verified: cargo audit exit 0 (0 vulnerabilities); cargo build --workspace --locked exit 0; the semver-major tract bump re-checked with the feature ON (cargo check -p kiln-wasi --features tract exit 0) since tract-onnx is an optional wasi-nn backend; kilnd 27, kiln-runtime lib 101, kiln-wasi lib 68 tests pass. Note the advisories sat in optional/tool subtrees (tract-onnx behind wasi-nn; os_info via kani-verifier) rather than the default shipped runtime, but cargo audit reads Cargo.lock so they still red-gated the repo — and they are fixed properly rather than ignored."
     tags: [security, dependencies, cargo-audit, rustsec, supply-chain]
     fields:
@@ -12,3 +12,4 @@ artifacts:
       created-by: ai
       model: claude-opus-4-8
       timestamp: 2026-09-06T20:33:42Z
+    release: v0.4.5
