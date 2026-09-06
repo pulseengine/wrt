@@ -3,7 +3,7 @@ artifacts:
   - id: SR-55
     type: requirement
     title: "kilnd meets the PulseEngine CLI baseline: --version/-V print name+semver and exit 0, unknown flags exit 2"
-    status: implemented
+    status: verified
     description: "IMPLEMENTED (issue #486, org-wide CLI survey): kilnd could not state its own version — `--version` and `-V` both printed the banner and exited 1. kiln EXECUTES other tools' artifacts (witness --harness cross-checks run modules under kilnd), so 'which runtime produced this run' was unanswerable from the binary, which is what a coverage or timing result needs to cite. Fix: (1) new `--version`/`-V` arm prints '<binary-name> <semver>' (kilnd $CARGO_PKG_VERSION, the workspace version the tag is cut from) and exits 0; (2) the arg parser's `_ => {} // Ignore unknown flags` catch-all — a banned masking fallback — now fails loud: unrecognized arguments print the offending token plus usage to STDERR and exit 2 per the baseline; (3) the positional guard was `!arg.starts_with(\\\"--\\\")`, so `-V` and any unknown short flag fell through and were consumed as the MODULE PATH; tightened to `!arg.starts_with('-')`. FOUND WORSE THAN REPORTED: silently ignoring unknown flags also ate the following operand, so a typo'd resource cap (`--memroy 65536 mod.wasm`) dropped the cap AND mis-consumed the module path — the module could run unbounded. That is the same 'configured control that never takes effect' class as SR-44/SR-45. CORRECTION to the issue: it reports `--help` exiting 1; measured on main it already exits 0 (the arm ends in process::exit(0)) — no change needed, verified by test. NOT DONE (maintainer decision, deliberately not taken unilaterally): ask 3, whether the shipped binary is renamed 'kiln' to match repo/tarball/roster, or 'kilnd' is documented as the binary everywhere — renaming breaks every existing invocation. Verified: kilnd/tests/cli_baseline_tests.rs (6 tests) — version_flag_prints_name_and_semver_and_exits_zero, reported_version_is_the_crate_version, help_exits_zero, unknown_long_flag_exits_two_with_usage_on_stderr, unknown_short_flag_is_rejected_not_treated_as_module_path, typoed_resource_cap_flag_is_rejected_not_silently_dropped."
     tags: [kilnd, cli, baseline, version, fail-loud, bug]
     fields:
@@ -13,3 +13,4 @@ artifacts:
       created-by: ai
       model: claude-opus-4-8
       timestamp: 2026-09-06T20:14:58Z
+    release: v0.4.5
