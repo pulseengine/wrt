@@ -1255,6 +1255,14 @@ impl SimpleArgs {
         let mut i = 1; // Skip program name
         while i < args.len() {
             match args[i].as_str() {
+                "--version" | "-V" => {
+                    // PulseEngine CLI baseline: `<binary-name> <semver>`, exit 0.
+                    // kiln executes other tools' artifacts (e.g. witness --harness
+                    // cross-checks run modules under kilnd), so "which runtime
+                    // produced this run" must be answerable. Issue #486.
+                    println!("kilnd {}", env!("CARGO_PKG_VERSION"));
+                    process::exit(0);
+                },
                 "--help" | "-h" => {
                     println!("WebAssembly Runtime Daemon (kilnd)");
                     println!("Usage: kilnd [OPTIONS] <module.wasm>");
@@ -1284,7 +1292,8 @@ impl SimpleArgs {
                         );
                         println!("  --interface <name>   Register component interface");
                     }
-                    println!("  --help               Show this help message");
+                    println!("  --help, -h           Show this help message");
+                    println!("  --version, -V        Print the binary name and version");
                     process::exit(0);
                 },
                 "--function" => {
@@ -1388,7 +1397,7 @@ impl SimpleArgs {
                     }
                     break;
                 },
-                arg if !arg.starts_with("--") => {
+                arg if !arg.starts_with('-') => {
                     // First non-flag argument is the module path
                     if result.module_path.is_none() {
                         result.module_path = Some(arg.to_string());
@@ -1398,7 +1407,19 @@ impl SimpleArgs {
                         result.wasi_args.push(arg.to_string());
                     }
                 },
-                _ => {}, // Ignore unknown flags
+                // FAIL LOUD on an unrecognised flag (CLAUDE.md: no fallback that
+                // masks a mistake). Silently ignoring these was actively unsafe:
+                // a typo'd resource cap (`--memroy 65536`) was dropped AND its
+                // operand was then consumed as a positional, so the module ran
+                // with no cap applied — the same "configured control that never
+                // takes effect" class as SR-44/SR-45. Exit 2 per the PulseEngine
+                // CLI baseline (usage errors are 2, not 1). Issue #486.
+                unknown => {
+                    eprintln!("error: unrecognized argument '{unknown}'");
+                    eprintln!("Usage: kilnd [OPTIONS] <module.wasm>");
+                    eprintln!("Try 'kilnd --help' for available options.");
+                    process::exit(2);
+                },
             }
             i += 1;
         }
