@@ -19,7 +19,7 @@ kiln-platform = { workspace = true, default-features = false }
 kiln-format = { workspace = true, default-features = false }
 
 # Neural network inference backend
-tract-onnx = { version = "0.21", optional = true, default-features = false }
+tract-onnx = { version = "0.23", optional = true, default-features = false }
 
 # For capability storage in std environments
 once_cell = { version = "1.19", optional = true }
