@@ -55,6 +55,88 @@ pub mod witness_harness;
 #[cfg(feature = "component-model")]
 pub mod component_host;
 
+/// Render a core [`Value`] for user-facing result output (SR-59).
+///
+/// `{:?}` prints floats as their raw bit pattern
+/// (`F64(FloatBits64(4615626668101337088))`), which is unreadable for someone
+/// invoking an export to see its answer. Print the number.
+#[cfg(feature = "std")]
+fn format_core_value(value: &kiln_foundation::Value) -> String {
+    use kiln_foundation::Value;
+
+    match value {
+        Value::I32(v) => format!("i32 {v}"),
+        Value::I64(v) => format!("i64 {v}"),
+        Value::F32(bits) => format!("f32 {}", f32::from_bits(bits.0)),
+        Value::F64(bits) => format!("f64 {}", f64::from_bits(bits.0)),
+        other => format!("{other:?}"),
+    }
+}
+
+/// Parse `--arg` strings into core [`Value`]s using the export's declared
+/// parameter types (SR-59, #480).
+///
+/// Only core scalar types are constructible from the command line. Component
+/// types (`list<u8>`, records, strings) arrive here already flattened by the
+/// canonical ABI into pointers and lengths, and cannot be built without the WIT
+/// types — which a meld-fused core module does not carry (pulseengine/meld#400).
+/// A type we cannot construct is rejected loudly rather than substituted.
+#[cfg(feature = "std")]
+fn parse_call_args(
+    function_name: &str,
+    declared: &[kiln_foundation::types::ValueType],
+    supplied: &[String],
+) -> Result<Vec<kiln_foundation::Value>> {
+    use kiln_foundation::{
+        Value,
+        types::ValueType,
+        values::{FloatBits32, FloatBits64},
+    };
+
+    let mut out = Vec::with_capacity(declared.len());
+    for (idx, (ty, raw)) in declared.iter().zip(supplied.iter()).enumerate() {
+        let value = match ty {
+            ValueType::I32 => raw.trim().parse::<i32>().map(Value::I32).map_err(|_| {
+                Error::runtime_type_mismatch("argument is not a valid i32")
+            }),
+            ValueType::I64 => raw.trim().parse::<i64>().map(Value::I64).map_err(|_| {
+                Error::runtime_type_mismatch("argument is not a valid i64")
+            }),
+            ValueType::F32 => raw
+                .trim()
+                .parse::<f32>()
+                .map(|f| Value::F32(FloatBits32(f.to_bits())))
+                .map_err(|_| Error::runtime_type_mismatch("argument is not a valid f32")),
+            ValueType::F64 => raw
+                .trim()
+                .parse::<f64>()
+                .map(|f| Value::F64(FloatBits64(f.to_bits())))
+                .map_err(|_| Error::runtime_type_mismatch("argument is not a valid f64")),
+            other => {
+                eprintln!(
+                    "Error: parameter {} of '{}' has type {:?}, which kilnd cannot construct \
+                     from the command line; only core scalars (i32/i64/f32/f64) are supported.",
+                    idx, function_name, other
+                );
+                Err(Error::runtime_type_mismatch(
+                    "unsupported parameter type for a command-line argument",
+                ))
+            },
+        };
+        match value {
+            Ok(v) => out.push(v),
+            Err(e) => {
+                eprintln!(
+                    "Error: could not parse argument {} ('{}') of '{}' as {:?}.",
+                    idx, raw, function_name, ty
+                );
+                return Err(e);
+            },
+        }
+    }
+    Ok(out)
+}
+
 /// Render a scalar [`ComponentValue`] for user-facing `--invoke` output (#344).
 #[cfg(all(feature = "std", feature = "component-model"))]
 fn format_component_value(value: &kiln_component::canonical_abi::ComponentValue) -> String {
@@ -204,6 +286,9 @@ pub struct KilndConfig {
     /// command entry point, and its scalar result is printed.
     #[cfg(feature = "component-model")]
     pub invoke_export: Option<String>,
+    /// Arguments for the invoked export, as raw CLI strings (SR-59).
+    /// Parsed against the export's declared core parameter types at call time.
+    pub call_args: Vec<String>,
     /// Memory profiling enabled
     pub enable_memory_profiling: bool,
     /// Platform-specific optimizations
@@ -242,6 +327,7 @@ impl Default for KilndConfig {
             component_interfaces: Vec::new(),
             #[cfg(feature = "component-model")]
             invoke_export: None,
+            call_args: Vec::new(),
             enable_memory_profiling: false,
             enable_platform_optimizations: true,
         }
@@ -916,7 +1002,7 @@ impl KilndEngine {
                 // them and the wrong result was reported as success (the #412
                 // fabricated-reporting family). FAIL LOUD with an actionable
                 // message instead.
-                let declared_params = {
+                let declared_param_types = {
                     let inst = engine.get_instance(instance)?;
                     let func_idx =
                         inst.module().find_function_by_name(function_name).ok_or_else(|| {
@@ -930,26 +1016,53 @@ impl KilndEngine {
                             )
                         })?
                         .params
-                        .len()
+                        .iter()
+                        .copied()
+                        .collect::<Vec<_>>()
                 };
-                if declared_params != 0 {
-                    // User-facing diagnostic on stderr: says WHY the call is
-                    // rejected and that kilnd cannot supply wasm params yet.
+                let declared_params = declared_param_types.len();
+
+                // SR-59 / #480: parse `--arg` values against the declared CORE
+                // parameter types. Arity must match exactly — a missing argument
+                // is never zero-filled (SR-53).
+                let call_args = self.config.call_args.clone();
+                if call_args.len() != declared_params {
                     eprintln!(
-                        "Error: function '{}' expects {} argument(s) but none were \
-                         supplied; kilnd cannot yet pass wasm function parameters",
-                        function_name, declared_params
+                        "Error: function '{}' expects {} argument(s) but {} were supplied.",
+                        function_name,
+                        declared_params,
+                        call_args.len()
                     );
+                    if call_args.is_empty() {
+                        eprintln!("Pass them with --arg <value> (repeat per parameter).");
+                        // A canonical WIT name with many flattened params is the
+                        // component-typed case: the user cannot construct a
+                        // `list<u8>` or a record out of raw core scalars, and the
+                        // fused module carries no WIT types to lower from
+                        // (pulseengine/meld#400). Say so instead of implying the
+                        // call is one --arg away.
+                        if function_name.contains('#') && declared_params > 2 {
+                            eprintln!(
+                                "Note: '{}' looks like a component export whose WIT types were \
+                                 flattened to {} core parameters by the canonical ABI. kilnd \
+                                 can pass core scalars (i32/i64/f32/f64) but cannot yet build \
+                                 component-typed values (list/record/string) — the fused module \
+                                 carries no WIT type information (pulseengine/meld#400).",
+                                function_name, declared_params
+                            );
+                        }
+                    }
                     return Err(Error::runtime_type_mismatch(
-                        "exported function expects arguments but none were supplied; \
-                         kilnd cannot yet pass wasm function parameters",
+                        "argument count does not match the export's declared parameter count",
                     ));
                 }
+
+                let parsed_args = parse_call_args(function_name, &declared_param_types, &call_args)?;
 
                 // Propagate the engine's error verbatim so the actual cause
                 // (e.g. "fuel exhausted", a trap message) reaches the user
                 // instead of a generic "Function execution failed".
-                let results = engine.execute(instance, function_name, &[])?;
+                let results = engine.execute(instance, function_name, &parsed_args)?;
 
                 if !results.is_empty() {
                     println!(
@@ -958,7 +1071,7 @@ impl KilndEngine {
                         results.len()
                     );
                     for (i, value) in results.iter().enumerate() {
-                        println!("  [{}] {:?}", i, value);
+                        println!("  [{}] {}", i, format_core_value(value));
                     }
                 } else {
                     println!(
@@ -1268,6 +1381,8 @@ pub struct SimpleArgs {
     /// instead of the `wasi:cli/run` command entry point.
     #[cfg(feature = "component-model")]
     pub invoke_export: Option<String>,
+    /// Raw `--arg` values for the invoked export (SR-59).
+    pub call_args: Vec<String>,
     /// Enable memory profiling
     pub enable_memory_profiling: bool,
     /// Enable platform optimizations
@@ -1301,6 +1416,7 @@ impl SimpleArgs {
             component_interfaces: Vec::new(),
             #[cfg(feature = "component-model")]
             invoke_export: None,
+            call_args: Vec::new(),
             enable_memory_profiling: false,
             enable_platform_optimizations: true,
         };
@@ -1308,6 +1424,16 @@ impl SimpleArgs {
         let mut i = 1; // Skip program name
         while i < args.len() {
             match args[i].as_str() {
+                // SR-59 / #480: supply arguments to the invoked export. Values are
+                // parsed against the export's DECLARED core parameter types, so
+                // `--arg 21 --arg 2` calls `mul(21, 2)` rather than the engine
+                // zero-filling both (which SR-53 now refuses outright).
+                "--arg" => {
+                    i += 1;
+                    if i < args.len() {
+                        result.call_args.push(args[i].clone());
+                    }
+                },
                 "--version" | "-V" => {
                     // PulseEngine CLI baseline: `<binary-name> <semver>`, exit 0.
                     // kiln executes other tools' artifacts (e.g. witness --harness
@@ -1345,6 +1471,10 @@ impl SimpleArgs {
                         );
                         println!("  --interface <name>   Register component interface");
                     }
+                    println!(
+                        "  --arg <value>        Argument for the invoked export (repeat per \
+                         parameter; core scalars i32/i64/f32/f64)"
+                    );
                     println!("  --help, -h           Show this help message");
                     println!("  --version, -V        Print the binary name and version");
                     process::exit(0);
@@ -1608,6 +1738,7 @@ pub fn run() -> Result<()> {
         config.enable_component_model = args.enable_component_model;
         config.component_interfaces = args.component_interfaces.clone();
         config.invoke_export = args.invoke_export.clone();
+        config.call_args = args.call_args.clone();
 
         if config.enable_component_model {
             println!(
