@@ -1,0 +1,13 @@
+artifacts:
+
+  - id: SR-58
+    type: requirement
+    title: kilnd --invoke reaches a named export on a meld-fused core module (library/reactor components)
+    status: implemented
+    description: "THE REAL BLOCKER for the north star, and SMALLER than first framed. Measured on the real released scry-3.3.0-wasm32-wasip2.wasm: scry is a LIBRARY/reactor component ('world root { export pulseengine:scry/analyzer@0.1.0; }', zero wasi:cli/run), so running it is not meaningful — the correct operation is invoking a named export. meld ALREADY emits the mapping: the fused core module exports the canonical WIT name 'pulseengine:scry/analyzer@0.1.0#analyze' (plus its cabi_post_ partner). Proof the name lookup already works: 'kilnd --function pulseengine:scry/analyzer@0.1.0#analyze scry.core.wasm' RESOLVES the export (it proceeds to the arity check, see SR-59). But 'kilnd --invoke <same name> scry.core.wasm' is IGNORED on the fused-core path — kilnd jumps to entry discovery and dies with 'No entry point found (_start or P3 fused entries)' / E07DA, because --invoke is wired only to the direct-component path that RFC #46 now refuses. Fix: on the fused-core path, route --invoke through the same canonical-name lookup --function already uses; and when no command entry exists, list the invokable interface exports instead of reporting 'no entry point'. No new cross-tool contract is needed — consume the canonical export name meld already emits. Issue #480."
+    tags: [kilnd, component, invoke, rfc46, library-component, bug]
+    provenance:
+      created-by: ai
+      model: claude-opus-5
+      timestamp: 2026-09-07T03:55:39Z
+    release: v0.5.0
