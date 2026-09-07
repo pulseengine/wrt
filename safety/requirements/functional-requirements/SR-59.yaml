@@ -1,0 +1,13 @@
+artifacts:
+
+  - id: SR-59
+    type: requirement
+    title: kilnd can pass arguments to an invoked export (wasm function parameters)
+    status: proposed
+    description: "MEASURED on v0.4.5: 'kilnd --function pulseengine:scry/analyzer@0.1.0#analyze scry.core.wasm' resolves the export and then fails loud with 'function ... expects 10 argument(s) but none were supplied; kilnd cannot yet pass wasm function parameters' (E1771). That message is SR-53's fail-loud behaviour working as designed — before v0.4.3 the engine would have zero-filled all 10 parameters and reported a fabricated result as success. But it exposes a real capability gap: kilnd has NO CLI mechanism to pass wasm function parameters at all (--wasi-arg is WASI argv, not wasm params), so any export taking >=1 parameter is uninvokable. Every non-trivial library-component export takes parameters (scry's analyze takes 10), so this blocks the north star 'kiln can run every wasm component pulseengine releases' even once SR-58 routes --invoke correctly. Needs: a CLI surface for typed argument values, lowering them per the canonical ABI (component-level types, not just core i32/i64), and a decision on how results are printed. Relates to SR-53 (which made the gap visible instead of fabricating results) and REQ_COMPONENT_HOST. Issue #480."
+    tags: [kilnd, cli, invoke, arguments, capability-gap]
+    provenance:
+      created-by: ai
+      model: claude-opus-5
+      timestamp: 2026-09-07T03:55:39Z
+    release: v0.5.0
