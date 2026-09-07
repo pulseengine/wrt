@@ -1080,14 +1080,45 @@ impl KilndEngine {
                     );
                 }
             } else {
-                // No _start — check for Meld-fused P3 module.
-                // These export [async-lift] functions and import P3 builtins from $root.
-                // The numbered exports (0, 1, 2, ...) are the wasi:cli/run entry points.
-                // Try calling export "0" which is typically the first component's entry.
+                // No `_start` — this is a meld-fused module.
+                //
+                // SR-57 / #480: prefer a DETERMINISTIC lookup of the canonical
+                // entry name meld emits. meld preserves each component export
+                // under its canonical WIT name, so a fused wasi:cli command
+                // component carries `wasi:cli/run@<version>#run` (verified on
+                // hello_rust: the fused module exports both `_start` and
+                // `wasi:cli/run@0.2.6#run`). Find that by scanning the export
+                // table rather than guessing positional names.
+                //
+                // The numbered exports ("0", "1", ...) are kept as a trailing
+                // fallback because some P3-fused modules expose only those, but
+                // they are a guess and are tried last, not first.
                 let mut executed = false;
 
-                // Look for wasi:cli/run entry via numbered exports
-                for entry in &["0", "1", "_start", "main"] {
+                let canonical_run: Option<String> = engine
+                    .get_instance(instance)
+                    .ok()
+                    .and_then(|inst| {
+                        inst.module()
+                            .exports
+                            .iter()
+                            .filter(|(_k, e)| {
+                                e.kind == kiln_runtime::module::ExportKind::Function
+                            })
+                            .find_map(|(_k, e)| {
+                                let n = e.name.as_str().unwrap_or("");
+                                (n.contains("wasi:cli/run") && n.ends_with("#run"))
+                                    .then(|| n.to_string())
+                            })
+                    });
+
+                let mut candidates: Vec<&str> = Vec::new();
+                if let Some(ref name) = canonical_run {
+                    candidates.push(name.as_str());
+                }
+                candidates.extend_from_slice(&["0", "1", "_start", "main"]);
+
+                for entry in &candidates {
                     if engine.has_function(instance, entry).unwrap_or(false) {
                         let _ = self.logger.handle_minimal_log(
                             LogLevel::Info,
