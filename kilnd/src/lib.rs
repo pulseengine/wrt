@@ -888,7 +888,20 @@ impl KilndEngine {
                 .map_err(|_| Error::runtime_execution_error("Failed to instantiate module"))?;
 
             // Execute function - try common entry points
-            let function_name = self.config.function_name.as_deref().unwrap_or("_start");
+            // SR-58 / #480: `--invoke <export>` must work on the meld-fused core
+            // path, not only on the direct-component path that RFC #46 refuses.
+            // meld emits each component export under its canonical WIT name
+            // (e.g. `pulseengine:scry/analyzer@0.1.0#analyze`), so the name the
+            // user passes resolves directly against the fused module — no new
+            // cross-tool contract is needed, we just consume the mapping meld
+            // already provides. Without this, library/reactor components (which
+            // have no `_start`) had no invocation route at all.
+            let function_name = self
+                .config
+                .invoke_export
+                .as_deref()
+                .or(self.config.function_name.as_deref())
+                .unwrap_or("_start");
             let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
 
             // Check if function exists — if not, try Meld-fused P3 module entry points
@@ -981,10 +994,50 @@ impl KilndEngine {
                 }
 
                 if !executed {
-                    let _ = self.logger.handle_minimal_log(
-                        LogLevel::Error,
-                        "No entry point found (_start or P3 fused entries)",
-                    );
+                    // SR-58 / #480: a module with no command entry is very often
+                    // a LIBRARY/reactor component (e.g. scry exports
+                    // `pulseengine:scry/analyzer@0.1.0#analyze` and no
+                    // wasi:cli/run). "No entry point found" told the user
+                    // nothing actionable in that case. Name the exports they can
+                    // actually invoke instead of leaving them to guess.
+                    let invokable: Vec<String> = engine
+                        .get_instance(instance)
+                        .map(|inst| {
+                            inst.module()
+                                .exports
+                                .iter()
+                                .filter(|(_k, e)| {
+                                    e.kind == kiln_runtime::module::ExportKind::Function
+                                })
+                                .filter_map(|(_k, e)| {
+                                    let n = e.name.as_str().unwrap_or("");
+                                    // Hide ABI plumbing that is never a user entry.
+                                    let plumbing = n.starts_with("cabi_")
+                                        || n == "memory"
+                                        || n == "$imports"
+                                        || n.is_empty()
+                                        || n.chars().all(|c| c.is_ascii_digit());
+                                    (!plumbing).then(|| n.to_string())
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    if invokable.is_empty() {
+                        let _ = self.logger.handle_minimal_log(
+                            LogLevel::Error,
+                            "No entry point found (_start or P3 fused entries)",
+                        );
+                    } else {
+                        eprintln!(
+                            "Error: this module has no command entry point (_start / \
+                             wasi:cli/run). It looks like a library component — invoke \
+                             one of its exports with --invoke <export>:"
+                        );
+                        for name in &invokable {
+                            eprintln!("  {name}");
+                        }
+                    }
                     return Err(Error::runtime_function_not_found("Function not found"));
                 }
             }
