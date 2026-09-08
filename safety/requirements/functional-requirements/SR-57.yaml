@@ -3,7 +3,7 @@ artifacts:
   - id: SR-57
     type: requirement
     title: kilnd resolves a fused command entry by meld's canonical export name instead of guessing numbered exports
-    status: implemented
+    status: verified
     description: "NARROWED AFTER MEASUREMENT (v0.4.5, meld 0.41.3). meld ALREADY provides the WIT->fused mapping: it emits each component export under its canonical name in the fused core module. Measured on a real command component (pulseengine/wasm-component-examples hello_rust): the fused module exports BOTH '_start' AND 'wasi:cli/run@0.2.6#run', and kilnd RUNS IT CORRECTLY today — 'Hello wasm component world from Rust!', exit 0. So #480's command-component case is NOT broken on current meld; the original report was against varve layer 2026.08.1 with scry 3.2.4. What remains here is hygiene, not a blocker: kilnd's entry discovery (kilnd/src/lib.rs ~957-990) still GUESSES by trying the literal export names \"0\",\"1\",\"_start\",\"main\", with an in-code comment that numbered exports are 'typically' the run entry. Replace the guessing with a deterministic lookup of the canonical name meld emits (wasi:cli/run@*#run), keeping _start as the primary. Second defect, user-facing: when a module legitimately has NO command entry (a library/reactor component), the error 'No entry point found (_start or P3 fused entries)' is misleading — it should say the module exports no command entry and name the invokable interface exports (see SR-58). Issue #480."
     tags: [kilnd, component, entry-point, rfc46, meld, cross-repo, bug]
     provenance:
